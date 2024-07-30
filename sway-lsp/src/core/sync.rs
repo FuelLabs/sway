@@ -31,8 +31,6 @@ pub enum Directory {
     Temp,
 }
 
-// CAN WE DELETE THIS MODULE and just use the in memory cache?
-
 #[derive(Debug)]
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,

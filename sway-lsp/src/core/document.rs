@@ -1,4 +1,5 @@
-// #![allow(dead_code)]
+use std::sync::Arc;
+
 use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::document,
@@ -133,42 +134,42 @@ impl Documents {
         }
     }
 
-    // / Asynchronously writes the changes to the file and updates the document.
-    // pub async fn write_changes_to_file(
-    //     &self,
-    //     uri: &Url,
-    //     changes: &[TextDocumentContentChangeEvent],
-    // ) -> Result<(), LanguageServerError> {
-    //     let src = self.update_text_document(uri, changes)?;
+    ///  Asynchronously writes the changes to the file and updates the document.
+    pub async fn write_changes_to_file(
+        &self,
+        uri: &Url,
+        changes: &[TextDocumentContentChangeEvent],
+    ) -> Result<(), LanguageServerError> {
+        let src = self.update_text_document(uri, changes)?;
 
-    //     let mut file =
-    //         File::create(uri.path())
-    //             .await
-    //             .map_err(|err| DocumentError::UnableToCreateFile {
-    //                 path: uri.path().to_string(),
-    //                 err: err.to_string(),
-    //             })?;
+        let mut file =
+            File::create(uri.path())
+                .await
+                .map_err(|err| DocumentError::UnableToCreateFile {
+                    path: uri.path().to_string(),
+                    err: err.to_string(),
+                })?;
 
-    //     file.write_all(src.as_bytes())
-    //         .await
-    //         .map_err(|err| DocumentError::UnableToWriteFile {
-    //             path: uri.path().to_string(),
-    //             err: err.to_string(),
-    //         })?;
+        file.write_all(src.as_bytes())
+            .await
+            .map_err(|err| DocumentError::UnableToWriteFile {
+                path: uri.path().to_string(),
+                err: err.to_string(),
+            })?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
     pub fn update_text_document(
         &self,
-        url: &Url,
+        uri: &Url,
         changes: &[TextDocumentContentChangeEvent],
     ) -> Result<String, DocumentError> {
-        self.try_get_mut(url.path())
+        self.try_get_mut(uri.path())
             .try_unwrap()
             .ok_or_else(|| DocumentError::DocumentNotFound {
-                path: url.path().to_string(),
+                path: uri.path().to_string(),
             })
             .and_then(|mut document| {
                 for change in changes {
