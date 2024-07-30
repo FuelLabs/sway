@@ -769,7 +769,7 @@ fn bytes_append_to_empty() {
 
 
 #[test(should_revert)]
-fn bytes_append_self() {
+fn revert_bytes_append_self() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == a);
@@ -777,6 +777,13 @@ fn bytes_append_self() {
     assert(bytes.get(2).unwrap() == c);
 
     bytes.append(bytes);
+}
+
+#[test(should_revert)]
+fn revert_bytes_append_empty_self() {
+    let mut empty_bytes = Bytes::new();
+
+    empty_bytes.append(empty_bytes);
 }
 
 #[test()]
