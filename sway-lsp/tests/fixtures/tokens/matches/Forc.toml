@@ -6,7 +6,4 @@ name = "matches"
 implicit-std = false
 
 [dependencies]
-# TODO: This project needs the version of the preludes that uses `pub use` instead of `use`
-# Temporarily use the local std before the tests dependencies are bumped to v0.61.3 or v0.62.0.
-# std = { git = "https://github.com/FuelLabs/sway", tag = "v0.48.1" }
-std = { path = "../../../../../sway-lib-std" }
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.62.0" }
