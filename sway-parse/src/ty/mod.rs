@@ -70,7 +70,8 @@ impl Parse for Ty {
             return Ok(Ty::Ptr { ptr_token, ty });
         }
 
-        // slice like __slice[ty]
+        // slice like __slice[type]
+        // TODO: deprecate this syntax (see https://github.com/FuelLabs/sway/issues/5110)
         if let Some(slice_token) = parser.take::<SliceToken>() {
             let ty = SquareBrackets::<Box<Ty>>::parse_all_inner(parser, |mut parser| {
                 parser.emit_error(ParseErrorKind::UnexpectedTokenAfterSliceType)
