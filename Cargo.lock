@@ -6901,7 +6901,6 @@ dependencies = [
  "rayon",
  "rayon-cond",
  "regex",
- "ropey",
  "serde",
  "serde_json",
  "sway-ast",
