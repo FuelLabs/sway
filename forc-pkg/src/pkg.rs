@@ -52,7 +52,7 @@ use sway_core::{
 };
 use sway_core::{PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::constants::{CORE, PRELUDE, STD};
+use sway_types::constants::{CORE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
@@ -184,7 +184,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub root_module: namespace::Module,
+    pub root_module: namespace::Root,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -1590,7 +1590,7 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 /// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 pub fn dependency_namespace(
-    lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Root>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
@@ -1601,18 +1601,13 @@ pub fn dependency_namespace(
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
-    let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::default_with_contract_id(
-            engines,
-            name.clone(),
-            Visibility::Public,
-            contract_id_value,
-            experimental,
-        )?
-    } else {
-        namespace::Module::new(name, Visibility::Public, None)
-    };
-
+    let mut root_namespace =
+	if let Some(contract_id_value) = contract_id_value {
+	    namespace::namespace_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
+	} else {
+	    namespace::namespace_without_contract_id(name.clone())
+	};
+    
     // Add direct dependencies.
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
@@ -1623,8 +1618,8 @@ pub fn dependency_namespace(
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no namespace module")
-                .read(engines, Clone::clone),
+                .expect("no root module")
+		.clone(),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1635,17 +1630,10 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-                namespace::default_with_contract_id(
-                    engines,
-                    name.clone(),
-                    Visibility::Private,
-                    contract_id_value,
-                    experimental,
-                )?
+		namespace::namespace_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
             }
         };
-        dep_namespace.is_external = true;
-        root_module.insert_submodule(dep_name, dep_namespace);
+        root_namespace.add_external(dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1656,34 +1644,12 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
+            root_namespace.add_external(core_namespace.clone());
             core_added = true;
         }
     }
 
-    let mut root = namespace::Root::from(root_module);
-
-    if core_added {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    if has_std_dep(graph, node) {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    Ok(root)
+    Ok(root_namespace)
 }
 
 /// Find the `std` dependency, if it is a direct one, of the given node.
@@ -1760,7 +1726,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: &mut namespace::Root,
+    namespace: namespace::Root,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
@@ -1946,7 +1912,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: namespace.root_module().clone(),
+        root_module: namespace.root().clone(),
         warnings,
         metrics,
     };
@@ -2391,7 +2357,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                &mut dep_namespace,
+                dep_namespace,
                 &mut source_map,
             )?;
 
@@ -2464,7 +2430,7 @@ pub fn build(
             &descriptor,
             &profile,
             &engines,
-            &mut dep_namespace,
+            dep_namespace,
             &mut source_map,
         )?;
 
@@ -2701,7 +2667,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            &mut dep_namespace,
+            dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
@@ -2724,12 +2690,12 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut module = typed_program
+                let mut lib_root = typed_program
                     .root
                     .namespace
-                    .program_id(engines)
-                    .read(engines, |m| m.clone());
-                module.set_span(
+		    .clone()
+                    .root();
+                lib_root.add_span_to_root_module(
                     Span::new(
                         manifest.entry_string()?,
                         0,
@@ -2738,7 +2704,7 @@ pub fn check(
                     )
                     .unwrap(),
                 );
-                lib_namespace_map.insert(node, module);
+                lib_namespace_map.insert(node, lib_root);
             }
             source_map.insert_dependency(manifest.dir());
         } else {

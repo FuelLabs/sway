@@ -129,21 +129,21 @@ use crate::{
 //    Ok(ret)
 //}
 
-/// Factory function for non-contract libraries
-pub fn package_without_contract_id(
+/// Factory function for contracts
+pub fn namespace_without_contract_id(
     package_name: Ident,
-) -> Result<Root, vec1::Vec1<CompileError>> {
-    Ok(Root::new(package_name, None))
+) -> Root {
+    Root::new(package_name, None, false)
 }
 
 /// Factory function for contracts
-pub fn package_with_contract_id(
+pub fn namespace_with_contract_id(
     engines: &Engines,
     package_name: Ident,
     contract_id_value: String,
     experimental: crate::ExperimentalFlags,
 ) -> Result<Root, vec1::Vec1<CompileError>> {
-    let root = Root::new(package_name, None);
+    let root = Root::new(package_name, None, true);
     let handler = <_>::default();
     bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental)
 	.map_err(|_| {
@@ -207,7 +207,7 @@ fn bind_contract_id_in_root_module(
     };
 
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    let mut namespace = Namespace::new(root, true);
+    let mut namespace = Namespace::new(root);
     let type_check_ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental);
     // Typecheck the const declaration. This will add the binding in the supplied namespace
     match TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap().content {

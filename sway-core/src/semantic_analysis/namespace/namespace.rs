@@ -36,20 +36,19 @@ pub struct Namespace {
     /// The path of the root module in a package is `[package_name]`. If a module `X` is a submodule
     /// of module `Y` which is a submodule of the root module in the package `P`, then the path is
     /// `[P, Y, X]`.
+    ///
+    /// When the namespace is initially by created `new` the path is empty. The path will be set
+    /// when `enter_submodule` is called on the root module.
     pub(crate) current_mod_path: ModulePathBuf,
-    /// True if the current package is a contract, false otherwise.
-    is_contract_package: bool
 }
 
 impl Namespace {
     /// Initialize the namespace
     /// See also the factory functions in contract_helpers.rs
-    pub fn new(package_root: Root, is_contract_package: bool) -> Self {
-	let mod_path = package_root.current_package_name().clone();
+    pub fn new(package_root: Root) -> Self {
 	Self {
 	    root: package_root,
-	    current_mod_path: vec!(mod_path),
-	    is_contract_package,
+	    current_mod_path: Default::default(),
 	}
     }
 
@@ -85,7 +84,7 @@ impl Namespace {
     pub fn current_package_name(&self) -> &Ident {
 	self.root.current_package_name()
     }
-    
+
 //    /// Initialise the namespace at its root from the given initial namespace.
 //    /// If the root module contains submodules these are now considered external.
 //    pub fn init_root(root: &mut Root) -> Self {
@@ -272,26 +271,34 @@ impl Namespace {
             .resolve_call_path(handler, engines, &self.current_mod_path, call_path, self_type)
     }
 
-    fn import_implicits(&mut self, _mod_path: &ModulePathBuf) {
+    fn import_implicits(&mut self) {
 	// TODO
+	// let module = self.current_module();
 	// If package_name == "core" do nothing
 	// else if package_name == "std" import core::prelude (if it exists)
 	// else import std::prelude and core::prelude (if it exists)
 	//
-	// If is_contract_package import ::CONTRACT_ID
+	// If package_name != "core" && package_name != "std" && !is_root_module && root.is_contract_package import ::CONTRACT_ID
+	// check for !is_root_module is necessary, because that's where CONTRACT_ID is declared.
     }
     
     pub(crate) fn enter_submodule(&mut self, mod_name: Ident, visibility: Visibility, module_span: Span) -> SubmoduleNamespace {
-	if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
-	    let submod_path = self.current_module_mut().add_new_submodule(&mod_name, visibility, Some(module_span));
-	    self.import_implicits(&submod_path);
+	let parent_mod_path = self.current_mod_path.clone();
+
+	if self.current_mod_path.is_empty() {
+	    // Entering the root module. The module already exists, so don't add a new one.
+	    self.import_implicits();
 	}
-	let new_mod = self.current_module().submodules().get(&mod_name.to_string()).unwrap();
+	else if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
+	    // Entering a new module. Add a new one.
+	    self.current_module_mut().add_new_submodule(&mod_name, visibility, Some(module_span));
+	    self.import_implicits();
+	}
+ 	self.current_mod_path.push(mod_name.clone());
+	
 	// TODO: Do we need to return a SubmoduleNamespace? Can't we just push the new name onto
 	// self.current_mod_path and pop it when done with the submodule? That's what happens in the
 	// collection phase (which uses push_new_submodule and pop_submodule).
-	let parent_mod_path = self.current_mod_path.clone();
-	self.current_mod_path = new_mod.mod_path().to_vec();
 	SubmoduleNamespace {
 	    namespace: self,
 	    parent_mod_path,

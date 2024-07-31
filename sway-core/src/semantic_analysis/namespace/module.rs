@@ -79,11 +79,9 @@ impl Module {
         self.span = Some(span);
     }
 
-    pub(super) fn add_new_submodule(&mut self, name: &Ident, visibility: Visibility, span: Option<Span>) -> ModulePathBuf {
+    pub(super) fn add_new_submodule(&mut self, name: &Ident, visibility: Visibility, span: Option<Span>) {
 	let module = Self::new(name.clone(), visibility, span, &self.mod_path);
-	let path = module.mod_path.clone();
 	self.submodules.insert(name.to_string(), module);
-	path
     }
 	
     
