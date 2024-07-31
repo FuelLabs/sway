@@ -141,22 +141,24 @@ fn type_check_elem_at(
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
-    // first argument can be array or ref to slice
+    // first argument can be ref to array or ref to slice
     let elem_type = match &*type_engine.get(first_argument_type) {
-        TypeInfo::Array(elem_ty, _) => Some(elem_ty.type_id),
         TypeInfo::Ref {
-            referenced_type, ..
+            referenced_type,
+            to_mutable_value,
         } => match &*type_engine.get(referenced_type.type_id) {
-            TypeInfo::Slice(elem_ty) => Some(elem_ty.type_id),
+            TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
+                Some((*to_mutable_value, elem_ty.type_id))
+            }
             _ => None,
         },
         _ => None,
     };
-    let Some(elem_type_type_id) = elem_type else {
+    let Some((to_mutable_value, elem_type_type_id)) = elem_type else {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: first_argument_span,
-            hint: "".to_string(),
+            hint: "Only references to arrays or slices can be used as argument here".to_string(),
         }));
     };
 
@@ -177,7 +179,7 @@ fn type_check_elem_at(
     let return_type = type_engine.insert(
         engines,
         TypeInfo::Ref {
-            to_mutable_value: true,
+            to_mutable_value,
             referenced_type: TypeArgument {
                 type_id: elem_type_type_id,
                 initial_type_id: elem_type_type_id,
@@ -280,12 +282,16 @@ fn type_check_slice(
         }
     }
 
-    fn create_ref_to_slice(engines: &Engines, elem_type_arg: TypeArgument) -> TypeId {
+    fn create_ref_to_slice(
+        engines: &Engines,
+        to_mutable_value: bool,
+        elem_type_arg: TypeArgument,
+    ) -> TypeId {
         let type_engine = engines.te();
         let slice_type_id =
             type_engine.insert(engines, TypeInfo::Slice(elem_type_arg.clone()), None);
         let ref_to_slice_type = TypeInfo::Ref {
-            to_mutable_value: false,
+            to_mutable_value,
             referenced_type: TypeArgument {
                 type_id: slice_type_id,
                 initial_type_id: slice_type_id,
@@ -296,49 +302,50 @@ fn type_check_slice(
         type_engine.insert(engines, ref_to_slice_type, None)
     }
 
-    // We can slice arrays or other slices
+    // first argument can be ref to array or ref to slice
     let err = CompileError::IntrinsicUnsupportedArgType {
         name: kind.to_string(),
         span: first_argument_span,
-        hint: "".to_string(),
+        hint: "Only references to arrays or slices can be used as argument here".to_string(),
     };
     let r = match &*type_engine.get(first_argument_type) {
-        TypeInfo::Array(elem_type_arg, array_len) => {
-            let array_len = array_len.val() as u64;
-
-            if let Some(v) = start_literal {
-                if v > array_len {
-                    return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
-                        index: v,
-                        count: array_len,
-                        span,
-                    }));
-                }
-            }
-
-            if let Some(v) = end_literal {
-                if v > array_len {
-                    return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
-                        index: v,
-                        count: array_len,
-                        span,
-                    }));
-                }
-            }
-
-            Some((
-                TyIntrinsicFunctionKind {
-                    kind,
-                    arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
-                    type_arguments: vec![],
-                    span,
-                },
-                create_ref_to_slice(engines, elem_type_arg.clone()),
-            ))
-        }
         TypeInfo::Ref {
-            referenced_type, ..
+            referenced_type,
+            to_mutable_value,
         } => match &*type_engine.get(referenced_type.type_id) {
+            TypeInfo::Array(elem_type_arg, array_len) => {
+                let array_len = array_len.val() as u64;
+
+                if let Some(v) = start_literal {
+                    if v > array_len {
+                        return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                            index: v,
+                            count: array_len,
+                            span,
+                        }));
+                    }
+                }
+
+                if let Some(v) = end_literal {
+                    if v > array_len {
+                        return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                            index: v,
+                            count: array_len,
+                            span,
+                        }));
+                    }
+                }
+
+                Some((
+                    TyIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
+                        type_arguments: vec![],
+                        span,
+                    },
+                    create_ref_to_slice(engines, *to_mutable_value, elem_type_arg.clone()),
+                ))
+            }
             TypeInfo::Slice(elem_type_arg) => Some((
                 TyIntrinsicFunctionKind {
                     kind,
@@ -346,7 +353,7 @@ fn type_check_slice(
                     type_arguments: vec![],
                     span,
                 },
-                create_ref_to_slice(engines, elem_type_arg.clone()),
+                create_ref_to_slice(engines, *to_mutable_value, elem_type_arg.clone()),
             )),
             _ => None,
         },

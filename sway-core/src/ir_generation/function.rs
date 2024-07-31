@@ -2181,30 +2181,29 @@ impl<'eng> FnCompiler<'eng> {
 
         let first_argument_value = save_to_local_return_ptr(self, context, first_argument_value)?;
 
+        let ptr_arg = AsmArg {
+            name: Ident::new_no_span("ptr".into()),
+            initializer: Some(first_argument_value),
+        };
+
+        let ptr_out_arg = AsmArg {
+            name: Ident::new_no_span("ptr_out".into()),
+            initializer: Some(first_argument_value),
+        };
+
+        let return_type = Type::get_uint64(context);
+        let ptr_to_first_element = self.current_block.append(context).asm_block(
+            vec![ptr_arg, ptr_out_arg],
+            vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
+            return_type,
+            Some(Ident::new_no_span("ptr_out".into())),
+        );
+
         match &*te.get(first_argument_expr.return_type) {
-            TypeInfo::Array(elem_ty, _) => Ok((first_argument_value, elem_ty.type_id)),
             TypeInfo::Ref {
                 referenced_type, ..
             } => match &*te.get(referenced_type.type_id) {
-                TypeInfo::Slice(elem_ty) => {
-                    let ptr_arg = AsmArg {
-                        name: Ident::new_no_span("ptr".into()),
-                        initializer: Some(first_argument_value),
-                    };
-
-                    let ptr_out_arg = AsmArg {
-                        name: Ident::new_no_span("ptr_out".into()),
-                        initializer: Some(first_argument_value),
-                    };
-
-                    let return_type = Type::get_uint64(context);
-                    let ptr_to_first_element = self.current_block.append(context).asm_block(
-                        vec![ptr_arg, ptr_out_arg],
-                        vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
-                        return_type,
-                        Some(Ident::new_no_span("ptr_out".into())),
-                    );
-
+                TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
                     Ok((ptr_to_first_element, elem_ty.type_id))
                 }
                 _ => Err(err),
