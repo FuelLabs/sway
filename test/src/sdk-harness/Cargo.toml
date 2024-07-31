@@ -17,7 +17,8 @@ fuel-core-client = { version = "0.31.0", default-features = false }
 fuel-vm = { version = "0.55.0", features = ["random"] }
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { version = "0.65.1", features = ["fuel-core-lib"] }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "esdrubal/abi_changes2", features = ["fuel-core-lib"]}
+#fuels = { version = "0.65.1", features = ["fuel-core-lib"] }
 
 hex = "0.4.3"
 paste = "1.0.14"

@@ -17,7 +17,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
-            json_abi_with_callpaths: cmd.build.pkg.json_abi_with_callpaths,
             ipfs_node: cmd.build.pkg.ipfs_node.unwrap_or_default(),
         },
         print: pkg::PrintOpts {
