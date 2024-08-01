@@ -2,7 +2,6 @@ pub mod integration;
 
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
-use rand::Rng;
 use std::{fs, path::PathBuf};
 use sway_lsp::{
     config::LspClient,
@@ -164,28 +163,6 @@ fn did_change() {
 }
 
 #[test]
-fn did_open_fluid_libraries() {
-    run_async!({
-        let now = std::time::Instant::now();
-        let (mut service, _) = LspService::build(ServerState::new)
-            .custom_method("sway/metrics", ServerState::metrics)
-            .finish();
-        let uri = init_and_open(
-            &mut service,
-            PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
-                .join("src/interface.sw"),
-        )
-        .await;
-
-        eprintln!("\n 🪆🪆🪆🪆 Initial compilation complete, starting recompilation 🪆🪆🪆🪆 \n");
-        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-        service.inner().wait_for_parsing().await;
-        eprintln!("Elapsed time: {:?}", now.elapsed());
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
 fn did_cache_test() {
     run_async!({
         let (mut service, _) = LspService::build(ServerState::new)
@@ -234,73 +211,24 @@ fn did_change_stress_test() {
 #[test]
 fn did_change_stress_test_random_wait() {
     run_async!({
-        let test_duration = tokio::time::Duration::from_secs(250 * 60); // 5 minutes timeout
+        let test_duration = tokio::time::Duration::from_secs(5 * 60); // 5 minutes timeout
         let test_future = async {
             setup_panic_hook();
             let (mut service, _) = LspService::new(ServerState::new);
-            // let example_dir = sway_workspace_dir()
-            //     .join(e2e_language_dir())
-            // .join("generics_in_contract");
-            //            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
-
-            let uri = init_and_open(
-                &mut service,
-                PathBuf::from(
-                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries",
-                )
-                .join("src/fpt_staking_interface.sw"),
-            )
-            .await;
-
-            let mut uris = vec![];
-            uris.push(Url::from_file_path(PathBuf::from(
-                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/token_interface.sw",
-            )).unwrap());
-            uris.push(Url::from_file_path(PathBuf::from(
-                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/active_pool_interface.sw",
-            )).unwrap());
-            uris.push(Url::from_file_path(PathBuf::from(
-                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/trove_manager_interface.sw",
-            )).unwrap());
-            uris.push(Url::from_file_path(PathBuf::from(
-                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/fpt_staking_interface.sw",
-            )).unwrap());
+            let example_dir = sway_workspace_dir()
+                .join(e2e_language_dir())
+                .join("generics_in_contract");
+            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
+            let times = 60;
 
             // Initialize cursor position
             let mut cursor_line = 29;
-
-            // let uri = init_and_open(
-            //     &mut service,
-            //     PathBuf::from(
-            //         "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/contracts/multi-trove-getter-contract",
-            //     )
-            //     .join("src/main.sw"),
-            // )
-            // .await;
-
-            // 1. randomise the file that is changed out of all the files in the project.
-            // 2. change the file
-            // 3. wait for the file to be parsed
-            // 4. try and do a hover or goto def for a random type
-            // 5. repeat.
-
-            let times = 600000;
             for version in 0..times {
-                let uri = if version != 0 {
-                    cursor_line = 2;
-                    // random number between 0 and the number of uris
-                    let rand = rand::thread_rng().gen_range(0..uris.len());
-                    uris[rand].clone()
-                } else {
-                    uri.clone()
-                };
-
                 let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
                 let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
                 if version == 0 {
                     service.inner().wait_for_parsing().await;
                 }
-
                 // wait for a random amount of time between 1-30ms
                 tokio::time::sleep(tokio::time::Duration::from_millis(
                     rand::random::<u64>() % 30 + 1,
@@ -310,89 +238,6 @@ fn did_change_stress_test_random_wait() {
                 if rand::random::<u64>() % 10 < 1 {
                     tokio::time::sleep(tokio::time::Duration::from_millis(
                         rand::random::<u64>() % 700 + 100,
-                    ))
-                    .await;
-                }
-
-                // if rand::random::<u64>() % 10 < 1 {
-                //     tokio::time::sleep(tokio::time::Duration::from_millis(
-                //         rand::random::<u64>() % 2000,
-                //     ))
-                //     .await;
-
-                //     match service.inner()
-                //         .uri_and_session_from_workspace(&uri)
-                //         .await
-                //     {
-                //         Ok((uri, _)) => {
-                //             // Here we will do a hover request to simulate the user hovering over a type
-                //             let hover = HoverDocumentation {
-                //                 req_uri: &uri,
-                //                 req_line: cursor_line + 2,
-                //                 req_char: 29,
-                //                 documentation: vec!["```sway\npub struct ReadStorage\n```\n---"],
-                //             };
-                //             service.inner().wait_for_parsing().await;
-                //             eprintln!("📞 Hover request 📞 | cursor_line: {}", cursor_line);
-                //             if let Ok(text_document) = service.inner().documents.get_text_document(&uri) {
-                //                 println!("Document content:");
-                //                 for (index, line) in text_document.get_text().lines().enumerate() {
-                //                     println!("{:4}: {}", index + 1, line);
-                //                 }
-                //             } else {
-                //                 eprintln!("Failed to get text document for URI: {}", uri);
-                //             }
-                //             let _ = lsp::hover_request(&mut service.inner(), &hover).await;
-                //         }
-                //         Err(err) => {
-                //             tracing::error!("{}", err.to_string());
-                //         }
-                //     }
-                // }
-            }
-            shutdown_and_exit(&mut service).await;
-        };
-        if tokio::time::timeout(test_duration, test_future)
-            .await
-            .is_err()
-        {
-            panic!(
-                "did_change_stress_test_random_wait did not complete within the timeout period."
-            );
-        }
-    });
-}
-
-#[test]
-fn did_change_stress_test_enter_uzi() {
-    run_async!({
-        let test_duration = tokio::time::Duration::from_secs(250 * 60); // 5 minutes timeout
-        let test_future = async {
-            setup_panic_hook();
-            let (mut service, _) = LspService::new(ServerState::new);
-            let uri = init_and_open(
-                &mut service,
-                PathBuf::from(
-                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/contracts/multi-trove-getter-contract",
-                )
-                .join("src/main.sw"),
-            )
-            .await;
-
-            let times = 6000;
-            for version in 0..times {
-                //eprintln!("version: {}", version);
-                let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
-                if version == 0 {
-                    service.inner().wait_for_parsing().await;
-                }
-                // wait for a random amount of time between 1s
-                tokio::time::sleep(tokio::time::Duration::from_millis(2)).await;
-
-                // there is a 10% chance that a longer 100-800ms wait will be added
-                if rand::random::<u64>() % 100 < 2 {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(
-                        rand::random::<u64>() % 100,
                     ))
                     .await;
                 }
@@ -434,8 +279,6 @@ fn garbage_collection_runner(path: PathBuf) {
             if version == 0 {
                 service.inner().wait_for_parsing().await;
             }
-            // Print current cursor position
-            eprintln!("Cursor position: line {}", cursor_line);
             // wait for a random amount of time to simulate typing
             random_delay().await;
         }
