@@ -43,7 +43,6 @@ pub(crate) async fn initialize_request(service: &mut LspService<ServerState>) ->
         1.into(),
         json!({ "capabilities": sway_lsp::server_capabilities() }),
     );
-    eprintln!("initialize response: {:?}", response);
     assert_json_eq!(expected, response.ok().unwrap());
     initialize
 }
@@ -134,8 +133,7 @@ pub fn simulate_keypress(
 ) -> DidChangeTextDocumentParams {
     if rand::random::<u64>() % 3 < 2 {
         // enter keypress at current cursor line
-        *cursor_line += 1; // Move cursor down
-        eprintln!("Enter keypress");
+        *cursor_line += 1;
         create_did_change_params(
             uri,
             version,
@@ -150,10 +148,9 @@ pub fn simulate_keypress(
             0,
         )
     } else {
-        eprintln!("Backspace keypress");
         // backspace keypress at current cursor line
         if *cursor_line > 1 {
-            *cursor_line -= 1; // Move cursor up, but not above line 1
+            *cursor_line -= 1;
         }
         create_did_change_params(
             uri,

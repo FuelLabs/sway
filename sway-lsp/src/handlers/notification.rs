@@ -106,7 +106,6 @@ pub async fn handle_did_change_text_document(
         &uri,
         Some(params.text_document.version as u64),
     );
-    //eprintln!("File versions: {:#?}", file_versions);
     send_new_compilation_request(
         state,
         session.clone(),

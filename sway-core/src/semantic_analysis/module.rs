@@ -2,7 +2,6 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     fs,
-    path::PathBuf,
     sync::Arc,
 };
 
@@ -274,13 +273,6 @@ impl ty::TyModule {
         let include_tests = build_config.map_or(false, |x| x.include_tests);
         let key = ModuleCacheKey::new(path.clone().into(), include_tests);
         let cache = engines.qe().module_cache.read();
-
-        let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
-        let relevant_path = path
-            .iter()
-            .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
-            .collect::<PathBuf>();
-
         cache.get(&key).and_then(|entry| {
             entry.typed.as_ref().and_then(|typed| {
                 // Check if the cached module is up to date
@@ -289,17 +281,6 @@ impl ty::TyModule {
                     &path.into(),
                     include_tests,
                     build_config,
-                );
-
-                // Log the cache status
-                let status = if is_up_to_date {
-                    "✅ Cache hit"
-                } else {
-                    "🔄 Cache miss"
-                };
-                eprintln!(
-                    "{} for module {:?} (up to date: {})",
-                    status, relevant_path, is_up_to_date
                 );
 
                 // Return the cached module if it's up to date, otherwise None
@@ -332,13 +313,7 @@ impl ty::TyModule {
             ..
         } = parsed;
 
-        // Check if the root module cache is up to date
-        // eprintln!(
-        //     "Root Module: {:?}",
-        //     parsed.span.source_id().map(|x| engines.se().get_path(x))
-        // );
-
-        // Try to get the cached root module
+        // Try to get the cached root module if it's up to date
         if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
             parsed.span.source_id(),
             engines,
@@ -394,7 +369,6 @@ impl ty::TyModule {
         )?;
 
         let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), &ordered_nodes)?;
-
         let submodules = submodules_res?;
 
         let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;
@@ -476,18 +450,11 @@ impl ty::TyModule {
         // Cache the ty module
         if let Some(source_id) = span.source_id() {
             let path = engines.se().get_path(source_id);
-            let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
-            let relevant_path = path
-                .iter()
-                .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
-                .collect::<PathBuf>();
-
             let version = build_config
                 .and_then(|config| config.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(&path).copied())
                 .flatten();
 
-            eprintln!("💾 Inserting cache entry for TY module {:?}", relevant_path);
             let include_tests = build_config.map_or(false, |x| x.include_tests);
             let key = ModuleCacheKey::new(path.clone().into(), include_tests);
             engines.qe().update_typed_module_cache_entry(

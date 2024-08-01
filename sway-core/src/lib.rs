@@ -344,18 +344,13 @@ fn parse_module_tree(
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
-    let lexed_now = std::time::Instant::now();
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
     let module = match sway_parse::parse_file(handler, src.clone(), Some(source_id)) {
         Ok(module) => module,
-        Err(e) => {
-            eprintln!("ERROR PARSING MODULE | {:?} | src_file: {}", e, src.clone());
-            return Err(e);
-        }
+        Err(e) => return Err(e),
     };
-    //let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
     let submodules = parse_submodules(
@@ -369,9 +364,7 @@ fn parse_module_tree(
         experimental,
         lsp_mode,
     );
-    //eprintln!("⏱️ Lexed module took {:?}", lexed_now.elapsed());
 
-    let parsed_now = std::time::Instant::now();
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::new(build_target, experimental),
@@ -381,7 +374,6 @@ fn parse_module_tree(
     )?;
     let module_kind_span = module.value.kind.span();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
-    //eprintln!("⏱️ Parsed module took {:?}", parsed_now.elapsed());
 
     let lexed_submodules = submodules
         .iter()
@@ -415,7 +407,6 @@ fn parse_module_tree(
         .ok()
         .and_then(|m| m.modified().ok());
     let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
-    //eprintln!("🐔 path {:?} | dependencies {:?}", path, dependencies);
     let version = lsp_mode
         .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
@@ -431,17 +422,6 @@ fn parse_module_tree(
         version,
     };
     let cache_entry = ModuleCacheEntry::new(common_info, parsed_info);
-
-    let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
-    let relevant_path = path
-        .iter()
-        .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
-        .collect::<PathBuf>();
-    eprintln!(
-        "🀄 🗂️ Inserted cache entry for parse module {:?}",
-        relevant_path
-    );
-
     query_engine.update_or_insert_parsed_module_cache_entry(cache_entry);
 
     Ok(ParsedModuleTree {
@@ -495,16 +475,9 @@ pub(crate) fn is_parse_module_cache_up_to_date(
     include_tests: bool,
     build_config: Option<&BuildConfig>,
 ) -> bool {
-    let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
-    let relevant_path = path
-        .iter()
-        .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
-        .collect::<PathBuf>();
-
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-
-    let res = cache.get(&key).map_or(false, |entry| {
+    cache.get(&key).map_or(false, |entry| {
         // Determine if the cached dependency information is still valid
         let cache_up_to_date = build_config
             .and_then(|x| x.lsp_mode.as_ref())
@@ -540,15 +513,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
             && entry.common.dependencies.iter().all(|dep_path| {
                 is_parse_module_cache_up_to_date(engines, dep_path, include_tests, build_config)
             })
-    });
-
-    eprintln!(
-        "🀄 👓 Checking cache for parse module {:?} | is up to date? {} {}",
-        relevant_path,
-        if res { "true 🟩" } else { "FALSE 🟥" },
-        if res { "   " } else { "" }
-    );
-    res
+    })
 }
 
 fn module_path(
@@ -617,7 +582,7 @@ pub fn parsed_to_ast(
         package_name,
         build_config,
     );
-    check_should_abort(handler, retrigger_compilation.clone(), 629)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
@@ -678,7 +643,7 @@ pub fn parsed_to_ast(
             None => (None, None),
         };
 
-        check_should_abort(handler, retrigger_compilation.clone(), 690)?;
+        check_should_abort(handler, retrigger_compilation.clone())?;
 
         // Perform control flow analysis and extend with any errors.
         let _ = perform_control_flow_analysis(
@@ -764,18 +729,13 @@ pub fn compile_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
-    eprintln!("🔨🔨 --- compile_to_ast --- 🔨🔨");
-    check_should_abort(handler, retrigger_compilation.clone(), 777)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;
-
-        //eprintln!(" 📂  {}", path.display());
-        //eprintln!("{:?}", config.lsp_mode.as_ref().unwrap().file_versions);
-
         // Check if we can re-use the data in the cache.
         if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
@@ -784,15 +744,10 @@ pub fn compile_to_ast(
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
-            eprintln!("programs cache valid, returning");
             return Ok(entry.programs);
         };
     }
 
-    eprintln!("programs cache invalid, continuing to parse");
-    let input_clone = input.clone();    
-
-    let parse_now = std::time::Instant::now();
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
@@ -801,17 +756,14 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
-    eprintln!("⏱️ compile_to_ast took {:?}", parse_now.elapsed());
 
-    check_should_abort(handler, retrigger_compilation.clone(), 805)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => {
             modules
         },
         Err(e) => {
-            // Input string is completely empty. how?
-            eprintln!("ERROR PARSING PROGRAM | {:?} | src_file: {}", e, input_clone);
             handler.dedup();
             return Err(e);
         }
@@ -822,7 +774,6 @@ pub fn compile_to_ast(
         parsed_program.exclude_tests(engines);
     }
 
-    eprintln!("🔨🔨 --- parsed to typed AST 🔨🔨 ---");
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
         "parse the concrete syntax tree (CST) to a typed AST",
@@ -840,7 +791,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    check_should_abort(handler, retrigger_compilation.clone(), 838)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
 
@@ -856,7 +807,7 @@ pub fn compile_to_ast(
         query_engine.insert_programs_cache_entry(cache_entry);
     }
 
-    check_should_abort(handler, retrigger_compilation.clone(), 854)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     Ok(programs)
 }
@@ -1163,11 +1114,9 @@ fn module_return_path_analysis(
 fn check_should_abort(
     handler: &Handler,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    line_num: u32,
 ) -> Result<(), ErrorEmitted> {
     if let Some(ref retrigger_compilation) = retrigger_compilation {
         if retrigger_compilation.load(Ordering::SeqCst) {
-            eprintln!("🪓 🪓 compilation was cancelled at line {} 🪓 🪓", line_num);
             return Err(handler.cancel());
         }
     }

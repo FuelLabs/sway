@@ -2655,7 +2655,6 @@ pub fn check(
 
     let mut results = vec![];
     for (idx, &node) in plan.compilation_order.iter().enumerate() {
-        let now = std::time::Instant::now();
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
 
@@ -2671,7 +2670,6 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let dep_now = std::time::Instant::now();
         let mut dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
@@ -2682,14 +2680,12 @@ pub fn check(
             experimental,
         )
         .expect("failed to create dependency namespace");
-        eprintln!("⏱️ Dependency namespace took {:?}", dep_now.elapsed());
 
         let profile = BuildProfile {
             terse: terse_mode,
             ..BuildProfile::debug()
         };
 
-        let build_config_now = std::time::Instant::now();
         let build_config = sway_build_config(
             manifest.dir(),
             &manifest.entry_path(),
@@ -2698,14 +2694,9 @@ pub fn check(
         )?
         .with_include_tests(include_tests)
         .with_lsp_mode(lsp_mode.clone());
-        eprintln!("⏱️ Build config took {:?}", build_config_now.elapsed());
 
-        eprintln!("Forc pacakge loading input string");
         let input = manifest.entry_string()?;
-        eprintln!("Forc package input string loaded");
-        // eprintln!("Forc package input string loaded | {}", input.clone());
         let handler = Handler::default();
-        let compile_to_ast_now = std::time::Instant::now();
         let programs_res = sway_core::compile_to_ast(
             &handler,
             engines,
@@ -2715,14 +2706,11 @@ pub fn check(
             &pkg.name,
             retrigger_compilation.clone(),
         );
-        eprintln!("programs res: {:?}", programs_res.is_ok());
-        eprintln!("⏱️ Compile to AST took {:?}", compile_to_ast_now.elapsed());
 
         if retrigger_compilation
             .as_ref()
             .is_some_and(|b| b.load(std::sync::atomic::Ordering::SeqCst))
         {
-            eprintln!("🪓 🪓 compilation was cancelled 2716");
             bail!("compilation was retriggered")
         }
 
@@ -2731,8 +2719,6 @@ pub fn check(
                 programs
             },
             _ => {
-                eprintln!("ERROR PARSING MODULE | {:?}", programs_res.clone().ok());
-                eprintln!("Returning results with handler | {:?}", handler);
                 results.push((programs_res.ok(), handler));
                 return Ok(results);
             }
@@ -2762,11 +2748,6 @@ pub fn check(
             return Ok(results);
         }
         results.push((programs_res.ok(), handler));
-        eprintln!(
-            "⏱️ Compiling package {:?} took {:?}",
-            pkg.name,
-            now.elapsed()
-        );
     }
 
     if results.is_empty() {

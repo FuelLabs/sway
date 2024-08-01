@@ -60,7 +60,6 @@ impl TyProgram {
 
         let ParseProgram { root, kind } = parsed;
 
-        let now = std::time::Instant::now();
         let root = ty::TyModule::type_check(
             handler,
             ctx.by_ref(),
@@ -69,7 +68,6 @@ impl TyProgram {
             root,
             build_config,
         )?;
-        eprintln!("⏱️ Type-checking module took {:?}", now.elapsed());
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,

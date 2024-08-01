@@ -296,7 +296,6 @@ fn did_change_stress_test_random_wait() {
                     uri.clone()
                 };
                     
-                eprintln!("version: {}", version);
                 let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
                 let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
                 if version == 0 {

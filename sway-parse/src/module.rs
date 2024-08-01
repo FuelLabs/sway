@@ -21,7 +21,6 @@ impl Parse for ModuleKind {
         } else if let Some(library_token) = parser.take() {
             Ok(Self::Library { library_token })
         } else {
-            eprintln!("❔⁉️ Expected Module Kind, how the hell did we get here?");
             Err(parser.emit_error(ParseErrorKind::ExpectedModuleKind))
         }
     }

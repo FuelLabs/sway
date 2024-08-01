@@ -143,10 +143,6 @@ impl Session {
         uri: &Url,
     ) -> Result<(), LanguageServerError> {
         let path = uri.to_file_path().unwrap();
-        eprintln!(
-            "🗑️ 🗑️ 🗑️ 🗑️ 🗑️   Garbage collecting module {:?}   🗑️ 🗑️ 🗑️ 🗑️ 🗑️",
-            path
-        );
         let source_id = { engines.se().get_source_id(&path) };
         engines.clear_module(&source_id);
         Ok(())
@@ -308,14 +304,11 @@ pub fn traverse(
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
-        let parse_now = std::time::Instant::now();
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let current_diagnostics = handler.consume();
         diagnostics = current_diagnostics;
 
         if value.is_none() {
-            eprintln!("Unable to traverse module, value is None");
-            // Should this be an error?
             continue;
         }
         let Programs {
@@ -343,8 +336,6 @@ pub fn traverse(
             let path = engines.se().get_path(source_id);
             let program_id = program_id_from_path(&path, engines)?;
             session.metrics.insert(program_id, metrics);
-
-            eprintln!("⤵️ Traversing: {:?}", path);
         }
 
         // Get a reference to the typed program AST.
@@ -392,7 +383,6 @@ pub fn traverse(
                 dependency::collect_typed_declaration(node, ctx);
             });
         }
-        eprintln!("⏱️ Traversal took {:?}", parse_now.elapsed());
     }
     Ok(Some(diagnostics))
 }
@@ -407,13 +397,10 @@ pub fn parse_project(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
-    let build_plan_now = std::time::Instant::now();
     let build_plan = session
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
-    eprintln!("⏱️ Build Plan took {:?}", build_plan_now.elapsed());
-
-    let parse_now = std::time::Instant::now();
+    
     let results = compile(
         &build_plan,
         engines,
@@ -421,14 +408,11 @@ pub fn parse_project(
         lsp_mode.clone(),
         experimental,
     )?;
-    eprintln!("⏱️ Total Compilation took {:?}", parse_now.elapsed());
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
-    eprintln!("⤵️ Traversing the ASTS");
-    let traverse_now = std::time::Instant::now();
+
     let diagnostics = traverse(results, engines, session.clone())?;
-    eprintln!("⏱️ Traversing the ASTS took {:?}", traverse_now.elapsed());
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
@@ -439,19 +423,10 @@ pub fn parse_project(
         }
     }
 
-    let runnables_now = std::time::Instant::now();
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
-        dbg!();
-        // This is where it's crashing OOB into the concurrent slab
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
-        dbg!();
     }
-    eprintln!("⏱️ creating runnables took: {:?}", runnables_now.elapsed());
-    eprintln!(
-        "⏱️ TOTAL COMPILATION AND TRAVERSAL TIME: {:?}",
-        parse_now.elapsed()
-    );
     Ok(())
 }
 
@@ -461,7 +436,6 @@ fn parse_ast_to_tokens(
     ctx: &ParseContext,
     f: impl Fn(&AstNode, &ParseContext) + Sync,
 ) {
-    eprintln!("⤵️ Parsing the AST");
     let nodes = parse_program
         .root
         .tree
@@ -483,7 +457,6 @@ fn parse_ast_to_typed_tokens(
     ctx: &ParseContext,
     f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
 ) {
-    eprintln!("⤵️ Parsing the typed AST");
     let nodes = typed_program
         .root
         .all_nodes
