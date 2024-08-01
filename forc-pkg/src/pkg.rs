@@ -1614,7 +1614,7 @@ pub fn dependency_namespace(
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_edge = edge.weight();
-        let mut dep_namespace = match dep_edge.kind {
+        let dep_namespace = match dep_edge.kind {
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
@@ -1633,7 +1633,7 @@ pub fn dependency_namespace(
 		namespace::namespace_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
             }
         };
-        root_namespace.add_external(dep_namespace);
+        root_namespace.add_external(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1644,29 +1644,29 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            root_namespace.add_external(core_namespace.clone());
-            core_added = true;
+            root_namespace.add_external(CORE.to_string(), core_namespace.clone());
+//            core_added = true;
         }
     }
 
     Ok(root_namespace)
 }
 
-/// Find the `std` dependency, if it is a direct one, of the given node.
-fn has_std_dep(graph: &Graph, node: NodeIx) -> bool {
-    // If we are `std`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == STD {
-        return false;
-    }
-
-    // If we have `std` as a direct dep, use it.
-    graph.edges_directed(node, Direction::Outgoing).any(|edge| {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        matches!(&dep.name[..], STD)
-    })
-}
+///// Find the `std` dependency, if it is a direct one, of the given node.
+//fn has_std_dep(graph: &Graph, node: NodeIx) -> bool {
+//    // If we are `std`, do nothing.
+//    let pkg = &graph[node];
+//    if pkg.name == STD {
+//        return false;
+//    }
+//
+//    // If we have `std` as a direct dep, use it.
+//    graph.edges_directed(node, Direction::Outgoing).any(|edge| {
+//        let dep_node = edge.target();
+//        let dep = &graph[dep_node];
+//        matches!(&dep.name[..], STD)
+//    })
+//}
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
 fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
@@ -2340,7 +2340,7 @@ pub fn build(
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let mut dep_namespace = match dependency_namespace(
+            let dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
@@ -2404,7 +2404,7 @@ pub fn build(
         };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let mut dep_namespace = match dependency_namespace(
+        let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
@@ -2636,7 +2636,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let mut dep_namespace = dependency_namespace(
+        let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,

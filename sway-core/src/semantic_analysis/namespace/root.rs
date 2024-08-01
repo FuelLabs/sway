@@ -168,10 +168,12 @@ impl Root {
 	}
     }
 
-    pub fn add_external(&mut self, external_package: Root) {
-	let external_package_name = external_package.current_package_name().to_string();
-	assert!(!self.external_packages.contains_key(&external_package_name));
-	self.external_packages.insert(external_package_name, external_package);
+    // Add an external package to this package. The package name must be supplied, since the package
+    // may be referred to by a different name in the forc.toml file than the actual name of the
+    // package.
+    pub fn add_external(&mut self, package_name: String, external_package: Root) {
+	assert!(!self.external_packages.contains_key(&package_name));
+	self.external_packages.insert(package_name, external_package);
     }
 
 //    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {

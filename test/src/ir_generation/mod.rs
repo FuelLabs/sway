@@ -9,7 +9,7 @@ use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
     compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program,
-    language::Visibility, namespace, BuildTarget, Engines,
+    namespace, BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
 
@@ -238,12 +238,12 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-                let mut initial_namespace = namespace::Root::from(core_lib.clone());
+                let initial_namespace = namespace::Root::from(core_lib.clone());
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
                     Arc::from(sway_str),
-                    &mut initial_namespace,
+                    initial_namespace,
                     Some(&bld_cfg),
                     PACKAGE_NAME,
                     None,
@@ -531,7 +531,7 @@ fn compile_core(
     build_target: BuildTarget,
     engines: &Engines,
     experimental: ExperimentalFlags,
-) -> namespace::Module {
+) -> namespace::Root {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -555,30 +555,34 @@ fn compile_core(
 
     match res.0 {
         Some(typed_program) => {
-            // Create a module for core and copy the compiled modules into it.  Unfortunately we
-            // can't get mutable access to move them out so they're cloned.
-            let core_module = typed_program
-                .root
-                .namespace
-                .module(engines)
-                .submodules()
-                .into_iter()
-                .fold(
-                    namespace::Module::new(
-                        sway_types::Ident::new_no_span("core".to_string()),
-                        Visibility::Private,
-                        None,
-                    ),
-                    |mut core_mod, (name, sub_mod)| {
-                        core_mod.insert_submodule(name.clone(), sub_mod.clone());
-                        core_mod
-                    },
-                );
-
-            // Create a module for std and insert the core module.
-            let mut std_module = namespace::Module::new(lib_name, Visibility::Private, None);
-            std_module.insert_submodule("core".to_owned(), core_module);
-            std_module
+//            // Create a module for core and copy the compiled modules into it.  Unfortunately we
+//            // can't get mutable access to move them out so they're cloned.
+//            let core_module = typed_program
+//                .root
+//                .namespace
+//                .module(engines)
+//                .submodules()
+//                .into_iter()
+//                .fold(
+//                    namespace::Module::new(
+//                        sway_types::Ident::new_no_span("core".to_string()),
+//                        Visibility::Private,
+//                        None,
+//                    ),
+//                    |mut core_mod, (name, sub_mod)| {
+//                        core_mod.insert_submodule(name.clone(), sub_mod.clone());
+//                        core_mod
+//                    },
+//                );
+//
+//            // Create a module for std and insert the core module.
+//            let mut std_module = namespace::Module::new(lib_name, Visibility::Private, None);
+//            std_module.insert_submodule("core".to_owned(), core_module);
+	    //            std_module
+	    let core_root = typed_program.root.namespace.root();
+	    let mut program_root = namespace::namespace_without_contract_id(lib_name);
+	    program_root.add_external("core".to_owned(), core_root.clone());
+	    program_root
         }
         _ => {
             let (errors, _warnings) = res.1.consume();
