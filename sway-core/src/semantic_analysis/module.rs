@@ -333,10 +333,10 @@ impl ty::TyModule {
         } = parsed;
 
         // Check if the root module cache is up to date
-        eprintln!(
-            "Root Module: {:?}",
-            parsed.span.source_id().map(|x| engines.se().get_path(x))
-        );
+        // eprintln!(
+        //     "Root Module: {:?}",
+        //     parsed.span.source_id().map(|x| engines.se().get_path(x))
+        // );
 
         // Try to get the cached root module
         if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(

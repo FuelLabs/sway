@@ -27,7 +27,9 @@ pub fn hover_data(
     position: Position,
     client_config: LspClient,
 ) -> Option<lsp_types::Hover> {
+    eprintln!("Hover request at position {:?}", position);
     let t = session.token_map().token_at_position(url, position)?;
+    eprintln!("Token at position {:?}", t.key());
     let (ident, token) = t.pair();
     let range = ident.range;
 

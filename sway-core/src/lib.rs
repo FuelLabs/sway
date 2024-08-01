@@ -90,7 +90,6 @@ pub fn parse(
     engines: &Engines,
     config: Option<&BuildConfig>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
-    dbg!();
     match config {
         None => parse_in_memory(
             handler,
@@ -258,15 +257,12 @@ fn parse_submodules(
     experimental: ExperimentalFlags,
     lsp_mode: Option<&LspConfig>,
 ) -> Submodules {
-    dbg!();
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
-    dbg!();
     module.submodules().for_each(|submod| {
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
         let submod_path = Arc::new(module_path(module_dir, module_name, submod));
-        dbg!();
         let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
@@ -278,7 +274,6 @@ fn parse_submodules(
                 return;
             }
         };
-        dbg!();
         if let Ok(ParsedModuleTree {
             tree_type: kind,
             lexed_module,
@@ -321,7 +316,6 @@ fn parse_submodules(
             submods.push(submodule);
         }
     });
-    dbg!();
     submods
 }
 
@@ -348,14 +342,12 @@ fn parse_module_tree(
     experimental: ExperimentalFlags,
     lsp_mode: Option<&LspConfig>,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
-    dbg!();
     let query_engine = engines.qe();
 
     let lexed_now = std::time::Instant::now();
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
-    dbg!();
     let module = match sway_parse::parse_file(handler, src.clone(), Some(source_id)) {
         Ok(module) => module,
         Err(e) => {
@@ -364,7 +356,6 @@ fn parse_module_tree(
         }
     };
     //let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
-    dbg!();
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
     let submodules = parse_submodules(
@@ -378,8 +369,7 @@ fn parse_module_tree(
         experimental,
         lsp_mode,
     );
-    dbg!();
-    eprintln!("⏱️ Lexed module took {:?}", lexed_now.elapsed());
+    //eprintln!("⏱️ Lexed module took {:?}", lexed_now.elapsed());
 
     let parsed_now = std::time::Instant::now();
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
@@ -389,12 +379,9 @@ fn parse_module_tree(
         engines,
         module.value.clone(),
     )?;
-    dbg!();
     let module_kind_span = module.value.kind.span();
-    dbg!();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
-    dbg!();
-    eprintln!("⏱️ Parsed module took {:?}", parsed_now.elapsed());
+    //eprintln!("⏱️ Parsed module took {:?}", parsed_now.elapsed());
 
     let lexed_submodules = submodules
         .iter()
@@ -486,7 +473,7 @@ pub(crate) fn is_ty_module_cache_up_to_date(
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
                 .map_or(true, |version| {
-                    version.map_or(true, |v| v <= typed.version.unwrap_or(0))
+                    version.map_or(true, |v| typed.version.map_or(false, |tv| v <= tv))
                 });
 
             // If the cache is up to date, recursively check all dependencies
@@ -537,9 +524,13 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     }
                 },
                 |version| {
-                    // In LSP mode, cache is valid if the current version is not greater
-                    // than the version at last compilation.
-                    !version.map_or(false, |v| v > entry.parsed.version.unwrap_or(0))
+                    // Determine if the parse cache is up-to-date in LSP mode:
+                    // - If there's no LSP file version (version is None), consider the cache up-to-date.
+                    // - If there is an LSP file version:
+                    //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
+                    //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
+                    //     is not greater than the cached version.
+                    version.map_or(true, |v| entry.parsed.version.map_or(false, |ev| v <= ev))
                 },
             );
 
@@ -816,11 +807,9 @@ pub fn compile_to_ast(
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => {
-            dbg!();
             modules
         },
         Err(e) => {
-            dbg!();
             // Input string is completely empty. how?
             eprintln!("ERROR PARSING PROGRAM | {:?} | src_file: {}", e, input_clone);
             handler.dedup();

@@ -134,7 +134,7 @@ impl ServerState {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
-                        eprintln!("\n ----------------- NEW COMPILATION TASK: triggered by {:?} -----------------", uri.path());
+                        eprintln!("\n ----------------- NEW COMPILATION TASK: version {:?} triggered by {:?} -----------------", ctx.version, uri.path());
 
                         if let Some(version) = ctx.version {
                             // Perform garbage collection at configured intervals if enabled to manage memory usage.
@@ -156,11 +156,12 @@ impl ServerState {
                                 eprintln!("No Garbabe collection applied");
                             }
                         }
-
+                        
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
                             file_versions: ctx.file_versions,
                         });
+
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
@@ -178,7 +179,7 @@ impl ServerState {
                                 // Find the module id from the path
                                 match session::program_id_from_path(&path, &engines_clone) {
                                     Ok(program_id) => {
-                                        eprintln!("👨‍💻 ✅ Compliation returned successfully 👨‍💻");
+                                        eprintln!("👨‍💻 ✅ Compliation returned successfully for version {:?} 👨‍💻", ctx.version);
                                         // Use the module id to get the metrics for the module
                                         if let Some(metrics) = session.metrics.get(&program_id) {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
@@ -189,6 +190,7 @@ impl ServerState {
                                                 metrics.reused_programs
                                             );
                                             if metrics.reused_programs == 0 {
+                                                engines_clone.qe().module_cache.commit();
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 eprintln!("👨‍💻 ↪ Swapping engines 👨‍💻 ↪");

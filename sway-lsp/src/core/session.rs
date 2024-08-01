@@ -430,25 +430,22 @@ pub fn parse_project(
     let diagnostics = traverse(results, engines, session.clone())?;
     eprintln!("⏱️ Traversing the ASTS took {:?}", traverse_now.elapsed());
     if let Some(config) = &lsp_mode {
-        dbg!();
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
-            dbg!();
             if let Some((errors, warnings)) = &diagnostics {
-                dbg!();
                 *session.diagnostics.write() =
                     capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
             }
         }
     }
-    dbg!();
+
     let runnables_now = std::time::Instant::now();
     if let Some(typed) = &session.compiled_program.read().typed {
-        dbg!();
         session.runnables.clear();
         dbg!();
         // This is where it's crashing OOB into the concurrent slab
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
+        dbg!();
     }
     eprintln!("⏱️ creating runnables took: {:?}", runnables_now.elapsed());
     eprintln!(
@@ -508,7 +505,6 @@ fn create_runnables(
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
-    dbg!();
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
     
@@ -519,7 +515,6 @@ fn create_runnables(
             .first()
             .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
         if let Some(source_id) = span.source_id() {
-            dbg!();
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableTestFn {
                 range: token::get_range_from_span(&span.clone()),
@@ -529,17 +524,14 @@ fn create_runnables(
             runnables.entry(path).or_default().push(runnable);
         }
     }
-    dbg!();
     // Insert runnable main function if the program is a script.
     if let ty::TyProgramKind::Script {
         entry_function: ref main_function,
         ..
     } = typed_program.kind
     {
-        dbg!();
         let main_function = decl_engine.get_function(main_function);
         let span = main_function.name.span();
-        dbg!();
         if let Some(source_id) = span.source_id() {
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableMainFn {

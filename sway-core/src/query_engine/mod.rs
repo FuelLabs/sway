@@ -1,10 +1,6 @@
-use parking_lot::RwLock;
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::{
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-    path::PathBuf,
-    sync::Arc,
-    time::SystemTime,
+    collections::HashMap, ops::{Deref, DerefMut}, path::PathBuf, sync::Arc, time::SystemTime
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::IdentUnique;
@@ -138,12 +134,25 @@ pub struct FunctionCacheEntry {
     pub fn_decl: DeclRef<DeclId<TyFunctionDecl>>,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
-    pub module_cache: Arc<RwLock<ModuleCacheMap>>,
+    //pub module_cache: Arc<RwLock<ModuleCacheMap>>,
+    // pub module_cache: RwLock<ModuleCacheMap>,
+    pub module_cache: CowCache<ModuleCacheMap>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
     function_cache: Arc<RwLock<FunctionsCacheMap>>,
+}
+
+impl Clone for QueryEngine {
+    fn clone(&self) -> Self {
+        Self {
+            // module_cache: RwLock::new(self.module_cache.read().clone()),
+            module_cache: CowCache::new(self.module_cache.read().clone()),
+            programs_cache: self.programs_cache.clone(),
+            function_cache: self.function_cache.clone(),
+        }
+    }
 }
 
 impl QueryEngine {
@@ -194,5 +203,104 @@ impl QueryEngine {
             (ident, sig.get_type_str(engines)),
             FunctionCacheEntry { fn_decl },
         );
+    }
+}
+
+
+/// Thread-safe, copy-on-write cache optimized for LSP operations.
+///
+/// Addresses key LSP challenges:
+/// 1. Concurrent read access to shared data
+/// 2. Local modifications for cancellable operations (e.g., compilation)
+/// 3. Prevents incomplete results from affecting shared state
+/// 4. Maintains consistency via explicit commit step
+///
+/// Uses `Arc<RwLock<T>>` for shared state and `RwLock<Option<T>>` for local changes.
+/// Suitable for interactive sessions with frequent file changes.
+#[derive(Debug, Default)]
+pub struct CowCache<T: Clone> {
+    inner: Arc<RwLock<T>>,
+    local: RwLock<Option<T>>,
+}
+
+impl<T: Clone> CowCache<T> {
+    /// Creates a new `CowCache` with the given initial value.
+    ///
+    /// The value is wrapped in an `Arc<RwLock<T>>` to allow shared access across threads.
+    pub fn new(value: T) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(value)),
+            local: RwLock::new(None),
+        }
+    }
+
+    /// Provides read access to the cached value.
+    ///
+    /// If a local modification exists, it returns a reference to the local copy.
+    /// Otherwise, it returns a reference to the shared state.
+    ///
+    /// This method is optimized for concurrent read access in LSP operations.
+    pub fn read(&self) -> impl Deref<Target = T> + '_ {
+        if self.local.read().is_some() {
+            ReadGuard::Local(self.local.read())
+        } else {
+            ReadGuard::Shared(self.inner.read())
+        }
+    }
+
+    /// Provides write access to a local copy of the cached value.
+    ///
+    /// In LSP, this is used for operations like compilation tasks that may be cancelled.
+    /// It allows modifications without affecting the shared state until explicitly committed.
+    pub fn write(&self) -> impl DerefMut<Target = T> + '_ {
+        let mut local = self.local.write();
+        if local.is_none() {
+            *local = Some(self.inner.read().clone());
+        }
+        WriteGuard(local)
+    }
+
+    /// Commits local modifications to the shared state.
+    ///
+    /// Called after successful completion of a compilation task.
+    /// If a task is cancelled, not calling this method effectively discards local changes.
+    pub fn commit(&self) {
+        if let Some(local) = self.local.write().take() {
+            *self.inner.write() = local;
+        }
+    }
+}
+
+/// A guard type that provides read access to either the local or shared state.
+enum ReadGuard<'a, T: Clone> {
+    Local(RwLockReadGuard<'a, Option<T>>),
+    Shared(RwLockReadGuard<'a, T>),
+}
+
+impl<'a, T: Clone> Deref for ReadGuard<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            ReadGuard::Local(r) => r.as_ref().unwrap(),
+            ReadGuard::Shared(guard) => guard.deref(),
+        }
+    }
+}
+
+/// A guard type that provides write access to the local state.
+struct WriteGuard<'a, T: Clone>(RwLockWriteGuard<'a, Option<T>>);
+
+impl<'a, T: Clone> Deref for WriteGuard<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().unwrap()
+    }
+}
+
+impl<'a, T: Clone> DerefMut for WriteGuard<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.as_mut().unwrap()
     }
 }

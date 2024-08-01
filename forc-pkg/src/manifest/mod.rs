@@ -357,15 +357,12 @@ impl PackageManifestFile {
 
     /// Produces the string of the entry point file.
     pub fn entry_string(&self) -> Result<Arc<str>> {
-        dbg!();
         let entry_path = self.entry_path();
-        dbg!();
         let entry_string = std::fs::read_to_string(entry_path)?;
-        dbg!();
         if entry_string.is_empty() {
-            eprintln!("entry_string empty! | entry_path: {:?}", self.entry_path());
+            eprintln!("🟥 entry_string empty! | entry_path: {:?}", self.entry_path());
         } else {
-            eprintln!("entry_string not empty! | entry_path: {:?}", self.entry_path());
+            eprintln!("🟩 entry_string not empty! | entry_path: {:?}", self.entry_path());
         }
         Ok(Arc::from(entry_string))
     }

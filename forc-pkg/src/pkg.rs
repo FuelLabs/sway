@@ -2702,7 +2702,8 @@ pub fn check(
 
         eprintln!("Forc pacakge loading input string");
         let input = manifest.entry_string()?;
-        eprintln!("Forc package input string loaded | {}", input.clone());
+        eprintln!("Forc package input string loaded");
+        // eprintln!("Forc package input string loaded | {}", input.clone());
         let handler = Handler::default();
         let compile_to_ast_now = std::time::Instant::now();
         let programs_res = sway_core::compile_to_ast(
@@ -2727,7 +2728,6 @@ pub fn check(
 
         let programs = match programs_res.as_ref() {
             Ok(programs) => {
-                dbg!();
                 programs
             },
             _ => {

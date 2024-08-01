@@ -42,7 +42,6 @@ pub fn get_diagnostics(
     errors: &[CompileError],
     source_engine: &SourceEngine,
 ) -> DiagnosticMap {
-    dbg!();
     let mut diagnostics = DiagnosticMap::new();
     for warning in warnings {
         let diagnostic = get_warning_diagnostic(warning);
@@ -55,7 +54,6 @@ pub fn get_diagnostics(
                 .push(diagnostic);
         }
     }
-    dbg!();
     for error in errors {
         let diagnostic = get_error_diagnostic(error);
         if let Some(source_id) = error.span().source_id() {
@@ -63,7 +61,6 @@ pub fn get_diagnostics(
             diagnostics.entry(path).or_default().errors.push(diagnostic);
         }
     }
-    dbg!();
     diagnostics
 }
 

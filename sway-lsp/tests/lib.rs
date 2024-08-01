@@ -2,6 +2,7 @@ pub mod integration;
 
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
+use rand::Rng;
 use std::{fs, path::PathBuf};
 use sway_lsp::{
     config::LspClient,
@@ -242,23 +243,40 @@ fn did_change_stress_test_random_wait() {
             // .join("generics_in_contract");
             //            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
 
-            // let uri = init_and_open(
-            //     &mut service,
-            //     PathBuf::from(
-            //         "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries",
-            //     )
-            //     .join("src/fpt_staking_interface.sw"),
-            // )
-            // .await;
-
             let uri = init_and_open(
                 &mut service,
                 PathBuf::from(
-                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/contracts/multi-trove-getter-contract",
+                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries",
                 )
-                .join("src/main.sw"),
+                .join("src/fpt_staking_interface.sw"),
             )
             .await;
+
+            let mut uris = vec![];
+            uris.push(Url::from_file_path(PathBuf::from(
+                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/token_interface.sw",
+            )).unwrap());
+            uris.push(Url::from_file_path(PathBuf::from(
+                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/active_pool_interface.sw",
+            )).unwrap());
+            uris.push(Url::from_file_path(PathBuf::from(
+                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/trove_manager_interface.sw",
+            )).unwrap());
+            uris.push(Url::from_file_path(PathBuf::from(
+                "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries/src/fpt_staking_interface.sw",
+            )).unwrap());
+
+            // Initialize cursor position
+            let mut cursor_line = 29;
+
+            // let uri = init_and_open(
+            //     &mut service,
+            //     PathBuf::from(
+            //         "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/contracts/multi-trove-getter-contract",
+            //     )
+            //     .join("src/main.sw"),
+            // )
+            // .await;
 
             // 1. randomise the file that is changed out of all the files in the project.
             // 2. change the file
@@ -266,13 +284,25 @@ fn did_change_stress_test_random_wait() {
             // 4. try and do a hover or goto def for a random type
             // 5. repeat.
 
-            let times = 6000;
+            
+            let times = 600000;
             for version in 0..times {
-                //eprintln!("version: {}", version);
-                let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
+                let uri = if version != 0 {
+                    cursor_line = 2;
+                    // random number between 0 and the number of uris
+                    let rand = rand::thread_rng().gen_range(0..uris.len());
+                    uris[rand].clone()
+                } else {
+                    uri.clone()
+                };
+                    
+                eprintln!("version: {}", version);
+                let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+                let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
                 if version == 0 {
                     service.inner().wait_for_parsing().await;
                 }
+
                 // wait for a random amount of time between 1-30ms
                 tokio::time::sleep(tokio::time::Duration::from_millis(
                     rand::random::<u64>() % 30 + 1,
@@ -285,6 +315,42 @@ fn did_change_stress_test_random_wait() {
                     ))
                     .await;
                 }
+
+                // if rand::random::<u64>() % 10 < 1 {
+                //     tokio::time::sleep(tokio::time::Duration::from_millis(
+                //         rand::random::<u64>() % 2000,
+                //     ))
+                //     .await;
+
+                //     match service.inner()
+                //         .uri_and_session_from_workspace(&uri)
+                //         .await
+                //     {
+                //         Ok((uri, _)) => {
+                //             // Here we will do a hover request to simulate the user hovering over a type
+                //             let hover = HoverDocumentation {
+                //                 req_uri: &uri,
+                //                 req_line: cursor_line + 2,
+                //                 req_char: 29,
+                //                 documentation: vec!["```sway\npub struct ReadStorage\n```\n---"],
+                //             };
+                //             service.inner().wait_for_parsing().await;
+                //             eprintln!("📞 Hover request 📞 | cursor_line: {}", cursor_line);
+                //             if let Ok(text_document) = service.inner().documents.get_text_document(&uri) {
+                //                 println!("Document content:");
+                //                 for (index, line) in text_document.get_text().lines().enumerate() {
+                //                     println!("{:4}: {}", index + 1, line);
+                //                 }
+                //             } else {
+                //                 eprintln!("Failed to get text document for URI: {}", uri);
+                //             }
+                //             let _ = lsp::hover_request(&mut service.inner(), &hover).await;
+                //         }
+                //         Err(err) => {
+                //             tracing::error!("{}", err.to_string());
+                //         }
+                //     }
+                // }
             }
             shutdown_and_exit(&mut service).await;
         };
@@ -347,7 +413,6 @@ fn did_change_stress_test_enter_uzi() {
     });
 }
 
-
 fn garbage_collection_runner(path: PathBuf) {
     run_async!({
         setup_panic_hook();
@@ -361,43 +426,19 @@ fn garbage_collection_runner(path: PathBuf) {
             .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
         let times = 60;
+        
+        // Initialize cursor position
+        let mut cursor_line = 20;
+
         for version in 1..times {
             //eprintln!("version: {}", version);
-            let params = if rand::random::<u64>() % 3 < 1 {
-                // enter keypress at line 20
-                lsp::create_did_change_params(
-                    &uri,
-                    version,
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    0,
-                )
-            } else {
-                // backspace keypress at line 21
-                lsp::create_did_change_params(
-                    &uri,
-                    version,
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    Position {
-                        line: 21,
-                        character: 0,
-                    },
-                    1,
-                )
-            };
+            let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
             let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
             if version == 0 {
                 service.inner().wait_for_parsing().await;
             }
+            // Print current cursor position
+            eprintln!("Cursor position: line {}", cursor_line);
             // wait for a random amount of time to simulate typing
             random_delay().await;
         }

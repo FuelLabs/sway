@@ -42,9 +42,7 @@ pub fn parse_file(
     src: Arc<str>,
     source_id: Option<SourceId>,
 ) -> Result<Annotated<Module>, ErrorEmitted> {
-    dbg!();
     let ts = lex(handler, &src, 0, src.len(), source_id)?;
-    dbg!();
     let (m, _) = Parser::new(handler, &ts).parse_to_end()?;
     Ok(m)
 }
