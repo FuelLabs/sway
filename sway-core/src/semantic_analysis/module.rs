@@ -323,7 +323,7 @@ impl ty::TyModule {
         }
 
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
-        let submodules_res: Result<Vec<_>, _> = module_eval_order
+        let submodules_res = module_eval_order
             .iter()
             .map(|eval_mod_name| {
                 let (name, submodule) = submodules
@@ -359,7 +359,7 @@ impl ty::TyModule {
                     Ok((name.clone(), type_checked_submodule))
                 }
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>();
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(

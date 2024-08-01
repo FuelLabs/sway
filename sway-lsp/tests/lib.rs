@@ -284,7 +284,6 @@ fn did_change_stress_test_random_wait() {
             // 4. try and do a hover or goto def for a random type
             // 5. repeat.
 
-            
             let times = 600000;
             for version in 0..times {
                 let uri = if version != 0 {
@@ -295,7 +294,7 @@ fn did_change_stress_test_random_wait() {
                 } else {
                     uri.clone()
                 };
-                    
+
                 let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
                 let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
                 if version == 0 {
@@ -364,7 +363,6 @@ fn did_change_stress_test_random_wait() {
     });
 }
 
-
 #[test]
 fn did_change_stress_test_enter_uzi() {
     run_async!({
@@ -425,7 +423,7 @@ fn garbage_collection_runner(path: PathBuf) {
             .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
         let times = 60;
-        
+
         // Initialize cursor position
         let mut cursor_line = 20;
 

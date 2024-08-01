@@ -1,6 +1,10 @@
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::{
-    collections::HashMap, ops::{Deref, DerefMut}, path::PathBuf, sync::Arc, time::SystemTime
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    path::PathBuf,
+    sync::Arc,
+    time::SystemTime,
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::IdentUnique;
@@ -137,20 +141,17 @@ pub struct FunctionCacheEntry {
 #[derive(Debug, Default)]
 pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
-    //pub module_cache: Arc<RwLock<ModuleCacheMap>>,
-    // pub module_cache: RwLock<ModuleCacheMap>,
-    pub module_cache: CowCache<ModuleCacheMap>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
     function_cache: Arc<RwLock<FunctionsCacheMap>>,
+    pub module_cache: CowCache<ModuleCacheMap>,
 }
 
 impl Clone for QueryEngine {
     fn clone(&self) -> Self {
         Self {
-            // module_cache: RwLock::new(self.module_cache.read().clone()),
-            module_cache: CowCache::new(self.module_cache.read().clone()),
             programs_cache: self.programs_cache.clone(),
             function_cache: self.function_cache.clone(),
+            module_cache: CowCache::new(self.module_cache.read().clone()),
         }
     }
 }
@@ -205,7 +206,6 @@ impl QueryEngine {
         );
     }
 }
-
 
 /// Thread-safe, copy-on-write cache optimized for LSP operations.
 ///

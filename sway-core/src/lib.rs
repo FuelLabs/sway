@@ -347,10 +347,8 @@ fn parse_module_tree(
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
-    let module = match sway_parse::parse_file(handler, src.clone(), Some(source_id)) {
-        Ok(module) => module,
-        Err(e) => return Err(e),
-    };
+    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
+
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
     let submodules = parse_submodules(
@@ -760,9 +758,7 @@ pub fn compile_to_ast(
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
-        Ok(modules) => {
-            modules
-        },
+        Ok(modules) => modules,
         Err(e) => {
             handler.dedup();
             return Err(e);

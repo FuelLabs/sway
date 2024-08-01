@@ -137,6 +137,7 @@ impl Session {
         Ok(())
     }
 
+    /// Clean up memory in the [TypeEngine] and [DeclEngine] for the modified file.
     pub fn garbage_collect_module(
         &self,
         engines: &mut Engines,
@@ -400,7 +401,7 @@ pub fn parse_project(
     let build_plan = session
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
-    
+
     let results = compile(
         &build_plan,
         engines,
@@ -480,7 +481,7 @@ fn create_runnables(
 ) {
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
-    
+
     for (decl, _) in typed_program.test_fns(decl_engine) {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl

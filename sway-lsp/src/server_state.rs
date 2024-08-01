@@ -142,7 +142,6 @@ impl ServerState {
                             {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
-                                // if let Err(err) = session.garbage_collect_program(&mut engines_clone) {
                                 if let Err(err) =
                                     session.garbage_collect_module(&mut engines_clone, &uri)
                                 {
@@ -153,13 +152,11 @@ impl ServerState {
                                 }
                             }
                         }
-                        
+
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
                             file_versions: ctx.file_versions,
                         });
-
-
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
@@ -340,13 +337,6 @@ impl ServerState {
             }
         }
         diagnostics_to_publish
-    }
-
-    async fn init_session(&self, uri: &Url) -> Result<(), LanguageServerError> {
-        let session = Arc::new(Session::new());
-        let project_name = session.init(uri, &self.documents).await?;
-        self.sessions.insert(project_name, session);
-        Ok(())
     }
 
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
