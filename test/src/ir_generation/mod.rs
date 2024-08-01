@@ -180,8 +180,8 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(core_lib_name, build_target, &engines, experimental);
-
+    let core_root = compile_core(/*core_lib_name, */ build_target, &engines, experimental);
+    
     // Find all the tests.
     let all_tests = discover_test_files();
     let total_test_count = all_tests.len();
@@ -238,7 +238,10 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-                let initial_namespace = namespace::Root::from(core_lib.clone());
+		
+		let mut initial_namespace = namespace::namespace_without_contract_id(core_lib_name.clone());
+		initial_namespace.add_external("core".to_owned(), core_root.clone());
+		    
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
@@ -527,7 +530,7 @@ fn discover_test_files() -> Vec<PathBuf> {
 }
 
 fn compile_core(
-    lib_name: sway_types::Ident,
+//    lib_name: sway_types::Ident,
     build_target: BuildTarget,
     engines: &Engines,
     experimental: ExperimentalFlags,
@@ -579,10 +582,7 @@ fn compile_core(
 //            let mut std_module = namespace::Module::new(lib_name, Visibility::Private, None);
 //            std_module.insert_submodule("core".to_owned(), core_module);
 	    //            std_module
-	    let core_root = typed_program.root.namespace.root();
-	    let mut program_root = namespace::namespace_without_contract_id(lib_name);
-	    program_root.add_external("core".to_owned(), core_root.clone());
-	    program_root
+	    typed_program.root.namespace.root().clone()
         }
         _ => {
             let (errors, _warnings) = res.1.consume();
