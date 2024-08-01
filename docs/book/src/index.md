@@ -59,11 +59,11 @@ You can find example applications built with Sway in the [Sway Applications repo
 
 **Q: What is the standard library?**
 
-The [standard library](./introduction/standard_library.md), also referred to as `std`, is a library that offers core functions and helpers for developing in Sway. The standard library has it's own [reference documentation](https://fuellabs.github.io/sway/master/std/) that has detailed information about each module in `std`.
+The [standard library](./introduction/standard_library.md), also referred to as `std`, is a library that offers core functions and helpers for developing in Sway. The standard library has its own [reference documentation](https://fuellabs.github.io/sway/master/std/) that has detailed information about each module in `std`.
 
 **Q: What are Sway standards?**
 
-Similar to ERC standards for Ethereum and Solidity, Sway has it's own SRC standards that help enable cross compatibility across different smart contracts. For more information on using a Sway Standard, you can check out the [Sway-Standards Repository](https://github.com/FuelLabs/sway-standards).
+Similar to ERC standards for Ethereum and Solidity, Sway has its own SRC standards that help enable cross compatibility across different smart contracts. For more information on using a Sway Standard, you can check out the [Sway-Standards Repository](https://github.com/FuelLabs/sway-standards).
 
 **Q: How can I make a token?**
 
