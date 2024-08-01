@@ -8,17 +8,17 @@ marp: true
 ---
 
 - How it works for contracts?
-  - Callers POV
-  - Callee POV
-- **Interlude**: Why even encode?
-  - API versus ABI
-- How it works for
-    - scripts/predicates
-    - receipts
+  - Caller POV
+  - Contract being called POV
+- **Interlude**: Why even encode the data?
+- Encoding for
+    - scripts
+    - predicates
+    - receipts (logs)
+    - configurables
 
 ---
-
-# How it works? (caller's POV)
+# How it works? (caller POV)
 
 At some point, someones calls a contract:
 
@@ -27,7 +27,7 @@ let contract = abi(TestContract, CONTRACT_ID);
 contract.some_method(0);
 ```
 
-This will be desugared as
+Compiler will desugar this into
 
 ```rust
 core::codec::contract_call(
@@ -58,7 +58,7 @@ T::abi_decode(buffer)
 
 ---
 
-and, in the end, will be compiled into a `call` instruction.
+and, in the end, will be compiled into a **fuelVM** `call` instruction.
 
 ```
       $hp
@@ -89,10 +89,9 @@ STACK  ....................  │   ASSET_ID   │
 ```
 
 ---
+# How it works? (contract being called POV)
 
-# How it works? (callee's POV)
-
-Code above was calling a contract implemented like:
+The example above was calling a contract implemented like:
 
 ```rust
 impl TestContract for Contract {
@@ -104,7 +103,7 @@ impl TestContract for Contract {
 
 ---
 
-This will be desugared into:
+Compiler will desugar this into:
 
 ```rust
 pub fn __entry() {
@@ -120,7 +119,8 @@ pub fn __entry() {
 }
 ```
 
-`__contract_entry_some_method` is the original `some_method` as is. `__contract_ret` is a special function that immediately returns the current context, that is why there is no `return` in the generated code.
+`__contract_entry_some_method` is the original `some_method` as is. 
+`__contract_ret` is a special function that immediately returns the current context, that is why there is no `return` in the generated code.
 
 ---
 
@@ -156,15 +156,20 @@ STACK   |  ASSET_ID    |  @ 73 words  @ 74 words |
 
 ---
 
-# **Interlude**: Why?
+# **Interlude**: Why even encode the data?
 
 - All this begs the question... why?
     - Why all the extra cost of encoding and decoding?
     - why we don´t just pass all parameters directly?
+- Answer:
+    - ABI instability
+    - Return Value Demotion
+    - Aliasing
 
 ---
+# Why? Avoiding `ABI instability`
 
-API define the types that are exchanged:
+APIs define the types that are exchanged:
 
 ```rust
 abi MyContract {
@@ -172,7 +177,7 @@ abi MyContract {
 }
 ```
 
-but they do not define how these types are passed around. In the example above, the only safe way to call a contract, would be to use the **exactly same version** of the stdlib the contract implementation is using.
+but they do not define how these types are passed around. In the example above, the only safe way to call a contract, would be to use the **exactly same version** of the `stdlib`  the contract implementation is using.
 
 Why?
 
@@ -184,18 +189,18 @@ Example: Suppose that caller and callee were compiled using `std-lib v1`.
 
 ```rust
 struct Vec<T> {
-    items: raw_ptr,
+    pointer: raw_ptr,
     cap: u64,
     len: u64,
 }
 ```
 
-But callee decide to update to `std-lib v2`, that for some reason was changed to:
+But the contract implementation decide to update to `std-lib v2`, that for some reason was changed to:
 
 ```rust
 struct Vec<T> {
     len: u64,
-    items: raw_ptr,
+    pointer: raw_ptr,
     cap: u64,
 }
 ```
@@ -220,9 +225,189 @@ Now caller will never be able to call the contract. Welcome to **ABI Hell**.
     Vec @ std-lib v1               Vec @ std-lib v1      |     Vec @ std-lib v1                  Vec @ std-lib v2  
 ```
 
-Now imagine everything that can affect byte layouts: lib versions, compiler versions, compiler flags, optimizations etc....
+Now imagine everything that can affect byte layouts: lib versions, compiler versions, compiler flags, compiler optimizations etc....
 
-All this can break contract calls without anyone noticing. All this, actually, break also whoever is consuming these bytes: indexers, SDKs, whoever is interpreting receipts etc...
+All this can break contract calls without anyone noticing. All this, actually, also breaks whoever is consuming these bytes: indexers, SDKs, receipts parsers etc...
 
+---
 
+So our encoding scheme avoid this instability being an issue by forcing types to specify how they are encoded, decoded:
 
+```rust
+
+impl<T> AbiEncode for Vec<T> where T: AbiEncode
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        ...
+    }
+}
+
+impl<T> AbiDecode for Vec<T> where T: AbiDecode
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
+        ...
+    }
+}
+```
+
+And to improve dev experience, we automatically implement `AbiEncode`/`AbiDecode` for all types that do not contain pointers.
+
+---
+# Why? Issues with `Return Value Demotion`
+
+Consider a simple contract method as:
+
+```rust
+impl TestContract for Contract {
+    fn some_method() -> Vec<u64> {
+        Vec::new()
+    }
+}
+```
+
+In reality this will be compiled into something like the code below. This is called "Return Value Demotion".
+
+```rust
+fn __contract_entry_some_method(return_value: &mut Vec<u64>) {
+    *return_value = Vec::new();
+}
+```
+
+---
+
+The problems for contracts is that `return_value` would point to memory region of the callee. And contracts cannot write into it.
+
+That would demand `return_value` pointing to somewhere allocated by the contract, and being copied over by the callee.
+
+---
+# Why? `Aliasing`
+
+If we bypass encoding, and allow caller to pass pointers to contracts, that immediately creates a security issues, because malicious callers could craft aliased data structures and trick contracts.
+
+For example:
+
+```rust
+impl TestContract for Contract {
+    fn some_method(v: Vec<u64>) {
+        let some_value1 = do_something(&v);
+        // do some_thing that allocate memory
+        let some_value2 = do_something(&v);
+    }
+}
+```
+
+---
+
+A malicious caller can craft a `Vec` which its pointer points to the memory the contract uses.
+
+In the case above, would be possible to have `some_value1` be different from `some_value2`, although this 100% not intuitive.
+
+Allowing a caller to attack the contract somehow.
+
+To avoid this, our encoding scheme, do not allow pointers, references etc... to be passed. You must always pass only the data.
+
+---
+
+# What we have left
+
+- Encoding for
+    - scripts
+    - predicates
+    - receipts (logs)
+    - configurables
+
+---
+# Scripts and Predicates
+
+`scripts` and `predicates` can have arguments on their `main` function.
+
+```rust
+fn main(v: u64) -> bool {
+    ...
+}
+```
+
+In both cases, the compiler will desugar into something like:
+
+```rust
+pub fn __entry() -> raw_slice {
+    let args: (u64,) = decode_script_data::<(u64,)>(); // or decode_predicate_data
+    let result: u64 = main(args.0); 
+    encode::<u64>(result)
+}
+```
+
+---
+# Log
+
+When the `std::log` is called we also encode its argument. So
+
+```rust
+    log(1);
+```
+
+will be desugared into
+
+```rust
+    __log(encode(1));
+```
+
+---
+# Configurables
+
+Configurables are a little bit more complex. What happens with configurables is that their initialization is evaluated at compile time.
+
+```rust
+configurable {
+    SOMETHING: u64 = 1,
+}
+```
+
+In the example above, it will evaluate to `1`. The compiler will then call `encode(1)` and append the result to the end of the binary.
+
+---
+
+And to allow SDKs to change this value just before deployment, the compiler generates an entry in the "ABI json", with the buffer offset in the binary.
+
+```json
+{
+    "name": "U64",
+    "configurableType": { ... },
+    "offset": 7104
+},
+```
+
+The last piece for configurables is how are they "decoded"?
+
+This is done automatically by the compiler.
+
+---
+
+For example
+
+```rust
+configurable { SOMETHING: u64 = 1 }
+
+fn main() -> u64 { SOMETHING }
+```
+
+will be desugared into something like
+
+```rust
+const SOMETHING: u64;
+
+fn __entry() -> raw_slice {
+    core::codec::abi_decode_in_place(&mut SOMETHING, 7104, 8);
+    encode(main())
+}
+
+fn main() -> u64 {
+    SOMETHING
+}
+```
+
+This is not valid `sway`, but gives the idea of what is happening.
+
+---
+
+end
