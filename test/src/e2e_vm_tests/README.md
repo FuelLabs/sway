@@ -9,7 +9,7 @@ To achieve that, follow these guidelines:
 - If `std` functionality is needed, import the minimal [reduced `std` library](reduced_std_libs/README.md) that provides the functionality.
 - Import the full `std` only if the provided [reduced `std` libraries](reduced_std_libs/README.md) do not provide required types.
 
-Additionally, try to meaningfully group tests with high cohesion, rather then splitting them into several tests. Having only one test project reduces compilation time. E.g., instead of having two tests `test_some_feature_for_option_a` and `test_some_feature_for_option_b`, try having just `test_some_feature` and the two cases tested in, e.g., modules in that one test. Makes sure, though, that such test groupings are meaningful. We don't want to end up in having artificially combined tests.
+Additionally, try to meaningfully group tests with high cohesion, rather then splitting them into several tests. Having only one test project reduces compilation time. E.g., instead of having two tests `test_some_feature_for_option_a` and `test_some_feature_for_option_b`, try having just `test_some_feature` and the two cases tested in, e.g., modules in that one test. Makes sure, though, that such test groupings are meaningful. We don't want to end up having artificially combined tests.
 
 # Running end-to-end VM tests
 
