@@ -324,7 +324,6 @@ impl<'a> Unifier<'a> {
                         received,
                         help_text: self.help_text.clone(),
                         span: span.clone(),
-                        internal: "4".into(),
                     }
                     .into(),
                 );
@@ -353,7 +352,6 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
-                    internal: "3".into(),
                 }
                 .into(),
             );
@@ -397,7 +395,6 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
-                    internal: "2".into(),
                 }
                 .into(),
             );
@@ -428,7 +425,6 @@ impl<'a> Unifier<'a> {
                 self.unify(handler, rtp.type_id, etp.type_id, span);
             });
         } else {
-            let internal = format!("[{received:?}] versus [{expected:?}]");
             let (received, expected) = self.assign_args(received, expected);
             handler.emit_err(
                 TypeError::MismatchedType {
@@ -436,7 +432,6 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
-                    internal,
                 }
                 .into(),
             );
@@ -475,7 +470,6 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
-                    internal: "1".into(),
                 }
                 .into(),
             );

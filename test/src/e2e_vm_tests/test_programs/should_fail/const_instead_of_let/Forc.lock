@@ -1,8 +1,8 @@
 [[package]]
-name = "associated_const_trait_const"
+name = "const_instead_of_let"
 source = "member"
 dependencies = ["core"]
 
 [[package]]
 name = "core"
-source = "path+from-root-D50E1F3A87CBFC67"
+source = "path+from-root-9DAB4ED88942C556"
