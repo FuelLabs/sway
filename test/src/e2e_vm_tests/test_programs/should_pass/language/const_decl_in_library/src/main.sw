@@ -3,6 +3,7 @@ script;
 mod heaven;
 mod earth;
 mod hell;
+mod moon;
 
 use heaven::UNKNOWN_DEITY_VALUE;
 use earth::MAN;
@@ -19,8 +20,12 @@ fn god() -> u64 {
 use heaven::MONKEYS_GONE_HERE;
 
 fn main() -> bool {
-    if god() == 7 {
-        MONKEYS_GONE_HERE
+    if moon::WE_WERE_NEVER_HERE {
+        if god() == 7 {
+            MONKEYS_GONE_HERE
+        } else {
+            false
+        }
     } else {
         false
     }
