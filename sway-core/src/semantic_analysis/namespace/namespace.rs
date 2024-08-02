@@ -12,7 +12,10 @@ use super::{
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::span::Span;
+use sway_types::{
+    constants::{CORE, STD, PRELUDE, CONTRACT_ID},
+    span::Span,
+};
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
@@ -271,38 +274,71 @@ impl Namespace {
             .resolve_call_path(handler, engines, &self.current_mod_path, call_path, self_type)
     }
 
-    fn import_implicits(&mut self) {
-	// TODO
-	// let module = self.current_module();
-	// If package_name == "core" do nothing
-	// else if package_name == "std" import core::prelude (if it exists)
-	// else import std::prelude and core::prelude (if it exists)
-	//
-	// If package_name != "core" && package_name != "std" && !is_root_module && root.is_contract_package import ::CONTRACT_ID
-	// check for !is_root_module is necessary, because that's where CONTRACT_ID is declared.
+    // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
+    fn import_implicits(&mut self, handler: &Handler, engines: &Engines) -> Result<(), ErrorEmitted> {
+	// Import preludes
+	let package_name = self.current_package_name().to_string();
+	let core_string = CORE.to_string();
+	let core_ident = Ident::new_no_span(core_string.clone());
+	let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
+	if package_name == CORE {
+	    // Do nothing
+	} else if package_name == STD {
+	    // Import core::prelude::*
+	    assert!(self.root.exists_as_external(&core_string));
+	    self.root.star_import(handler, engines, &[core_ident, prelude_ident], &self.current_mod_path, Visibility::Private)?
+	} else {
+	    // Import core::prelude::* and std::prelude::*
+	    assert!(self.root.exists_as_external(&core_string));
+	    self.root.star_import(handler, engines, &[core_ident, prelude_ident.clone()], &self.current_mod_path, Visibility::Private)?;
+	    
+	    let std_string = STD.to_string();
+	    // Only import std::prelude::* if std exists as a dependency
+	    if self.root.exists_as_external(&std_string) {
+		self.root.star_import(handler, engines, &[Ident::new_no_span(std_string), prelude_ident], &self.current_mod_path, Visibility::Private)?
+	    }
+	}
+
+	// Import contract id. CONTRACT_ID is declared in the root module, so only import it into non-root modules
+	if self.root.is_contract_package() && self.current_mod_path.len() > 1 {
+	    // import ::CONTRACT_ID
+	    self.root.item_import(handler, engines, &[Ident::new_no_span(package_name)], &Ident::new_no_span(CONTRACT_ID.to_string()), &self.current_mod_path, None, Visibility::Private)?
+	}
+
+	Ok(())
     }
     
-    pub(crate) fn enter_submodule(&mut self, mod_name: Ident, visibility: Visibility, module_span: Span) -> SubmoduleNamespace {
-	let parent_mod_path = self.current_mod_path.clone();
-
+    pub(crate) fn enter_submodule(&mut self, handler: &Handler, engines: &Engines, mod_name: Ident, visibility: Visibility, module_span: Span) -> Result<SubmoduleNamespace, ErrorEmitted> {
+	let mut import_implicits = false;
+	
+	// Ensure the new module exists and is initialized properly
 	if self.current_mod_path.is_empty() {
 	    // Entering the root module. The module already exists, so don't add a new one.
-	    self.import_implicits();
-	}
-	else if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
+	    import_implicits = true;
+	} else if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
 	    // Entering a new module. Add a new one.
 	    self.current_module_mut().add_new_submodule(&mod_name, visibility, Some(module_span));
-	    self.import_implicits();
+	    import_implicits = true;
 	}
+
+	// Update self to point to the new module
+	let parent_mod_path = self.current_mod_path.clone();
  	self.current_mod_path.push(mod_name.clone());
-	
+
+	// Initialize if necessary
+	if import_implicits {
+	    self.import_implicits(handler, engines)?;
+	}
+
 	// TODO: Do we need to return a SubmoduleNamespace? Can't we just push the new name onto
 	// self.current_mod_path and pop it when done with the submodule? That's what happens in the
 	// collection phase (which uses push_new_submodule and pop_submodule).
-	SubmoduleNamespace {
-	    namespace: self,
-	    parent_mod_path,
-	}
+	Ok(
+	    SubmoduleNamespace {
+		namespace: self,
+		parent_mod_path,
+	    }
+	)
     }
 
     // TODO: Do we need to return a SubmoduleNamespace? Can't we just push the new name onto
@@ -356,11 +392,16 @@ impl Namespace {
     /// Pushes a new submodule to the namespace's module hierarchy.
     pub fn push_new_submodule(
         &mut self,
+	handler: &Handler,
+	engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
-    ) {
-	self.enter_submodule(mod_name, visibility, module_span);
+    ) -> Result<(), ErrorEmitted>{
+	match self.enter_submodule(handler, engines, mod_name, visibility, module_span) {
+	    Ok(_) => Ok(()),
+	    Err(e) => Err(e),
+	}
     }
  
     /// Pops the current submodule from the namespace's module hierarchy.

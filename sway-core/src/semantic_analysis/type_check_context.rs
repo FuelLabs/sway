@@ -256,11 +256,12 @@ impl<'a> TypeCheckContext<'a> {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         mut self,
+	handler: &Handler,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
-    ) -> T {
+    ) -> Result<T, ErrorEmitted> {
         let experimental = self.experimental;
 
         // We're checking a submodule, so no need to pass through anything other than the
@@ -268,9 +269,9 @@ impl<'a> TypeCheckContext<'a> {
         let engines = self.engines;
         let mut submod_ns =
             self.namespace_mut()
-                .enter_submodule(mod_name, visibility, module_span);
+                .enter_submodule(handler, engines, mod_name, visibility, module_span)?;
         let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
-        with_submod_ctx(submod_ctx)
+        Ok(with_submod_ctx(submod_ctx))
     }
 
     /// Returns a mutable reference to the current namespace.

@@ -155,20 +155,6 @@ impl Module {
         }
     }
 
-    /// Lookup the submodule at the given path.
-    ///
-    /// This should be used rather than `Index` when we don't yet know whether the module exists.
-    pub(crate) fn lookup_submodule_mut(
-        &mut self,
-        handler: &Handler,
-        path: &[Ident],
-    ) -> Result<&mut Module, ErrorEmitted> {
-        match self.submodule_mut(path) {
-            None => Err(handler.emit_err(module_not_found(path))),
-            Some(module) => Ok(module),
-        }
-    }
-
     /// Returns the current lexical scope associated with this module.
     fn current_lexical_scope(&self) -> &LexicalScope {
         self.lexical_scopes

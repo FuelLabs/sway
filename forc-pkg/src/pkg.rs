@@ -1574,9 +1574,6 @@ pub fn sway_build_config(
     Ok(build_config)
 }
 
-/// The name of the constant holding the contract's id.
-pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
-
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
 /// This function is designed to be called for each node in order of compilation.

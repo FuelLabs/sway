@@ -4,7 +4,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_parse::{lex, Parser};
-use sway_types::Spanned;
+use sway_types::{constants::CONTRACT_ID, Spanned};
 
 use crate::{
     language::{
@@ -165,7 +165,7 @@ fn bind_contract_id_in_root_module(
     // this for loop performs a miniature compilation of each const item in the config
     // FIXME(Centril): Stop parsing. Construct AST directly instead!
     // parser config
-    let const_item = format!("pub const CONTRACT_ID: b256 = {contract_id_value};");
+    let const_item = format!("pub const {CONTRACT_ID}: b256 = {contract_id_value};");
     let const_item_len = const_item.len();
     let input_arc = std::sync::Arc::from(const_item);
     let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();

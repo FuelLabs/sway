@@ -580,11 +580,13 @@ impl ty::TySubmodule {
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(
+	    handler,
+	    engines,
             mod_name,
             *visibility,
             module.span.clone(),
             |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
-        )
+        )?
     }
 
     pub fn type_check(
@@ -600,12 +602,12 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
+        parent_ctx.enter_submodule(handler, mod_name, *visibility, module.span.clone(), |submod_ctx| {
             let module_res = ty::TyModule::type_check(handler, submod_ctx, engines, kind, module);
             module_res.map(|module| ty::TySubmodule {
                 module,
                 mod_name_span: mod_name_span.clone(),
             })
-        })
+        })?
     }
 }

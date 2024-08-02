@@ -57,17 +57,19 @@ impl SymbolCollectionContext {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         &mut self,
+	handler: &Handler,
+	engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
         with_submod_ctx: impl FnOnce(&mut SymbolCollectionContext) -> T,
-    ) -> T {
-        self.namespace.push_new_submodule(mod_name, visibility, module_span);
+    ) -> Result<T, ErrorEmitted> {
+        self.namespace.push_new_submodule(handler, engines, mod_name, visibility, module_span)?;
         //let Self { namespace, .. } = self;
         //let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
         let ret = with_submod_ctx(self);
         self.namespace.pop_submodule();
-        ret
+        Ok(ret)
     }
 
     /// Short-hand for calling [Items::insert_parsed_symbol].

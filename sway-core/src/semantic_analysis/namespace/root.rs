@@ -176,6 +176,10 @@ impl Root {
 	self.external_packages.insert(package_name, external_package);
     }
 
+    pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
+	self.external_packages.contains_key(package_name)
+    }
+    
 //    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
 //	// TODO: reject if the new package name already exist
 //	let new_package = Module::new(next_package_name, Visibility::Public, span, &vec!());
