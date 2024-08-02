@@ -10,6 +10,10 @@ impl Struct {
     const ID2: u32 = 2;
 }
 
-fn main() -> u32 {
-  Struct::ID
+fn main() {}
+
+#[test]
+fn test() {
+  assert_eq(1, Struct::ID);
+  assert_eq(2, Struct::ID2);
 }

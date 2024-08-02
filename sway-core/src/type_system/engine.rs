@@ -224,11 +224,6 @@ impl TypeEngine {
                         received: engines.help_out(received).to_string(),
                         help_text: help_text.to_string(),
                         span: span.clone(),
-                        internal: format!(
-                            "expected:[{:?}]; received:[{:?}]",
-                            engines.help_out(expected),
-                            engines.help_out(received),
-                        ),
                     }));
                 }
             }
