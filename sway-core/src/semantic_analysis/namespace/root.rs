@@ -270,6 +270,7 @@ impl Root {
 
     // Find a mutable module in the current package. `mod_path` must be a fully qualified path
     pub(super) fn module_mut_in_current_package(&mut self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
+	dbg!(mod_path);
 	assert!(self.check_path_is_in_current_package(mod_path));
 	self.module_mut_from_absolute_path(mod_path)
     }

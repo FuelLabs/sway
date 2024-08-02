@@ -207,7 +207,8 @@ fn bind_contract_id_in_root_module(
     };
 
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    let mut namespace = Namespace::new(root);
+    // The root object 
+    let mut namespace = Namespace::new(handler, engines, root, false)?;
     let type_check_ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental);
     // Typecheck the const declaration. This will add the binding in the supplied namespace
     match TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap().content {

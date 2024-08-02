@@ -39,20 +39,26 @@ pub struct Namespace {
     /// The path of the root module in a package is `[package_name]`. If a module `X` is a submodule
     /// of module `Y` which is a submodule of the root module in the package `P`, then the path is
     /// `[P, Y, X]`.
-    ///
-    /// When the namespace is initially by created `new` the path is empty. The path will be set
-    /// when `enter_submodule` is called on the root module.
     pub(crate) current_mod_path: ModulePathBuf,
 }
 
 impl Namespace {
     /// Initialize the namespace
     /// See also the factory functions in contract_helpers.rs
-    pub fn new(package_root: Root) -> Self {
-	Self {
+    ///
+    /// If `import_preludes_into_root` is true then core::prelude and std::prelude will be imported
+    /// into the root module if core and std are available in the external modules.
+    pub fn new(handler: &Handler, engines: &Engines, package_root: Root, import_preludes_into_root: bool) -> Result<Self, ErrorEmitted> {
+	let package_name = package_root.current_package_name().clone();
+	let mut res = Self {
 	    root: package_root,
-	    current_mod_path: Default::default(),
+	    current_mod_path: vec!(package_name),
+	};
+
+	if import_preludes_into_root {
+	    res.import_implicits(handler, engines)?;
 	}
+	Ok(res)
     }
 
 //    pub fn next_package(&mut self, handler: &Handler, engines: &Engines, next_package_name: Ident, span: Option<Span>, contract_id: Option<String>, experimental: ExperimentalFlags) -> Result<(), ErrorEmitted> {
@@ -76,6 +82,7 @@ impl Namespace {
     }
     
     pub fn current_module_mut(&mut self) -> &mut Module {
+	dbg!(&self.current_mod_path);
 	self.root.module_mut_in_current_package(&self.current_mod_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
     }
@@ -312,10 +319,7 @@ impl Namespace {
 	let mut import_implicits = false;
 	
 	// Ensure the new module exists and is initialized properly
-	if self.current_mod_path.is_empty() {
-	    // Entering the root module. The module already exists, so don't add a new one.
-	    import_implicits = true;
-	} else if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
+	if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
 	    // Entering a new module. Add a new one.
 	    self.current_module_mut().add_new_submodule(&mod_name, visibility, Some(module_span));
 	    import_implicits = true;
@@ -325,7 +329,7 @@ impl Namespace {
 	let parent_mod_path = self.current_mod_path.clone();
  	self.current_mod_path.push(mod_name.clone());
 
-	// Initialize if necessary
+	// Import implicits into the newly created module.
 	if import_implicits {
 	    self.import_implicits(handler, engines)?;
 	}
