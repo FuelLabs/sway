@@ -990,7 +990,12 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         bail!("'fail' tests must contain some FileCheck verification directives.");
     }
 
-    // To allow different configs, we must ignore file check if it is not fail
+    // We have some tests on old and new encoding that return different warnings.
+    // There is no easy way to write `test.toml` to support both, and the effort
+    // for such support is also questionable since we do not want to support
+    // the old encoding anymore, and currently we do not have any other configurations.
+    // Currently, we will simply ignore the `FileCheck` directives if the test category
+    // is not "fails" and the "category_new_encoding" is explicitly specified.
     if toml_content.get("category_new_encoding").is_some()
         && category != TestCategory::FailsToCompile
     {

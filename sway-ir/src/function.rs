@@ -11,6 +11,7 @@ use std::fmt::Write;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::InstOp;
 use crate::{
     block::{Block, BlockIterator, Label},
     constant::Constant,
@@ -248,10 +249,42 @@ impl Function {
     }
 
     /// Return the number of instructions in this function.
+    ///
+    /// The [crate::InstOp::AsmBlock] is counted as a single instruction,
+    /// regardless of the number of [crate::asm::AsmInstruction]s in the ASM block.
+    /// E.g., even if the ASM block is empty and contains no instructions, it
+    /// will still be counted as a single instruction.
+    ///
+    /// If you want to count every ASM instruction as an instruction, use
+    /// `num_instructions_incl_asm_instructions` instead.
     pub fn num_instructions(&self, context: &Context) -> usize {
         self.block_iter(context)
             .map(|block| block.num_instructions(context))
             .sum()
+    }
+
+    /// Return the number of instructions in this function, including
+    /// the [crate::asm::AsmInstruction]s found in [crate::InstOp::AsmBlock]s.
+    ///
+    /// Every [crate::asm::AsmInstruction] encountered in any of the ASM blocks
+    /// will be counted as an instruction. The [crate::InstOp::AsmBlock] itself
+    /// is not counted but rather replaced with the number of ASM instructions
+    /// found in the block. In other words, empty ASM blocks do not count as
+    /// instructions.
+    ///
+    /// If you want to count [crate::InstOp::AsmBlock]s as single instructions, use
+    /// `num_instructions` instead.
+    pub fn num_instructions_incl_asm_instructions(&self, context: &Context) -> usize {
+        self.instruction_iter(context).fold(0, |num, (_, value)| {
+            match &value
+                .get_instruction(context)
+                .expect("We are iterating through the instructions.")
+                .op
+            {
+                InstOp::AsmBlock(asm, _) => num + asm.body.len(),
+                _ => num + 1,
+            }
+        })
     }
 
     /// Return the function name.

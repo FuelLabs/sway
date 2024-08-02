@@ -1,0 +1,17 @@
+category = "compile"
+expected_warnings = 3
+
+#check: $()warning
+#sameln: $()ASM block is empty
+#check: $()let _ = asm() {
+#check: $()This ASM block is empty.
+
+#check: $()warning
+#sameln: $()ASM block is empty
+#check: $()let _ = asm() { };
+#nextln: $()This ASM block is empty.
+
+#check: $()warning
+#sameln: $()ASM block is empty
+#check: $()let _ = asm(r1: 0) { };
+#nextln: $()This ASM block is empty.
