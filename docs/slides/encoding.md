@@ -371,7 +371,7 @@ And to allow SDKs to change this value just before deployment, the compiler gene
 
 ```json
 {
-    "name": "U64",
+    "name": "SOMETHING",
     "configurableType": { ... },
     "offset": 7104
 },
