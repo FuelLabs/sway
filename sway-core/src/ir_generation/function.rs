@@ -2339,23 +2339,6 @@ impl<'eng> FnCompiler<'eng> {
             self.compile_expression_to_value(context, md_mgr, end)?
         );
 
-        let return_type = Type::get_unit(context);
-        self.current_block.append(context).asm_block(
-            vec![
-                AsmArg {
-                    name: Ident::new_no_span("end".into()),
-                    initializer: Some(end),
-                },
-                AsmArg {
-                    name: Ident::new_no_span("start".into()),
-                    initializer: Some(start),
-                },
-            ],
-            vec![AsmInstruction::log_no_span("end", "start", "end", "start")],
-            return_type,
-            None,
-        );
-
         let slice_len = self
             .current_block
             .append(context)
