@@ -555,7 +555,7 @@ impl TyDecl {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][StructDecl] variant.
-    pub(crate) fn to_struct_id(
+    pub(crate) fn to_struct_decl(
         &self,
         handler: &Handler,
         engines: &Engines,

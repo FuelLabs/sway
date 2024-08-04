@@ -8,7 +8,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyTraitItem},
+        ty::{self, StructDecl, TyDecl, TyTraitItem},
         CallPath, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
@@ -96,6 +96,21 @@ impl ResolvedDeclaration {
         match self {
             ResolvedDeclaration::Parsed(_) => panic!(),
             ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+
+    pub(crate) fn to_struct_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl
+                .to_struct_decl(handler, engines)
+                .map(|id| ResolvedDeclaration::Parsed(Declaration::StructDeclaration(id))),
+            ResolvedDeclaration::Typed(decl) => decl.to_struct_decl(handler, engines).map(|id| {
+                ResolvedDeclaration::Typed(TyDecl::StructDecl(StructDecl { decl_id: id }))
+            }),
         }
     }
 

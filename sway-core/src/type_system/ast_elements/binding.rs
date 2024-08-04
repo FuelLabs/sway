@@ -363,11 +363,12 @@ impl SymbolResolveTypeBinding<StructDeclaration> for TypeBinding<CallPath> {
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+
         // Check to see if this is a struct declaration.
-        let struct_decl_id = unknown_decl
+        let struct_decl = unknown_decl.to_struct_decl(handler, engines)?;
+        struct_decl
             .resolve_parsed(engines.de())
-            .to_struct_decl(handler, engines)?;
-        Ok(struct_decl_id)
+            .to_struct_decl(handler, engines)
     }
 }
 
@@ -390,7 +391,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a struct declaration.
-        let struct_id = unknown_decl.to_struct_id(handler, engines)?;
+        let struct_id = unknown_decl.to_struct_decl(handler, engines)?;
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_struct(&struct_id)).clone();
         // Monomorphize the copy, in place.

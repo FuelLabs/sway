@@ -405,7 +405,7 @@ where
             return Some((None, None));
         }
 
-        let implementing_for_decl_id = decl.to_struct_id(&Handler::default(), engines).unwrap();
+        let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
         let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());

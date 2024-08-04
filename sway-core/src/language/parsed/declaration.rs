@@ -33,6 +33,7 @@ use crate::{
     decl_engine::{
         parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet},
         parsed_id::ParsedDeclId,
+        DeclEngineGetParsedDeclId,
     },
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, PartialEqWithEngines,
@@ -142,6 +143,22 @@ impl Declaration {
     ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
         match self {
             Declaration::StructDeclaration(decl_id) => Ok(*decl_id),
+            Declaration::TypeAliasDeclaration(decl_id) => {
+                let alias = engines.pe().get_type_alias(decl_id);
+                let struct_decl_id = engines.te().get(alias.ty.type_id).expect_struct(
+                    handler,
+                    engines,
+                    &self.span(engines),
+                )?;
+
+                let parsed_decl_id = engines.de().get_parsed_decl_id(&struct_decl_id);
+                parsed_decl_id.ok_or_else(|| {
+                    handler.emit_err(CompileError::InternalOwned(
+                        "Cannot get parsed decl id from decl id".to_string(),
+                        self.span(engines),
+                    ))
+                })
+            }
             decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(engines),
