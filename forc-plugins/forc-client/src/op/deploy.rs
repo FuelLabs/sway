@@ -295,6 +295,8 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 )
                 .await?;
 
+                println!("--==-- deployed proxy contract {deployed_proxy_contract:?}");
+
                 // Update manifest file such that the proxy address field points to the new proxy contract.
                 update_proxy_address_in_manifest(
                     &format!("0x{}", deployed_proxy_contract),

@@ -233,7 +233,7 @@ async fn test_proxy_contract_re_routes_call() {
     };
     let contract_ids = deploy(cmd).await.unwrap();
     // At this point we deployed a contract with proxy.
-    let proxy_contract = contract_ids[0].proxy.unwrap();
+    let proxy_contract_id = contract_ids[0].proxy.unwrap();
     let impl_contract_id = contract_ids[0].id;
     // Make a contract call into proxy contract, and check if the initial
     // contract returns a true.
@@ -246,7 +246,7 @@ async fn test_proxy_contract_re_routes_call() {
         abi = "forc-plugins/forc-client/test/data/standalone_contract/standalone_contract-abi.json"
     ));
 
-    let impl_contract_a = ImplementationContract::new(proxy_contract, wallet_unlocked.clone());
+    let impl_contract_a = ImplementationContract::new(proxy_contract_id, wallet_unlocked.clone());
     let res = impl_contract_a
         .methods()
         .test_function()
@@ -277,7 +277,7 @@ async fn test_proxy_contract_re_routes_call() {
     let contract_ids = deploy(cmd).await.unwrap();
     // proxy contract id should be the same.
     let proxy_contract_after_update = contract_ids[0].proxy.unwrap();
-    assert_eq!(proxy_contract, proxy_contract_after_update);
+    assert_eq!(proxy_contract_id, proxy_contract_after_update);
     let impl_contract_id_after_update = contract_ids[0].id;
     assert!(impl_contract_id != impl_contract_id_after_update);
     let impl_contract_a = ImplementationContract::new(proxy_contract_after_update, wallet_unlocked);
