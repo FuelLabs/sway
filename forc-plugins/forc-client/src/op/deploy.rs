@@ -3,7 +3,7 @@ use crate::{
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         node_url::get_node_url,
-        pkg::{build_proxy_contract, built_pkgs, update_proxy_address_in_manifest},
+        pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
         tx::{
             bech32_from_secret, prompt_forc_wallet_password, select_secret_key,
@@ -22,10 +22,11 @@ use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
+use fuels::programs::contract::{LoadConfiguration, StorageConfiguration};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
-use pkg::{manifest::build_profile::ExperimentalFlags, BuildOpts, BuildProfile, BuiltPackage};
+use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -123,34 +124,43 @@ fn validate_and_parse_salts<'a>(
 
 /// Deploys a new proxy contract for the given package.
 async fn deploy_new_proxy(
-    pkg: &BuiltPackage,
+    pkg_name: &str,
     impl_contract: &fuel_tx::ContractId,
-    build_opts: &BuildOpts,
-    command: &cmd::Deploy,
-    salt: Salt,
     provider: &Provider,
     signing_key: &SecretKey,
 ) -> Result<fuel_tx::ContractId> {
-    let pkg_name = pkg.descriptor.manifest_file.project_name();
-    println_action_green("Creating", &format!("proxy contract for {pkg_name}"));
-    let user_addr_bech32 = bech32_from_secret(signing_key)?;
-    let proxy_built_package = build_proxy_contract(
-        &user_addr_bech32.into(),
-        impl_contract,
-        pkg_name,
-        build_opts,
-    )?;
-    let proxy_contract_id =
-        deploy_pkg(command, &proxy_built_package, salt, provider, signing_key).await?;
     fuels::macros::abigen!(Contract(
         name = "ProxyContract",
         abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
     ));
+    let proxy_dir_output = create_proxy_contract(pkg_name)?;
+    let address = bech32_from_secret(signing_key)?;
     let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
-    let instance = ProxyContract::new(proxy_contract_id, wallet);
-    instance.methods().initialize_proxy().call().await?;
+
+    let storage_path = proxy_dir_output.join("proxy-storage_slots.json");
+    let storage_configuration =
+        StorageConfiguration::default().add_slot_overrides_from_file(storage_path)?;
+
+    let configurables = ProxyContractConfigurables::default()
+        .with_INITIAL_TARGET(Some(*impl_contract))?
+        .with_INITIAL_OWNER(State::Initialized(Address::from(address).into()))?;
+
+    let configuration = LoadConfiguration::default()
+        .with_storage_configuration(storage_configuration)
+        .with_configurables(configurables);
+
+    let proxy_contract_id = fuels::programs::contract::Contract::load_from(
+        proxy_dir_output.join("proxy.bin"),
+        configuration,
+    )?
+    .deploy(&wallet, TxPolicies::default())
+    .await?;
+
+    let instance = ProxyContract::new(&proxy_contract_id, wallet);
+    let response = instance.methods().initialize_proxy().call().await?;
+    println!("{response:?}");
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
-    Ok(proxy_contract_id)
+    Ok(proxy_contract_id.into())
 }
 
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
@@ -283,17 +293,12 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 enabled: true,
                 address: None,
             }) => {
+                let pkg_name = &pkg.descriptor.name;
+                println_action_green("Creating", &format!("proxy contract for {pkg_name}"));
                 // Deploy a new proxy contract.
-                let deployed_proxy_contract = deploy_new_proxy(
-                    pkg,
-                    &deployed_contract_id,
-                    &build_opts,
-                    &command,
-                    salt,
-                    &provider,
-                    &signing_key,
-                )
-                .await?;
+                let deployed_proxy_contract =
+                    deploy_new_proxy(pkg_name, &deployed_contract_id, &provider, &signing_key)
+                        .await?;
 
                 println!("--==-- deployed proxy contract {deployed_proxy_contract:?}");
 

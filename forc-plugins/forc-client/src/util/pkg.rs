@@ -7,106 +7,12 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::{collections::HashMap, path::Path, sync::Arc};
-use sway_utils::{MAIN_ENTRY, MANIFEST_FILE_NAME, SRC_DIR};
 
 /// The name of the folder that forc generated proxy contract project will reside at.
 pub const PROXY_CONTRACT_FOLDER_NAME: &str = ".generated_proxy_contracts";
-/// Forc.toml for the default proxy contract that 'generate_proxy_contract_src()' returns.
-pub const PROXY_CONTRACT_FORC_TOML: &str = r#"
-[project]
-authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "main.sw"
-license = "Apache-2.0"
-name = "src14_owned_proxy"
-
-[dependencies]
-standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.5.1" }
-sway_libs = { git = "https://github.com/FuelLabs/sway-libs", tag = "v0.23.0" }
-"#;
-
-/// Generates source code for proxy contract owner set to the given 'addr'.
-pub(crate) fn generate_proxy_contract_src(addr: &str, impl_contract_id: &str) -> String {
-    format!(
-        r#"
-contract;
-use ::sway_libs::{{
-    ownership::errors::InitializationError,
-    upgradability::{{
-        _proxy_owner,
-        _proxy_target,
-        _set_proxy_owner,
-        _set_proxy_target,
-        only_proxy_owner,
-    }},
-}};
-use standards::{{src14::{{SRC14, SRC14Extension}}, src5::State}};
-use std::execution::run_external;
-
-abi OwnedProxy {{
-    #[storage(write)]
-    fn initialize_proxy();
-
-    #[storage(write)]
-    fn set_proxy_owner(new_proxy_owner: State);
-}}
-
-configurable {{
-    INITIAL_TARGET: Option<ContractId> = Some(ContractId::from({impl_contract_id})),
-    INITIAL_OWNER: State = State::Initialized(Identity::Address(Address::from({addr}))),
-}}
-
-#[namespace(SRC14)]
-storage {{
-    target: Option<ContractId> = None,
-    proxy_owner: State = State::Uninitialized,
-}}
-
-impl SRC14 for Contract {{
-    #[storage(read, write)]
-    fn set_proxy_target(new_target: ContractId) {{
-        only_proxy_owner(storage.proxy_owner);
-        _set_proxy_target(new_target);
-    }}
-
-    #[storage(read)]
-    fn proxy_target() -> Option<ContractId> {{
-        _proxy_target()
-    }}
-}}
-
-impl SRC14Extension for Contract {{
-    #[storage(read)]
-    fn proxy_owner() -> State {{
-        _proxy_owner(storage.proxy_owner)
-    }}
-}}
-
-impl OwnedProxy for Contract {{
-    #[storage(write)]
-    fn initialize_proxy() {{
-        require(
-            _proxy_owner(storage.proxy_owner) == State::Uninitialized,
-            InitializationError::CannotReinitialized,
-        );
-
-        storage.target.write(INITIAL_TARGET);
-        storage.proxy_owner.write(INITIAL_OWNER);
-    }}
-
-    #[storage(write)]
-    fn set_proxy_owner(new_proxy_owner: State) {{
-        _set_proxy_owner(new_proxy_owner, storage.proxy_owner);
-    }}
-}}
-
-#[fallback]
-#[storage(read)]
-fn fallback() {{
-    run_external(_proxy_target().expect("FallbackError::TargetNotSet"))
-}}
-        "#
-    )
-}
+pub const PROXY_CONTRACT_BIN: &[u8] = include_bytes!("../../abi/proxy_contract.bin");
+pub const PROXY_CONTRACT_STORAGE_SLOTS: &str =
+    include_str!("../../abi/proxy_contract-storage_slots.json");
 
 /// Updates the given package manifest file such that the address field under the proxy table updated to the given value.
 /// Updated manifest file is written back to the same location, without thouching anything else such as comments etc.
@@ -131,42 +37,18 @@ pub(crate) fn update_proxy_address_in_manifest(
 }
 
 /// Creates a proxy contract project at the given path, adds a forc.toml and source file.
-pub(crate) fn create_proxy_contract(
-    owner_addr: &fuels_core::types::Address,
-    impl_contract_id: &fuel_tx::ContractId,
-    pkg_name: &str,
-) -> Result<PathBuf> {
-    let owner_addr = &format!("0x{}", owner_addr);
-    let impl_contract_id = &format!("0x{}", impl_contract_id);
-
+pub(crate) fn create_proxy_contract(pkg_name: &str) -> Result<PathBuf> {
     // Create the proxy contract folder.
     let proxy_contract_dir = user_forc_directory()
         .join(PROXY_CONTRACT_FOLDER_NAME)
         .join(pkg_name);
     std::fs::create_dir_all(&proxy_contract_dir)?;
+    std::fs::write(proxy_contract_dir.join("proxy.bin"), PROXY_CONTRACT_BIN)?;
+    std::fs::write(
+        proxy_contract_dir.join("proxy-storage_slots.json"),
+        PROXY_CONTRACT_STORAGE_SLOTS,
+    )?;
 
-    // Create the Forc.toml
-    let mut f = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(proxy_contract_dir.join(MANIFEST_FILE_NAME))?;
-    write!(f, "{}", PROXY_CONTRACT_FORC_TOML)?;
-
-    // Create the src folder
-    std::fs::create_dir_all(proxy_contract_dir.join(SRC_DIR))?;
-
-    // Create main.sw
-    let mut f = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(proxy_contract_dir.join(SRC_DIR).join(MAIN_ENTRY))?;
-
-    let contract_str = generate_proxy_contract_src(owner_addr, impl_contract_id);
-    write!(f, "{}", contract_str)?;
     Ok(proxy_contract_dir)
 }
 
@@ -197,25 +79,4 @@ pub(crate) fn built_pkgs(path: &Path, build_opts: &BuildOpts) -> Result<Vec<Arc<
     }
 
     Ok(built_pkgs)
-}
-
-/// Build a proxy contract owned by the deployer.
-/// First creates the contract project at the current dir. The source code for the proxy contract is updated
-/// with 'owner_addr'.
-pub fn build_proxy_contract(
-    owner_addr: &fuels_core::types::Address,
-    impl_contract_id: &fuel_tx::ContractId,
-    pkg_name: &str,
-    build_opts: &BuildOpts,
-) -> Result<Arc<BuiltPackage>> {
-    let proxy_contract_dir = create_proxy_contract(owner_addr, impl_contract_id, pkg_name)?;
-    let mut build_opts = build_opts.clone();
-    let proxy_contract_dir_str = format!("{}", proxy_contract_dir.clone().display());
-    build_opts.pkg.path = Some(proxy_contract_dir_str);
-    let built_pkgs = built_pkgs(&proxy_contract_dir, &build_opts)?;
-    let built_pkg = built_pkgs
-        .first()
-        .cloned()
-        .ok_or_else(|| anyhow::anyhow!("could not get proxy contract"))?;
-    Ok(built_pkg)
 }

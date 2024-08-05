@@ -293,6 +293,97 @@ async fn test_proxy_contract_re_routes_call() {
 }
 
 #[tokio::test]
+async fn test_proxy_contract_update_target() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+    };
+    patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    // Make a contract call into proxy contract, and check if the initial
+    // contract returns a true.
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let contract_ids = deploy(cmd).await.unwrap();
+    // At this point we deployed a contract with proxy.
+    let proxy_contract_id = contract_ids[0].proxy.unwrap();
+    let impl_contract_id = contract_ids[0].id;
+    abigen!(Contract(
+        name = "ProxyContract",
+        abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
+    ));
+    let p_instance = ProxyContract::new(proxy_contract_id, wallet_unlocked);
+    let current_target = p_instance
+        .methods()
+        .proxy_target()
+        .simulate()
+        .await
+        .unwrap()
+        .value
+        .unwrap();
+    assert_eq!(current_target, impl_contract_id);
+
+    update_main_sw(tmp_dir.path()).unwrap();
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let contract_ids = deploy(cmd).await.unwrap();
+    // proxy contract id should be the same.
+    let proxy_contract_after_update = contract_ids[0].proxy.unwrap();
+    assert_eq!(proxy_contract_id, proxy_contract_after_update);
+    let impl_contract_id_after_update = contract_ids[0].id;
+    assert!(impl_contract_id != impl_contract_id_after_update);
+    let current_target = p_instance
+        .methods()
+        .proxy_target()
+        .simulate()
+        .await
+        .unwrap()
+        .value
+        .unwrap();
+    assert_eq!(current_target, impl_contract_id_after_update);
+    node.kill().unwrap();
+}
+
+#[tokio::test]
 async fn test_non_owner_fails_to_set_target() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
