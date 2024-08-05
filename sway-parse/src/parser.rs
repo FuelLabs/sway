@@ -207,6 +207,18 @@ impl<'a, 'e> Parser<'a, 'e> {
         r
     }
 
+    /// This method is useful if `T` does not impl `ParseToEnd`
+    pub fn try_parse_and_check_empty<T: Parse>(
+        mut self,
+        append_diagnostics: bool,
+    ) -> ParseResult<Option<(T, ParserConsumed<'a>)>> {
+        let value = self.try_parse(append_diagnostics)?;
+        match self.check_empty() {
+            Some(consumed) => Ok(Some((value, consumed))),
+            None => Ok(None),
+        }
+    }
+
     /// Parses a `T` in its canonical way.
     pub fn parse<T: Parse>(&mut self) -> ParseResult<T> {
         T::parse(self)
@@ -223,13 +235,23 @@ impl<'a, 'e> Parser<'a, 'e> {
         T::parse_to_end(self)
     }
 
-    pub fn try_parse_to_end<T: Parse>(mut self) -> ParseResult<Option<(T, ParserConsumed<'a>)>> {
-        let value = self.parse()?;
-        let consumed = match self.check_empty() {
-            Some(consumed) => consumed,
-            None => return Ok(None),
+    /// Do not advance the parser on failure
+    pub fn try_parse_to_end<T: ParseToEnd>(
+        &mut self,
+        append_diagnostics: bool,
+    ) -> ParseResult<(T, ParserConsumed<'a>)> {
+        let handler = Handler::default();
+        let fork = Parser {
+            token_trees: self.token_trees,
+            full_span: self.full_span.clone(),
+            handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
-        Ok(Some((value, consumed)))
+        let r = T::parse_to_end(fork);
+        if append_diagnostics {
+            self.handler.append(handler);
+        }
+        r
     }
 
     pub fn enter_delimited(
