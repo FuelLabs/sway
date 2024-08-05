@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-EB0B4DA0569712C8"
+
+[[package]]
+name = "memcpyopt_noncopytype"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-EB0B4DA0569712C8"
+dependencies = ["core"]
