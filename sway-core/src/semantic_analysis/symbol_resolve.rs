@@ -233,12 +233,12 @@ impl ResolveSymbols for ConstantDeclaration {
 
 impl ResolveSymbols for StructDeclaration {
     fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
-        self.fields
-            .iter_mut()
-            .for_each(|f| f.resolve_symbols(handler, ctx.by_ref()));
         self.type_parameters
             .iter_mut()
             .for_each(|tp| tp.resolve_symbols(handler, ctx.by_ref()));
+        self.fields
+            .iter_mut()
+            .for_each(|f| f.resolve_symbols(handler, ctx.by_ref()));
     }
 }
 
@@ -267,29 +267,29 @@ impl ResolveSymbols for EnumVariant {
 
 impl ResolveSymbols for TraitDeclaration {
     fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
+        self.supertraits
+            .iter_mut()
+            .for_each(|st| st.resolve_symbols(handler, ctx.by_ref()));
         self.interface_surface
             .iter_mut()
             .for_each(|item| item.resolve_symbols(handler, ctx.by_ref()));
         self.methods
             .iter_mut()
             .for_each(|m| m.resolve_symbols(handler, ctx.by_ref()));
-        self.supertraits
-            .iter_mut()
-            .for_each(|st| st.resolve_symbols(handler, ctx.by_ref()));
     }
 }
 
 impl ResolveSymbols for AbiDeclaration {
     fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
+        self.supertraits
+            .iter_mut()
+            .for_each(|st| st.resolve_symbols(handler, ctx.by_ref()));
         self.interface_surface
             .iter_mut()
             .for_each(|item| item.resolve_symbols(handler, ctx.by_ref()));
         self.methods
             .iter_mut()
             .for_each(|m| m.resolve_symbols(handler, ctx.by_ref()));
-        self.supertraits
-            .iter_mut()
-            .for_each(|st| st.resolve_symbols(handler, ctx.by_ref()));
     }
 }
 
