@@ -686,8 +686,8 @@ fn go_to_definition_for_paths() {
         // std
         lsp::definition_check(&server, &go_to).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 14).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 18, 5).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 24, 13).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 16, 5).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 13).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 5).await;
 
         let go_to = GotoDefinition {
@@ -765,7 +765,7 @@ fn go_to_definition_for_paths() {
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 16,
+            req_line: 14,
             req_char: 6,
             def_line: 0,
             def_start_char: 0,
@@ -774,12 +774,12 @@ fn go_to_definition_for_paths() {
         };
         // test_mod
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 7).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 20, 7).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 5, 5).await;
 
         let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 16,
+            req_line: 14,
             req_char: 16,
             def_line: 2,
             def_start_char: 7,
@@ -791,7 +791,7 @@ fn go_to_definition_for_paths() {
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 15,
             req_char: 8,
             def_line: 0,
             def_start_char: 0,
@@ -801,16 +801,16 @@ fn go_to_definition_for_paths() {
         // deep_mod
         lsp::definition_check(&server, &go_to).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 6).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 16).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 16).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 16).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 16).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 16).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 16).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 15,
             req_char: 18,
             def_line: 0,
             def_start_char: 0,
@@ -820,16 +820,16 @@ fn go_to_definition_for_paths() {
         // deeper_mod
         lsp::definition_check(&server, &go_to).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 16).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 28).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 28).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 28).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 28).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 28).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 28).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 27,
+            req_line: 25,
             req_char: 38,
             def_line: 4,
             def_start_char: 9,
@@ -838,13 +838,13 @@ fn go_to_definition_for_paths() {
         };
         // DeepEnum
         lsp::definition_check(&server, &go_to).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 38).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 38).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 38).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 38).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 38).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 32,
+            req_line: 30,
             req_char: 37,
             def_line: 9,
             def_start_char: 11,
@@ -853,11 +853,11 @@ fn go_to_definition_for_paths() {
         };
         // DeepStruct
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 37).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 37).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 27,
+            req_line: 25,
             req_char: 48,
             def_line: 5,
             def_start_char: 4,
@@ -866,11 +866,11 @@ fn go_to_definition_for_paths() {
         };
         // DeepEnum::Variant
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 48).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 48).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 29,
+            req_line: 27,
             req_char: 48,
             def_line: 6,
             def_start_char: 4,
@@ -879,11 +879,11 @@ fn go_to_definition_for_paths() {
         };
         // DeepEnum::Number
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 48).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 48).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 15,
             req_char: 29,
             def_line: 2,
             def_start_char: 7,
@@ -896,7 +896,7 @@ fn go_to_definition_for_paths() {
 
         let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 18,
+            req_line: 16,
             req_char: 11,
             def_line: 0,
             def_start_char: 0,
@@ -906,33 +906,41 @@ fn go_to_definition_for_paths() {
         // assert
         lsp::definition_check(&server, &go_to).await;
 
-        // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
-        // file:///home/cnn/Projects/sway/sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw doesn't end with sway-lib-core/src/lib.sw
-        //        let _go_to = GotoDefinition {
-        //            req_uri: &uri,
-        //            req_line: 33,
-        //            req_char: 13,
-        //            def_line: 0,
-        //            def_start_char: 0,
-        //            def_end_char: 0,
-        //            def_path: "sway-lib-core/src/lib.sw",
-        //        };
-        //        // core
-        //        lsp::definition_check(&server, &go_to).await;
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 31,
+            req_char: 13,
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw",
+        };
+        // core
+        lsp::definition_check(&server, &go_to).await;
 
-        // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
-        //        let mut _go_to = GotoDefinition {
-        //            req_uri: &uri,
-        //            req_line: 33,
-        //            req_char: 21,
-        //            def_line: 0,
-        //            def_start_char: 0,
-        //            def_end_char: 0,
-        //            def_path: "sway-lib-core/src/primitives.sw",
-        //        };
-        //        // primitives
-        //        lsp::definition_check(&server, &go_to).await;
-        //        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 20).await;
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 31,
+            req_char: 26,
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        };
+        // primitives
+        lsp::definition_check(&server, &go_to).await;
+
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 23,
+            req_char: 20,
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lib-core/src/primitives.sw",
+        };
+        // primitives
+        lsp::definition_check(&server, &go_to).await;
 
         let go_to = GotoDefinition {
             req_uri: &uri,
@@ -948,7 +956,7 @@ fn go_to_definition_for_paths() {
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 21,
+            req_line: 19,
             req_char: 4,
             def_line: 4,
             def_start_char: 11,
@@ -957,11 +965,11 @@ fn go_to_definition_for_paths() {
         };
         // A impl
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 14).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 20, 14).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 21,
+            req_line: 19,
             req_char: 7,
             def_line: 7,
             def_start_char: 11,
@@ -970,11 +978,11 @@ fn go_to_definition_for_paths() {
         };
         // fun
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 18).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 20, 18).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 24,
+            req_line: 22,
             req_char: 20,
             def_line: 0,
             def_start_char: 0,
@@ -986,59 +994,55 @@ fn go_to_definition_for_paths() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 11).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 23).await;
 
-        // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
-        //        let mut go_to = GotoDefinition {
-        //            req_uri: &uri,
-        //            req_line: 24,
-        //            req_char: 31,
-        //            def_line: 33,
-        //            def_start_char: 10,
-        //            def_end_char: 19,
-        //            def_path: "sway-lib-std/src/constants.sw",
-        //        };
-        //        // ZERO_B256
-        //        lsp::definition_check(&server, &go_to).await;
-        //        lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 31).await;
+        // // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
+        let mut go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 22,
+            req_char: 31,
+            def_line: 19,
+            def_start_char: 10,
+            def_end_char: 19,
+            def_path: "sway-lib-std/src/constants.sw",
+        };
+        // ZERO_B256
+        lsp::definition_check(&server, &go_to).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 31).await;
 
-        // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
-        //        let go_to = GotoDefinition {
-        //            req_uri: &uri,
-        //            req_line: 33,
-        //            req_char: 37,
-        //            def_line: 9,
-        //            def_start_char: 11,
-        //            def_end_char: 14,
-        //            def_path: "sway-lib-core/src/primitives.sw",
-        //        };
-        //        // u64::min()
-        //        lsp::definition_check(&server, &go_to).await;
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 17,
+            req_char: 37,
+            def_line: 92,
+            def_start_char: 11,
+            def_end_char: 14,
+            def_path: "sway-lib-core/src/primitives.sw",
+        };
+        // u64::min()
+        lsp::definition_check(&server, &go_to).await;
 
-        // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
-        //        let mut go_to = GotoDefinition {
-        //            req_uri: &uri,
-        //            req_line: 13,
-        //            req_char: 22,
-        //            def_line: 304,
-        //            def_start_char: 11,
-        //            def_end_char: 14,
-        //            def_path: "sway-lib-core/src/primitives.sw",
-        //        };
-        //        // b256::min()
-        //        lsp::definition_check(&server, &go_to).await;
-        //        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 38).await;
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 23,
+            req_char: 37,
+            def_line: 392,
+            def_start_char: 11,
+            def_end_char: 14,
+            def_path: "sway-lib-core/src/primitives.sw",
+        };
+        // b256::min()
+        lsp::definition_check(&server, &go_to).await;
 
-        // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
-        // let go_to = GotoDefinition {
-        //     req_uri: &uri,
-        //     req_line: 6,
-        //     req_char: 39,
-        //     def_line: 2,
-        //     def_start_char: 7,
-        //     def_end_char: 15,
-        //     def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
-        // };
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 6,
+            req_char: 39,
+            def_line: 2,
+            def_start_char: 7,
+            def_end_char: 15,
+            def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        };
         // dfun
-        // lsp::definition_check(&server, &go_to).await;
+        lsp::definition_check(&server, &go_to).await;
 
         let _ = server.shutdown_server();
     });

@@ -1,3 +1,4 @@
+use lsp_types::Range;
 use swayfmt::FormatterError;
 use thiserror::Error;
 
@@ -46,6 +47,13 @@ pub enum DocumentError {
     UnableToWriteFile { path: String, err: String },
     #[error("File wasn't able to be removed at path {:?} : {:?}", path, err)]
     UnableToRemoveFile { path: String, err: String },
+
+    #[error("Permission denied for path {:?}", path)]
+    PermissionDenied { path: String },
+    #[error("IO error for path {:?} : {:?}", path, error)]
+    IOError { path: String, error: String },
+    #[error("Invalid range {:?}", range)]
+    InvalidRange { range: Range },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
