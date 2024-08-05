@@ -1,5 +1,6 @@
 library;
 
+use ::hash::{Hash, Hasher};
 use ::option::Option;
 use ::storage::storage_api::*;
 
@@ -153,45 +154,36 @@ impl<T> StorageKey<T> {
     }
 }
 
-#[test]
-fn test_storage_key_new() {
-    use ::assert::assert;
-
-    let key = StorageKey::<u64>::new(b256::zero(), 0, b256::zero());
-    assert(key.slot() == b256::zero());
-    assert(key.offset() == 0);
-    assert(key.field_id() == b256::zero());
-
-    let key = StorageKey::<u64>::new(
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-        1,
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
-    assert(
-        key
-            .slot() == 0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
-    assert(key.offset() == 1);
-    assert(
-        key
-            .field_id() == 0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
+impl<T> Hash for StorageKey<T> {
+    fn hash(self, ref mut state: Hasher) {
+        self.slot().hash(state);
+        self.offset().hash(state);
+        self.field_id().hash(state);
+    }
 }
 
-#[test]
-fn test_storage_key_zero() {
-    use ::assert::assert;
+impl<T> AbiEncode for StorageKey<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let mut buffer = self.slot().abi_encode(buffer);
+        buffer = self.offset().abi_encode(buffer);
+        buffer = self.field_id().abi_encode(buffer);
 
-    let key = StorageKey::<u64>::zero();
-    assert(key.is_zero());
-    assert(key.slot() == b256::zero());
-    assert(key.offset() == 0);
-    assert(key.field_id() == b256::zero());
+        buffer
+    }
+}
 
-    let key = StorageKey::<u64>::new(
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-        1,
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
-    assert(!key.is_zero());
+impl<T> AbiDecode for StorageKey<T>
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> StorageKey<T> {
+        Self::new(
+            b256::abi_decode(buffer),
+            u64::abi_decode(buffer),
+            b256::abi_decode(buffer),
+        )
+    }
 }
