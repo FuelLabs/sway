@@ -12,6 +12,9 @@ abi ExperimentalStorageTest {
 
     #[storage(read, write)]
     fn nested_vec_access_insert();
+
+    #[storage(read, write)]
+    fn revert_on_load();
 }
 
 impl ExperimentalStorageTest for Contract {
@@ -46,6 +49,15 @@ impl ExperimentalStorageTest for Contract {
         // assert(storage.nested_vec.get(3).is_none());
 
         // test_access(inner_vec0, inner_vec1, inner_vec2);
+    }
+
+    #[storage(read, write)]
+    fn revert_on_load() {
+        storage.nested_vec.push(StorageVec {});
+        storage.nested_vec.push(StorageVec {});
+        storage.nested_vec.push(StorageVec {});
+
+        storage.nested_vec.load_vec()
     }
 }
 
