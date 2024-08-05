@@ -13,6 +13,8 @@ pub const PROXY_CONTRACT_FOLDER_NAME: &str = ".generated_proxy_contracts";
 pub const PROXY_CONTRACT_BIN: &[u8] = include_bytes!("../../abi/proxy_contract.bin");
 pub const PROXY_CONTRACT_STORAGE_SLOTS: &str =
     include_str!("../../abi/proxy_contract-storage_slots.json");
+pub const PROXY_BIN_FILE_NAME: &str = "proxy.bin";
+pub const PROXY_STORAGE_SLOTS_FILE_NAME: &str = "proxy-storage_slots.json";
 
 /// Updates the given package manifest file such that the address field under the proxy table updated to the given value.
 /// Updated manifest file is written back to the same location, without thouching anything else such as comments etc.
@@ -43,9 +45,12 @@ pub(crate) fn create_proxy_contract(pkg_name: &str) -> Result<PathBuf> {
         .join(PROXY_CONTRACT_FOLDER_NAME)
         .join(pkg_name);
     std::fs::create_dir_all(&proxy_contract_dir)?;
-    std::fs::write(proxy_contract_dir.join("proxy.bin"), PROXY_CONTRACT_BIN)?;
     std::fs::write(
-        proxy_contract_dir.join("proxy-storage_slots.json"),
+        proxy_contract_dir.join(PROXY_BIN_FILE_NAME),
+        PROXY_CONTRACT_BIN,
+    )?;
+    std::fs::write(
+        proxy_contract_dir.join(PROXY_STORAGE_SLOTS_FILE_NAME),
         PROXY_CONTRACT_STORAGE_SLOTS,
     )?;
 

@@ -156,9 +156,9 @@ async fn deploy_new_proxy(
     .deploy(&wallet, TxPolicies::default())
     .await?;
 
+    println_action_green("Initializing", &format!("proxy contract for {pkg_name}"));
     let instance = ProxyContract::new(&proxy_contract_id, wallet);
-    let response = instance.methods().initialize_proxy().call().await?;
-    println!("{response:?}");
+    instance.methods().initialize_proxy().call().await?;
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
     Ok(proxy_contract_id.into())
 }
@@ -294,13 +294,11 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 address: None,
             }) => {
                 let pkg_name = &pkg.descriptor.name;
-                println_action_green("Creating", &format!("proxy contract for {pkg_name}"));
+                println_action_green("Deploying", &format!("proxy contract for {pkg_name}"));
                 // Deploy a new proxy contract.
                 let deployed_proxy_contract =
                     deploy_new_proxy(pkg_name, &deployed_contract_id, &provider, &signing_key)
                         .await?;
-
-                println!("--==-- deployed proxy contract {deployed_proxy_contract:?}");
 
                 // Update manifest file such that the proxy address field points to the new proxy contract.
                 update_proxy_address_in_manifest(
