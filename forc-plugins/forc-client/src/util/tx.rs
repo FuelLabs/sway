@@ -271,7 +271,6 @@ pub async fn update_proxy_contract_target(
 
     let proxy_contract = ProxyContract::new(proxy_contract_id, wallet);
 
-    // TODO: what happens if the call fails? Does 'FuelCallResponse' is returned as Err() in that case?
     let result = proxy_contract
         .methods()
         .set_proxy_target(new_target)
