@@ -1,4 +1,1 @@
-category = "run"
-expected_result = { action = "return", value = 0 }
-expected_result_new_encoding = { action = "return_data", value = "00000000" }
-expected_warnings = 1
+category = "unit_tests_pass"

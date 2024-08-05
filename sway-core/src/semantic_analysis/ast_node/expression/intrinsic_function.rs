@@ -323,7 +323,6 @@ fn type_check_not(
                 received: engines.help_out(return_type).to_string(),
                 help_text: "".into(),
                 span,
-                internal: "8".into(),
             },
         ))),
     }
@@ -1241,7 +1240,6 @@ fn type_check_bitwise_binary_op(
                 received: engines.help_out(return_type).to_string(),
                 help_text: "".into(),
                 span,
-                internal: "7".into(),
             },
         ))),
     }
@@ -1316,7 +1314,6 @@ fn type_check_shift_binary_op(
                 received: engines.help_out(return_type).to_string(),
                 help_text: "Incorrect argument type".into(),
                 span: lhs.span,
-                internal: "6".into(),
             },
         ))),
     }
