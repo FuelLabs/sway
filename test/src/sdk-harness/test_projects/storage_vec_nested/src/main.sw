@@ -57,7 +57,7 @@ impl ExperimentalStorageTest for Contract {
         storage.nested_vec.push(StorageVec {});
         storage.nested_vec.push(StorageVec {});
 
-        storage.nested_vec.load_vec()
+        let _ =storage.nested_vec.load_vec();
     }
 }
 
