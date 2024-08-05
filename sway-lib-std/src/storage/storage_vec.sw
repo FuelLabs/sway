@@ -896,7 +896,7 @@ impl<V> StorageKey<StorageVec<V>> {
             len => {
                 // Get the number of storage slots needed based on the size.
                 let size_V_bytes = __size_of::<V>();
-                
+
                 assert(size_V_bytes != 0);
 
                 let bytes = if size_V_bytes < 8 {
