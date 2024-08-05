@@ -2,7 +2,7 @@
 library;
 
 use ::assert::*;
-use ::flags::{disable_panic_on_overflow, F_UNSAFEMATH_DISABLE_MASK, set_flags};
+use ::flags::{disable_panic_on_overflow, F_WRAPPING_DISABLE_MASK, F_UNSAFEMATH_DISABLE_MASK, set_flags};
 use ::registers::{flags, overflow};
 
 /// Calculates the square root.
@@ -117,7 +117,10 @@ impl Power for u32 {
             exp r3 r1 r2;
             r3: u64
         };
-        assert(res <= Self::max().as_u64());
+        // If panic on wrapping math is enabled, only then revert
+        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            assert(res <= Self::max().as_u64());
+        }
         asm(r1: res) {
             r1: Self
         }
@@ -130,7 +133,10 @@ impl Power for u16 {
             exp r3 r1 r2;
             r3: u64
         };
-        assert(res <= Self::max().as_u64());
+        // If panic on wrapping math is enabled, only then revert
+        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            assert(res <= Self::max().as_u64());
+        }
         asm(r1: res) {
             r1: Self
         }
@@ -143,8 +149,10 @@ impl Power for u8 {
             exp r3 r1 r2;
             r3: u64
         };
-
-        assert(res <= Self::max().as_u64());
+        // If panic on wrapping math is enabled, only then revert
+        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            assert(res <= Self::max().as_u64());
+        }
         asm(r1: res) {
             r1: Self
         }
