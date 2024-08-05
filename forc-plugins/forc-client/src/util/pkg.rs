@@ -17,10 +17,11 @@ pub const PROXY_CONTRACT_FORC_TOML: &str = r#"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-name = "proxy_contract"
+name = "src14_owned_proxy"
 
 [dependencies]
-standards = { git = "https://github.com/FuelLabs/sway-standards/", tag = "v0.5.0" }
+standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.5.1" }
+sway_libs = { git = "https://github.com/FuelLabs/sway-libs", tag = "v0.23.0" }
 "#;
 
 /// Generates source code for proxy contract owner set to the given 'addr'.
@@ -28,54 +29,82 @@ pub(crate) fn generate_proxy_contract_src(addr: &str, impl_contract_id: &str) ->
     format!(
         r#"
 contract;
-
+use ::sway_libs::{{
+    ownership::errors::InitializationError,
+    upgradability::{{
+        _proxy_owner,
+        _proxy_target,
+        _set_proxy_owner,
+        _set_proxy_target,
+        only_proxy_owner,
+    }},
+}};
+use standards::{{src14::{{SRC14, SRC14Extension}}, src5::State}};
 use std::execution::run_external;
-use standards::src5::{{AccessError, SRC5, State}};
-use standards::src14::SRC14;
 
-/// The owner of this contract at deployment.
-const INITIAL_OWNER: Identity = Identity::Address(Address::from({addr}));
+abi OwnedProxy {{
+    #[storage(write)]
+    fn initialize_proxy();
 
-// use sha256("storage_SRC14") as base to avoid collisions
-#[namespace(SRC14)]
-storage {{
-    // target is at sha256("storage_SRC14_0")
-    target: ContractId = ContractId::from({impl_contract_id}),
-    owner: State = State::Initialized(INITIAL_OWNER),
+    #[storage(write)]
+    fn set_proxy_owner(new_proxy_owner: State);
 }}
 
-impl SRC5 for Contract {{
-    #[storage(read)]
-    fn owner() -> State {{
-        storage.owner.read()
-    }}
+configurable {{
+    INITIAL_TARGET: Option<ContractId> = Some(ContractId::from({impl_contract_id})),
+    INITIAL_OWNER: State = State::Initialized(Identity::Address(Address::from({addr}))),
+}}
+
+#[namespace(SRC14)]
+storage {{
+    target: Option<ContractId> = None,
+    proxy_owner: State = State::Uninitialized,
 }}
 
 impl SRC14 for Contract {{
-    #[storage(write)]
+    #[storage(read, write)]
     fn set_proxy_target(new_target: ContractId) {{
-        only_owner();
-        storage.target.write(new_target);
+        only_proxy_owner(storage.proxy_owner);
+        _set_proxy_target(new_target);
+    }}
+
+    #[storage(read)]
+    fn proxy_target() -> Option<ContractId> {{
+        _proxy_target()
+    }}
+}}
+
+impl SRC14Extension for Contract {{
+    #[storage(read)]
+    fn proxy_owner() -> State {{
+        _proxy_owner(storage.proxy_owner)
+    }}
+}}
+
+impl OwnedProxy for Contract {{
+    #[storage(write)]
+    fn initialize_proxy() {{
+        require(
+            _proxy_owner(storage.proxy_owner) == State::Uninitialized,
+            InitializationError::CannotReinitialized,
+        );
+
+        storage.target.write(INITIAL_TARGET);
+        storage.proxy_owner.write(INITIAL_OWNER);
+    }}
+
+    #[storage(write)]
+    fn set_proxy_owner(new_proxy_owner: State) {{
+        _set_proxy_owner(new_proxy_owner, storage.proxy_owner);
     }}
 }}
 
 #[fallback]
 #[storage(read)]
 fn fallback() {{
-    // pass through any other method call to the target
-    run_external(storage.target.read())
+    run_external(_proxy_target().expect("FallbackError::TargetNotSet"))
 }}
-
-#[storage(read)]
-fn only_owner() {{
-    require(
-        storage
-            .owner
-            .read() == State::Initialized(msg_sender().unwrap()),
-        AccessError::NotOwner,
-    );
-}}
-"#
+        "#
     )
 }
 
@@ -189,43 +218,4 @@ pub fn build_proxy_contract(
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("could not get proxy contract"))?;
     Ok(built_pkg)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{build_proxy_contract, PROXY_CONTRACT_FOLDER_NAME};
-    use forc_pkg::BuildOpts;
-    use forc_util::user_forc_directory;
-    use fuel_tx::ContractId;
-    use fuels_core::types::Address;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_build_proxy_contract() {
-        let owner_address = Address::new([0u8; 32]);
-        let impl_contract_address = ContractId::new([0u8; 32]);
-        let target_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("test")
-            .join("data")
-            .join("standalone_contract");
-        let mut build_opts = BuildOpts::default();
-        let target_path = format!("{}", target_path.display());
-        build_opts.pkg.path = Some(target_path);
-        let pkg_name = "standalone_contract";
-
-        let proxy_contract = build_proxy_contract(
-            &owner_address,
-            &impl_contract_address,
-            pkg_name,
-            &build_opts,
-        );
-        // We want to make sure proxy_contract is building
-        proxy_contract.unwrap();
-
-        let proxy_contract_dir = user_forc_directory()
-            .join(PROXY_CONTRACT_FOLDER_NAME)
-            .join(pkg_name);
-        // Cleanup the test artifacts
-        std::fs::remove_dir_all(proxy_contract_dir).expect("failed to clean test artifacts")
-    }
 }

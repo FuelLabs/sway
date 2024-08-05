@@ -142,6 +142,14 @@ async fn deploy_new_proxy(
     )?;
     let proxy_contract_id =
         deploy_pkg(command, &proxy_built_package, salt, provider, signing_key).await?;
+    fuels::macros::abigen!(Contract(
+        name = "ProxyContract",
+        abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
+    ));
+    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
+    let instance = ProxyContract::new(proxy_contract_id, wallet);
+    instance.methods().initialize_proxy().call().await?;
+    println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
     Ok(proxy_contract_id)
 }
 

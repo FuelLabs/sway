@@ -190,7 +190,7 @@ async fn test_deploy_fresh_proxy() {
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "2b49d9d74f2d54274c01584523f64e0a5f8d2c4df4bdda760efe5c7b451f6b2c",
+                "c8dad72a0b0e67f2fc1b92fc603ff1ea3ddc53eddf8eb0ae4bc9effd0bfe519e",
             )
             .unwrap(),
         ),
