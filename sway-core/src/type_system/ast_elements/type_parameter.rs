@@ -418,7 +418,7 @@ impl TypeParameter {
 
             let sy = ctx
                 .namespace()
-                .module(ctx.engines())
+                .current_module()
                 .current_items()
                 .symbols
                 .get(name_ident)
@@ -502,7 +502,7 @@ impl TypeParameter {
                 // Check to see if the trait constraints are satisfied.
                 match ctx
                     .namespace_mut()
-                    .module_mut(engines)
+                    .current_module_mut()
                     .current_items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(

@@ -561,8 +561,7 @@ pub(crate) fn type_check_method_application(
             .type_id
             .extract_inner_types(engines, IncludeSelf::Yes)
         {
-            let handler = Handler::default();
-            ctx.impls_import(&handler, engines, type_id);
+            ctx.impls_import(engines, type_id);
         }
 
         let args = old_arguments.iter().skip(1).cloned().collect();
@@ -803,11 +802,7 @@ pub(crate) fn resolve_method_name(
             let type_info_prefix = ctx
                 .namespace()
                 .prepend_module_path(&call_path_binding.inner.prefixes);
-            ctx.namespace().lookup_submodule_from_absolute_path(
-                handler,
-                engines,
-                &type_info_prefix,
-            )?;
+            ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -831,7 +826,7 @@ pub(crate) fn resolve_method_name(
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), root_name) = (
                     module_path.first().cloned(),
-                    ctx.namespace().root_module_name().clone(),
+                    ctx.namespace().current_package_name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);
