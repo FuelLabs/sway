@@ -41,7 +41,7 @@ pub struct ServerState {
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
     /// evicting the least recently used sessions when the capacity is reached.
-    pub(crate) sessions: LruSessionCache,
+    pub sessions: LruSessionCache,
     pub documents: Documents,
     // Compilation thread related fields
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
@@ -142,7 +142,9 @@ impl ServerState {
                             {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
-                                if let Err(err) = session.garbage_collect(&mut engines_clone) {
+                                if let Err(err) =
+                                    session.garbage_collect_module(&mut engines_clone, &uri)
+                                {
                                     tracing::error!(
                                         "Unable to perform garbage collection: {}",
                                         err.to_string()
@@ -155,7 +157,6 @@ impl ServerState {
                             optimized_build: ctx.optimized_build,
                             file_versions: ctx.file_versions,
                         });
-
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
@@ -177,6 +178,10 @@ impl ServerState {
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                             // as the engines_clone might have cleared some types that are still in use.
                                             if metrics.reused_programs == 0 {
+                                                // Commit local changes in the module cache to the shared state.
+                                                // This ensures that any modifications made during compilation are preserved
+                                                // before we swap the engines.
+                                                engines_clone.qe().module_cache.commit();
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 mem::swap(
@@ -334,16 +339,9 @@ impl ServerState {
         diagnostics_to_publish
     }
 
-    async fn init_session(&self, uri: &Url) -> Result<(), LanguageServerError> {
-        let session = Arc::new(Session::new());
-        let project_name = session.init(uri, &self.documents).await?;
-        self.sessions.insert(project_name, session);
-        Ok(())
-    }
-
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
-    pub(crate) async fn uri_and_session_from_workspace(
+    pub async fn uri_and_session_from_workspace(
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
@@ -367,20 +365,23 @@ impl ServerState {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = self.sessions.get(&manifest_dir).unwrap_or({
-            // If no session can be found, then we need to call init and insert a new session into the map
-            self.init_session(uri).await?;
-            self.sessions
-                .get(&manifest_dir)
-                .expect("no session found even though it was just inserted into the map")
-        });
+        // If the session is already in the cache, return it
+        if let Some(session) = self.sessions.get(&manifest_dir) {
+            return Ok(session);
+        }
+
+        // If no session can be found, then we need to call init and insert a new session into the map
+        let session = Arc::new(Session::new());
+        session.init(uri, &self.documents).await?;
+        self.sessions.insert(manifest_dir.clone(), session.clone());
+
         Ok(session)
     }
 }
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.
 /// This cache helps limit memory usage by maintaining a fixed number of active sessions.
-pub(crate) struct LruSessionCache {
+pub struct LruSessionCache {
     /// Stores the actual `Session` objects, keyed by their file paths.
     sessions: Arc<DashMap<PathBuf, Arc<Session>>>,
     /// Keeps track of the order in which sessions were accessed, with most recent at the front.
@@ -391,7 +392,7 @@ pub(crate) struct LruSessionCache {
 
 impl LruSessionCache {
     /// Creates a new `LruSessionCache` with the specified capacity.
-    pub(crate) fn new(capacity: usize) -> Self {
+    pub fn new(capacity: usize) -> Self {
         LruSessionCache {
             sessions: Arc::new(DashMap::new()),
             usage_order: Arc::new(Mutex::new(VecDeque::with_capacity(capacity))),
@@ -399,12 +400,12 @@ impl LruSessionCache {
         }
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = RefMulti<'_, PathBuf, Arc<Session>>> {
+    pub fn iter(&self) -> impl Iterator<Item = RefMulti<'_, PathBuf, Arc<Session>>> {
         self.sessions.iter()
     }
 
     /// Retrieves a session from the cache and updates its position to the front of the usage order.
-    pub(crate) fn get(&self, path: &PathBuf) -> Option<Arc<Session>> {
+    pub fn get(&self, path: &PathBuf) -> Option<Arc<Session>> {
         if let Some(session) = self.sessions.try_get(path).try_unwrap() {
             if self.sessions.len() >= self.capacity {
                 self.move_to_front(path);
@@ -418,16 +419,13 @@ impl LruSessionCache {
     /// Inserts or updates a session in the cache.
     /// If at capacity and inserting a new session, evicts the least recently used one.
     /// For existing sessions, updates their position in the usage order if at capacity.
-    pub(crate) fn insert(&self, path: PathBuf, session: Arc<Session>) {
-        if self.sessions.get(&path).is_some() {
-            tracing::trace!("Updating existing session for path: {:?}", path);
-            // Session already exists, just update its position in the usage order if at capacity
-            if self.sessions.len() >= self.capacity {
-                self.move_to_front(&path);
-            }
+    pub fn insert(&self, path: PathBuf, session: Arc<Session>) {
+        if let Some(mut entry) = self.sessions.get_mut(&path) {
+            // Session already exists, update it
+            *entry = session;
+            self.move_to_front(&path);
         } else {
             // New session
-            tracing::trace!("Inserting new session for path: {:?}", path);
             if self.sessions.len() >= self.capacity {
                 self.evict_least_used();
             }
@@ -457,5 +455,83 @@ impl LruSessionCache {
             );
             self.sessions.remove(&old_path);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    #[test]
+    fn test_lru_session_cache_insertion_and_retrieval() {
+        let cache = LruSessionCache::new(2);
+        let path1 = PathBuf::from("/path/1");
+        let path2 = PathBuf::from("/path/2");
+        let session1 = Arc::new(Session::new());
+        let session2 = Arc::new(Session::new());
+
+        cache.insert(path1.clone(), session1.clone());
+        cache.insert(path2.clone(), session2.clone());
+
+        assert!(Arc::ptr_eq(&cache.get(&path1).unwrap(), &session1));
+        assert!(Arc::ptr_eq(&cache.get(&path2).unwrap(), &session2));
+    }
+
+    #[test]
+    fn test_lru_session_cache_capacity() {
+        let cache = LruSessionCache::new(2);
+        let path1 = PathBuf::from("/path/1");
+        let path2 = PathBuf::from("/path/2");
+        let path3 = PathBuf::from("/path/3");
+        let session1 = Arc::new(Session::new());
+        let session2 = Arc::new(Session::new());
+        let session3 = Arc::new(Session::new());
+
+        cache.insert(path1.clone(), session1);
+        cache.insert(path2.clone(), session2);
+        cache.insert(path3.clone(), session3);
+
+        assert!(cache.get(&path1).is_none());
+        assert!(cache.get(&path2).is_some());
+        assert!(cache.get(&path3).is_some());
+    }
+
+    #[test]
+    fn test_lru_session_cache_update_order() {
+        let cache = LruSessionCache::new(2);
+        let path1 = PathBuf::from("/path/1");
+        let path2 = PathBuf::from("/path/2");
+        let path3 = PathBuf::from("/path/3");
+        let session1 = Arc::new(Session::new());
+        let session2 = Arc::new(Session::new());
+        let session3 = Arc::new(Session::new());
+
+        cache.insert(path1.clone(), session1.clone());
+        cache.insert(path2.clone(), session2.clone());
+
+        // Access path1 to move it to the front
+        cache.get(&path1);
+
+        // Insert path3, which should evict path2
+        cache.insert(path3.clone(), session3);
+
+        assert!(cache.get(&path1).is_some());
+        assert!(cache.get(&path2).is_none());
+        assert!(cache.get(&path3).is_some());
+    }
+
+    #[test]
+    fn test_lru_session_cache_overwrite() {
+        let cache = LruSessionCache::new(2);
+        let path1 = PathBuf::from("/path/1");
+        let session1 = Arc::new(Session::new());
+        let session1_new = Arc::new(Session::new());
+
+        cache.insert(path1.clone(), session1);
+        cache.insert(path1.clone(), session1_new.clone());
+
+        assert!(Arc::ptr_eq(&cache.get(&path1).unwrap(), &session1_new));
     }
 }

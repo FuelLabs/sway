@@ -124,13 +124,28 @@ impl Session {
     }
 
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
-    pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
+    pub fn garbage_collect_program(
+        &self,
+        engines: &mut Engines,
+    ) -> Result<(), LanguageServerError> {
         let _p = tracing::trace_span!("garbage_collect").entered();
         let path = self.sync.temp_dir()?;
         let program_id = { engines.se().get_program_id(&path) };
         if let Some(program_id) = program_id {
             engines.clear_program(&program_id);
         }
+        Ok(())
+    }
+
+    /// Clean up memory in the [TypeEngine] and [DeclEngine] for the modified file.
+    pub fn garbage_collect_module(
+        &self,
+        engines: &mut Engines,
+        uri: &Url,
+    ) -> Result<(), LanguageServerError> {
+        let path = uri.to_file_path().unwrap();
+        let source_id = { engines.se().get_source_id(&path) };
+        engines.clear_module(&source_id);
         Ok(())
     }
 
@@ -264,13 +279,12 @@ pub fn compile(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
-    let tests_enabled = true;
     pkg::check(
         build_plan,
         BuildTarget::default(),
         true,
         lsp_mode,
-        tests_enabled,
+        true,
         engines,
         retrigger_compilation,
         experimental,
@@ -387,6 +401,7 @@ pub fn parse_project(
     let build_plan = session
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
+
     let results = compile(
         &build_plan,
         engines,
@@ -397,6 +412,7 @@ pub fn parse_project(
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
+
     let diagnostics = traverse(results, engines, session.clone())?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
@@ -407,6 +423,7 @@ pub fn parse_project(
             }
         }
     }
+
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
@@ -464,6 +481,7 @@ fn create_runnables(
 ) {
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
+
     for (decl, _) in typed_program.test_fns(decl_engine) {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
@@ -480,7 +498,6 @@ fn create_runnables(
             runnables.entry(path).or_default().push(runnable);
         }
     }
-
     // Insert runnable main function if the program is a script.
     if let ty::TyProgramKind::Script {
         entry_function: ref main_function,

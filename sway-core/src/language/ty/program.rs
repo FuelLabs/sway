@@ -502,7 +502,7 @@ impl CollectTypesMetadata for TyProgram {
                 for module in std::iter::once(&self.root).chain(
                     self.root
                         .submodules_recursive()
-                        .map(|(_, submod)| &submod.module),
+                        .map(|(_, submod)| &*submod.module),
                 ) {
                     for node in module.all_nodes.iter() {
                         let is_generic_function = node.is_generic_function(decl_engine);
@@ -531,7 +531,7 @@ impl CollectTypesMetadata for TyProgram {
         for module in std::iter::once(&self.root).chain(
             self.root
                 .submodules_recursive()
-                .map(|(_, submod)| &submod.module),
+                .map(|(_, submod)| &*submod.module),
         ) {
             for node in module.all_nodes.iter() {
                 if node.is_test_function(decl_engine) {
