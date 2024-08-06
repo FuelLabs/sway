@@ -52,7 +52,7 @@ impl ExperimentalStorageTest for Contract {
     }
 
     #[storage(read, write)]
-    fn revert_on_load() {
+    fn revert_on_load_storage_vec() {
         storage.nested_vec.push(StorageVec {});
         storage.nested_vec.push(StorageVec {});
         storage.nested_vec.push(StorageVec {});
