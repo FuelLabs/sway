@@ -10,9 +10,9 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 
 /// The name of the folder that forc generated proxy contract project will reside at.
 pub const PROXY_CONTRACT_FOLDER_NAME: &str = ".generated_proxy_contracts";
-pub const PROXY_CONTRACT_BIN: &[u8] = include_bytes!("../../abi/proxy_contract.bin");
+pub const PROXY_CONTRACT_BIN: &[u8] = include_bytes!("../../proxy_abi/proxy_contract.bin");
 pub const PROXY_CONTRACT_STORAGE_SLOTS: &str =
-    include_str!("../../abi/proxy_contract-storage_slots.json");
+    include_str!("../../proxy_abi/proxy_contract-storage_slots.json");
 pub const PROXY_BIN_FILE_NAME: &str = "proxy.bin";
 pub const PROXY_STORAGE_SLOTS_FILE_NAME: &str = "proxy-storage_slots.json";
 

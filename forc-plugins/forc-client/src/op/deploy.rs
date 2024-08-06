@@ -131,7 +131,7 @@ async fn deploy_new_proxy(
 ) -> Result<fuel_tx::ContractId> {
     fuels::macros::abigen!(Contract(
         name = "ProxyContract",
-        abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
+        abi = "forc-plugins/forc-client/proxy_abi/proxy_contract-abi.json"
     ));
     let proxy_dir_output = create_proxy_contract(pkg_name)?;
     let address = bech32_from_secret(signing_key)?;
