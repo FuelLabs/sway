@@ -156,7 +156,18 @@ async fn deploy_new_proxy(
     .deploy(&wallet, TxPolicies::default())
     .await?;
 
-    println_action_green("Initializing", &format!("proxy contract for {pkg_name}"));
+    let chain_info = provider.chain_info().await?;
+    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+
+    println_action_green(
+        "Finished",
+        &format!("deploying proxy contract for {pkg_name} {contract_url}{proxy_contract_id}"),
+    );
+
     let instance = ProxyContract::new(&proxy_contract_id, wallet);
     instance.methods().initialize_proxy().call().await?;
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
@@ -294,7 +305,6 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 address: None,
             }) => {
                 let pkg_name = &pkg.descriptor.name;
-                println_action_green("Deploying", &format!("proxy contract for {pkg_name}"));
                 // Deploy a new proxy contract.
                 let deployed_proxy_contract =
                     deploy_new_proxy(pkg_name, &deployed_contract_id, &provider, &signing_key)
@@ -337,6 +347,7 @@ async fn confirm_transaction_details(
                     enabled: true,
                     address,
                 }) => {
+                    tx_count += 1;
                     if address.is_some() {
                         " + update proxy"
                     } else {
