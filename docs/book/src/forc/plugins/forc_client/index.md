@@ -74,14 +74,16 @@ Another alternative is the `--target` option, which provides useful aliases to a
 forc-deploy --target beta-3
 ```
 
+Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
+
+## Delayed transactions
 For delayed transactions, you can use the `--submit-only` flag. This flag allows you to submit the transaction without waiting for its finalization.
 
 One use case for this is multisig transactions, where a deployment transaction may stay in a pending state while waiting for all signatures.
+
 ```sh
 forc-deploy --submit-only
 ```
-
-Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
 
 ## Deployment Artifacts
 
