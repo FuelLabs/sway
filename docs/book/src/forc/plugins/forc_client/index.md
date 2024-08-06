@@ -76,6 +76,7 @@ forc-deploy --target beta-3
 
 For delayed transactions, you can use the `--submit-only` flag. This flag allows you to submit the transaction without waiting for its finalization.
 
+One use case for this is multisig transactions, where a deployment transaction may stay in a pending state while waiting for all signatures.
 ```sh
 forc-deploy --submit-only
 ```
