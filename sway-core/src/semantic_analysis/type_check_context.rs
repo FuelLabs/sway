@@ -267,10 +267,9 @@ impl<'a> TypeCheckContext<'a> {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
-        let mut submod_ns =
-            self.namespace_mut()
-                .enter_submodule(handler, engines, mod_name, visibility, module_span)?;
-        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
+        let mut ns = self.namespace_mut();
+	ns.enter_submodule(handler, engines, mod_name, visibility, module_span)?;
+        let submod_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
         Ok(with_submod_ctx(submod_ctx))
     }
 

@@ -6,14 +6,13 @@ use crate::{
 use super::{
     module::Module,
     root::{ResolvedDeclaration, Root},
-    submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
     ModulePath, ModulePathBuf,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{
-    constants::{CORE, STD, PRELUDE, CONTRACT_ID},
+    constants::{CONTRACT_ID, CORE, PRELUDE, STD},
     span::Span,
 };
 
@@ -48,85 +47,94 @@ impl Namespace {
     ///
     /// If `import_preludes_into_root` is true then core::prelude and std::prelude will be imported
     /// into the root module if core and std are available in the external modules.
-    pub fn new(handler: &Handler, engines: &Engines, package_root: Root, import_preludes_into_root: bool) -> Result<Self, ErrorEmitted> {
-	let package_name = package_root.current_package_name().clone();
-	let mut res = Self {
-	    root: package_root,
-	    current_mod_path: vec!(package_name),
-	};
+    pub fn new(
+        handler: &Handler,
+        engines: &Engines,
+        package_root: Root,
+        import_preludes_into_root: bool,
+    ) -> Result<Self, ErrorEmitted> {
+        let package_name = package_root.current_package_name().clone();
+        let mut res = Self {
+            root: package_root,
+            current_mod_path: vec![package_name],
+        };
 
-	if import_preludes_into_root {
-	    res.import_implicits(handler, engines)?;
-	}
-	Ok(res)
+        if import_preludes_into_root {
+            res.import_implicits(handler, engines)?;
+        }
+        Ok(res)
     }
 
-//    pub fn next_package(&mut self, handler: &Handler, engines: &Engines, next_package_name: Ident, span: Option<Span>, contract_id: Option<String>, experimental: ExperimentalFlags) -> Result<(), ErrorEmitted> {
-//	self.root.next_package(next_package_name, span);
-//	self.current_mod_path = vec!(self.root.current_package_name().clone());
-//	self.is_contract_package = contract_id.is_some();
-//	self.import_implicits(&self.current_mod_path.clone());
-//	if let Some(id) = contract_id {
-//	    bind_contract_id_in_root_module(handler, engines, id, self, experimental)?;
-//	}
-//	Ok(())
-//    }
-    
+    //    pub fn next_package(&mut self, handler: &Handler, engines: &Engines, next_package_name: Ident, span: Option<Span>, contract_id: Option<String>, experimental: ExperimentalFlags) -> Result<(), ErrorEmitted> {
+    //	self.root.next_package(next_package_name, span);
+    //	self.current_mod_path = vec!(self.root.current_package_name().clone());
+    //	self.is_contract_package = contract_id.is_some();
+    //	self.import_implicits(&self.current_mod_path.clone());
+    //	if let Some(id) = contract_id {
+    //	    bind_contract_id_in_root_module(handler, engines, id, self, experimental)?;
+    //	}
+    //	Ok(())
+    //    }
+
     pub fn root(self) -> Root {
-	self.root
+        self.root
     }
-    
+
     pub fn current_module(&self) -> &Module {
-	self.root.module_in_current_package(&self.current_mod_path)
+        self.root
+            .module_in_current_package(&self.current_mod_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
     }
-    
+
     pub fn current_module_mut(&mut self) -> &mut Module {
-	dbg!(&self.current_mod_path);
-	self.root.module_mut_in_current_package(&self.current_mod_path)
+        dbg!(&self.current_mod_path);
+        self.root
+            .module_mut_in_current_package(&self.current_mod_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
     }
 
     pub(crate) fn current_module_has_submodule(&self, submod_name: &Ident) -> bool {
-	self.current_module().submodule(&[submod_name.clone()]).is_some()
+        self.current_module()
+            .submodule(&[submod_name.clone()])
+            .is_some()
     }
 
     pub fn current_package_name(&self) -> &Ident {
-	self.root.current_package_name()
+        self.root.current_package_name()
     }
 
-//    /// Initialise the namespace at its root from the given initial namespace.
-//    /// If the root module contains submodules these are now considered external.
-//    pub fn init_root(root: &mut Root) -> Self {
-//        assert!(
-//            !root.module.is_external,
-//            "The root module must not be external during compilation"
-//        );
-//        let mod_path = vec![];
-//
-//        // A copy of the root module is used to initialize every new submodule in the program.
-//        //
-//        // Every submodule that has been added before calling init_root is now considered
-//        // external, which we have to enforce at this point.
-//        fn set_submodules_external(module: &mut Module) {
-//            for (_, submod) in module.submodules_mut().iter_mut() {
-//                if !submod.is_external {
-//                    submod.is_external = true;
-//                    set_submodules_external(submod);
-//                }
-//            }
-//        }
-//
-//        set_submodules_external(&mut root.module);
-//        // The init module itself is not external
-//        root.module.is_external = false;
-//
-//        Self {
-//            init: root.module.clone(),
-//            root: root.clone(),
-//            mod_path,
-//        }
-//    }
+    //    /// Initialise the namespace at its root from the given initial namespace.
+    //    /// If the root module contains submodules these are now considered external.
+    //    pub fn init_root(root: &mut Root) -> Self {
+    //        assert!(
+    //            !root.module.is_external,
+    //            "The root module must not be external during compilation"
+    //        );
+    //        let mod_path = vec![];
+    //
+    //        // A copy of the root module is used to initialize every new submodule in the program.
+    //        //
+    //        // Every submodule that has been added before calling init_root is now considered
+    //        // external, which we have to enforce at this point.
+    //        fn set_submodules_external(module: &mut Module) {
+    //            for (_, submod) in module.submodules_mut().iter_mut() {
+    //                if !submod.is_external {
+    //                    submod.is_external = true;
+    //                    set_submodules_external(submod);
+    //                }
+    //            }
+    //        }
+    //
+    //        set_submodules_external(&mut root.module);
+    //        // The init module itself is not external
+    //        root.module.is_external = false;
+    //
+    //        Self {
+    //            init: root.module.clone(),
+    //            root: root.clone(),
+    //            mod_path,
+    //        }
+    //    }
 
     /// A reference to the path of the module currently being processed.
     pub fn current_mod_path(&self) -> &ModulePathBuf {
@@ -138,32 +146,33 @@ impl Namespace {
         &'a self,
         prefixes: impl IntoIterator<Item = &'a Ident>,
     ) -> ModulePathBuf {
-        self.current_mod_path.iter().chain(prefixes).cloned().collect()
+        self.current_mod_path
+            .iter()
+            .chain(prefixes)
+            .cloned()
+            .collect()
     }
 
-//    /// A reference to the root of the project namespace.
-//    pub fn root(&self) -> &Root {
-//        &self.root
-//    }
+    //    /// A reference to the root of the project namespace.
+    //    pub fn root(&self) -> &Root {
+    //        &self.root
+    //    }
 
     pub fn current_package_root_module(&self) -> &Module {
         &self.root.current_package_root_module()
     }
 
-    pub fn module_from_absolute_path(
-        &self,
-        path: &ModulePathBuf,
-    ) -> Option<&Module> {
+    pub fn module_from_absolute_path(&self, path: &ModulePathBuf) -> Option<&Module> {
         self.root.module_from_absolute_path(path)
     }
 
     // Like module_from_absolute_path, but throws an error if the module is not found
     pub fn require_module_from_absolute_path(
         &self,
-	handler: &Handler,
+        handler: &Handler,
         path: &ModulePathBuf,
     ) -> Result<&Module, ErrorEmitted> {
-	self.root.require_module_in_current_package(handler, path)
+        self.root.require_module_in_current_package(handler, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
@@ -277,159 +286,265 @@ impl Namespace {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .resolve_call_path(handler, engines, &self.current_mod_path, call_path, self_type)
+        self.root.resolve_call_path(
+            handler,
+            engines,
+            &self.current_mod_path,
+            call_path,
+            self_type,
+        )
     }
 
     // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
-    fn import_implicits(&mut self, handler: &Handler, engines: &Engines) -> Result<(), ErrorEmitted> {
-	// Import preludes
-	let package_name = self.current_package_name().to_string();
-	let core_string = CORE.to_string();
-	let core_ident = Ident::new_no_span(core_string.clone());
-	let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
-	if package_name == CORE {
-	    // Do nothing
-	} else if package_name == STD {
-	    // Import core::prelude::*
-	    assert!(self.root.exists_as_external(&core_string));
-	    self.root.star_import(handler, engines, &[core_ident, prelude_ident], &self.current_mod_path, Visibility::Private)?
-	} else {
-	    // Import core::prelude::* and std::prelude::*
-	    assert!(self.root.exists_as_external(&core_string));
-	    self.root.star_import(handler, engines, &[core_ident, prelude_ident.clone()], &self.current_mod_path, Visibility::Private)?;
-	    
-	    let std_string = STD.to_string();
-	    // Only import std::prelude::* if std exists as a dependency
-	    if self.root.exists_as_external(&std_string) {
-		self.root.star_import(handler, engines, &[Ident::new_no_span(std_string), prelude_ident], &self.current_mod_path, Visibility::Private)?
-	    }
-	}
+    fn import_implicits(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<(), ErrorEmitted> {
+        // Import preludes
+        let package_name = self.current_package_name().to_string();
+        let core_string = CORE.to_string();
+        let core_ident = Ident::new_no_span(core_string.clone());
+        let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
+        if package_name == CORE {
+            // Do nothing
+        } else if package_name == STD {
+            // Import core::prelude::*
+            assert!(self.root.exists_as_external(&core_string));
+            self.root.star_import(
+                handler,
+                engines,
+                &[core_ident, prelude_ident],
+                &self.current_mod_path,
+                Visibility::Private,
+            )?
+        } else {
+            // Import core::prelude::* and std::prelude::*
+            assert!(self.root.exists_as_external(&core_string));
+            self.root.star_import(
+                handler,
+                engines,
+                &[core_ident, prelude_ident.clone()],
+                &self.current_mod_path,
+                Visibility::Private,
+            )?;
 
-	// Import contract id. CONTRACT_ID is declared in the root module, so only import it into non-root modules
-	if self.root.is_contract_package() && self.current_mod_path.len() > 1 {
-	    // import ::CONTRACT_ID
-	    self.root.item_import(handler, engines, &[Ident::new_no_span(package_name)], &Ident::new_no_span(CONTRACT_ID.to_string()), &self.current_mod_path, None, Visibility::Private)?
-	}
+            let std_string = STD.to_string();
+            // Only import std::prelude::* if std exists as a dependency
+            if self.root.exists_as_external(&std_string) {
+                self.root.star_import(
+                    handler,
+                    engines,
+                    &[Ident::new_no_span(std_string), prelude_ident],
+                    &self.current_mod_path,
+                    Visibility::Private,
+                )?
+            }
+        }
 
-	Ok(())
-    }
-    
-    pub(crate) fn enter_submodule(&mut self, handler: &Handler, engines: &Engines, mod_name: Ident, visibility: Visibility, module_span: Span) -> Result<SubmoduleNamespace, ErrorEmitted> {
-	let mut import_implicits = false;
-	
-	// Ensure the new module exists and is initialized properly
-	if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
-	    // Entering a new module. Add a new one.
-	    self.current_module_mut().add_new_submodule(&mod_name, visibility, Some(module_span));
-	    import_implicits = true;
-	}
+        // Import contract id. CONTRACT_ID is declared in the root module, so only import it into non-root modules
+        if self.root.is_contract_package() && self.current_mod_path.len() > 1 {
+            // import ::CONTRACT_ID
+            self.root.item_import(
+                handler,
+                engines,
+                &[Ident::new_no_span(package_name)],
+                &Ident::new_no_span(CONTRACT_ID.to_string()),
+                &self.current_mod_path,
+                None,
+                Visibility::Private,
+            )?
+        }
 
-	// Update self to point to the new module
-	let parent_mod_path = self.current_mod_path.clone();
- 	self.current_mod_path.push(mod_name.clone());
-
-	// Import implicits into the newly created module.
-	if import_implicits {
-	    self.import_implicits(handler, engines)?;
-	}
-
-	// TODO: Do we need to return a SubmoduleNamespace? Can't we just push the new name onto
-	// self.current_mod_path and pop it when done with the submodule? That's what happens in the
-	// collection phase (which uses push_new_submodule and pop_submodule).
-	Ok(
-	    SubmoduleNamespace {
-		namespace: self,
-		parent_mod_path,
-	    }
-	)
-    }
-
-    // TODO: Do we need to return a SubmoduleNamespace? Can't we just push the new name onto
-    // self.current_mod_path and pop it when done with the submodule? That's what happens in the
-    // collection phase (which uses push_new_submodule and pop_submodule).
-    // Replace the submodule path with the original module path.
-    // This ensures that the namespace's module path is reset when ownership over it is
-    // relinquished from the SubmoduleNamespace.
-    pub(crate) fn leave_submodule(&mut self, parent_mod_path: &ModulePathBuf) {
-	self.current_mod_path = parent_mod_path.clone();
+        Ok(())
     }
 
-//    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
-//    ///
-//    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
-//    /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
-//    /// back to the original path so that we can continue type-checking the current module after
-//    /// finishing with the dependency.
-//    pub(crate) fn enter_submodule(
-//        &mut self,
-//        engines: &Engines,
-//        mod_name: Ident,
-//        visibility: Visibility,
-//        module_span: Span,
-//    ) -> SubmoduleNamespace {
-//        let init = self.init.clone();
-//        let is_external = self.module(engines).is_external;
-//        let submod_path: Vec<_> = self
-//            .mod_path
-//            .iter()
-//            .cloned()
-//            .chain(Some(mod_name.clone()))
-//            .collect();
-//        self.module_mut(engines)
-//            .submodules
-//            .entry(mod_name.to_string())
-//            .or_insert(init.new_submodule_from_init(
-//                mod_name,
-//                visibility,
-//                Some(module_span),
-//                is_external,
-//                submod_path.clone(),
-//            ));
-//        let parent_mod_path = std::mem::replace(&mut self.current_mod_path, submod_path.clone());
-//        SubmoduleNamespace {
-//            namespace: self,
-//            parent_mod_path,
-//        }
-//    }
+    pub(crate) fn enter_submodule(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_name: Ident,
+        visibility: Visibility,
+        module_span: Span,
+    ) -> Result<(), ErrorEmitted> {
+        println!(
+            "Current module is {:?}. Entering submodule {:?}.",
+            self.current_mod_path, mod_name
+        );
+        let mut import_implicits = false;
+
+        // Ensure the new module exists and is initialized properly
+        if !self
+            .current_module()
+            .submodules()
+            .contains_key(&mod_name.to_string())
+        {
+            // Entering a new module. Add a new one.
+            self.current_module_mut()
+                .add_new_submodule(&mod_name, visibility, Some(module_span));
+            import_implicits = true;
+        }
+
+        // Update self to point to the new module
+        self.current_mod_path.push(mod_name.clone());
+
+        // Import implicits into the newly created module.
+        if import_implicits {
+            self.import_implicits(handler, engines)?;
+        }
+
+        println!("New mod path is {:?}.", self.current_mod_path);
+
+        Ok(())
+    }
+
+    //    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
+    //    ///
+    //    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
+    //    /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
+    //    /// back to the original path so that we can continue type-checking the current module after
+    //    /// finishing with the dependency.
+    //    pub(crate) fn enter_submodule(
+    //        &mut self,
+    //        engines: &Engines,
+    //        mod_name: Ident,
+    //        visibility: Visibility,
+    //        module_span: Span,
+    //    ) -> SubmoduleNamespace {
+    //        let init = self.init.clone();
+    //        let is_external = self.module(engines).is_external;
+    //        let submod_path: Vec<_> = self
+    //            .mod_path
+    //            .iter()
+    //            .cloned()
+    //            .chain(Some(mod_name.clone()))
+    //            .collect();
+    //        self.module_mut(engines)
+    //            .submodules
+    //            .entry(mod_name.to_string())
+    //            .or_insert(init.new_submodule_from_init(
+    //                mod_name,
+    //                visibility,
+    //                Some(module_span),
+    //                is_external,
+    //                submod_path.clone(),
+    //            ));
+    //        let parent_mod_path = std::mem::replace(&mut self.current_mod_path, submod_path.clone());
+    //        SubmoduleNamespace {
+    //            namespace: self,
+    //            parent_mod_path,
+    //        }
+    //    }
 
     /// Pushes a new submodule to the namespace's module hierarchy.
     pub fn push_new_submodule(
         &mut self,
-	handler: &Handler,
-	engines: &Engines,
+        handler: &Handler,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
-    ) -> Result<(), ErrorEmitted>{
-	match self.enter_submodule(handler, engines, mod_name, visibility, module_span) {
-	    Ok(_) => Ok(()),
-	    Err(e) => Err(e),
-	}
+    ) -> Result<(), ErrorEmitted> {
+        println!("Pushing module {:?}.", mod_name);
+        match self.enter_submodule(handler, engines, mod_name, visibility, module_span) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
- 
+
     /// Pops the current submodule from the namespace's module hierarchy.
     pub fn pop_submodule(&mut self) {
+        println!("Popping: Leaving module {:?}.", self.current_mod_path);
         self.current_mod_path.pop();
+        println!("New module path is {:?}.", self.current_mod_path);
     }
 
-    pub(crate) fn star_import_to_current_module(&mut self, handler: &Handler, engines: &Engines, src: &ModulePath, visibility: Visibility) -> Result<(), ErrorEmitted> {
-	self.root.star_import(handler, engines, src, &self.current_mod_path, visibility)
+    pub(crate) fn star_import_to_current_module(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        visibility: Visibility,
+    ) -> Result<(), ErrorEmitted> {
+        self.root
+            .star_import(handler, engines, src, &self.current_mod_path, visibility)
     }
 
-    pub(crate) fn variant_star_import_to_current_module(&mut self, handler: &Handler, engines: &Engines, src: &ModulePath, enum_name: &Ident, visibility: Visibility) -> Result<(), ErrorEmitted> {
-	self.root.variant_star_import(handler, engines, src, &self.current_mod_path, enum_name, visibility)
-    }
-    
-    pub(crate) fn self_import_to_current_module(&mut self, handler: &Handler, engines: &Engines, src: &ModulePath, alias: Option<Ident>, visibility: Visibility) -> Result<(), ErrorEmitted> {
-	self.root.self_import(handler, engines, src, &self.current_mod_path, alias, visibility)
+    pub(crate) fn variant_star_import_to_current_module(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        enum_name: &Ident,
+        visibility: Visibility,
+    ) -> Result<(), ErrorEmitted> {
+        self.root.variant_star_import(
+            handler,
+            engines,
+            src,
+            &self.current_mod_path,
+            enum_name,
+            visibility,
+        )
     }
 
-    pub(crate) fn item_import_to_current_module(&mut self, handler: &Handler, engines: &Engines, src: &ModulePath, item: &Ident, alias: Option<Ident>, visibility: Visibility) -> Result<(), ErrorEmitted> {
-	self.root.item_import(handler, engines, src, item, &self.current_mod_path, alias, visibility)
+    pub(crate) fn self_import_to_current_module(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        alias: Option<Ident>,
+        visibility: Visibility,
+    ) -> Result<(), ErrorEmitted> {
+        self.root.self_import(
+            handler,
+            engines,
+            src,
+            &self.current_mod_path,
+            alias,
+            visibility,
+        )
     }
 
-    pub(crate) fn variant_import_to_current_module(&mut self, handler: &Handler, engines: &Engines, src: &ModulePath, enum_name: &Ident, variant_name: &Ident, alias: Option<Ident>, visibility: Visibility) -> Result<(), ErrorEmitted> {
-	self.root.variant_import(handler, engines, src, enum_name, variant_name, &self.current_mod_path, alias, visibility)
+    pub(crate) fn item_import_to_current_module(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        item: &Ident,
+        alias: Option<Ident>,
+        visibility: Visibility,
+    ) -> Result<(), ErrorEmitted> {
+        self.root.item_import(
+            handler,
+            engines,
+            src,
+            item,
+            &self.current_mod_path,
+            alias,
+            visibility,
+        )
+    }
+
+    pub(crate) fn variant_import_to_current_module(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        enum_name: &Ident,
+        variant_name: &Ident,
+        alias: Option<Ident>,
+        visibility: Visibility,
+    ) -> Result<(), ErrorEmitted> {
+        self.root.variant_import(
+            handler,
+            engines,
+            src,
+            enum_name,
+            variant_name,
+            &self.current_mod_path,
+            alias,
+            visibility,
+        )
     }
 }
