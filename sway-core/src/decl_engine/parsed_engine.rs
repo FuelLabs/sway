@@ -100,6 +100,30 @@ decl_engine_insert!(enum_slab, EnumDeclaration);
 decl_engine_insert!(enum_variant_slab, EnumVariant);
 decl_engine_insert!(type_alias_slab, TypeAliasDeclaration);
 
+macro_rules! decl_engine_replace {
+    ($slab:ident, $decl:ty) => {
+        impl ParsedDeclEngineReplace<$decl> for ParsedDeclEngine {
+            fn replace(&self, index: ParsedDeclId<$decl>, decl: $decl) {
+                self.$slab.replace(index.inner(), decl);
+            }
+        }
+    };
+}
+
+decl_engine_replace!(variable_slab, VariableDeclaration);
+decl_engine_replace!(function_slab, FunctionDeclaration);
+decl_engine_replace!(trait_slab, TraitDeclaration);
+decl_engine_replace!(trait_fn_slab, TraitFn);
+decl_engine_replace!(trait_type_slab, TraitTypeDeclaration);
+decl_engine_replace!(impl_self_or_trait_slab, ImplSelfOrTrait);
+decl_engine_replace!(struct_slab, StructDeclaration);
+decl_engine_replace!(storage_slab, StorageDeclaration);
+decl_engine_replace!(abi_slab, AbiDeclaration);
+decl_engine_replace!(configurable_slab, ConfigurableDeclaration);
+decl_engine_replace!(constant_slab, ConstantDeclaration);
+decl_engine_replace!(enum_slab, EnumDeclaration);
+decl_engine_replace!(type_alias_slab, TypeAliasDeclaration);
+
 macro_rules! decl_engine_clear {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl ParsedDeclEngine {
