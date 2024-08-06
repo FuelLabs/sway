@@ -488,7 +488,12 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
@@ -541,7 +546,12 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
