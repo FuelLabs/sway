@@ -34,6 +34,8 @@ pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
+use semantic_analysis::symbol_resolve::ResolveSymbols;
+use semantic_analysis::symbol_resolve_context::SymbolResolveContext;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -537,8 +539,12 @@ pub fn parsed_to_ast(
 
     let namespace = Namespace::init_root(initial_namespace);
     // Collect the program symbols.
-    let _collection_ctx =
+    let mut symbol_collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
+
+    // Resolve the program symbols.
+    let resolve_ctx = SymbolResolveContext::new(engines, &mut symbol_collection_ctx);
+    parse_program.resolve_symbols(handler, resolve_ctx);
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
