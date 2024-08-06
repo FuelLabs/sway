@@ -331,7 +331,7 @@ pub(crate) fn compile_configurables(
                 let buffer_size = match config_type_info.abi_encode_size_hint(engines) {
                     crate::AbiEncodeSizeHint::Exact(len) => len,
                     crate::AbiEncodeSizeHint::Range(_, len) => len,
-                    _ => unreachable!("unexpected type accepted as configurable")
+                    _ => unreachable!("unexpected type accepted as configurable"),
                 };
 
                 if buffer_size > encoded_bytes.len() {
