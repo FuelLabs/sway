@@ -853,7 +853,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// # Additional Information
     ///
-    /// This method does not work for any `V` type that has a 0 size, such as StorageVec itself. Meaning you cannot use this method on a StorageVec<StorageVec<T>>.
+    /// This method does not work for any `V` type that has a 0 size, such as `StorageVec` itself. Meaning you cannot use this method on a `StorageVec<StorageVec<T>>`.
     ///
     /// # Returns
     ///
