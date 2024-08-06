@@ -13,9 +13,10 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::{
-            AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration,
-            FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration, StructDeclaration,
-            TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration,
+            AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, Declaration,
+            EnumDeclaration, FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration,
+            StructDeclaration, TraitDeclaration, TraitFn, TraitTypeDeclaration,
+            TypeAliasDeclaration,
         },
         ty::{
             self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl,
@@ -120,6 +121,13 @@ where
     T: TyDeclParsedType,
 {
     fn get_parsed_decl_id(&self, decl_id: &DeclId<T>) -> Option<ParsedDeclId<T::ParsedType>>;
+}
+
+pub trait DeclEngineGetParsedDecl<T>
+where
+    T: TyDeclParsedType,
+{
+    fn get_parsed_decl(&self, decl_id: &DeclId<T>) -> Option<Declaration>;
 }
 
 pub trait DeclEngineInsert<T>
@@ -287,6 +295,82 @@ decl_engine_parsed_decl_id!(constant_parsed_decl_id_map, ty::TyConstantDecl);
 decl_engine_parsed_decl_id!(configurable_parsed_decl_id_map, ty::TyConfigurableDecl);
 decl_engine_parsed_decl_id!(enum_parsed_decl_id_map, ty::TyEnumDecl);
 decl_engine_parsed_decl_id!(type_alias_parsed_decl_id_map, ty::TyTypeAliasDecl);
+
+macro_rules! decl_engine_parsed_decl {
+    ($slab:ident, $decl:ty, $ctor:expr) => {
+        impl DeclEngineGetParsedDecl<$decl> for DeclEngine {
+            fn get_parsed_decl(&self, decl_id: &DeclId<$decl>) -> Option<Declaration> {
+                let parsed_decl_id_map = self.$slab.read();
+                if let Some(parsed_decl_id) = parsed_decl_id_map.get(&decl_id) {
+                    return Some($ctor(parsed_decl_id.clone()));
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+decl_engine_parsed_decl!(
+    function_parsed_decl_id_map,
+    ty::TyFunctionDecl,
+    Declaration::FunctionDeclaration
+);
+decl_engine_parsed_decl!(
+    trait_parsed_decl_id_map,
+    ty::TyTraitDecl,
+    Declaration::TraitDeclaration
+);
+decl_engine_parsed_decl!(
+    trait_fn_parsed_decl_id_map,
+    ty::TyTraitFn,
+    Declaration::TraitFnDeclaration
+);
+decl_engine_parsed_decl!(
+    trait_type_parsed_decl_id_map,
+    ty::TyTraitType,
+    Declaration::TraitTypeDeclaration
+);
+decl_engine_parsed_decl!(
+    impl_self_or_trait_parsed_decl_id_map,
+    ty::TyImplSelfOrTrait,
+    Declaration::ImplSelfOrTrait
+);
+decl_engine_parsed_decl!(
+    struct_parsed_decl_id_map,
+    ty::TyStructDecl,
+    Declaration::StructDeclaration
+);
+decl_engine_parsed_decl!(
+    storage_parsed_decl_id_map,
+    ty::TyStorageDecl,
+    Declaration::StorageDeclaration
+);
+decl_engine_parsed_decl!(
+    abi_parsed_decl_id_map,
+    ty::TyAbiDecl,
+    Declaration::AbiDeclaration
+);
+decl_engine_parsed_decl!(
+    constant_parsed_decl_id_map,
+    ty::TyConstantDecl,
+    Declaration::ConstantDeclaration
+);
+decl_engine_parsed_decl!(
+    configurable_parsed_decl_id_map,
+    ty::TyConfigurableDecl,
+    Declaration::ConfigurableDeclaration
+);
+decl_engine_parsed_decl!(
+    enum_parsed_decl_id_map,
+    ty::TyEnumDecl,
+    Declaration::EnumDeclaration
+);
+decl_engine_parsed_decl!(
+    type_alias_parsed_decl_id_map,
+    ty::TyTypeAliasDecl,
+    Declaration::TypeAliasDeclaration
+);
 
 macro_rules! decl_engine_replace {
     ($slab:ident, $decl:ty) => {
