@@ -896,7 +896,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 let load_block = load_val.get_instruction(context).unwrap().parent;
                 let temp = function.new_unique_local_var(
                     context,
-                    "aggr_memcpy".into(),
+                    "__aggr_memcpy_0".into(),
                     src_ptr.match_ptr_type(context).unwrap(),
                     None,
                     true,
