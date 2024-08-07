@@ -2036,6 +2036,7 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-vm",
+ "fuels",
  "fuels-accounts",
  "fuels-core",
  "futures",
