@@ -270,7 +270,9 @@ impl<'a> TypeCheckContext<'a> {
         let mut ns = self.namespace_mut();
 	ns.enter_submodule(handler, engines, mod_name, visibility, module_span)?;
         let submod_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
-        Ok(with_submod_ctx(submod_ctx))
+        let ret = with_submod_ctx(submod_ctx);
+	self.namespace.pop_submodule();
+	Ok(ret)
     }
 
     /// Returns a mutable reference to the current namespace.
