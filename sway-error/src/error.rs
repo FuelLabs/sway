@@ -368,6 +368,8 @@ pub enum CompileError {
         struct_is_empty: bool,
         usage_context: StructFieldUsageContext,
     },
+    #[error("Field \"{field_name}\" has multiple definitions.")]
+    StructFieldDuplicated { field_name: Ident, duplicate: Ident },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         method_name: Ident,
@@ -1071,6 +1073,7 @@ impl Spanned for CompileError {
             StructCannotBeInstantiated { span, .. } => span.clone(),
             StructFieldIsPrivate { field_name, .. } => field_name.span(),
             StructFieldDoesNotExist { field_name, .. } => field_name.span(),
+            StructFieldDuplicated { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             TupleElementAccessOnNonTuple { span, .. } => span.clone(),
@@ -2058,6 +2061,24 @@ impl ToDiagnostic for CompileError {
                     }
 
                     hints
+                },
+                help: vec![],
+            },
+            StructFieldDuplicated { field_name, duplicate } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct field has multiple definitions".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" has multiple definitions.")
+                ),
+                hints: {
+                    vec![
+                        Hint::info(
+                            source_engine,
+                            duplicate.span(),
+                            "Field definition duplicated here.".into(),
+                        )
+                   ]
                 },
                 help: vec![],
             },
