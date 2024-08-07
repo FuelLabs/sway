@@ -41,6 +41,8 @@ pub enum Intrinsic {
     EncodeBufferEmpty,      // let buffer: (raw_ptr, u64, u64) = __encode_buffer_empty()
     EncodeBufferAppend, // let buffer: (raw_ptr, u64, u64) = __encode_buffer_append(buffer, primitive data type)
     EncodeBufferAsRawSlice, // let slice: raw_slice = __encode_buffer_as_raw_slice(buffer)
+    Slice, // let ref_to_slice = __slice::<T: array or ref_to_slice>(item: T, inclusive_start_index, exclusive_end_index)
+    ElemAt, // let elem: &T = __elem_at::<T: array or ref_to_slice>(item: T, index)
 }
 
 impl fmt::Display for Intrinsic {
@@ -85,6 +87,8 @@ impl fmt::Display for Intrinsic {
             Intrinsic::EncodeBufferEmpty => "encode_buffer_empty",
             Intrinsic::EncodeBufferAppend => "encode_buffer_append",
             Intrinsic::EncodeBufferAsRawSlice => "encode_buffer_as_raw_slice",
+            Intrinsic::Slice => "slice",
+            Intrinsic::ElemAt => "elem_at",
         };
         write!(f, "{s}")
     }
@@ -133,6 +137,8 @@ impl Intrinsic {
             "__encode_buffer_empty" => EncodeBufferEmpty,
             "__encode_buffer_append" => EncodeBufferAppend,
             "__encode_buffer_as_raw_slice" => EncodeBufferAsRawSlice,
+            "__slice" => Slice,
+            "__elem_at" => ElemAt,
             _ => return None,
         })
     }

@@ -3,6 +3,7 @@ library;
 pub mod primitives;
 pub mod raw_ptr;
 pub mod raw_slice;
+pub mod slice;
 pub mod r#str;
 pub mod ops;
 pub mod primitive_conversions;

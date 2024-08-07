@@ -1,6 +1,7 @@
 library;
 
 use ::primitives::*;
+use ::slice::*;
 
 /// Trait for the addition of two values.
 pub trait Add {

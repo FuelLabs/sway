@@ -1,5 +1,6 @@
 use crate::{
     language::{parsed::Declaration, Visibility},
+    namespace::LexicalScopeId,
     namespace::ModulePath,
     semantic_analysis::Namespace,
     Engines,
@@ -37,14 +38,34 @@ impl SymbolCollectionContext {
 
     /// Scope the `CollectionContext` with a new lexical scope.
     pub fn scoped<T>(
-        mut self,
+        &mut self,
         engines: &Engines,
-        with_scoped_ctx: impl FnOnce(SymbolCollectionContext) -> Result<T, ErrorEmitted>,
-    ) -> Result<T, ErrorEmitted> {
+        with_scoped_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
+    ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
+        let lexical_scope_id: LexicalScopeId = self
+            .namespace
+            .module_mut(engines)
+            .write(engines, |m| m.push_new_lexical_scope());
+        let ret = with_scoped_ctx(self);
+        self.namespace
+            .module_mut(engines)
+            .write(engines, |m| m.pop_lexical_scope());
+        (ret, lexical_scope_id)
+    }
+
+    /// Enter the lexical scope and produce a collection context ready for
+    /// collecting its content.
+    ///
+    /// Returns the result of the given `with_ctx` function.
+    pub fn enter_lexical_scope<T>(
+        &mut self,
+        engines: &Engines,
+        with_ctx: impl FnOnce(&mut SymbolCollectionContext) -> T,
+    ) -> T {
         self.namespace
             .module_mut(engines)
             .write(engines, |m| m.push_new_lexical_scope());
-        let ret = with_scoped_ctx(self.clone());
+        let ret = with_ctx(self);
         self.namespace
             .module_mut(engines)
             .write(engines, |m| m.pop_lexical_scope());
@@ -64,7 +85,7 @@ impl SymbolCollectionContext {
         with_submod_ctx: impl FnOnce(&mut SymbolCollectionContext) -> T,
     ) -> T {
         self.namespace
-            .push_new_submodule(engines, mod_name, visibility, module_span);
+            .push_submodule(engines, mod_name, visibility, module_span);
         //let Self { namespace, .. } = self;
         //let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
         let ret = with_submod_ctx(self);
