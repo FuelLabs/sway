@@ -1,6 +1,8 @@
 # `forc-client`
 
-Forc plugin for interacting with a Fuel node. Since transactions are going to require some gas, you need to sign them with an account that has enough tokens to pay for them.
+The forc plugin for interacting with a Fuel node.
+
+Since transactions are going to require some gas, you need to sign them with an account that has enough coins to pay for them.
 
 We offer multiple ways to sign the transaction:
 
@@ -8,7 +10,7 @@ We offer multiple ways to sign the transaction:
   2. Use the default signer to deploy to a local node
   3. Use `forc-wallet` to manually sign transactions, and copy the signed transaction back to `forc-client`.
 
-The easiest and recommended way to interact with deployed networks such as our testnets is option 1, using `forc-client` to sign your transactions which reads your default `forc-wallet` vault. For interacting with local node, we recommend using the second option, which leads `forc-client` to sign transactions with the a private key that comes pre-funded in local environments.
+The easiest and recommended way to interact with deployed networks such as our testnets is option 1, using `forc-client` to sign your transactions which reads your default `forc-wallet` vault. For interacting with local node, we recommend using the second option, which leads `forc-client` to sign transactions with the private key that comes pre-funded in local environments.
 
 ## Option 1: Sign transactions via forc-client using your local forc-wallet vault
 
@@ -37,7 +39,7 @@ As it can be seen from the example, `forc-client` asks for your password to decr
 
 ## Option 2: Using default signer
 
-If you are not interacting with a deployed network, such as testnets, your local `fuel-core` environment can be structured such that it funds an account by default. Using `--default-signer` flag with `forc-client` binaries (run, deploy) will instruct `forc-client` to sign transactions with this pre-funded account. Which makes it a useful command while working against a local node.
+If you are not interacting with a deployed network, such as testnets, your local `fuel-core` environment can be structured such that it funds an account by default. Using `--default-signer` flag with `forc-client` binaries (run, deploy) will instruct `forc-client` to sign transactions with this pre-funded account. This makes it a useful command while working against a local node.
 
 Example:
 
@@ -54,7 +56,7 @@ Example:
 
 ## Option 3: Manually signing through forc-wallet (Deprecated)
 
-This option is for creating the transaction first, signing it manually and supplying the signed transaction back to forc-client. Since it requires multiple steps, it is more error-prone and not recommended for general use case. Also this will be deprecated soon.
+This option is for creating the transaction first, signing it manually, and supplying the signed transaction back to forc-client. Since it requires multiple steps, it is more error-prone and not recommended for general use cases. Also this will be deprecated soon.
 
 1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy --manual-sign` or `forc run --manual-sign` with your desired parameters. For a list of parameters please refer to the [forc-deploy](./forc_deploy.md) or [forc-run](./forc_run.md) section of the book. Once you run either command you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
 2. Take the transaction ID generated in the first step and sign it with `forc wallet sign --account <account_index> tx-id <transaction_id>`. This will generate a signature.
@@ -144,9 +146,9 @@ implicit-std = false
 enabled = true
 ```
 
-If there is no `address` field present under the proxy table, like the example above, `forc` will automatically create a proxy contract based on the [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating and deploying the proxy contract, the target is set to the current contract, and owner of the proxy is set to the account that is signing the transaction for deployment.
+If there is no `address` field present under the proxy table, like the example above, `forc` will automatically create a proxy contract based on the [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating and deploying the proxy contract, the target is set to the current contract, and the owner of the proxy is set to the account that is signing the transaction for deployment.
 
-This means that if you simply enable proxy in the `Forc.toml`, forc will automatically deploy a proxy contract for you and you do not need to do anything manually aside from signing the deployment transactions for the proxy contract. After deploying the proxy contract, the its address is added into the `address` field of the proxy table.
+This means that if you simply enable proxy in the `Forc.toml`, forc will automatically deploy a proxy contract for you and you do not need to do anything manually aside from signing the deployment transactions for the proxy contract. After deploying the proxy contract, the address is added into the `address` field of the proxy table.
 
 If you want to update the target of an [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) compliant proxy contract rather than deploying a new one, simply add its `address` in the `address` field, like the following example:
 
