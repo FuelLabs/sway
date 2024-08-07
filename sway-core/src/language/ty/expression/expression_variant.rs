@@ -172,6 +172,15 @@ pub enum TyExpressionVariant {
     Deref(Box<TyExpression>),
 }
 
+impl TyExpressionVariant {
+    pub fn as_literal(&self) -> Option<&Literal> {
+        match self {
+            TyExpressionVariant::Literal(v) => Some(v),
+            _ => None,
+        }
+    }
+}
+
 impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {

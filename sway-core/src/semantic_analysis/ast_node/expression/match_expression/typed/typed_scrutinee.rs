@@ -233,7 +233,7 @@ fn type_check_struct(
     let unknown_decl =
         ctx.namespace()
             .resolve_symbol_typed(handler, engines, &struct_name, ctx.self_type())?;
-    let struct_id = unknown_decl.to_struct_id(handler, ctx.engines())?;
+    let struct_id = unknown_decl.to_struct_decl(handler, ctx.engines())?;
     let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
     // monomorphize the struct definition
