@@ -94,7 +94,7 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_contract_ret(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::EncodeBufferEmpty => {
-                type_check_encode_buffer_empty(ctx, kind, arguments, type_arguments, span)
+                type_check_encode_buffer_empty(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::EncodeBufferAppend => {
                 type_check_encode_append(handler, ctx, kind, arguments, type_arguments, span)
@@ -417,13 +417,20 @@ fn new_encoding_buffer_tuple(
 }
 
 fn type_check_encode_buffer_empty(
+    handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
     _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    assert!(arguments.is_empty());
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
 
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
@@ -485,6 +492,14 @@ fn type_check_encode_append(
     _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 2 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        }));
+    }
+
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
