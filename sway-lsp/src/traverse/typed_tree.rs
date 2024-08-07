@@ -1270,6 +1270,9 @@ fn collect_type_id(
         TypeInfo::Array(type_arg, ..) => {
             collect_type_argument(ctx, type_arg);
         }
+        TypeInfo::Slice(type_arg, ..) => {
+            collect_type_argument(ctx, type_arg);
+        }
         TypeInfo::Tuple(type_arguments) => {
             adaptive_iter(type_arguments, |type_arg| {
                 collect_type_argument(ctx, type_arg);

@@ -19,6 +19,7 @@ members = [
   "test_programs/output_inline_tests",
   "test_programs/result_inline_tests",
   "test_programs/revert_inline_tests",
+  "test_programs/storage_key_inline_tests",
   "test_programs/string_inline_tests",
   "test_programs/u128_inline_tests",
   "test_programs/vec_inline_tests",

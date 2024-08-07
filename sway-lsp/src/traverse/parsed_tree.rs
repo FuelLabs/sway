@@ -1042,6 +1042,9 @@ impl Parse for TypeArgument {
                 );
                 type_arg.parse(ctx);
             }
+            TypeInfo::Slice(type_arg) => {
+                type_arg.parse(ctx);
+            }
             TypeInfo::Tuple(type_arguments) => {
                 adaptive_iter(type_arguments, |type_arg| type_arg.parse(ctx));
             }

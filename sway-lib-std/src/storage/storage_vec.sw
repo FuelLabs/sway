@@ -851,9 +851,17 @@ impl<V> StorageKey<StorageVec<V>> {
 
     /// Load a `Vec` from the `StorageVec`.
     ///
+    /// # Additional Information
+    ///
+    /// This method does not work for any `V` type that has a 0 size, such as `StorageVec` itself. Meaning you cannot use this method on a `StorageVec<StorageVec<T>>`.
+    ///
     /// # Returns
     ///
     /// * [Option<Vec<V>>] - The vector constructed from storage or `None`.
+    ///
+    /// # Reverts
+    ///
+    /// * If the size of type `V` is 0.
     ///
     /// # Number of Storage Accesses
     ///
@@ -888,6 +896,9 @@ impl<V> StorageKey<StorageVec<V>> {
             len => {
                 // Get the number of storage slots needed based on the size.
                 let size_V_bytes = __size_of::<V>();
+
+                assert(size_V_bytes != 0);
+
                 let bytes = if size_V_bytes < 8 {
                     // Len * size_of_word
                     len * 8

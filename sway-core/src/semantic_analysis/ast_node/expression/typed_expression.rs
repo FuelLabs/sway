@@ -1806,20 +1806,20 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let never_type = type_engine.insert(engines, TypeInfo::Never, None);
+            let elem_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
-                    elem_type: never_type,
+                    elem_type,
                     contents: Vec::new(),
                 },
                 return_type: type_engine.insert(
                     engines,
                     TypeInfo::Array(
                         TypeArgument {
-                            type_id: never_type,
+                            type_id: elem_type,
                             span: Span::dummy(),
                             call_path_tree: None,
-                            initial_type_id: never_type,
+                            initial_type_id: elem_type,
                         },
                         Length::new(0, Span::dummy()),
                     ),

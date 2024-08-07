@@ -13,6 +13,7 @@ use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
 use forc_test::decode_log_data;
 use fuel_vm::fuel_tx;
+use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
 use regex::Regex;
 use std::collections::HashSet;
@@ -114,6 +115,8 @@ struct TestContext {
 }
 
 fn print_receipts(output: &mut String, receipts: &[Receipt]) {
+    let mut text_log = String::new();
+
     use std::fmt::Write;
     let _ = writeln!(output, "  {}", "Receipts".green().bold());
     for (i, receipt) in receipts.iter().enumerate() {
@@ -130,6 +133,28 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
                 is,
                 data,
             } => {
+                // Small hack to allow log from tests.
+                if *ra == u64::MAX {
+                    match rb {
+                        0 => {
+                            let mut data = data.as_deref().unwrap();
+                            data.skip(8).unwrap();
+                            let s = std::str::from_utf8(data).unwrap();
+
+                            text_log.push_str(s);
+                        }
+                        1 => {
+                            let data = data.as_deref().unwrap();
+                            let s = u64::from_be_bytes(data.try_into().unwrap());
+
+                            text_log.push_str(&format!("{}", s));
+                        }
+                        2 => {
+                            text_log.push('\n');
+                        }
+                        _ => {}
+                    }
+                }
                 let _ = write!(output, " LogData\n      ID: {id:?}\n      RA: {ra:?}\n      RB: {rb:?}\n      Ptr: {ptr:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Data: {data:?}\n");
             }
             Receipt::ReturnData {
@@ -237,6 +262,14 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
             } => {
                 let _ = write!(output, " Burn\n      Sub ID: {sub_id:?}\n      Contract ID: {contract_id:?}\n      Val: {val:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
             }
+        }
+    }
+
+    if !text_log.is_empty() {
+        let _ = writeln!(output, "  {}", "Text Logs".green().bold());
+
+        for l in text_log.lines() {
+            let _ = writeln!(output, "{l}");
         }
     }
 }
