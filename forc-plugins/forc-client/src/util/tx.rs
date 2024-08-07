@@ -2,7 +2,7 @@ use crate::{constants::DEFAULT_PRIVATE_KEY, util::target::Target};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use dialoguer::{theme::ColorfulTheme, Confirm, Password, Select};
-use forc_tracing::println_warning;
+use forc_tracing::{println_action_green, println_warning};
 use forc_wallet::{
     account::{derive_secret_key, new_at_index_cli},
     balance::{
@@ -11,13 +11,18 @@ use forc_wallet::{
     new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
-use fuel_crypto::{Message, SecretKey, Signature};
+use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
     field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
 };
-use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
+use fuels::{macros::abigen, programs::responses::CallResponse};
+use fuels_accounts::{
+    provider::Provider,
+    wallet::{Wallet, WalletUnlocked},
+    ViewOnlyAccount,
+};
 use fuels_core::types::{
-    bech32::Bech32Address,
+    bech32::{Bech32Address, FUEL_BECH32_HRP},
     coin_type::CoinType,
     transaction_builders::{create_coin_input, create_coin_message_input},
 };
@@ -114,6 +119,13 @@ pub(crate) fn secret_key_from_forc_wallet(
         }
     })?;
     Ok(secret_key)
+}
+
+pub(crate) fn bech32_from_secret(secret_key: &SecretKey) -> Result<Bech32Address> {
+    let public_key = PublicKey::from(secret_key);
+    let hashed = public_key.hash();
+    let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
+    Ok(bech32)
 }
 
 pub(crate) fn select_manual_secret_key(
@@ -242,6 +254,33 @@ pub(crate) async fn select_secret_key(
         WalletSelectionMode::Manual => select_manual_secret_key(default_sign, signing_key),
     };
     Ok(signing_key)
+}
+
+pub async fn update_proxy_contract_target(
+    provider: &Provider,
+    secret_key: SecretKey,
+    proxy_contract_id: ContractId,
+    new_target: ContractId,
+) -> Result<CallResponse<()>> {
+    abigen!(Contract(
+        name = "ProxyContract",
+        abi = "forc-plugins/forc-client/proxy_abi/proxy_contract-abi.json"
+    ));
+
+    let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+
+    let proxy_contract = ProxyContract::new(proxy_contract_id, wallet);
+
+    let result = proxy_contract
+        .methods()
+        .set_proxy_target(new_target)
+        .call()
+        .await?;
+    println_action_green(
+        "Updated",
+        &format!("proxy contract target to 0x{new_target}"),
+    );
+    Ok(result)
 }
 
 #[async_trait]
