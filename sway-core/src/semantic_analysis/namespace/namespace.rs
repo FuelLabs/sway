@@ -310,7 +310,7 @@ impl Namespace {
     }
 
     /// Pushes a new submodule to the namespace's module hierarchy.
-    pub fn push_new_submodule(
+    pub fn push_submodule(
         &mut self,
         engines: &Engines,
         mod_name: Ident,

@@ -504,6 +504,7 @@ pub(crate) fn type_check_method_application(
                             ]),
                             span: Span::dummy(),
                         },
+                        resolved_call_path_binding: None,
                         arguments: vec![
                             Expression {
                                 kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
