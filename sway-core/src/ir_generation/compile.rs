@@ -322,10 +322,22 @@ pub(crate) fn compile_configurables(
             let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 
             if context.experimental.new_encoding {
-                let encoded_bytes = match constant.value {
+                let mut encoded_bytes = match constant.value {
                     ConstantValue::RawUntypedSlice(bytes) => bytes,
                     _ => unreachable!(),
                 };
+
+                let config_type_info = engines.te().get(decl.type_ascription.type_id);
+                let buffer_size = match config_type_info.abi_encode_size_hint(engines) {
+                    crate::AbiEncodeSizeHint::Exact(len) => len,
+                    crate::AbiEncodeSizeHint::Range(_, len) => len,
+                    _ => unreachable!("unexpected type accepted as configurable"),
+                };
+
+                if buffer_size > encoded_bytes.len() {
+                    encoded_bytes.extend([0].repeat(buffer_size - encoded_bytes.len()));
+                }
+                assert!(encoded_bytes.len() == buffer_size);
 
                 let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
                 let decode_fn = cache.ty_function_decl_to_unique_function(
