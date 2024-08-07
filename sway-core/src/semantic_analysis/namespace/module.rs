@@ -229,7 +229,7 @@ impl Module {
                 parent: Some(previous_scope_id),
                 ..Default::default()
             });
-            self.current_lexical_scope_id()
+            self.lexical_scopes.len() - 1
         };
         let previous_scope = self.lexical_scopes.get_mut(previous_scope_id).unwrap();
         previous_scope.children.push(new_scoped_id);

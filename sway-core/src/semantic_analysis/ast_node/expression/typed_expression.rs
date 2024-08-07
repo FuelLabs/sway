@@ -193,6 +193,7 @@ impl ty::TyExpression {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     ref arguments,
                 } = *function_application_expression.clone();
                 Self::type_check_function_application(
@@ -1107,7 +1108,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
