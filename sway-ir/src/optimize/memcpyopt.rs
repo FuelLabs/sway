@@ -735,23 +735,53 @@ fn local_copy_prop(
     Ok(modified)
 }
 
+struct Candidate {
+    load_val: Value,
+    store_val: Value,
+    dst_ptr: Value,
+    src_ptr: Value,
+}
+
+enum CandidateKind {
+    /// If aggregates are clobbered b/w a load and the store, we still need to,
+    /// for correctness (because asmgen cannot handle aggregate loads and stores)
+    /// do the memcpy. So we insert a memcpy to a temporary stack location right after
+    /// the load, and memcpy it to the store pointer at the point of store.
+    ClobberedNoncopyType(Candidate),
+    NonClobbered(Candidate),
+}
+
 // Is (an alias of) src_ptr clobbered on any path from load_val to store_val?
 fn is_clobbered(
     context: &Context,
-    store_block: Block,
-    store_val: Value,
-    load_val: Value,
-    src_ptr: Value,
+    Candidate {
+        load_val,
+        store_val,
+        dst_ptr,
+        src_ptr,
+    }: &Candidate,
 ) -> bool {
+    let store_block = store_val.get_instruction(context).unwrap().parent;
+
     let mut iter = store_block
         .instruction_iter(context)
         .rev()
-        .skip_while(|i| i != &store_val);
-    assert!(iter.next().unwrap() == store_val);
+        .skip_while(|i| i != store_val);
+    assert!(iter.next().unwrap() == *store_val);
 
-    let ReferredSymbols::Complete(src_symbols) = get_referred_symbols(context, src_ptr) else {
+    let ReferredSymbols::Complete(src_symbols) = get_referred_symbols(context, *src_ptr) else {
         return true;
     };
+
+    let ReferredSymbols::Complete(dst_symbols) = get_referred_symbols(context, *dst_ptr) else {
+        return true;
+    };
+
+    // If the source and destination may have an overlap, we'll end up generating a mcp
+    // with overlapping source/destination which is not allowed.
+    if src_symbols.intersection(&dst_symbols).next().is_some() {
+        return true;
+    }
 
     // Scan backwards till we encounter load_val, checking if
     // any store aliases with src_ptr.
@@ -761,7 +791,7 @@ fn is_clobbered(
     'next_job: while let Some((block, iter)) = worklist.pop() {
         visited.insert(block);
         for inst in iter {
-            if inst == load_val || inst == store_val {
+            if inst == *load_val || inst == *store_val {
                 // We don't need to go beyond either the source load or the candidate store.
                 continue 'next_job;
             }
@@ -796,22 +826,6 @@ fn is_copy_type(ty: &Type, context: &Context) -> bool {
 }
 
 fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bool, IrError> {
-    struct Candidate {
-        load_val: Value,
-        store_val: Value,
-        dst_ptr: Value,
-        src_ptr: Value,
-    }
-
-    enum CandidateKind {
-        /// If aggregates are clobbered b/w a load and the store, we still need to,
-        /// for correctness (because asmgen cannot handle aggregate loads and stores)
-        /// do the memcpy. So we insert a memcpy to a temporary stack location right after
-        /// the load, and memcpy it to the store pointer at the point of store.
-        ClobberedNoncopyType(Candidate),
-        NonClobbered(Candidate),
-    }
-
     // Find any `store`s of `load`s.  These can be replaced with `mem_copy` and are especially
     // important for non-copy types on architectures which don't support loading them.
     let candidates = function
@@ -854,30 +868,16 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                         None
                     }
                 })
-                .and_then(
-                    |candidate @ Candidate {
-                         load_val,
-                         store_val,
-                         dst_ptr,
-                         src_ptr,
-                     }| {
-                        // Check that there's no path from load_val to store_val that might overwrite src_ptr.
-                        if !is_clobbered(
-                            context,
-                            store_val.get_instruction(context).unwrap().parent,
-                            store_val,
-                            load_val,
-                            src_ptr,
-                        ) {
-                            Some(CandidateKind::NonClobbered(candidate))
-                        } else if !is_copy_type(&dst_ptr.match_ptr_type(context).unwrap(), context)
-                        {
-                            Some(CandidateKind::ClobberedNoncopyType(candidate))
-                        } else {
-                            None
-                        }
-                    },
-                )
+                .and_then(|candidate @ Candidate { dst_ptr, .. }| {
+                    // Check that there's no path from load_val to store_val that might overwrite src_ptr.
+                    if !is_clobbered(context, &candidate) {
+                        Some(CandidateKind::NonClobbered(candidate))
+                    } else if !is_copy_type(&dst_ptr.match_ptr_type(context).unwrap(), context) {
+                        Some(CandidateKind::ClobberedNoncopyType(candidate))
+                    } else {
+                        None
+                    }
+                })
         })
         .collect::<Vec<_>>();
 

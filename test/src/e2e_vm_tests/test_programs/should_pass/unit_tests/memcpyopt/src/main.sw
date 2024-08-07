@@ -56,3 +56,11 @@ fn test() -> () {
     assert(b == 4);
     ()
 }
+
+#[test]
+fn foo() -> u64 {
+   let mut x = 43;
+   x = x;
+   assert(x == 43);
+   x
+}
