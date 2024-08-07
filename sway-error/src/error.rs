@@ -655,8 +655,12 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("The {opcode} opcode cannot be used in a predicate.")]
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
-    #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
+    #[error("Index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
+    #[error(
+        "Invalid range; the range end at index {end} is smaller than its start at index {start}"
+    )]
+    InvalidRangeEndGreaterThanStart { start: u64, end: u64, span: Span },
     #[error("Tuple index {index} is out of bounds. The tuple has {count} element{}.", plural_s(*count))]
     TupleIndexOutOfBounds {
         index: usize,
@@ -1005,6 +1009,8 @@ pub enum CompileError {
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Type must be known at this point")]
+    TypeMustBeKnownAtThisPoint { span: Span, internal: String },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1220,6 +1226,8 @@ impl Spanned for CompileError {
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
             ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
+            TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
         }
     }
 }
@@ -2668,6 +2676,9 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+
+    #[error("slices or types containing slices on `const` are not allowed.")]
+    SliceInConst,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

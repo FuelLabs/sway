@@ -1,0 +1,7 @@
+category = "run"
+
+category_new_encoding = "run"
+script_data_new_encoding = ""
+expected_result_new_encoding = { action = "return_data", value = "" }
+
+validate_abi = true
