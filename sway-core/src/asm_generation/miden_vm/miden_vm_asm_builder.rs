@@ -662,6 +662,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             B256(_) => todo!(),
             String(_) => todo!(),
             Array(_) => todo!(),
+            Slice(_) => todo!(),
             Struct(_) => todo!(),
             Reference(_) => todo!(),
             RawUntypedSlice(_) => todo!(),

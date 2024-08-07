@@ -4,11 +4,11 @@ use super::{
     module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
 };
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{DeclEngine, DeclRef},
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyTraitItem},
+        ty::{self, StructDecl, TyDecl, TyTraitItem},
         CallPath, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
@@ -69,6 +69,15 @@ impl ResolvedDeclaration {
         }
     }
 
+    pub fn resolve_parsed(self, decl_engine: &DeclEngine) -> Declaration {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl,
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl
+                .get_parsed_decl(decl_engine)
+                .expect("expecting valid parsed declaration"),
+        }
+    }
+
     pub fn expect_parsed(self) -> Declaration {
         match self {
             ResolvedDeclaration::Parsed(decl) => decl,
@@ -87,6 +96,21 @@ impl ResolvedDeclaration {
         match self {
             ResolvedDeclaration::Parsed(_) => panic!(),
             ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+
+    pub(crate) fn to_struct_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl
+                .to_struct_decl(handler, engines)
+                .map(|id| ResolvedDeclaration::Parsed(Declaration::StructDeclaration(id))),
+            ResolvedDeclaration::Typed(decl) => decl.to_struct_decl(handler, engines).map(|id| {
+                ResolvedDeclaration::Typed(TyDecl::StructDecl(StructDecl { decl_id: id }))
+            }),
         }
     }
 
@@ -982,10 +1006,6 @@ impl Root {
         symbol: &Ident,
         module: &Module,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        // Check locally declared items. Any name clash with imports will have already been reported as an error.
-        if let Some(decl) = module.current_items().symbols.get(symbol) {
-            return Ok(decl.clone());
-        }
         // Check locally declared items. Any name clash with imports will have already been reported as an error.
         if let Some(decl) = module.current_items().symbols.get(symbol) {
             return Ok(decl.clone());

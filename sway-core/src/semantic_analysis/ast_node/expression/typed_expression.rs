@@ -193,6 +193,7 @@ impl ty::TyExpression {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     ref arguments,
                 } = *function_application_expression.clone();
                 Self::type_check_function_application(
@@ -1107,7 +1108,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
@@ -1805,20 +1806,20 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let never_type = type_engine.insert(engines, TypeInfo::Never, None);
+            let elem_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
-                    elem_type: never_type,
+                    elem_type,
                     contents: Vec::new(),
                 },
                 return_type: type_engine.insert(
                     engines,
                     TypeInfo::Array(
                         TypeArgument {
-                            type_id: never_type,
+                            type_id: elem_type,
                             span: Span::dummy(),
                             call_path_tree: None,
-                            initial_type_id: never_type,
+                            initial_type_id: elem_type,
                         },
                         Length::new(0, Span::dummy()),
                     ),
