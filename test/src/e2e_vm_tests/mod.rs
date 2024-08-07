@@ -15,7 +15,7 @@ use forc_test::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::io::stdout;
 use std::io::Write;
 use std::str::FromStr;
@@ -302,6 +302,35 @@ impl TestContext {
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
+
+                if let Ok(result) = result.as_ref() {
+                    let packages = match result {
+                        forc_pkg::Built::Package(p) => [p.clone()].to_vec(),
+                        forc_pkg::Built::Workspace(p) => p.clone(),
+                    };
+
+                    for p in packages {
+                        let bytecode_len = p.bytecode.bytes.len();
+
+                        let configurables = match &p.program_abi {
+                            sway_core::asm_generation::ProgramABI::Fuel(abi) => abi.configurables.as_ref().cloned().unwrap_or_default(),
+                            sway_core::asm_generation::ProgramABI::Evm(_) => todo!(),
+                            sway_core::asm_generation::ProgramABI::MidenVM(_) => todo!(),
+                        }.into_iter().map(|x| (
+                            x.offset, x.name
+                        )).collect::<BTreeMap<u64, String>>();
+
+                        let mut items = configurables.iter().peekable();
+                        while let Some(current) = items.next() {
+                            let next_offset = match items.peek() {
+                                Some(next) => *next.0,
+                                None => bytecode_len as u64,
+                            };
+                            let size = next_offset - current.0;
+                            output.push_str(&format!("Configurable Encoded Bytes Buffer Size: {} {}\n", current.1, size));
+                        }
+                    }
+                }
 
                 check_file_checker(checker, &name, output)?;
 
@@ -880,7 +909,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     }
 
     // if new encoding is on, allow a "category_new_encoding"
-    // for tests that should have difference categories
+    // for tests that should have different categories
     let category = if run_config.experimental.new_encoding {
         toml_content
             .get("category_new_encoding")
@@ -923,8 +952,11 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     }
 
     // To allow different configs, we must ignore file check if it is not fail
-    if category != TestCategory::FailsToCompile {
-        file_check = FileCheck("".into());
+    if toml_content
+            .get("category_new_encoding").is_some() {
+        if category != TestCategory::FailsToCompile {
+            file_check = FileCheck("".into());
+        }  
     }
 
     let (script_data, script_data_new_encoding) = match &category {
