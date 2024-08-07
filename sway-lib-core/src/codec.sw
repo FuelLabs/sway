@@ -2533,7 +2533,7 @@ where
     }
 }
 
-// Decode 
+// Decode
 
 pub trait AbiDecode {
     fn abi_decode(ref mut buffer: BufferReader) -> Self;

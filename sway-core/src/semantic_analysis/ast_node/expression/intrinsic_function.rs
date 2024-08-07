@@ -10,7 +10,8 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::{Expression, ExpressionKind},
-        ty, Literal,
+        ty::{self, TyIntrinsicFunctionKind},
+        Literal,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::*,
@@ -93,7 +94,7 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_contract_ret(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::EncodeBufferEmpty => {
-                type_check_encode_buffer_empty(ctx, kind, arguments, type_arguments, span)
+                type_check_encode_buffer_empty(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::EncodeBufferAppend => {
                 type_check_encode_append(handler, ctx, kind, arguments, type_arguments, span)
@@ -101,7 +102,267 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::EncodeBufferAsRawSlice => {
                 type_check_encode_as_raw_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::Slice => {
+                type_check_slice(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::ElemAt => type_check_elem_at(arguments, handler, kind, span, ctx),
         }
+    }
+}
+
+fn type_check_elem_at(
+    arguments: &[Expression],
+    handler: &Handler,
+    kind: Intrinsic,
+    span: Span,
+    ctx: TypeCheckContext,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 2 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        }));
+    }
+
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let mut ctx = ctx;
+
+    // check first argument
+    let first_argument_span = arguments[0].span.clone();
+    let first_argument_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+    let first_argument_typed_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(first_argument_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+
+    // first argument can be ref to array or ref to slice
+    let elem_type = match &*type_engine.get(first_argument_type) {
+        TypeInfo::Ref {
+            referenced_type,
+            to_mutable_value,
+        } => match &*type_engine.get(referenced_type.type_id) {
+            TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
+                Some((*to_mutable_value, elem_ty.type_id))
+            }
+            _ => None,
+        },
+        _ => None,
+    };
+    let Some((to_mutable_value, elem_type_type_id)) = elem_type else {
+        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: first_argument_span,
+            hint: "Only references to arrays or slices can be used as argument here".to_string(),
+        }));
+    };
+
+    // index argument
+    let index_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
+    let index_typed_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(index_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[1])?
+    };
+
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::Ref {
+            to_mutable_value,
+            referenced_type: TypeArgument {
+                type_id: elem_type_type_id,
+                initial_type_id: elem_type_type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+        },
+        None,
+    );
+
+    Ok((
+        TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![first_argument_typed_expr, index_typed_expr],
+            type_arguments: vec![],
+            span,
+        },
+        return_type,
+    ))
+}
+
+fn type_check_slice(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: &[Expression],
+    _type_arguments: &[TypeArgument],
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 3 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 3,
+            span,
+        }));
+    }
+
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    // start index argument
+    let start_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
+    let start_ty_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(start_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[1])?
+    };
+
+    // end index argument
+    let end_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
+    let end_ty_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(end_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[2])?
+    };
+
+    // check first argument
+    let first_argument_span = arguments[0].span.clone();
+    let first_argument_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+    let first_argument_ty_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(first_argument_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+
+    // statically check start and end, if possible
+    let start_literal = start_ty_expr
+        .expression
+        .as_literal()
+        .and_then(|x| x.cast_value_to_u64());
+
+    let end_literal = end_ty_expr
+        .expression
+        .as_literal()
+        .and_then(|x| x.cast_value_to_u64());
+
+    if let (Some(start), Some(end)) = (start_literal, end_literal) {
+        if start > end {
+            return Err(
+                handler.emit_err(CompileError::InvalidRangeEndGreaterThanStart {
+                    start,
+                    end,
+                    span,
+                }),
+            );
+        }
+    }
+
+    fn create_ref_to_slice(
+        engines: &Engines,
+        to_mutable_value: bool,
+        elem_type_arg: TypeArgument,
+    ) -> TypeId {
+        let type_engine = engines.te();
+        let slice_type_id =
+            type_engine.insert(engines, TypeInfo::Slice(elem_type_arg.clone()), None);
+        let ref_to_slice_type = TypeInfo::Ref {
+            to_mutable_value,
+            referenced_type: TypeArgument {
+                type_id: slice_type_id,
+                initial_type_id: slice_type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+        };
+        type_engine.insert(engines, ref_to_slice_type, None)
+    }
+
+    // first argument can be ref to array or ref to slice
+    let err = CompileError::IntrinsicUnsupportedArgType {
+        name: kind.to_string(),
+        span: first_argument_span,
+        hint: "Only references to arrays or slices can be used as argument here".to_string(),
+    };
+    let r = match &*type_engine.get(first_argument_type) {
+        TypeInfo::Ref {
+            referenced_type,
+            to_mutable_value,
+        } => match &*type_engine.get(referenced_type.type_id) {
+            TypeInfo::Array(elem_type_arg, array_len) => {
+                let array_len = array_len.val() as u64;
+
+                if let Some(v) = start_literal {
+                    if v > array_len {
+                        return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                            index: v,
+                            count: array_len,
+                            span,
+                        }));
+                    }
+                }
+
+                if let Some(v) = end_literal {
+                    if v > array_len {
+                        return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                            index: v,
+                            count: array_len,
+                            span,
+                        }));
+                    }
+                }
+
+                Some((
+                    TyIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
+                        type_arguments: vec![],
+                        span,
+                    },
+                    create_ref_to_slice(engines, *to_mutable_value, elem_type_arg.clone()),
+                ))
+            }
+            TypeInfo::Slice(elem_type_arg) => Some((
+                TyIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
+                    type_arguments: vec![],
+                    span,
+                },
+                create_ref_to_slice(engines, *to_mutable_value, elem_type_arg.clone()),
+            )),
+            _ => None,
+        },
+        _ => None,
+    };
+
+    match r {
+        Some(r) => Ok(r),
+        None => Err(handler.emit_err(err)),
     }
 }
 
@@ -156,13 +417,20 @@ fn new_encoding_buffer_tuple(
 }
 
 fn type_check_encode_buffer_empty(
+    handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
     _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    assert!(arguments.is_empty());
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
 
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
@@ -224,6 +492,14 @@ fn type_check_encode_append(
     _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 2 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        }));
+    }
+
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
