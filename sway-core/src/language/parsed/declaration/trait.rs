@@ -120,6 +120,12 @@ pub struct TraitFn {
     pub return_type: TypeArgument,
 }
 
+impl Spanned for TraitFn {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TraitTypeDeclaration {
     pub name: Ident,
