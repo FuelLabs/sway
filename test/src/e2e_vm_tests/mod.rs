@@ -313,12 +313,15 @@ impl TestContext {
                         let bytecode_len = p.bytecode.bytes.len();
 
                         let configurables = match &p.program_abi {
-                            sway_core::asm_generation::ProgramABI::Fuel(abi) => abi.configurables.as_ref().cloned().unwrap_or_default(),
+                            sway_core::asm_generation::ProgramABI::Fuel(abi) => {
+                                abi.configurables.as_ref().cloned().unwrap_or_default()
+                            }
                             sway_core::asm_generation::ProgramABI::Evm(_) => todo!(),
                             sway_core::asm_generation::ProgramABI::MidenVM(_) => todo!(),
-                        }.into_iter().map(|x| (
-                            x.offset, x.name
-                        )).collect::<BTreeMap<u64, String>>();
+                        }
+                        .into_iter()
+                        .map(|x| (x.offset, x.name))
+                        .collect::<BTreeMap<u64, String>>();
 
                         let mut items = configurables.iter().peekable();
                         while let Some(current) = items.next() {
@@ -327,7 +330,10 @@ impl TestContext {
                                 None => bytecode_len as u64,
                             };
                             let size = next_offset - current.0;
-                            output.push_str(&format!("Configurable Encoded Bytes Buffer Size: {} {}\n", current.1, size));
+                            output.push_str(&format!(
+                                "Configurable Encoded Bytes Buffer Size: {} {}\n",
+                                current.1, size
+                            ));
                         }
                     }
                 }
@@ -952,11 +958,10 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     }
 
     // To allow different configs, we must ignore file check if it is not fail
-    if toml_content
-            .get("category_new_encoding").is_some() {
-        if category != TestCategory::FailsToCompile {
-            file_check = FileCheck("".into());
-        }  
+    if toml_content.get("category_new_encoding").is_some()
+        && category != TestCategory::FailsToCompile
+    {
+        file_check = FileCheck("".into());
     }
 
     let (script_data, script_data_new_encoding) = match &category {
