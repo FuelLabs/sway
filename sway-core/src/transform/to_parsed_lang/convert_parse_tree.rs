@@ -296,7 +296,7 @@ fn item_use_to_use_statements(
 
 fn use_tree_to_use_statements(
     use_tree: UseTree,
-    is_absolute: bool,
+    is_relative_to_package_root: bool,
     reexport: Visibility,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
@@ -307,7 +307,7 @@ fn use_tree_to_use_statements(
             for use_tree in imports.into_inner() {
                 use_tree_to_use_statements(
                     use_tree,
-                    is_absolute,
+                    is_relative_to_package_root,
                     reexport,
                     path,
                     ret,
@@ -325,7 +325,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
@@ -340,7 +340,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: Some(alias),
             });
@@ -350,14 +350,14 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type: ImportType::Star,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, reexport, path, ret, item_span);
+            use_tree_to_use_statements(*suffix, is_relative_to_package_root, reexport, path, ret, item_span);
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {

@@ -59,7 +59,7 @@ impl ty::TyAstNode {
                             alias: stmt.alias,
                             call_path: stmt.call_path,
                             span: stmt.span,
-                            is_absolute: stmt.is_absolute,
+                            is_relative_to_package_root: stmt.is_relative_to_package_root,
                             import_type: stmt.import_type,
                         }),
                     })
@@ -138,12 +138,13 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
-    let path = if is_external || stmt.is_absolute {
-        stmt.call_path.clone()
-    } else {
-        ctx.namespace.prepend_module_path(&stmt.call_path)
-    };
+    let path = ctx.namespace.parsed_path_to_full_path(&stmt.call_path, stmt.is_relative_to_package_root);
+//    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
+//    let path = if is_external || stmt.is_absolute {
+//        stmt.call_path.clone()
+//    } else {
+//        ctx.namespace.prepend_module_path(&stmt.call_path)
+//    };
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first
@@ -229,14 +230,15 @@ fn handle_use_statement(
     stmt: &UseStatement,
     handler: &Handler,
 ) {
-    let is_external = !ctx
-        .namespace()
-        .current_module_has_submodule(&stmt.call_path[0]);
-    let path = if is_external || stmt.is_absolute {
-        stmt.call_path.clone()
-    } else {
-        ctx.namespace().prepend_module_path(&stmt.call_path)
-    };
+    let path = ctx.namespace.parsed_path_to_full_path(&stmt.call_path, stmt.is_relative_to_package_root);
+//    let is_external = !ctx
+//        .namespace()
+//        .current_module_has_submodule(&stmt.call_path[0]);
+//    let path = if is_external || stmt.is_absolute {
+//        stmt.call_path.clone()
+//    } else {
+//        ctx.namespace().prepend_module_path(&stmt.call_path)
+//    };
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first

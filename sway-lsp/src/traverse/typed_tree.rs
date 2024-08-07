@@ -103,7 +103,7 @@ impl Parse for ty::TySideEffect {
                     span: _,
                     import_type,
                     alias,
-                    is_absolute: _,
+                    is_relative_to_package_root: _,
                 },
             ) => {
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {

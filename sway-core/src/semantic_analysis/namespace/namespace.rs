@@ -153,6 +153,25 @@ impl Namespace {
             .collect()
     }
 
+    /// Convert a parsed path to a full path.
+    pub fn parsed_path_to_full_path(&self, parsed_path: &ModulePathBuf, is_relative_to_package_root: bool) -> ModulePathBuf {
+	if is_relative_to_package_root {
+	    // Path is relative to the root module in the current package. Prepend the package name
+	    let mut path = vec!(self.current_package_name().clone());
+	    for ident in parsed_path.iter() {
+		path.push(ident.clone())
+	    }
+	    path
+	} else if self.current_module_has_submodule(&parsed_path[0]) {
+	    // A submodule exists matching the first identifier in the parsed path.
+	    // The path is therefore assumed to be relative to the current module, so prepend the current module path.
+	    self.prepend_module_path(parsed_path)
+	} else {
+	    // The path refers to an external module, so the path is already a full path.
+	    parsed_path.to_vec()
+	}
+    }
+    
     //    /// A reference to the root of the project namespace.
     //    pub fn root(&self) -> &Root {
     //        &self.root
