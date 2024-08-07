@@ -970,6 +970,9 @@ fn get_struct_type_info_from_type_id(
         TypeInfo::Array(type_arg, _) => {
             get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
         }
+        TypeInfo::Slice(type_arg) => {
+            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
+        }
         _ => Ok(None),
     }
 }
@@ -1792,35 +1795,28 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             elem_type: _,
             contents,
         } => {
-            let mut element_diverge = false;
-            let nodes = contents
-                .iter()
-                .map(|elem| {
-                    if !element_diverge
-                        && type_engine
-                            .get(elem.return_type)
-                            .is_uninhabited(engines.te(), engines.de())
-                    {
-                        element_diverge = true
-                    }
-                    connect_expression(
-                        engines,
-                        &elem.expression,
-                        graph,
-                        leaves,
-                        exit_node,
-                        "",
-                        tree_type,
-                        elem.span.clone(),
-                        options,
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            if element_diverge {
-                Ok(vec![])
-            } else {
-                Ok(nodes.concat())
+            let mut last = leaves.to_vec();
+
+            for elem in contents.iter() {
+                last = connect_expression(
+                    engines,
+                    &elem.expression,
+                    graph,
+                    last.as_slice(),
+                    None,
+                    "",
+                    tree_type,
+                    elem.span.clone(),
+                    options,
+                )?;
+
+                // If an element diverges, break the connections and return nothing
+                if last.is_empty() {
+                    break;
+                }
             }
+
+            Ok(last)
         }
         ArrayIndex { prefix, index } => {
             let prefix_idx = connect_expression(
