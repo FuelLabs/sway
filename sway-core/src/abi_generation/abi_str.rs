@@ -53,6 +53,14 @@ impl TypeId {
                     };
                     format!("[{}; {}]", inner_type, count.val())
                 }
+                (TypeInfo::Slice(type_arg), TypeInfo::Slice(_)) => {
+                    let inner_type = if ctx.abi_with_fully_specified_types {
+                        type_engine.get(type_arg.type_id).abi_str(ctx, engines)
+                    } else {
+                        "_".to_string()
+                    };
+                    format!("[{}]", inner_type)
+                }
                 (TypeInfo::Custom { .. }, _) => {
                     format!("generic {}", self_abi_str)
                 }
