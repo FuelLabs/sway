@@ -1188,6 +1188,15 @@ impl Constant {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            ConstantValue::Slice(elems) => format!(
+                "__slice[{}] [{}]",
+                self.ty.as_string(context),
+                elems
+                    .iter()
+                    .map(|elem| elem.as_lit_string(context))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
             ConstantValue::Struct(fields) => format!(
                 "{} {{ {} }}",
                 self.ty.as_string(context),
