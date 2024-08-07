@@ -12,8 +12,8 @@ use crate::{
     },
     language::{
         ty::{
-            self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpressionVariant,
-            TyStorageField,
+            self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
+            TyExpressionVariant, TyStorageField,
         },
         *,
     },
@@ -102,6 +102,49 @@ pub(crate) struct FnCompiler<'eng> {
     logged_types_map: HashMap<TypeId, LogId>,
     // This is a map from the type IDs of a message data type and the ID of the corresponding smo
     messages_types_map: HashMap<TypeId, MessageId>,
+}
+
+fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
+    let needed_size = Constant::new_uint(context, 64, value);
+    Value::new_constant(context, needed_size)
+}
+
+fn save_to_local_return_ptr(
+    s: &mut FnCompiler<'_>,
+    context: &mut Context,
+    value: Value,
+) -> Result<Value, CompileError> {
+    let temp_arg_name = s.lexical_map.insert_anon();
+
+    let value_type = value.get_type(context).unwrap();
+    let local_var = s
+        .function
+        .new_local_var(context, temp_arg_name, value_type, None, false)
+        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+
+    let local_var_ptr = s.current_block.append(context).get_local(local_var);
+    let _ = s.current_block.append(context).store(local_var_ptr, value);
+    Ok(local_var_ptr)
+}
+
+fn calc_addr_as_ptr(
+    current_block: &mut Block,
+    context: &mut Context,
+    ptr: Value,
+    len: Value,
+    ptr_to: Type,
+) -> Value {
+    assert!(ptr.get_type(context).unwrap().is_ptr(context));
+    assert!(len.get_type(context).unwrap().is_uint64(context));
+
+    let uint64 = Type::get_uint64(context);
+    let ptr = current_block.append(context).ptr_to_int(ptr, uint64);
+    let addr = current_block
+        .append(context)
+        .binary_op(BinaryOpKind::Add, ptr, len);
+
+    let ptr_to = Type::new_ptr(context, ptr_to);
+    current_block.append(context).int_to_ptr(addr, ptr_to)
 }
 
 impl<'eng> FnCompiler<'eng> {
@@ -498,7 +541,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::Array {
                 elem_type,
                 contents,
-            } => self.compile_array_expr(context, md_mgr, elem_type, contents, span_md_idx),
+            } => self.compile_array_expr(context, md_mgr, *elem_type, contents, span_md_idx),
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
                 self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
             }
@@ -861,11 +904,11 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::SizeOfVal => {
                 let exp = &arguments[0];
                 // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &exp.return_type,
+                    exp.return_type,
                     &exp.span,
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
@@ -874,11 +917,11 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &targ.type_id,
+                    targ.type_id,
                     &targ.span,
                 )?;
                 let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
@@ -886,11 +929,11 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::SizeOfStr => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &targ.type_id,
+                    targ.type_id,
                     &targ.span,
                 )?;
                 let val = Constant::get_uint(
@@ -917,11 +960,11 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &targ.type_id,
+                    targ.type_id,
                     &targ.span,
                 )?;
                 match ir_type.get_content(context) {
@@ -994,11 +1037,11 @@ impl<'eng> FnCompiler<'eng> {
 
                 // Get the target type from the type argument provided
                 let target_type = &type_arguments[0];
-                let target_ir_type = convert_resolved_typeid(
+                let target_ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &target_type.type_id,
+                    target_type.type_id,
                     &target_type.span,
                 )?;
 
@@ -1279,11 +1322,11 @@ impl<'eng> FnCompiler<'eng> {
                 };
 
                 let len = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &len.type_id,
+                    len.type_id,
                     &len.span,
                 )?;
                 let len_value = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
@@ -1579,26 +1622,6 @@ impl<'eng> FnCompiler<'eng> {
                         .binary_op(BinaryOpKind::Add, len, step)
                 }
 
-                fn calc_addr_as_ptr(
-                    current_block: &mut Block,
-                    context: &mut Context,
-                    ptr: Value,
-                    len: Value,
-                    ptr_to: Type,
-                ) -> Value {
-                    assert!(ptr.get_type(context).unwrap().is_ptr(context));
-                    assert!(len.get_type(context).unwrap().is_uint64(context));
-
-                    let uint64 = Type::get_uint64(context);
-                    let ptr = current_block.append(context).ptr_to_int(ptr, uint64);
-                    let addr = current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, ptr, len);
-
-                    let ptr_to = Type::new_ptr(context, ptr_to);
-                    current_block.append(context).int_to_ptr(addr, ptr_to)
-                }
-
                 fn append_with_store(
                     current_block: &mut Block,
                     context: &mut Context,
@@ -1659,27 +1682,6 @@ impl<'eng> FnCompiler<'eng> {
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
-                }
-
-                fn save_to_local_return_ptr(
-                    s: &mut FnCompiler<'_>,
-                    context: &mut Context,
-                    value: Value,
-                ) -> Result<Value, CompileError> {
-                    let temp_arg_name = s.lexical_map.insert_anon();
-
-                    let value_type = value.get_type(context).unwrap();
-                    let local_var = s
-                        .function
-                        .new_local_var(context, temp_arg_name, value_type, None, false)
-                        .map_err(|ir_error| {
-                            CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                        })?;
-
-                    let local_var_ptr = s.current_block.append(context).get_local(local_var);
-                    let _ = s.current_block.append(context).store(local_var_ptr, value);
-
-                    Ok(local_var_ptr)
                 }
 
                 fn append_with_memcpy(
@@ -1845,15 +1847,6 @@ impl<'eng> FnCompiler<'eng> {
                         .is_uint64(context));
 
                     (merge_block_ptr, merge_block_cap)
-                }
-
-                fn to_constant(
-                    _s: &mut FnCompiler<'_>,
-                    context: &mut Context,
-                    needed_size: u64,
-                ) -> Value {
-                    let needed_size = Constant::new_uint(context, 64, needed_size);
-                    Value::new_constant(context, needed_size)
                 }
 
                 // Grow the buffer if needed
@@ -2168,7 +2161,209 @@ impl<'eng> FnCompiler<'eng> {
 
                 Ok(TerminatorValue::new(buffer, context))
             }
+            Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
+            Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
         }
+    }
+
+    fn ptr_to_first_element(
+        &mut self,
+        context: &mut Context,
+        first_argument_expr: &TyExpression,
+        first_argument_value: Value,
+        _md_mgr: &mut MetadataManager,
+    ) -> Result<(Value, TypeId), CompileError> {
+        let te = self.engines.te();
+
+        let err = CompileError::TypeArgumentsNotAllowed {
+            span: first_argument_expr.span.clone(),
+        };
+
+        let first_argument_value = save_to_local_return_ptr(self, context, first_argument_value)?;
+
+        let ptr_arg = AsmArg {
+            name: Ident::new_no_span("ptr".into()),
+            initializer: Some(first_argument_value),
+        };
+
+        let ptr_out_arg = AsmArg {
+            name: Ident::new_no_span("ptr_out".into()),
+            initializer: Some(first_argument_value),
+        };
+
+        let return_type = Type::get_uint64(context);
+        let ptr_to_first_element = self.current_block.append(context).asm_block(
+            vec![ptr_arg, ptr_out_arg],
+            vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
+            return_type,
+            Some(Ident::new_no_span("ptr_out".into())),
+        );
+
+        match &*te.get(first_argument_expr.return_type) {
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => match &*te.get(referenced_type.type_id) {
+                TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
+                    Ok((ptr_to_first_element, elem_ty.type_id))
+                }
+                _ => Err(err),
+            },
+            _ => Err(err),
+        }
+    }
+
+    fn advance_ptr_n_elements(
+        &mut self,
+        context: &mut Context,
+        first_argument_expr: &TyExpression,
+        ptr: Value,
+        elem_type_id: TypeId,
+        idx: Value,
+    ) -> Result<(Value, Type), CompileError> {
+        let te = self.engines.te();
+        let de = self.engines.de();
+
+        let elem_ir_type = convert_resolved_type_id(
+            te,
+            de,
+            context,
+            elem_type_id,
+            &first_argument_expr.span.clone(),
+        )?;
+        let elem_ir_type_size = elem_ir_type.size(context);
+        let elem_ir_type_size = to_constant(self, context, elem_ir_type_size.in_bytes());
+        let elem_ir_type_size_arg = AsmArg {
+            name: Ident::new_no_span("elem_ir_type_size".into()),
+            initializer: Some(elem_ir_type_size),
+        };
+
+        let offset_temp_arg = AsmArg {
+            name: Ident::new_no_span("offset_temp".into()),
+            initializer: None,
+        };
+
+        let idx_arg = AsmArg {
+            name: Ident::new_no_span("idx".into()),
+            initializer: Some(idx),
+        };
+
+        let ptr_arg = AsmArg {
+            name: Ident::new_no_span("ptr".into()),
+            initializer: Some(ptr),
+        };
+
+        let ptr_out_arg = AsmArg {
+            name: Ident::new_no_span("ptr_out".into()),
+            initializer: Some(ptr),
+        };
+
+        let return_type = Type::get_uint64(context);
+        let ptr = self.current_block.append(context).asm_block(
+            vec![
+                idx_arg,
+                elem_ir_type_size_arg,
+                ptr_arg,
+                offset_temp_arg,
+                ptr_out_arg,
+            ],
+            vec![
+                AsmInstruction::mul_no_span("offset_temp", "idx", "elem_ir_type_size"),
+                AsmInstruction::add_no_span("ptr_out", "ptr", "offset_temp"),
+            ],
+            return_type,
+            Some(Ident::new_no_span("ptr".into())),
+        );
+
+        Ok((ptr, elem_ir_type))
+    }
+
+    fn compile_intrinsic_elem_at(
+        &mut self,
+        arguments: &[ty::TyExpression],
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 2);
+
+        let first_argument_expr = &arguments[0];
+        let first_argument_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
+        );
+        let (ptr_to_first_elem, elem_type_id) =
+            self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
+
+        let idx = &arguments[1];
+        let idx = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, idx)?
+        );
+        let (ptr_to_elem, _) = self.advance_ptr_n_elements(
+            context,
+            first_argument_expr,
+            ptr_to_first_elem,
+            elem_type_id,
+            idx,
+        )?;
+
+        Ok(TerminatorValue::new(ptr_to_elem, context))
+    }
+
+    fn compile_intrinsic_slice(
+        &mut self,
+        arguments: &[ty::TyExpression],
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 3);
+
+        let first_argument_expr = &arguments[0];
+        let first_argument_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
+        );
+        let (ptr_to_first_elem, elem_type_id) =
+            self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
+
+        let start = &arguments[1];
+        let start = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, start)?
+        );
+        let (ptr_to_elem, elem_ir_type) = self.advance_ptr_n_elements(
+            context,
+            first_argument_expr,
+            ptr_to_first_elem,
+            elem_type_id,
+            start,
+        )?;
+
+        let end = &arguments[2];
+        let end = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, end)?
+        );
+
+        let slice_len = self
+            .current_block
+            .append(context)
+            .binary_op(BinaryOpKind::Sub, end, start);
+
+        // compile the slice together
+        let uint64 = Type::get_uint64(context);
+        let return_type = Type::get_typed_slice(context, elem_ir_type);
+        let slice_as_tuple = self.compile_tuple_from_values(
+            context,
+            vec![ptr_to_elem, slice_len],
+            vec![uint64, uint64],
+            None,
+        )?;
+        let slice = self.current_block.append(context).asm_block(
+            vec![AsmArg {
+                name: Ident::new_no_span("s".into()),
+                initializer: Some(slice_as_tuple),
+            }],
+            vec![],
+            return_type,
+            Some(Ident::new_no_span("s".into())),
+        );
+
+        Ok(TerminatorValue::new(slice, context))
     }
 
     fn compile_return(
@@ -2299,11 +2494,11 @@ impl<'eng> FnCompiler<'eng> {
             )),
         }?;
 
-        let referenced_ir_type = convert_resolved_typeid(
+        let referenced_ir_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &referenced_ast_type,
+            referenced_ast_type,
             &ast_expr.span.clone(),
         )?;
 
@@ -2629,7 +2824,7 @@ impl<'eng> FnCompiler<'eng> {
             self.engines.te(),
             self.engines.de(),
             context,
-            &ast_return_type,
+            ast_return_type,
         )?;
         let ret_is_copy_type = self
             .engines
@@ -2778,7 +2973,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.engines.te(),
                 self.engines.de(),
                 context,
-                &return_type,
+                return_type,
             )
             .unwrap_or_else(|_| Type::get_unit(context));
             let merge_val_arg_idx = merge_block.new_arg(context, return_type);
@@ -2806,11 +3001,11 @@ impl<'eng> FnCompiler<'eng> {
         variant: &ty::TyEnumVariant,
     ) -> Result<TerminatorValue, CompileError> {
         // Retrieve the type info for the enum.
-        let enum_type = match convert_resolved_typeid(
+        let enum_type = match convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &exp.return_type,
+            exp.return_type,
             &exp.span,
         )? {
             ty if ty.is_struct(context) => ty,
@@ -3087,11 +3282,11 @@ impl<'eng> FnCompiler<'eng> {
         // accessed and isn't present in the environment.
         let init_val = self.compile_expression_to_value(context, md_mgr, body);
 
-        let return_type = convert_resolved_typeid(
+        let return_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &body.return_type,
+            body.return_type,
             &body.span,
         )?;
 
@@ -3166,11 +3361,11 @@ impl<'eng> FnCompiler<'eng> {
                     .lexical_map
                     .insert(call_path.suffix.as_str().to_owned());
 
-                let return_type = convert_resolved_typeid(
+                let return_type = convert_resolved_type_id(
                     self.engines.te(),
                     self.engines.de(),
                     context,
-                    &value.return_type,
+                    value.return_type,
                     &value.span,
                 )?;
 
@@ -3371,7 +3566,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        elem_type: &TypeId,
+        elem_type: TypeId,
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
@@ -3617,7 +3812,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.engines.te(),
                 self.engines.de(),
                 context,
-                &struct_field.value.return_type,
+                struct_field.value.return_type,
             )?;
             field_types.push(field_type);
         }
@@ -3696,11 +3891,11 @@ impl<'eng> FnCompiler<'eng> {
                 )
             })?;
 
-        let field_type = convert_resolved_typeid(
+        let field_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &field_type_id,
+            field_type_id,
             &ast_field.span,
         )?;
 
@@ -3855,7 +4050,7 @@ impl<'eng> FnCompiler<'eng> {
                     self.engines.te(),
                     self.engines.de(),
                     context,
-                    &field_expr.return_type,
+                    field_expr.return_type,
                 )?;
                 init_values.push(init_value);
                 init_types.push(init_type);
@@ -3879,11 +4074,11 @@ impl<'eng> FnCompiler<'eng> {
         let tuple_value = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, tuple)?
         );
-        let tuple_type = convert_resolved_typeid(
+        let tuple_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &tuple_type,
+            tuple_type,
             &span,
         )?;
 
@@ -3930,7 +4125,7 @@ impl<'eng> FnCompiler<'eng> {
             self.engines.te(),
             self.engines.de(),
             context,
-            &base_type,
+            base_type,
         )?;
 
         // Do the actual work. This is a recursive function because we want to drill down
@@ -4035,7 +4230,7 @@ impl<'eng> FnCompiler<'eng> {
             self.engines.te(),
             self.engines.de(),
             context,
-            &return_type,
+            return_type,
         )?;
         let val = self
             .current_block

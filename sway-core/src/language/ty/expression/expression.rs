@@ -423,4 +423,11 @@ impl TyExpression {
             _ => {}
         }
     }
+
+    pub fn as_intrinsic(&self) -> Option<&TyIntrinsicFunctionKind> {
+        match &self.expression {
+            TyExpressionVariant::IntrinsicFunction(v) => Some(v),
+            _ => None,
+        }
+    }
 }
