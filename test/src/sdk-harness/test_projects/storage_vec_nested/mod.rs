@@ -33,3 +33,11 @@ async fn nested_vec_access_insert() {
 
     methods.nested_vec_access_insert().call().await.unwrap();
 }
+
+#[tokio::test]
+#[should_panic]
+async fn revert_on_load_storage_vec() {
+    let methods = test_storage_vec_nested_instance().await.methods();
+
+    methods.revert_on_load_storage_vec().call().await.unwrap();
+}
