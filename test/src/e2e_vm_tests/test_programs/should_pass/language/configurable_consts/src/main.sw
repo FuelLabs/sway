@@ -10,6 +10,7 @@ struct ConfigurableStruct {
 enum ConfigurableEnum {
     A: bool,
     B: u64,
+    C: b256
 }
 
 impl core::ops::Eq for ConfigurableEnum {
