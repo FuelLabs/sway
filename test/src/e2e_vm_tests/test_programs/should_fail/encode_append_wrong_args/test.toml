@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()warning
+# check: $()buffer: __encode_buffer_append(buffer.buffer)
+
+# check: $()buffer: __encode_buffer_append(buffer.buffer)
+# nextln: $()Call to "encode_buffer_append" expects 2 arguments
