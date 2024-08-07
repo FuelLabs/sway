@@ -19,7 +19,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
-use super::collection_context::SymbolCollectionContext;
+use super::symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyAstNode {
     pub(crate) fn collect(

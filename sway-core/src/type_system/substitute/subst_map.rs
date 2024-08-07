@@ -233,6 +233,14 @@ impl TypeSubstMap {
                     vec![type_argument.type_id],
                 )
             }
+            (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
+                TypeSubstMap::from_superset_and_subset_helper(
+                    type_engine,
+                    decl_engine,
+                    vec![type_parameter.type_id],
+                    vec![type_argument.type_id],
+                )
+            }
             (
                 TypeInfo::Storage {
                     fields: type_parameters,
@@ -408,6 +416,15 @@ impl TypeSubstMap {
                     )
                 })
             }
+            TypeInfo::Slice(mut elem_ty) => {
+                let type_id = self.find_match(elem_ty.type_id, engines)?;
+                elem_ty.type_id = type_id;
+                Some(type_engine.insert(
+                    engines,
+                    TypeInfo::Slice(elem_ty.clone()),
+                    elem_ty.span.source_id(),
+                ))
+            }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
                 let mut source_id = None;
@@ -469,10 +486,6 @@ impl TypeSubstMap {
             TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
                 ty.type_id = type_id;
                 type_engine.insert(engines, TypeInfo::Ptr(ty.clone()), ty.span.source_id())
-            }),
-            TypeInfo::Slice(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
-                ty.type_id = type_id;
-                type_engine.insert(engines, TypeInfo::Slice(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Ref {
