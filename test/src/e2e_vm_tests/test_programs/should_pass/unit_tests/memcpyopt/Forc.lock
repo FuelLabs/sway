@@ -1,9 +1,9 @@
 [[package]]
 name = "core"
-source = "path+from-root-EB0B4DA0569712C8"
+source = "path+from-root-CA019CD48EEC4945"
 
 [[package]]
-name = "memcpyopt_noncopytype"
+name = "memcpyopt"
 source = "member"
 dependencies = [
     "core",
@@ -12,5 +12,5 @@ dependencies = [
 
 [[package]]
 name = "std"
-source = "path+from-root-EB0B4DA0569712C8"
+source = "path+from-root-CA019CD48EEC4945"
 dependencies = ["core"]
