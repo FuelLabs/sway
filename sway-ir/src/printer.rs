@@ -1094,13 +1094,14 @@ fn asm_block_to_doc(
                         .collect(),
                 ))
                 .append(
-                    return_name
-                        .as_ref()
-                        .map(|rn| {
-                            Doc::text(format!(" -> {} {rn}", return_type.as_string(context)))
-                                .append(md_namer.md_idx_to_doc(context, metadata))
-                        })
-                        .unwrap_or(Doc::Empty),
+                    Doc::text(format!(
+                        " -> {}{}",
+                        return_type.as_string(context),
+                        return_name
+                            .as_ref()
+                            .map_or("".to_string(), |rn| format!(" {rn}"))
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
                 .append(Doc::text(" {")),
         ))
