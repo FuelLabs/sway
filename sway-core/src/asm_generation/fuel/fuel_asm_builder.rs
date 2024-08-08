@@ -126,7 +126,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                         VirtualRegister::Constant(ConstantRegister::FuncArg0),
                         dataid,
                     )),
-                    comment: format!("ptr to {} default value", name),
+                    comment: format!("get pointer to configurable {} default value", name),
                     owning_span: None,
                 });
 
@@ -138,7 +138,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                             value: encoded_bytes.len() as u16,
                         },
                     )),
-                    comment: format!("length of {} default value", name),
+                    comment: format!("get length of configurable {} default value", name),
                     owning_span: None,
                 });
 
@@ -150,7 +150,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                             value: global.offset_in_bytes as u16,
                         },
                     )),
-                    comment: format!("ptr to global {} stack address", name),
+                    comment: format!("get pointer to configurable {} stack address", name),
                     owning_span: None,
                 });
 
@@ -159,14 +159,14 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                 self.before_entries.push(Op::save_ret_addr(
                     VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
                     ret_label,
-                    "",
+                    "set new return address",
                     None,
                 ));
 
                 // call decode
                 self.before_entries.push(Op {
                     opcode: Either::Right(crate::asm_lang::ControlFlowOp::Call(*decode_fn_label)),
-                    comment: format!("decode {}", name),
+                    comment: format!("decode configurable {}", name),
                     owning_span: None,
                 });
 
@@ -334,7 +334,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op::register_move(
                     arg_reg.clone(),
                     phi_reg.clone(),
-                    "parameter from branch to block argument",
+                    "move parameter from branch to block argument",
                     None,
                 ));
             }
@@ -354,7 +354,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> Result<(), ErrorEmitted> {
         let Some(instruction) = instr_val.get_instruction(self.context) else {
             return Err(handler.emit_err(CompileError::Internal(
-                "Value not an instruction.",
+                "Value is not an instruction.",
                 self.md_mgr
                     .val_to_span(self.context, *instr_val)
                     .unwrap_or_else(Span::dummy),
@@ -543,7 +543,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     const_copy.clone(),
                                     init_val_reg,
                                 )),
-                                comment: "copy const asm init to GP reg".into(),
+                                comment:
+                                    "copy ASM block argument's constant initial value to register"
+                                        .into(),
                                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                             });
                             const_copy
@@ -609,10 +611,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             });
         }
 
-        // Now, load the designated asm return register into the desired return register, but only
-        // if it was named.
-        if let Some(ret_reg_name) = &asm_block.return_name {
-            // Lookup and replace the return register.
+        // ASM block always returns a value. The return value is either the one contained in
+        // the return register specified at the end of the ASM block, or it is unit, `()`, in
+        // the case of an ASM block without the return register specified.
+        let (ret_reg, comment) = if let Some(ret_reg_name) = &asm_block.return_name {
+            // If the return register is specified, lookup it by name.
             let ret_reg = match realize_register(ret_reg_name.as_str()) {
                 Some(reg) => reg,
                 None => {
@@ -626,14 +629,40 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     }));
                 }
             };
-            let instr_reg = self.reg_seqr.next();
-            inline_ops.push(Op {
-                opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), ret_reg)),
-                comment: format!("return value from inline asm ({})", ret_reg_name),
-                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
-            });
-            self.reg_map.insert(*instr_val, instr_reg);
-        }
+
+            (
+                ret_reg,
+                format!(
+                    "return value from ASM block with return register {}",
+                    ret_reg_name
+                ),
+            )
+        } else {
+            // If the return register is not specified, the return value is unit, `()`, and we
+            // move constant register $zero to the final instruction register.
+            if !asm_block.return_type.is_unit(self.context) {
+                return Err(handler.emit_err(CompileError::InternalOwned(
+                    format!("Return type of an ASM block without return register must be unit, but it was {}.", asm_block.return_type.as_string(self.context)),
+                    self.md_mgr
+                        .val_to_span(self.context, *instr_val)
+                        .unwrap_or_else(Span::dummy),
+                )));
+            }
+
+            (
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                "return unit value from ASM block without return register".into(),
+            )
+        };
+
+        // Move the return register to the instruction register.
+        let instr_reg = self.reg_seqr.next();
+        inline_ops.push(Op {
+            opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), ret_reg)),
+            comment,
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+        self.reg_map.insert(*instr_val, instr_reg);
 
         self.cur_bytecode.append(&mut inline_ops);
 
@@ -648,7 +677,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> Result<(), CompileError> {
         let val_reg = self.value_to_register(bitcast_val)?;
         let reg = if to_type.is_bool(self.context) {
-            // This may not be necessary if we just treat a non-zero value as 'true'.
+            // We treat only one as `true`, and not every non-zero value.
+            // So, every non-zero value must be converted to one.
             let res_reg = self.reg_seqr.next();
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::EQ(
@@ -656,7 +686,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     val_reg,
                     VirtualRegister::Constant(ConstantRegister::Zero),
                 )),
-                comment: "convert to inverted boolean".into(),
+                comment: "[bitcast to bool]: convert value to inverted boolean".into(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
             self.cur_bytecode.push(Op {
@@ -665,13 +695,15 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     res_reg.clone(),
                     VirtualImmediate12 { value: 1 },
                 )),
-                comment: "invert boolean".into(),
+                comment: "[bitcast to bool]: invert inverted boolean".into(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
             res_reg
+        } else if to_type.is_unit(self.context) {
+            // Unit is represented as zero.
+            VirtualRegister::Constant(ConstantRegister::Zero)
         } else {
-            // This is a no-op, although strictly speaking Unit should probably be compiled as
-            // a zero.
+            // For all other values, bitcast is a no-op.
             val_reg
         };
         self.reg_map.insert(*instr_val, reg);
@@ -1019,7 +1051,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op::register_move(
                     phi_reg.clone(),
                     local_reg,
-                    "parameter from branch to block argument",
+                    "move parameter from branch to block argument",
                     None,
                 ));
             }
@@ -1052,13 +1084,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
-        // now, move the return value of the contract call to the return register.
+        // Now, move the return value of the contract call to the return register.
         // TODO validate RETL matches the expected type (this is a comment from the old codegen)
         let instr_reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op::register_move(
             instr_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::ReturnValue),
-            "save call result",
+            "save external contract call result",
             None,
         ));
         self.reg_map.insert(*instr_val, instr_reg);
@@ -1153,7 +1185,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         array_elem_size,
                         size_reg.clone(),
                         None,
-                        "get size of element",
+                        "get array element size",
                         owning_span.clone(),
                     );
 
@@ -1175,7 +1207,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             reg,
                             offset_reg.clone(),
                         )),
-                        comment: "add to array base".into(),
+                        comment: "add array element offset to array base".into(),
                         owning_span: owning_span.clone(),
                     });
 
@@ -1198,7 +1230,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 const_offs,
                 instr_reg.clone(),
                 Some(&base_reg),
-                "get offset to element",
+                "get offset to aggregate element",
                 owning_span.clone(),
             );
             self.reg_map.insert(*instr_val, instr_reg);
@@ -1312,7 +1344,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         value: g.offset_in_bytes as u16,
                     },
                 )),
-                comment: format!("configurable {} address", name),
+                comment: format!("get address of configurable {}", name),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
             });
             self.reg_map.insert(*addr_val, addr_reg);
@@ -1324,7 +1356,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     addr_reg.clone(),
                     dataid.clone(),
                 )),
-                comment: format!("configurable {} address", name),
+                comment: format!("get address of configurable {}", name),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
             });
             self.reg_map.insert(*addr_val, addr_reg);
@@ -1381,7 +1413,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         src_reg,
                         VirtualImmediate12 { value: 0 },
                     )),
-                    comment: "load value".into(),
+                    comment: "load byte".into(),
                     owning_span,
                 });
             }
@@ -1392,7 +1424,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         src_reg,
                         VirtualImmediate12 { value: 0 },
                     )),
-                    comment: "load value".into(),
+                    comment: "load word".into(),
                     owning_span,
                 });
             }
@@ -1433,13 +1465,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     value: byte_len as u32,
                 },
             )),
-            comment: "get length for mcp".into(),
+            comment: "get data length for memory copy".into(),
             owning_span: owning_span.clone(),
         });
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
-            comment: "copy memory with mem_copy".into(),
+            comment: "copy memory".into(),
             owning_span,
         });
 
@@ -1487,7 +1519,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     VirtualRegister::Constant(ConstantRegister::Zero),
                     VirtualRegister::Constant(ConstantRegister::Zero),
                 )),
-                comment: "".into(),
+                comment: "log non-pointer value".into(),
             });
         } else {
             // If the type is a pointer then we use LOGD to log the data. First put the size into
@@ -1507,7 +1539,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         VirtualImmediate12 { value: 0 },
                     )),
                     owning_span: owning_span.clone(),
-                    comment: "load slice ptr".into(),
+                    comment: "load slice pointer for logging data".into(),
                 });
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LW(
@@ -1516,7 +1548,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         VirtualImmediate12 { value: 1 },
                     )),
                     owning_span: owning_span.clone(),
-                    comment: "load slice size".into(),
+                    comment: "load slice size for logging data".into(),
                 });
                 self.cur_bytecode.push(Op {
                     owning_span,
@@ -1536,7 +1568,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     size_in_bytes,
                     size_reg.clone(),
                     None,
-                    "loading size for LOGD",
+                    "load data size for logging data",
                     owning_span.clone(),
                 );
 
@@ -1548,7 +1580,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         log_val_reg.clone(),
                         size_reg,
                     )),
-                    comment: "log ptr".into(),
+                    comment: "log data".into(),
                 });
             }
         }
@@ -1578,7 +1610,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     sway_ir::Register::Flag => ConstantRegister::Flags,
                 }),
             )),
-            comment: "move register into abi function".to_owned(),
+            comment: "read special register".to_owned(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
@@ -1601,7 +1633,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     ConstantRegister::Zero,
                 ))),
                 owning_span,
-                comment: "returning unit as zero".into(),
+                comment: "return unit as zero".into(),
             });
         } else {
             let ret_reg = self.value_to_register(ret_val)?;
@@ -1636,7 +1668,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualImmediate12 { value: 0 },
                         )),
                         owning_span: owning_span.clone(),
-                        comment: "load ptr of returned slice".into(),
+                        comment: "load pointer to returned slice".into(),
                     });
                 } else {
                     let size_in_bytes = ret_type
@@ -1648,7 +1680,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         size_in_bytes,
                         size_reg.clone(),
                         None,
-                        "get size of returned ref",
+                        "get size of type returned by pointer",
                         owning_span.clone(),
                     );
                 }
@@ -1693,7 +1725,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 VirtualRegister::Constant(ConstantRegister::HeapPointer),
                 VirtualImmediate12::new(0, Span::dummy()).unwrap(),
             )),
-            comment: "jmp_mem: Load MEM[$hp]".into(),
+            comment: "[jump]: load word from MEM[$hp]".into(),
         });
         self.cur_bytecode.push(Op {
             owning_span: owning_span.clone(),
@@ -1702,7 +1734,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 target_reg,
                 VirtualRegister::Constant(ConstantRegister::InstructionStart),
             )),
-            comment: "jmp_mem: Subtract $is since Jmp adds it back.".into(),
+            comment: "[jump]: subtract instructions start ($is) since jmp adds it back".into(),
         });
         self.cur_bytecode.push(Op {
             owning_span: owning_span.clone(),
@@ -1711,13 +1743,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 is_target_reg.clone(),
                 VirtualImmediate12::new(4, Span::dummy()).unwrap(),
             )),
-            comment: "jmp_mem: Divide by 4 since Jmp multiplies by 4.".into(),
+            comment: "[jump]: divide by 4 since jmp multiplies by 4".into(),
         });
 
         self.cur_bytecode.push(Op {
             owning_span,
             opcode: Either::Left(VirtualOp::JMP(by4_reg)),
-            comment: "jmp_mem: Jump to computed value".into(),
+            comment: "[jump]: jump to computed value".into(),
         });
 
         Ok(())
@@ -1785,7 +1817,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 was_slot_set_reg.clone(),
                 number_of_slots_reg,
             )),
-            comment: "clear a sequence of storage slots".into(),
+            comment: "clear sequence of storage slots".into(),
             owning_span,
         });
 
@@ -1839,7 +1871,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     number_of_slots_reg,
                 ),
             }),
-            comment: "access a sequence of storage slots".into(),
+            comment: format!(
+                "{} sequence of storage slots",
+                match access_type {
+                    StateAccessType::Read => "read",
+                    StateAccessType::Write => "write",
+                }
+            ),
             owning_span,
         });
 
@@ -1872,7 +1910,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::SRW(load_reg.clone(), was_slot_set_reg, key_reg)),
-            comment: "single word state access".into(),
+            comment: "read single word from contract state".into(),
             owning_span,
         });
 
@@ -1909,7 +1947,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::SWW(key_reg, was_slot_set_reg.clone(), store_reg)),
-            comment: "single word state access".into(),
+            comment: "write single word to contract state".into(),
             owning_span,
         });
 
@@ -1949,7 +1987,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             val_reg,
                             VirtualImmediate12 { value: 0 },
                         )),
-                        comment: "store value".into(),
+                        comment: "store byte".into(),
                         owning_span,
                     });
                 }
@@ -1960,7 +1998,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             val_reg,
                             VirtualImmediate12 { value: 0 },
                         )),
-                        comment: "store value".into(),
+                        comment: "store word".into(),
                         owning_span,
                     });
                 }
@@ -2031,7 +2069,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         reg.clone(),
                         data_id.clone(),
                     )),
-                    comment: "literal instantiation".into(),
+                    comment: "load constant from data section".into(),
                     owning_span: span,
                 });
                 (reg, Some(data_id))
@@ -2055,7 +2093,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // to determine when it may be initialised and/or reused.
     }
 
-    // Get the reg corresponding to `value`. Returns an ICE if the value is not in reg_map or is
+    // Get the reg corresponding to `value`. Returns an ICE if the value is not in `reg_map` or is
     // not a constant.
     pub(super) fn value_to_register(
         &mut self,
