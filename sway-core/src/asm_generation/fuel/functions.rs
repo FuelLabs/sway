@@ -79,7 +79,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op::register_move(
                     VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
                     arg_reg,
-                    format!("pass arg {idx}"),
+                    format!("[call]: pass argument {idx}"),
                     self.md_mgr.val_to_span(self.context, *arg_val),
                 ));
             }
@@ -92,7 +92,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     self.cur_bytecode.push(Op::register_move(
                         VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
                         arg_reg,
-                        format!("pass arg {idx}"),
+                        format!("[call]: pass argument {idx}"),
                         self.md_mgr.val_to_span(self.context, *arg_val),
                     ));
                 } else {
@@ -120,7 +120,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             )
                             .expect("Too many arguments, cannot handle."),
                         )),
-                        comment: format!("Pass arg {idx} via its stack slot"),
+                        comment: format!("[call]: pass argument {idx} via its stack slot"),
                         owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
                     });
                 }
@@ -138,7 +138,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         VirtualImmediate12::new(self.locals_size_bytes(), Span::dummy())
                             .expect("Stack size too big for these many arguments, cannot handle."),
                     )),
-                    comment: "Save address of stack arguments in last arg register".to_string(),
+                    comment: "[call]: save address of stack arguments in last argument register"
+                        .to_string(),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
             } else {
@@ -151,7 +152,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         VirtualImmediate18::new(self.locals_size_bytes(), Span::dummy())
                             .expect("Stack size too big for these many arguments, cannot handle."),
                     )),
-                    comment: "Temporarily save the locals size to add up next".to_string(),
+                    comment: "[call]: temporarily save locals size to add up next".to_string(),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
                 self.cur_bytecode.push(Op {
@@ -166,7 +167,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
                         ),
                     )),
-                    comment: "Save address of stack arguments in last arg register".to_string(),
+                    comment: "[call]: save address of stack arguments in last argument register"
+                        .to_string(),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
             }
@@ -177,7 +179,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         self.cur_bytecode.push(Op::save_ret_addr(
             VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
             ret_label,
-            "set new return addr",
+            "[call]: set new return address",
             None,
         ));
 
@@ -185,7 +187,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let (fn_label, _) = self.func_to_labels(function);
         self.cur_bytecode.push(Op {
             opcode: Either::Right(OrganizationalOp::Call(fn_label)),
-            comment: format!("call {}", function.get_name(self.context)),
+            comment: format!("[call]: call {}", function.get_name(self.context)),
             owning_span: None,
         });
         self.cur_bytecode.push(Op::unowned_jump_label(ret_label));
@@ -197,7 +199,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 ret_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnValue),
             )),
-            comment: "copy the return value".into(),
+            comment: "[call]: copy the return value".into(),
             owning_span: None,
         });
         self.reg_map.insert(*instr_val, ret_reg);
@@ -284,7 +286,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // Save any general purpose registers used here on the stack.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
-                comment: "save all regs".to_owned(),
+                comment: "save all registers".to_owned(),
                 owning_span: span.clone(),
             });
         }
@@ -305,14 +307,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.cur_bytecode.push(Op::register_move(
                 reta.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                "save reta",
+                "save return address",
                 None,
             ));
             let retv = self.reg_seqr.next();
             self.cur_bytecode.push(Op::register_move(
                 retv.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-                "save retv",
+                "save return value",
                 None,
             ));
 
@@ -346,14 +348,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.cur_bytecode.push(Op::register_move(
                 VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
                 reta,
-                "restore reta",
+                "restore return address",
                 None,
             ));
 
             // Restore GP regs.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PopAll(start_label)),
-                comment: "restore all regs".to_owned(),
+                comment: "restore all registers".to_owned(),
                 owning_span: None,
             });
 
@@ -387,7 +389,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op::register_move(
                     arg_copy_reg.clone(),
                     VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
-                    format!("save arg {idx} ({arg_name})"),
+                    format!("save argument {idx} ({arg_name})"),
                     self.md_mgr.val_to_span(self.context, *arg_val),
                 ));
 
@@ -396,7 +398,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             // Get NUM_ARG_REGISTERS - 1 arguments from arg registers and rest from the stack.
-            for (idx, (_, arg_val)) in function.args_iter(self.context).enumerate() {
+            for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
                 let arg_copy_reg = self.reg_seqr.next();
                 // Except for the last arg register, the others hold an argument.
                 if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
@@ -404,7 +406,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     self.cur_bytecode.push(Op::register_move(
                         arg_copy_reg.clone(),
                         VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
-                        format!("save arg {idx}"),
+                        format!("save argument {idx} ({arg_name})"),
                         self.md_mgr.val_to_span(self.context, *arg_val),
                     ));
                 } else {
@@ -430,7 +432,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             )
                             .expect("Too many arguments, cannot handle."),
                         )),
-                        comment: format!("Load arg {idx} from its stack slot"),
+                        comment: format!("load argument {idx} ({arg_name}) from its stack slot"),
                         owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
                     });
                 }
@@ -475,7 +477,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     single_arg_reg.clone(),
                                     VirtualImmediate12 { value: 0 },
                                 )),
-                                comment: "load main fn parameter".into(),
+                                comment: "load main function parameter".into(),
                                 owning_span: None,
                             });
                         }
@@ -519,7 +521,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     args_base_reg.clone(),
                                     offs_reg.clone(),
                                 )),
-                                comment: format!("get offset for arg {name}"),
+                                comment: format!("get offset of argument {name}"),
                                 owning_span: None,
                             });
 
@@ -530,7 +532,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                         offs_reg,
                                         VirtualImmediate12 { value: 0 },
                                     )),
-                                    comment: format!("get arg {name}"),
+                                    comment: format!("get argument {name}"),
                                     owning_span: None,
                                 });
                             } else {
@@ -540,7 +542,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                         offs_reg,
                                         VirtualImmediate12 { value: 0 },
                                     )),
-                                    comment: format!("get arg {name}"),
+                                    comment: format!("get argument {name}"),
                                     owning_span: None,
                                 });
                             }
@@ -553,7 +555,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                         value: arg_word_offset as u16 * 8,
                                     },
                                 )),
-                                comment: format!("get arg {name}"),
+                                comment: format!("get argument {name}"),
                                 owning_span: None,
                             });
                         } else {
@@ -565,7 +567,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                         value: arg_word_offset as u16,
                                     },
                                 )),
-                                comment: format!("get arg {name}"),
+                                comment: format!("get argument {name}"),
                                 owning_span: None,
                             });
                         }
@@ -574,7 +576,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             arg_word_offset * 8,
                             current_arg_reg.clone(),
                             Some(&args_base_reg),
-                            format!("get offset or arg {name}"),
+                            format!("get offset of argument {name}"),
                             None,
                         );
                     }
@@ -597,7 +599,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
                 VirtualImmediate12 { value: 74 },
             )),
-            comment: "base register for method parameter".into(),
+            comment: "get base register for method arguments".into(),
             owning_span: None,
         });
     }
@@ -612,7 +614,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     value: GTFArgs::ScriptData as u16,
                 },
             )),
-            comment: "base register for main fn parameter".into(),
+            comment: "get base register for main function arguments".into(),
             owning_span: None,
         });
     }
@@ -650,7 +652,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     value: GTFArgs::InputType as u16,
                 },
             )),
-            comment: "get input type".into(),
+            comment: "get predicate input type".into(),
             owning_span: None,
         });
 
@@ -671,7 +673,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     value: GTFArgs::InputCoinPredicateData as u16,
                 },
             )),
-            comment: "get input coin predicate data pointer".into(),
+            comment: "get predicate input coin data pointer".into(),
             owning_span: None,
         });
 
@@ -692,7 +694,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 two.clone(),
                 VirtualImmediate18 { value: 2u32 },
             )),
-            comment: "register containing 2".into(),
+            comment:
+                "[predicate input is message]: set register to 2 (Input::Message discriminator)"
+                    .into(),
             owning_span: None,
         });
         self.cur_bytecode.push(Op {
@@ -701,7 +705,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 input_type,
                 two,
             )),
-            comment: "input type is message(2)".into(),
+            comment: "[predicate input is message]: check if input type is message".into(),
             owning_span: None,
         });
 
@@ -713,16 +717,17 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 input_type_is_message,
                 VirtualImmediate12 { value: 1 },
             )),
-            comment: "input type is not message(2)".into(),
+            comment: "[predicate input is message]: check if input type is not message".into(),
             owning_span: None,
         });
 
         // Label to jump to if the input type is *not* 2, i.e. not "message" (and not "coin" since
         // we checked that earlier). Then do the jump.
         let input_type_not_message_label = self.reg_seqr.get_label();
-        self.cur_bytecode.push(Op::jump_if_not_zero(
+        self.cur_bytecode.push(Op::jump_if_not_zero_comment(
             input_type_not_message,
             input_type_not_message_label,
+            "[predicate input is message]: jump to return false from predicate",
         ));
 
         // If the input is indeed a "message", then use `GTF` to get the "input message predicate
@@ -735,7 +740,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     value: GTFArgs::InputMessagePredicateData as u16,
                 },
             )),
-            comment: "input message predicate data pointer".into(),
+            comment: "get predicate input message data pointer".into(),
             owning_span: None,
         });
         self.cur_bytecode.push(Op::jump_to_label(success_label));
@@ -751,7 +756,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 ConstantRegister::Zero,
             ))),
             owning_span: None,
-            comment: "return false".into(),
+            comment: "return false from predicate".into(),
         });
 
         // Final success label to continue execution at if we successfully obtained the predicate
@@ -873,7 +878,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
             format!(
-                "save locals base register for {}",
+                "save locals base register for function {}",
                 function.get_name(self.context)
             )
             .to_string(),
@@ -888,7 +893,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
                 value: locals_size_bytes as u32 + (max_num_extra_args * 8) as u32,
             })),
-            comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments."),
+            comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments"),
             owning_span: None,
         });
         (
@@ -927,7 +932,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             data_id,
                         )),
-                        comment: "load initializer from data section".to_owned(),
+                        comment: "load local variable initializer from data section".to_owned(),
                         owning_span: None,
                     });
                 }
@@ -938,7 +943,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             c.clone(),
                         )),
-                        comment: "load initializer from register".into(),
+                        comment: "load local variable initializer from register".into(),
                         owning_span: None,
                     });
                 }
@@ -958,7 +963,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             value: var_stack_off_bytes as u16,
                         },
                     )),
-                    comment: "calc local variable address".to_owned(),
+                    comment: "get local variable address".to_owned(),
                     owning_span: None,
                 });
             } else {
@@ -971,7 +976,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             value: var_stack_off_bytes as u32,
                         },
                     )),
-                    comment: "stack offset of local variable into register".to_owned(),
+                    comment: "move stack offset of local variable into register".to_owned(),
                     owning_span: None,
                 });
                 self.cur_bytecode.push(Op {
@@ -980,7 +985,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         locals_base_reg.clone(),
                         dst_reg.clone(),
                     )),
-                    comment: "calc local variable address".to_owned(),
+                    comment: "get local variable address".to_owned(),
                     owning_span: None,
                 });
             }
@@ -994,7 +999,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate12 { value: 0 },
                         )),
-                        comment: "store initializer to local variable".to_owned(),
+                        comment: "store byte initializer to local variable".to_owned(),
                         owning_span: None,
                     });
                 } else {
@@ -1004,7 +1009,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate12 { value: 0 },
                         )),
-                        comment: "store initializer to local variable".to_owned(),
+                        comment: "store word initializer to local variable".to_owned(),
                         owning_span: None,
                     });
                 }
@@ -1039,7 +1044,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
                 value: u32::try_from(locals_size_bytes + (max_num_extra_args * 8)).unwrap(),
             })),
-            comment: format!("free {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for extra call arguments."),
+            comment: format!("free {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for extra call arguments"),
             owning_span: None,
         });
     }

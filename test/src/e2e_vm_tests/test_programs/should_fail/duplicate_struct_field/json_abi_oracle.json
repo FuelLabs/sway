@@ -1,11 +1,20 @@
 {
   "configurables": [],
-  "encoding": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
-      "name": "main",
+      "name": "bar",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "baz",
       "output": {
         "name": "",
         "type": 0,

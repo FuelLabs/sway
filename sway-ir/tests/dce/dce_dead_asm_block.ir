@@ -1,0 +1,184 @@
+// The IR code represents the below function.
+//
+// ASM blocks above the separation line must survive DCE because
+// their either have side-effects (or better to say, could have),
+// or their unit result is used.
+//
+// ASM blocks below the line must be optimized away.
+// The call to `function` must remain, though.
+//
+// fn main() {
+//     poke(asm() { });
+//     poke(asm() { zero });
+//     poke(asm() { zero: () });
+// 
+//     let arg = 11u64;
+//     asm(a: arg, b: arg, res) {
+//         add res a b;
+//     };
+// 
+//     asm(a: arg, b: arg, res) {
+//         add res a b;
+//         res
+//     };
+// 
+//     // -----------
+// 
+//     asm () { }
+//     asm () { zero }
+//     asm() { zero: () }
+// 
+//     asm(arg: arg) {  };
+//     asm(arg: arg) { arg };
+// 
+//     let a = asm() { };
+//     let b = asm() { zero };
+//     let c = asm(arg: arg) { };
+//     let d = asm(arg: arg) { arg };
+//     let e = asm(arg: arg) { arg: u32 };
+// 
+//     let f = asm(arg: function()) { arg };
+// }
+
+// regex: VAL=v\d+
+
+script {
+    entry fn main() -> () {
+        // check: local u64 arg
+        local u64 arg
+        // not: local () a
+        local () a
+        // not: local u64 b
+        local u64 b
+        // not: local () c
+        local () c
+        // not: local u64 d
+        local u64 d
+        // not: local u64 e
+        local u64 e
+        // not: local u64 f
+        local u64 f
+
+        // check: entry()
+        entry():
+
+        // check: = asm() -> ()
+        v0 = asm() -> () {
+        }
+        v1 = call poke_1(v0)
+
+        // check: = asm() -> u64 zero
+        v2 = asm() -> u64 zero {
+        }
+        v3 = call poke_2(v2)
+
+        // check: = asm() -> () zero
+        v4 = asm() -> () zero {
+        }
+        v5 = call poke_1(v4)
+
+        v6 = get_local ptr u64, arg
+        v7 = const u64 11
+        store v7 to v6
+        v8 = get_local ptr u64, arg
+        v9 = load v8
+        v10 = get_local ptr u64, arg
+        v11 = load v10
+
+        // check: = asm(a: $VAL, b: $VAL, res) -> ()
+        v12 = asm(a: v9, b: v11, res) -> () {
+            add    res a b
+        }
+
+        v13 = get_local ptr u64, arg
+        v14 = load v13
+        v15 = get_local ptr u64, arg
+        v16 = load v15
+
+        // check: = asm(a: $VAL, b: $VAL, res) -> u64 res
+        v17 = asm(a: v14, b: v16, res) -> u64 res {
+            add    res a b
+        }
+
+        // -----------
+        
+        // not: asm
+
+        // check: = asm() -> u64 zero
+        v2 = asm() -> u64 zero {
+        }
+        v3 = call poke_2(v2)
+
+        v18 = asm() -> () {
+        }
+        v19 = asm() -> u64 zero {
+        }
+        v20 = asm() -> () zero {
+        }
+        v21 = get_local ptr u64, arg
+        v22 = load v21
+        v23 = asm(arg: v22) -> () {
+        }
+        v24 = get_local ptr u64, arg
+        v25 = load v24
+        v26 = asm(arg: v25) -> u64 arg {
+        }
+        v27 = asm() -> () {
+        }
+        v28 = get_local ptr (), a
+        store v27 to v28
+        v29 = asm() -> u64 zero {
+        }
+        v30 = get_local ptr u64, b
+        store v29 to v30
+        v31 = get_local ptr u64, arg
+        v32 = load v31
+        v33 = asm(arg: v32) -> () {
+        }
+        v34 = get_local ptr (), c
+        store v33 to v34
+        v35 = get_local ptr u64, arg
+        v36 = load v35
+        v37 = asm(arg: v36) -> u64 arg {
+        }
+        v38 = get_local ptr u64, d
+        store v37 to v38
+        v39 = get_local ptr u64, arg
+        v40 = load v39
+        v41 = asm(arg: v40) -> u64 arg {
+        }
+        v42 = get_local ptr u64, e
+        store v41 to v42
+
+        // check: call function()
+        v43 = call function()
+        v44 = asm(arg: v43) -> u64 arg {
+        }
+        v45 = get_local ptr u64, f
+        store v44 to v45
+        v46 = const unit ()
+
+        // not: asm
+
+        // check: ret ()
+        ret () v46
+    }
+
+    fn poke_1(_x: ()) -> () {
+        entry(_x: ()):
+        v0 = const unit ()
+        ret () v0
+    }
+
+    fn poke_2(_x: u64) -> () {
+        entry(_x: u64):
+        v0 = const unit ()
+        ret () v0
+    }
+
+    fn function() -> u64 {
+        entry():
+        v0 = const u64 0
+        ret u64 v0
+    }
+}

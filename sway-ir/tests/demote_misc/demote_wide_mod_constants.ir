@@ -12,7 +12,6 @@ script {
     }
 }
 
-// regex: VAL=v\d+
 // regex: ID=[[:alpha:]0-9_]+
 
 // check: local u256 __wide_lhs

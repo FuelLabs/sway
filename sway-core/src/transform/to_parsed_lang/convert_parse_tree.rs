@@ -3691,6 +3691,7 @@ fn asm_block_to_asm_expression(
     let whole_block_span = asm_block.span();
     let asm_block_contents = asm_block.contents.into_inner();
     let (returns, return_type) = match asm_block_contents.final_expr_opt {
+        // If the return register is specified.
         Some(asm_final_expr) => {
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
@@ -3698,10 +3699,12 @@ fn asm_block_to_asm_expression(
             let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
+                // If the return type is not specified, the ASM block returns `u64` as the default.
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             };
             (returns, return_type)
         }
+        // If the return register is not specified, the return type is unit, `()`.
         None => (None, TypeInfo::Tuple(Vec::new())),
     };
     let registers = {
