@@ -209,44 +209,22 @@ fn type_check_slice(
     _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if arguments.len() != 3 {
-        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
-            name: kind.to_string(),
-            expected: 3,
-            span,
-        }));
-    }
-
+    // if arguments.len() != 3 {
+    //     return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+    //         name: kind.to_string(),
+    //         expected: 3,
+    //         span,
+    //     }));
+    // }
+    //
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    // start index argument
-    let start_type = type_engine.insert(
+    let uint64 = type_engine.insert(
         engines,
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
         None,
     );
-    let start_ty_expr = {
-        let ctx = ctx
-            .by_ref()
-            .with_help_text("")
-            .with_type_annotation(start_type);
-        ty::TyExpression::type_check(handler, ctx, &arguments[1])?
-    };
-
-    // end index argument
-    let end_type = type_engine.insert(
-        engines,
-        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-        None,
-    );
-    let end_ty_expr = {
-        let ctx = ctx
-            .by_ref()
-            .with_help_text("")
-            .with_type_annotation(end_type);
-        ty::TyExpression::type_check(handler, ctx, &arguments[2])?
-    };
 
     // check first argument
     let first_argument_span = arguments[0].span.clone();
@@ -257,6 +235,57 @@ fn type_check_slice(
             .with_help_text("")
             .with_type_annotation(first_argument_type);
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+
+    // start index argument
+    let start_ty_expr = if let Some(v) = arguments.get(1) {
+        let start_type = type_engine.insert(
+            engines,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            None,
+        );
+
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(start_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[1])?
+    } else {
+        ty::TyExpression {
+            expression: ty::TyExpressionVariant::Literal(Literal::U64(0)),
+            return_type: uint64,
+            span: Span::dummy(),
+        }
+    };
+
+    // end index argument
+    let end_ty_expr = if let Some(v) = arguments.get(2) {
+        let end_type = type_engine.insert(
+            engines,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            None,
+        );
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(end_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[2])?
+    } else {
+        let len = match &*type_engine.get(first_argument_ty_expr.return_type) {
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => match &*type_engine.get(referenced_type.type_id) {
+                TypeInfo::Array(_, len) => len.val(),
+                x => unreachable!("{x:?}"),
+            },
+            _ => unreachable!(),
+        };
+
+        ty::TyExpression {
+            expression: ty::TyExpressionVariant::Literal(Literal::U64(len as u64)),
+            return_type: uint64,
+            span: Span::dummy(),
+        }
     };
 
     // statically check start and end, if possible

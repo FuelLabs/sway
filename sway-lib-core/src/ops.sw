@@ -1258,3 +1258,51 @@ pub fn ok_str_eq() {
     assert("" != "a");
     assert("a" != "b");
 }
+
+// Index
+pub trait Index<T> {
+    type Output;
+    fn index(self, index: T) -> &Self::Output;
+}
+
+pub trait IndexMut<T> {
+    type Output;
+    fn index_mut(self, index: T) -> &mut Self::Output;
+}
+
+impl<T> Index<u64> for &__slice[T] {
+    type Output = T;
+
+    fn index(self, index: u64) -> &Self::Output {
+        if index >= self.len() {
+            __revert(999);
+        }
+        __elem_at(self, index)
+    }
+}
+
+impl<T> Index<u64> for &mut __slice[T] {
+    type Output = T;
+
+    fn index(self, index: u64) -> &Self::Output {
+        if index >= self.len() {
+            __revert(999);
+        }
+        __elem_at(self, index)
+    }
+}
+
+impl<T> IndexMut<u64> for &mut __slice[T] {
+    type Output = T;
+
+    fn index_mut(self, index: u64) -> &mut T {
+        if index >= self.len() {
+            __revert(999);
+        }
+        __elem_at(self, index)
+    }
+}
+
+pub fn index_mut<T>(target: &mut __slice[T], index: u64) -> &mut T {
+    target.index_mut(index)
+}
