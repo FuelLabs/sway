@@ -1,8 +1,8 @@
 [[package]]
 name = "core"
-source = "path+from-root-F66B05B51B812E20"
+source = "path+from-root-082ED3C1A64D1BB4"
 
 [[package]]
-name = "deprecated_attribute"
+name = "lexer_errors"
 source = "member"
 dependencies = ["core"]

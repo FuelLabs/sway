@@ -120,7 +120,7 @@ impl Block {
         context.blocks[self.0].label = unique_label;
     }
 
-    /// Get the number of instructions in this block
+    /// Get the number of instructions in this block.
     pub fn num_instructions(&self, context: &Context) -> usize {
         context.blocks[self.0].instructions.len()
     }
