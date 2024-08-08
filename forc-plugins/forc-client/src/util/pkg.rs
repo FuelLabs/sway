@@ -387,3 +387,61 @@ pub fn split_into_chunks(bytecode: Vec<u8>, chunk_size: usize) -> Result<Vec<Con
 
     Ok(chunks)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use forc_pkg::BuildOpts;
+    use forc_util::user_forc_directory;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_split_into_chunks_exact_division() {
+        let bytecode = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let chunk_size = 8;
+        let chunks = split_into_chunks(bytecode.clone(), chunk_size).unwrap();
+
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(
+            chunks[0],
+            ContractChunk::new(0, 8, vec![1, 2, 3, 4, 5, 6, 7, 8])
+        );
+        assert_eq!(
+            chunks[1],
+            ContractChunk::new(1, 8, vec![9, 10, 11, 12, 13, 14, 15, 16])
+        );
+    }
+
+    #[test]
+    fn test_split_into_chunks_with_remainder() {
+        let bytecode = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let chunk_size = 8;
+        let chunks = split_into_chunks(bytecode.clone(), chunk_size).unwrap();
+
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(
+            chunks[0],
+            ContractChunk::new(0, 8, vec![1, 2, 3, 4, 5, 6, 7, 8])
+        );
+        assert_eq!(chunks[1], ContractChunk::new(1, 1, vec![9]));
+    }
+
+    #[test]
+    fn test_split_into_chunks_empty_bytecode() {
+        let bytecode = vec![];
+        let chunk_size = 8;
+        let chunks = split_into_chunks(bytecode.clone(), chunk_size).unwrap();
+
+        assert_eq!(chunks.len(), 0);
+    }
+
+    #[test]
+    fn test_split_into_chunks_smaller_than_chunk_size() {
+        let bytecode = vec![1, 2, 3];
+        let chunk_size = 8;
+        let chunks = split_into_chunks(bytecode.clone(), chunk_size).unwrap();
+
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], ContractChunk::new(0, 3, vec![1, 2, 3]));
+    }
+}
