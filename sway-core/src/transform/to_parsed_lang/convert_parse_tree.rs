@@ -2904,6 +2904,7 @@ fn path_expr_to_expression(
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
                 call_path_binding,
+                resolved_call_path_binding: None,
                 args: None,
             })),
             span,
