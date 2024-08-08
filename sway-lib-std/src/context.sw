@@ -3,7 +3,6 @@ library;
 
 use ::asset_id::AssetId;
 use ::contract_id::ContractId;
-use ::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.
 ///
@@ -75,5 +74,7 @@ pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
 /// }
 /// ```
 pub fn msg_amount() -> u64 {
-    balance()
+    asm() {
+        bal
+    }
 }
