@@ -45,7 +45,7 @@ use sway_core::BuildTarget;
 /// contract size is bigger than this amount, forc-deploy will automatically
 /// starts dividing the contract and deploy them in chunks automatically.
 /// The value is in bytes.
-const MAX_CONTRACT_SIZE: usize = 1_000;
+const MAX_CONTRACT_SIZE: usize = 100_000;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
@@ -152,7 +152,7 @@ async fn deploy_chunked(
     };
     for contract_chunk in contract_chunks {
         let chunk_id = contract_chunk.id();
-        let deployed_chunk = contract_chunk.deploy(provider, &salt, signing_key).await?;
+        let deployed_chunk = contract_chunk.deploy(provider, signing_key).await?;
         let chunk_contract_id = deployed_chunk.contract_id();
         println_action_green(
             "Finished",
@@ -176,7 +176,7 @@ async fn deploy_chunked(
         _ => bail!("contract chunking is only supported with fuelVM"),
     };
 
-    println_action_green("Building", &format!("loader contract for {pkg_name}"));
+    println_action_green("Creating", &format!("loader contract for {pkg_name}"));
     let loader_contract = build_loader_contract(
         program_abi,
         &deployed_contract_ids,

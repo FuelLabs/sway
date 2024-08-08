@@ -275,7 +275,7 @@ fn generate_run_external(num_targets: usize) -> String {
 ///
 /// Constructs:
 /// - The project folder with a correct structure if it is not already there.
-/// - Loader contract soruce code, that is created specifcally for number of
+/// - Loader contract source code, that is created specifically for number of
 ///   chunks in hand.
 pub(crate) fn create_chunk_loader_contract(
     abi: &ProgramABI,
@@ -344,15 +344,15 @@ impl ContractChunk {
     pub async fn deploy(
         self,
         provider: &Provider,
-        salt: &Salt,
         signing_key: &SecretKey,
     ) -> anyhow::Result<DeployedContractChunk> {
         let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
 
         let contract_chunk_storage_slot = StorageSlot::default();
+        let salt: Salt = rand::random();
         let contract_chunk = fuels::programs::contract::Contract::new(
             self.bytecode,
-            *salt,
+            salt,
             vec![contract_chunk_storage_slot],
         );
 
