@@ -1,0 +1,8 @@
+{
+    "slidev.port": 3030,
+    "slidev.force-enabled": true,
+    "slidev.include": [
+        "**/slides.md",
+        "docs/slides/encoding.md"
+    ]
+}
