@@ -38,10 +38,17 @@ use std::{
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 
+/// Maximum contract size allowed to be in a single contract. If the target
+/// contract size is bigger than this amount, forc-deploy will automatically
+/// starts dividing the contract and deploy them in chunks automatically.
+/// The value is in bytes.
+const MAX_CONTRACT_SIZE: usize = 100_000;
+
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
     pub proxy: Option<fuel_tx::ContractId>,
+    pub chunks: Vec<fuel_tx::ContractId>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -324,6 +331,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         let deployed_contract = DeployedContract {
             id: deployed_contract_id,
             proxy: proxy_id,
+            chunks: vec![],
         };
         deployed_contracts.push(deployed_contract);
     }

@@ -1,9 +1,15 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, manifest::ManifestFile, BuildOpts, BuildPlan};
 use forc_util::user_forc_directory;
 use fuel_abi_types::abi::program::ProgramABI;
+use fuel_crypto::SecretKey;
+use fuel_tx::{ContractId, Salt, StorageSlot};
+use fuels::types::transaction::TxPolicies;
+use fuels_accounts::provider::Provider;
+use fuels_accounts::wallet::WalletUnlocked;
 use pkg::{build_with_options, BuiltPackage, PackageManifestFile};
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -54,7 +60,7 @@ pub(crate) fn create_proxy_contract(pkg_name: &str) -> Result<PathBuf> {
     // Create the proxy contract folder.
     let proxy_contract_dir = user_forc_directory()
         .join(GENERATED_CONTRACT_FOLDER_NAME)
-        .join(pkg_name);
+        .join(format!("{}-proxy", pkg_name));
     std::fs::create_dir_all(&proxy_contract_dir)?;
     std::fs::write(
         proxy_contract_dir.join(PROXY_BIN_FILE_NAME),
@@ -307,4 +313,77 @@ pub(crate) fn create_chunk_loader_contract(
         generate_proxy_contract_with_chunking_src(abi, num_chunks, chunk_contract_ids);
     write!(f, "{}", contract_str)?;
     Ok(proxy_contract_dir)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ContractChunk {
+    id: usize,
+    size: usize,
+    bytecode: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct DeployedContractChunk {
+    contract_id: ContractId,
+}
+
+impl DeployedContractChunk {
+    pub fn contract_id(&self) -> &ContractId {
+        &self.contract_id
+    }
+}
+
+impl ContractChunk {
+    pub fn new(id: usize, size: usize, bytecode: Vec<u8>) -> Self {
+        Self { id, size, bytecode }
+    }
+
+    pub async fn deploy(
+        self,
+        provider: &Provider,
+        salt: &Salt,
+        signing_key: &SecretKey,
+    ) -> anyhow::Result<DeployedContractChunk> {
+        let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
+
+        let contract_chunk_storage_slot = StorageSlot::default();
+        let contract_chunk = fuels::programs::contract::Contract::new(
+            self.bytecode,
+            *salt,
+            vec![contract_chunk_storage_slot],
+        );
+
+        let policies = TxPolicies::default();
+        let bech32 = contract_chunk.deploy(&wallet, policies).await?;
+        let contract_id = ContractId::from(bech32);
+        Ok(DeployedContractChunk { contract_id })
+    }
+}
+
+/// Split bytecode into chunks of a specified maximum size. Meaning that each
+/// chunk up until the last one, is guaranteed to be `chunk_size`, and
+/// `chunk_size` is guaranteed to be divisble by 8, and will result an error
+/// otherwise. This requirement comes from VM, as LDC'ed bytecode is appended
+/// to word boundary.
+pub fn split_into_chunks(bytecode: Vec<u8>, chunk_size: usize) -> Result<Vec<ContractChunk>> {
+    // This is done so that LDC'ed bytecode aligns perfectly, as the VM appends
+    // them to word boundary. This should normally be the case if the bytecode
+    // is not modified manually.
+    assert!(chunk_size % 8 == 0);
+    if chunk_size % 8 != 0 {
+        bail!(
+            "Chunks size is not divisible by 8, chunk size: {}",
+            chunk_size
+        );
+    }
+    let mut chunks = Vec::new();
+
+    for (id, chunk) in bytecode.chunks(chunk_size).enumerate() {
+        let chunk = chunk.to_vec();
+        let size = chunk.len();
+        let contract_chunk = ContractChunk::new(id, size, chunk);
+        chunks.push(contract_chunk);
+    }
+
+    Ok(chunks)
 }
