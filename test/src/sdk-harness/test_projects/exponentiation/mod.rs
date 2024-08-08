@@ -50,6 +50,8 @@ async fn overflowing_pow_u32_panics_max() {
 #[tokio::test]
 // TODO won't overflow until https://github.com/FuelLabs/fuel-specs/issues/90 lands
 // #[should_panic(expected = "ArithmeticOverflow")]
+// Temporary fix in: https://github.com/FuelLabs/sway/pull/6340
+#[should_panic]
 async fn overflowing_pow_u16_panics() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (pow_instance, _) = get_pow_test_instance(wallet).await;
