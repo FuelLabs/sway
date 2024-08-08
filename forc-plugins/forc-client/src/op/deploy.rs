@@ -3,7 +3,10 @@ use crate::{
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         node_url::get_node_url,
-        pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
+        pkg::{
+            build_loader_contract, built_pkgs, create_proxy_contract, split_into_chunks,
+            update_proxy_address_in_manifest,
+        },
         target::Target,
         tx::{
             bech32_from_secret, prompt_forc_wallet_password, select_secret_key,
@@ -42,7 +45,7 @@ use sway_core::BuildTarget;
 /// contract size is bigger than this amount, forc-deploy will automatically
 /// starts dividing the contract and deploy them in chunks automatically.
 /// The value is in bytes.
-const MAX_CONTRACT_SIZE: usize = 100_000;
+const MAX_CONTRACT_SIZE: usize = 1_000;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
@@ -127,6 +130,70 @@ fn validate_and_parse_salts<'a>(
     }
 
     Ok(contract_salt_map)
+}
+
+async fn deploy_chunked(
+    command: &cmd::Deploy,
+    compiled: &BuiltPackage,
+    salt: Salt,
+    signing_key: &SecretKey,
+    provider: &Provider,
+    pkg_name: &str,
+) -> anyhow::Result<(ContractId, Vec<ContractId>)> {
+    println_action_green("Splitting", &format!("{pkg_name} into chunks"));
+    let contract_chunks = split_into_chunks(compiled.bytecode.bytes.clone(), MAX_CONTRACT_SIZE)?;
+    let mut deployed_contracts = vec![];
+    println_action_green("Deploying", &format!("{pkg_name} chunks"));
+    let chain_info = provider.chain_info().await?;
+    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+    for contract_chunk in contract_chunks {
+        let chunk_id = contract_chunk.id();
+        let deployed_chunk = contract_chunk.deploy(provider, &salt, signing_key).await?;
+        let chunk_contract_id = deployed_chunk.contract_id();
+        println_action_green(
+            "Finished",
+            &format!("deploying chunk {chunk_id} for {pkg_name}: {chunk_contract_id}"),
+        );
+        deployed_contracts.push(deployed_chunk);
+    }
+    println_action_green("Deployed", &format!("{pkg_name} chunks"));
+    let deployed_contract_ids: Vec<String> = deployed_contracts
+        .iter()
+        .map(|deployed_contract| format!("0x{}", deployed_contract.contract_id()))
+        .collect();
+
+    let deployed_contracts: Vec<_> = deployed_contracts
+        .iter()
+        .map(|deployed_contract| *deployed_contract.contract_id())
+        .collect();
+
+    let program_abi = match &compiled.program_abi {
+        sway_core::asm_generation::ProgramABI::Fuel(abi) => abi,
+        _ => bail!("contract chunking is only supported with fuelVM"),
+    };
+
+    println_action_green("Building", &format!("loader contract for {pkg_name}"));
+    let loader_contract = build_loader_contract(
+        program_abi,
+        &deployed_contract_ids,
+        deployed_contracts.len(),
+        pkg_name,
+        &build_opts_from_cmd(command),
+    )?;
+
+    println_action_green("Deploying", &format!("loader contract for {pkg_name}"));
+    let deployed_id = deploy_pkg(command, &loader_contract, salt, provider, signing_key).await?;
+
+    println_action_green(
+        "Finished",
+        &format!("deploying loader contract for {pkg_name} {contract_url}{deployed_id}"),
+    );
+
+    Ok((deployed_id, deployed_contracts))
 }
 
 /// Deploys a new proxy contract for the given package.
@@ -284,7 +351,25 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 bail!("Both `--salt` and `--default-salt` were specified: must choose one")
             }
         };
-        let deployed_contract_id = deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?;
+        let bytecode_size = pkg.bytecode.bytes.len();
+        let (deployed_contract_id, chunk_ids) = if bytecode_size > MAX_CONTRACT_SIZE {
+            // Deploy chunked
+            let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
+            let provider = Provider::connect(node_url).await?;
+            deploy_chunked(
+                &command,
+                pkg,
+                salt,
+                &signing_key,
+                &provider,
+                &pkg.descriptor.name,
+            )
+            .await?
+        } else {
+            let deployed_contract_id =
+                deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?;
+            (deployed_contract_id, vec![])
+        };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
             Some(forc_pkg::manifest::Proxy {
@@ -331,7 +416,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         let deployed_contract = DeployedContract {
             id: deployed_contract_id,
             proxy: proxy_id,
-            chunks: vec![],
+            chunks: chunk_ids,
         };
         deployed_contracts.push(deployed_contract);
     }

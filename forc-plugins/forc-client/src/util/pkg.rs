@@ -28,7 +28,7 @@ pub const LOADER_CONTRACT_FORC_TOML: &str = r#"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-name = "proxy_contract"
+name = "loader_contract"
 
 [dependencies]
 "#;
@@ -103,7 +103,7 @@ pub(crate) fn built_pkgs(path: &Path, build_opts: &BuildOpts) -> Result<Vec<Arc<
     Ok(built_pkgs)
 }
 
-pub fn generate_proxy_contract_with_chunking_src(
+pub fn generate_chunk_loader_contract_src(
     abi: &ProgramABI,
     num_chunks: usize,
     chunk_contract_ids: &[String],
@@ -309,8 +309,7 @@ pub(crate) fn create_chunk_loader_contract(
         .truncate(true)
         .open(proxy_contract_dir.join(SRC_DIR).join(MAIN_ENTRY))?;
 
-    let contract_str =
-        generate_proxy_contract_with_chunking_src(abi, num_chunks, chunk_contract_ids);
+    let contract_str = generate_chunk_loader_contract_src(abi, num_chunks, chunk_contract_ids);
     write!(f, "{}", contract_str)?;
     Ok(proxy_contract_dir)
 }
@@ -336,6 +335,10 @@ impl DeployedContractChunk {
 impl ContractChunk {
     pub fn new(id: usize, size: usize, bytecode: Vec<u8>) -> Self {
         Self { id, size, bytecode }
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
     }
 
     pub async fn deploy(
@@ -388,12 +391,29 @@ pub fn split_into_chunks(bytecode: Vec<u8>, chunk_size: usize) -> Result<Vec<Con
     Ok(chunks)
 }
 
+pub fn build_loader_contract(
+    abi: &ProgramABI,
+    chunk_contract_ids: &[String],
+    num_chunks: usize,
+    pkg_name: &str,
+    build_opts: &BuildOpts,
+) -> Result<Arc<BuiltPackage>> {
+    let loader_contract =
+        create_chunk_loader_contract(abi, chunk_contract_ids, num_chunks, pkg_name)?;
+    let mut build_opts = build_opts.clone();
+    let proxy_contract_dir_str = format!("{}", loader_contract.clone().display());
+    build_opts.pkg.path = Some(proxy_contract_dir_str);
+    let built_pkgs = built_pkgs(&loader_contract, &build_opts)?;
+    let built_pkg = built_pkgs
+        .first()
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("could not get proxy contract"))?;
+    Ok(built_pkg)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use forc_pkg::BuildOpts;
-    use forc_util::user_forc_directory;
-    use std::path::PathBuf;
 
     #[test]
     fn test_split_into_chunks_exact_division() {
