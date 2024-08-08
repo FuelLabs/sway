@@ -528,7 +528,7 @@ mod inputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Input::Contract);
+            assert_eq!(result.value, Some(Input::Contract));
 
             let result = contract_instance
                 .methods()
@@ -536,7 +536,7 @@ mod inputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Input::Coin);
+            assert_eq!(result.value, Some(Input::Coin));
         }
 
         #[tokio::test]
