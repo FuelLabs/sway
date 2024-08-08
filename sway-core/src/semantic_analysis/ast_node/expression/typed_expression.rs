@@ -907,6 +907,13 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
+        if asm.is_empty() {
+            handler.emit_warn(CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::AsmBlockIsEmpty,
+            });
+        }
+
         // Various checks that we can catch early to check that the assembly is valid. For now,
         // this includes two checks:
         // 1. Check that no control flow opcodes are used.
@@ -2617,7 +2624,7 @@ fn check_asm_block_validity(
             if reg.initializer.is_none() {
                 let span = reg.name.span();
 
-                // Emit warning if this register shadows a variable
+                // Emit warning if this register shadows a constant, or a configurable, or a variable.
                 let temp_handler = Handler::default();
                 let decl = ctx.namespace().resolve_call_path_typed(
                     &temp_handler,
@@ -2630,11 +2637,25 @@ fn check_asm_block_validity(
                     None,
                 );
 
-                if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                let shadowing_item = match decl {
+                    Ok(ty::TyDecl::ConstantDecl(decl)) => {
+                        let decl = ctx.engines.de().get_constant(&decl.decl_id);
+                        Some((decl.name().into(), "Constant"))
+                    }
+                    Ok(ty::TyDecl::ConfigurableDecl(decl)) => {
+                        let decl = ctx.engines.de().get_configurable(&decl.decl_id);
+                        Some((decl.name().into(), "Configurable"))
+                    }
+                    Ok(ty::TyDecl::VariableDecl(decl)) => Some((decl.name.into(), "Variable")),
+                    _ => None,
+                };
+
+                if let Some((item, item_kind)) = shadowing_item {
                     handler.emit_warn(CompileWarning {
                         span: span.clone(),
-                        warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                            name: decl.name.clone(),
+                        warning_content: Warning::UninitializedAsmRegShadowsItem {
+                            constant_or_configurable_or_variable: item_kind,
+                            item,
                         },
                     });
                 }

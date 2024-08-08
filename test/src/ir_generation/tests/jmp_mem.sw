@@ -49,7 +49,7 @@ impl MyContract for Contract {
 
 // check: csiz $(len=$REG) $REG
 // check: ldc  $REG $$zero $len
-// check: lw   $(target=$REG) $$hp i0               ; jmp_mem: Load MEM[$$hp]
-// check: sub  $(jmp_target_4=$REG) $target $$is              ; jmp_mem: Subtract $$is since Jmp adds it back
-// check: divi $(jmp_target=$REG) $jmp_target_4 i4               ; jmp_mem: Divide by 4 since Jmp multiplies by 4
-// check: jmp $jmp_target                       ; jmp_mem: Jump to computed value
+// check: lw   $(target=$REG) $$hp i0
+// check: sub  $(jmp_target_4=$REG) $target $$is
+// check: divi $(jmp_target=$REG) $jmp_target_4 i4
+// check: jmp $jmp_target

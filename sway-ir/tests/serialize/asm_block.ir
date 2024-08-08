@@ -1,0 +1,23 @@
+script {
+    // check: main() -> u64
+    entry fn main() -> u64 {
+        entry():
+
+        c0 = const u64 0
+
+        // check: = asm() -> () {
+        v0 = asm() -> () {
+        }
+
+        // check: = asm() -> () zero {
+        v1 = asm() -> () zero {
+        }
+
+        // check: = asm() -> u64 zero {
+        v2 = asm() -> u64 zero {
+        }
+
+        rv = const u64 0
+        ret u64 rv
+    }
+}

@@ -227,131 +227,131 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     fn verify_instructions(&self) -> Result<(), IrError> {
         for ins in self.cur_block.instruction_iter(self.context) {
             let value_content = &self.context.values[ins.0];
-            if let ValueDatum::Instruction(instruction) = &value_content.value {
-                if instruction.parent != self.cur_block {
-                    return Err(IrError::InconsistentParent(
-                        format!("Instr_{:?}", ins.0),
-                        self.cur_block.get_label(self.context),
-                        instruction.parent.get_label(self.context),
-                    ));
-                }
-                match &instruction.op {
-                    InstOp::AsmBlock(..) => (),
-                    InstOp::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
-                    InstOp::UnaryOp { op, arg } => self.verify_unary_op(op, arg)?,
-                    InstOp::BinaryOp { op, arg1, arg2 } => self.verify_binary_op(op, arg1, arg2)?,
-                    InstOp::Branch(block) => self.verify_br(block)?,
-                    InstOp::Call(func, args) => self.verify_call(func, args)?,
-                    InstOp::CastPtr(val, ty) => self.verify_cast_ptr(val, ty)?,
-                    InstOp::Cmp(pred, lhs_value, rhs_value) => {
-                        self.verify_cmp(pred, lhs_value, rhs_value)?
-                    }
-                    InstOp::ConditionalBranch {
-                        cond_value,
-                        true_block,
-                        false_block,
-                    } => self.verify_cbr(cond_value, true_block, false_block)?,
-                    InstOp::ContractCall {
-                        params,
-                        coins,
-                        asset_id,
-                        gas,
-                        ..
-                    } => self.verify_contract_call(params, coins, asset_id, gas)?,
-                    // XXX move the fuelvm verification into a module
-                    InstOp::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                        FuelVmInstruction::Gtf { index, tx_field_id } => {
-                            self.verify_gtf(index, tx_field_id)?
-                        }
-                        FuelVmInstruction::Log {
-                            log_val,
-                            log_ty,
-                            log_id,
-                        } => self.verify_log(log_val, log_ty, log_id)?,
-                        FuelVmInstruction::ReadRegister(_) => (),
-                        FuelVmInstruction::JmpMem => (),
-                        FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
-                        FuelVmInstruction::Smo {
-                            recipient,
-                            message,
-                            message_size,
-                            coins,
-                        } => self.verify_smo(recipient, message, message_size, coins)?,
-                        FuelVmInstruction::StateClear {
-                            key,
-                            number_of_slots,
-                        } => self.verify_state_clear(key, number_of_slots)?,
-                        FuelVmInstruction::StateLoadWord(key) => {
-                            self.verify_state_load_word(key)?
-                        }
-                        FuelVmInstruction::StateLoadQuadWord {
-                            load_val: dst_val,
-                            key,
-                            number_of_slots,
-                        }
-                        | FuelVmInstruction::StateStoreQuadWord {
-                            stored_val: dst_val,
-                            key,
-                            number_of_slots,
-                        } => self.verify_state_access_quad(dst_val, key, number_of_slots)?,
-                        FuelVmInstruction::StateStoreWord {
-                            stored_val: dst_val,
-                            key,
-                        } => self.verify_state_store_word(dst_val, key)?,
-                        FuelVmInstruction::WideUnaryOp { op, result, arg } => {
-                            self.verify_wide_unary_op(op, result, arg)?
-                        }
-                        FuelVmInstruction::WideBinaryOp {
-                            op,
-                            result,
-                            arg1,
-                            arg2,
-                        } => self.verify_wide_binary_op(op, result, arg1, arg2)?,
-                        FuelVmInstruction::WideModularOp {
-                            op,
-                            result,
-                            arg1,
-                            arg2,
-                            arg3,
-                        } => self.verify_wide_modular_op(op, result, arg1, arg2, arg3)?,
-                        FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
-                            self.verify_wide_cmp(op, arg1, arg2)?
-                        }
-                        FuelVmInstruction::Retd { .. } => (),
-                    },
-                    InstOp::GetElemPtr {
-                        base,
-                        elem_ptr_ty,
-                        indices,
-                    } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
-                    InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
-                    InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
-                    InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
-                    InstOp::Load(ptr) => self.verify_load(ptr)?,
-                    InstOp::MemCopyBytes {
-                        dst_val_ptr,
-                        src_val_ptr,
-                        byte_len,
-                    } => self.verify_mem_copy_bytes(dst_val_ptr, src_val_ptr, byte_len)?,
-                    InstOp::MemCopyVal {
-                        dst_val_ptr,
-                        src_val_ptr,
-                    } => self.verify_mem_copy_val(dst_val_ptr, src_val_ptr)?,
-                    InstOp::Nop => (),
-                    InstOp::PtrToInt(val, ty) => self.verify_ptr_to_int(val, ty)?,
-                    InstOp::Ret(val, ty) => self.verify_ret(val, ty)?,
-                    InstOp::Store {
-                        dst_val_ptr,
-                        stored_val,
-                    } => self.verify_store(&ins, dst_val_ptr, stored_val)?,
-                };
+            let ValueDatum::Instruction(instruction) = &value_content.value else {
+                unreachable!("The value must be an instruction, because it is retrieved via block instruction iterator.")
+            };
 
-                // Verify the instruction metadata too.
-                self.context.verify_metadata(value_content.metadata)?;
-            } else {
-                unreachable!("Verify instruction is not an instruction.");
+            if instruction.parent != self.cur_block {
+                return Err(IrError::InconsistentParent(
+                    format!("Instr_{:?}", ins.0),
+                    self.cur_block.get_label(self.context),
+                    instruction.parent.get_label(self.context),
+                ));
             }
+
+            match &instruction.op {
+                InstOp::AsmBlock(..) => (),
+                InstOp::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
+                InstOp::UnaryOp { op, arg } => self.verify_unary_op(op, arg)?,
+                InstOp::BinaryOp { op, arg1, arg2 } => self.verify_binary_op(op, arg1, arg2)?,
+                InstOp::Branch(block) => self.verify_br(block)?,
+                InstOp::Call(func, args) => self.verify_call(func, args)?,
+                InstOp::CastPtr(val, ty) => self.verify_cast_ptr(val, ty)?,
+                InstOp::Cmp(pred, lhs_value, rhs_value) => {
+                    self.verify_cmp(pred, lhs_value, rhs_value)?
+                }
+                InstOp::ConditionalBranch {
+                    cond_value,
+                    true_block,
+                    false_block,
+                } => self.verify_cbr(cond_value, true_block, false_block)?,
+                InstOp::ContractCall {
+                    params,
+                    coins,
+                    asset_id,
+                    gas,
+                    ..
+                } => self.verify_contract_call(params, coins, asset_id, gas)?,
+                // XXX move the fuelvm verification into a module
+                InstOp::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                    FuelVmInstruction::Gtf { index, tx_field_id } => {
+                        self.verify_gtf(index, tx_field_id)?
+                    }
+                    FuelVmInstruction::Log {
+                        log_val,
+                        log_ty,
+                        log_id,
+                    } => self.verify_log(log_val, log_ty, log_id)?,
+                    FuelVmInstruction::ReadRegister(_) => (),
+                    FuelVmInstruction::JmpMem => (),
+                    FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
+                    FuelVmInstruction::Smo {
+                        recipient,
+                        message,
+                        message_size,
+                        coins,
+                    } => self.verify_smo(recipient, message, message_size, coins)?,
+                    FuelVmInstruction::StateClear {
+                        key,
+                        number_of_slots,
+                    } => self.verify_state_clear(key, number_of_slots)?,
+                    FuelVmInstruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
+                    FuelVmInstruction::StateLoadQuadWord {
+                        load_val: dst_val,
+                        key,
+                        number_of_slots,
+                    }
+                    | FuelVmInstruction::StateStoreQuadWord {
+                        stored_val: dst_val,
+                        key,
+                        number_of_slots,
+                    } => self.verify_state_access_quad(dst_val, key, number_of_slots)?,
+                    FuelVmInstruction::StateStoreWord {
+                        stored_val: dst_val,
+                        key,
+                    } => self.verify_state_store_word(dst_val, key)?,
+                    FuelVmInstruction::WideUnaryOp { op, result, arg } => {
+                        self.verify_wide_unary_op(op, result, arg)?
+                    }
+                    FuelVmInstruction::WideBinaryOp {
+                        op,
+                        result,
+                        arg1,
+                        arg2,
+                    } => self.verify_wide_binary_op(op, result, arg1, arg2)?,
+                    FuelVmInstruction::WideModularOp {
+                        op,
+                        result,
+                        arg1,
+                        arg2,
+                        arg3,
+                    } => self.verify_wide_modular_op(op, result, arg1, arg2, arg3)?,
+                    FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
+                        self.verify_wide_cmp(op, arg1, arg2)?
+                    }
+                    FuelVmInstruction::Retd { .. } => (),
+                },
+                InstOp::GetElemPtr {
+                    base,
+                    elem_ptr_ty,
+                    indices,
+                } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
+                InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
+                InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
+                InstOp::Load(ptr) => self.verify_load(ptr)?,
+                InstOp::MemCopyBytes {
+                    dst_val_ptr,
+                    src_val_ptr,
+                    byte_len,
+                } => self.verify_mem_copy_bytes(dst_val_ptr, src_val_ptr, byte_len)?,
+                InstOp::MemCopyVal {
+                    dst_val_ptr,
+                    src_val_ptr,
+                } => self.verify_mem_copy_val(dst_val_ptr, src_val_ptr)?,
+                InstOp::Nop => (),
+                InstOp::PtrToInt(val, ty) => self.verify_ptr_to_int(val, ty)?,
+                InstOp::Ret(val, ty) => self.verify_ret(val, ty)?,
+                InstOp::Store {
+                    dst_val_ptr,
+                    stored_val,
+                } => self.verify_store(&ins, dst_val_ptr, stored_val)?,
+            };
+
+            // Verify the instruction metadata too.
+            self.context.verify_metadata(value_content.metadata)?;
         }
+
         Ok(())
     }
 
