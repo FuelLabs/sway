@@ -18,20 +18,19 @@ use sway_core::{
     decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::{
-            AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
-            ArrayIndexExpression, AstNode, AstNodeContent, ConfigurableDeclaration,
-            ConstantDeclaration, Declaration, DelineatedPathExpression, EnumDeclaration,
-            EnumVariant, Expression, ExpressionKind, ForLoopExpression,
-            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            ImplItem, ImplSelfOrTrait, ImportType, IncludeStatement, IntrinsicFunctionExpression,
-            LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
-            ParseModule, ParseProgram, ParseSubmodule, QualifiedPathType, ReassignmentExpression,
-            ReassignmentTarget, RefExpression, Scrutinee, StorageAccessExpression,
-            StorageDeclaration, StorageEntry, StorageField, StorageNamespace, StructDeclaration,
-            StructExpression, StructExpressionField, StructField, StructScrutineeField,
-            SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TraitItem,
-            TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
-            VariableDeclaration, WhileLoopExpression,
+            AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression, AstNode,
+            AstNodeContent, ConfigurableDeclaration, ConstantDeclaration, Declaration,
+            DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression, ExpressionKind,
+            ForLoopExpression, FunctionApplicationExpression, FunctionDeclaration,
+            FunctionParameter, IfExpression, ImplItem, ImplSelfOrTrait, ImportType,
+            IncludeStatement, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
+            QualifiedPathType, ReassignmentExpression, ReassignmentTarget, RefExpression,
+            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageEntry, StorageField,
+            StorageNamespace, StructDeclaration, StructExpression, StructExpressionField,
+            StructField, StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration,
+            TraitFn, TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
+            UseStatement, VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, HasSubmodules, Literal,
     },
@@ -307,10 +306,6 @@ impl Parse for Expression {
             }
             ExpressionKind::AbiCast(abi_cast_expression) => {
                 abi_cast_expression.parse(ctx);
-            }
-            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => {
-                prefix.parse(ctx);
-                index.parse(ctx);
             }
             ExpressionKind::StorageAccess(StorageAccessExpression {
                 field_names,

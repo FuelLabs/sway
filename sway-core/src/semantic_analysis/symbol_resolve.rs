@@ -610,10 +610,6 @@ impl ResolveSymbols for ExpressionKind {
                 expr.abi_name.resolve_symbols(handler, ctx.by_ref());
                 expr.address.resolve_symbols(handler, ctx.by_ref());
             }
-            ExpressionKind::ArrayIndex(expr) => {
-                expr.index.resolve_symbols(handler, ctx.by_ref());
-                expr.prefix.resolve_symbols(handler, ctx.by_ref());
-            }
             ExpressionKind::StorageAccess(_expr) => {}
             ExpressionKind::IntrinsicFunction(expr) => {
                 expr.arguments

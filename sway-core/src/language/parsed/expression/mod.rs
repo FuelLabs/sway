@@ -461,7 +461,6 @@ pub enum ExpressionKind {
     DelineatedPath(Box<DelineatedPathExpression>),
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast(Box<AbiCastExpression>),
-    ArrayIndex(ArrayIndexExpression),
     StorageAccess(StorageAccessExpression),
     IntrinsicFunction(IntrinsicFunctionExpression),
     /// A control flow element which loops continually until some boolean expression evaluates as
@@ -532,7 +531,6 @@ impl PartialEqWithEngines for ExpressionKind {
                 lhs.eq(rhs, ctx)
             }
             (ExpressionKind::AbiCast(lhs), ExpressionKind::AbiCast(rhs)) => lhs.eq(rhs, ctx),
-            (ExpressionKind::ArrayIndex(lhs), ExpressionKind::ArrayIndex(rhs)) => lhs.eq(rhs, ctx),
             (ExpressionKind::StorageAccess(lhs), ExpressionKind::StorageAccess(rhs)) => {
                 lhs.eq(rhs, ctx)
             }

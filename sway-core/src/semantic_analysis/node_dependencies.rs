@@ -586,9 +586,6 @@ impl Dependencies {
                 .gather_from_iter(array_expression.contents.iter(), |deps, expr| {
                     deps.gather_from_expr(engines, expr)
                 }),
-            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => self
-                .gather_from_expr(engines, prefix)
-                .gather_from_expr(engines, index),
             ExpressionKind::Struct(struct_expression) => {
                 let StructExpression {
                     call_path_binding,
