@@ -658,7 +658,7 @@ impl Bytes {
     ///
     /// # Additional Information
     ///
-    /// NOTE: Appending `self` to iself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
+    /// NOTE: Appending `self` to itself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
     ///
     /// # Arguments
     ///
