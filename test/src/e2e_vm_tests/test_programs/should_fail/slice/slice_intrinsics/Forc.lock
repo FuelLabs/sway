@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-53D6DC514F06A250"
+
+[[package]]
+name = "slice_intrinsics"
+source = "member"
+dependencies = ["core"]

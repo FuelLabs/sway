@@ -1,0 +1,7 @@
+category = "fail"
+
+#check: $()let _ = ConstantId::ID;
+#nextln: $()Could not find symbol "ID" in this scope.
+
+#check: $()let _ = Contract::ID;
+#nextln: $()Could not find symbol "ID" in this scope.
