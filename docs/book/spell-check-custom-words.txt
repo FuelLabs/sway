@@ -216,3 +216,4 @@ underflows
 Codec
 bool
 str
+multisig
