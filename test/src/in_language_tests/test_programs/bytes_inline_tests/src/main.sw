@@ -767,8 +767,7 @@ fn bytes_append_to_empty() {
     };
 }
 
-#[test(should_revert)]
-fn revert_bytes_append_self() {
+fn bytes_append_self() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == a);
@@ -776,13 +775,22 @@ fn revert_bytes_append_self() {
     assert(bytes.get(2).unwrap() == c);
 
     bytes.append(bytes);
+
+    assert(bytes.len() == 6);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+    assert(bytes.get(3).unwrap() == a);
+    assert(bytes.get(4).unwrap() == b);
+    assert(bytes.get(5).unwrap() == c);
 }
 
-#[test(should_revert)]
-fn revert_bytes_append_empty_self() {
+fn bytes_append_empty_self() {
     let mut empty_bytes = Bytes::new();
 
     empty_bytes.append(empty_bytes);
+
+    assert(empty_bytes.len() == 0);
 }
 
 #[test()]

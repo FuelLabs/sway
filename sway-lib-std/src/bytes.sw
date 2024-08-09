@@ -656,13 +656,13 @@ impl Bytes {
 
     /// Moves all elements of `other` into `self`, leaving `other` empty.
     ///
+    /// # Additional Information
+    ///
+    /// NOTE: Appending `self` to iself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
+    ///
     /// # Arguments
     ///
     /// * `other`: [Bytes] - The Bytes to append to self.
-    ///
-    /// # Reverts
-    ///
-    /// * When appending to self.
     ///
     /// # Examples
     ///
@@ -693,10 +693,6 @@ impl Bytes {
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {
-        if __addr_of::<Self>(self) == __addr_of::<Self>(other) {
-            revert(0)
-        };
-
         let other_len = other.len();
         if other_len == 0 {
             return
@@ -727,8 +723,10 @@ impl Bytes {
         // set capacity and length
         self.len = both_len;
 
-        // clear `other`
-        other.clear();
+        // clear `other`, if self == other then we do not want to clear self
+        if self.ptr() != other.ptr() {
+            other.clear();
+        }
     }
 }
 
