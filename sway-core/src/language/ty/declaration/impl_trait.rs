@@ -21,6 +21,7 @@ pub struct TyImplSelfOrTrait {
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub items: Vec<TyImplItem>,
+    pub supertrait_items: Vec<TyImplItem>,
     pub trait_decl_ref: Option<DeclRefMixedInterface>,
     pub implementing_for: TypeArgument,
     pub span: Span,
@@ -75,6 +76,7 @@ impl HashWithEngines for TyImplSelfOrTrait {
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             span: _,
+            supertrait_items: _,
         } = self;
         trait_name.hash(state);
         impl_type_parameters.hash(state, engines);

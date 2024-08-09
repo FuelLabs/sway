@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-6ECA11F8A7EF18BC"
+
+[[package]]
+name = "std"
+source = "path+from-root-6ECA11F8A7EF18BC"
+dependencies = ["core"]
+
+[[package]]
+name = "superabi_supertrait_external_call"
+source = "member"
+dependencies = ["std"]

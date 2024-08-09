@@ -318,7 +318,24 @@ impl TyAstNode {
         })
     }
 
-    pub fn contract_fns(&self, engines: &Engines) -> Vec<DeclRefFunction> {
+    pub fn contract_supertrait_fns(&self, engines: &Engines) -> Vec<DeclId<TyFunctionDecl>> {
+        let mut fns = vec![];
+
+        if let TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(decl)) = &self.content {
+            let decl = engines.de().get(&decl.decl_id);
+            if decl.is_impl_contract(engines.te()) {
+                for item in &decl.supertrait_items {
+                    if let TyTraitItem::Fn(f) = item {
+                        fns.push(*f.id());
+                    }
+                }
+            }
+        }
+
+        fns
+    }
+
+    pub fn contract_fns(&self, engines: &Engines) -> Vec<DeclId<TyFunctionDecl>> {
         let mut fns = vec![];
 
         if let TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(decl)) = &self.content {
@@ -326,7 +343,7 @@ impl TyAstNode {
             if decl.is_impl_contract(engines.te()) {
                 for item in &decl.items {
                     if let TyTraitItem::Fn(f) = item {
-                        fns.push(f.clone());
+                        fns.push(*f.id());
                     }
                 }
             }

@@ -98,6 +98,17 @@ impl<T> Into<usize> for DeclId<T> {
     }
 }
 
+impl<T> DebugWithEngines for DeclId<T>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + DebugWithEngines,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let decl = engines.de().get(self);
+        DebugWithEngines::fmt(&decl, f, engines)
+    }
+}
+
 impl<T> EqWithEngines for DeclId<T>
 where
     DeclEngine: DeclEngineIndex<T>,
