@@ -142,17 +142,17 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 pub fn caller_address() -> Result<Address, AuthError> {
     let inputs = input_count().as_u64();
     let mut candidate = None;
-    let mut itter = 0;
+    let mut iter = 0;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
-    while itter < inputs {
-        let type_of_input = input_type(itter);
+    while iter < inputs {
+        let type_of_input = input_type(iter);
         match type_of_input {
             Some(Input::Coin) => (),
             Some(Input::Message) => (),
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
-                itter += 1;
+                iter += 1;
                 continue;
             }
         }
@@ -160,14 +160,14 @@ pub fn caller_address() -> Result<Address, AuthError> {
         // type == InputCoin or InputMessage.
         let owner_of_input = match type_of_input {
             Some(Input::Coin) => {
-                input_coin_owner(itter)
+                input_coin_owner(iter)
             },
             Some(Input::Message) => {
-                input_message_sender(itter)
+                input_message_sender(iter)
             },
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
-                itter += 1;
+                iter += 1;
                 continue;
             }
         };
@@ -175,7 +175,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
-            itter += 1;
+            iter += 1;
             continue;
         }
 
@@ -184,7 +184,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
-            itter += 1;
+            iter += 1;
             continue;
         }
 
@@ -205,17 +205,13 @@ pub fn caller_address() -> Result<Address, AuthError> {
 ///
 /// * [Option<Address>] - The address of this predicate.
 ///
-/// # Reverts
-///
-/// * When called outside of a predicate program.
-///
 /// # Examples
 ///
 /// ```sway
 /// use std::auth::predicate_address;
 ///
 /// fn main() {
-///     let this_predicate = predicate_address();
+///     let this_predicate = predicate_address().unwrap();
 ///     log(this_predicate);
 /// }
 /// ```

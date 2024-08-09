@@ -9,7 +9,6 @@ use ::asset_id::AssetId;
 use ::bytes::Bytes;
 use ::contract_id::ContractId;
 use ::option::Option::{self, *};
-use ::revert::revert;
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
     GTF_CREATE_INPUTS_COUNT,
@@ -251,8 +250,8 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 /// use std::inputs::input_predicate_data;
 ///
 /// fn foo() {
-///     let input_predicate_data: u64 = input_predicate_data(0);
-///     assert(input_predicate_data == 100);
+///     let result_input_predicate_data: u64 = input_predicate_data::<u64>(0).unwrap();
+///     assert(result_input_predicate_data == 100);
 /// }
 /// ```
 pub fn input_predicate_data<T>(index: u64) -> Option<T>
@@ -443,8 +442,6 @@ pub fn input_predicate_data_length(index: u64) -> Option<u64> {
     }
 }
 
-// Coin Inputs
-
 /// Gets the sender of the input message at `index`.
 ///
 /// # Arguments
@@ -559,11 +556,7 @@ pub fn input_message_data_length(index: u64) -> Option<u64> {
 ///
 /// # Returns
 ///
-/// * [Option(Bytes)] - The data of the input message at `index`, if the input's type is `Input::Message`.
-///
-/// # Reverts
-///
-/// * When the input's type is not `Input::Message`.
+/// * [Option<Bytes>] - The data of the input message at `index`, if the input's type is `Input::Message`.
 ///
 /// # Examples
 ///
