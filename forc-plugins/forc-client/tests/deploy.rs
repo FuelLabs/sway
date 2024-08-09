@@ -182,7 +182,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedContract {
         id: ContractId::from_str(
-            "822c8d3672471f64f14f326447793c7377b6e430122db23b622880ccbd8a33ef",
+            "ad0bba17e0838ef859abe2693d8a5e3bc4e7cfb901601e30f4dc34999fda6335",
         )
         .unwrap(),
         proxy: None,
