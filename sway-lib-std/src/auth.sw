@@ -140,34 +140,34 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// }
 /// ```
 pub fn caller_address() -> Result<Address, AuthError> {
-    let inputs = input_count();
+    let inputs = input_count().as_u64();
     let mut candidate = None;
-    let mut i = 0u16;
+    let mut iter = 0;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
-    while i < inputs {
-        let type_of_input = input_type(i.as_u64());
+    while iter < inputs {
+        let type_of_input = input_type(iter);
         match type_of_input {
-            Input::Coin => (),
-            Input::Message => (),
+            Some(Input::Coin) => (),
+            Some(Input::Message) => (),
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
-                i += 1u16;
+                iter += 1;
                 continue;
             }
         }
 
         // type == InputCoin or InputMessage.
         let owner_of_input = match type_of_input {
-            Input::Coin => {
-                input_coin_owner(i.as_u64())
+            Some(Input::Coin) => {
+                input_coin_owner(iter)
             },
-            Input::Message => {
-                Some(input_message_sender(i.as_u64()))
+            Some(Input::Message) => {
+                input_message_sender(iter)
             },
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
-                i += 1u16;
+                iter += 1;
                 continue;
             }
         };
@@ -175,7 +175,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
-            i += 1u16;
+            iter += 1;
             continue;
         }
 
@@ -184,7 +184,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
-            i += 1u16;
+            iter += 1;
             continue;
         }
 
@@ -203,11 +203,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 ///
 /// # Returns
 ///
-/// * [Address] - The address of this predicate.
-///
-/// # Reverts
-///
-/// * When called outside of a predicate program.
+/// * [Option<Address>] - The address of this predicate.
 ///
 /// # Examples
 ///
@@ -215,11 +211,11 @@ pub fn caller_address() -> Result<Address, AuthError> {
 /// use std::auth::predicate_address;
 ///
 /// fn main() {
-///     let this_predicate = predicate_address();
+///     let this_predicate = predicate_address().unwrap();
 ///     log(this_predicate);
 /// }
 /// ```
-pub fn predicate_address() -> Address {
+pub fn predicate_address() -> Option<Address> {
     // Get index of current predicate.
     // i3 = GM_GET_VERIFYING_PREDICATE
     let predicate_index = asm(r1) {
@@ -230,10 +226,10 @@ pub fn predicate_address() -> Address {
     let type_of_input = input_type(predicate_index);
 
     match type_of_input {
-        Input::Coin => input_coin_owner(predicate_index).unwrap(),
-        Input::Message => input_message_recipient(predicate_index),
+        Some(Input::Coin) => input_coin_owner(predicate_index),
+        Some(Input::Message) => input_message_recipient(predicate_index),
         _ => {
-            revert(0)
+            None
         }
     }
 }
