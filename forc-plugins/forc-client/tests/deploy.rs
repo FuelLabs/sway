@@ -8,7 +8,10 @@ use forc_client::{
 use forc_pkg::manifest::Proxy;
 use fuel_crypto::SecretKey;
 use fuel_tx::{ContractId, Salt};
-use fuels::{macros::abigen, types::transaction::TxPolicies};
+use fuels::{
+    macros::abigen,
+    types::{bech32::Bech32ContractId, transaction::TxPolicies},
+};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use portpicker::Port;
 use rand::thread_rng;
@@ -145,6 +148,7 @@ async fn test_simple_deploy() {
         )
         .unwrap(),
         proxy: None,
+        chunks: vec![],
     }];
 
     assert_eq!(contract_ids, expected)
@@ -194,6 +198,7 @@ async fn test_deploy_fresh_proxy() {
             )
             .unwrap(),
         ),
+        chunks: vec![],
     };
     let expected = vec![impl_contract];
 
@@ -404,4 +409,158 @@ fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error>
     process.process.exit()?;
     node.kill().unwrap();
     Ok(())
+}
+
+#[tokio::test]
+async fn chunked_deploy() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("big_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+    node.kill().unwrap();
+
+    let num_chunks = deployed_contract.chunks.len();
+    assert_eq!(num_chunks, 4);
+}
+
+#[tokio::test]
+async fn chunked_deploy_re_routes_call() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("big_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+
+    abigen!(Contract(
+        name = "BigContract",
+        abi = "forc-plugins/forc-client/test/data/big_contract/big_contract-abi.json"
+    ));
+
+    let instance = BigContract::new(deployed_contract.id, wallet_unlocked);
+    let chunks: Vec<Bech32ContractId> = deployed_contract
+        .chunks
+        .iter()
+        .cloned()
+        .map(|chunk_id| chunk_id.into())
+        .collect();
+
+    // result should be true.
+    let result = instance
+        .methods()
+        .test_function()
+        .with_contract_ids(&chunks)
+        .call()
+        .await
+        .unwrap()
+        .value;
+    node.kill().unwrap();
+    assert!(result)
+}
+
+#[tokio::test]
+async fn chunked_deploy_with_proxy_re_routes_call() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("big_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+    };
+    patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+
+    abigen!(Contract(
+        name = "BigContract",
+        abi = "forc-plugins/forc-client/test/data/big_contract/big_contract-abi.json"
+    ));
+
+    let instance = BigContract::new(deployed_contract.id, wallet_unlocked);
+    let chunks: Vec<Bech32ContractId> = deployed_contract
+        .chunks
+        .iter()
+        .cloned()
+        .map(|chunk_id| chunk_id.into())
+        .collect();
+
+    // result should be true.
+    let result = instance
+        .methods()
+        .test_function()
+        .with_contract_ids(&chunks)
+        .call()
+        .await
+        .unwrap()
+        .value;
+    node.kill().unwrap();
+    assert!(result)
 }
