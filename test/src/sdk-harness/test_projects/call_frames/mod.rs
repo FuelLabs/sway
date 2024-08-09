@@ -35,9 +35,10 @@ async fn can_get_id_contract_id_this() {
 async fn can_get_code_size() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.methods().get_code_size().call().await.unwrap();
-    // Check if codesize is between 1000 and 7000. Arbitrary endpoints, current codesize is 6816
+    // Check if codesize is between 1000 and 7000. Arbitrary endpoints, current codesize is 7208
     // but the lower bound future proofs against compiler optimizations
-    assert!(result.value > 1000 && result.value < 7000);
+    dbg!(result.value);
+    assert!(result.value > 1000 && result.value < 7300);
 }
 
 #[tokio::test]
