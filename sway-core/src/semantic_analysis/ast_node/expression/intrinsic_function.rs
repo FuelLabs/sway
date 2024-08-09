@@ -238,7 +238,7 @@ fn type_check_slice(
     };
 
     // start index argument
-    let start_ty_expr = if let Some(v) = arguments.get(1) {
+    let start_ty_expr = if arguments.get(1).is_some() {
         let start_type = type_engine.insert(
             engines,
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -259,7 +259,7 @@ fn type_check_slice(
     };
 
     // end index argument
-    let end_ty_expr = if let Some(v) = arguments.get(2) {
+    let end_ty_expr = if arguments.get(2).is_some() {
         let end_type = type_engine.insert(
             engines,
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
