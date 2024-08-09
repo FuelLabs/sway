@@ -7,6 +7,7 @@ use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
+use ::revert::revert;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -655,6 +656,10 @@ impl Bytes {
 
     /// Moves all elements of `other` into `self`, leaving `other` empty.
     ///
+    /// # Additional Information
+    ///
+    /// NOTE: Appending `self` to itself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
+    ///
     /// # Arguments
     ///
     /// * `other`: [Bytes] - The Bytes to append to self.
@@ -718,8 +723,10 @@ impl Bytes {
         // set capacity and length
         self.len = both_len;
 
-        // clear `other`
-        other.clear();
+        // clear `other`, if self == other then we do not want to clear self
+        if self.ptr() != other.ptr() {
+            other.clear();
+        }
     }
 }
 
