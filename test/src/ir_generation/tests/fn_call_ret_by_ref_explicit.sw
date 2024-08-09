@@ -16,7 +16,7 @@ fn main() -> u64 {
 
 // ::check-ir::
 
-// There are return value '__ret_val' temporaries and there are other '__anon_' temporaries and in
+// There are return value '__ret_val' temporaries and there are other '__aggr_memcpy_' temporaries and in
 // this test we want to match the return values specifically.  If we ever rename them from
 // '__ret_val_' to something else then this test will fail.
 
@@ -31,8 +31,9 @@ fn main() -> u64 {
 // check: $(tmp_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $ID
 // check: mem_copy_val $tmp_ptr, $ret_val_0
 
+// check: $(tmp_ptr_rep=$VAL) = get_local ptr { u64, u64, u64 }, $(=__aggr_memcpy_\d+)
 // check: $(idx_val=$VAL) = const u64 1
-// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr, ptr u64, $idx_val
+// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr_rep, ptr u64, $idx_val
 // check: load $field_val
 
 // check: $(ret_arg_1=$VAL) = get_local ptr { u64, u64, u64 }, $ret_for_call_1
@@ -40,8 +41,9 @@ fn main() -> u64 {
 // check: $(tmp_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $ID
 // check: mem_copy_val $tmp_ptr, $ret_val_1
 
+// check: $(tmp_ptr_rep=$VAL) = get_local ptr { u64, u64, u64 }, $(=__aggr_memcpy_\d+)
 // check: $(idx_val=$VAL) = const u64 2
-// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr, ptr u64, $idx_val
+// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr_rep, ptr u64, $idx_val
 // check: load $field_val
 
 // fn a()...
