@@ -1303,6 +1303,10 @@ impl<T> IndexMut<u64> for &mut __slice[T] {
     }
 }
 
+pub fn index<T>(target: &__slice[T], index: u64) -> &T {
+    target.index(index)
+}
+
 pub fn index_mut<T>(target: &mut __slice[T], index: u64) -> &mut T {
     target.index_mut(index)
 }

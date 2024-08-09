@@ -44,7 +44,7 @@ use sway_types::{
 use sway_types::{Ident, Span, Spanned};
 
 use std::{
-    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr, sync::Arc,
+    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, ops::Deref, str::FromStr, sync::Arc
 };
 
 pub fn convert_parse_tree(
@@ -2173,17 +2173,16 @@ fn expr_to_expression(
             let kind = expr_func_app_to_expression_kind(context, handler, engines, func, args)?;
             Expression { kind, span }
         }
-        Expr::Index { target, arg } => Expression {
-            kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
-                prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
-                index: Box::new(expr_to_expression(
-                    context,
-                    handler,
-                    engines,
-                    *arg.into_inner(),
-                )?),
-            }),
-            span,
+        // this index is not "under" ref (&) or mut ref (&mut), so
+        // we need to deref it here
+        Expr::Index { target, arg } => {
+            let target = expr_to_expression(context, handler, engines, *target)?;
+            let arg = expr_to_expression(context, handler, engines, *arg.inner)?;
+            let expr = desugar_into_index_trait(false, arg.span(), span.clone(), target, arg)?;
+            Expression {
+                kind: ExpressionKind::Deref(Box::new(expr)),
+                span,
+            }
         },
         Expr::MethodCall {
             target,
@@ -2270,12 +2269,21 @@ fn expr_to_expression(
         },
         Expr::Ref {
             mut_token, expr, ..
-        } => Expression {
-            kind: ExpressionKind::Ref(RefExpression {
-                to_mutable_value: mut_token.is_some(),
-                value: Box::new(expr_to_expression(context, handler, engines, *expr)?),
-            }),
-            span,
+        } => {
+            match *expr {
+                Expr::Index { target, arg } => {
+                    let target = expr_to_expression(context, handler, engines, *target)?;
+                    let arg = expr_to_expression(context, handler, engines, *arg.inner)?;
+                    desugar_into_index_trait(mut_token.is_some(), arg.span(), span.clone(), target, arg)?
+                },
+                expr => Expression {
+                    kind: ExpressionKind::Ref(RefExpression {
+                        to_mutable_value: mut_token.is_some(),
+                        value: Box::new(expr_to_expression(context, handler, engines, expr)?),
+                    }),
+                    span,
+                }
+            }
         },
         Expr::Deref { expr, .. } => Expression {
             kind: ExpressionKind::Deref(Box::new(expr_to_expression(
@@ -2506,12 +2514,38 @@ fn expr_to_expression(
     Ok(expression)
 }
 
-fn fn_call_index_mut(
-    name: &'static str,
+fn desugar_into_index_trait(
+    mutable: bool,
     op_span: Span,
     span: Span,
-    args: &[Expression],
+    target: Expression,
+    arg: Expression,
 ) -> Result<Expression, ErrorEmitted> {
+    let target = Expression {
+        kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+            name: Ident::new_no_span("__slice".to_string()),
+            kind_binding: TypeBinding {
+                inner: Intrinsic::Slice,
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: Span::dummy(),
+            },
+            arguments: vec![Expression {
+                kind: ExpressionKind::Ref(RefExpression {
+                    to_mutable_value: mutable,
+                    value: Box::new(target),
+                }),
+                span: span.clone(),
+            }],
+        }),
+        span: span.clone(),
+    };
+
+    let name = if mutable {
+        "index_mut"
+    } else {
+        "index"
+    };
+
     let call_path_binding = TypeBinding {
         inner: CallPath {
             prefixes: vec![],
@@ -2525,7 +2559,7 @@ fn fn_call_index_mut(
         kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
             call_path_binding,
             resolved_call_path_binding: None,
-            arguments: args.to_vec(),
+            arguments: vec![target, arg],
         })),
         span,
     })
@@ -4469,28 +4503,9 @@ fn assignable_to_expression(
             ElementAccess::Index { target, arg } => {
                 let target =
                     element_access_to_expression(context, handler, engines, *target, span.clone())?;
-                let target = Expression {
-                    kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
-                        name: Ident::new_no_span("__slice".to_string()),
-                        kind_binding: TypeBinding {
-                            inner: Intrinsic::Slice,
-                            type_arguments: TypeArgs::Regular(vec![]),
-                            span: Span::dummy(),
-                        },
-                        arguments: vec![Expression {
-                            kind: ExpressionKind::Ref(RefExpression {
-                                to_mutable_value: true,
-                                value: Box::new(target),
-                            }),
-                            span: span.clone(),
-                        }],
-                    }),
-                    span: span.clone(),
-                };
-
                 let arg = expr_to_expression(context, handler, engines, *arg.inner)?;
                 let call =
-                    fn_call_index_mut("index_mut", arg.span(), span.clone(), &vec![target, arg])?;
+                    desugar_into_index_trait(true, arg.span(), span.clone(), target, arg)?;
                 Expression {
                     kind: ExpressionKind::Deref(Box::new(call)),
                     span,
