@@ -39,11 +39,11 @@ abi TxContractTest {
     fn get_input_coin_owner(index: u64) -> Address;
     fn get_input_amount(index: u64) -> u64;
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
-    fn get_input_message_sender(index: u64) -> Option<Address>;
-    fn get_input_message_recipient(index: u64) -> Option<Address>;
+    fn get_input_message_sender(index: u64) -> Address;
+    fn get_input_message_recipient(index: u64) -> Address;
     fn get_input_message_nonce(index: u64) -> b256;
     fn get_input_witness_index(index: u64) -> u16;
-    fn get_input_message_data_length(index: u64) -> Option<u64>;
+    fn get_input_message_data_length(index: u64) -> u64;
     fn get_input_predicate_length(index: u64) -> u64;
     fn get_input_predicate_data_length(index: u64) -> u64;
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
@@ -130,11 +130,11 @@ impl TxContractTest for Contract {
             r1: u64
         }
     }
-    fn get_input_message_sender(index: u64) -> Option<Address> {
-        input_message_sender(index)
+    fn get_input_message_sender(index: u64) -> Address {
+        input_message_sender(index).unwrap()
     }
-    fn get_input_message_recipient(index: u64) -> Option<Address> {
-        input_message_recipient(index)
+    fn get_input_message_recipient(index: u64) -> Address {
+        input_message_recipient(index).unwrap()
     }
     fn get_input_message_nonce(index: u64) -> b256 {
         input_message_nonce(index)
@@ -142,8 +142,8 @@ impl TxContractTest for Contract {
     fn get_input_witness_index(index: u64) -> u16 {
         input_witness_index(index).unwrap()
     }
-    fn get_input_message_data_length(index: u64) -> Option<u64> {
-        input_message_data_length(index)
+    fn get_input_message_data_length(index: u64) -> u64 {
+        input_message_data_length(index).unwrap()
     }
     fn get_input_predicate_length(index: u64) -> u64 {
         input_predicate_length(index).unwrap()
@@ -153,7 +153,7 @@ impl TxContractTest for Contract {
     }
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool {
         let data = match input_message_data(index, offset) {
-            Some(bytes) => bytes,
+            Some(b) => b,
             None => return false,
         };
 
