@@ -4,9 +4,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
-    decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
-    language::ModName,
-    language::{ty::*, HasModule, HasSubmodules},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclRef, DeclRefFunction},
+    language::{ty::*, HasModule, HasSubmodules, ModName},
     semantic_analysis::namespace,
     transform::{self, AllowDeprecatedState},
     Engines,
@@ -19,6 +18,59 @@ pub struct TyModule {
     pub namespace: namespace::Namespace,
     pub all_nodes: Vec<TyAstNode>,
     pub attributes: transform::AttributesMap,
+}
+
+impl TyModule {
+    /// Iter on all constants in this module, which means, globals constants and
+    /// local constants, but it does not enter into submodules.
+    pub fn iter_constants(&self, de: &DeclEngine) -> Vec<ConstantDecl> {
+        fn inside_code_block(de: &DeclEngine, block: &TyCodeBlock) -> Vec<ConstantDecl> {
+            block
+                .contents
+                .iter()
+                .flat_map(|node| inside_ast_node(de, node))
+                .collect::<Vec<_>>()
+        }
+
+        fn inside_ast_node(de: &DeclEngine, node: &TyAstNode) -> Vec<ConstantDecl> {
+            match &node.content {
+                TyAstNodeContent::Declaration(decl) => match decl {
+                    TyDecl::ConstantDecl(decl) => {
+                        vec![decl.clone()]
+                    }
+                    TyDecl::FunctionDecl(decl) => {
+                        let decl = de.get(&decl.decl_id);
+                        inside_code_block(de, &decl.body)
+                    }
+                    TyDecl::ImplSelfOrTrait(decl) => {
+                        let decl = de.get(&decl.decl_id);
+                        decl.items
+                            .iter()
+                            .flat_map(|item| match item {
+                                TyTraitItem::Fn(decl) => {
+                                    let decl = de.get(decl.id());
+                                    inside_code_block(de, &decl.body)
+                                }
+                                TyTraitItem::Constant(decl) => {
+                                    vec![ConstantDecl {
+                                        decl_id: *decl.id(),
+                                    }]
+                                }
+                                _ => vec![],
+                            })
+                            .collect()
+                    }
+                    _ => vec![],
+                },
+                _ => vec![],
+            }
+        }
+
+        self.all_nodes
+            .iter()
+            .flat_map(|node| inside_ast_node(de, node))
+            .collect::<Vec<_>>()
+    }
 }
 
 #[derive(Clone, Debug)]

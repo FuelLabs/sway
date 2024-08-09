@@ -285,7 +285,7 @@ pub struct MinifyOpts {
 type ContractIdConst = String;
 
 /// The set of options provided to the `build` functions.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
@@ -318,6 +318,7 @@ pub struct BuildOpts {
 }
 
 /// The set of options to filter type of projects to build in a workspace.
+#[derive(Clone)]
 pub struct MemberFilter {
     pub build_contracts: bool,
     pub build_scripts: bool,
@@ -2152,6 +2153,8 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         .path
         .as_ref()
         .map_or_else(|| current_dir, PathBuf::from);
+
+    println_action_green("Building", &path.display().to_string());
 
     let build_plan = BuildPlan::from_pkg_opts(&build_options.pkg)?;
     let graph = build_plan.graph();

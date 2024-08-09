@@ -231,6 +231,11 @@
           "name": "B",
           "type": 12,
           "typeArguments": null
+        },
+        {
+          "name": "C",
+          "type": 4,
+          "typeArguments": null
         }
       ],
       "type": "enum ConfigurableEnum",

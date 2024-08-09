@@ -37,6 +37,7 @@ impl TyImplSelfOrTrait {
             impl_type_parameters,
             trait_name,
             mut trait_type_arguments,
+            trait_decl_ref: _,
             mut implementing_for,
             items,
             block_span,
@@ -488,7 +489,12 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
@@ -541,7 +547,12 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
