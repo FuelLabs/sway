@@ -170,7 +170,7 @@ impl TxContractTest for Contract {
             Some(code) => code,
             None => return false,
         };
-        
+
         assert(input_predicate_length(index).unwrap() == bytecode.len());
         let mut i = 0;
         while i < bytecode.len() {

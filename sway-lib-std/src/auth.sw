@@ -232,6 +232,8 @@ pub fn predicate_address() -> Option<Address> {
     match type_of_input {
         Some(Input::Coin) => input_coin_owner(predicate_index),
         Some(Input::Message) => input_message_recipient(predicate_index),
-        _ => { None }
+        _ => {
+            None
+        }
     }
 }

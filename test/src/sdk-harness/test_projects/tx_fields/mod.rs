@@ -4,18 +4,16 @@ use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
-    types::{input::Input as SdkInput, Bits256, output::Output as SdkOutput},
     tx::StorageSlot,
+    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256},
 };
 use std::fs;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
-const TX_CONTRACT_BYTECODE_PATH: &str =
-    "test_artifacts/tx_contract/out/release/tx_contract.bin";
+const TX_CONTRACT_BYTECODE_PATH: &str = "test_artifacts/tx_contract/out/release/tx_contract.bin";
 const TX_OUTPUT_PREDICATE_BYTECODE_PATH: &str =
     "test_artifacts/tx_output_predicate/out/release/tx_output_predicate.bin";
-const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str =
-    "test_projects/tx_fields/out/release/tx_fields.bin";
+const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str = "test_projects/tx_fields/out/release/tx_fields.bin";
 const TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH: &str =
     "test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin";
 
@@ -78,14 +76,11 @@ async fn get_contracts(
     wallet.set_provider(provider.clone());
     deployment_wallet.set_provider(provider);
 
-    let contract_id = Contract::load_from(
-        TX_CONTRACT_BYTECODE_PATH,
-        LoadConfiguration::default(),
-    )
-    .unwrap()
-    .deploy(&wallet, TxPolicies::default())
-    .await
-    .unwrap();
+    let contract_id = Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
+        .unwrap()
+        .deploy(&wallet, TxPolicies::default())
+        .await
+        .unwrap();
 
     let instance = TxContractTest::new(contract_id.clone(), deployment_wallet.clone());
 
@@ -175,12 +170,10 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
         .encode_data(0, Bits256([0u8; 32]), Bits256(*wallet1.address().hash()))
         .unwrap();
 
-    let predicate = Predicate::load_from(
-        TX_OUTPUT_PREDICATE_BYTECODE_PATH,
-    )
-    .unwrap()
-    .with_data(predicate_data)
-    .with_provider(wallet1.try_provider().unwrap().clone());
+    let predicate = Predicate::load_from(TX_OUTPUT_PREDICATE_BYTECODE_PATH)
+        .unwrap()
+        .with_data(predicate_data)
+        .with_provider(wallet1.try_provider().unwrap().clone());
 
     wallet1
         .transfer(predicate.address(), 100, asset_id1, TxPolicies::default())
@@ -939,12 +932,17 @@ mod outputs {
             let provider = wallet.try_provider().unwrap();
 
             // Get the predicate
-            let predicate: Predicate = Predicate::load_from(TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH).unwrap()
+            let predicate: Predicate =
+                Predicate::load_from(TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH)
+                    .unwrap()
                     .with_provider(provider.clone());
             let predicate_coin_amount = 100;
-            
+
             // Predicate has no funds
-            let predicate_balance = predicate.get_asset_balance(&provider.base_asset_id()).await.unwrap();
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
             assert_eq!(predicate_balance, 0);
 
             // Transfer funds to predicate
@@ -955,10 +953,14 @@ mod outputs {
                     *provider.base_asset_id(),
                     TxPolicies::default(),
                 )
-                .await.unwrap();
+                .await
+                .unwrap();
 
             // Predicate has funds
-            let predicate_balance = predicate.get_asset_balance(&provider.base_asset_id()).await.unwrap();
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
             assert_eq!(predicate_balance, predicate_coin_amount);
 
             // Get contract ready for deployment
@@ -968,19 +970,21 @@ mod outputs {
             let contract = Contract::new(binary.clone(), salt, storage_slots.clone());
 
             // Start building the transaction
-            let tb: CreateTransactionBuilder = CreateTransactionBuilder::prepare_contract_deployment(
-                binary,
-                contract.contract_id(),
-                contract.state_root(),
-                salt,
-                storage_slots,
-                TxPolicies::default(),
-            );
+            let tb: CreateTransactionBuilder =
+                CreateTransactionBuilder::prepare_contract_deployment(
+                    binary,
+                    contract.contract_id(),
+                    contract.state_root(),
+                    salt,
+                    storage_slots,
+                    TxPolicies::default(),
+                );
 
             // Inputs
             let inputs = predicate
                 .get_asset_inputs_for_amount(*provider.base_asset_id(), predicate_coin_amount, None)
-                .await.unwrap();
+                .await
+                .unwrap();
 
             // Outputs
             let mut outputs = wallet.get_asset_outputs_for_amount(
@@ -988,7 +992,10 @@ mod outputs {
                 *provider.base_asset_id(),
                 predicate_coin_amount,
             );
-            outputs.push(SdkOutput::contract_created(contract.contract_id(), contract.state_root()));
+            outputs.push(SdkOutput::contract_created(
+                contract.contract_id(),
+                contract.state_root(),
+            ));
 
             let mut tb = tb.with_inputs(inputs).with_outputs(outputs);
 
@@ -1011,7 +1018,10 @@ mod outputs {
             assert!(instance.methods().get_output_type(0).call().await.is_ok());
 
             // Verify predicate funds transferred
-            let predicate_balance = predicate.get_asset_balance(&AssetId::default()).await.unwrap();
+            let predicate_balance = predicate
+                .get_asset_balance(&AssetId::default())
+                .await
+                .unwrap();
             assert_eq!(predicate_balance, 0);
         }
 
