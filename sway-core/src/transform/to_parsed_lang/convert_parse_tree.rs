@@ -44,7 +44,7 @@ use sway_types::{
 use sway_types::{Ident, Span, Spanned};
 
 use std::{
-    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, ops::Deref, str::FromStr, sync::Arc
+    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr, sync::Arc
 };
 
 pub fn convert_parse_tree(

@@ -324,13 +324,6 @@ impl ty::TyExpression {
             ExpressionKind::Array(array_expression) => {
                 Self::type_check_array(handler, ctx.by_ref(), &array_expression.contents, span)
             }
-            ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
-                let ctx = ctx
-                    .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
-                    .with_help_text("");
-                Self::type_check_array_index(handler, ctx, prefix, index, span)
-            }
             ExpressionKind::StorageAccess(StorageAccessExpression {
                 namespace_names,
                 field_names,
@@ -2222,27 +2215,6 @@ impl ty::TyExpression {
                             ..
                         }) => {
                             indices.push(ty::ProjectionKind::TupleField { index, index_span });
-                            expr = prefix;
-                        }
-                        ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
-                            let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
-                            let ctx = ctx
-                                .by_ref()
-                                .with_help_text("Array index must be of type \"u64\".")
-                                .with_type_annotation(type_engine.insert(
-                                    engines,
-                                    type_info_u64,
-                                    None,
-                                ));
-                            let typed_index =
-                                ty::TyExpression::type_check(handler, ctx, index.as_ref())
-                                    .unwrap_or_else(|err| {
-                                        ty::TyExpression::error(err, span.clone(), engines)
-                                    });
-                            indices.push(ty::ProjectionKind::ArrayIndex {
-                                index: Box::new(typed_index),
-                                index_span: index.span(),
-                            });
                             expr = prefix;
                         }
                         _ => {
