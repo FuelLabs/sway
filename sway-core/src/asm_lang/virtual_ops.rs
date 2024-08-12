@@ -198,7 +198,12 @@ pub(crate) enum VirtualOp {
     /* Cryptographic Instructions */
     ECK1(VirtualRegister, VirtualRegister, VirtualRegister),
     ECR1(VirtualRegister, VirtualRegister, VirtualRegister),
-    ED19(VirtualRegister, VirtualRegister, VirtualRegister),
+    ED19(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
 
@@ -316,7 +321,7 @@ impl VirtualOp {
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
             ECR1(r1, r2, r3) => vec![r1, r2, r3],
-            ED19(r1, r2, r3) => vec![r1, r2, r3],
+            ED19(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -437,7 +442,7 @@ impl VirtualOp {
             | TRO(_, _, _, _)
             | ECK1(_, _, _)
             | ECR1(_, _, _)
-            | ED19(_, _, _)
+            | ED19(_, _, _, _)
             | K256(_, _, _)
             | S256(_, _, _)
             | FLAG(_)
@@ -493,7 +498,7 @@ impl VirtualOp {
             // Cryptographic
             | ECK1(_, _, _)
             | ECR1(_, _, _)
-            | ED19(_, _, _)
+            | ED19(_, _, _, _)
              => vec![&VirtualRegister::Constant(Overflow), &VirtualRegister::Constant(Error)],
             FLAG(_) => vec![&VirtualRegister::Constant(Flags)],
             JMP(_)
@@ -652,7 +657,7 @@ impl VirtualOp {
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
             ECR1(r1, r2, r3) => vec![r1, r2, r3],
-            ED19(r1, r2, r3) => vec![r1, r2, r3],
+            ED19(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -771,7 +776,7 @@ impl VirtualOp {
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
             ECR1(_r1, _r2, _r3) => vec![],
-            ED19(_r1, _r2, _r3) => vec![],
+            ED19(_r1, _r2, _r3, _r4) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -1192,10 +1197,11 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
-            ED19(r1, r2, r3) => Self::ED19(
+            ED19(r1, r2, r3, r4) => Self::ED19(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
             ),
             K256(r1, r2, r3) => Self::K256(
                 update_reg(reg_to_reg_map, r1),
@@ -1659,10 +1665,11 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            ED19(reg1, reg2, reg3) => AllocatedOpcode::ED19(
+            ED19(reg1, reg2, reg3, reg4) => AllocatedOpcode::ED19(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
             ),
             K256(reg1, reg2, reg3) => AllocatedOpcode::K256(
                 map_reg(&mapping, reg1),

@@ -34,22 +34,22 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { path = "../fuel-core/crates/client", default-features = false }
-fuel-core-types = { path = "../fuel-core/crates/types", default-features = false }
+fuel-core-client = { version = "0.32.0", default-features = false }
+fuel-core-types = { version = "0.32.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = { path = "../fuel-vm/fuel-asm" }
-fuel-crypto = { path = "../fuel-vm/fuel-crypto", features = ["random"]}
-fuel-types = { path = "../fuel-vm/fuel-types" }
-fuel-tx = { path = "../fuel-vm/fuel-tx" }
-fuel-vm = { path = "../fuel-vm/fuel-vm" }
+fuel-asm = "0.56.0"
+fuel-crypto = "0.56.0"
+fuel-types = "0.56.0"
+fuel-tx = "0.56.0"
+fuel-vm = "0.56.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.64.0"
-fuels-accounts = "0.64.0"
+fuels-core = "0.66.0"
+fuels-accounts = "0.66.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.8.1"
+forc-wallet = "0.9.0"
 
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = "0.5.0"
@@ -60,4 +60,3 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-
