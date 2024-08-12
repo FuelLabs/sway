@@ -110,6 +110,8 @@ impl TyTraitDecl {
 
             // insert placeholder functions representing the interface surface
             // to allow methods to use those functions
+//	    let path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace);
+//	    dbg!(path);
             ctx.insert_trait_implementation(
                 handler,
                 CallPath::ident_to_fullpath(name.clone(), ctx.namespace),

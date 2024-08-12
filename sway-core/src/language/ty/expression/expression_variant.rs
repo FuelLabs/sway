@@ -816,7 +816,7 @@ impl ReplaceDecls for TyExpressionVariant {
                             let implementing_type_method_ref = ctx.find_method_for_type(
                                 handler,
                                 implementing_for_typeid,
-                                &[],
+                                &[ctx.namespace().current_package_name().clone()],
                                 method.name(),
                                 method.return_type.type_id,
                                 &arguments

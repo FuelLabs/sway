@@ -235,8 +235,8 @@ impl Root {
 
     // Find a module in the current package. `mod_path` must be a fully qualified path
     pub(super) fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-	dbg!(mod_path);
-	dbg!(self.current_package_name());
+//	dbg!(mod_path);
+//	dbg!(self.current_package_name());
 	assert!(self.check_path_is_in_current_package(mod_path));
 	self.module_from_absolute_path(mod_path)
     }
@@ -832,6 +832,11 @@ impl Root {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+//	let problem = call_path.suffix.as_str() == "AbiDecode";
+//	if problem {
+//	    dbg!(call_path);
+//	    dbg!(mod_path);
+//	};
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
@@ -932,6 +937,8 @@ impl Root {
         Ok(decl)
     }
 
+    // Resolve a path. The first identifier in the path is the package name, which may be the
+    // current package or an external one.
     fn resolve_symbol_and_mod_path(
         &self,
         handler: &Handler,
@@ -940,11 +947,41 @@ impl Root {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+	assert!(!mod_path.is_empty());
+	if mod_path[0] == *self.current_package_name() {
+	    self.resolve_symbol_and_mod_path_inner(handler, engines, mod_path, symbol, self_type)
+	} else {
+	    match self.external_packages.get(mod_path[0].as_str()) {
+		Some(ext_root) => {
+		    // The path must be resolved in an external package.
+		    // The root module in that package may have a different name than the name we
+		    // use to refer to the package, so replace it.
+		    let mut new_mod_path = vec!(ext_root.current_package_name().clone());
+		    new_mod_path.clone_from_slice(&mod_path[1..]);
+		    ext_root.resolve_symbol_and_mod_path_inner(handler, engines, &new_mod_path, symbol, self_type)
+		},
+		None => Err(handler.emit_err(crate::namespace::module::module_not_found(&[mod_path[0].clone()])))
+	    }
+	}
+    }
+
+    // Resolve a path within the current package. External packages are not considered. The path
+    // must still contain the package name as its first identifier.
+    fn resolve_symbol_and_mod_path_inner(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &ModulePath,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+	assert!(!mod_path.is_empty());
+	assert!(mod_path[0] == *self.current_package_name());
         // This block tries to resolve associated types
         let mut module = &self.current_package;
-        let mut current_mod_path = vec![];
+        let mut current_mod_path = vec![mod_path[0].clone()];
         let mut decl_opt = None;
-        for ident in mod_path.iter() {
+        for ident in mod_path.iter().skip(1) {
             if let Some(decl) = decl_opt {
                 decl_opt = Some(self.resolve_associated_type(
                     handler, engines, module, ident, decl, None, self_type,

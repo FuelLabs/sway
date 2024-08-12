@@ -336,7 +336,6 @@ impl CallPath {
     /// before the identifier is added to the environment.
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
         let mut res: Self = suffix.clone().into();
-        res.prefixes.push(namespace.current_package_name().clone());
         for mod_path in namespace.current_mod_path() {
             res.prefixes.push(mod_path.clone())
         }

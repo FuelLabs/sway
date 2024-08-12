@@ -87,7 +87,7 @@ impl Namespace {
     }
 
     pub fn current_module_mut(&mut self) -> &mut Module {
-        dbg!(&self.current_mod_path);
+//        dbg!(&self.current_mod_path);
         self.root
             .module_mut_in_current_package(&self.current_mod_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
@@ -386,10 +386,10 @@ impl Namespace {
         visibility: Visibility,
         module_span: Span,
     ) -> Result<(), ErrorEmitted> {
-        println!(
-            "Current module is {:?}. Entering submodule {:?}.",
-            self.current_mod_path, mod_name
-        );
+//        println!(
+//            "Current module is {:?}. Entering submodule {:?}.",
+//            self.current_mod_path, mod_name
+//        );
         let mut import_implicits = false;
 
         // Ensure the new module exists and is initialized properly
@@ -412,7 +412,7 @@ impl Namespace {
             self.import_implicits(handler, engines)?;
         }
 
-        println!("New mod path is {:?}.", self.current_mod_path);
+//        println!("New mod path is {:?}.", self.current_mod_path);
 
         Ok(())
     }
@@ -464,7 +464,7 @@ impl Namespace {
         visibility: Visibility,
         module_span: Span,
     ) -> Result<(), ErrorEmitted> {
-        println!("Pushing module {:?}.", mod_name);
+//        println!("Pushing module {:?}.", mod_name);
         match self.enter_submodule(handler, engines, mod_name, visibility, module_span) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
@@ -473,9 +473,9 @@ impl Namespace {
 
     /// Pops the current submodule from the namespace's module hierarchy.
     pub fn pop_submodule(&mut self) {
-        println!("Popping: Leaving module {:?}.", self.current_mod_path);
+//        println!("Popping: Leaving module {:?}.", self.current_mod_path);
         self.current_mod_path.pop();
-        println!("New module path is {:?}.", self.current_mod_path);
+//        println!("New module path is {:?}.", self.current_mod_path);
     }
 
     pub(crate) fn star_import_to_current_module(
