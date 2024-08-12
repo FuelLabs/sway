@@ -95,6 +95,10 @@ impl Eq for Input {
 /// }
 /// ```
 pub fn input_type(index: u64) -> Option<Input> {
+    if index >= input_count().as_u64() {
+        return None
+    }
+
     match __gtf::<u8>(index, GTF_INPUT_TYPE) {
         0u8 => Some(Input::Coin),
         1u8 => Some(Input::Contract),
@@ -134,7 +138,7 @@ pub fn input_count() -> u16 {
 ///
 /// # Returns
 ///
-/// * [u64] - The pointer of the input at `index`.
+/// * [Option<u64>] - The pointer of the input at `index`.
 ///
 /// # Examples
 ///
@@ -142,13 +146,17 @@ pub fn input_count() -> u16 {
 /// use std::inputs::input_pointer;
 ///
 /// fn foo() {
-///     let input_pointer = input_pointer(0);
+///     let input_pointer = input_pointer(0).unwrap();
 /// }
 /// ```
-pub fn input_pointer(index: u64) -> u64 {
+pub fn input_pointer(index: u64) -> Option<u64> {
+    if index >= input_count().as_u64() {
+        return None
+    }
+
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX),
-        Transaction::Create => __gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX),
+        Transaction::Script => Some(__gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
+        Transaction::Create => Some(__gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX)),
     }
 }
 
@@ -516,8 +524,11 @@ pub fn input_message_recipient(index: u64) -> Option<Address> {
 ///     assert(input_message_nonce != b256::zero());
 /// }
 /// ```
-pub fn input_message_nonce(index: u64) -> b256 {
-    __gtf::<b256>(index, GTF_INPUT_MESSAGE_NONCE)
+pub fn input_message_nonce(index: u64) -> Option<b256> {
+    match input_type(index) {
+        Some(Input::Message) => Some(__gtf::<b256>(index, GTF_INPUT_MESSAGE_NONCE)),
+        _ => None,
+    }
 }
 
 /// Gets the length of the input message at `index`.
