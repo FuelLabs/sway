@@ -147,7 +147,7 @@ impl Literal {
     pub(crate) fn to_typeinfo(&self) -> TypeInfo {
         match self {
             Literal::String(_) => TypeInfo::StringSlice,
-            Literal::Numeric(_) => TypeInfo::Numeric,
+            Literal::Numeric(v) => TypeInfo::numeric_constrained_by_value(*v),
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),

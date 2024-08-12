@@ -1,7 +1,7 @@
 use std::fmt;
 
 use sway_error::{handler::Handler, type_error::TypeError};
-use sway_types::Span;
+use sway_types::{integer_bits::IntegerBits, Span};
 
 use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
@@ -109,7 +109,7 @@ impl<'a> Unifier<'a> {
             // correctness or perform further unification.
             (Boolean, Boolean) => (),
             (B256, B256) => (),
-            (Numeric, Numeric) => (),
+            (Numeric { .. }, Numeric { .. }) => (),
             (Contract, Contract) => (),
             (RawUntypedPtr, RawUntypedPtr) => (),
             (RawUntypedSlice, RawUntypedSlice) => (),
@@ -252,10 +252,26 @@ impl<'a> Unifier<'a> {
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
             (UnsignedInteger(r), UnsignedInteger(e)) if r == e => (),
-            (Numeric, e @ UnsignedInteger(_)) => {
-                self.replace_received_with_expected(received, e, span);
+            (Numeric { min }, e @ UnsignedInteger(expected_size)) => {
+                match (min, expected_size) {
+                    (Some(IntegerBits::Sixteen), IntegerBits::Eight)
+                    | (Some(IntegerBits::ThirtyTwo), IntegerBits::Eight)
+                    | (Some(IntegerBits::ThirtyTwo), IntegerBits::Sixteen)
+                    | (Some(IntegerBits::SixtyFour), IntegerBits::Eight)
+                    | (Some(IntegerBits::SixtyFour), IntegerBits::Sixteen)
+                    | (Some(IntegerBits::SixtyFour), IntegerBits::ThirtyTwo) => {
+                        handler.emit_err(
+                            TypeError::ConstrainedNumeric {
+                                expected: self.engines.help_out(e).to_string(),
+                                span: span.clone(),
+                            }
+                            .into(),
+                        );
+                    }
+                    _ => self.replace_received_with_expected(received, e, span),
+                }
             }
-            (r @ UnsignedInteger(_), Numeric) => {
+            (r @ UnsignedInteger(_), Numeric { .. }) => {
                 self.replace_expected_with_received(expected, r, span);
             }
 

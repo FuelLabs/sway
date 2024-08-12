@@ -29,8 +29,13 @@ pub enum TypeError {
         received: String,
         span: Span,
     },
-    #[error("Literal would overflow because its value does not fit into \"{expected}\"")]
-    LiteralOverflow { expected: String, span: Span },
+    #[error(
+        "Literal would overflow because its value do not fit into \"{expected}\"",
+    )]
+    ConstrainedNumeric {
+        expected: String,
+        span: Span,
+    },
 }
 
 impl Spanned for TypeError {
@@ -40,7 +45,7 @@ impl Spanned for TypeError {
             MismatchedType { span, .. } => span.clone(),
             UnknownType { span } => span.clone(),
             MatchArmScrutineeWrongType { span, .. } => span.clone(),
-            LiteralOverflow { span, .. } => span.clone(),
+            ConstrainedNumeric { span, .. } => span.clone(),
         }
     }
 }
