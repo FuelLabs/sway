@@ -158,7 +158,9 @@ pub enum TypeInfo {
     B256,
     /// This means that specific type of a number is not yet known. It will be
     /// determined via inference at a later time.
-    Numeric,
+    Numeric {
+        min: Option<IntegerBits>
+    },
     Contract,
     // used for recovering from errors in the ast
     ErrorRecovery(ErrorEmitted),
@@ -281,8 +283,10 @@ impl HashWithEngines for TypeInfo {
                 to_mutable_value.hash(state);
                 ty.hash(state, engines);
             }
+            TypeInfo::Numeric { min } => {
+                min.hash(state);
+            }
             TypeInfo::StringSlice
-            | TypeInfo::Numeric
             | TypeInfo::Boolean
             | TypeInfo::B256
             | TypeInfo::Contract
@@ -438,7 +442,9 @@ impl PartialEqWithEngines for TypeInfo {
                             .get(l_ty.type_id)
                             .eq(&type_engine.get(r_ty.type_id), ctx))
             }
-
+            (Self::Numeric { min: a }, Self::Numeric { min: b }) => {
+                a.eq(b)
+            }
             (l, r) => l.discriminant_value() == r.discriminant_value(),
         }
     }
@@ -568,6 +574,9 @@ impl OrdWithEngines for TypeInfo {
                     .get(l_ty.type_id)
                     .cmp(&type_engine.get(r_ty.type_id), ctx)
             }),
+            (Self::Numeric { min: a }, Self::Numeric { min: b }) => {
+                a.cmp(b)
+            }
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }
@@ -605,7 +614,10 @@ impl DisplayWithEngines for TypeInfo {
                 format!("({})", field_strs.join(", "))
             }
             B256 => "b256".into(),
-            Numeric => "numeric".into(),
+            Numeric { min } => format!("numeric{}", match min {
+                Some(min) => format!(" {min}"),
+                None => "".to_string()
+            }),
             Contract => "contract".into(),
             ErrorRecovery(_) => "unknown".into(),
             Enum(decl_ref) => {
@@ -710,7 +722,10 @@ impl DebugWithEngines for TypeInfo {
                 format!("({})", field_strs.join(", "))
             }
             B256 => "b256".into(),
-            Numeric => "numeric".into(),
+            Numeric { min } => format!("numeric{}", match min {
+                Some(min) => format!(" {min}"),
+                None => "".to_string()
+            }),
             Contract => "contract".into(),
             ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
@@ -792,7 +807,7 @@ impl TypeInfo {
             TypeInfo::ContractCaller { .. } => 9,
             TypeInfo::Custom { .. } => 10,
             TypeInfo::B256 => 11,
-            TypeInfo::Numeric => 12,
+            TypeInfo::Numeric { .. } => 12,
             TypeInfo::Contract => 13,
             TypeInfo::ErrorRecovery(_) => 14,
             TypeInfo::Array(_, _) => 15,
@@ -1151,7 +1166,7 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
                 | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
-                | TypeInfo::Numeric // TODO-IG: Should Ptr and Ref also be a copy type?
+                | TypeInfo::Numeric { .. } // TODO-IG: Should Ptr and Ref also be a copy type?
                 | TypeInfo::Never
         ) || self.is_unit()
     }
@@ -1256,7 +1271,7 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::B256
-            | TypeInfo::Numeric
+            | TypeInfo::Numeric { .. }
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(_)
@@ -1303,7 +1318,7 @@ impl TypeInfo {
             | TypeInfo::Tuple(_)
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Numeric
+            | TypeInfo::Numeric { .. }
             | TypeInfo::Never
             | TypeInfo::StringSlice => Ok(()),
             TypeInfo::Alias { ty, .. } => {
@@ -1387,7 +1402,7 @@ impl TypeInfo {
             | TypeInfo::StringSlice
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract
-            | TypeInfo::Numeric
+            | TypeInfo::Numeric { .. }
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::TraitType { .. }
@@ -1447,7 +1462,7 @@ impl TypeInfo {
             | TypeInfo::Slice(_)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
-            | TypeInfo::Numeric
+            | TypeInfo::Numeric { .. }
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
@@ -1571,7 +1586,7 @@ impl TypeInfo {
             // TODO: We should not be receiving Numeric here. All uints
             // should be correctly typed here.
             // https://github.com/FuelLabs/sway/issues/5727
-            TypeInfo::Numeric => AbiEncodeSizeHint::Exact(8),
+            TypeInfo::Numeric { .. } => AbiEncodeSizeHint::Exact(8),
             TypeInfo::UnsignedInteger(IntegerBits::V256) => AbiEncodeSizeHint::Exact(32),
             TypeInfo::B256 => AbiEncodeSizeHint::Exact(32),
 
@@ -1680,7 +1695,7 @@ impl TypeInfo {
                 format!("({})", field_strs.join(", "))
             }
             B256 => "b256".into(),
-            Numeric => "u64".into(), // u64 is the default
+            Numeric { .. } => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
@@ -1749,6 +1764,19 @@ impl TypeInfo {
                     referenced_type.type_id.get_type_str(engines)
                 )
             }
+        }
+    }
+
+    pub fn numeric_unconstrained() -> TypeInfo {
+        TypeInfo::Numeric { min: None }
+    }
+
+    pub fn numeric_constrained_by_value(v: u64) -> TypeInfo {
+        match v {
+            0..=0xFF => TypeInfo::Numeric { min: None },
+            0x100..=0xFFFF => TypeInfo::Numeric { min: Some(IntegerBits::Sixteen) },
+            0x10000..=0xFFFFFFFF => TypeInfo::Numeric { min: Some(IntegerBits::ThirtyTwo) },
+            0x100000000.. => TypeInfo::Numeric { min: Some(IntegerBits::SixtyFour) },
         }
     }
 }

@@ -584,7 +584,7 @@ fn type_check_not(
     let t_arc = engines.te().get(operand_expr.return_type);
     let t = &*t_arc;
     match t {
-        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric { .. } => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
                 arguments: vec![operand_expr],
@@ -908,7 +908,7 @@ fn type_check_cmp(
         && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr);
     let is_valid_arg_ty = matches!(
         arg_ty,
-        TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric | TypeInfo::B256
+        TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric { .. } | TypeInfo::B256
     ) || is_eq_bool_ptr;
 
     if !is_valid_arg_ty {
@@ -1439,7 +1439,7 @@ fn type_check_arith_binary_op(
         }));
     }
 
-    let return_type = type_engine.insert(engines, TypeInfo::Numeric, None);
+    let return_type = type_engine.insert(engines, TypeInfo::numeric_unconstrained(), None);
     let mut ctx = ctx
         .by_ref()
         .with_type_annotation(return_type)
@@ -1501,7 +1501,7 @@ fn type_check_bitwise_binary_op(
     let t_arc = engines.te().get(lhs.return_type);
     let t = &*t_arc;
     match t {
-        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric { min: None } => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
                 arguments: vec![lhs, rhs],
@@ -1568,14 +1568,14 @@ fn type_check_shift_binary_op(
         handler,
         ctx.by_ref()
             .with_help_text("Incorrect argument type")
-            .with_type_annotation(engines.te().insert(engines, TypeInfo::Numeric, None)),
+            .with_type_annotation(engines.te().insert(engines, TypeInfo::numeric_unconstrained(), None)),
         rhs,
     )?;
 
     let t_arc = engines.te().get(lhs.return_type);
     let t = &*t_arc;
     match t {
-        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric { .. } => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
                 arguments: vec![lhs, rhs],

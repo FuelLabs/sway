@@ -90,7 +90,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
             format!("({})", field_strs.join(", "))
         }
         B256 => "uint256".into(),
-        Numeric => "u64".into(), // u64 is the default
+        Numeric { .. } => "u64".into(), // u64 is the default
         Contract => "contract".into(),
         ErrorRecovery(_) => "unknown due to error".into(),
         Enum(decl_ref) => {

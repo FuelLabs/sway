@@ -300,7 +300,7 @@ impl TypeEngine {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. } => false,
-            TypeInfo::Numeric => true,
+            TypeInfo::Numeric { .. } => true,
         }
     }
 
@@ -357,7 +357,7 @@ impl TypeEngine {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. } => {}
-            TypeInfo::Numeric => {
+            TypeInfo::Numeric { .. } => {
                 self.unify(
                     handler,
                     engines,
@@ -396,7 +396,7 @@ fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
     match ty {
         TypeInfo::Unknown
         | TypeInfo::UnsignedInteger(_)
-        | TypeInfo::Numeric
+        | TypeInfo::Numeric { .. }
         | TypeInfo::Boolean
         | TypeInfo::B256
         | TypeInfo::RawUntypedPtr
