@@ -5,7 +5,7 @@ use crate::execute::TestExecutor;
 use crate::setup::{
     ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
 };
-use forc_pkg as pkg;
+use forc_pkg::{self as pkg, BuildOpts};
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
@@ -601,8 +601,8 @@ impl BuiltTests {
 
 /// First builds the package or workspace, ready for execution.
 pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.into();
-    let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
+    let build_opts: BuildOpts = opts.into();
+    let build_plan = pkg::BuildPlan::from_pkg_opts(&build_opts.pkg)?;
     let built = pkg::build_with_options(&build_opts)?;
     BuiltTests::from_built(built, &build_plan)
 }

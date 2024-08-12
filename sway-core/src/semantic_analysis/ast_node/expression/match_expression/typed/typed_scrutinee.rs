@@ -143,7 +143,6 @@ impl TyScrutinee {
             ty::TyScrutineeVariant::Variable(_) => true,
             ty::TyScrutineeVariant::Literal(_) => false,
             ty::TyScrutineeVariant::Constant { .. } => false,
-            ty::TyScrutineeVariant::Configurable { .. } => false,
             ty::TyScrutineeVariant::StructScrutinee { fields, .. } => fields
                 .iter()
                 .filter_map(|x| x.scrutinee.as_ref())
@@ -155,6 +154,8 @@ impl TyScrutinee {
     }
 }
 
+/// Type checks the `name`, assuming that it's either a variable or an ambiguous identifier
+/// that might be a constant or configurable.
 fn type_check_variable(
     handler: &Handler,
     ctx: TypeCheckContext,
@@ -170,14 +171,14 @@ fn type_check_variable(
         .resolve_symbol_typed(&Handler::default(), engines, &name, ctx.self_type())
         .ok()
     {
-        // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
+        // If the name represents a constant, then we turn it into a [ty::TyScrutineeVariant::Constant].
         Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
             let constant_decl = (*decl_engine.get_constant(&decl_id)).clone();
             let value = match constant_decl.value {
                 Some(ref value) => value,
                 None => {
                     return Err(handler.emit_err(CompileError::Internal(
-                        "constant value does not contain expression",
+                        "Constant value does not contain expression",
                         span,
                     )));
                 }
@@ -198,7 +199,15 @@ fn type_check_variable(
                 span,
             }
         }
-        // Variable isn't a constant, so we turn it into a [ty::TyScrutinee::Variable].
+        // If the name isn't a constant, we turn it into a [ty::TyScrutineeVariant::Variable].
+        //
+        // Note that the declaration could be a configurable declaration, [ty::ConfigurableDecl].
+        // Configurables cannot be matched against, but we do not emit that error here.
+        // That would unnecessary short-circuit the compilation and reduce number of errors
+        // collected.
+        // Rather, we consider the configurable to be a pattern variable declaration, which
+        // strictly speaking it is. Later when checking typed match arm, we will emit
+        // appropriate helpful errors, depending on the exact usage of that configurable.
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
             type_id: type_engine.insert(ctx.engines(), TypeInfo::Unknown, None),
@@ -224,7 +233,7 @@ fn type_check_struct(
     let unknown_decl =
         ctx.namespace()
             .resolve_symbol_typed(handler, engines, &struct_name, ctx.self_type())?;
-    let struct_id = unknown_decl.to_struct_id(handler, ctx.engines())?;
+    let struct_id = unknown_decl.to_struct_decl(handler, ctx.engines())?;
     let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
     // monomorphize the struct definition

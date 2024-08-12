@@ -1,0 +1,8 @@
+[[package]]
+name = "type_alias_basic"
+source = "path+from-root-05B061D32AED907C"
+
+[[package]]
+name = "type_alias_from_dependency"
+source = "member"
+dependencies = ["type_alias_basic"]

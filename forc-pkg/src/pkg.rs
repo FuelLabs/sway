@@ -285,7 +285,7 @@ pub struct MinifyOpts {
 type ContractIdConst = String;
 
 /// The set of options provided to the `build` functions.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
@@ -318,6 +318,7 @@ pub struct BuildOpts {
 }
 
 /// The set of options to filter type of projects to build in a workspace.
+#[derive(Clone)]
 pub struct MemberFilter {
     pub build_contracts: bool,
     pub build_scripts: bool,
@@ -582,8 +583,8 @@ impl BuildPlan {
     ///
     /// To do so, it tries to read the manifet file at the target path and creates the plan with
     /// `BuildPlan::from_lock_and_manifest`.
-    pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self> {
-        let path = &build_options.pkg.path;
+    pub fn from_pkg_opts(pkg_options: &PkgOpts) -> Result<Self> {
+        let path = &pkg_options.path;
 
         let manifest_dir = if let Some(ref path) = path {
             PathBuf::from(path)
@@ -601,9 +602,9 @@ impl BuildPlan {
         Self::from_lock_and_manifests(
             &lock_path,
             &member_manifests,
-            build_options.pkg.locked,
-            build_options.pkg.offline,
-            &build_options.pkg.ipfs_node,
+            pkg_options.locked,
+            pkg_options.offline,
+            &pkg_options.ipfs_node,
         )
     }
 
@@ -2153,7 +2154,9 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         .as_ref()
         .map_or_else(|| current_dir, PathBuf::from);
 
-    let build_plan = BuildPlan::from_build_opts(build_options)?;
+    println_action_green("Building", &path.display().to_string());
+
+    let build_plan = BuildPlan::from_pkg_opts(&build_options.pkg)?;
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
 

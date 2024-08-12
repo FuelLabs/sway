@@ -2,10 +2,7 @@
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
 use crate::{
-    core::{
-        document::{self, Documents},
-        session::Session,
-    },
+    core::{document::Documents, session::Session},
     error::LanguageServerError,
     server_state::{CompilationContext, ServerState, TaskMessage},
 };
@@ -89,7 +86,10 @@ pub async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    if let Err(err) = document::mark_file_as_dirty(&params.text_document.uri) {
+    if let Err(err) = state
+        .pid_locked_files
+        .mark_file_as_dirty(&params.text_document.uri)
+    {
         tracing::warn!("Failed to mark file as dirty: {}", err);
     }
 
@@ -138,7 +138,9 @@ pub(crate) async fn handle_did_save_text_document(
     state: &ServerState,
     params: DidSaveTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    document::remove_dirty_flag(&params.text_document.uri)?;
+    state
+        .pid_locked_files
+        .remove_dirty_flag(&params.text_document.uri)?;
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
@@ -159,7 +161,7 @@ pub(crate) async fn handle_did_change_watched_files(
     for event in params.changes {
         let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
         if let FileChangeType::DELETED = event.typ {
-            document::remove_dirty_flag(&event.uri)?;
+            state.pid_locked_files.remove_dirty_flag(&event.uri)?;
             let _ = state.documents.remove_document(&uri);
         }
     }

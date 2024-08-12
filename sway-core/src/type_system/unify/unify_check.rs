@@ -224,7 +224,8 @@ impl<'a> UnifyCheck<'a> {
     fn check_inner(&self, left: TypeId, right: TypeId) -> bool {
         use TypeInfo::{
             Alias, Array, ContractCaller, Custom, Enum, ErrorRecovery, Never, Numeric, Placeholder,
-            Ref, StringArray, StringSlice, Struct, Tuple, Unknown, UnknownGeneric, UnsignedInteger,
+            Ref, Slice, StringArray, StringSlice, Struct, Tuple, Unknown, UnknownGeneric,
+            UnsignedInteger,
         };
         use UnifyCheckMode::{
             Coercion, ConstraintSubset, NonDynamicEquality, NonGenericConstraintSubset,
@@ -242,8 +243,13 @@ impl<'a> UnifyCheck<'a> {
             (Never, Never) => {
                 return true;
             }
+
             (Array(l0, l1), Array(r0, r1)) => {
                 return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
+            }
+
+            (Slice(l0), Slice(r0)) => {
+                return self.check_inner(l0.type_id, r0.type_id);
             }
 
             (Tuple(l_types), Tuple(r_types)) => {

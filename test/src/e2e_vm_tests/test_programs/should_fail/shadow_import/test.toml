@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: $()The imported symbol "Foo" shadows another symbol with the same name.
-# check: $()The imported symbol "Bar2" shadows another symbol with the same name.
+# check: $()Imported symbol "Foo" shadows another symbol of the same name.
+# check: $()Imported symbol "Bar2" shadows another symbol of the same name.

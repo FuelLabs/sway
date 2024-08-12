@@ -981,18 +981,11 @@ impl Parse for ty::TyIntrinsicFunctionKind {
 impl Parse for ty::TyScrutinee {
     fn parse(&self, ctx: &ParseContext) {
         use ty::TyScrutineeVariant::{
-            CatchAll, Configurable, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple,
-            Variable,
+            CatchAll, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple, Variable,
         };
         match &self.variant {
             CatchAll => {}
             Constant(name, _, decl) => {
-                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
-                }
-            }
-            Configurable(name, _, decl) => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
                     token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
@@ -1275,6 +1268,9 @@ fn collect_type_id(
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, Some(&type_span));
     match &*type_info {
         TypeInfo::Array(type_arg, ..) => {
+            collect_type_argument(ctx, type_arg);
+        }
+        TypeInfo::Slice(type_arg, ..) => {
             collect_type_argument(ctx, type_arg);
         }
         TypeInfo::Tuple(type_arguments) => {

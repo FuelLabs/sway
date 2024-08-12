@@ -37,6 +37,31 @@ use std::{
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
 
+fn fmt_opcode_and_comment(
+    opcode: String,
+    comment: &str,
+    fmtr: &mut fmt::Formatter<'_>,
+) -> fmt::Result {
+    // We want the comment to be at the `COMMENT_START_COLUMN` offset to the right,
+    // to not interfere with the ASM but to be aligned.
+    // Some operations like, e.g., data section offset, can span multiple lines.
+    // In that case, we put the comment at the end of the last line, aligned.
+    let mut op_and_comment = opcode;
+    if !comment.is_empty() {
+        let mut op_length = match op_and_comment.rfind('\n') {
+            Some(new_line_index) => op_and_comment.len() - new_line_index - 1,
+            None => op_and_comment.len(),
+        };
+        while op_length < COMMENT_START_COLUMN {
+            op_and_comment.push(' ');
+            op_length += 1;
+        }
+        write!(op_and_comment, "; {}", comment)?;
+    }
+
+    write!(fmtr, "{op_and_comment}")
+}
+
 impl From<&AsmRegister> for VirtualRegister {
     fn from(o: &AsmRegister) -> Self {
         VirtualRegister::Virtual(o.name.clone())
@@ -46,7 +71,25 @@ impl From<&AsmRegister> for VirtualRegister {
 #[derive(Debug, Clone)]
 pub(crate) struct Op {
     pub(crate) opcode: Either<VirtualOp, OrganizationalOp>,
-    /// A descriptive comment for ASM readability
+    /// A descriptive comment for ASM readability.
+    ///
+    /// Comments are a part of the compiler output and meant to
+    /// help both Sway developers interested in the generated ASM
+    /// and the Sway compiler developers.
+    ///
+    /// Comments follow these guidelines:
+    ///   - they start with an imperative verb. E.g.: "allocate" and not "allocating".
+    ///   - they start with a lowercase letter. E.g.: "allocate" and not "Allocate".
+    ///   - they do not end in punctuation. E.g.: "store value" and not "store value.".
+    ///   - they use full words. E.g.: "load return address" and not "load reta" or "load return addr".
+    ///   - abbreviations are written in upper-case. E.g.: "ABI" and not "abi".
+    ///   - names (e.g., function, argument, etc.) are written without quotes. E.g. "main" and not "'main'".
+    ///   - assembly operations are written in lowercase. E.g.: "move" and not "MOVE".
+    ///   - they are short and concise.
+    ///   - if an operation is a part of a logical group of operations, start the comment
+    ///     by a descriptive group name enclosed in square brackets and followed by colon.
+    ///     The remaining part of the comment follows the above guidelines. E.g.:
+    ///     "[bitcast to bool]: convert value to inverted boolean".
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
 }
@@ -54,7 +97,9 @@ pub(crate) struct Op {
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
     pub(crate) opcode: Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>>,
-    /// A descriptive comment for ASM readability
+    /// A descriptive comment for ASM readability.
+    ///
+    /// For writing guidelines, see [Op::comment].
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
 }
@@ -62,7 +107,9 @@ pub(crate) struct AllocatedAbstractOp {
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
     pub(crate) opcode: AllocatedOpcode,
-    /// A descriptive comment for ASM readability
+    /// A descriptive comment for ASM readability.
+    ///
+    /// For writing guidelines, see [Op::comment].
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
 }
@@ -211,11 +258,24 @@ impl Op {
         }
     }
 
-    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg0` is not equal to zero.
+    /// Jumps to [Label] `label` if the given [VirtualRegister] `reg0` is not equal to zero.
     pub(crate) fn jump_if_not_zero(reg0: VirtualRegister, label: Label) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
             comment: String::new(),
+            owning_span: None,
+        }
+    }
+
+    /// Jumps to [Label] `label` if the given [VirtualRegister] `reg0` is not equal to zero.
+    pub(crate) fn jump_if_not_zero_comment(
+        reg0: VirtualRegister,
+        label: Label,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
+            comment: comment.into(),
             owning_span: None,
         }
     }
@@ -983,17 +1043,7 @@ fn two_regs_imm_12(
 
 impl fmt::Display for Op {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // We want the comment to always be 40 characters offset to the right to not interfere with
-        // the ASM but to be aligned.
-        let mut op_and_comment = self.opcode.to_string();
-        if !self.comment.is_empty() {
-            while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push(' ');
-            }
-            write!(op_and_comment, "; {}", self.comment)?;
-        }
-
-        write!(fmtr, "{op_and_comment}")
+        fmt_opcode_and_comment(self.opcode.to_string(), &self.comment, fmtr)
     }
 }
 
@@ -1113,17 +1163,7 @@ impl fmt::Display for VirtualOp {
 
 impl fmt::Display for AllocatedAbstractOp {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // We want the comment to always be 40 characters offset to the right to not interfere with
-        // the ASM but to be aligned.
-        let mut op_and_comment = self.opcode.to_string();
-        if !self.comment.is_empty() {
-            while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push(' ');
-            }
-            write!(op_and_comment, "; {}", self.comment)?;
-        }
-
-        write!(fmtr, "{op_and_comment}")
+        fmt_opcode_and_comment(self.opcode.to_string(), &self.comment, fmtr)
     }
 }
 

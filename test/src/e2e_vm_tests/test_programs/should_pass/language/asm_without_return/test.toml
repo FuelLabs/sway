@@ -1,4 +1,2 @@
-category = "run"
-expected_result = { action = "return", value = 0 }
-expected_result_new_encoding = { action = "return_data", value = "" }
-validate_abi = true
+category = "compile"
+expected_warnings = 2

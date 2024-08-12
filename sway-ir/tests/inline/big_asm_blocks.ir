@@ -1,0 +1,104 @@
+// instrs 4
+//
+// This test proves that https://github.com/FuelLabs/sway/issues/6332 is fixed.
+//
+// `test_function`s all must be inlined because the contain only one instruction and `ret`.
+// `testf` must not be inlined. Although it has only a single `asm` instruction, that
+// one has a large number of instructions.
+
+// regex: VAR=v\d+
+// regex: LABEL=[[:alpha:]0-9_]+
+
+script {
+    // check: entry fn main() -> ()
+    entry fn main() -> () {
+        entry():
+
+        // check: call testf()
+        // not: call test_function1()
+        v0 = call test_function1()
+        
+        // check: call testf()
+        // not: call test_function2()
+        v1 = call test_function2()
+        
+        // check: call testf()
+        // not: call test_function3()
+        v2 = call test_function3()
+        v3 = const unit ()
+        ret () v3
+    }
+
+    // check: fn test_function1() -> ()
+    fn test_function1() -> () {
+        entry():
+
+        // check: call testf()
+        v0 = call testf()
+        v1 = const unit ()
+        ret () v1
+    }
+
+    // check: fn test_function2() -> bool
+    fn test_function2() -> bool {
+        entry():
+
+        // check: call testf()
+        v0 = call testf()
+        v1 = const bool true
+        ret bool v1
+    }
+
+    // check: fn test_function3() -> u64
+    fn test_function3() -> u64 {
+        entry():
+
+        // check: call testf()
+        v0 = call testf()
+        v1 = const u64 0
+        ret u64 v1
+    }
+
+    // check: fn testf() -> ()
+    fn testf() -> () {
+        entry():
+        v0 = asm(r1, r2) -> () {
+            movi   r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+        }
+        v1 = const unit ()
+        ret () v1
+    }
+}
