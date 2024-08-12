@@ -34,22 +34,22 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.30.0", default-features = false }
-fuel-core-types = { version = "0.30.0", default-features = false }
+fuel-core-client = { version = "0.32.0", default-features = false }
+fuel-core-types = { version = "0.32.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.54.1"
-fuel-crypto = "0.54.1"
-fuel-types = "0.54.1"
-fuel-tx = "0.54.1"
-fuel-vm = "0.54.1"
+fuel-asm = "0.56.0"
+fuel-crypto = "0.56.0"
+fuel-types = "0.56.0"
+fuel-tx = "0.56.0"
+fuel-vm = "0.56.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.64.0"
-fuels-accounts = "0.64.0"
+fuels-core = "0.66.0"
+fuels-accounts = "0.66.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = { git = "https://github.com/fuelLabs/forc-wallet", branch = "kayagokalp/0.54.1" }
+forc-wallet = "0.9.0"
 
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = "0.5.0"
@@ -60,19 +60,3 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-
-[patch.crates-io]
-fuels-core = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
-fuels-accounts = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
-fuels-programs = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
-fuels = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
-
-fuel-asm = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
-fuel-crypto = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
-fuel-types = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
-fuel-tx = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
-fuel-vm = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
-
-fuel-core-client = { git = "https://github.com/fuelLabs/fuel-core", branch = "dento/blob-tx" }
-fuel-core-types = { git = "https://github.com/fuelLabs/fuel-core", branch = "dento/blob-tx" }
-fuel-core-storage = { git = "https://github.com/fuelLabs/fuel-core", branch = "dento/blob-tx" }
