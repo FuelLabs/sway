@@ -163,8 +163,9 @@ pub fn ed_verify(
         buffer: public_key,
         sig: __addr_of(signature),
         hash: msg_hash,
+        len: 32,
     ) {
-        ed19 buffer sig hash i32;
+        ed19 buffer sig hash len;
         err
     };
     // check the $err register to see if the `ed19` opcode succeeded

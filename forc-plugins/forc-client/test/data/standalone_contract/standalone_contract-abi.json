@@ -1,23 +1,23 @@
 {
+  "programType": "contract",
+  "specVersion": "1",
+  "encodingVersion": "1",
   "concreteTypes": [
     {
-      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
-      "type": "u64"
+      "type": "bool",
+      "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
     }
   ],
-  "configurables": [],
-  "encodingVersion": "1",
+  "metadataTypes": [],
   "functions": [
     {
-      "attributes": null,
       "inputs": [],
-      "name": "main",
-      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      "name": "test_function",
+      "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "attributes": null
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "metadataTypes": [],
-  "programType": "script",
-  "specVersion": "1"
+  "configurables": []
 }
