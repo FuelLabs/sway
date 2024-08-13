@@ -450,7 +450,7 @@ impl ty::TyExpression {
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
                 match &*type_engine.get(typed_expression.return_type) {
-                    TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric { .. } => {
+                    TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = Self::resolve_numeric_literal(
                             handler,
                             ctx,
@@ -471,7 +471,7 @@ impl ty::TyExpression {
         let type_engine = engines.te();
         let return_type = match &lit {
             Literal::String(_) => TypeInfo::StringSlice,
-            Literal::Numeric(v) => TypeInfo::numeric_constrained_by_value(*v),
+            Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
             Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -2524,11 +2524,11 @@ impl ty::TyExpression {
                     // Numerics are limited to u64 for now
                     IntegerBits::V256 => (Ok(Literal::U256(U256::from(num))), new_type),
                 },
-                n @ TypeInfo::Numeric { .. } => (
+                TypeInfo::Numeric => (
                     num.to_string().parse().map(Literal::Numeric).map_err(|e| {
-                        Literal::handle_parse_int_error(engines, e, n.clone(), span.clone())
+                        Literal::handle_parse_int_error(engines, e, TypeInfo::Numeric, span.clone())
                     }),
-                    type_engine.insert(engines, n.clone(), None),
+                    type_engine.insert(engines, TypeInfo::Numeric, None),
                 ),
                 _ => unreachable!("Unexpected type for integer literals"),
             },

@@ -267,7 +267,7 @@ impl TypeSubstMap {
             (TypeInfo::Unknown, TypeInfo::Unknown)
             | (TypeInfo::Boolean, TypeInfo::Boolean)
             | (TypeInfo::B256, TypeInfo::B256)
-            | (TypeInfo::Numeric { .. }, TypeInfo::Numeric { .. })
+            | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
             | (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_))
             | (TypeInfo::StringSlice, TypeInfo::StringSlice)
@@ -510,7 +510,7 @@ impl TypeSubstMap {
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::B256
-            | TypeInfo::Numeric { .. }
+            | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
