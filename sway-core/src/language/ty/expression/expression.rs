@@ -128,13 +128,23 @@ impl TypeCheckAnalysis for TyExpression {
                 elem_type,
                 contents,
             } => {
-                for element in contents {
+                let array_elem_type = ctx.engines.te().get(*elem_type);
+                if !matches!(&*array_elem_type, TypeInfo::Never) {
                     let unify = crate::type_system::unify::unifier::Unifier::new(
                         ctx.engines,
                         "",
                         unify::unifier::UnifyKind::Default,
                     );
-                    unify.unify(handler, element.return_type, *elem_type, &element.span)
+                    for element in contents {
+                        let element_type = ctx.engines.te().get(*elem_type);
+
+                        // If the element is never, we do not need to check
+                        if matches!(&*element_type, TypeInfo::Never) {
+                            continue;
+                        }
+
+                        unify.unify(handler, element.return_type, *elem_type, &element.span)
+                    }
                 }
             }
             _ => {}
