@@ -319,7 +319,7 @@ define_op_codes!(
     /* Cryptographic Instructions */
     (Eck1, Eck1Opcode, "eck1", (addr: reg, sig: reg, hash: reg)),
     (Ecr1, Ecr1Opcode, "ecr1", (addr: reg, sig: reg, hash: reg)),
-    (Ed19, Ed19Opcode, "ed19", (addr: reg, sig: reg, hash: reg)),
+    (Ed19, Ed19Opcode, "ed19", (addr: reg, sig: reg, hash: reg, len: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
     /* Other Instructions */

@@ -23,7 +23,7 @@ pub fn run_external(load_target: ContractId) -> ! {
         move ssp_saved ssp;
         sub cur_stack_size sp ssp;
         cfs cur_stack_size;
-        ldc load_target zero length;
+        ldc load_target zero length i0;
         addi word zero i64;
         aloc word;
         sw hp ssp_saved i0;
@@ -59,8 +59,8 @@ pub fn run_external2(load_target1: ContractId, load_target2: ContractId) -> ! {
         cfs cur_stack_size;
 
         // Do the loads
-        ldc load_target1 zero length1;
-        ldc load_target2_heap zero length2;
+        ldc load_target1 zero length1 i0;
+        ldc load_target2_heap zero length2 i0;
 
         // __jmp_mem jumps to $MEM[$hp], so set that up.
         addi heap_alloc_size zero i64;
