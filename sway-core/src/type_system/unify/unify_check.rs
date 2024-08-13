@@ -425,8 +425,8 @@ impl<'a> UnifyCheck<'a> {
                     (_, Unknown) => true,
 
                     (UnsignedInteger(lb), UnsignedInteger(rb)) => lb == rb,
-                    (Numeric { .. }, UnsignedInteger(_)) => true,
-                    (UnsignedInteger(_), Numeric { .. }) => true,
+                    (Numeric, UnsignedInteger(_)) => true,
+                    (UnsignedInteger(_), Numeric) => true,
 
                     (StringSlice, StringSlice) => true,
                     (StringArray(l), StringArray(r)) => l.val() == r.val(),
@@ -495,7 +495,7 @@ impl<'a> UnifyCheck<'a> {
                 // TypeId, they may later resolve to be different types in the type
                 // engine
                 (TypeInfo::Unknown, TypeInfo::Unknown) => false,
-                (TypeInfo::Numeric { .. }, TypeInfo::Numeric { .. }) => false,
+                (TypeInfo::Numeric, TypeInfo::Numeric) => false,
                 (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 
                 // these cases are able to be directly compared
@@ -659,8 +659,8 @@ impl<'a> UnifyCheck<'a> {
                                 (&**a, &**b),
                                 (_, Placeholder(_))
                                     | (Placeholder(_), _)
-                                    | (UnsignedInteger(_), Numeric { .. })
-                                    | (Numeric { .. }, UnsignedInteger(_))
+                                    | (UnsignedInteger(_), Numeric)
+                                    | (Numeric, UnsignedInteger(_))
                                     | (_, Unknown)
                                     | (Unknown, _)
                             ))
@@ -681,8 +681,8 @@ impl<'a> UnifyCheck<'a> {
                             (&**a, &**b),
                             (_, Placeholder(_))
                                 | (Placeholder(_), _)
-                                | (UnsignedInteger(_), Numeric { .. })
-                                | (Numeric { .. }, UnsignedInteger(_))
+                                | (UnsignedInteger(_), Numeric)
+                                | (Numeric, UnsignedInteger(_))
                                 | (_, Unknown)
                                 | (Unknown, _)
                         ))

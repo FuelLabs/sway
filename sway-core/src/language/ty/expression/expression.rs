@@ -1,7 +1,9 @@
 use std::{fmt, hash::Hasher};
 
 use sway_error::{
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
 use sway_types::{Span, Spanned};
@@ -108,6 +110,26 @@ impl TypeCheckAnalysis for TyExpression {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
+        // Check literal "fits" into assigned typed.
+        match &self.expression {
+            TyExpressionVariant::Literal(Literal::Numeric(literal_value)) => {
+                let t = ctx.engines.te().get(self.return_type);
+                match &*t {
+                    TypeInfo::UnsignedInteger(bits) => {
+                        if bits.would_overflow(*literal_value) {
+                            handler.emit_err(CompileError::TypeError(
+                                TypeError::ConstrainedNumeric {
+                                    expected: format!("{:?}", ctx.engines.help_out(t)),
+                                    span: self.span.clone(),
+                                },
+                            ));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
         self.expression.type_check_analyze(handler, ctx)
     }
 }

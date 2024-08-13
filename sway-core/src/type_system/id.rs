@@ -222,7 +222,7 @@ impl TypeId {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Boolean
             | TypeInfo::B256
-            | TypeInfo::Numeric { .. }
+            | TypeInfo::Numeric
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
@@ -471,7 +471,7 @@ impl TypeId {
                     | TypeInfo::Placeholder(..)
                     | TypeInfo::TraitType { .. }
                     | TypeInfo::TypeParam(..)
-                    | TypeInfo::Numeric { .. }
+                    | TypeInfo::Numeric
             ),
             IncludeNumeric::No => matches!(
                 x,

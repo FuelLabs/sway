@@ -1,13 +1,10 @@
 category = "fail"
 
 # check: $()let _a = 0x100;
-# nextln: $()Vec::<u8>::new().push(_a);
 # nextln: $()Literal would overflow because its value do not fit into "u8"
 
 # check: $()let _a = 0x10000;
-# nextln: $()Vec::<u16>::new().push(_a);
 # nextln: $()Literal would overflow because its value do not fit into "u16"
 
 # check: $()let _a = 0x100000000;
-# nextln: $()Vec::<u32>::new().push(_a);
 # nextln: $()Literal would overflow because its value do not fit into "u32"

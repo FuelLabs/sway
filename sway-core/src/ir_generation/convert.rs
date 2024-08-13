@@ -98,7 +98,7 @@ fn convert_resolved_type_info(
         TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
         | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
         | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-        | TypeInfo::Numeric { .. } => Type::get_uint64(context),
+        | TypeInfo::Numeric => Type::get_uint64(context),
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::StringSlice => Type::get_slice(context),
