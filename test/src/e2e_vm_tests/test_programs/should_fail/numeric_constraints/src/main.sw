@@ -12,4 +12,7 @@ fn main() {
     // u32
     let _a = 0x100000000;
     Vec::<u32>::new().push(_a);
+
+    // Array
+    let a = [1, 2, "hello"];
 }
