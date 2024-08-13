@@ -110,17 +110,49 @@ impl TypeCheckAnalysis for TyExpression {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        // Check literal "fits" into assigned typed.
-        if let TyExpressionVariant::Literal(Literal::Numeric(literal_value)) = &self.expression {
-            let t = ctx.engines.te().get(self.return_type);
-            if let TypeInfo::UnsignedInteger(bits) = &*t {
-                if bits.would_overflow(*literal_value) {
-                    handler.emit_err(CompileError::TypeError(TypeError::ConstrainedNumeric {
-                        expected: format!("{:?}", ctx.engines.help_out(t)),
-                        span: self.span.clone(),
-                    }));
+        match &self.expression {
+            // Check literal "fits" into assigned typed.
+            TyExpressionVariant::Literal(Literal::Numeric(literal_value)) => {
+                let t = ctx.engines.te().get(self.return_type);
+                if let TypeInfo::UnsignedInteger(bits) = &*t {
+                    if bits.would_overflow(*literal_value) {
+                        handler.emit_err(CompileError::TypeError(TypeError::ConstrainedNumeric {
+                            expected: format!("{:?}", ctx.engines.help_out(t)),
+                            span: self.span.clone(),
+                        }));
+                    }
                 }
             }
+            // Check all array items are the same
+            TyExpressionVariant::Array {
+                elem_type,
+                contents,
+            } => {
+                let eqctx = PartialEqWithEnginesContext::new(ctx.engines);
+                let array_elem_type = ctx.engines.te().get(*elem_type);
+
+                // If the array element is never, we do not need to check
+                if !matches!(&*array_elem_type, TypeInfo::Never) {
+                    for element in contents {
+                        let elem_type = ctx.engines.te().get(element.return_type);
+
+                        // If the element is never, we do not need to check
+                        if !matches!(&*array_elem_type, TypeInfo::Never) {
+                            continue;
+                        }
+
+                        if !array_elem_type.eq(&*elem_type, &eqctx) {
+                            handler.emit_err(CompileError::TypeError(TypeError::MismatchedType {
+                                expected: format!("{:?}", ctx.engines.help_out(&array_elem_type)),
+                                received: format!("{:?}", ctx.engines.help_out(elem_type)),
+                                help_text: String::new(),
+                                span: element.span.clone(),
+                            }));
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
         self.expression.type_check_analyze(handler, ctx)
     }
