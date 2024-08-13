@@ -59,7 +59,9 @@ impl TypeId {
                 }
                 (TypeInfo::Slice(type_arg), TypeInfo::Slice(_)) => {
                     let inner_type = if ctx.abi_with_fully_specified_types {
-                        type_engine.get(type_arg.type_id).abi_str(ctx, engines)
+                        type_engine
+                            .get(type_arg.type_id)
+                            .abi_str(ctx, engines, false)
                     } else {
                         "_".to_string()
                     };

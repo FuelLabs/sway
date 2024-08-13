@@ -776,40 +776,33 @@ impl TypeId {
             }
             TypeInfo::Slice(..) => {
                 if let TypeInfo::Slice(elem_ty) = &*type_engine.get(resolved_type_id) {
-                    // The `program_abi::TypeDeclaration`s needed for the slice element type
-                    let elem_abi_ty = program_abi::TypeDeclaration {
-                        type_id: elem_ty.initial_type_id.index(),
-                        type_field: elem_ty.initial_type_id.get_abi_type_str(
-                            &ctx.to_str_context(engines, false),
-                            engines,
-                            elem_ty.type_id,
-                        ),
-                        components: elem_ty.initial_type_id.get_abi_type_components(
-                            ctx,
-                            engines,
-                            types,
-                            elem_ty.type_id,
-                        ),
-                        type_parameters: elem_ty.initial_type_id.get_abi_type_parameters(
-                            ctx,
-                            engines,
-                            types,
-                            elem_ty.type_id,
-                        ),
-                    };
-                    types.push(elem_abi_ty);
+                    generate_type_metadata_declaration(
+                        handler,
+                        ctx,
+                        engines,
+                        metadata_types,
+                        concrete_types,
+                        elem_ty.initial_type_id,
+                        elem_ty.type_id,
+                        metadata_types_to_add,
+                    )?;
 
                     // Generate the JSON data for the array. This is basically a single
                     // `program_abi::TypeApplication` for the array element type
                     Some(vec![program_abi::TypeApplication {
                         name: "__slice_element".to_string(),
-                        type_id: elem_ty.initial_type_id.index(),
+                        type_id: program_abi::TypeId::Metadata(MetadataTypeId(
+                            elem_ty.initial_type_id.index(),
+                        )),
                         type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
+                            handler,
                             ctx,
                             engines,
-                            types,
+                            metadata_types,
+                            concrete_types,
                             elem_ty.type_id,
-                        ),
+                            metadata_types_to_add,
+                        )?,
                     }])
                 } else {
                     unreachable!();
