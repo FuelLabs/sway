@@ -29,7 +29,7 @@ pub enum TypeError {
         received: String,
         span: Span,
     },
-    #[error("Literal would overflow because its value do not fit into \"{expected}\"")]
+    #[error("Literal would overflow because its value does not fit into \"{expected}\"")]
     ConstrainedNumeric { expected: String, span: Span },
 }
 
