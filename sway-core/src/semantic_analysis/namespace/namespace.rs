@@ -191,7 +191,7 @@ impl Namespace {
         handler: &Handler,
         path: &ModulePathBuf,
     ) -> Result<&Module, ErrorEmitted> {
-        self.root.require_module_in_current_package(handler, path)
+        self.root.require_module(handler, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of

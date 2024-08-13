@@ -218,7 +218,7 @@ impl Root {
 	if mod_path[0] == *self.current_package.name() {
 	    self.current_package.submodule(&package_relative_path)
 	} else if let Some(external_package) = self.external_packages.get(&mod_path[0].to_string()) {
-	    external_package.module_in_current_package(&package_relative_path)
+	    external_package.current_package_root_module().submodule(&package_relative_path)
 	} else {
 	    None
 	}
@@ -244,6 +244,7 @@ impl Root {
     // Find a module in the current package. `mod_path` must be a fully qualified path
     // Throw an error if the module doesn't exist
     pub(super) fn require_module_in_current_package(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+	dbg!(mod_path);
 	assert!(self.check_path_is_in_current_package(mod_path));
 	self.require_module(handler, mod_path)
     }
