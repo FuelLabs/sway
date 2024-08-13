@@ -116,7 +116,7 @@ impl TypeCheckAnalysis for TyExpression {
                 let t = ctx.engines.te().get(self.return_type);
                 if let TypeInfo::UnsignedInteger(bits) = &*t {
                     if bits.would_overflow(*literal_value) {
-                        handler.emit_err(CompileError::TypeError(TypeError::ConstrainedNumeric {
+                        handler.emit_err(CompileError::TypeError(TypeError::LiteralOverflow {
                             expected: format!("{:?}", ctx.engines.help_out(t)),
                             span: self.span.clone(),
                         }));
@@ -137,7 +137,7 @@ impl TypeCheckAnalysis for TyExpression {
                         let elem_type = ctx.engines.te().get(element.return_type);
 
                         // If the element is never, we do not need to check
-                        if !matches!(&*array_elem_type, TypeInfo::Never) {
+                        if matches!(&*array_elem_type, TypeInfo::Never) {
                             continue;
                         }
 
