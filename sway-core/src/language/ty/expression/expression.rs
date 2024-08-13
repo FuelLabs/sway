@@ -128,28 +128,13 @@ impl TypeCheckAnalysis for TyExpression {
                 elem_type,
                 contents,
             } => {
-                let eqctx = PartialEqWithEnginesContext::new(ctx.engines);
-                let array_elem_type = ctx.engines.te().get(*elem_type);
-
-                // If the array element is never, we do not need to check
-                if !matches!(&*array_elem_type, TypeInfo::Never) {
-                    for element in contents {
-                        let elem_type = ctx.engines.te().get(element.return_type);
-
-                        // If the element is never, we do not need to check
-                        if matches!(&*array_elem_type, TypeInfo::Never) {
-                            continue;
-                        }
-
-                        if !array_elem_type.eq(&*elem_type, &eqctx) {
-                            handler.emit_err(CompileError::TypeError(TypeError::MismatchedType {
-                                expected: format!("{:?}", ctx.engines.help_out(&array_elem_type)),
-                                received: format!("{:?}", ctx.engines.help_out(elem_type)),
-                                help_text: String::new(),
-                                span: element.span.clone(),
-                            }));
-                        }
-                    }
+                for element in contents {
+                    let unify = crate::type_system::unify::unifier::Unifier::new(
+                        ctx.engines,
+                        "",
+                        unify::unifier::UnifyKind::Default,
+                    );
+                    unify.unify(handler, element.return_type, *elem_type, &element.span)
                 }
             }
             _ => {}
