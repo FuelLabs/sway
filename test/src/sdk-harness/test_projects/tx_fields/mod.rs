@@ -158,7 +158,7 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
     );
 
     let mut node_config = NodeConfig::default();
-    node_config.static_gas_price = 0;
+    node_config.starting_gas_price = 0;
     let mut wallets =
         launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
             .await
@@ -915,7 +915,7 @@ mod outputs {
         async fn can_get_tx_output_type_for_contract_deployment() {
             // Setup Wallet
             let mut node_config = NodeConfig::default();
-            node_config.static_gas_price = 0;
+            node_config.starting_gas_price = 0;
             let wallet = launch_custom_provider_and_get_wallets(
                 WalletsConfig::new(
                     Some(1),             /* Single wallet */
