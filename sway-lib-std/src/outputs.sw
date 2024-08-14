@@ -50,11 +50,7 @@ pub enum Output {
 ///
 /// # Returns
 ///
-/// * [Output] - The type of the output at `index`.
-///
-/// # Reverts
-///
-/// * When the output type is unrecognized. This should never happen.
+/// * [Option<Output>] - The type of the output at `index`.
 ///
 /// # Examples
 ///
@@ -62,7 +58,7 @@ pub enum Output {
 /// use std::outputs::output_type;
 ///
 /// fn foo() {
-///     let output_type = output_type(0);
+///     let output_type = output_type(0).unwrap();
 ///     match output_type {
 ///         Output::Coin => { log("The output is a coin") },
 ///         Output::Contract => { log("The output is a contract") },
@@ -72,14 +68,18 @@ pub enum Output {
 ///     };
 /// }
 /// ```
-pub fn output_type(index: u64) -> Output {
+pub fn output_type(index: u64) -> Option<Output> {
+    if index >= output_count().as_u64() {
+        return None
+    }
+
     match __gtf::<u8>(index, GTF_OUTPUT_TYPE) {
-        0u8 => Output::Coin,
-        1u8 => Output::Contract,
-        2u8 => Output::Change,
-        3u8 => Output::Variable,
-        4u8 => Output::ContractCreated,
-        _ => revert(0),
+        0u8 => Some(Output::Coin),
+        1u8 => Some(Output::Contract),
+        2u8 => Some(Output::Change),
+        3u8 => Some(Output::Variable),
+        4u8 => Some(Output::ContractCreated),
+        _ => None,
     }
 }
 
@@ -92,11 +92,7 @@ pub fn output_type(index: u64) -> Output {
 ///
 /// # Returns
 ///
-/// * [u64] - A pointer to the output at `index`.
-///
-/// # Reverts
-///
-/// * When the output type is unrecognized. This should never happen.
+/// * [Option<u64>] - A pointer to the output at `index`.
 ///
 /// # Examples
 ///
@@ -104,14 +100,18 @@ pub fn output_type(index: u64) -> Output {
 /// use std::outputs::output_pointer;
 ///
 /// fn foo() {
-///     let output_pointer = output_pointer(0);
+///     let output_pointer = output_pointer(0).unwrap();
 ///     log(output_pointer);
 /// }
 /// ```
-pub fn output_pointer(index: u64) -> u64 {
+pub fn output_pointer(index: u64) -> Option<u64> {
+    if output_type(index).is_none() {
+        return None
+    }
+
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX),
-        Transaction::Create => __gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX),
+        Transaction::Script => Some(__gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        Transaction::Create => Some(__gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX)),
     }
 }
 
@@ -120,7 +120,7 @@ pub fn output_pointer(index: u64) -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The transaction outputs count.
+/// * [u16] - The transaction outputs count.
 ///
 /// # Reverts
 ///
@@ -136,10 +136,10 @@ pub fn output_pointer(index: u64) -> u64 {
 ///     log(output_count);
 /// }
 /// ```
-pub fn output_count() -> u64 {
+pub fn output_count() -> u16 {
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT),
-        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_OUTPUTS_COUNT),
+        Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
+        Transaction::Create => __gtf::<u16>(0, GTF_CREATE_OUTPUTS_COUNT),
     }
 }
 
@@ -159,7 +159,7 @@ pub fn output_count() -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The amount of coins to send to the output at `index`.
+/// * [Option<u64>] - The amount of coins to send to the output at `index`.
 ///
 /// # Reverts
 ///
@@ -176,28 +176,23 @@ pub fn output_count() -> u64 {
 ///     log(output_amount);
 /// }
 /// ```
-pub fn output_amount(index: u64) -> u64 {
+pub fn output_amount(index: u64) -> Option<u64> {
     match output_type(index) {
-        Output::Coin => __gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT),
-        Output::Contract => revert(0),
+        Some(Output::Coin) => Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)),
+        Some(Output::Contract) => None,
         // For now, output changes are always guaranteed to have an amount of
         // zero since they're only set after execution terminates.
-        // use `__gtf` when GTF_OUTPUT_CHANGE_AMOUNT is available.
-        // See https://github.com/FuelLabs/fuel-specs/issues/402
-        // and https://github.com/FuelLabs/sway/issues/2671.
-        Output::Change => 0,
-        // use `__gtf` when GTF_OUTPUT_VARIABLE_AMOUNT is available.
-        // See https://github.com/FuelLabs/fuel-specs/issues/402
-        // and https://github.com/FuelLabs/sway/issues/2671.
-        Output::Variable => {
+        Some(Output::Change) => Some(0),
+        Some(Output::Variable) => {
             let ptr = output_pointer(index);
-            asm(r1, r2, r3: ptr) {
+            Some(asm(r1, r2, r3: ptr) {
                 addi r2 r3 i40;
                 lw r1 r2 i0;
                 r1: u64
-            }
+            })
         },
-        Output::ContractCreated => revert(0),
+        Some(Output::ContractCreated) => None,
+        None => None,
     }
 }
 
@@ -227,7 +222,7 @@ pub fn output_amount(index: u64) -> u64 {
 /// ```
 pub fn output_asset_id(index: u64) -> Option<AssetId> {
     match output_type(index) {
-        Output::Coin => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        Some(Output::Coin) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         _ => None,
     }
 }
@@ -258,7 +253,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 /// ```
 pub fn output_asset_to(index: u64) -> Option<Address> {
     match output_type(index) {
-        Output::Coin => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
+        Some(Output::Coin) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         _ => None,
     }
 }
