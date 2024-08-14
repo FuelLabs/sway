@@ -339,7 +339,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(result.value, outputs.len() as u64);
+        assert_eq!(result.value, outputs.len() as u16);
     }
 
     #[tokio::test]
@@ -908,7 +908,16 @@ mod outputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Output::Contract);
+            assert_eq!(result.value, Some(Output::Contract));
+
+            // Assert invalid index returns None
+            let result = contract_instance
+                .methods()
+                .get_output_type(2)
+                .call()
+                .await
+                .unwrap();
+            assert_eq!(result.value, None);
         }
 
         #[tokio::test]
@@ -1046,26 +1055,22 @@ mod outputs {
 
             assert!(balance - transfer_amount == new_balance);
         }
+
+        #[tokio::test]
+        async fn can_get_amount_for_output_contract() {
+            let (contract_instance, _, _, _) = get_contracts(true).await;
+            let result = contract_instance
+                .methods()
+                .get_tx_output_amount(0)
+                .call()
+                .await
+                .unwrap();
+            assert_eq!(result.value, None);
+        }
     }
 
     mod revert {
         use super::*;
-
-        mod contract {
-            use super::*;
-
-            #[tokio::test]
-            #[should_panic(expected = "Revert(0)")]
-            async fn fails_to_get_amount_for_output_contract() {
-                let (contract_instance, _, _, _) = get_contracts(true).await;
-                contract_instance
-                    .methods()
-                    .get_tx_output_amount(0)
-                    .call()
-                    .await
-                    .unwrap();
-            }
-        }
 
         #[tokio::test]
         #[should_panic]
