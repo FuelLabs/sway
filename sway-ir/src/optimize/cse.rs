@@ -1,7 +1,9 @@
-//! Value numbering based common subexpression elimination
+//! Value numbering based common subexpression elimination.
+//! Reference: Value Driven Redundancy Elimination - Loren Taylor Simpson.
 
+use core::panic;
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHasher};
+use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use slotmap::Key;
 use std::{
     collections::hash_map,
@@ -10,9 +12,9 @@ use std::{
 };
 
 use crate::{
-    block, function_print, AnalysisResults, BinaryOpKind, Context, DebugWithContext, Function,
-    InstOp, IrError, Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind,
-    Value, POSTORDER_NAME,
+    AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function, InstOp, IrError,
+    Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind, Value,
+    DOMINATORS_NAME, POSTORDER_NAME,
 };
 
 pub const CSE_NAME: &str = "cse";
@@ -22,7 +24,7 @@ pub fn create_cse_pass() -> Pass {
         name: CSE_NAME,
         descr: "Common subexpression elimination",
         runner: ScopedPass::FunctionPass(PassMutability::Transform(cse)),
-        deps: vec![POSTORDER_NAME],
+        deps: vec![POSTORDER_NAME, DOMINATORS_NAME],
     }
 }
 
@@ -154,11 +156,46 @@ struct VNTable {
 
 impl Debug for VNTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "value_map:\n")?;
-        for (key, value) in &self.value_map {
-            write!(f, "\tv{:?} -> {:?}\n", key.0.data(), value)?
-        }
+        writeln!(f, "value_map:")?;
+        self.value_map.iter().for_each(|(key, value)| {
+            writeln!(f, "\tv{:?} -> {:?}", key.0.data(), value).expect("writeln! failed");
+        });
         Ok(())
+    }
+}
+
+/// Wrapper around [DomTree::dominates] to work at instruction level.
+/// Does `inst1` dominate `inst2` ?
+fn dominates(context: &Context, dom_tree: &DomTree, inst1: Value, inst2: Value) -> bool {
+    let block1 = match &context.values[inst1.0].value {
+        crate::ValueDatum::Argument(arg) => arg.block,
+        crate::ValueDatum::Constant(_) => {
+            panic!("Shouldn't be querying dominance info for constants")
+        }
+        crate::ValueDatum::Instruction(i) => i.parent,
+    };
+    let block2 = match &context.values[inst2.0].value {
+        crate::ValueDatum::Argument(arg) => arg.block,
+        crate::ValueDatum::Constant(_) => {
+            panic!("Shouldn't be querying dominance info for constants")
+        }
+        crate::ValueDatum::Instruction(i) => i.parent,
+    };
+
+    if block1 == block2 {
+        let inst1_idx = block1
+            .instruction_iter(context)
+            .position(|inst| inst == inst1)
+            // Not found indicates a block argument
+            .unwrap_or(0);
+        let inst2_idx = block1
+            .instruction_iter(context)
+            .position(|inst| inst == inst2)
+            // Not found indicates a block argument
+            .unwrap_or(0);
+        inst1_idx < inst2_idx
+    } else {
+        dom_tree.dominates(block1, block2)
     }
 }
 
@@ -224,6 +261,7 @@ pub fn cse(
     // We need to iterate over the blocks in RPO.
     let post_order: &PostOrder = analyses.get_analysis_result(function);
 
+    // RPO based value number (Sec 4.2).
     let mut changed = true;
     while changed {
         changed = false;
@@ -258,7 +296,7 @@ pub fn cse(
                                             Some(ValueNumber::Number(vn))
                                         }
                                         (ValueNumber::Number(vn1), ValueNumber::Number(vn2)) => {
-                                            (vn1 == vn2).then(|| ValueNumber::Number(vn1))
+                                            (vn1 == vn2).then_some(ValueNumber::Number(vn1))
                                         }
                                     }
                                 } else {
@@ -313,5 +351,61 @@ pub fn cse(
         vntable.expr_map.clear();
     }
 
-    Ok(false)
+    // create a partition of congruent (equal) values.
+    let mut partition = FxHashMap::<ValueNumber, FxHashSet<Value>>::default();
+    vntable.value_map.iter().for_each(|(v, vn)| {
+        // If v is a constant or its value number is itself, don't add to the partition.
+        // The latter condition is so that we have only > 1 sized partitions.
+        if v.is_constant(context)
+            || matches!(vn, ValueNumber::Top)
+            || matches!(vn, ValueNumber::Number(v2) if v == v2)
+        {
+            return;
+        }
+        partition
+            .entry(*vn)
+            .and_modify(|part| {
+                part.insert(*v);
+            })
+            .or_insert(vec![*v].into_iter().collect());
+    });
+
+    // For convenience, now add back back `v` into `partition[VN[v]]` if it isn't already there.
+    partition.iter_mut().for_each(|(vn, v_part)| {
+        let ValueNumber::Number(v) = vn else {
+            panic!("We cannot have Top at this point");
+        };
+        v_part.insert(*v);
+        assert!(
+            v_part.len() > 1,
+            "We've only created partitions with size greater than 1"
+        );
+    });
+
+    // There are two ways to replace congruent values (see the paper cited, Sec 5).
+    // 1. Dominator based. If v1 and v2 are equal, v1 dominates v2, we just remove v2
+    // and replace its uses with v1. Simple, and what we're going to do.
+    // 2. AVAIL based. More powerful, but also requires a data-flow-analysis for AVAIL
+    // and later on, mem2reg again since replacements will need breaking SSA.
+    let dom_tree: &DomTree = analyses.get_analysis_result(function);
+    let mut replace_map = FxHashMap::<Value, Value>::default();
+    let mut modified = false;
+    // Check every set in the partition.
+    partition.iter().for_each(|(_leader, vals)| {
+        // Iterate over every pair of values, checking if one can replace the other.
+        for v_pair in vals.iter().combinations(2) {
+            let (v1, v2) = (*v_pair[0], *v_pair[1]);
+            if dominates(context, dom_tree, v1, v2) {
+                modified = true;
+                replace_map.insert(v2, v1);
+            } else if dominates(context, dom_tree, v2, v1) {
+                modified = true;
+                replace_map.insert(v1, v2);
+            }
+        }
+    });
+
+    function.replace_values(context, &replace_map, None);
+
+    Ok(modified)
 }
