@@ -593,6 +593,28 @@ impl<'a> TypeCheckContext<'a> {
                     elem_ty.span.source_id(),
                 )
             }
+            TypeInfo::Slice(mut elem_ty) => {
+                elem_ty.type_id = self
+                    .resolve(
+                        handler,
+                        elem_ty.type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        mod_path,
+                    )
+                    .unwrap_or_else(|err| {
+                        self.engines
+                            .te()
+                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+                    });
+
+                self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Slice(elem_ty.clone()),
+                    elem_ty.span.source_id(),
+                )
+            }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = self
@@ -774,7 +796,7 @@ impl<'a> TypeCheckContext<'a> {
             let module = self
                 .namespace()
                 .lookup_submodule_from_absolute_path(handler, engines, prefix)?;
-            if module.visibility.is_private() {
+            if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
                     span: prefix_last.span(),

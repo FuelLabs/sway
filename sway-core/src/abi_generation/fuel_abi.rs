@@ -26,7 +26,7 @@ impl<'a> AbiContext<'a> {
                 .root
                 .namespace
                 .program_id(engines)
-                .read(engines, |m| m.name.clone().map(|v| v.as_str().to_string())),
+                .read(engines, |m| m.name().to_string()),
             abi_with_callpaths: self.abi_with_callpaths,
             abi_with_fully_specified_types,
         }
@@ -394,6 +394,47 @@ impl TypeId {
                     // `program_abi::TypeApplication` for the array element type
                     Some(vec![program_abi::TypeApplication {
                         name: "__array_element".to_string(),
+                        type_id: elem_ty.initial_type_id.index(),
+                        type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
+                            ctx,
+                            engines,
+                            types,
+                            elem_ty.type_id,
+                        ),
+                    }])
+                } else {
+                    unreachable!();
+                }
+            }
+            TypeInfo::Slice(..) => {
+                if let TypeInfo::Slice(elem_ty) = &*type_engine.get(resolved_type_id) {
+                    // The `program_abi::TypeDeclaration`s needed for the slice element type
+                    let elem_abi_ty = program_abi::TypeDeclaration {
+                        type_id: elem_ty.initial_type_id.index(),
+                        type_field: elem_ty.initial_type_id.get_abi_type_str(
+                            &ctx.to_str_context(engines, false),
+                            engines,
+                            elem_ty.type_id,
+                        ),
+                        components: elem_ty.initial_type_id.get_abi_type_components(
+                            ctx,
+                            engines,
+                            types,
+                            elem_ty.type_id,
+                        ),
+                        type_parameters: elem_ty.initial_type_id.get_abi_type_parameters(
+                            ctx,
+                            engines,
+                            types,
+                            elem_ty.type_id,
+                        ),
+                    };
+                    types.push(elem_abi_ty);
+
+                    // Generate the JSON data for the array. This is basically a single
+                    // `program_abi::TypeApplication` for the array element type
+                    Some(vec![program_abi::TypeApplication {
+                        name: "__slice_element".to_string(),
                         type_id: elem_ty.initial_type_id.index(),
                         type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
                             ctx,

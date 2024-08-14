@@ -9,12 +9,14 @@ use crate::{FilterConfig, RunConfig};
 use anyhow::{anyhow, bail, Result};
 use colored::*;
 use core::fmt;
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
 use forc_test::decode_log_data;
 use fuel_vm::fuel_tx;
+use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
 use regex::Regex;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::io::stdout;
 use std::io::Write;
 use std::str::FromStr;
@@ -113,6 +115,8 @@ struct TestContext {
 }
 
 fn print_receipts(output: &mut String, receipts: &[Receipt]) {
+    let mut text_log = String::new();
+
     use std::fmt::Write;
     let _ = writeln!(output, "  {}", "Receipts".green().bold());
     for (i, receipt) in receipts.iter().enumerate() {
@@ -129,6 +133,28 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
                 is,
                 data,
             } => {
+                // Small hack to allow log from tests.
+                if *ra == u64::MAX {
+                    match rb {
+                        0 => {
+                            let mut data = data.as_deref().unwrap();
+                            data.skip(8).unwrap();
+                            let s = std::str::from_utf8(data).unwrap();
+
+                            text_log.push_str(s);
+                        }
+                        1 => {
+                            let data = data.as_deref().unwrap();
+                            let s = u64::from_be_bytes(data.try_into().unwrap());
+
+                            text_log.push_str(&format!("{}", s));
+                        }
+                        2 => {
+                            text_log.push('\n');
+                        }
+                        _ => {}
+                    }
+                }
                 let _ = write!(output, " LogData\n      ID: {id:?}\n      RA: {ra:?}\n      RB: {rb:?}\n      Ptr: {ptr:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Data: {data:?}\n");
             }
             Receipt::ReturnData {
@@ -238,6 +264,14 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
             }
         }
     }
+
+    if !text_log.is_empty() {
+        let _ = writeln!(output, "  {}", "Text Logs".green().bold());
+
+        for l in text_log.lines() {
+            let _ = writeln!(output, "{l}");
+        }
+    }
 }
 
 impl TestContext {
@@ -301,6 +335,41 @@ impl TestContext {
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
+
+                if let Ok(result) = result.as_ref() {
+                    let packages = match result {
+                        forc_pkg::Built::Package(p) => [p.clone()].to_vec(),
+                        forc_pkg::Built::Workspace(p) => p.clone(),
+                    };
+
+                    for p in packages {
+                        let bytecode_len = p.bytecode.bytes.len();
+
+                        let configurables = match &p.program_abi {
+                            sway_core::asm_generation::ProgramABI::Fuel(abi) => {
+                                abi.configurables.as_ref().cloned().unwrap_or_default()
+                            }
+                            sway_core::asm_generation::ProgramABI::Evm(_)
+                            | sway_core::asm_generation::ProgramABI::MidenVM(_) => vec![],
+                        }
+                        .into_iter()
+                        .map(|x| (x.offset, x.name))
+                        .collect::<BTreeMap<u64, String>>();
+
+                        let mut items = configurables.iter().peekable();
+                        while let Some(current) = items.next() {
+                            let next_offset = match items.peek() {
+                                Some(next) => *next.0,
+                                None => bytecode_len as u64,
+                            };
+                            let size = next_offset - current.0;
+                            output.push_str(&format!(
+                                "Configurable Encoded Bytes Buffer Size: {} {}\n",
+                                current.1, size
+                            ));
+                        }
+                    }
+                }
 
                 check_file_checker(checker, &name, output)?;
 
@@ -653,6 +722,13 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         .as_ref()
         .map(|exclude| tests.retained(|t| !exclude.is_match(&t.name)))
         .unwrap_or_default();
+
+    if filter_config.exclude_core {
+        tests.retain(|t| exclude_tests_dependency(t, "core"));
+    }
+    if filter_config.exclude_std {
+        tests.retain(|t| exclude_tests_dependency(t, "std"));
+    }
     if filter_config.abi_only {
         tests.retain(|t| t.validate_abi);
     }
@@ -792,6 +868,25 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     }
 }
 
+fn exclude_tests_dependency(t: &TestDescription, dep: &str) -> bool {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let tests_root_dir = format!("{manifest_dir}/src/e2e_vm_tests/test_programs");
+    let file_name = &t.name;
+    let manifest_path = format!("{tests_root_dir}/{file_name}");
+    match ManifestFile::from_dir(manifest_path) {
+        Ok(manifest_file) => {
+            let member_manifests = manifest_file.member_manifests().unwrap();
+            !member_manifests.iter().any(|(_name, manifest)| {
+                manifest
+                    .dependencies
+                    .as_ref()
+                    .is_some_and(|map| map.contains_key(dep))
+            })
+        }
+        Err(_) => true,
+    }
+}
+
 fn discover_test_configs(run_config: &RunConfig) -> Result<Vec<TestDescription>> {
     fn recursive_search(
         path: &Path,
@@ -853,7 +948,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     }
 
     // if new encoding is on, allow a "category_new_encoding"
-    // for tests that should have difference categories
+    // for tests that should have different categories
     let category = if run_config.experimental.new_encoding {
         toml_content
             .get("category_new_encoding")
@@ -895,8 +990,15 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         bail!("'fail' tests must contain some FileCheck verification directives.");
     }
 
-    // To allow different configs, we must ignore file check if it is not fail
-    if category != TestCategory::FailsToCompile {
+    // We have some tests on old and new encoding that return different warnings.
+    // There is no easy way to write `test.toml` to support both, and the effort
+    // for such support is also questionable since we do not want to support
+    // the old encoding anymore, and currently we do not have any other configurations.
+    // Currently, we will simply ignore the `FileCheck` directives if the test category
+    // is not "fails" and the "category_new_encoding" is explicitly specified.
+    if toml_content.get("category_new_encoding").is_some()
+        && category != TestCategory::FailsToCompile
+    {
         file_check = FileCheck("".into());
     }
 

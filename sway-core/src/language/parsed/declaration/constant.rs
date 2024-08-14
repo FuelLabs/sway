@@ -14,7 +14,6 @@ pub struct ConstantDeclaration {
     pub type_ascription: TypeArgument,
     pub value: Option<Expression>,
     pub visibility: Visibility,
-    pub is_configurable: bool,
     pub span: Span,
 }
 
@@ -26,7 +25,6 @@ impl PartialEqWithEngines for ConstantDeclaration {
             && self.type_ascription.eq(&other.type_ascription, ctx)
             && self.value.eq(&other.value, ctx)
             && self.visibility == other.visibility
-            && self.is_configurable == other.is_configurable
             && self.span == other.span
     }
 }

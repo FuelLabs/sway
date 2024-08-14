@@ -1,29 +1,32 @@
-use std::{collections::BTreeMap, io::Write, path::Path, str::FromStr};
-
+use crate::{constants::DEFAULT_PRIVATE_KEY, util::target::Target};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use forc_tracing::println_warning;
-
+use dialoguer::{theme::ColorfulTheme, Confirm, Password, Select};
+use forc_tracing::{println_action_green, println_warning};
+use forc_wallet::{
+    account::{derive_secret_key, new_at_index_cli},
+    balance::{
+        collect_accounts_with_verification, AccountBalances, AccountVerification, AccountsMap,
+    },
+    new::{new_wallet_cli, New},
+    utils::default_wallet_path,
+};
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
-use fuel_tx::{field, Address, Buildable, ContractId, Input, Output, TransactionBuilder, Witness};
-use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
+use fuel_tx::{
+    field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
+};
+use fuels::{macros::abigen, programs::responses::CallResponse};
+use fuels_accounts::{
+    provider::Provider,
+    wallet::{Wallet, WalletUnlocked},
+    ViewOnlyAccount,
+};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
     coin_type::CoinType,
     transaction_builders::{create_coin_input, create_coin_message_input},
 };
-
-use forc_wallet::{
-    account::{derive_secret_key, new_at_index_cli},
-    balance::{
-        collect_accounts_with_verification, print_account_balances, AccountBalances,
-        AccountVerification, AccountsMap,
-    },
-    new::{new_wallet_cli, New},
-    utils::default_wallet_path,
-};
-
-use crate::{constants::DEFAULT_PRIVATE_KEY, util::target::Target};
+use std::{collections::BTreeMap, io::Write, path::Path, str::FromStr};
 
 #[derive(PartialEq, Eq)]
 pub enum WalletSelectionMode {
@@ -50,15 +53,12 @@ fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
 }
 
 fn ask_user_yes_no_question(question: &str) -> Result<bool> {
-    print!("{question}");
-    std::io::stdout().flush()?;
-    let mut ans = String::new();
-    std::io::stdin().read_line(&mut ans)?;
-    // Pop trailing \n as users press enter to submit their answers.
-    ans.pop();
-    // Trim the user input as it might have an additional space.
-    let ans = ans.trim();
-    Ok(ans == "y" || ans == "Y")
+    let answer = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(question)
+        .default(false)
+        .show_default(false)
+        .interact()?;
+    Ok(answer)
 }
 
 fn collect_user_accounts(
@@ -76,11 +76,12 @@ fn collect_user_accounts(
     Ok(accounts)
 }
 
-pub(crate) fn prompt_forc_wallet_password(wallet_path: &Path) -> Result<String> {
-    let prompt = format!(
-        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}: "
-    );
-    let password = rpassword::prompt_password(prompt)?;
+pub(crate) fn prompt_forc_wallet_password() -> Result<String> {
+    let password = Password::with_theme(&ColorfulTheme::default())
+        .with_prompt("Wallet password")
+        .allow_empty_password(true)
+        .interact()?;
+
     Ok(password)
 }
 
@@ -158,12 +159,33 @@ async fn collect_account_balances(
         .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
+/// Format collected account balances for each asset type, including only the balance of the base asset that can be used to pay gas.
+pub fn format_base_asset_account_balances(
+    accounts_map: &AccountsMap,
+    account_balances: &AccountBalances,
+    base_asset_id: &AssetId,
+) -> Vec<String> {
+    accounts_map
+        .iter()
+        .zip(account_balances)
+        .map(|((ix, address), balance)| {
+            let base_asset_amount = balance
+                .get(&base_asset_id.to_string())
+                .copied()
+                .unwrap_or(0);
+            let eth_amount = base_asset_amount as f64 / 1_000_000_000.0;
+            format!("[{ix}] {address} - {eth_amount} ETH")
+        })
+        .collect()
+}
+
 // TODO: Simplify the function signature once https://github.com/FuelLabs/sway/issues/6071 is closed.
 pub(crate) async fn select_secret_key(
     wallet_mode: &WalletSelectionMode,
     default_sign: bool,
     signing_key: Option<SecretKey>,
     provider: &Provider,
+    tx_count: usize,
 ) -> Result<Option<SecretKey>> {
     let chain_info = provider.chain_info().await?;
     let signing_key = match wallet_mode {
@@ -174,6 +196,7 @@ pub(crate) async fn select_secret_key(
             // capabilities for selections and answer collection.
             let accounts = collect_user_accounts(&wallet_path, password)?;
             let account_balances = collect_account_balances(&accounts, provider).await?;
+            let base_asset_id = provider.base_asset_id();
 
             let total_balance = account_balances
                 .iter()
@@ -190,15 +213,18 @@ pub(crate) async fn select_secret_key(
                                       \n-> {target} network faucet: {faucet_link}\
                                       \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
             }
-            print_account_balances(&accounts, &account_balances);
+            let selections =
+                format_base_asset_account_balances(&accounts, &account_balances, base_asset_id);
 
             let mut account_index;
             loop {
-                print!("\nPlease provide the index of account to use for signing: ");
-                std::io::stdout().flush()?;
-                let mut input_account_index = String::new();
-                std::io::stdin().read_line(&mut input_account_index)?;
-                account_index = input_account_index.trim().parse::<usize>()?;
+                account_index = Select::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Wallet account")
+                    .max_length(5)
+                    .items(&selections[..])
+                    .default(0)
+                    .interact()?;
+
                 if accounts.contains_key(&account_index) {
                     break;
                 }
@@ -212,11 +238,11 @@ pub(crate) async fn select_secret_key(
 
             let secret_key = secret_key_from_forc_wallet(&wallet_path, account_index, password)?;
 
-            let bech32 = bech32_from_secret(&secret_key)?;
             // TODO: Do this via forc-wallet once the functionality is exposed.
+            // TODO: calculate the number of transactions to sign and ask the user to confirm.
             let question = format!(
-                "Do you agree to sign this transaction with {}? [y/N]: ",
-                bech32
+                "Do you agree to sign {tx_count} transaction{}?",
+                if tx_count > 1 { "s" } else { "" }
             );
             let accepted = ask_user_yes_no_question(&question)?;
             if !accepted {
@@ -228,6 +254,33 @@ pub(crate) async fn select_secret_key(
         WalletSelectionMode::Manual => select_manual_secret_key(default_sign, signing_key),
     };
     Ok(signing_key)
+}
+
+pub async fn update_proxy_contract_target(
+    provider: &Provider,
+    secret_key: SecretKey,
+    proxy_contract_id: ContractId,
+    new_target: ContractId,
+) -> Result<CallResponse<()>> {
+    abigen!(Contract(
+        name = "ProxyContract",
+        abi = "forc-plugins/forc-client/proxy_abi/proxy_contract-abi.json"
+    ));
+
+    let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+
+    let proxy_contract = ProxyContract::new(proxy_contract_id, wallet);
+
+    let result = proxy_contract
+        .methods()
+        .set_proxy_target(new_target)
+        .call()
+        .await?;
+    println_action_green(
+        "Updated",
+        &format!("proxy contract target to 0x{new_target}"),
+    );
+    Ok(result)
 }
 
 #[async_trait]
@@ -323,7 +376,7 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         let chain_info = provider.chain_info().await?;
         let params = chain_info.consensus_parameters;
         let signing_key =
-            select_secret_key(wallet_mode, default_sign, signing_key, &provider).await?;
+            select_secret_key(wallet_mode, default_sign, signing_key, &provider, 1).await?;
         // Get the address
         let address = if let Some(key) = signing_key {
             Address::from(*key.public_key().hash())
@@ -374,5 +427,50 @@ impl<T: field::Witnesses> TransactionExt for T {
     fn replace_witness(&mut self, index: u16, witness: Witness) -> &mut Self {
         self.witnesses_mut()[index as usize] = witness;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_format_base_asset_account_balances() {
+        let mut accounts_map: AccountsMap = BTreeMap::new();
+
+        let address1 = Bech32Address::from_str(
+            "fuel1dved7k25uxadatl7l5kql309jnw07dcn4t3a6x9hm9nxyjcpqqns50p7n2",
+        )
+        .expect("address1");
+        let address2 = Bech32Address::from_str(
+            "fuel1x9f3ysyk7fmey5ac23s2p4rwg4gjye2kke3nu3pvrs5p4qc4m4qqwx56k3",
+        )
+        .expect("address2");
+
+        let base_asset_id = AssetId::zeroed();
+
+        accounts_map.insert(0, address1.clone());
+        accounts_map.insert(1, address2.clone());
+
+        let mut account_balances: AccountBalances = Vec::new();
+        let mut balance1 = HashMap::new();
+        balance1.insert(base_asset_id.to_string(), 1_500_000_000);
+        balance1.insert("other_asset".to_string(), 2_000_000_000);
+        account_balances.push(balance1);
+
+        let mut balance2 = HashMap::new();
+        balance2.insert("other_asset".to_string(), 3_000_000_000);
+        account_balances.push(balance2);
+
+        let expected = vec![
+            format!("[0] {address1} - 1.5 ETH"),
+            format!("[1] {address2} - 0 ETH"),
+        ];
+
+        let result =
+            format_base_asset_account_balances(&accounts_map, &account_balances, &base_asset_id);
+        assert_eq!(result, expected);
     }
 }

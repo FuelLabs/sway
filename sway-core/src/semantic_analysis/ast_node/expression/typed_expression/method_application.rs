@@ -504,6 +504,7 @@ pub(crate) fn type_check_method_application(
                             ]),
                             span: Span::dummy(),
                         },
+                        resolved_call_path_binding: None,
                         arguments: vec![
                             Expression {
                                 kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
@@ -829,7 +830,7 @@ pub(crate) fn resolve_method_name(
                 ctx.namespace().prepend_module_path(&call_path.prefixes)
             } else {
                 let mut module_path = call_path.prefixes.clone();
-                if let (Some(root_mod), Some(root_name)) = (
+                if let (Some(root_mod), root_name) = (
                     module_path.first().cloned(),
                     ctx.namespace().root_module_name().clone(),
                 ) {

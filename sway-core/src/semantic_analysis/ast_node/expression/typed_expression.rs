@@ -193,6 +193,7 @@ impl ty::TyExpression {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     ref arguments,
                 } = *function_application_expression.clone();
                 Self::type_check_function_application(
@@ -906,6 +907,13 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
+        if asm.is_empty() {
+            handler.emit_warn(CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::AsmBlockIsEmpty,
+            });
+        }
+
         // Various checks that we can catch early to check that the assembly is valid. For now,
         // this includes two checks:
         // 1. Check that no control flow opcodes are used.
@@ -1107,7 +1115,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
@@ -1805,20 +1813,20 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let never_type = type_engine.insert(engines, TypeInfo::Never, None);
+            let elem_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
-                    elem_type: never_type,
+                    elem_type,
                     contents: Vec::new(),
                 },
                 return_type: type_engine.insert(
                     engines,
                     TypeInfo::Array(
                         TypeArgument {
-                            type_id: never_type,
+                            type_id: elem_type,
                             span: Span::dummy(),
                             call_path_tree: None,
-                            initial_type_id: never_type,
+                            initial_type_id: elem_type,
                         },
                         Length::new(0, Span::dummy()),
                     ),
@@ -2616,7 +2624,7 @@ fn check_asm_block_validity(
             if reg.initializer.is_none() {
                 let span = reg.name.span();
 
-                // Emit warning if this register shadows a variable
+                // Emit warning if this register shadows a constant, or a configurable, or a variable.
                 let temp_handler = Handler::default();
                 let decl = ctx.namespace().resolve_call_path_typed(
                     &temp_handler,
@@ -2629,11 +2637,25 @@ fn check_asm_block_validity(
                     None,
                 );
 
-                if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                let shadowing_item = match decl {
+                    Ok(ty::TyDecl::ConstantDecl(decl)) => {
+                        let decl = ctx.engines.de().get_constant(&decl.decl_id);
+                        Some((decl.name().into(), "Constant"))
+                    }
+                    Ok(ty::TyDecl::ConfigurableDecl(decl)) => {
+                        let decl = ctx.engines.de().get_configurable(&decl.decl_id);
+                        Some((decl.name().into(), "Configurable"))
+                    }
+                    Ok(ty::TyDecl::VariableDecl(decl)) => Some((decl.name.into(), "Variable")),
+                    _ => None,
+                };
+
+                if let Some((item, item_kind)) = shadowing_item {
                     handler.emit_warn(CompileWarning {
                         span: span.clone(),
-                        warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                            name: decl.name.clone(),
+                        warning_content: Warning::UninitializedAsmRegShadowsItem {
+                            constant_or_configurable_or_variable: item_kind,
+                            item,
                         },
                     });
                 }
@@ -2680,7 +2702,12 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let mut root_module = namespace::Root::from(namespace::Module::default());
+        let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
+        let mut root_module = namespace::Root::from(namespace::Module::new(
+            root_module_name,
+            Visibility::Private,
+            None,
+        ));
         let mut namespace = Namespace::init_root(&mut root_module);
         let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
             .with_type_annotation(type_annotation);

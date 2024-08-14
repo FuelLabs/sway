@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "contract_implements_multiple_abis_with_same_methods"
+implicit-std = false
+
+[dependencies]
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

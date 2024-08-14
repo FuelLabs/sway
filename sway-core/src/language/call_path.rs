@@ -215,6 +215,12 @@ impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct ResolvedCallPath<T, U = Ident> {
+    pub decl: T,
+    pub unresolved_call_path: CallPath<U>,
+}
+
 impl std::convert::From<Ident> for CallPath {
     fn from(other: Ident) -> Self {
         CallPath {
@@ -336,9 +342,7 @@ impl CallPath {
     /// before the identifier is added to the environment.
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
         let mut res: Self = suffix.clone().into();
-        if let Some(ref pkg_name) = namespace.root_module().name {
-            res.prefixes.push(pkg_name.clone())
-        };
+        res.prefixes.push(namespace.root_module().name().clone());
         for mod_path in namespace.mod_path() {
             res.prefixes.push(mod_path.clone())
         }
@@ -404,9 +408,7 @@ impl CallPath {
             let mut prefixes: Vec<Ident> = vec![];
 
             if !is_external {
-                if let Some(pkg_name) = &namespace.root_module().name {
-                    prefixes.push(pkg_name.clone());
-                }
+                prefixes.push(namespace.root_module().name().clone());
 
                 if !is_absolute {
                     for mod_path in namespace.mod_path() {
@@ -439,9 +441,8 @@ impl CallPath {
                 }
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
-                if let Some(pkg_name) = &namespace.root_module().read(engines, |m| m.name.clone()) {
-                    prefixes.push(pkg_name.clone());
-                }
+                prefixes.push(namespace.root_module().name().clone());
+
                 for mod_path in namespace.mod_path() {
                     prefixes.push(mod_path.clone());
                 }
@@ -473,7 +474,7 @@ impl CallPath {
         let converted = self.to_fullpath(engines, namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root_module().read(engines, |m| m.name.clone()) == Some(first.clone()) {
+            if namespace.root_module().name() == first {
                 return converted.lshift();
             }
         }

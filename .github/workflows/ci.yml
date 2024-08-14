@@ -15,8 +15,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.76.0
-  NIGHTLY_RUST_VERSION: nightly-2024-02-07
+  RUST_VERSION: 1.79.0
+  NIGHTLY_RUST_VERSION: nightly-2024-07-16
 
 jobs:
   get-fuel-core-version:

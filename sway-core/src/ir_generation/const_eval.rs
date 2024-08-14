@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    convert::{convert_literal_to_constant, convert_resolved_typeid},
+    convert::{convert_literal_to_constant, convert_resolved_type_id},
     function::FnCompiler,
     types::*,
 };
@@ -620,8 +620,25 @@ fn const_eval_typed_expr(
                 }
             }
         }
-        ty::TyExpressionVariant::Ref(_) | ty::TyExpressionVariant::Deref(_) => {
+        ty::TyExpressionVariant::Ref(_) => {
             return Err(ConstEvalError::CompileError);
+        }
+        // We support *__elem_at(...)
+        ty::TyExpressionVariant::Deref(expr) => {
+            let value = expr
+                .as_intrinsic()
+                .filter(|x| matches!(x.kind, Intrinsic::ElemAt))
+                .ok_or(ConstEvalError::CompileError)
+                .and_then(|kind| const_eval_intrinsic(lookup, known_consts, kind));
+            if let Ok(Some(Constant {
+                value: ConstantValue::Reference(value),
+                ..
+            })) = value
+            {
+                Some(*value.clone())
+            } else {
+                return Err(ConstEvalError::CompileError);
+            }
         }
         ty::TyExpressionVariant::EnumTag { exp } => {
             let value = const_eval_typed_expr(lookup, known_consts, exp)?.map(|x| x.value);
@@ -1036,11 +1053,11 @@ fn const_eval_intrinsic(
         }
         Intrinsic::SizeOfType => {
             let targ = &intrinsic.type_arguments[0];
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &targ.type_id,
+                targ.type_id,
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
@@ -1052,11 +1069,11 @@ fn const_eval_intrinsic(
         Intrinsic::SizeOfVal => {
             let val = &intrinsic.arguments[0];
             let type_id = val.return_type;
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &type_id,
+                type_id,
                 &val.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
@@ -1067,11 +1084,11 @@ fn const_eval_intrinsic(
         }
         Intrinsic::SizeOfStr => {
             let targ = &intrinsic.type_arguments[0];
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &targ.type_id,
+                targ.type_id,
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
@@ -1084,11 +1101,11 @@ fn const_eval_intrinsic(
         }
         Intrinsic::AssertIsStrArray => {
             let targ = &intrinsic.type_arguments[0];
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &targ.type_id,
+                targ.type_id,
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
@@ -1284,6 +1301,68 @@ fn const_eval_intrinsic(
                 value: ConstantValue::RawUntypedSlice(bytes[0..(len as usize)].to_vec()),
             }))
         }
+        Intrinsic::Slice => {
+            let start = args[1].as_uint().expect("Type check allowed non u64") as usize;
+            let end = args[2].as_uint().expect("Type check allowed non u64") as usize;
+
+            match &args[0].value {
+                ConstantValue::Array(elements) => {
+                    let slice = elements
+                        .get(start..end)
+                        .ok_or(ConstEvalError::CompileError)?;
+                    let elem_type = args[0]
+                        .ty
+                        .get_array_elem_type(lookup.context)
+                        .expect("unexpected non array");
+                    Ok(Some(Constant {
+                        ty: Type::get_typed_slice(lookup.context, elem_type),
+                        value: ConstantValue::Slice(slice.to_vec()),
+                    }))
+                }
+                ConstantValue::Reference(r) => match &r.value {
+                    ConstantValue::Slice(elements) => {
+                        let slice = elements
+                            .get(start..end)
+                            .ok_or(ConstEvalError::CompileError)?;
+                        let elem_type = args[0]
+                            .ty
+                            .get_typed_slice_elem_type(lookup.context)
+                            .expect("unexpected non slice");
+                        Ok(Some(Constant {
+                            ty: Type::get_typed_slice(lookup.context, elem_type),
+                            value: ConstantValue::Slice(slice.to_vec()),
+                        }))
+                    }
+                    _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    }),
+                },
+                _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    span: intrinsic.span.clone(),
+                }),
+            }
+        }
+        Intrinsic::ElemAt => {
+            let idx = args[1].as_uint().expect("Type check allowed non u64") as usize;
+
+            match &args[0].value {
+                ConstantValue::Reference(r) => match &r.value {
+                    ConstantValue::Slice(elements) => {
+                        let v = elements[idx].clone();
+                        Ok(Some(Constant {
+                            ty: Type::new_ptr(lookup.context, v.ty),
+                            value: ConstantValue::Reference(Box::new(v)),
+                        }))
+                    }
+                    _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    }),
+                },
+                _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    span: intrinsic.span.clone(),
+                }),
+            }
+        }
     }
 }
 
@@ -1316,12 +1395,11 @@ mod tests {
             },
         );
         let mut md_mgr = MetadataManager::default();
-        let mut core_lib = namespace::Root::from(namespace::Module {
-            name: Some(sway_types::Ident::new_no_span(
-                "assert_is_constant_test".to_string(),
-            )),
-            ..Default::default()
-        });
+        let mut core_lib = namespace::Root::from(namespace::Module::new(
+            sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
+            crate::Visibility::Private,
+            None,
+        ));
 
         let r = crate::compile_to_ast(
             &handler,

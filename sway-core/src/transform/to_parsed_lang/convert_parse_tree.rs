@@ -34,9 +34,9 @@ use sway_types::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
         CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
         DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, FALLBACK_ATTRIBUTE_NAME,
-        INLINE_ATTRIBUTE_NAME, NAMESPACE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME,
-        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-        TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
+        INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
+        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
+        VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
     BaseIdent,
@@ -174,9 +174,17 @@ pub fn item_to_ast_nodes(
             .into_iter()
             .map(AstNodeContent::UseStatement)
             .collect(),
-        ItemKind::Struct(item_struct) => decl(Declaration::StructDeclaration(
-            item_struct_to_struct_declaration(context, handler, engines, item_struct, attributes)?,
-        )),
+        ItemKind::Struct(item_struct) => {
+            let struct_decl = Declaration::StructDeclaration(item_struct_to_struct_declaration(
+                context,
+                handler,
+                engines,
+                item_struct,
+                attributes,
+            )?);
+            context.implementing_type = Some(struct_decl.clone());
+            decl(struct_decl)
+        }
         ItemKind::Enum(item_enum) => decl(Declaration::EnumDeclaration(
             item_enum_to_enum_declaration(context, handler, engines, item_enum, attributes)?,
         )),
@@ -203,15 +211,25 @@ pub fn item_to_ast_nodes(
                 function_declaration_decl_id,
             ))
         }
-        ItemKind::Trait(item_trait) => decl(Declaration::TraitDeclaration(
-            item_trait_to_trait_declaration(context, handler, engines, item_trait, attributes)?,
-        )),
-        ItemKind::Impl(item_impl) => decl(item_impl_to_declaration(
-            context, handler, engines, item_impl,
-        )?),
-        ItemKind::Abi(item_abi) => decl(Declaration::AbiDeclaration(item_abi_to_abi_declaration(
-            context, handler, engines, item_abi, attributes,
-        )?)),
+        ItemKind::Trait(item_trait) => {
+            let trait_decl = Declaration::TraitDeclaration(item_trait_to_trait_declaration(
+                context, handler, engines, item_trait, attributes,
+            )?);
+            context.implementing_type = Some(trait_decl.clone());
+            decl(trait_decl)
+        }
+        ItemKind::Impl(item_impl) => {
+            let impl_decl = item_impl_to_declaration(context, handler, engines, item_impl)?;
+            context.implementing_type = Some(impl_decl.clone());
+            decl(impl_decl)
+        }
+        ItemKind::Abi(item_abi) => {
+            let abi_decl = Declaration::AbiDeclaration(item_abi_to_abi_declaration(
+                context, handler, engines, item_abi, attributes,
+            )?);
+            context.implementing_type = Some(abi_decl.clone());
+            decl(abi_decl)
+        }
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration({
             item_const_to_constant_declaration(
                 context, handler, engines, item_const, attributes, true,
@@ -545,6 +563,7 @@ pub fn item_fn_to_function_declaration(
     };
 
     let kind = override_kind.unwrap_or(kind);
+    let implementing_type = context.implementing_type.clone();
 
     let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
@@ -578,6 +597,8 @@ pub fn item_fn_to_function_declaration(
             .transpose()?
             .unwrap_or(vec![]),
         kind,
+        implementing_type,
+        lexical_scope: 0,
     };
     let decl_id = engines.pe().insert(fn_decl);
     Ok(decl_id)
@@ -778,6 +799,7 @@ pub fn item_impl_to_declaration(
                 impl_type_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
+                trait_decl_ref: None,
                 implementing_for,
                 items,
                 block_span,
@@ -796,6 +818,7 @@ pub fn item_impl_to_declaration(
                         prefixes: vec![],
                         suffix: BaseIdent::dummy(),
                     },
+                    trait_decl_ref: None,
                     trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
@@ -979,7 +1002,6 @@ pub(crate) fn item_const_to_constant_declaration(
         type_ascription,
         value: expr,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
-        is_configurable: false,
         attributes,
         span,
     };
@@ -1762,6 +1784,7 @@ fn struct_path_and_fields_to_struct_expression(
     };
     Ok(Box::new(StructExpression {
         call_path_binding,
+        resolved_call_path_binding: None,
         fields,
     }))
 }
@@ -1910,6 +1933,7 @@ fn expr_func_app_to_expression_kind(
                                     type_arguments: TypeArgs::Regular(type_arguments),
                                     span: span.clone(),
                                 },
+                                resolved_call_path_binding: None,
                                 arguments,
                             },
                         )),
@@ -2606,6 +2630,7 @@ fn configurable_field_to_configurable_declaration(
                     type_arguments: TypeArgs::Regular(vec![type_ascription.clone()]),
                     span: span.clone(),
                 },
+                resolved_call_path_binding: None,
                 arguments: vec![value],
             }));
         Expression {
@@ -3666,6 +3691,7 @@ fn asm_block_to_asm_expression(
     let whole_block_span = asm_block.span();
     let asm_block_contents = asm_block.contents.into_inner();
     let (returns, return_type) = match asm_block_contents.final_expr_opt {
+        // If the return register is specified.
         Some(asm_final_expr) => {
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
@@ -3673,10 +3699,12 @@ fn asm_block_to_asm_expression(
             let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
+                // If the return type is not specified, the ASM block returns `u64` as the default.
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             };
             (returns, return_type)
         }
+        // If the return register is not specified, the return type is unit, `()`.
         None => (None, TypeInfo::Tuple(Vec::new())),
     };
     let registers = {
@@ -4698,13 +4726,6 @@ fn item_attrs_to_map(
         let attrs = attr_decl.attribute.get().into_iter();
         for attr in attrs {
             let name = attr.name.as_str();
-            if name == NAMESPACE_ATTRIBUTE_NAME {
-                handler.emit_warn(CompileWarning {
-                    span: attr_decl.span().clone(),
-                    warning_content: Warning::NamespaceAttributeDeprecated,
-                });
-                continue;
-            }
             if !VALID_ATTRIBUTE_NAMES.contains(&name) {
                 handler.emit_warn(CompileWarning {
                     span: attr_decl.span().clone(),

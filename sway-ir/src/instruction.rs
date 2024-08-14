@@ -644,8 +644,8 @@ impl InstOp {
 
     pub fn may_have_side_effect(&self) -> bool {
         match self {
-            InstOp::AsmBlock(_, _)
-            | InstOp::Call(..)
+            InstOp::AsmBlock(asm, _) => !asm.body.is_empty(),
+            InstOp::Call(..)
             | InstOp::ContractCall { .. }
             | InstOp::FuelVm(FuelVmInstruction::Log { .. })
             | InstOp::FuelVm(FuelVmInstruction::Smo { .. })
@@ -831,7 +831,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     // XXX Maybe these should return result, in case they get bad args?
     //
 
-    /// Append a new [`Instruction::AsmBlock`] from `args` and a `body`.
+    /// Append a new [InstOp::AsmBlock] from `args` and a `body`.
     pub fn asm_block(
         self,
         args: Vec<AsmArg>,

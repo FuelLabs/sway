@@ -1,6 +1,6 @@
 [package]
 name = "sway-types"
-version = "0.61.2"
+version = "0.62.0"
 description = "Sway core types."
 authors.workspace = true
 edition.workspace = true
@@ -20,7 +20,7 @@ num-traits = "0.2.16"
 parking_lot = "0.12"
 rustc-hash = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
-sway-utils = { version = "0.61.2", path = "../sway-utils" }
+sway-utils = { version = "0.62.0", path = "../sway-utils" }
 thiserror = "1"
 
 [features]
