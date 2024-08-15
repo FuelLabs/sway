@@ -749,11 +749,18 @@ impl<'a> TypeCheckContext<'a> {
         mod_path: &ModulePath,
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
+	let full_path = call_path.to_fullpath(&self.engines, &self.namespace);
+//	let problem = call_path.suffix.as_str() == "AbiEncode";
+//	if problem {
+//	    dbg!(mod_path);
+//	    dbg!(call_path);
+//	    dbg!(&full_path);
+//	}
         let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
             handler,
             self.engines,
             mod_path,
-            call_path,
+            &full_path,
             self.self_type,
         )?;
         let decl = decl.expect_typed();

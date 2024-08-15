@@ -305,11 +305,17 @@ impl Namespace {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+	let full_path = call_path.to_fullpath(engines, &self);
+//	let problem = call_path.suffix.as_str() == "AbiEncode";
+//	if problem {
+//	    dbg!(call_path);
+//	    dbg!(&full_path);
+//	};
         self.root.resolve_call_path(
             handler,
             engines,
             &self.current_mod_path,
-            call_path,
+            &full_path,
             self_type,
         )
     }

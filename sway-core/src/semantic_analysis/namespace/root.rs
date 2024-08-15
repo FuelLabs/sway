@@ -241,14 +241,6 @@ impl Root {
 	self.module_from_absolute_path(mod_path)
     }
 
-    // Find a module in the current package. `mod_path` must be a fully qualified path
-    // Throw an error if the module doesn't exist
-    pub(super) fn require_module_in_current_package(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
-	dbg!(mod_path);
-	assert!(self.check_path_is_in_current_package(mod_path));
-	self.require_module(handler, mod_path)
-    }
-
     // Find mutable module in the current environment. `mod_path` must be a fully qualified path
     pub(super) fn module_mut_from_absolute_path(&mut self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
 	assert!(!mod_path.is_empty());
@@ -434,6 +426,7 @@ impl Root {
             }
         } else {
             // Symbol not found
+//	    println!("item lookup");
             return Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: item.clone(),
                 span: item.span(),
@@ -615,6 +608,7 @@ impl Root {
                             }
                         };
                     } else {
+//			println!("variant import");
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
@@ -683,7 +677,8 @@ impl Root {
                             }
                         };
                     } else {
-                        return Err(handler.emit_err(CompileError::SymbolNotFound {
+//			println!("variant import 2");
+                            return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
                         }));
@@ -825,28 +820,35 @@ impl Root {
         Ok(decl)
     }
 
+    // TODO: Move this into root, and separate into two: Check if call_path can be resolved in the local scope, otherwise check if it can be resolved as an absolute path.
+    // TODO: Move type_check_context::resolve_call_path_with_visibility_check_and_modpath to here, to avoid external mod_paths to be decontextualized.
     pub(crate) fn resolve_call_path_and_mod_path(
         &self,
         handler: &Handler,
         engines: &Engines,
-        mod_path: &ModulePath,
+        _mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-//	let problem = call_path.suffix.as_str() == "AbiDecode";
+//	if call_path.prefixes.len() > 1 && call_path.prefixes[0].as_str() == "core" && call_path.prefixes[1].as_str() == "core" {
+//	    panic!();
+//	}
+//	let problem = call_path.suffix.as_str() == "AbiEncode";
 //	if problem {
 //	    dbg!(call_path);
 //	    dbg!(mod_path);
 //	};
-        let symbol_path: Vec<_> = mod_path
-            .iter()
-            .chain(&call_path.prefixes)
-            .cloned()
-            .collect();
+//        let symbol_path: Vec<_> = mod_path
+//	    .iter()
+//	    .chain(&call_path.prefixes)
+//	    .cloned()
+	//	    .collect();
+	assert!(call_path.is_absolute);
         self.resolve_symbol_and_mod_path(
             handler,
             engines,
-            &symbol_path,
+            //&symbol_path,
+	    &call_path.prefixes,
             &call_path.suffix,
             self_type,
         )
@@ -961,7 +963,7 @@ impl Root {
 		    new_mod_path.clone_from_slice(&mod_path[1..]);
 		    ext_root.resolve_symbol_and_mod_path_inner(handler, engines, &new_mod_path, symbol, self_type)
 		},
-		None => Err(handler.emit_err(crate::namespace::module::module_not_found(&[mod_path[0].clone()])))
+		None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path)))
 	    }
 	}
     }
@@ -1072,6 +1074,7 @@ impl Root {
                     (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
                 }
                 _ => {
+//		    println!("decl_to_type_info");
                     return Err(handler.emit_err(CompileError::SymbolNotFound {
                         name: symbol.clone(),
                         span: symbol.span(),
@@ -1199,6 +1202,7 @@ impl Root {
             }
         }
         // Symbol not found
+	//	println!("resolve symbol helper");
         Err(handler.emit_err(CompileError::SymbolNotFound {
             name: symbol.clone(),
             span: symbol.span(),

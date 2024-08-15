@@ -124,6 +124,7 @@ impl TyImplSelfOrTrait {
                     .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
                     .with_self_type(Some(implementing_for.type_id));
 
+//		dbg!(&trait_name);
                 let impl_trait = match ctx
                     .namespace()
                     .resolve_call_path_typed(handler, engines, &trait_name, ctx.self_type())
@@ -1487,6 +1488,8 @@ fn handle_supertraits(
                 continue;
             }
 
+	    //dbg!(&supertrait.name);
+	    
             match ctx
                 .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
@@ -1543,6 +1546,7 @@ fn handle_supertraits(
                     // we allow ABIs as superABIs now
                 }
                 _ => {
+		    //println!("impl_trait");
                     handler.emit_err(CompileError::TraitNotFound {
                         name: supertrait.name.to_string(),
                         span: supertrait.name.span(),
