@@ -679,13 +679,12 @@ where
             format!("__revert({});", MISMATCHED_SELECTOR_REVERT_CODE)
         };
 
-        let att: String = match (reads, writes) {
+        let att = match (reads, writes) {
             (true, true) => "#[storage(read, write)]",
             (true, false) => "#[storage(read)]",
             (false, true) => "#[storage(write)]",
             (false, false) => "",
-        }
-        .into();
+        };
 
         let code = format!(
             "{att} pub fn __entry() {{
