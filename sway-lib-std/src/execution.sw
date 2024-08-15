@@ -23,7 +23,7 @@ pub fn run_external(load_target: ContractId) -> ! {
         move ssp_saved ssp;
         sub cur_stack_size sp ssp;
         cfs cur_stack_size;
-        ldc load_target zero length;
+        ldc load_target zero length i0;
         addi word zero i64;
         aloc word;
         sw hp ssp_saved i0;
