@@ -133,6 +133,7 @@ impl Parse for Declaration {
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::TraitFnDeclaration(decl_id) => decl_id.parse(ctx),
         }
     }
 }
@@ -1039,6 +1040,9 @@ impl Parse for TypeArgument {
                     ctx.ident(&ident),
                     Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
                 );
+                type_arg.parse(ctx);
+            }
+            TypeInfo::Slice(type_arg) => {
                 type_arg.parse(ctx);
             }
             TypeInfo::Tuple(type_arguments) => {

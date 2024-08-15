@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()error
+# check: $()mismatched delimiters
+
+# check: $()error
+# check: $()impl R {
+# nextln: $()unclosed delimiter

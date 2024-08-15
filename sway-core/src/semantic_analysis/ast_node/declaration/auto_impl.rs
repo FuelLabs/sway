@@ -1,6 +1,6 @@
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-    decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    decl_engine::{DeclEngineGet, DeclId},
     engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
@@ -221,7 +221,7 @@ where
                     },
                     _ => {
                         let variant_type_name = Self::generate_type(engines, x.type_argument.type_id)?;
-                        format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n", 
+                        format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n",
                             tag_value = x.tag,
                             enum_name = enum_name,
                             variant_name = name,
@@ -405,7 +405,7 @@ where
             return Some((None, None));
         }
 
-        let implementing_for_decl_id = decl.to_struct_id(&Handler::default(), engines).unwrap();
+        let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
         let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
@@ -551,6 +551,12 @@ where
                     count.val()
                 )
             }
+            TypeInfo::Slice(elem_ty) => {
+                format!(
+                    "__slice[{}]",
+                    Self::generate_type(engines, elem_ty.type_id)?
+                )
+            }
             TypeInfo::RawUntypedPtr => "raw_ptr".into(),
             TypeInfo::RawUntypedSlice => "raw_slice".into(),
             TypeInfo::Alias { name, .. } => name.to_string(),
@@ -564,7 +570,7 @@ where
         &mut self,
         engines: &Engines,
         program_id: Option<ProgramId>,
-        contract_fns: &[DeclRef<DeclId<TyFunctionDecl>>],
+        contract_fns: &[DeclId<TyFunctionDecl>],
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
@@ -574,7 +580,7 @@ where
         let mut writes = false;
 
         for r in contract_fns {
-            let decl = engines.de().get(r.id());
+            let decl = engines.de().get(r);
 
             match decl.purity {
                 Purity::Pure => {}
@@ -847,7 +853,7 @@ where
         let code = if args_types == "()" {
             format!(
                 "pub fn __entry() -> raw_slice {{
-                let result: {return_type} = main(); 
+                let result: {return_type} = main();
                 encode::<{return_type}>(result)
             }}"
             )
@@ -855,7 +861,7 @@ where
             format!(
                 "pub fn __entry() -> raw_slice {{
                 let args: {args_types} = decode_script_data::<{args_types}>();
-                let result: {return_type} = main({expanded_args}); 
+                let result: {return_type} = main({expanded_args});
                 encode::<{return_type}>(result)
             }}"
             )

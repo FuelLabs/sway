@@ -72,7 +72,6 @@ impl TyProgram {
         let decl_engine = engines.de();
 
         // Validate all submodules
-        let mut non_configurables_constants = vec![];
         let mut configurables = vec![];
         for (_, submodule) in &root.submodules {
             match Self::validate_root(
@@ -113,13 +112,6 @@ impl TyProgram {
                     }
 
                     declarations.push(TyDecl::FunctionDecl(FunctionDecl { decl_id: *decl_id }));
-                }
-                TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
-                    decl_id,
-                    ..
-                })) => {
-                    let decl = (*decl_engine.get_constant(decl_id)).clone();
-                    non_configurables_constants.push(decl);
                 }
                 TyAstNodeContent::Declaration(TyDecl::ConfigurableDecl(ConfigurableDecl {
                     decl_id,
@@ -404,6 +396,7 @@ impl TyProgram {
                 &c.type_ascription,
                 |t| match t {
                     TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConfigurables),
+                    TypeInfo::Slice(_) => Some(TypeNotAllowedReason::SliceInConst),
                     _ => None,
                 },
             ) {
@@ -411,16 +404,18 @@ impl TyProgram {
             }
         }
 
-        for c in non_configurables_constants.iter() {
-            if let Some(error) = get_type_not_allowed_error(
-                engines,
-                c.return_type,
-                &c.type_ascription,
-                |t| match t {
-                    TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConst),
-                    _ => None,
-                },
-            ) {
+        // verify all constants
+        for decl in root.iter_constants(decl_engine).iter() {
+            let decl = decl_engine.get_constant(&decl.decl_id);
+            let e =
+                get_type_not_allowed_error(engines, decl.return_type, &decl.type_ascription, |t| {
+                    match t {
+                        TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConst),
+                        TypeInfo::Slice(_) => Some(TypeNotAllowedReason::SliceInConst),
+                        _ => None,
+                    }
+                });
+            if let Some(error) = e {
                 handler.emit_err(error);
             }
         }

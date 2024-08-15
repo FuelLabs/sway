@@ -14,7 +14,7 @@ use sway_types::{BaseIdent, Named, SourceId};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclId},
-    engine_threading::DebugWithEngines,
+    engine_threading::{DebugWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     is_ty_module_cache_up_to_date,
     language::{
         parsed::*,
@@ -27,8 +27,8 @@ use crate::{
 };
 
 use super::{
-    collection_context::SymbolCollectionContext,
     declaration::auto_impl::{self, EncodingAutoImplContext},
+    symbol_collection_context::SymbolCollectionContext,
 };
 
 #[derive(Clone, Debug)]
@@ -415,13 +415,33 @@ impl ty::TyModule {
                     }
                 }
                 (TreeType::Contract, _) => {
+                    // collect all supertrait methods
+                    let contract_supertrait_fns = submodules
+                        .iter()
+                        .flat_map(|x| x.1.module.submodules_recursive())
+                        .flat_map(|x| x.1.module.contract_supertrait_fns(engines))
+                        .chain(
+                            all_nodes
+                                .iter()
+                                .flat_map(|x| x.contract_supertrait_fns(engines)),
+                        )
+                        .collect::<Vec<_>>();
+
                     // collect all contract methods
-                    let contract_fns = submodules
+                    let mut contract_fns = submodules
                         .iter()
                         .flat_map(|x| x.1.module.submodules_recursive())
                         .flat_map(|x| x.1.module.contract_fns(engines))
                         .chain(all_nodes.iter().flat_map(|x| x.contract_fns(engines)))
                         .collect::<Vec<_>>();
+
+                    // exclude all contract methods that are supertrait methods
+                    let partialeq_ctx = PartialEqWithEnginesContext::new(engines);
+                    contract_fns.retain(|method| {
+                        contract_supertrait_fns
+                            .iter()
+                            .all(|si| !PartialEqWithEngines::eq(method, si, &partialeq_ctx))
+                    });
 
                     let mut fn_generator =
                         auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();

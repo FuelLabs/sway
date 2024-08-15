@@ -1,0 +1,54 @@
+category = "fail"
+
+# check: __elem_at(&immutable_array, 0);
+# nextln: $()Mismatched types.
+# nextln: $()expected: &mut u64
+# nextln: $()found:    &u64
+
+# check: __slice(&immutable_array, 0, 5);
+# nextln: $()Mismatched types.
+# nextln: $()expected: &mut __slice[u64]
+# nextln: $()found:    &__slice[u64]
+
+# check: __elem_at(immutable_slice, 0);
+# nextln: $()Mismatched types.
+# nextln: $()expected: &mut u64
+# nextln: $()found:    &u64
+
+# check: let _ = __slice(&a, 6, 7)
+# nextln: $()Index out of bounds; the length is 5 but the index is 6.
+
+# check: let _ = __slice(&a, 0, 6)
+# nextln: $()Index out of bounds; the length is 5 but the index is 6.
+
+# check: __slice(0, 0, 0)
+# nextln: $()Unsupported argument type to intrinsic "slice"
+
+# check: __slice(&a, "", 0)
+# nextln: $()Mismatched types
+# nextln: $()expected: u64
+# nextln: $()found:    str
+
+# check: __slice(&a, 0, "")
+# nextln: $()Mismatched types
+# nextln: $()expected: u64
+# nextln: $()found:    str
+#
+# check: __elem_at(0, 0);
+# nextln: $()Unsupported argument type to intrinsic "elem_at"
+
+# check: __elem_at(&a, "");
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    str.
+
+# check: __elem_at(s, "");
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    str.
+
+# check: &__slice[u64] = __slice(&GLOBAL_ARRAY, 0, 5)
+# nextln: $()slices or types containing slices on `const` are not allowed
+
+# check: &__slice[u64] = __slice(&LOCAL_ARRAY, 0, 5)
+# nextln: $()slices or types containing slices on `const` are not allowed

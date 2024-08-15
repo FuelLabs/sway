@@ -15,6 +15,14 @@ pub struct AsmExpression {
     pub(crate) whole_block_span: Span,
 }
 
+impl AsmExpression {
+    /// True if the [AsmExpression] has neither assembly operations nor
+    /// the return register specified.
+    pub fn is_empty(&self) -> bool {
+        self.body.is_empty() && self.returns.is_none()
+    }
+}
+
 impl EqWithEngines for AsmExpression {}
 impl PartialEqWithEngines for AsmExpression {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {

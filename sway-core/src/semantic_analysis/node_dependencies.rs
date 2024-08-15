@@ -315,6 +315,10 @@ impl Dependencies {
                 let decl = engines.pe().get_trait_type(decl_id);
                 self.gather_from_type_decl(engines, &decl)
             }
+            Declaration::TraitFnDeclaration(decl_id) => {
+                let decl = engines.pe().get_trait_fn(decl_id);
+                self.gather_from_trait_fn_decl(engines, &decl)
+            }
             Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(decl_id);
                 self.gather_from_fn_decl(engines, &fn_decl)
@@ -505,6 +509,18 @@ impl Dependencies {
         }
     }
 
+    fn gather_from_trait_fn_decl(self, engines: &Engines, fn_decl: &TraitFn) -> Self {
+        let TraitFn {
+            parameters,
+            return_type,
+            ..
+        } = fn_decl;
+        self.gather_from_iter(parameters.iter(), |deps, param| {
+            deps.gather_from_type_argument(engines, &param.type_argument)
+        })
+        .gather_from_type_argument(engines, return_type)
+    }
+
     fn gather_from_fn_decl(self, engines: &Engines, fn_decl: &FunctionDeclaration) -> Self {
         let FunctionDeclaration {
             parameters,
@@ -534,6 +550,7 @@ impl Dependencies {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     arguments,
                 } = &**function_application_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, true)
@@ -575,6 +592,7 @@ impl Dependencies {
             ExpressionKind::Struct(struct_expression) => {
                 let StructExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     fields,
                 } = &**struct_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, false)
@@ -794,6 +812,7 @@ impl Dependencies {
                 deps.gather_from_type_argument(engines, elem)
             }),
             TypeInfo::Array(elem_type, _) => self.gather_from_type_argument(engines, elem_type),
+            TypeInfo::Slice(elem_type) => self.gather_from_type_argument(engines, elem_type),
             TypeInfo::Struct(decl_ref) => self.gather_from_iter(
                 decl_engine.get_struct(decl_ref).fields.iter(),
                 |deps, field| deps.gather_from_type_argument(engines, &field.type_argument),
@@ -894,6 +913,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_trait_type(decl_id);
             dep_sym(decl.name.clone())
         }
+        Declaration::TraitFnDeclaration(decl_id) => {
+            let decl = engines.pe().get_trait_fn(decl_id);
+            dep_sym(decl.name.clone())
+        }
         Declaration::StructDeclaration(decl_id) => {
             let decl = engines.pe().get_struct(decl_id);
             dep_sym(decl.name.clone())
@@ -940,7 +963,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                             }
                         })
                         .collect::<Vec<String>>()
-                        .join(""),
+                        .join(","),
                 )
             } else if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
@@ -963,7 +986,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                             }
                         })
                         .collect::<Vec<_>>()
-                        .join(""),
+                        .join(","),
                 )
             } else {
                 None
