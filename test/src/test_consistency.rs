@@ -6,6 +6,7 @@ use toml::{Table, Value};
 
 use crate::reduced_std_libs::REDUCED_STD_LIBS_DIR_NAME;
 
+#[allow(dead_code)]
 pub fn check() -> Result<()> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let all_tests_dir = format!("{manifest_dir}/src");

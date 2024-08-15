@@ -758,17 +758,17 @@ impl TestContext {
                     p.advance(&mut performer, *b);
                 }
                 raw.push_str(&performer.0);
-                raw.push_str("\n");
+                raw.push('\n');
             }
 
             // Remove absolute paths from snapshot tests
-            let manifest_dir: PathBuf = PathBuf::try_from(manifest_dir).unwrap();
+            let manifest_dir: PathBuf = PathBuf::from(manifest_dir);
             let parent = manifest_dir.parent().unwrap();
             let raw = raw.replace(&format!("{}/", parent.display()), "");
 
             let run_config_suffix = format!(
                 "{}-{}-{}",
-                run_config.build_target.to_string(),
+                run_config.build_target,
                 if run_config.experimental.new_encoding {
                     "encoding-v1"
                 } else {
@@ -816,8 +816,7 @@ impl TestContext {
                 });
 
                 if r.is_err() {
-                    let message = format!("Snapshot differ");
-                    return Err(anyhow::Error::msg(message));
+                    return Err(anyhow::Error::msg("Snapshot differ"));
                 }
             }
         }
@@ -893,6 +892,7 @@ pub fn filter_tests(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run_test(
     context: &TestContext,
     run_config: &RunConfig,
@@ -903,8 +903,6 @@ pub async fn run_test(
     number_of_tests_failed: &mut usize,
     allow_snapshot_panic: bool,
 ) -> usize {
-    let name = test.name.clone();
-
     let cur_profile = if run_config.release {
         BuildProfile::RELEASE
     } else {
@@ -933,7 +931,7 @@ pub async fn run_test(
         return 0;
     }
 
-    let test_snapshot = test.snapshot.clone();
+    let test_snapshot = test.snapshot;
 
     use std::fmt::Write;
     let _ = writeln!(output, " {}", "Verbose Output".green().bold());
@@ -968,7 +966,7 @@ pub async fn run_test(
         }
     }
 
-    return 1;
+    1
 }
 
 pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {

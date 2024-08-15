@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 use e2e_tests::*;
 use e2e_vm_tests::{filter_tests, TestContext};
 use forc_tracing::init_tracing_subscriber;
@@ -13,6 +11,7 @@ pub fn main() {
     args.test_threads = Some(1);
 
     e2e_tests::test_consistency::check().unwrap();
+    e2e_tests::reduced_std_libs::create().unwrap();
 
     let (filter_config, run_config) = e2e_tests::configs_from_cli(&Cli {
         include: None,

@@ -41,5 +41,5 @@ libtest-mimic = "0.7.3"
 
 [[test]]
 name = "fuel_snapshot_release"
-path = "test/fuel_snapshot_release.rs"
+path = "test/e2e_tests.rs"
 harness = false

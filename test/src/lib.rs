@@ -1,6 +1,6 @@
 pub mod e2e_vm_tests;
 mod ir_generation;
-mod reduced_std_libs;
+pub mod reduced_std_libs;
 pub mod test_consistency;
 
 use anyhow::Result;
@@ -9,7 +9,7 @@ use e2e_vm_tests::{FilterConfig, RunConfig};
 use forc::cli::shared::{PrintAsmCliOpt, PrintIrCliOpt};
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
-use sway_core::{BuildTarget, ExperimentalFlags, PrintAsm, PrintIr};
+use sway_core::{BuildTarget, PrintAsm, PrintIr};
 use tracing::Instrument;
 
 #[derive(Parser)]
