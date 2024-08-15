@@ -308,7 +308,7 @@ pub fn cse(
                                 }
                             })
                             .flatten()
-                            // The PHI couldn't be simplifed to a single ValueNumber.
+                            // The PHI couldn't be simplified to a single ValueNumber.
                             // lookup(expr, x)
                             .unwrap_or_else(|| match vntable.expr_map.entry(expr) {
                                 hash_map::Entry::Occupied(occ) => *occ.get(),
