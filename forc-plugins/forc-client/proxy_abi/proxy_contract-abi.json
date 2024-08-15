@@ -1,188 +1,194 @@
 {
-  "encoding": "1",
-  "types": [
+  "programType": "contract",
+  "specVersion": "1",
+  "encodingVersion": "1",
+  "concreteTypes": [
     {
-      "typeId": 0,
       "type": "()",
-      "components": [],
-      "typeParameters": null
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
     },
     {
-      "typeId": 1,
-      "type": "b256",
-      "components": null,
-      "typeParameters": null
+      "type": "enum standards::src5::AccessError",
+      "concreteTypeId": "3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d",
+      "metadataTypeId": 1
     },
     {
-      "typeId": 2,
-      "type": "enum AccessError",
-      "components": [
-        {
-          "name": "NotOwner",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "typeParameters": null
+      "type": "enum standards::src5::State",
+      "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
+      "metadataTypeId": 2
     },
     {
-      "typeId": 3,
-      "type": "enum Identity",
-      "components": [
-        {
-          "name": "Address",
-          "type": 10,
-          "typeArguments": null
-        },
-        {
-          "name": "ContractId",
-          "type": 11,
-          "typeArguments": null
-        }
-      ],
-      "typeParameters": null
-    },
-    {
-      "typeId": 4,
-      "type": "enum InitializationError",
-      "components": [
-        {
-          "name": "CannotReinitialized",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "typeParameters": null
-    },
-    {
-      "typeId": 5,
-      "type": "enum Option",
-      "components": [
-        {
-          "name": "None",
-          "type": 0,
-          "typeArguments": null
-        },
-        {
-          "name": "Some",
-          "type": 8,
-          "typeArguments": null
-        }
-      ],
-      "typeParameters": [
-        8
+      "type": "enum std::option::Option<struct std::contract_id::ContractId>",
+      "concreteTypeId": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
+      "metadataTypeId": 4,
+      "typeArguments": [
+        "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
       ]
     },
     {
-      "typeId": 6,
-      "type": "enum SetProxyOwnerError",
-      "components": [
-        {
-          "name": "CannotUninitialize",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
-      "typeParameters": null
+      "type": "enum sway_libs::ownership::errors::InitializationError",
+      "concreteTypeId": "1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893",
+      "metadataTypeId": 5
     },
     {
-      "typeId": 7,
-      "type": "enum State",
+      "type": "enum sway_libs::upgradability::errors::SetProxyOwnerError",
+      "concreteTypeId": "3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74",
+      "metadataTypeId": 6
+    },
+    {
+      "type": "str",
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
+      "metadataTypeId": 9
+    },
+    {
+      "type": "struct sway_libs::upgradability::events::ProxyOwnerSet",
+      "concreteTypeId": "96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247",
+      "metadataTypeId": 10
+    },
+    {
+      "type": "struct sway_libs::upgradability::events::ProxyTargetSet",
+      "concreteTypeId": "1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8",
+      "metadataTypeId": 11
+    }
+  ],
+  "metadataTypes": [
+    {
+      "type": "b256",
+      "metadataTypeId": 0
+    },
+    {
+      "type": "enum standards::src5::AccessError",
+      "metadataTypeId": 1,
+      "components": [
+        {
+          "name": "NotOwner",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
+      "type": "enum standards::src5::State",
+      "metadataTypeId": 2,
       "components": [
         {
           "name": "Uninitialized",
-          "type": 0,
-          "typeArguments": null
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
         },
         {
           "name": "Initialized",
-          "type": 3,
-          "typeArguments": null
+          "typeId": 3
         },
         {
           "name": "Revoked",
-          "type": 0,
-          "typeArguments": null
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
         }
-      ],
-      "typeParameters": null
+      ]
     },
     {
-      "typeId": 8,
+      "type": "enum std::identity::Identity",
+      "metadataTypeId": 3,
+      "components": [
+        {
+          "name": "Address",
+          "typeId": 8
+        },
+        {
+          "name": "ContractId",
+          "typeId": 9
+        }
+      ]
+    },
+    {
+      "type": "enum std::option::Option",
+      "metadataTypeId": 4,
+      "components": [
+        {
+          "name": "None",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        },
+        {
+          "name": "Some",
+          "typeId": 7
+        }
+      ],
+      "typeParameters": [
+        7
+      ]
+    },
+    {
+      "type": "enum sway_libs::ownership::errors::InitializationError",
+      "metadataTypeId": 5,
+      "components": [
+        {
+          "name": "CannotReinitialized",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
+      "type": "enum sway_libs::upgradability::errors::SetProxyOwnerError",
+      "metadataTypeId": 6,
+      "components": [
+        {
+          "name": "CannotUninitialize",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
       "type": "generic T",
-      "components": null,
-      "typeParameters": null
+      "metadataTypeId": 7
     },
     {
-      "typeId": 9,
-      "type": "str",
-      "components": null,
-      "typeParameters": null
-    },
-    {
-      "typeId": 10,
-      "type": "struct Address",
+      "type": "struct std::address::Address",
+      "metadataTypeId": 8,
       "components": [
         {
           "name": "bits",
-          "type": 1,
-          "typeArguments": null
+          "typeId": 0
         }
-      ],
-      "typeParameters": null
+      ]
     },
     {
-      "typeId": 11,
-      "type": "struct ContractId",
+      "type": "struct std::contract_id::ContractId",
+      "metadataTypeId": 9,
       "components": [
         {
           "name": "bits",
-          "type": 1,
-          "typeArguments": null
+          "typeId": 0
         }
-      ],
-      "typeParameters": null
+      ]
     },
     {
-      "typeId": 12,
-      "type": "struct ProxyOwnerSet",
+      "type": "struct sway_libs::upgradability::events::ProxyOwnerSet",
+      "metadataTypeId": 10,
       "components": [
         {
           "name": "new_proxy_owner",
-          "type": 7,
-          "typeArguments": null
+          "typeId": 2
         }
-      ],
-      "typeParameters": null
+      ]
     },
     {
-      "typeId": 13,
-      "type": "struct ProxyTargetSet",
+      "type": "struct sway_libs::upgradability::events::ProxyTargetSet",
+      "metadataTypeId": 11,
       "components": [
         {
           "name": "new_target",
-          "type": 11,
-          "typeArguments": null
+          "typeId": 9
         }
-      ],
-      "typeParameters": null
+      ]
     }
   ],
   "functions": [
     {
       "inputs": [],
       "name": "proxy_target",
-      "output": {
-        "name": "",
-        "type": 5,
-        "typeArguments": [
-          {
-            "name": "",
-            "type": 11,
-            "typeArguments": null
-          }
-        ]
-      },
+      "output": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
       "attributes": [
         {
           "name": "doc-comment",
@@ -250,16 +256,11 @@
       "inputs": [
         {
           "name": "new_target",
-          "type": 11,
-          "typeArguments": null
+          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
         }
       ],
       "name": "set_proxy_target",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      },
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
       "attributes": [
         {
           "name": "doc-comment",
@@ -381,11 +382,7 @@
     {
       "inputs": [],
       "name": "proxy_owner",
-      "output": {
-        "name": "",
-        "type": 7,
-        "typeArguments": null
-      },
+      "output": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
       "attributes": [
         {
           "name": "doc-comment",
@@ -452,11 +449,7 @@
     {
       "inputs": [],
       "name": "initialize_proxy",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      },
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
       "attributes": [
         {
           "name": "doc-comment",
@@ -560,16 +553,11 @@
       "inputs": [
         {
           "name": "new_proxy_owner",
-          "type": 7,
-          "typeArguments": null
+          "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c"
         }
       ],
       "name": "set_proxy_owner",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      },
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
       "attributes": [
         {
           "name": "doc-comment",
@@ -697,78 +685,40 @@
   "loggedTypes": [
     {
       "logId": "4571204900286667806",
-      "loggedType": {
-        "name": "",
-        "type": 2,
-        "typeArguments": []
-      }
+      "concreteTypeId": "3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d"
     },
     {
       "logId": "2151606668983994881",
-      "loggedType": {
-        "name": "",
-        "type": 13,
-        "typeArguments": []
-      }
+      "concreteTypeId": "1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8"
     },
     {
       "logId": "2161305517876418151",
-      "loggedType": {
-        "name": "",
-        "type": 4,
-        "typeArguments": []
-      }
+      "concreteTypeId": "1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893"
     },
     {
       "logId": "4354576968059844266",
-      "loggedType": {
-        "name": "",
-        "type": 6,
-        "typeArguments": []
-      }
+      "concreteTypeId": "3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74"
     },
     {
       "logId": "10870989709723147660",
-      "loggedType": {
-        "name": "",
-        "type": 12,
-        "typeArguments": []
-      }
+      "concreteTypeId": "96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247"
     },
     {
       "logId": "10098701174489624218",
-      "loggedType": {
-        "name": "",
-        "type": 9,
-        "typeArguments": null
-      }
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
     }
   ],
   "messagesTypes": [],
   "configurables": [
     {
       "name": "INITIAL_TARGET",
-      "configurableType": {
-        "name": "",
-        "type": 5,
-        "typeArguments": [
-          {
-            "name": "",
-            "type": 11,
-            "typeArguments": []
-          }
-        ]
-      },
-      "offset": 16224
+      "concreteTypeId": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
+      "offset": 13272
     },
     {
       "name": "INITIAL_OWNER",
-      "configurableType": {
-        "name": "",
-        "type": 7,
-        "typeArguments": []
-      },
-      "offset": 16264
+      "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
+      "offset": 13224
     }
   ]
 }

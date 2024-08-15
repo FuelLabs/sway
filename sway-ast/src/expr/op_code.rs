@@ -259,7 +259,9 @@ define_op_codes!(
     ),
     (Croo, CrooOpcode, "croo", (addr: reg, contract: reg)),
     (Csiz, CsizOpcode, "csiz", (ret: reg, contract: reg)),
-    (Ldc, LdcOpcode, "ldc", (contract: reg, addr: reg, size: reg)),
+    (Bsiz, BsizOpcode, "bsiz", (ret: reg, contract: reg)),
+    (Ldc, LdcOpcode, "ldc", (contract: reg, addr: reg, size: reg, mode: imm)),
+    (Bldd, BlddOpcode, "bldd", (dst_ptr: reg, addr: reg, offset: reg, len: reg)),
     (
         Log,
         LogOpcode,
@@ -317,7 +319,7 @@ define_op_codes!(
     /* Cryptographic Instructions */
     (Eck1, Eck1Opcode, "eck1", (addr: reg, sig: reg, hash: reg)),
     (Ecr1, Ecr1Opcode, "ecr1", (addr: reg, sig: reg, hash: reg)),
-    (Ed19, Ed19Opcode, "ed19", (addr: reg, sig: reg, hash: reg)),
+    (Ed19, Ed19Opcode, "ed19", (addr: reg, sig: reg, hash: reg, len: reg)),
     (K256, K256Opcode, "k256", (addr: reg, data: reg, size: reg)),
     (S256, S256Opcode, "s256", (addr: reg, data: reg, size: reg)),
     /* Other Instructions */
