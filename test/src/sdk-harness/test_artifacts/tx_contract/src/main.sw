@@ -173,7 +173,12 @@ impl TxContractTest for Contract {
         true
     }
     fn get_tx_output_pointer(index: u64) -> Option<u64> {
-        output_pointer(index)
+        let ptr = output_pointer(index);
+        if ptr.is_none() {
+            return None
+        }
+
+        Some(asm (r1: ptr) { r1: u64 })
     }
     fn get_output_type(ptr: u64) -> Option<Output> {
         output_type(ptr)

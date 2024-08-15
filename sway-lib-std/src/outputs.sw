@@ -104,14 +104,14 @@ pub fn output_type(index: u64) -> Option<Output> {
 ///     log(output_pointer);
 /// }
 /// ```
-pub fn output_pointer(index: u64) -> Option<u64> {
+pub fn output_pointer(index: u64) -> Option<raw_ptr> {
     if output_type(index).is_none() {
         return None
     }
 
     match tx_type() {
-        Transaction::Script => Some(__gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
-        Transaction::Create => Some(__gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX)),
+        Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_OUTPUT_AT_INDEX)),
     }
 }
 
@@ -184,12 +184,14 @@ pub fn output_amount(index: u64) -> Option<u64> {
         // zero since they're only set after execution terminates.
         Some(Output::Change) => Some(0),
         Some(Output::Variable) => {
-            let ptr = output_pointer(index);
-            Some(asm(r1, r2, r3: ptr) {
-                addi r2 r3 i40;
-                lw r1 r2 i0;
-                r1: u64
-            })
+            let ptr = output_pointer(index).unwrap();
+            Some(
+                asm(r1, r2, r3: ptr) {
+                    addi r2 r3 i40;
+                    lw r1 r2 i0;
+                    r1: u64
+                },
+            )
         },
         Some(Output::ContractCreated) => None,
         None => None,
