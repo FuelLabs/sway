@@ -2326,26 +2326,13 @@ impl ty::TyExpression {
         let expr = ty::TyExpression::type_check(handler, ctx, value)?;
 
         if to_mutable_value {
-            match expr.expression {
-                ty::TyExpressionVariant::ConstantExpression { .. } => {
-                    return Err(
-                        handler.emit_err(CompileError::RefMutCannotReferenceConstant {
-                            constant: expr_span.str(),
-                            span,
-                        }),
-                    )
-                }
-                ty::TyExpressionVariant::VariableExpression {
-                    name: decl_name,
-                    mutability: VariableMutability::Immutable,
-                    ..
-                } => {
-                    return Err(handler.emit_err(
-                        CompileError::RefMutCannotReferenceImmutableVariable { decl_name, span },
-                    ))
-                }
-                // TODO-IG: Check referencing parts of aggregates once reassignment is implemented.
-                _ => (),
+            if let Some(value) = Self::check_ref_mutability_mismatch(
+                &expr.expression,
+                handler,
+                expr_span,
+                span.clone(),
+            ) {
+                return value;
             }
         };
 
@@ -2364,6 +2351,54 @@ impl ty::TyExpression {
         };
 
         Ok(typed_expr)
+    }
+
+    fn check_ref_mutability_mismatch(
+        expr: &TyExpressionVariant,
+        handler: &Handler,
+        expr_span: Span,
+        ref_span: Span,
+    ) -> Option<Result<TyExpression, ErrorEmitted>> {
+        match expr {
+            ty::TyExpressionVariant::ConstantExpression { .. } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceConstant {
+                        constant: expr_span.str(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::VariableExpression {
+                name: decl_name,
+                mutability: VariableMutability::Immutable,
+                ..
+            } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceImmutableVariable {
+                        decl_name: decl_name.clone(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::StructFieldAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            ty::TyExpressionVariant::TupleElemAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            _ => (),
+        }
+        None
     }
 
     fn type_check_deref(
