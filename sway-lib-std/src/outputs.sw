@@ -92,7 +92,7 @@ pub fn output_type(index: u64) -> Option<Output> {
 ///
 /// # Returns
 ///
-/// * [Option<u64>] - A pointer to the output at `index`.
+/// * [Option<raw_ptr>] - A pointer to the output at `index`.
 ///
 /// # Examples
 ///
@@ -101,7 +101,6 @@ pub fn output_type(index: u64) -> Option<Output> {
 ///
 /// fn foo() {
 ///     let output_pointer = output_pointer(0).unwrap();
-///     log(output_pointer);
 /// }
 /// ```
 pub fn output_pointer(index: u64) -> Option<raw_ptr> {
