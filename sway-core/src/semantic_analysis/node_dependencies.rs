@@ -963,7 +963,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                             }
                         })
                         .collect::<Vec<String>>()
-                        .join(""),
+                        .join(","),
                 )
             } else if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
@@ -986,7 +986,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                             }
                         })
                         .collect::<Vec<_>>()
-                        .join(""),
+                        .join(","),
                 )
             } else {
                 None

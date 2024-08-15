@@ -1,0 +1,8 @@
+[project]
+entry = "main.sw"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "impl_self_dependency_order_conflict"
+
+[dependencies]
+std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }
