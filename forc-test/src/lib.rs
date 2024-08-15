@@ -672,7 +672,9 @@ pub fn decode_log_data(
     program_abi: &ProgramABI,
 ) -> anyhow::Result<DecodedLog> {
     let program_abi = match program_abi {
-        ProgramABI::Fuel(fuel_abi) => Some(fuel_abi),
+        ProgramABI::Fuel(fuel_abi) => Some(
+            fuel_abi_types::abi::unified_program::UnifiedProgramABI::from_counterpart(fuel_abi)?,
+        ),
         _ => None,
     }
     .ok_or_else(|| anyhow::anyhow!("only fuelvm is supported for log decoding"))?;

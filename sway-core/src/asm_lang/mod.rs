@@ -545,10 +545,13 @@ impl Op {
                 let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::CSIZ(r1, r2)
             }
-
+            "bsiz" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BSIZ(r1, r2)
+            }
             "ldc" => {
-                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
-                VirtualOp::LDC(r1, r2, r3)
+                let (r1, r2, r3, i0) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LDC(r1, r2, r3, i0)
             }
             "log" => {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
@@ -617,8 +620,8 @@ impl Op {
                 VirtualOp::ECR1(r1, r2, r3)
             }
             "ed19" => {
-                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
-                VirtualOp::ED19(r1, r2, r3)
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ED19(r1, r2, r3, r4)
             }
             "k256" => {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
@@ -1041,6 +1044,65 @@ fn two_regs_imm_12(
     Ok((reg.clone(), reg2.clone(), imm))
 }
 
+fn three_regs_imm_06(
+    handler: &Handler,
+    args: &[VirtualRegister],
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> Result<
+    (
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    ErrorEmitted,
+> {
+    if args.len() > 3 {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 3,
+            received: args.len(),
+        });
+    }
+    let (reg, reg2, reg3) = match (args.first(), args.get(1), args.get(2)) {
+        (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
+        _ => {
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 3,
+                    received: args.len(),
+                }),
+            );
+        }
+    };
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => {
+            return Err(handler.emit_err(CompileError::MissingImmediate {
+                span: whole_op_span,
+            }));
+        }
+        Some(i) => match i.as_str()[1..].parse() {
+            Ok(o) => (o, i.span()),
+            Err(_) => {
+                return Err(
+                    handler.emit_err(CompileError::InvalidImmediateValue { span: i.span() })
+                );
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate06::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            return Err(handler.emit_err(e));
+        }
+    };
+
+    Ok((reg.clone(), reg2.clone(), reg3.clone(), imm))
+}
+
 impl fmt::Display for Op {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_opcode_and_comment(self.opcode.to_string(), &self.comment, fmtr)
@@ -1123,7 +1185,9 @@ impl fmt::Display for VirtualOp {
             CCP(a, b, c, d) => write!(fmtr, "ccp {a} {b} {c} {d}"),
             CROO(a, b) => write!(fmtr, "croo {a} {b}"),
             CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
-            LDC(a, b, c) => write!(fmtr, "ldc {a} {b} {c}"),
+            BSIZ(a, b) => write!(fmtr, "bsiz {a} {b}"),
+            LDC(a, b, c, d) => write!(fmtr, "ldc {a} {b} {c} {d}"),
+            BLDD(a, b, c, d) => write!(fmtr, "bldd {a} {b} {c} {d}"),
             LOG(a, b, c, d) => write!(fmtr, "log {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
             MINT(a, b) => write!(fmtr, "mint {a} {b}"),
@@ -1142,7 +1206,7 @@ impl fmt::Display for VirtualOp {
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1 {a} {b} {c}"),
             ECR1(a, b, c) => write!(fmtr, "ecr1 {a} {b} {c}"),
-            ED19(a, b, c) => write!(fmtr, "ed19 {a} {b} {c}"),
+            ED19(a, b, c, d) => write!(fmtr, "ed19 {a} {b} {c} {d}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 

@@ -30,13 +30,14 @@ async fn method1_test() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
-async fn method_test() -> Result<()> {
-    let instance = get_superabi_supertrait_instance().await;
-    let contract_methods = instance.methods();
+// contract supertrait methods are not callable externally
+// #[tokio::test]
+// async fn method_test() -> Result<()> {
+//     let instance = get_superabi_supertrait_instance().await;
+//     let contract_methods = instance.methods();
 
-    let response = contract_methods.method().call().await?;
-    assert_eq!(0xBAD, response.value);
+//     let response = contract_methods.method().call().await?;
+//     assert_eq!(0xBAD, response.value);
 
-    Ok(())
-}
+//     Ok(())
+// }

@@ -155,6 +155,47 @@ async fn test_simple_deploy() {
 }
 
 #[tokio::test]
+async fn test_deploy_submit_only() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+
+    let target = NodeTarget {
+        node_url: Some(node_url),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        submit_only: true,
+        ..Default::default()
+    };
+    let contract_ids = deploy(cmd).await.unwrap();
+    node.kill().unwrap();
+    let expected = vec![DeployedContract {
+        id: ContractId::from_str(
+            "ad0bba17e0838ef859abe2693d8a5e3bc4e7cfb901601e30f4dc34999fda6335",
+        )
+        .unwrap(),
+        proxy: None,
+    }];
+
+    assert_eq!(contract_ids, expected)
+}
+
+#[tokio::test]
 async fn test_deploy_fresh_proxy() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
@@ -194,7 +235,7 @@ async fn test_deploy_fresh_proxy() {
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "5237df8db3edbe825ce83f4292094923c989efe3265b0115ed050925593a3488",
+                "ca196e29217545f6e676d93bbd03219aef6ee4adf96ce960b5005a67aa04fb5d",
             )
             .unwrap(),
         ),
