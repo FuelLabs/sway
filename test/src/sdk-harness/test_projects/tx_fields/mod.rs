@@ -158,7 +158,7 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
     );
 
     let mut node_config = NodeConfig::default();
-    node_config.static_gas_price = 0;
+    node_config.starting_gas_price = 0;
     let mut wallets =
         launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
             .await
@@ -915,7 +915,7 @@ mod outputs {
         async fn can_get_tx_output_type_for_contract_deployment() {
             // Setup Wallet
             let mut node_config = NodeConfig::default();
-            node_config.static_gas_price = 0;
+            node_config.starting_gas_price = 0;
             let wallet = launch_custom_provider_and_get_wallets(
                 WalletsConfig::new(
                     Some(1),             /* Single wallet */
@@ -967,7 +967,7 @@ mod outputs {
             let binary = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
             let salt = Salt::new([2u8; 32]);
             let storage_slots = Vec::<StorageSlot>::new();
-            let contract = Contract::new(binary.clone(), salt, storage_slots.clone());
+            let contract = Contract::regular(binary.clone(), salt, storage_slots.clone());
 
             // Start building the transaction
             let tb: CreateTransactionBuilder =
