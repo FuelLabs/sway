@@ -138,7 +138,7 @@ pub fn input_count() -> u16 {
 ///
 /// # Returns
 ///
-/// * [Option<u64>] - The pointer of the input at `index`.
+/// * [Option<raw_ptr>] - The pointer of the input at `index`.
 ///
 /// # Examples
 ///
@@ -149,14 +149,14 @@ pub fn input_count() -> u16 {
 ///     let input_pointer = input_pointer(0).unwrap();
 /// }
 /// ```
-pub fn input_pointer(index: u64) -> Option<u64> {
+pub fn input_pointer(index: u64) -> Option<raw_ptr> {
     if index >= input_count().as_u64() {
         return None
     }
 
     match tx_type() {
-        Transaction::Script => Some(__gtf::<u64>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
-        Transaction::Create => Some(__gtf::<u64>(index, GTF_CREATE_INPUT_AT_INDEX)),
+        Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
+        Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_INPUT_AT_INDEX)),
     }
 }
 

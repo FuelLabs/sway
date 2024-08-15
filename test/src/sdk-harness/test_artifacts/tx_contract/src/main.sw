@@ -114,7 +114,12 @@ impl TxContractTest for Contract {
         tx_script_bytecode_hash()
     }
     fn get_tx_input_pointer(index: u64) -> Option<u64> {
-        input_pointer(index)
+        let ptr = input_pointer(index);
+        if ptr.is_none() {
+            return None
+        }
+
+        Some(asm (r1: ptr) { r1: u64 })
     }
     fn get_input_type(index: u64) -> Option<Input> {
         input_type(index)
