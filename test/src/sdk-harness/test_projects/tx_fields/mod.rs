@@ -1,5 +1,5 @@
 use fuel_vm::fuel_crypto::Hasher;
-use fuel_vm::fuel_tx::{Bytes32, ConsensusParameters, ContractId, Input as TxInput};
+use fuel_vm::fuel_tx::{ConsensusParameters, ContractId, Input as TxInput};
 use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
@@ -220,7 +220,16 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(result.value, tip);
+        assert_eq!(result.value, Some(tip));
+
+        let no_tip = contract_instance
+            .methods()
+            .get_tx_tip()
+            .call()
+            .await
+            .unwrap();
+
+        assert_eq!(no_tip.value, None);
     }
 
     #[tokio::test]
@@ -251,7 +260,16 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, maturity);
+        assert_eq!(result.value, Some(maturity as u32));
+
+        // Assert none is returned with no maturity
+        let no_maturity = contract_instance
+            .methods()
+            .get_tx_maturity()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(no_maturity.value, None);
     }
 
     #[tokio::test]
@@ -266,7 +284,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, script_length);
+        assert_eq!(result.value, Some(script_length));
     }
 
     #[tokio::test]
@@ -281,7 +299,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, script_data_length);
+        assert_eq!(result.value, Some(script_data_length));
     }
 
     #[tokio::test]
@@ -368,7 +386,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(response.value, 11024);
+        assert_eq!(response.value, Some(11024));
     }
 
     #[tokio::test]
@@ -382,7 +400,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(result.value, 64);
+        assert_eq!(result.value, Some(64));
     }
 
     #[tokio::test]
@@ -402,7 +420,7 @@ mod tx {
             .take_receipts_checked(None)
             .unwrap();
 
-        assert_eq!(receipts[1].data().unwrap(), witnesses[0].as_vec());
+        assert_eq!(receipts[1].data().unwrap()[8..72], *witnesses[0].as_vec());
     }
 
     #[tokio::test]
@@ -418,7 +436,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, script_start_offset as u64);
+        assert_eq!(result.value, Some(script_start_offset as u64));
     }
 
     #[tokio::test]
@@ -445,7 +463,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(Bytes32::from(result.value.0), hash);
+        assert_eq!(result.value.unwrap(), Bits256(*hash));
     }
 
     #[tokio::test]
@@ -478,7 +496,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, 10392)
+        assert_eq!(result.value, Some(10392))
     }
 }
 
