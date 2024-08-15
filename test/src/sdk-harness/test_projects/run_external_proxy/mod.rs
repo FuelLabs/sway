@@ -30,9 +30,7 @@ async fn run_external_can_proxy_call() {
     .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
-
     let instance = RunExternalProxyContract::new(id.clone(), wallet);
-
     // Call "large_value"
     // Will call run_external_proxy::large_value
     // that will call run_external_target::large_value
@@ -53,7 +51,6 @@ async fn run_external_can_proxy_call() {
                             print!("{:?} ", s);
                         }
                     }
-
                     println!("{:?}", data);
                 }
             }
@@ -64,7 +61,6 @@ async fn run_external_can_proxy_call() {
         Bits256::from_hex_str("0x00000000000000000000000059F2f1fCfE2474fD5F0b9BA1E73ca90b143Eb8d0")
             .unwrap();
     assert_eq!(result.value, expected_large);
-
     // Call "double_value"
     // Will call run_external_proxy::double_value
     // that will call run_external_target::double_value
@@ -85,7 +81,6 @@ async fn run_external_can_proxy_call() {
                             print!("{:?} ", s);
                         }
                     }
-
                     println!("{:?}", data);
                 }
             }
@@ -93,7 +88,6 @@ async fn run_external_can_proxy_call() {
         }
     }
     assert_eq!(result.value, 84);
-
     // Call "does_not_exist_in_the_target"
     // Will call run_external_proxy::does_not_exist_in_the_target
     // it will proxy the call to run_external_target,
