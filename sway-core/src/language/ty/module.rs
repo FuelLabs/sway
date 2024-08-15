@@ -75,7 +75,7 @@ impl TyModule {
 
 #[derive(Clone, Debug)]
 pub struct TySubmodule {
-    pub module: TyModule,
+    pub module: Arc<TyModule>,
     pub mod_name_span: Span,
 }
 
