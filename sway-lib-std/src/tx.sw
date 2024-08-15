@@ -504,10 +504,12 @@ pub fn tx_script_bytecode_hash() -> Option<b256> {
             let script_ptr = tx_script_start_pointer().unwrap();
 
             // Run the hash opcode for the script in memory
-            Some(asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
-                s256 hash ptr len;
-                hash: b256
-            })
+            Some(
+                asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
+                    s256 hash ptr len;
+                    hash: b256
+                },
+            )
         },
         _ => None,
     }
