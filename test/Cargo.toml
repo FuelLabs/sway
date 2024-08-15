@@ -1,5 +1,5 @@
 [package]
-name = "test"
+name = "e2e_tests"
 version = "0.0.0"
 publish = false
 authors.workspace = true
@@ -32,6 +32,14 @@ sway-ir = { path = "../sway-ir" }
 sway-types = { path = "../sway-types" }
 sway-utils = { path = "../sway-utils" }
 textwrap = "0.16.0"
-tokio = "1.12"
+tokio = { version = "1.12", features = ["full"] }
 toml = { version = "0.7", features = ["parse"] }
 tracing = "0.1"
+vte = "0.13.0"
+insta = "1.39.0"
+libtest-mimic = "0.7.3"
+
+[[test]]
+name = "fuel_snapshot_release"
+path = "test/fuel_snapshot_release.rs"
+harness = false

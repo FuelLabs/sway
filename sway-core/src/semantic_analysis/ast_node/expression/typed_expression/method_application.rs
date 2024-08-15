@@ -60,7 +60,7 @@ pub(crate) fn type_check_method_application(
                 x.return_type
                     .extract_inner_types(engines, IncludeSelf::Yes)
                     .iter()
-                    .any(|x| !x.is_concrete(engines, IncludeNumeric::Yes))
+                    .any(|x| !x.is_concrete(engines, NumericIsNonConcrete::Yes))
             })
             .unwrap_or_default();
         let needs_second_pass = has_errors || is_not_concrete;

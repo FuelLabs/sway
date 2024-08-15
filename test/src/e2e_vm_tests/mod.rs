@@ -4,7 +4,33 @@ mod harness;
 mod util;
 
 use crate::e2e_vm_tests::harness::run_and_capture_output;
-use crate::{FilterConfig, RunConfig};
+use sway_core::{BuildTarget, ExperimentalFlags, PrintAsm, PrintIr};
+
+#[derive(Debug, Clone)]
+pub struct FilterConfig {
+    pub include: Option<regex::Regex>,
+    pub exclude: Option<regex::Regex>,
+    pub skip_until: Option<regex::Regex>,
+    pub abi_only: bool,
+    pub exclude_core: bool,
+    pub exclude_std: bool,
+    pub contract_only: bool,
+    pub first_only: bool,
+    pub snapshot_only: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct RunConfig {
+    pub build_target: BuildTarget,
+    pub locked: bool,
+    pub verbose: bool,
+    pub release: bool,
+    pub experimental: ExperimentalFlags,
+    pub update_output_files: bool,
+    pub print_ir: PrintIr,
+    pub print_asm: PrintAsm,
+    pub print_bytecode: bool,
+}
 
 use anyhow::{anyhow, bail, Result};
 use colored::*;
@@ -15,10 +41,11 @@ use forc_test::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
+use insta::Settings;
 use regex::Regex;
 use std::collections::{BTreeMap, HashSet};
-use std::io::stdout;
 use std::io::Write;
+use std::io::{stdout, Read};
 use std::str::FromStr;
 use std::time::Instant;
 use std::{
@@ -26,7 +53,6 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_core::BuildTarget;
 use tokio::sync::Mutex;
 use tracing::Instrument;
 
@@ -83,8 +109,8 @@ impl FileCheck {
 }
 
 #[derive(Clone)]
-struct TestDescription {
-    name: String,
+pub struct TestDescription {
+    pub name: String,
     suffix: Option<String>,
     category: TestCategory,
     script_data: Option<Vec<u8>>,
@@ -101,17 +127,18 @@ struct TestDescription {
     unsupported_profiles: Vec<&'static str>,
     checker: FileCheck,
     run_config: RunConfig,
+    snapshot: Option<bool>,
 }
 
 #[derive(PartialEq, Eq, Hash)]
-struct DeployedContractKey {
+pub struct DeployedContractKey {
     pub contract_path: String,
     pub new_encoding: bool,
 }
 
 #[derive(Clone)]
-struct TestContext {
-    deployed_contracts: Arc<Mutex<HashMap<DeployedContractKey, ContractId>>>,
+pub struct TestContext {
+    pub deployed_contracts: Arc<Mutex<HashMap<DeployedContractKey, ContractId>>>,
 }
 
 fn print_receipts(output: &mut String, receipts: &[Receipt]) {
@@ -295,7 +322,13 @@ impl TestContext {
         })
     }
 
-    async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<()> {
+    async fn run(
+        &self,
+        test: TestDescription,
+        output: &mut String,
+        verbose: bool,
+        allow_snapshot_panic: bool,
+    ) -> Result<()> {
         let TestDescription {
             name,
             category,
@@ -311,6 +344,7 @@ impl TestContext {
             checker,
             run_config,
             expected_decoded_test_logs,
+            snapshot,
             ..
         } = test;
 
@@ -328,7 +362,7 @@ impl TestContext {
             expected_result
         };
 
-        match category {
+        let r = match category {
             TestCategory::Runs => {
                 let expected_result = expected_result.expect("No expected result found. This is likely because test.toml is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry");
 
@@ -685,15 +719,124 @@ impl TestContext {
             category => Err(anyhow::Error::msg(format!(
                 "Unexpected test category: {category:?}",
             ))),
+        };
+
+        if let Some(true) = snapshot {
+            let manifest_dir = env!("CARGO_MANIFEST_DIR");
+            let folder = format!("{}/src/e2e_vm_tests/test_programs/{}/", manifest_dir, name);
+
+            #[derive(Default)]
+            struct RawText(String);
+
+            impl vte::Perform for RawText {
+                fn print(&mut self, c: char) {
+                    self.0.push(c);
+                }
+
+                fn execute(&mut self, _: u8) {}
+
+                fn hook(&mut self, _: &vte::Params, _: &[u8], _: bool, _: char) {}
+
+                fn put(&mut self, b: u8) {
+                    self.0.push(b as char);
+                }
+
+                fn unhook(&mut self) {}
+
+                fn osc_dispatch(&mut self, _: &[&[u8]], _: bool) {}
+
+                fn csi_dispatch(&mut self, _: &vte::Params, _: &[u8], _: bool, _: char) {}
+
+                fn esc_dispatch(&mut self, _: &[u8], _: bool, _: u8) {}
+            }
+
+            let mut raw = String::new();
+            for line in output.lines() {
+                let mut performer = RawText::default();
+                let mut p = vte::Parser::new();
+                for b in line.as_bytes() {
+                    p.advance(&mut performer, *b);
+                }
+                raw.push_str(&performer.0);
+                raw.push_str("\n");
+            }
+
+            // Remove absolute paths from snapshot tests
+            let manifest_dir: PathBuf = PathBuf::try_from(manifest_dir).unwrap();
+            let parent = manifest_dir.parent().unwrap();
+            let raw = raw.replace(&format!("{}/", parent.display()), "");
+
+            let run_config_suffix = format!(
+                "{}-{}-{}",
+                run_config.build_target.to_string(),
+                if run_config.experimental.new_encoding {
+                    "encoding-v1"
+                } else {
+                    "encoding-v0"
+                },
+                if run_config.release {
+                    "release"
+                } else {
+                    "debug"
+                },
+            );
+
+            // insta uses the fn name for the file.
+            fn stdout(folder: &str, raw: &str, run_config_suffix: String) {
+                let mut insta = Settings::new();
+                insta.set_snapshot_path(folder);
+                insta.set_prepend_module_to_snapshot(false);
+                insta.set_omit_expression(true);
+                insta.set_snapshot_suffix(run_config_suffix);
+                let scope = insta.bind_to_scope();
+                insta::assert_snapshot!(raw);
+                drop(scope);
+            }
+
+            if allow_snapshot_panic {
+                stdout(&folder, &raw, run_config_suffix);
+            } else {
+                let r = std::panic::catch_unwind(|| {
+                    let buf_stdout = gag::BufferRedirect::stdout();
+                    let buf_stderr = gag::BufferRedirect::stderr();
+
+                    stdout(&folder, &raw, run_config_suffix);
+
+                    let mut output = String::new();
+                    if let Ok(mut buf_stdout) = buf_stdout {
+                        buf_stdout.read_to_string(&mut output).unwrap();
+                        drop(buf_stdout);
+                    }
+                    if let Ok(mut buf_stderr) = buf_stderr {
+                        buf_stderr.read_to_string(&mut output).unwrap();
+                        drop(buf_stderr);
+                    }
+
+                    output
+                });
+
+                if r.is_err() {
+                    let message = format!("Snapshot differ");
+                    return Err(anyhow::Error::msg(message));
+                }
+            }
         }
+
+        r
     }
 }
 
-pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
-    // Discover tests
-    let mut tests = discover_test_configs(run_config)?;
-    let total_number_of_tests = tests.len();
+pub struct FilterTestResult {
+    skipped_tests: Vec<TestDescription>,
+    disabled_tests: Vec<TestDescription>,
+    included_tests: Vec<TestDescription>,
+    excluded_tests: Vec<TestDescription>,
+}
 
+pub fn filter_tests(
+    filter_config: &FilterConfig,
+    tests: &mut Vec<TestDescription>,
+) -> FilterTestResult {
     // Filter tests
     let skipped_tests = filter_config
         .skip_until
@@ -736,8 +879,109 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         tests.retain(|t| t.category == TestCategory::RunsWithContract);
     }
     if filter_config.first_only && !tests.is_empty() {
-        tests = vec![tests.remove(0)];
+        *tests = vec![tests.remove(0)];
     }
+    if filter_config.snapshot_only {
+        tests.retain(|t| matches!(t.snapshot, Some(true)));
+    }
+
+    FilterTestResult {
+        skipped_tests,
+        disabled_tests,
+        included_tests,
+        excluded_tests,
+    }
+}
+
+pub async fn run_test(
+    context: &TestContext,
+    run_config: &RunConfig,
+    filter_config: &FilterConfig,
+    i: usize,
+    test: TestDescription,
+    failed_tests: &mut Vec<String>,
+    number_of_tests_failed: &mut usize,
+    allow_snapshot_panic: bool,
+) -> usize {
+    let name = test.name.clone();
+
+    let cur_profile = if run_config.release {
+        BuildProfile::RELEASE
+    } else {
+        BuildProfile::DEBUG
+    };
+
+    if test.unsupported_profiles.contains(&cur_profile) {
+        return 0;
+    }
+
+    let name = if let Some(suffix) = test.suffix.as_ref() {
+        format!("{} ({})", test.name, suffix)
+    } else {
+        test.name.clone()
+    };
+
+    if !allow_snapshot_panic {
+        print!("Testing {} ...", name.clone().bold());
+        stdout().flush().unwrap();
+    }
+
+    let mut output = String::new();
+
+    // Skip the test if its not compatible with the current build target.
+    if !test.supported_targets.contains(&run_config.build_target) {
+        return 0;
+    }
+
+    let test_snapshot = test.snapshot.clone();
+
+    use std::fmt::Write;
+    let _ = writeln!(output, " {}", "Verbose Output".green().bold());
+    let result = if !filter_config.first_only {
+        context
+            .run(test, &mut output, run_config.verbose, allow_snapshot_panic)
+            .instrument(tracing::trace_span!("E2E", i))
+            .await
+    } else {
+        context
+            .run(test, &mut output, run_config.verbose, allow_snapshot_panic)
+            .await
+    };
+
+    if let Err(err) = result {
+        if matches!(test_snapshot, Some(true)) {
+            println!(" {} (snapshot mismatch)", "failed".red().bold());
+        } else {
+            println!(" {}", "failed".red().bold());
+            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
+            println!("{}", textwrap::indent(&output, "          "));
+        }
+
+        *number_of_tests_failed += 1;
+        failed_tests.push(name);
+    } else {
+        println!(" {}", "ok".green().bold());
+
+        // If verbosity is requested then print it out.
+        if run_config.verbose && !output.is_empty() {
+            println!("{}", textwrap::indent(&output, "     "));
+        }
+    }
+
+    return 1;
+}
+
+pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
+    // Discover tests
+    let mut tests = discover_test_configs(run_config)?;
+    let total_number_of_tests = tests.len();
+
+    let FilterTestResult {
+        skipped_tests,
+        disabled_tests,
+        included_tests,
+        excluded_tests,
+    } = filter_tests(filter_config, &mut tests);
 
     // Run tests
     let context = TestContext {
@@ -749,59 +993,18 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
 
     let start_time = Instant::now();
     for (i, test) in tests.into_iter().enumerate() {
-        let cur_profile = if run_config.release {
-            BuildProfile::RELEASE
-        } else {
-            BuildProfile::DEBUG
-        };
-
-        if test.unsupported_profiles.contains(&cur_profile) {
-            continue;
-        }
-
-        let name = if let Some(suffix) = test.suffix.as_ref() {
-            format!("{} ({})", test.name, suffix)
-        } else {
-            test.name.clone()
-        };
-
-        print!("Testing {} ...", name.clone().bold());
-        stdout().flush().unwrap();
-
-        let mut output = String::new();
-
-        // Skip the test if its not compatible with the current build target.
-        if !test.supported_targets.contains(&run_config.build_target) {
-            continue;
-        }
-
-        use std::fmt::Write;
-        let _ = writeln!(output, " {}", "Verbose Output".green().bold());
-        let result = if !filter_config.first_only {
-            context
-                .run(test, &mut output, run_config.verbose)
-                .instrument(tracing::trace_span!("E2E", i))
-                .await
-        } else {
-            context.run(test, &mut output, run_config.verbose).await
-        };
-
-        if let Err(err) = result {
-            println!(" {}", "failed".red().bold());
-            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
-            println!("{}", textwrap::indent(&output, "          "));
-            number_of_tests_failed += 1;
-            failed_tests.push(name);
-        } else {
-            println!(" {}", "ok".green().bold());
-
-            // If verbosity is requested then print it out.
-            if run_config.verbose && !output.is_empty() {
-                println!("{}", textwrap::indent(&output, "     "));
-            }
-        }
-
-        number_of_tests_executed += 1;
+        let qty = run_test(
+            &context,
+            run_config,
+            filter_config,
+            i,
+            test,
+            &mut failed_tests,
+            &mut number_of_tests_failed,
+            false,
+        )
+        .await;
+        number_of_tests_executed += qty;
     }
     let duration = Instant::now().duration_since(start_time);
 
@@ -887,7 +1090,7 @@ fn exclude_tests_dependency(t: &TestDescription, dep: &str) -> bool {
     }
 }
 
-fn discover_test_configs(run_config: &RunConfig) -> Result<Vec<TestDescription>> {
+pub fn discover_test_configs(run_config: &RunConfig) -> Result<Vec<TestDescription>> {
     fn recursive_search(
         path: &Path,
         run_config: &RunConfig,
@@ -985,8 +1188,13 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         None
     };
 
+    let snapshot = toml_content.get("snapshot").and_then(|x| x.as_bool());
+
     // Abort early if we find a FailsToCompile test without any Checker directives.
-    if category == TestCategory::FailsToCompile && checker.is_empty() {
+    if category == TestCategory::FailsToCompile
+        && checker.is_empty()
+        && !matches!(snapshot, Some(true))
+    {
         bail!("'fail' tests must contain some FileCheck verification directives.");
     }
 
@@ -1183,6 +1391,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         checker: file_check,
         run_config: run_config.clone(),
         expected_decoded_test_logs,
+        snapshot,
     })
 }
 

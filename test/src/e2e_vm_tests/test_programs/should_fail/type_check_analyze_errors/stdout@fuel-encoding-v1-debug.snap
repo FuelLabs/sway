@@ -1,0 +1,133 @@
+---
+source: test/src/e2e_vm_tests/mod.rs
+---
+Compiling should_fail/type_check_analyze_errors ...
+    Building test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
+   Compiling library core (sway-lib-core)
+   Compiling library std (sway-lib-std)
+   Compiling script type_check_analyze_errors (test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors)
+
+Failed to compile type_check_analyze_errors
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:24:18
+   |
+22 | 
+23 |     let a = [8, 256u16, 8u8];
+24 |     let b: u32 = a[2];
+   |                  ^^^^ Mismatched types.
+expected: u32
+found:    u16.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+25 | }
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:5:14
+  |
+3 | 
+4 |     // u8
+5 |     let _a = 0x100;
+  |              ^^^^^ Literal would overflow because its value does not fit into "u8"
+6 |     Vec::<u8>::new().push(_a);
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:9:14
+   |
+ 7 | 
+ 8 |     // u16
+ 9 |     let _a = 0x10000;
+   |              ^^^^^^^ Literal would overflow because its value does not fit into "u16"
+10 |     Vec::<u16>::new().push(_a);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:13:14
+   |
+11 | 
+12 |     // u32
+13 |     let _a = 0x100000000;
+   |              ^^^^^^^^^^^ Literal would overflow because its value does not fit into "u32"
+14 |     Vec::<u32>::new().push(_a);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:17:20
+   |
+15 | 
+16 |     // Array
+17 |     let a = [1, 2, "hello"];
+   |                    ^^^^^^^ Mismatched types.
+expected: numeric
+found:    str.
+
+18 | 
+19 |     // Array - different numerics
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:20:22
+   |
+18 | 
+19 |     // Array - different numerics
+20 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+   |                      ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+21 | 
+22 |     // Wrong cast
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:20:28
+   |
+18 | 
+19 |     // Array - different numerics
+20 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+   |                            ^^^^ Mismatched types.
+expected: u8
+found:    u32.
+
+21 | 
+22 |     // Wrong cast
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:20:34
+   |
+18 | 
+19 |     // Array - different numerics
+20 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+   |                                  ^^^^ Mismatched types.
+expected: u8
+found:    u64.
+
+21 | 
+22 |     // Wrong cast
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:23:25
+   |
+21 | 
+22 |     // Wrong cast
+23 |     let a = [8, 256u16, 8u8];
+   |                         ^^^ Mismatched types.
+expected: u16
+found:    u8.
+
+24 |     let b: u32 = a[2];
+25 | }
+   |
+____
+
+  Aborting due to 9 errors.

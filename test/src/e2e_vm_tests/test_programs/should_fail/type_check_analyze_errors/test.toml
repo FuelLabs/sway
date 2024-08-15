@@ -1,15 +1,2 @@
 category = "fail"
-
-# check: $()let _a = 0x100;
-# nextln: $()Literal would overflow because its value does not fit into "u8"
-
-# check: $()let _a = 0x10000;
-# nextln: $()Literal would overflow because its value does not fit into "u16"
-
-# check: $()let _a = 0x100000000;
-# nextln: $()Literal would overflow because its value does not fit into "u32"
-
-# check: $()let a = [1, 2, "hello"];
-# nextln: $()Mismatched types
-# nextln: $()expected: numeric
-# nextln: $()found:    str
+snapshot = true

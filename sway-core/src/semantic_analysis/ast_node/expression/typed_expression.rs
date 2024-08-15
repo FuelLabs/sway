@@ -38,6 +38,7 @@ use crate::{
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use either::Either;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use std::collections::{HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
@@ -1858,7 +1859,29 @@ impl ty::TyExpression {
             })
             .collect();
 
-        let elem_type = typed_contents[0].return_type;
+        // choose the best type to be the array elem type
+        use itertools::FoldWhile::{Continue, Done};
+        let elem_type = typed_contents
+            .iter()
+            .fold_while(None, |last, current| match last {
+                None => Continue(Some(current.return_type)),
+                Some(last) => {
+                    if last.is_concrete(engines, NumericIsNonConcrete::Yes) {
+                        return Done(Some(last));
+                    }
+
+                    let last_info = ctx.engines().te().get(last);
+                    let current_info = ctx.engines().te().get(current.return_type);
+                    match (&*last_info, &*current_info) {
+                        (TypeInfo::Numeric, TypeInfo::UnsignedInteger(_)) => {
+                            Done(Some(current.return_type))
+                        }
+                        _ => Continue(Some(last)),
+                    }
+                }
+            })
+            .into_inner();
+        let elem_type = elem_type.unwrap_or_else(|| typed_contents[0].return_type);
 
         let array_count = typed_contents.len();
         Ok(ty::TyExpression {
