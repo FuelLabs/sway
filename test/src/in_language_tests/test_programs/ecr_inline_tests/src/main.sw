@@ -2,6 +2,7 @@ library;
 
 use std::{
     b512::B512,
+    bytes::Bytes,
     ecr::{
         ec_recover,
         ec_recover_address,
@@ -106,28 +107,103 @@ fn ecr_ec_recover_address_r1() {
     assert(result_2.is_err());
 }
 
+// Calculated with ed25519-dalek in a rust program
+
+// use ed25519_dalek::ed25519::signature::Signer;
+// use ed25519_dalek::SECRET_KEY_LENGTH;
+// use ed25519_dalek::SigningKey;
+
+// fn main() {
+//     let bytes = hex::decode("638aa7abd1acd372c1ab3bc4951d9df3b33eabb2c019bf60a8c1ff2e424adeb67127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21").unwrap();
+//     let bytes: [u8; 64] = bytes.try_into().unwrap();
+//     let signing_key: SigningKey = SigningKey::from_keypair_bytes(&bytes).unwrap();
+
+//     let keypair_bytes = signing_key.to_keypair_bytes();
+//     let secret_key = &keypair_bytes[..SECRET_KEY_LENGTH];
+//     let public_key = &keypair_bytes[SECRET_KEY_LENGTH..];
+
+//     println!("Secret Key: {}", hex::encode(secret_key));
+//     println!("Public Key: {}", hex::encode(public_key));
+
+
+//     for x in [1, 16, 32, 64] {
+//         let mut bytes = Vec::new();
+
+//         for i in 0..x {
+//             bytes.push(i as u8);
+//         }
+
+//         let bytes: &[u8] = &bytes;
+
+//         let signature = signing_key.sign(bytes);
+//         let signature = signature.to_bytes();
+//         let lo: [u8; 32] = signature[0..32].try_into().unwrap();
+//         let hi: [u8; 32] = signature[32..64].try_into().unwrap();
+
+//         println!("x = {}, ({}, {})", x, hex::encode(lo), hex::encode(hi));
+//     }
+// }
+
+// Secret Key: 638aa7abd1acd372c1ab3bc4951d9df3b33eabb2c019bf60a8c1ff2e424adeb6
+// Public Key: 7127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21
+// x = 1, (f5a5aafe874a12bf3460b0a31428306a3c0bf148b23c0726add73f149fb4238f, 11fd17bd7e9e64878f1cf680c316df925ff29784798cca9c8b70209f58fc6004)
+// x = 16, (5573fe0bf140c8f1ca1b6b41fd4dc0bfcf92aefc67ab7dfd8aac1c264a66e67f, b47ed5cd8285cc2e8bf4a24a5e923a543278c43630f6e3d3da5a884de4982406)
+// x = 32, (00d8a17c74a926854155f0092fe8c2db55220cff891a38f0ee00e549fec8ba07, f2dda3573b2f03d19eefebf93aa93d4ebca81e2c42de5b0f52d8c957f6390a0b)
+// x = 64, (9a9e7077c905c855c86fb6aea6052f50a2cf29f70205f465d809cb0b81c6503f, fea5d320a5f9d4164b7eca627d3e81293083e7f6682b3b1ebc257459fcf89b08)
 #[test]
 fn ecr_ed_verify() {
-    let pub_key_1 = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
-    let msg_1 = b256::zero();
-    let msg_hash_1 = sha256(msg_1);
+    let pub_key = 0x7127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21;
 
-    let hi_1 = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
-    let lo_1 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    let signature_1: B512 = B512::from((hi_1, lo_1));
-    // A verified public key with signature 
-    let verified_1 = ed_verify(pub_key_1, signature_1, msg_hash_1);
-    assert(verified_1.is_ok());
-    assert(verified_1.unwrap());
+    let lens = [1, 16, 32, 64];
+    let sigs = [
+        (
+            0xf5a5aafe874a12bf3460b0a31428306a3c0bf148b23c0726add73f149fb4238f,
+            0x11fd17bd7e9e64878f1cf680c316df925ff29784798cca9c8b70209f58fc6004,
+        ),
+        (
+            0x5573fe0bf140c8f1ca1b6b41fd4dc0bfcf92aefc67ab7dfd8aac1c264a66e67f,
+            0xb47ed5cd8285cc2e8bf4a24a5e923a543278c43630f6e3d3da5a884de4982406,
+        ),
+        (
+            0x00d8a17c74a926854155f0092fe8c2db55220cff891a38f0ee00e549fec8ba07,
+            0xf2dda3573b2f03d19eefebf93aa93d4ebca81e2c42de5b0f52d8c957f6390a0b,
+        ),
+        (
+            0x9a9e7077c905c855c86fb6aea6052f50a2cf29f70205f465d809cb0b81c6503f,
+            0xfea5d320a5f9d4164b7eca627d3e81293083e7f6682b3b1ebc257459fcf89b08,
+        ),
+    ];
 
-    let pub_key_2 = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
-    let msg_2 = b256::zero();
-    let msg_hash_2 = sha256(msg_2);
+    let mut i = 0;
+    while i < 4 {
+        let len = lens[i];
+        let sig = B512::from((sigs[i].0, sigs[i].1));
 
-    let hi_2 = b256::zero();
-    let lo_2 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    let signature_2: B512 = B512::from((hi_2, lo_2));
-    let verified_2 = ed_verify(pub_key_2, signature_2, msg_hash_2);
+        let mut msg = Bytes::new();
+        let mut j = 0_u8;
+        while j < len {
+            msg.push(j);
+            j += 1;
+        }
 
-    assert(verified_2.is_err());
+        let verified = ed_verify(pub_key, sig, msg);
+        assert(verified.is_ok());
+        assert(verified.unwrap());
+
+        i += 1;
+    }
+}
+
+#[test]
+fn ecr_ed_verify_fail() {
+    let pub_key = 0x7127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21;
+    let msg = Bytes::new();
+    let sig = B512::from((
+        0x19d821bfe7da223e53428b72a59e316c6981fcbba63dff89a11f01ce3d33af44,
+        0xb49089aa12883bfffda92f3aadfd9153f654fb235baef6ab7958c6029fa35f0a,
+    ));
+
+    let verified = ed_verify(pub_key, sig, msg);
+    // Should return error for msg len 0
+    assert(verified.is_err());
 }

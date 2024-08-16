@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-4E3E49D8CAB8B648"
+
+[[package]]
+name = "std"
+source = "path+from-root-4E3E49D8CAB8B648"
+dependencies = ["core"]
+
+[[package]]
+name = "type_check_analyze_errors"
+source = "member"
+dependencies = ["std"]
