@@ -9,7 +9,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructDecl, TyDecl, TyTraitItem},
-        CallPath, Visibility,
+        CallPath, CallPathType, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
     TypeId, TypeInfo,
@@ -867,7 +867,7 @@ impl Root {
 //	    .chain(&call_path.prefixes)
 //	    .cloned()
 	//	    .collect();
-	assert!(call_path.is_absolute);
+	assert!(matches!(call_path.callpath_type, CallPathType::Resolved));
         self.resolve_symbol_and_mod_path(
             handler,
             engines,

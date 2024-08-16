@@ -9,7 +9,7 @@ use crate::{
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{parsed::StructDeclaration, CallPath, Visibility},
+    language::{parsed::StructDeclaration, CallPath, CallPathType, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
@@ -155,8 +155,8 @@ pub struct StructAccessInfo {
 impl StructAccessInfo {
     pub fn get_info(engines: &Engines, struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
         assert!(
-            struct_decl.call_path.is_absolute,
-            "The call path of the struct declaration must always be absolute."
+            matches!(struct_decl.call_path.callpath_type, CallPathType::Resolved),
+            "The call path of the struct declaration must always be fully resolved."
         );
 
         let struct_can_be_changed =

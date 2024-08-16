@@ -88,7 +88,7 @@ impl std::convert::From<Ident> for QualifiedCallPath {
             call_path: CallPath {
                 prefixes: vec![],
                 suffix: other,
-                is_absolute: false,
+		callpath_type: CallPathType::Ambiguous,
             },
             qualified_path_root: None,
         }
@@ -177,15 +177,25 @@ impl DebugWithEngines for QualifiedCallPath {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub enum CallPathType {
+    // An unresolved path on the form `::X::Y`. The path must be resolved relative to the package
+    // root module.
+    RelativeToPackageRoot,
+    // An unresolved path on the form `X::Y`. The path must either be resolved relative to the
+    // current module or as an absolute path.
+    Ambiguous,
+    // A fully resolved, absolute path 
+    Resolved,
+}
+
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,
-    // If `is_absolute` is true, then this call path is an absolute path from
-    // the project root namespace. If not, then it is relative to the current namespace.
-    pub is_absolute: bool,
+    pub callpath_type: CallPathType,
 }
 
 impl EqWithEngines for CallPath {}
@@ -193,7 +203,7 @@ impl PartialEqWithEngines for CallPath {
     fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
         self.prefixes == other.prefixes
             && self.suffix == other.suffix
-            && self.is_absolute == other.is_absolute
+            && self.callpath_type  == other.callpath_type
     }
 }
 
@@ -202,7 +212,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.prefixes == other.prefixes
             && self.suffix.eq(&other.suffix, ctx)
-            && self.is_absolute == other.is_absolute
+            && self.callpath_type  == other.callpath_type
     }
 }
 
@@ -211,7 +221,7 @@ impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
         self.prefixes
             .cmp(&other.prefixes)
             .then_with(|| self.suffix.cmp(&other.suffix, ctx))
-            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
+            .then_with(|| self.callpath_type.cmp(&other.callpath_type))
     }
 }
 
@@ -226,7 +236,7 @@ impl std::convert::From<Ident> for CallPath {
         CallPath {
             prefixes: vec![],
             suffix: other,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         }
     }
 }
@@ -286,7 +296,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
 }
 
 impl CallPath {
-    pub fn absolute(path: &[&str]) -> Self {
+    pub fn fullpath(path: &[&str]) -> Self {
         assert!(!path.is_empty());
 
         CallPath {
@@ -296,7 +306,7 @@ impl CallPath {
                 .map(|&x| Ident::new_no_span(x.into()))
                 .collect(),
             suffix: path.last().map(|&x| Ident::new_no_span(x.into())).unwrap(),
-            is_absolute: true,
+            callpath_type: CallPathType::Resolved,
         }
     }
 
@@ -309,7 +319,7 @@ impl CallPath {
             CallPath {
                 prefixes: self.prefixes[0..self.prefixes.len() - 1].to_vec(),
                 suffix: self.prefixes.last().unwrap().clone(),
-                is_absolute: self.is_absolute,
+                callpath_type: self.callpath_type,
             }
         }
     }
@@ -319,10 +329,15 @@ impl CallPath {
         if self.prefixes.is_empty() {
             self.clone()
         } else {
+	    let new_callpath_type = match self.callpath_type {
+		CallPathType::RelativeToPackageRoot
+                | CallPathType::Ambiguous => CallPathType::Ambiguous,
+		CallPathType::Resolved => CallPathType::RelativeToPackageRoot,
+	    };
             CallPath {
                 prefixes: self.prefixes[1..self.prefixes.len()].to_vec(),
                 suffix: self.suffix.clone(),
-                is_absolute: self.is_absolute,
+                callpath_type: new_callpath_type,
             }
         }
     }
@@ -345,7 +360,7 @@ impl CallPath {
         for mod_path in namespace.current_mod_path() {
             res.prefixes.push(mod_path.clone())
         }
-        res.is_absolute = true;
+        res.callpath_type = CallPathType::Resolved;
         res
     }
 
@@ -357,95 +372,106 @@ impl CallPath {
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
     pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
-        if self.is_absolute {
-            return self.clone();
-        }
+	match self.callpath_type {
+	    CallPathType::Resolved => self.clone(),
+	    CallPathType::RelativeToPackageRoot => {
+		let mut prefixes = vec!();
+		for ident in self.prefixes.iter() {
+		    prefixes.push(ident.clone());
+		}
+		Self {
+		    prefixes,
+		    suffix: self.suffix.clone(),
+		    callpath_type: CallPathType::Resolved,
+		}
+	    },
+	    CallPathType::Ambiguous => {
+		if self.prefixes.is_empty() {
+		    // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
+		    // combination of the package name in which the symbol is defined and the path to the
+		    // current submodule.
+		    let mut synonym_prefixes = vec![];
+		    let mut is_external = false;
+		    let mut is_absolute = false;
 
-        if self.prefixes.is_empty() {
-	    // Unqualified path.
-	    //
-            // Discover the path to the symbol as a combination of the package name in which the
-            // symbol is defined and the path to the current submodule.
-            let mut synonym_prefixes = vec![];
-            let mut is_external = false;
-            let mut is_absolute = false;
+		    if let Some(mod_path) = namespace.current_module().read(engines, |m| {
+			if m.current_items().symbols().contains_key(&self.suffix) {
+			    None
+			} else if let Some((_, path, _, _)) = m
+			    .current_items()
+			    .use_item_synonyms
+			    .get(&self.suffix)
+			    .cloned()
+			{
+			    Some(path)
+			} else if let Some(paths_and_decls) = m
+			    .current_items()
+			    .use_glob_synonyms
+			    .get(&self.suffix)
+			    .cloned()
+			{
+			    if paths_and_decls.len() == 1 {
+				Some(paths_and_decls[0].0.clone())
+			    } else {
+				None
+			    }
+			} else {
+			    None
+			}
+		    }) {
+			synonym_prefixes.clone_from(&mod_path);
+			is_absolute = true;
+			is_external = namespace.module_is_external(&mod_path);
+		    }
 
-            if let Some(mod_path) = namespace.current_module().read(engines, |m| {
-                if m.current_items().symbols().contains_key(&self.suffix) {
-                    None
-                } else if let Some((_, path, _, _)) = m
-                    .current_items()
-                    .use_item_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    Some(path)
-                } else if let Some(paths_and_decls) = m
-                    .current_items()
-                    .use_glob_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    if paths_and_decls.len() == 1 {
-                        Some(paths_and_decls[0].0.clone())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }) {
-                synonym_prefixes.clone_from(&mod_path);
-                is_absolute = true;
-                is_external = namespace.module_is_external(&mod_path);
-            }
+		    let mut prefixes: Vec<Ident> = vec![];
+		    
+		    if !is_external {
+			prefixes.push(namespace.current_package_name().clone());
+			
+			if !is_absolute {
+			    for mod_path in namespace.current_mod_path() {
+				prefixes.push(mod_path.clone());
+			    }
+			}
+		    }
+		    
+		    prefixes.extend(synonym_prefixes);
+		    
+		    CallPath {
+			prefixes,
+			suffix: self.suffix.clone(),
+			callpath_type: CallPathType::Resolved,
+		    }
+		} else if namespace.current_module_has_submodule(&self.prefixes[0])
+		{
+		    // Qualified path relative to the current module
+		    //
+		    // Complete the path by prepending the package name and the path to the current module.
+//		    let mut prefixes: Vec<Ident> = vec![];
+//		    prefixes.push(namespace.current_package_name().clone());
+//		    
+//		    for mod_path in namespace.current_mod_path() {
+//			prefixes.push(mod_path.clone());
+//		    }
+//		    
+//		    prefixes.extend(self.prefixes.clone());
 
-            let mut prefixes: Vec<Ident> = vec![];
-
-            if !is_external {
-                prefixes.push(namespace.current_package_name().clone());
-
-                if !is_absolute {
-                    for mod_path in namespace.current_mod_path() {
-                        prefixes.push(mod_path.clone());
-                    }
-                }
-            }
-
-            prefixes.extend(synonym_prefixes);
-
-            CallPath {
-                prefixes,
-                suffix: self.suffix.clone(),
-                is_absolute: true,
-            }
-        } else if namespace.current_module_has_submodule(&self.prefixes[0])
-        {
-	    // Qualified path relative to the current module
-	    //
-            // Complete the path by prepending the package name and the path to the current module.
-            let mut prefixes: Vec<Ident> = vec![];
-            prefixes.push(namespace.current_package_name().clone());
-	    
-            for mod_path in namespace.current_mod_path() {
-                prefixes.push(mod_path.clone());
-            }
-	    
-            prefixes.extend(self.prefixes.clone());
-	    
-            CallPath {
-                prefixes,
-                suffix: self.suffix.clone(),
-                is_absolute: true,
-            }
-        } else {
-	    // Fully qualified path 
-            CallPath {
-                prefixes: self.prefixes.clone(),
-                suffix: self.suffix.clone(),
-                is_absolute: true,
-            }
-        }
+		    CallPath {
+			prefixes: namespace.prepend_module_path(&self.prefixes),
+			suffix: self.suffix.clone(),
+			callpath_type: CallPathType::Resolved,
+		    }
+		} else {
+		    // Fully qualified path 
+		    CallPath {
+			prefixes: self.prefixes.clone(),
+			suffix: self.suffix.clone(),
+			callpath_type: CallPathType::Resolved,
+		    }
+		}
+	    },
+	}
     }
 
     /// Convert a given [CallPath] into a call path suitable for a `use` statement.

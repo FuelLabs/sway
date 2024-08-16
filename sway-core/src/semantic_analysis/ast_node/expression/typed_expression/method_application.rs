@@ -370,19 +370,19 @@ pub(crate) fn type_check_method_application(
             CallPath {
                 prefixes,
                 suffix: method_name,
-                is_absolute: call_path_binding.inner.is_absolute,
+                callpath_type: call_path_binding.inner.callpath_type,
             }
         }
         MethodName::FromModule { method_name } => CallPath {
             prefixes: vec![],
             suffix: method_name,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         MethodName::FromTrait { call_path } => call_path,
         MethodName::FromQualifiedPathRoot { method_name, .. } => CallPath {
             prefixes: vec![],
             suffix: method_name,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
     };
 
@@ -486,7 +486,7 @@ pub(crate) fn type_check_method_application(
                             inner: CallPath {
                                 prefixes: vec![],
                                 suffix: Ident::new_no_span("contract_call".into()),
-                                is_absolute: false,
+				callpath_type: CallPathType::Ambiguous,
                             },
                             type_arguments: TypeArgs::Regular(vec![
                                 TypeArgument {
@@ -821,11 +821,24 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
-            let module_path = if !call_path.is_absolute {
-		ctx.namespace().prepend_module_path(&call_path.prefixes)
-            } else {
-                call_path.prefixes.clone()
-            };
+            let module_path =
+		match call_path.callpath_type {
+		    CallPathType::RelativeToPackageRoot => {
+			let mut path = vec!(ctx.namespace().current_package_name().clone());
+			for ident in call_path.prefixes.iter() {
+			    path.push(ident.clone())
+			}
+			path
+		    },
+		    CallPathType::Resolved => call_path.prefixes.clone(),
+		    CallPathType::Ambiguous => {
+			if ctx.namespace().current_module().submodules().contains_key(call_path.prefixes.first().unwrap().as_str()) {
+			    ctx.namespace().prepend_module_path(&call_path.prefixes)
+			} else {
+			    call_path.prefixes.clone()
+			}
+		    }
+		};
 
             // find the type of the first argument
             let type_id = arguments_types
