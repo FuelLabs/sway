@@ -85,8 +85,8 @@ pub fn tx_type() -> Transaction {
 }
 
 const TIP_POLICY: u32 = 1u32 << 0;
-const MATURITY_POLICY: u32 = 1u32 << 1;
-const WITNESS_LIMIT_POLICY: u32 = 1u32 << 2;
+const WITNESS_LIMIT_POLICY: u32 = 1u32 << 1;
+const MATURITY_POLICY: u32 = 1u32 << 2;
 const MAX_FEE_POLICY: u32 = 1u32 << 3;
 
 /// Returns policies bits. It can be used to identify which policies are set.
@@ -151,14 +151,14 @@ pub fn script_gas_limit() -> u64 {
 /// use std::tx::tx_maturity;
 ///
 /// fn foo() {
-///     let maturity = tx_maturity();
+///     let maturity = tx_maturity().unwrap();
 ///     log(maturity);
 /// }
 /// ```
-pub fn tx_maturity() -> Option<u64> {
+pub fn tx_maturity() -> Option<u32> {
     let bits = policies();
     if bits & MATURITY_POLICY > 0 {
-        Some(__gtf::<u64>(0, GTF_POLICY_MATURITY))
+        Some(__gtf::<u32>(0, GTF_POLICY_MATURITY))
     } else {
         None
     }
@@ -218,11 +218,7 @@ pub fn tx_max_fee() -> Option<u64> {
 ///
 /// # Returns
 ///
-/// * [u64] - The script length for the transaction.
-///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
+/// * [Option<u64>] - The script length for the transaction.
 ///
 /// # Examples
 ///
@@ -230,14 +226,14 @@ pub fn tx_max_fee() -> Option<u64> {
 /// use std::tx::tx_script_length;
 ///
 /// fn foo() {
-///     let script_length = tx_script_length();
+///     let script_length = tx_script_length().unwrap();
 ///     assert(script_length > 0);
 /// }
 /// ```
-pub fn tx_script_length() -> u64 {
+pub fn tx_script_length() -> Option<u64> {
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH),
-        Transaction::Create => revert(0),
+        Transaction::Script => Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH)),
+        Transaction::Create => None,
     }
 }
 
@@ -247,24 +243,20 @@ pub fn tx_script_length() -> u64 {
 ///
 /// * [u64] - The script data length for the transaction.
 ///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
-///
 /// # Examples
 ///
 /// ```sway
 /// use std::tx::tx_script_data_length;
 ///
 /// fn foo() {
-///     let script_data_length = tx_script_data_length();
+///     let script_data_length = tx_script_data_length().unwrap();
 ///     assert(script_data_length > 0);
 /// }
 /// ```
-pub fn tx_script_data_length() -> u64 {
+pub fn tx_script_data_length() -> Option<u64> {
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH),
-        Transaction::Create => revert(0),
+        Transaction::Script => Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH)),
+        Transaction::Create => None,
     }
 }
 
@@ -299,7 +291,7 @@ pub fn tx_witnesses_count() -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The pointer to the witness at index `index`.
+/// * [Option<raw_ptr>] - The pointer to the witness at index `index`.
 ///
 /// # Examples
 ///
@@ -307,14 +299,18 @@ pub fn tx_witnesses_count() -> u64 {
 /// use std::tx::tx_witness_pointer;
 ///
 /// fn foo() {
-///     let witness_pointer = tx_witness_pointer(0);
-///     log(witness_pointer);
+///     let witness_pointer = tx_witness_pointer(0).unwrap();
 /// }
 /// ```
-pub fn tx_witness_pointer(index: u64) -> u64 {
+#[allow(dead_code)]
+fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
+    if index >= tx_witnesses_count() {
+        return None
+    }
+
     match tx_type() {
-        Transaction::Script => __gtf::<u64>(index, GTF_SCRIPT_WITNESS_AT_INDEX),
-        Transaction::Create => __gtf::<u64>(index, GTF_CREATE_WITNESS_AT_INDEX),
+        Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
+        Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
     }
 }
 
@@ -326,7 +322,7 @@ pub fn tx_witness_pointer(index: u64) -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The length of the witness data at `index`.
+/// * [Option<64>] - The length of the witness data at `index`.
 ///
 /// # Examples
 ///
@@ -334,12 +330,16 @@ pub fn tx_witness_pointer(index: u64) -> u64 {
 /// use std::tx::tx_witness_data_length;
 ///
 /// fn foo() {
-///     let witness_data_length = tx_witness_data_length(0);
+///     let witness_data_length = tx_witness_data_length(0).unwrap();
 ///     log(witness_data_length);
 /// }
 /// ```
-pub fn tx_witness_data_length(index: u64) -> u64 {
-    __gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH)
+pub fn tx_witness_data_length(index: u64) -> Option<u64> {
+    if index >= tx_witnesses_count() {
+        return None
+    }
+
+    Some(__gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH))
 }
 
 /// Get the witness data at `index`.
@@ -350,7 +350,7 @@ pub fn tx_witness_data_length(index: u64) -> u64 {
 ///
 /// # Returns
 ///
-/// * [T] - The witness data at `index`.
+/// * [Option<T>] - The witness data at `index`.
 ///
 /// # Examples
 ///
@@ -358,15 +358,19 @@ pub fn tx_witness_data_length(index: u64) -> u64 {
 /// use std::tx::tx_witness_data;
 ///
 /// fn foo() {
-///     let witness_data: u64 = tx_witness_data(0);
+///     let witness_data: u64 = tx_witness_data(0).unwrap();
 ///     log(witness_data);
 /// }
 /// ```
-pub fn tx_witness_data<T>(index: u64) -> T {
+pub fn tx_witness_data<T>(index: u64) -> Option<T> {
+    if index >= tx_witnesses_count() {
+        return None
+    }
+
     if __size_of::<T>() == 1 {
-        __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).add::<u8>(7).read::<T>()
+        Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).add::<u8>(7).read::<T>())
     } else {
-        __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>()
+        Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>())
     }
 }
 
@@ -374,11 +378,7 @@ pub fn tx_witness_data<T>(index: u64) -> T {
 ///
 /// # Returns
 ///
-/// * [raw_ptr] - The transaction script start pointer.
-///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
+/// * [Option<raw_ptr>] - The transaction script start pointer.
 ///
 /// # Examples
 ///
@@ -386,14 +386,14 @@ pub fn tx_witness_data<T>(index: u64) -> T {
 /// use std::tx::tx_script_start_pointer;
 ///
 /// fn foo() {
-///     let script_start_pointer = tx_script_start_pointer();
+///     let script_start_pointer = tx_script_start_pointer().unwrap();
 ///     log(script_start_pointer);
 /// }
 /// ```
-pub fn tx_script_start_pointer() -> raw_ptr {
+fn tx_script_start_pointer() -> Option<raw_ptr> {
     match tx_type() {
-        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT),
-        _ => revert(0),
+        Transaction::Script => Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT)),
+        _ => None,
     }
 }
 
@@ -401,11 +401,7 @@ pub fn tx_script_start_pointer() -> raw_ptr {
 ///
 /// # Returns
 ///
-/// * [raw_ptr] - The transaction script data start pointer.
-///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
+/// * [Option<raw_ptr>] - The transaction script data start pointer.
 ///
 /// # Examples
 ///
@@ -413,17 +409,14 @@ pub fn tx_script_start_pointer() -> raw_ptr {
 /// use std::tx::tx_script_data_start_pointer;
 ///
 /// fn foo() {
-///     let script_data_start_pointer = tx_script_data_start_pointer();
+///     let script_data_start_pointer = tx_script_data_start_pointer().unwrap();
 ///     log(script_data_start_pointer);
 /// }
 /// ```
-pub fn tx_script_data_start_pointer() -> raw_ptr {
+fn tx_script_data_start_pointer() -> Option<raw_ptr> {
     match tx_type() {
-        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT_DATA),
-        _ => {
-            // transaction-create has no script data length
-            revert(0);
-        }
+        Transaction::Script => Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT_DATA)),
+        _ => None,
     }
 }
 
@@ -436,11 +429,7 @@ pub fn tx_script_data_start_pointer() -> raw_ptr {
 ///
 /// # Returns
 ///
-/// * [T] - The script data, typed.
-///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
+/// * [Option<T>] - The script data, typed.
 ///
 /// # Examples
 ///
@@ -452,10 +441,14 @@ pub fn tx_script_data_start_pointer() -> raw_ptr {
 ///     log(script_data);
 /// }
 /// ```
-pub fn tx_script_data<T>() -> T {
+pub fn tx_script_data<T>() -> Option<T> {
     let ptr = tx_script_data_start_pointer();
+    if ptr.is_none() {
+        return None
+    }
+
     // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    ptr.read::<T>()
+    Some(ptr.unwrap().read::<T>())
 }
 
 /// Get the script bytecode.
@@ -467,11 +460,7 @@ pub fn tx_script_data<T>() -> T {
 ///
 /// # Returns
 ///
-/// * [T] - The script bytecode.
-///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
+/// * [Option<T>] - The script bytecode.
 ///
 /// # Examples
 ///
@@ -479,12 +468,15 @@ pub fn tx_script_data<T>() -> T {
 /// use std::tx::tx_script_bytecode;
 ///
 /// fn foo() {
-///     let script_bytecode: [u64; 64] = tx_script_bytecode();
+///     let script_bytecode: [u64; 64] = tx_script_bytecode().unwrap();
 ///     log(script_bytecode);
 /// }
 /// ```
-pub fn tx_script_bytecode<T>() -> T {
-    tx_script_start_pointer().read::<T>()
+pub fn tx_script_bytecode<T>() -> Option<T> {
+    match tx_type() {
+        Transaction::Script => Some(tx_script_start_pointer().unwrap().read::<T>()),
+        _ => None,
+    }
 }
 
 /// Get the hash of the script bytecode.
@@ -492,11 +484,7 @@ pub fn tx_script_bytecode<T>() -> T {
 ///
 /// # Returns
 ///
-/// * [b256] - The hash of the script bytecode.
-///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
+/// * [Option<b256>] - The hash of the script bytecode.
 ///
 /// # Examples
 ///
@@ -504,25 +492,27 @@ pub fn tx_script_bytecode<T>() -> T {
 /// use std::tx::tx_script_bytecode_hash;
 ///
 /// fn foo() {
-///     let script_bytecode_hash: b256 = tx_script_bytecode_hash();
+///     let script_bytecode_hash: b256 = tx_script_bytecode_hash().unwrap();
 ///     assert(script_bytecode_hash == 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef);
 /// }
 /// ```
-pub fn tx_script_bytecode_hash() -> b256 {
+pub fn tx_script_bytecode_hash() -> Option<b256> {
     match tx_type() {
         Transaction::Script => {
             // Get the script memory details
             let mut result_buffer = b256::zero();
-            let script_length = tx_script_length();
-            let script_ptr = tx_script_start_pointer();
+            let script_length = tx_script_length().unwrap();
+            let script_ptr = tx_script_start_pointer().unwrap();
 
             // Run the hash opcode for the script in memory
-            asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
-                s256 hash ptr len;
-                hash: b256
-            }
+            Some(
+                asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
+                    s256 hash ptr len;
+                    hash: b256
+                },
+            )
         },
-        _ => revert(0),
+        _ => None,
     }
 }
 

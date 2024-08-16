@@ -1,5 +1,5 @@
 use fuel_vm::fuel_crypto::Hasher;
-use fuel_vm::fuel_tx::{Bytes32, ConsensusParameters, ContractId, Input as TxInput};
+use fuel_vm::fuel_tx::{ContractId, Input as TxInput};
 use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
@@ -190,7 +190,6 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
 
 mod tx {
     use super::*;
-    use fuel_vm::fuel_tx::field::Script;
     use fuels::types::{coin_type::CoinType, transaction::Transaction};
 
     #[tokio::test]
@@ -220,7 +219,16 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(result.value, tip);
+        assert_eq!(result.value, Some(tip));
+
+        let no_tip = contract_instance
+            .methods()
+            .get_tx_tip()
+            .call()
+            .await
+            .unwrap();
+
+        assert_eq!(no_tip.value, None);
     }
 
     #[tokio::test]
@@ -251,7 +259,16 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, maturity);
+        assert_eq!(result.value, Some(maturity as u32));
+
+        // Assert none is returned with no maturity
+        let no_maturity = contract_instance
+            .methods()
+            .get_tx_maturity()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(no_maturity.value, None);
     }
 
     #[tokio::test]
@@ -266,7 +283,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, script_length);
+        assert_eq!(result.value, Some(script_length));
     }
 
     #[tokio::test]
@@ -281,7 +298,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, script_data_length);
+        assert_eq!(result.value, Some(script_data_length));
     }
 
     #[tokio::test]
@@ -358,20 +375,6 @@ mod tx {
     }
 
     #[tokio::test]
-    async fn can_get_witness_pointer() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
-
-        let response = contract_instance
-            .methods()
-            .get_tx_witness_pointer(0)
-            .call()
-            .await
-            .unwrap();
-
-        assert_eq!(response.value, 11024);
-    }
-
-    #[tokio::test]
     async fn can_get_witness_data_length() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
 
@@ -382,7 +385,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(result.value, 64);
+        assert_eq!(result.value, Some(64));
     }
 
     #[tokio::test]
@@ -402,23 +405,7 @@ mod tx {
             .take_receipts_checked(None)
             .unwrap();
 
-        assert_eq!(receipts[1].data().unwrap(), witnesses[0].as_vec());
-    }
-
-    #[tokio::test]
-    async fn can_get_script_start_offset() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
-
-        let script_start_offset = ConsensusParameters::default().tx_params().tx_offset()
-            + fuel_vm::fuel_tx::Script::script_offset_static();
-
-        let result = contract_instance
-            .methods()
-            .get_tx_script_start_pointer()
-            .call()
-            .await
-            .unwrap();
-        assert_eq!(result.value, script_start_offset as u64);
+        assert_eq!(receipts[1].data().unwrap()[8..72], *witnesses[0].as_vec());
     }
 
     #[tokio::test]
@@ -445,7 +432,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(Bytes32::from(result.value.0), hash);
+        assert_eq!(result.value.unwrap(), Bits256(*hash));
     }
 
     #[tokio::test]
@@ -468,45 +455,10 @@ mod tx {
 
         assert_eq!(receipts[1].data().unwrap(), byte_array);
     }
-
-    #[tokio::test]
-    async fn can_get_get_tx_script_data_start_pointer() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
-        let result = contract_instance
-            .methods()
-            .get_tx_script_data_start_pointer()
-            .call()
-            .await
-            .unwrap();
-        assert_eq!(result.value, 10392)
-    }
 }
 
 mod inputs {
     use super::*;
-
-    mod revert {
-        use super::*;
-
-        mod contract {
-            use super::*;
-
-            #[tokio::test]
-            #[should_panic(expected = "Revert(0)")]
-            async fn fails_to_get_predicate_data_pointer_from_input_contract() {
-                let (contract_instance, _, _, _) = get_contracts(true).await;
-                let call_params = CallParameters::default();
-                contract_instance
-                    .methods()
-                    .get_tx_input_predicate_data_pointer(0)
-                    .call_params(call_params)
-                    .unwrap()
-                    .call()
-                    .await
-                    .unwrap();
-            }
-        }
-    }
 
     mod success {
         use super::*;
@@ -521,7 +473,7 @@ mod inputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Input::Contract);
+            assert_eq!(result.value, Some(Input::Contract));
 
             let result = contract_instance
                 .methods()
@@ -529,7 +481,16 @@ mod inputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Input::Coin);
+            assert_eq!(result.value, Some(Input::Coin));
+
+            // Assert invalid index returns None
+            let result = contract_instance
+                .methods()
+                .get_input_type(2)
+                .call()
+                .await
+                .unwrap();
+            assert_eq!(result.value, None);
         }
 
         #[tokio::test]
@@ -543,7 +504,17 @@ mod inputs {
                 .await
                 .unwrap();
 
-            assert_eq!(result.value, default_amount);
+            assert_eq!(result.value, Some(default_amount));
+
+            // Assert invalid index returns None
+            let result = contract_instance
+                .methods()
+                .get_input_amount(2)
+                .call()
+                .await
+                .unwrap();
+
+            assert_eq!(result.value, None);
         }
 
         #[tokio::test]
@@ -557,7 +528,17 @@ mod inputs {
                 .await
                 .unwrap();
 
-            assert_eq!(owner_result.value, deployment_wallet.address().into());
+            assert_eq!(owner_result.value, Some(deployment_wallet.address().into()));
+
+            // Assert invalid index returns None
+            let result = contract_instance
+                .methods()
+                .get_input_coin_owner(2)
+                .call()
+                .await
+                .unwrap();
+
+            assert_eq!(result.value, None);
         }
 
         #[tokio::test]
@@ -589,6 +570,16 @@ mod inputs {
                 .take_receipts_checked(None)
                 .unwrap();
             assert_eq!(receipts[1].data(), Some(&[1u8][..]));
+
+            // Assert invalid index returns None
+            let result = contract_instance
+                .methods()
+                .get_input_predicate(3, predicate_bytes.clone())
+                .call()
+                .await
+                .unwrap();
+
+            assert_eq!(result.value, false);
         }
 
         mod message {
@@ -627,7 +618,17 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data().unwrap(), *message.sender.hash());
+                assert_eq!(receipts[1].data().unwrap()[8..40], *message.sender.hash());
+
+                // Assert none returned when transaction type is not a message
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_message_sender(0)
+                    .call()
+                    .await
+                    .unwrap();
+
+                assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
@@ -663,7 +664,17 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data().unwrap(), recipient.as_slice());
+                assert_eq!(receipts[1].data().unwrap()[8..40], *recipient.as_slice());
+
+                // Assert none returned when transaction type is not a message
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_message_recipient(0)
+                    .call()
+                    .await
+                    .unwrap();
+
+                assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
@@ -700,7 +711,17 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data().unwrap(), nonce.as_slice());
+                assert_eq!(receipts[1].data().unwrap()[8..40], *nonce.as_slice());
+
+                // Assert none returned when transaction type is not a message
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_message_nonce(0)
+                    .call()
+                    .await
+                    .unwrap();
+            
+                assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
@@ -713,7 +734,17 @@ mod inputs {
                     .await
                     .unwrap();
 
-                assert_eq!(result.value, 0);
+                assert_eq!(result.value, Some(0));
+
+                // Assert none returned when not a valid index
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_witness_index(3)
+                    .call()
+                    .await
+                    .unwrap();
+            
+                assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
@@ -748,7 +779,17 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data(), Some(&[0, 0, 0, 0, 0, 0, 0, 3][..]));
+                assert_eq!(receipts[1].data(), Some(&[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3][..]));
+
+                // Assert none returned when transaction type is not a message
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_message_data_length(0)
+                    .call()
+                    .await
+                    .unwrap();
+                        
+                assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
@@ -784,7 +825,17 @@ mod inputs {
                     .unwrap();
 
                 let len = predicate_bytecode.len() as u64;
-                assert_eq!(receipts[1].data(), Some(len.to_be_bytes().as_slice()));
+                assert_eq!(receipts[1].data().unwrap()[8..16], *len.to_be_bytes().as_slice());
+
+                // Assert none returned when index is invalid
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_predicate_length(3)
+                    .call()
+                    .await
+                    .unwrap();
+                                    
+                assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
@@ -818,7 +869,17 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data(), Some(0u64.to_le_bytes().as_slice()));
+                assert_eq!(receipts[1].data().unwrap()[8..16], *0u64.to_le_bytes().as_slice());
+
+                // Assert none returned when transaction type is not a message
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_predicate_data_length(0)
+                    .call()
+                    .await
+                    .unwrap();
+                                                
+                assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
@@ -855,6 +916,16 @@ mod inputs {
                     .unwrap();
 
                 assert_eq!(receipts[1].data(), Some(&[1][..]));
+
+                // Assert none returned when transaction type is not a message
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_message_data(3, 0, MESSAGE_DATA)
+                    .call()
+                    .await
+                    .unwrap();
+                                    
+                assert_eq!(none_result.value, false);
             }
 
             #[tokio::test]
@@ -866,7 +937,7 @@ mod inputs {
 
                 let handler = contract_instance
                     .methods()
-                    .get_input_predicate(3, predicate_bytecode);
+                    .get_input_predicate(3, predicate_bytecode.clone());
 
                 let mut builder = handler.transaction_builder().await.unwrap();
 
@@ -888,6 +959,16 @@ mod inputs {
                     .unwrap();
 
                 assert_eq!(receipts[1].data(), Some(1u8.to_le_bytes().as_slice()));
+
+                // Assert none returned when index is invalid
+                let none_result = contract_instance
+                    .methods()
+                    .get_input_predicate(3, predicate_bytecode)
+                    .call()
+                    .await
+                    .unwrap();
+                                    
+                assert_eq!(none_result.value, false);
             }
         }
     }
