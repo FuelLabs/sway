@@ -6,14 +6,135 @@
     {
       "type": "bool",
       "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+    },
+    {
+      "type": "enum Location",
+      "concreteTypeId": "6966f221767e2951c5d68ba5e81e897449375a9f51f5e4c9e3b65f1dd7defabb",
+      "metadataTypeId": 4
+    },
+    {
+      "type": "struct Person",
+      "concreteTypeId": "a6b272bcf0f572840e2cc1241bdcf8d42db51eeb1aead750c8e608160f83f926",
+      "metadataTypeId": 6
     }
   ],
-  "metadataTypes": [],
+  "metadataTypes": [
+    {
+      "type": "()",
+      "metadataTypeId": 0
+    },
+    {
+      "type": "(_, _)",
+      "metadataTypeId": 1,
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 7
+        }
+      ]
+    },
+    {
+      "type": "[_; 2]",
+      "metadataTypeId": 2,
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": 7
+        }
+      ]
+    },
+    {
+      "type": "b256",
+      "metadataTypeId": 3
+    },
+    {
+      "type": "enum Location",
+      "metadataTypeId": 4,
+      "components": [
+        {
+          "name": "Earth",
+          "typeId": 7
+        },
+        {
+          "name": "Mars",
+          "typeId": 0
+        }
+      ]
+    },
+    {
+      "type": "str",
+      "metadataTypeId": 5
+    },
+    {
+      "type": "struct Person",
+      "metadataTypeId": 6,
+      "components": [
+        {
+          "name": "name",
+          "typeId": 5
+        },
+        {
+          "name": "age",
+          "typeId": 7
+        },
+        {
+          "name": "alive",
+          "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+        },
+        {
+          "name": "location",
+          "typeId": 4
+        },
+        {
+          "name": "some_tuple",
+          "typeId": 1
+        },
+        {
+          "name": "some_array",
+          "typeId": 2
+        },
+        {
+          "name": "some_b256",
+          "typeId": 3
+        }
+      ]
+    },
+    {
+      "type": "u64",
+      "metadataTypeId": 7
+    }
+  ],
   "functions": [
     {
+      "inputs": [
+        {
+          "name": "loc",
+          "concreteTypeId": "6966f221767e2951c5d68ba5e81e897449375a9f51f5e4c9e3b65f1dd7defabb"
+        }
+      ],
+      "name": "enum_input_output",
+      "output": "6966f221767e2951c5d68ba5e81e897449375a9f51f5e4c9e3b65f1dd7defabb",
+      "attributes": null
+    },
+    {
       "inputs": [],
-      "name": "test_function",
+      "name": "large_blob",
       "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "person",
+          "concreteTypeId": "a6b272bcf0f572840e2cc1241bdcf8d42db51eeb1aead750c8e608160f83f926"
+        }
+      ],
+      "name": "struct_input_output",
+      "output": "a6b272bcf0f572840e2cc1241bdcf8d42db51eeb1aead750c8e608160f83f926",
       "attributes": null
     }
   ],
