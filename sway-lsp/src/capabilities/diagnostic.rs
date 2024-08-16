@@ -61,7 +61,6 @@ pub fn get_diagnostics(
             diagnostics.entry(path).or_default().errors.push(diagnostic);
         }
     }
-
     diagnostics
 }
 

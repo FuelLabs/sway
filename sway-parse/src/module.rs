@@ -60,9 +60,7 @@ impl ParseToEnd for Annotated<Module> {
             }
         }
         let (kind, semicolon_token) = parser.parse()?;
-
         let (items, consumed) = parser.parse_to_end()?;
-
         let module = Annotated {
             attribute_list,
             value: Module {

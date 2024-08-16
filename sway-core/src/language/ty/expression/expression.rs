@@ -1,7 +1,9 @@
 use std::{fmt, hash::Hasher};
 
 use sway_error::{
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
 use sway_types::{Span, Spanned};
@@ -108,6 +110,45 @@ impl TypeCheckAnalysis for TyExpression {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
+        match &self.expression {
+            // Check literal "fits" into assigned typed.
+            TyExpressionVariant::Literal(Literal::Numeric(literal_value)) => {
+                let t = ctx.engines.te().get(self.return_type);
+                if let TypeInfo::UnsignedInteger(bits) = &*t {
+                    if bits.would_overflow(*literal_value) {
+                        handler.emit_err(CompileError::TypeError(TypeError::LiteralOverflow {
+                            expected: format!("{:?}", ctx.engines.help_out(t)),
+                            span: self.span.clone(),
+                        }));
+                    }
+                }
+            }
+            // Check all array items are the same
+            TyExpressionVariant::Array {
+                elem_type,
+                contents,
+            } => {
+                let array_elem_type = ctx.engines.te().get(*elem_type);
+                if !matches!(&*array_elem_type, TypeInfo::Never) {
+                    let unify = crate::type_system::unify::unifier::Unifier::new(
+                        ctx.engines,
+                        "",
+                        unify::unifier::UnifyKind::Default,
+                    );
+                    for element in contents {
+                        let element_type = ctx.engines.te().get(*elem_type);
+
+                        // If the element is never, we do not need to check
+                        if matches!(&*element_type, TypeInfo::Never) {
+                            continue;
+                        }
+
+                        unify.unify(handler, element.return_type, *elem_type, &element.span)
+                    }
+                }
+            }
+            _ => {}
+        }
         self.expression.type_check_analyze(handler, ctx)
     }
 }
