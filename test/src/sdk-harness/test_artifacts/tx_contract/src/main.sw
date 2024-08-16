@@ -16,23 +16,20 @@ use std::{
 
 abi TxContractTest {
     fn get_tx_type() -> Transaction;
-    fn get_tx_tip() -> u64;
+    fn get_tx_tip() -> Option<u64>;
     fn get_script_gas_limit() -> u64;
-    fn get_tx_maturity() -> u64;
-    fn get_tx_witness_limit() -> u64;
-    fn get_tx_max_fee() -> u64;
-    fn get_tx_script_length() -> u64;
-    fn get_tx_script_data_length() -> u64;
+    fn get_tx_maturity() -> Option<u32>;
+    fn get_tx_witness_limit() -> Option<u64>;
+    fn get_tx_max_fee() -> Option<u64>;
+    fn get_tx_script_length() -> Option<u64>;
+    fn get_tx_script_data_length() -> Option<u64>;
     fn get_tx_inputs_count() -> u64;
     fn get_tx_outputs_count() -> u64;
     fn get_tx_witnesses_count() -> u64;
-    fn get_tx_witness_pointer(index: u64) -> u64;
-    fn get_tx_witness_data_length(index: u64) -> u64;
-    fn get_tx_witness_data(index: u64) -> B512;
-    fn get_tx_script_start_pointer() -> u64;
-    fn get_tx_script_data_start_pointer() -> u64;
+    fn get_tx_witness_data_length(index: u64) -> Option<u64>;
+    fn get_tx_witness_data(index: u64) -> Option<B512>;
     fn get_tx_id() -> b256;
-    fn get_tx_script_bytecode_hash() -> b256;
+    fn get_tx_script_bytecode_hash() -> Option<b256>;
 
     fn get_input_type(index: u64) -> Option<Input>;
     fn get_input_coin_owner(index: u64) -> Option<Address>;
@@ -56,25 +53,25 @@ impl TxContractTest for Contract {
     fn get_tx_type() -> Transaction {
         tx_type()
     }
-    fn get_tx_tip() -> u64 {
-        tx_tip().unwrap()
+    fn get_tx_tip() -> Option<u64> {
+        tx_tip()
     }
     fn get_script_gas_limit() -> u64 {
         script_gas_limit()
     }
-    fn get_tx_maturity() -> u64 {
-        tx_maturity().unwrap()
+    fn get_tx_maturity() -> Option<u32> {
+        tx_maturity()
     }
-    fn get_tx_witness_limit() -> u64 {
-        tx_witness_limit().unwrap()
+    fn get_tx_witness_limit() -> Option<u64> {
+        tx_witness_limit()
     }
-    fn get_tx_max_fee() -> u64 {
-        tx_max_fee().unwrap()
+    fn get_tx_max_fee() -> Option<u64> {
+        tx_max_fee()
     }
-    fn get_tx_script_length() -> u64 {
+    fn get_tx_script_length() -> Option<u64> {
         tx_script_length()
     }
-    fn get_tx_script_data_length() -> u64 {
+    fn get_tx_script_data_length() -> Option<u64> {
         tx_script_data_length()
     }
     fn get_tx_inputs_count() -> u64 {
@@ -86,29 +83,16 @@ impl TxContractTest for Contract {
     fn get_tx_witnesses_count() -> u64 {
         tx_witnesses_count()
     }
-    fn get_tx_witness_pointer(index: u64) -> u64 {
-        tx_witness_pointer(index)
-    }
-    fn get_tx_witness_data_length(index: u64) -> u64 {
+    fn get_tx_witness_data_length(index: u64) -> Option<u64> {
         tx_witness_data_length(index)
     }
-    fn get_tx_witness_data(index: u64) -> B512 {
+    fn get_tx_witness_data(index: u64) -> Option<B512> {
         tx_witness_data(index)
-    }
-    fn get_tx_script_start_pointer() -> u64 {
-        asm(ptr: tx_script_start_pointer()) {
-            ptr: u64
-        }
-    }
-    fn get_tx_script_data_start_pointer() -> u64 {
-        asm(r1: tx_script_data_start_pointer()) {
-            r1: u64
-        }
     }
     fn get_tx_id() -> b256 {
         tx_id()
     }
-    fn get_tx_script_bytecode_hash() -> b256 {
+    fn get_tx_script_bytecode_hash() -> Option<b256> {
         tx_script_bytecode_hash()
     }
     fn get_input_type(index: u64) -> Option<Input> {
