@@ -366,7 +366,7 @@ jobs:
         run: |
           fuel-core run --db-type in-memory --debug &
           sleep 5 &&
-          CI=true cargo run --locked --release --bin test -- --locked --release
+          CI=true cargo run --locked --release -p e2e_tests -- --locked --release
 
   cargo-run-e2e-test-evm:
     runs-on: ubuntu-latest

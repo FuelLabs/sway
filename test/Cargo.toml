@@ -1,5 +1,5 @@
 [package]
-name = "e2e_tests"
+name = "test"
 version = "0.0.0"
 publish = false
 authors.workspace = true
@@ -19,7 +19,10 @@ forc-tracing = { path = "../forc-tracing" }
 fuel-vm = { workspace = true, features = ["random"] }
 futures = "0.3.24"
 gag = "1.0"
+glob = "0.3.1"
 hex = "0.4.3"
+insta = "1.39.0"
+libtest-mimic = "0.7.3"
 miden = "0.3.0"
 prettydiff = "0.6"
 rand = "0.8"
@@ -36,10 +39,8 @@ tokio = { version = "1.12", features = ["full"] }
 toml = { version = "0.7", features = ["parse"] }
 tracing = "0.1"
 vte = "0.13.0"
-insta = "1.39.0"
-libtest-mimic = "0.7.3"
 
 [[test]]
-name = "fuel_snapshot_release"
-path = "test/e2e_tests.rs"
+name = "tests"
+path = "tests/tests.rs"
 harness = false

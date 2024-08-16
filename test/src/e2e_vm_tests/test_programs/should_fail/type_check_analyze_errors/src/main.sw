@@ -1,7 +1,6 @@
 script;
 
 fn main() {
-    // u8
     let _a = 0x100;
     Vec::<u8>::new().push(_a);
 

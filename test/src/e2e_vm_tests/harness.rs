@@ -298,7 +298,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
         Ok(result) => {
             // Print the result of the compilation (i.e., any errors Forc produces).
-            if let Err(ref e) = &result {
+            if let Err(ref e) = result {
                 println!("\n{e}");
             }
             result

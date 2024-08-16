@@ -1541,44 +1541,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcbb2bf8e87535c23f7a8a321e364ce21462d0ff10cb6407820e8e96dfff6653"
 
 [[package]]
-name = "e2e_tests"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "bytes",
- "clap 4.5.9",
- "colored",
- "filecheck",
- "forc",
- "forc-client",
- "forc-pkg",
- "forc-test",
- "forc-tracing 0.62.0",
- "fuel-vm",
- "futures",
- "gag",
- "hex",
- "insta",
- "libtest-mimic",
- "miden",
- "prettydiff 0.6.4",
- "rand",
- "regex",
- "revm",
- "serde_json",
- "sway-core",
- "sway-error",
- "sway-ir",
- "sway-types",
- "sway-utils",
- "textwrap 0.16.1",
- "tokio",
- "toml 0.7.8",
- "tracing",
- "vte 0.13.0",
-]
-
-[[package]]
 name = "ecdsa"
 version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7327,23 +7289,41 @@ dependencies = [
 
 [[package]]
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 7332e18cb (simpler insta setup)
 name = "test"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "bytes",
+<<<<<<< HEAD
  "clap 4.5.16",
+=======
+ "clap 4.5.9",
+>>>>>>> 7332e18cb (simpler insta setup)
  "colored",
  "filecheck",
  "forc",
  "forc-client",
  "forc-pkg",
  "forc-test",
+<<<<<<< HEAD
  "forc-tracing 0.63.1",
  "fuel-vm",
  "futures",
  "gag",
  "hex",
+=======
+ "forc-tracing 0.62.0",
+ "fuel-vm",
+ "futures",
+ "gag",
+ "glob",
+ "hex",
+ "insta",
+ "libtest-mimic",
+>>>>>>> 7332e18cb (simpler insta setup)
  "miden",
  "prettydiff 0.6.4",
  "rand",
@@ -7359,11 +7339,18 @@ dependencies = [
  "tokio",
  "toml 0.7.8",
  "tracing",
+<<<<<<< HEAD
 ]
 
 [[package]]
 =======
 >>>>>>> 0db1bd6b9 (snapshot tests and fix for array with numerics)
+=======
+ "vte 0.13.0",
+]
+
+[[package]]
+>>>>>>> 7332e18cb (simpler insta setup)
 name = "test-macros"
 version = "0.0.0"
 dependencies = [
