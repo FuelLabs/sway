@@ -153,7 +153,7 @@ fn resolve_storage_slots(
 /// Creates blobs from the contract to deploy contracts that are larger than
 /// `MAX_CONTRACT_SIZE`. Created blobs are deployed, and a loader contract is
 /// generated such that it loads all the deployed blobs, and provides the user
-/// a single contract (loader contract that loads the blobs) make call into.
+/// a single contract (loader contract that loads the blobs) to call into.
 async fn deploy_chunked(
     command: &cmd::Deploy,
     compiled: &BuiltPackage,
