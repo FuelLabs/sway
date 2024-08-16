@@ -35,10 +35,8 @@ abi TxContractTest {
     fn get_tx_script_bytecode_hash() -> b256;
 
     fn get_input_type(index: u64) -> Option<Input>;
-    fn get_tx_input_pointer(index: u64) -> Option<u64>;
     fn get_input_coin_owner(index: u64) -> Option<Address>;
     fn get_input_amount(index: u64) -> Option<u64>;
-    fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
     fn get_input_message_sender(index: u64) -> Option<Address>;
     fn get_input_message_recipient(index: u64) -> Option<Address>;
     fn get_input_message_nonce(index: u64) -> Option<b256>;
@@ -113,14 +111,6 @@ impl TxContractTest for Contract {
     fn get_tx_script_bytecode_hash() -> b256 {
         tx_script_bytecode_hash()
     }
-    fn get_tx_input_pointer(index: u64) -> Option<u64> {
-        let ptr = input_pointer(index);
-        if ptr.is_none() {
-            return None
-        }
-
-        Some(asm (r1: ptr) { r1: u64 })
-    }
     fn get_input_type(index: u64) -> Option<Input> {
         input_type(index)
     }
@@ -129,11 +119,6 @@ impl TxContractTest for Contract {
     }
     fn get_input_amount(index: u64) -> Option<u64> {
         input_amount(index)
-    }
-    fn get_tx_input_predicate_data_pointer(index: u64) -> u64 {
-        asm(r1: input_predicate_data_pointer(index).unwrap()) {
-            r1: u64
-        }
     }
     fn get_input_message_sender(index: u64) -> Option<Address> {
         input_message_sender(index)

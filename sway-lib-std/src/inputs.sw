@@ -149,7 +149,8 @@ pub fn input_count() -> u16 {
 ///     let input_pointer = input_pointer(0).unwrap();
 /// }
 /// ```
-pub fn input_pointer(index: u64) -> Option<raw_ptr> {
+#[allow(dead_code)]
+fn input_pointer(index: u64) -> Option<raw_ptr> {
     if index >= input_count().as_u64() {
         return None
     }
@@ -234,7 +235,8 @@ pub fn input_coin_owner(index: u64) -> Option<Address> {
 ///     let input_predicate_data_pointer = input_predicate_data_pointer(0);
 ///     assert(input_predicate_data_pointer.is_some()); // Ensure the input is a coin or message input.
 /// }
-pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
+#[allow(dead_code)]
+fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
     match input_type(index) {
         Some(Input::Coin) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE_DATA)),
         Some(Input::Message) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)),
@@ -377,7 +379,7 @@ pub fn input_predicate_length(index: u64) -> Option<u64> {
 ///     assert(input_predicate_pointer.is_some());
 /// }
 /// ```
-pub fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
+fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
     match input_type(index) {
         Some(Input::Coin) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
         Some(Input::Message) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE)),

@@ -485,29 +485,6 @@ mod tx {
 mod inputs {
     use super::*;
 
-    mod revert {
-        use super::*;
-
-        mod contract {
-            use super::*;
-
-            #[tokio::test]
-            #[should_panic(expected = "Revert(0)")]
-            async fn fails_to_get_predicate_data_pointer_from_input_contract() {
-                let (contract_instance, _, _, _) = get_contracts(true).await;
-                let call_params = CallParameters::default();
-                contract_instance
-                    .methods()
-                    .get_tx_input_predicate_data_pointer(0)
-                    .call_params(call_params)
-                    .unwrap()
-                    .call()
-                    .await
-                    .unwrap();
-            }
-        }
-    }
-
     mod success {
         use super::*;
 
