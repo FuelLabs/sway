@@ -123,6 +123,51 @@ pub(crate) async fn did_change_request(
     did_change
 }
 
+/// Simulates a keypress at the current cursor position
+/// 66% chance of enter keypress
+/// 33% chance of backspace keypress
+pub fn simulate_keypress(
+    uri: &Url,
+    version: i32,
+    cursor_line: &mut u32,
+) -> DidChangeTextDocumentParams {
+    if rand::random::<u64>() % 3 < 2 {
+        // enter keypress at current cursor line
+        *cursor_line += 1;
+        create_did_change_params(
+            uri,
+            version,
+            Position {
+                line: *cursor_line - 1,
+                character: 0,
+            },
+            Position {
+                line: *cursor_line - 1,
+                character: 0,
+            },
+            0,
+        )
+    } else {
+        // backspace keypress at current cursor line
+        if *cursor_line > 1 {
+            *cursor_line -= 1;
+        }
+        create_did_change_params(
+            uri,
+            version,
+            Position {
+                line: *cursor_line,
+                character: 0,
+            },
+            Position {
+                line: *cursor_line + 1,
+                character: 0,
+            },
+            1,
+        )
+    }
+}
+
 pub(crate) async fn show_ast_request(
     server: &ServerState,
     uri: &Url,
