@@ -1,18 +1,18 @@
 use clap::{Arg, ArgMatches, Command};
 use mdbook::errors::Error;
 use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
+use mdbook_forc_documenter::ForcDocumenter;
 use semver::{Version, VersionReq};
 use std::io;
 use std::process;
 
-use mdbook_forc_documenter::ForcDocumenter;
 
 pub fn make_app() -> Command {
     Command::new("forc-documenter")
         .about("A mdbook preprocessor which documents Forc commands")
         .subcommand(
             Command::new("supports")
-                .arg(Arg::new("renderer").required(true))
+                .arg(Arg::new("renderer").required(true).value_parser(clap::value_parser!(String)))
                 .about("Check whether a renderer is supported by this preprocessor"),
         )
 }
@@ -53,7 +53,7 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
 }
 
 fn handle_supports(pre: &dyn Preprocessor, sub_args: &ArgMatches) -> ! {
-    let renderer: &Option<&str> = sub_args.get_one("renderer").expect("Required argument");
+    let renderer = sub_args.get_one::<String>("renderer").map(String::as_str);
     let supported = renderer.map(|r| pre.supports_renderer(r)).unwrap_or(false);
 
     // Signal whether the renderer is supported by exiting with 1 or 0.
