@@ -35,7 +35,7 @@ category = "fail"
 
 # not: $()The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.
 
-# check: ldc r1 r2 r3;
+# check: ldc r1 r2 r3 i0;
 # nextln: $()The LDC opcode cannot be used in a predicate.
 
 # check: log r1 r2 r3 r4;

@@ -42,7 +42,7 @@ pub(crate) fn order_ast_nodes_by_dependency(
         Ok(())
     })?;
 
-    // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
+    // Reorder the parsed AstNodes based on dependency. Includes first, then uses, then
     // reordered declarations, then anything else.  To keep the list stable and simple we can
     // use a basic insertion sort.
     Ok(nodes
@@ -963,7 +963,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                             }
                         })
                         .collect::<Vec<String>>()
-                        .join(""),
+                        .join(","),
                 )
             } else if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
@@ -986,7 +986,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                             }
                         })
                         .collect::<Vec<_>>()
-                        .join(""),
+                        .join(","),
                 )
             } else {
                 None

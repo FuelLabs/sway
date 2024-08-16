@@ -187,7 +187,7 @@ async fn can_get_predicate_address() {
         }],
     );
     let mut node_config = NodeConfig::default();
-    node_config.static_gas_price = 0;
+    node_config.starting_gas_price = 0;
     let wallets = &launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
         .await
         .unwrap();
@@ -356,7 +356,7 @@ async fn can_get_predicate_address_in_message() {
 
     let mut wallet = WalletUnlocked::new_random(None);
     let mut node_config = NodeConfig::default();
-    node_config.static_gas_price = 0;
+    node_config.starting_gas_price = 0;
     let provider = setup_test_provider(coin_vec, message_vec, Some(node_config), None)
         .await
         .unwrap();
