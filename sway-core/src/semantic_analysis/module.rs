@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     fs,
+    sync::Arc,
 };
 
 use graph_cycles::Cycles;
@@ -9,18 +10,20 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Named};
+use sway_types::{BaseIdent, Named, SourceId};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclId},
     engine_threading::{DebugWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    is_ty_module_cache_up_to_date,
     language::{
         parsed::*,
         ty::{self, TyAstNodeContent, TyDecl},
         CallPath, ModName,
     },
+    query_engine::{ModuleCacheKey, TypedModuleInfo},
     semantic_analysis::*,
-    Engines, TypeInfo,
+    BuildConfig, Engines, TypeInfo,
 };
 
 use super::{
@@ -254,6 +257,42 @@ impl ty::TyModule {
         Ok(())
     }
 
+    /// Retrieves a cached typed module if it's up to date.
+    ///
+    /// This function checks the cache for a typed module corresponding to the given source ID.
+    /// If found and up to date, it returns the cached module. Otherwise, it returns None.
+    fn get_cached_ty_module_if_up_to_date(
+        source_id: Option<&SourceId>,
+        engines: &Engines,
+        build_config: Option<&BuildConfig>,
+    ) -> Option<Arc<ty::TyModule>> {
+        let source_id = source_id?;
+
+        // Create a cache key and get the module cache
+        let path = engines.se().get_path(source_id);
+        let include_tests = build_config.map_or(false, |x| x.include_tests);
+        let key = ModuleCacheKey::new(path.clone().into(), include_tests);
+        let cache = engines.qe().module_cache.read();
+        cache.get(&key).and_then(|entry| {
+            entry.typed.as_ref().and_then(|typed| {
+                // Check if the cached module is up to date
+                let is_up_to_date = is_ty_module_cache_up_to_date(
+                    engines,
+                    &path.into(),
+                    include_tests,
+                    build_config,
+                );
+
+                // Return the cached module if it's up to date, otherwise None
+                if is_up_to_date {
+                    Some(typed.module.clone())
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
     /// Type-check the given parsed module to produce a typed module.
     ///
     /// Recursively type-checks submodules first.
@@ -263,7 +302,8 @@ impl ty::TyModule {
         engines: &Engines,
         kind: TreeType,
         parsed: &ParseModule,
-    ) -> Result<Self, ErrorEmitted> {
+        build_config: Option<&BuildConfig>,
+    ) -> Result<Arc<Self>, ErrorEmitted> {
         let ParseModule {
             submodules,
             tree,
@@ -273,25 +313,51 @@ impl ty::TyModule {
             ..
         } = parsed;
 
+        // Try to get the cached root module if it's up to date
+        if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
+            parsed.span.source_id(),
+            engines,
+            build_config,
+        ) {
+            return Ok(module);
+        }
+
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
             .iter()
             .map(|eval_mod_name| {
                 let (name, submodule) = submodules
                     .iter()
-                    .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
+                    .find(|(submod_name, _)| eval_mod_name == submod_name)
                     .unwrap();
-                Ok((
-                    name.clone(),
-                    ty::TySubmodule::type_check(
+
+                // Try to get the cached submodule
+                if let Some(cached_module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
+                    submodule.module.span.source_id(),
+                    engines,
+                    build_config,
+                ) {
+                    // If cached, create TySubmodule from cached module
+                    Ok::<(BaseIdent, ty::TySubmodule), ErrorEmitted>((
+                        name.clone(),
+                        ty::TySubmodule {
+                            module: cached_module,
+                            mod_name_span: submodule.mod_name_span.clone(),
+                        },
+                    ))
+                } else {
+                    // If not cached, type-check the submodule
+                    let type_checked_submodule = ty::TySubmodule::type_check(
                         handler,
                         ctx.by_ref(),
                         engines,
                         name.clone(),
                         kind,
                         submodule,
-                    )?,
-                ))
+                        build_config,
+                    )?;
+                    Ok((name.clone(), type_checked_submodule))
+                }
             })
             .collect::<Result<Vec<_>, _>>();
 
@@ -303,7 +369,6 @@ impl ty::TyModule {
         )?;
 
         let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), &ordered_nodes)?;
-
         let submodules = submodules_res?;
 
         let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;
@@ -394,13 +459,34 @@ impl ty::TyModule {
             }
         }
 
-        Ok(Self {
+        let ty_module = Arc::new(Self {
             span: span.clone(),
             submodules,
             namespace: ctx.namespace.clone(),
             all_nodes,
             attributes: attributes.clone(),
-        })
+        });
+
+        // Cache the ty module
+        if let Some(source_id) = span.source_id() {
+            let path = engines.se().get_path(source_id);
+            let version = build_config
+                .and_then(|config| config.lsp_mode.as_ref())
+                .and_then(|lsp| lsp.file_versions.get(&path).copied())
+                .flatten();
+
+            let include_tests = build_config.map_or(false, |x| x.include_tests);
+            let key = ModuleCacheKey::new(path.clone().into(), include_tests);
+            engines.qe().update_typed_module_cache_entry(
+                &key,
+                TypedModuleInfo {
+                    module: ty_module.clone(),
+                    version,
+                },
+            );
+        }
+
+        Ok(ty_module)
     }
 
     // Filter and gather impl items
@@ -615,6 +701,7 @@ impl ty::TySubmodule {
         mod_name: ModName,
         kind: TreeType,
         submodule: &ParseSubmodule,
+        build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
         let ParseSubmodule {
             module,
@@ -622,7 +709,8 @@ impl ty::TySubmodule {
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res = ty::TyModule::type_check(handler, submod_ctx, engines, kind, module);
+            let module_res =
+                ty::TyModule::type_check(handler, submod_ctx, engines, kind, module, build_config);
             module_res.map(|module| ty::TySubmodule {
                 module,
                 mod_name_span: mod_name_span.clone(),

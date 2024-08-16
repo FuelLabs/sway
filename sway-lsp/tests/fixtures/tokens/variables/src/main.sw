@@ -35,7 +35,7 @@ fn main() {
     let _ = (variable3, 20);
 
     // Variable usage: Array elements
-    let _ = [variable4, 20];
+    let _ = [variable4, ""];
 
     // Variable usage: Scoped Declarations
     {
