@@ -359,7 +359,8 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             // Deploy chunked
             let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
             let provider = Provider::connect(node_url).await?;
-            let id = deploy_chunked(
+            
+            deploy_chunked(
                 &command,
                 pkg,
                 salt,
@@ -367,12 +368,10 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 &provider,
                 &pkg.descriptor.name,
             )
-            .await?;
-            id
+            .await?
         } else {
-            let deployed_contract_id =
-                deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?;
-            deployed_contract_id
+            
+            deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?
         };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
