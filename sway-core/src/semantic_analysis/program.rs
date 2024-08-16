@@ -60,7 +60,14 @@ impl TyProgram {
 
         let ParseProgram { root, kind } = parsed;
 
-        let root = ty::TyModule::type_check(handler, ctx.by_ref(), engines, parsed.kind, root)?;
+        let root = ty::TyModule::type_check(
+            handler,
+            ctx.by_ref(),
+            engines,
+            parsed.kind,
+            root,
+            build_config,
+        )?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
@@ -73,7 +80,7 @@ impl TyProgram {
 
         let program = TyProgram {
             kind,
-            root,
+            root: (*root).clone(),
             declarations,
             configurables,
             storage_slots: vec![],
