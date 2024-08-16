@@ -1,5 +1,5 @@
 use fuel_vm::fuel_crypto::Hasher;
-use fuel_vm::fuel_tx::{ConsensusParameters, ContractId, Input as TxInput};
+use fuel_vm::fuel_tx::{ContractId, Input as TxInput};
 use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
@@ -190,7 +190,6 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
 
 mod tx {
     use super::*;
-    use fuel_vm::fuel_tx::field::Script;
     use fuels::types::{coin_type::CoinType, transaction::Transaction};
 
     #[tokio::test]
@@ -376,20 +375,6 @@ mod tx {
     }
 
     #[tokio::test]
-    async fn can_get_witness_pointer() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
-
-        let response = contract_instance
-            .methods()
-            .get_tx_witness_pointer(0)
-            .call()
-            .await
-            .unwrap();
-
-        assert_eq!(response.value, Some(11024));
-    }
-
-    #[tokio::test]
     async fn can_get_witness_data_length() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
 
@@ -421,22 +406,6 @@ mod tx {
             .unwrap();
 
         assert_eq!(receipts[1].data().unwrap()[8..72], *witnesses[0].as_vec());
-    }
-
-    #[tokio::test]
-    async fn can_get_script_start_offset() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
-
-        let script_start_offset = ConsensusParameters::default().tx_params().tx_offset()
-            + fuel_vm::fuel_tx::Script::script_offset_static();
-
-        let result = contract_instance
-            .methods()
-            .get_tx_script_start_pointer()
-            .call()
-            .await
-            .unwrap();
-        assert_eq!(result.value, Some(script_start_offset as u64));
     }
 
     #[tokio::test]
@@ -485,18 +454,6 @@ mod tx {
         let byte_array: [u8; 32] = tx_id.into();
 
         assert_eq!(receipts[1].data().unwrap(), byte_array);
-    }
-
-    #[tokio::test]
-    async fn can_get_get_tx_script_data_start_pointer() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
-        let result = contract_instance
-            .methods()
-            .get_tx_script_data_start_pointer()
-            .call()
-            .await
-            .unwrap();
-        assert_eq!(result.value, Some(10392))
     }
 }
 

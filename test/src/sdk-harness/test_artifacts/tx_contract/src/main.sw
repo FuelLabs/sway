@@ -26,11 +26,8 @@ abi TxContractTest {
     fn get_tx_inputs_count() -> u64;
     fn get_tx_outputs_count() -> u64;
     fn get_tx_witnesses_count() -> u64;
-    fn get_tx_witness_pointer(index: u64) -> Option<u64>;
     fn get_tx_witness_data_length(index: u64) -> Option<u64>;
     fn get_tx_witness_data(index: u64) -> Option<B512>;
-    fn get_tx_script_start_pointer() -> Option<u64>;
-    fn get_tx_script_data_start_pointer() -> Option<u64>;
     fn get_tx_id() -> b256;
     fn get_tx_script_bytecode_hash() -> Option<b256>;
 
@@ -88,35 +85,11 @@ impl TxContractTest for Contract {
     fn get_tx_witnesses_count() -> u64 {
         tx_witnesses_count()
     }
-    fn get_tx_witness_pointer(index: u64) -> Option<u64> {
-        let ptr = tx_witness_pointer(index);
-        if ptr.is_none() {
-            return None
-        }
-
-        Some(asm(r1: ptr.unwrap()) { r1: u64 })
-    }
     fn get_tx_witness_data_length(index: u64) -> Option<u64> {
         tx_witness_data_length(index)
     }
     fn get_tx_witness_data(index: u64) -> Option<B512> {
         tx_witness_data(index)
-    }
-    fn get_tx_script_start_pointer() -> Option<u64> {
-        let ptr = tx_script_start_pointer();
-        if ptr.is_none() {
-            return None
-        }
-
-        Some(asm(r1: ptr.unwrap()) { r1: u64 })
-    }
-    fn get_tx_script_data_start_pointer() -> Option<u64> {
-        let ptr = tx_script_data_start_pointer();
-        if ptr.is_none() {
-            return None
-        }
-
-        Some(asm(r1: ptr.unwrap()) { r1: u64 })
     }
     fn get_tx_id() -> b256 {
         tx_id()

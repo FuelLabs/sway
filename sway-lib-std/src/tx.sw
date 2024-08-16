@@ -302,7 +302,7 @@ pub fn tx_witnesses_count() -> u64 {
 ///     let witness_pointer = tx_witness_pointer(0).unwrap();
 /// }
 /// ```
-pub fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
+fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     if index >= tx_witnesses_count() {
         return None
     }
@@ -389,7 +389,7 @@ pub fn tx_witness_data<T>(index: u64) -> Option<T> {
 ///     log(script_start_pointer);
 /// }
 /// ```
-pub fn tx_script_start_pointer() -> Option<raw_ptr> {
+fn tx_script_start_pointer() -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT)),
         _ => None,
@@ -412,7 +412,7 @@ pub fn tx_script_start_pointer() -> Option<raw_ptr> {
 ///     log(script_data_start_pointer);
 /// }
 /// ```
-pub fn tx_script_data_start_pointer() -> Option<raw_ptr> {
+fn tx_script_data_start_pointer() -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT_DATA)),
         _ => None,
