@@ -157,11 +157,7 @@ pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverE
 ///     assert(verified);
 /// }
 /// ```
-pub fn ed_verify(
-    public_key: b256,
-    signature: B512,
-    msg: Bytes,
-) -> Result<bool, EcRecoverError> {
+pub fn ed_verify(public_key: b256, signature: B512, msg: Bytes) -> Result<bool, EcRecoverError> {
     let len = msg.len();
     
     if len == 0 {
