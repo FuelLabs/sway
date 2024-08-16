@@ -452,8 +452,17 @@ async fn confirm_transaction_details(
                 _ => "",
             };
 
+            let pkg_bytecode_len = pkg.bytecode.bytes.len();
+            let blob_text = if pkg_bytecode_len > MAX_CONTRACT_SIZE {
+                let number_of_blobs = pkg_bytecode_len.div_ceil(MAX_CONTRACT_SIZE);
+                tx_count += number_of_blobs;
+                &format!(" + {number_of_blobs} blobs")
+            } else {
+                ""
+            };
+
             format!(
-                "deploy {}{proxy_text}",
+                "deploy {}{blob_text}{proxy_text}",
                 pkg.descriptor.manifest_file.project_name()
             )
         })
