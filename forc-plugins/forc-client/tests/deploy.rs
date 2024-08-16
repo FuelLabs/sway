@@ -148,7 +148,7 @@ async fn test_simple_deploy() {
         )
         .unwrap(),
         proxy: None,
-        chunks: vec![],
+        chunked: false,
     }];
 
     assert_eq!(contract_ids, expected)
@@ -190,6 +190,7 @@ async fn test_deploy_submit_only() {
         )
         .unwrap(),
         proxy: None,
+        chunked: false,
     }];
 
     assert_eq!(contract_ids, expected)
@@ -239,7 +240,7 @@ async fn test_deploy_fresh_proxy() {
             )
             .unwrap(),
         ),
-        chunks: vec![],
+        chunked: false,
     };
     let expected = vec![impl_contract];
 
@@ -481,8 +482,7 @@ async fn chunked_deploy() {
     let deployed_contract = deploy(cmd).await.unwrap().remove(0);
     node.kill().unwrap();
 
-    let num_chunks = deployed_contract.chunks.len();
-    assert_eq!(num_chunks, 4);
+    assert!(deployed_contract.chunked);
 }
 
 #[tokio::test]
@@ -523,18 +523,11 @@ async fn chunked_deploy_re_routes_call() {
     ));
 
     let instance = BigContract::new(deployed_contract.id, wallet_unlocked);
-    let chunks: Vec<Bech32ContractId> = deployed_contract
-        .chunks
-        .iter()
-        .cloned()
-        .map(|chunk_id| chunk_id.into())
-        .collect();
 
     // result should be true.
     let result = instance
         .methods()
         .test_function()
-        .with_contract_ids(&chunks)
         .call()
         .await
         .unwrap()
@@ -586,18 +579,11 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
     ));
 
     let instance = BigContract::new(deployed_contract.id, wallet_unlocked);
-    let chunks: Vec<Bech32ContractId> = deployed_contract
-        .chunks
-        .iter()
-        .cloned()
-        .map(|chunk_id| chunk_id.into())
-        .collect();
 
     // result should be true.
     let result = instance
         .methods()
         .test_function()
-        .with_contract_ids(&chunks)
         .call()
         .await
         .unwrap()
