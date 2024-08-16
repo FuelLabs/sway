@@ -103,7 +103,7 @@ pub fn output_type(index: u64) -> Option<Output> {
 ///     let output_pointer = output_pointer(0).unwrap();
 /// }
 /// ```
-pub fn output_pointer(index: u64) -> Option<raw_ptr> {
+fn output_pointer(index: u64) -> Option<raw_ptr> {
     if output_type(index).is_none() {
         return None
     }

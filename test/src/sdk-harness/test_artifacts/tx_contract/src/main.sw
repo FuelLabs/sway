@@ -8,7 +8,6 @@ use std::{
         Output,
         output_amount,
         output_count,
-        output_pointer,
         output_type,
     },
     tx::*,
@@ -49,7 +48,6 @@ abi TxContractTest {
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool;
 
-    fn get_tx_output_pointer(index: u64) -> Option<u64>;
     fn get_output_type(ptr: u64) -> Option<Output>;
     fn get_tx_output_amount(index: u64) -> Option<u64>;
 }
@@ -171,14 +169,6 @@ impl TxContractTest for Contract {
             i += 1;
         }
         true
-    }
-    fn get_tx_output_pointer(index: u64) -> Option<u64> {
-        let ptr = output_pointer(index);
-        if ptr.is_none() {
-            return None
-        }
-
-        Some(asm (r1: ptr) { r1: u64 })
     }
     fn get_output_type(ptr: u64) -> Option<Output> {
         output_type(ptr)
