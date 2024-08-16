@@ -34,18 +34,16 @@ abi TxContractTest {
     fn get_tx_id() -> b256;
     fn get_tx_script_bytecode_hash() -> b256;
 
-    fn get_input_type(index: u64) -> Input;
-    fn get_tx_input_pointer(index: u64) -> u64;
-    fn get_input_coin_owner(index: u64) -> Address;
-    fn get_input_amount(index: u64) -> u64;
-    fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
-    fn get_input_message_sender(index: u64) -> Address;
-    fn get_input_message_recipient(index: u64) -> Address;
-    fn get_input_message_nonce(index: u64) -> b256;
-    fn get_input_witness_index(index: u64) -> u16;
-    fn get_input_message_data_length(index: u64) -> u64;
-    fn get_input_predicate_length(index: u64) -> u64;
-    fn get_input_predicate_data_length(index: u64) -> u64;
+    fn get_input_type(index: u64) -> Option<Input>;
+    fn get_input_coin_owner(index: u64) -> Option<Address>;
+    fn get_input_amount(index: u64) -> Option<u64>;
+    fn get_input_message_sender(index: u64) -> Option<Address>;
+    fn get_input_message_recipient(index: u64) -> Option<Address>;
+    fn get_input_message_nonce(index: u64) -> Option<b256>;
+    fn get_input_witness_index(index: u64) -> Option<u16>;
+    fn get_input_message_data_length(index: u64) -> Option<u64>;
+    fn get_input_predicate_length(index: u64) -> Option<u64>;
+    fn get_input_predicate_data_length(index: u64) -> Option<u64>;
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool;
 
@@ -113,46 +111,41 @@ impl TxContractTest for Contract {
     fn get_tx_script_bytecode_hash() -> b256 {
         tx_script_bytecode_hash()
     }
-    fn get_tx_input_pointer(index: u64) -> u64 {
-        input_pointer(index)
-    }
-    fn get_input_type(index: u64) -> Input {
+    fn get_input_type(index: u64) -> Option<Input> {
         input_type(index)
     }
-    fn get_input_coin_owner(index: u64) -> Address {
-        input_coin_owner(index).unwrap()
+    fn get_input_coin_owner(index: u64) -> Option<Address> {
+        input_coin_owner(index)
     }
-    fn get_input_amount(index: u64) -> u64 {
-        input_amount(index).unwrap()
+    fn get_input_amount(index: u64) -> Option<u64> {
+        input_amount(index)
     }
-    fn get_tx_input_predicate_data_pointer(index: u64) -> u64 {
-        asm(r1: input_predicate_data_pointer(index).unwrap()) {
-            r1: u64
-        }
-    }
-    fn get_input_message_sender(index: u64) -> Address {
+    fn get_input_message_sender(index: u64) -> Option<Address> {
         input_message_sender(index)
     }
-    fn get_input_message_recipient(index: u64) -> Address {
+    fn get_input_message_recipient(index: u64) -> Option<Address> {
         input_message_recipient(index)
     }
-    fn get_input_message_nonce(index: u64) -> b256 {
+    fn get_input_message_nonce(index: u64) -> Option<b256> {
         input_message_nonce(index)
     }
-    fn get_input_witness_index(index: u64) -> u16 {
-        input_witness_index(index).unwrap()
+    fn get_input_witness_index(index: u64) -> Option<u16> {
+        input_witness_index(index)
     }
-    fn get_input_message_data_length(index: u64) -> u64 {
+    fn get_input_message_data_length(index: u64) -> Option<u64> {
         input_message_data_length(index)
     }
-    fn get_input_predicate_length(index: u64) -> u64 {
-        input_predicate_length(index).unwrap()
+    fn get_input_predicate_length(index: u64) -> Option<u64> {
+        input_predicate_length(index)
     }
-    fn get_input_predicate_data_length(index: u64) -> u64 {
-        input_predicate_data_length(index).unwrap()
+    fn get_input_predicate_data_length(index: u64) -> Option<u64> {
+        input_predicate_data_length(index)
     }
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool {
-        let data = input_message_data(index, offset);
+        let data = match input_message_data(index, offset) {
+            Some(b) => b,
+            None => return false,
+        };
 
         let mut expected_data_bytes = Bytes::new();
 
@@ -163,7 +156,11 @@ impl TxContractTest for Contract {
     }
 
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
-        let code = input_predicate(index);
+        let code = match input_predicate(index) {
+            Some(code) => code,
+            None => return false,
+        };
+
         assert(input_predicate_length(index).unwrap() == bytecode.len());
         let mut i = 0;
         while i < bytecode.len() {
