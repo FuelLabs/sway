@@ -24,7 +24,7 @@ use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
 use fuels::{
     programs::contract::{LoadConfiguration, StorageConfiguration},
-    types::transaction_builders::Blob,
+    types::{bech32::Bech32ContractId, transaction_builders::Blob},
 };
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
@@ -132,6 +132,8 @@ fn validate_and_parse_salts<'a>(
     Ok(contract_salt_map)
 }
 
+/// Depending on the cli options user passed, either returns storage slots from
+/// compiled package, or the ones user provided as overrides.
 fn resolve_storage_slots(
     command: &cmd::Deploy,
     compiled: &BuiltPackage,
@@ -148,6 +150,10 @@ fn resolve_storage_slots(
     Ok(storage_slots)
 }
 
+/// Creates blobs from the contract to deploy contracts that are larger than
+/// `MAX_CONTRACT_SIZE`. Created blobs are deployed, and a loader contract is
+/// generated such that it loads all the deployed blobs, and provides the user
+/// a single contract (loader contract that loads the blobs) make call into.
 async fn deploy_chunked(
     command: &cmd::Deploy,
     compiled: &BuiltPackage,
@@ -238,7 +244,8 @@ async fn deploy_new_proxy(
         &format!("deploying proxy contract for {pkg_name} {contract_url}{proxy_contract_id}"),
     );
 
-    let instance = ProxyContract::new(&proxy_contract_id.into(), wallet);
+    let proxy_contract_bech_id: Bech32ContractId = proxy_contract_id.into();
+    let instance = ProxyContract::new(&proxy_contract_bech_id, wallet);
     instance.methods().initialize_proxy().call().await?;
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
     Ok(proxy_contract_id)

@@ -8,10 +8,7 @@ use forc_client::{
 use forc_pkg::manifest::Proxy;
 use fuel_crypto::SecretKey;
 use fuel_tx::{ContractId, Salt};
-use fuels::{
-    macros::abigen,
-    types::{bech32::Bech32ContractId, transaction::TxPolicies},
-};
+use fuels::{macros::abigen, types::transaction::TxPolicies};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use portpicker::Port;
 use rand::thread_rng;
