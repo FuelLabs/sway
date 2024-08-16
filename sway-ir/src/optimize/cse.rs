@@ -311,7 +311,7 @@ pub fn cse(
                             })
                             .flatten()
                             // The PHI couldn't be simplified to a single ValueNumber.
-                            .unwrap_or_else(|| ValueNumber::Number(phi))
+                            .unwrap_or(ValueNumber::Number(phi))
                     };
 
                     match vntable.value_map.entry(phi) {
