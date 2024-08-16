@@ -258,8 +258,8 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 /// use std::inputs::input_predicate_data;
 ///
 /// fn foo() {
-///     let result_input_predicate_data: u64 = input_predicate_data::<u64>(0).unwrap();
-///     assert(result_input_predicate_data == 100);
+///     let input_predicate_data: u64 = input_predicate_data::<u64>(0).unwrap();
+///     assert(input_predicate_data == 100);
 /// }
 /// ```
 pub fn input_predicate_data<T>(index: u64) -> Option<T>
