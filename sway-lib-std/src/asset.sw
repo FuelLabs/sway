@@ -9,6 +9,7 @@ use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
+use ::option::Option::{self, *};
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them to `to` by calling `transfer()`.
 ///
@@ -194,8 +195,8 @@ fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
     // variable output with a value of zero is by definition unused.
     let number_of_outputs = output_count().as_u64();
     while index < number_of_outputs {
-        if let Output::Variable = output_type(index).unwrap() {
-            if output_amount(index).unwrap() == 0 {
+        if let Some(Output::Variable) = output_type(index) {
+            if let Some(0) = output_amount(index) {
                 asm(r1: to.bits(), r2: index, r3: amount, r4: asset_id) {
                     tro r1 r2 r3 r4;
                 };

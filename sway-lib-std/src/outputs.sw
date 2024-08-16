@@ -160,11 +160,6 @@ pub fn output_count() -> u16 {
 ///
 /// * [Option<u64>] - The amount of coins to send to the output at `index`.
 ///
-/// # Reverts
-///
-/// * When the output type is `Output::Contract`.
-/// * When the output type is unrecognized. This should never happen.
-///
 /// # Examples
 ///
 /// ```sway
