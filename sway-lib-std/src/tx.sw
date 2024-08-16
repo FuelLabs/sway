@@ -302,6 +302,7 @@ pub fn tx_witnesses_count() -> u64 {
 ///     let witness_pointer = tx_witness_pointer(0).unwrap();
 /// }
 /// ```
+#[allow(dead_code)]
 fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     if index >= tx_witnesses_count() {
         return None
