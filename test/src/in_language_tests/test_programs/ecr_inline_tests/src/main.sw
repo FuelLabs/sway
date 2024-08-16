@@ -154,13 +154,25 @@ fn ecr_ec_recover_address_r1() {
 #[test]
 fn ecr_ed_verify() {
     let pub_key = 0x7127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21;
-    
+
     let lens = [1, 16, 32, 64];
     let sigs = [
-        (0x19d821bfe7da223e53428b72a59e316c6981fcbba63dff89a11f01ce3d33af44, 0xb49089aa12883bfffda92f3aadfd9153f654fb235baef6ab7958c6029fa35f0a),
-        (0xd8d59b48918431687390d17f4aacb5b7e94908d06d9c48247bbd79fbb750fb7a, 0x6cf1faac6db24f179118c88cb4665fc9e609c17740992497c532f37aba126b0a),
-        (0xa9d09a2afb1ba6d487a8499d97e799010c42ace3447086d4b859612c91035f59, 0x260c85b5215837c72f8f811ecb419d33d48c19cdc821dc83766889172bf5d60f),
-        (0x378285af3c469f85b5d85028d6de85714af776ea48a0f4d8f79e1f916eb3feee, 0xa7efbeb9cb0b8457489f4244dbf5c655f7857853ffc3193d47cf713b906bf301),
+        (
+            0x19d821bfe7da223e53428b72a59e316c6981fcbba63dff89a11f01ce3d33af44,
+            0xb49089aa12883bfffda92f3aadfd9153f654fb235baef6ab7958c6029fa35f0a,
+        ),
+        (
+            0xd8d59b48918431687390d17f4aacb5b7e94908d06d9c48247bbd79fbb750fb7a,
+            0x6cf1faac6db24f179118c88cb4665fc9e609c17740992497c532f37aba126b0a,
+        ),
+        (
+            0xa9d09a2afb1ba6d487a8499d97e799010c42ace3447086d4b859612c91035f59,
+            0x260c85b5215837c72f8f811ecb419d33d48c19cdc821dc83766889172bf5d60f,
+        ),
+        (
+            0x378285af3c469f85b5d85028d6de85714af776ea48a0f4d8f79e1f916eb3feee,
+            0xa7efbeb9cb0b8457489f4244dbf5c655f7857853ffc3193d47cf713b906bf301,
+        ),
     ];
 
     let mut i = 0;
@@ -187,7 +199,10 @@ fn ecr_ed_verify() {
 fn ecr_ed_verify_fail() {
     let pub_key = 0x7127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21;
     let msg = Bytes::new();
-    let sig = B512::from((0x19d821bfe7da223e53428b72a59e316c6981fcbba63dff89a11f01ce3d33af44, 0xb49089aa12883bfffda92f3aadfd9153f654fb235baef6ab7958c6029fa35f0a));
+    let sig = B512::from((
+        0x19d821bfe7da223e53428b72a59e316c6981fcbba63dff89a11f01ce3d33af44,
+        0xb49089aa12883bfffda92f3aadfd9153f654fb235baef6ab7958c6029fa35f0a,
+    ));
 
     let verified = ed_verify(pub_key, sig, msg);
     // Should return error for msg len 0
