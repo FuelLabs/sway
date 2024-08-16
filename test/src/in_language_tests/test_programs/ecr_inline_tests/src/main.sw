@@ -111,12 +111,12 @@ fn ecr_ec_recover_address_r1() {
 
 // use ed25519_dalek::ed25519::signature::Signer;
 // use ed25519_dalek::SECRET_KEY_LENGTH;
-// use rand::rngs::OsRng;
 // use ed25519_dalek::SigningKey;
 
 // fn main() {
-//     let mut csprng = OsRng;
-//     let signing_key: SigningKey = SigningKey::generate(&mut csprng);
+//     let bytes = hex::decode("638aa7abd1acd372c1ab3bc4951d9df3b33eabb2c019bf60a8c1ff2e424adeb67127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21").unwrap();
+//     let bytes: [u8; 64] = bytes.try_into().unwrap();
+//     let signing_key: SigningKey = SigningKey::from_keypair_bytes(&bytes).unwrap();
 
 //     let keypair_bytes = signing_key.to_keypair_bytes();
 //     let secret_key = &keypair_bytes[..SECRET_KEY_LENGTH];
@@ -125,7 +125,6 @@ fn ecr_ec_recover_address_r1() {
 //     println!("Secret Key: {}", hex::encode(secret_key));
 //     println!("Public Key: {}", hex::encode(public_key));
 
-//     let mut signatures: Vec<([u8; 32], [u8; 32])> = Vec::new();
 
 //     for x in [1, 16, 32, 64] {
 //         let mut bytes = Vec::new();
@@ -158,20 +157,20 @@ fn ecr_ed_verify() {
     let lens = [1, 16, 32, 64];
     let sigs = [
         (
-            0x19d821bfe7da223e53428b72a59e316c6981fcbba63dff89a11f01ce3d33af44,
-            0xb49089aa12883bfffda92f3aadfd9153f654fb235baef6ab7958c6029fa35f0a,
+            0xf5a5aafe874a12bf3460b0a31428306a3c0bf148b23c0726add73f149fb4238f,
+            0x11fd17bd7e9e64878f1cf680c316df925ff29784798cca9c8b70209f58fc6004,
         ),
         (
-            0xd8d59b48918431687390d17f4aacb5b7e94908d06d9c48247bbd79fbb750fb7a,
-            0x6cf1faac6db24f179118c88cb4665fc9e609c17740992497c532f37aba126b0a,
+            0x5573fe0bf140c8f1ca1b6b41fd4dc0bfcf92aefc67ab7dfd8aac1c264a66e67f,
+            0xb47ed5cd8285cc2e8bf4a24a5e923a543278c43630f6e3d3da5a884de4982406,
         ),
         (
-            0xa9d09a2afb1ba6d487a8499d97e799010c42ace3447086d4b859612c91035f59,
-            0x260c85b5215837c72f8f811ecb419d33d48c19cdc821dc83766889172bf5d60f,
+            0x00d8a17c74a926854155f0092fe8c2db55220cff891a38f0ee00e549fec8ba07,
+            0xf2dda3573b2f03d19eefebf93aa93d4ebca81e2c42de5b0f52d8c957f6390a0b,
         ),
         (
-            0x378285af3c469f85b5d85028d6de85714af776ea48a0f4d8f79e1f916eb3feee,
-            0xa7efbeb9cb0b8457489f4244dbf5c655f7857853ffc3193d47cf713b906bf301,
+            0x9a9e7077c905c855c86fb6aea6052f50a2cf29f70205f465d809cb0b81c6503f,
+            0xfea5d320a5f9d4164b7eca627d3e81293083e7f6682b3b1ebc257459fcf89b08,
         ),
     ];
 
