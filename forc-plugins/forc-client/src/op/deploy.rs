@@ -178,14 +178,15 @@ async fn deploy_chunked(
     let contract_id =
         fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
             .deploy(&wallet, tx_policies)
-            .await?;
+            .await?
+            .into();
 
     println_action_green(
         "Finished",
         &format!("deploying loader contract for {pkg_name} {contract_url}{contract_id}"),
     );
 
-    Ok(contract_id.into())
+    Ok(contract_id)
 }
 
 /// Deploys a new proxy contract for the given package.
@@ -195,7 +196,7 @@ async fn deploy_new_proxy(
     impl_contract: &fuel_tx::ContractId,
     provider: &Provider,
     signing_key: &SecretKey,
-) -> Result<fuel_tx::ContractId> {
+) -> Result<ContractId> {
     fuels::macros::abigen!(Contract(
         name = "ProxyContract",
         abi = "forc-plugins/forc-client/proxy_abi/proxy_contract-abi.json"
@@ -217,12 +218,13 @@ async fn deploy_new_proxy(
         .with_configurables(configurables);
 
     let tx_policies = tx_policies_from_cmd(command);
-    let proxy_contract_id = fuels::programs::contract::Contract::load_from(
+    let proxy_contract_id: ContractId = fuels::programs::contract::Contract::load_from(
         proxy_dir_output.join("proxy.bin"),
         configuration,
     )?
     .deploy(&wallet, tx_policies)
-    .await?;
+    .await?
+    .into();
 
     let chain_info = provider.chain_info().await?;
     let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
@@ -236,10 +238,10 @@ async fn deploy_new_proxy(
         &format!("deploying proxy contract for {pkg_name} {contract_url}{proxy_contract_id}"),
     );
 
-    let instance = ProxyContract::new(&proxy_contract_id, wallet);
+    let instance = ProxyContract::new(&proxy_contract_id.into(), wallet);
     instance.methods().initialize_proxy().call().await?;
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
-    Ok(proxy_contract_id.into())
+    Ok(proxy_contract_id)
 }
 
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
