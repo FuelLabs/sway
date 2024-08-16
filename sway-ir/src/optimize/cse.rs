@@ -158,7 +158,9 @@ impl Debug for VNTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "value_map:")?;
         self.value_map.iter().for_each(|(key, value)| {
-            writeln!(f, "\tv{:?} -> {:?}", key.0.data(), value).expect("writeln! failed");
+            if format!("v{:?}", key.0.data()) == "v620v3" {
+                writeln!(f, "\tv{:?} -> {:?}", key.0.data(), value).expect("writeln! failed");
+            }
         });
         Ok(())
     }
@@ -309,14 +311,9 @@ pub fn cse(
                             })
                             .flatten()
                             // The PHI couldn't be simplified to a single ValueNumber.
-                            // lookup(expr, x)
-                            .unwrap_or_else(|| match vntable.expr_map.entry(expr) {
-                                hash_map::Entry::Occupied(occ) => *occ.get(),
-                                hash_map::Entry::Vacant(vac) => {
-                                    *(vac.insert(ValueNumber::Number(phi)))
-                                }
-                            })
+                            .unwrap_or_else(|| ValueNumber::Number(phi))
                     };
+
                     match vntable.value_map.entry(phi) {
                         hash_map::Entry::Occupied(occ) if *occ.get() == vn => {}
                         _ => {
@@ -354,6 +351,8 @@ pub fn cse(
         }
         vntable.expr_map.clear();
     }
+
+    dbg!(&vntable);
 
     // create a partition of congruent (equal) values.
     let mut partition = FxHashMap::<ValueNumber, FxHashSet<Value>>::default();
