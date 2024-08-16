@@ -6,13 +6,16 @@ use semver::{Version, VersionReq};
 use std::io;
 use std::process;
 
-
 pub fn make_app() -> Command {
     Command::new("forc-documenter")
         .about("A mdbook preprocessor which documents Forc commands")
         .subcommand(
             Command::new("supports")
-                .arg(Arg::new("renderer").required(true).value_parser(clap::value_parser!(String)))
+                .arg(
+                    Arg::new("renderer")
+                        .required(true)
+                        .value_parser(clap::value_parser!(String)),
+                )
                 .about("Check whether a renderer is supported by this preprocessor"),
         )
 }
