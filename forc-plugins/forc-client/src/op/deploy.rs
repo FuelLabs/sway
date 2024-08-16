@@ -41,7 +41,7 @@ use std::{
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 
-/// Maximum contract size allowed to be in a single contract. If the target
+/// Maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
 /// starts dividing the contract and deploy them in chunks automatically.
 /// The value is in bytes.
@@ -355,7 +355,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             }
         };
         let bytecode_size = pkg.bytecode.bytes.len();
-        let (deployed_contract_id, chunked) = if bytecode_size > MAX_CONTRACT_SIZE {
+        let deployed_contract_id = if bytecode_size > MAX_CONTRACT_SIZE {
             // Deploy chunked
             let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
             let provider = Provider::connect(node_url).await?;
@@ -368,11 +368,11 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 &pkg.descriptor.name,
             )
             .await?;
-            (id, true)
+            id
         } else {
             let deployed_contract_id =
                 deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?;
-            (deployed_contract_id, false)
+            deployed_contract_id
         };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
@@ -425,7 +425,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         let deployed_contract = DeployedContract {
             id: deployed_contract_id,
             proxy: proxy_id,
-            chunked,
+            chunked: bytecode_size > MAX_CONTRACT_SIZE,
         };
         deployed_contracts.push(deployed_contract);
     }
