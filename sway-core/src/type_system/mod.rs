@@ -4,7 +4,7 @@ mod id;
 mod info;
 mod priv_prelude;
 mod substitute;
-mod unify;
+pub(crate) mod unify;
 
 #[allow(unused)]
 use std::ops::Deref;
