@@ -23,7 +23,7 @@ pub fn main() {
         .into_iter()
         .map(|dir| {
             let manifest_dir = "src/e2e_vm_tests/test_programs/";
-            let name = dir.to_str().unwrap().to_string().replace(&manifest_dir, "");
+            let name = dir.to_str().unwrap().to_string().replace(manifest_dir, "");
             Trial::test(name, move || {
                 FORC_COMPILATION.call_once(|| {
                     compile_forc();
@@ -67,11 +67,11 @@ pub fn discover_test() -> Vec<PathBuf> {
 
     let mut entries = vec![];
 
-    for entry in glob("**/snapshot.toml").expect("Failed to read glob pattern") {
-        match entry {
-            Ok(path) => entries.push(path.parent().unwrap().to_owned()),
-            _ => {}
-        }
+    for entry in glob("**/snapshot.toml")
+        .expect("Failed to read glob pattern")
+        .flatten()
+    {
+        entries.push(entry.parent().unwrap().to_owned())
     }
 
     entries
@@ -118,7 +118,5 @@ fn clean_output(output: &str) -> String {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let manifest_dir: PathBuf = PathBuf::from(manifest_dir);
     let parent = manifest_dir.parent().unwrap();
-    let raw = raw.replace(&format!("{}/", parent.display()), "");
-
-    raw
+    raw.replace(&format!("{}/", parent.display()), "")
 }
