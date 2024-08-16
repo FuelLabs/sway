@@ -15,7 +15,6 @@ use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
 };
-use fuel_abi_types::abi::program as program_abi;
 use petgraph::{
     self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -242,8 +241,6 @@ pub struct PkgOpts {
     ///
     /// By default, this is `<project-root>/out`.
     pub output_directory: Option<String>,
-    /// Outputs json abi with callpath instead of struct and enum names.
-    pub json_abi_with_callpaths: bool,
     /// The IPFS node to be used for fetching IPFS sources.
     pub ipfs_node: IPFSNode,
 }
@@ -285,7 +282,7 @@ pub struct MinifyOpts {
 type ContractIdConst = String;
 
 /// The set of options provided to the `build` functions.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
@@ -318,6 +315,7 @@ pub struct BuildOpts {
 }
 
 /// The set of options to filter type of projects to build in a workspace.
+#[derive(Clone)]
 pub struct MemberFilter {
     pub build_contracts: bool,
     pub build_scripts: bool,
@@ -1795,29 +1793,38 @@ pub fn compile(
         metrics
     );
 
+    const OLD_ENCODING_VERSION: &str = "0";
     const NEW_ENCODING_VERSION: &str = "1";
+    const SPEC_VERSION: &str = "1";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
-            let mut types = vec![];
-            ProgramABI::Fuel(time_expr!(
+            let program_abi_res = time_expr!(
                 "generate JSON ABI program",
                 "generate_json_abi",
                 fuel_abi::generate_program_abi(
+                    &handler,
                     &mut AbiContext {
                         program: typed_program,
-                        abi_with_callpaths: profile.json_abi_with_callpaths,
+                        abi_with_callpaths: true,
+                        type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
-                    &mut types,
                     profile
                         .experimental
                         .new_encoding
-                        .then(|| NEW_ENCODING_VERSION.into()),
+                        .then(|| NEW_ENCODING_VERSION.into())
+                        .unwrap_or(OLD_ENCODING_VERSION.into()),
+                    SPEC_VERSION.into(),
                 ),
                 Some(sway_build_config.clone()),
                 metrics
-            ))
+            );
+            let program_abi = match program_abi_res {
+                Err(_) => return fail(handler),
+                Ok(program_abi) => program_abi,
+            };
+            ProgramABI::Fuel(program_abi)
         }
         BuildTarget::EVM => {
             // Merge the ABI output of ASM gen with ABI gen to handle internal constructors
@@ -2063,7 +2070,6 @@ fn build_profile_from_opts(
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
-    profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
     profile.experimental = ExperimentalFlags {
         new_encoding: experimental.new_encoding,
@@ -2115,6 +2121,8 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         .path
         .as_ref()
         .map_or_else(|| current_dir, PathBuf::from);
+
+    println_action_green("Building", &path.display().to_string());
 
     let build_plan = BuildPlan::from_pkg_opts(&build_options.pkg)?;
     let graph = build_plan.graph();
@@ -2423,7 +2431,7 @@ pub fn build(
             }
         };
 
-        let mut compiled = compile(
+        let compiled = compile(
             &descriptor,
             &profile,
             &engines,
@@ -2443,11 +2451,6 @@ pub fn build(
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
-        // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
-        if let ProgramABI::Fuel(ref mut program_abi) = compiled.program_abi {
-            standardize_json_abi_types(program_abi);
-        }
-
         let built_pkg = BuiltPackage {
             descriptor,
             program_abi: compiled.program_abi,
@@ -2465,136 +2468,6 @@ pub fn build(
     }
 
     Ok(built_packages)
-}
-
-/// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
-/// process because every time two types are merged, new opportunities for more merging arise.
-fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
-    loop {
-        // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
-        // between id_1 and id_2 in the HashMap below.
-        let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
-
-        // A vector containing unique `program_abi::TypeDeclaration`s.
-        //
-        // Two `program_abi::TypeDeclaration` are deemed the same if the have the same
-        // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
-        // different).
-        let mut deduped_types: Vec<program_abi::TypeDeclaration> = Vec::new();
-
-        // Insert values in `deduped_types` if they haven't been inserted before. Otherwise, create
-        // an appropriate mapping between type IDs in the HashMap `old_to_new_id`.
-        for decl in &json_abi_program.types {
-            if let Some(ty) = deduped_types.iter().find(|d| {
-                d.type_field == decl.type_field
-                    && d.components == decl.components
-                    && d.type_parameters == decl.type_parameters
-            }) {
-                old_to_new_id.insert(decl.type_id, ty.type_id);
-            } else {
-                deduped_types.push(decl.clone());
-            }
-        }
-
-        // Nothing to do if the hash map is empty as there are not merge opportunities. We can now
-        // exit the loop.
-        if old_to_new_id.is_empty() {
-            break;
-        }
-
-        json_abi_program.types = deduped_types;
-
-        // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
-        update_all_types(json_abi_program, &old_to_new_id);
-    }
-
-    // Sort the `program_abi::TypeDeclaration`s
-    json_abi_program
-        .types
-        .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
-
-    // Standardize IDs (i.e. change them to 0,1,2,... according to the alphabetical order above
-    let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
-    for (ix, decl) in json_abi_program.types.iter_mut().enumerate() {
-        old_to_new_id.insert(decl.type_id, ix);
-        decl.type_id = ix;
-    }
-
-    // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
-    update_all_types(json_abi_program, &old_to_new_id);
-}
-
-/// Recursively updates the type IDs used in a program_abi::ProgramABI
-fn update_all_types(
-    json_abi_program: &mut program_abi::ProgramABI,
-    old_to_new_id: &HashMap<usize, usize>,
-) {
-    // Update all `program_abi::TypeApplication`s in every function
-    for func in &mut json_abi_program.functions {
-        for input in &mut func.inputs {
-            update_json_type_application(input, old_to_new_id);
-        }
-
-        update_json_type_application(&mut func.output, old_to_new_id);
-    }
-
-    // Update all `program_abi::TypeDeclaration`
-    for decl in &mut json_abi_program.types {
-        update_json_type_declaration(decl, old_to_new_id);
-    }
-    if let Some(logged_types) = &mut json_abi_program.logged_types {
-        for logged_type in logged_types {
-            update_json_type_application(&mut logged_type.application, old_to_new_id);
-        }
-    }
-    if let Some(messages_types) = &mut json_abi_program.messages_types {
-        for logged_type in messages_types {
-            update_json_type_application(&mut logged_type.application, old_to_new_id);
-        }
-    }
-    if let Some(configurables) = &mut json_abi_program.configurables {
-        for logged_type in configurables {
-            update_json_type_application(&mut logged_type.application, old_to_new_id);
-        }
-    }
-}
-
-/// Recursively updates the type IDs used in a `program_abi::TypeApplication` given a HashMap from
-/// old to new IDs
-fn update_json_type_application(
-    type_application: &mut program_abi::TypeApplication,
-    old_to_new_id: &HashMap<usize, usize>,
-) {
-    if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
-        type_application.type_id = *new_id;
-    }
-
-    if let Some(args) = &mut type_application.type_arguments {
-        for arg in args.iter_mut() {
-            update_json_type_application(arg, old_to_new_id);
-        }
-    }
-}
-
-/// Recursively updates the type IDs used in a `program_abi::TypeDeclaration` given a HashMap from
-/// old to new IDs
-fn update_json_type_declaration(
-    type_declaration: &mut program_abi::TypeDeclaration,
-    old_to_new_id: &HashMap<usize, usize>,
-) {
-    if let Some(params) = &mut type_declaration.type_parameters {
-        for param in params.iter_mut() {
-            if let Some(new_id) = old_to_new_id.get(param) {
-                *param = *new_id;
-            }
-        }
-    }
-
-    if let Some(components) = &mut type_declaration.components {
-        for component in components.iter_mut() {
-            update_json_type_application(component, old_to_new_id);
-        }
-    }
 }
 
 /// Compile the entire forc package and return the lexed, parsed and typed programs

@@ -37,6 +37,7 @@ impl TyImplSelfOrTrait {
             impl_type_parameters,
             trait_name,
             mut trait_type_arguments,
+            trait_decl_ref: _,
             mut implementing_for,
             items,
             block_span,
@@ -163,7 +164,7 @@ impl TyImplSelfOrTrait {
                             implementing_for.type_id,
                         );
 
-                        let new_items = type_check_trait_implementation(
+                        let (new_items, supertrait_items) = type_check_trait_implementation(
                             handler,
                             ctx.by_ref(),
                             implementing_for.type_id,
@@ -190,6 +191,7 @@ impl TyImplSelfOrTrait {
                             )),
                             span: block_span,
                             items: new_items,
+                            supertrait_items,
                             implementing_for,
                         }
                     }
@@ -240,7 +242,7 @@ impl TyImplSelfOrTrait {
                             None,
                         );
 
-                        let new_items = type_check_trait_implementation(
+                        let (new_items, supertrait_items) = type_check_trait_implementation(
                             handler,
                             ctx.by_ref(),
                             implementing_for.type_id,
@@ -267,6 +269,7 @@ impl TyImplSelfOrTrait {
                             )),
                             span: block_span,
                             items: new_items,
+                            supertrait_items,
                             implementing_for,
                         }
                     }
@@ -447,6 +450,7 @@ impl TyImplSelfOrTrait {
                         trait_decl_ref: None,
                         span: block_span,
                         items: new_items,
+                        supertrait_items: vec![],
                         implementing_for,
                     };
 
@@ -489,7 +493,12 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
@@ -542,7 +551,12 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
@@ -629,7 +643,7 @@ fn type_check_trait_implementation(
     trait_decl_span: &Span,
     block_span: &Span,
     is_contract: bool,
-) -> Result<Vec<TyImplItem>, ErrorEmitted> {
+) -> Result<(Vec<TyImplItem>, Vec<TyImplItem>), ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
@@ -913,7 +927,7 @@ fn type_check_trait_implementation(
     type_mapping.extend(&trait_type_mapping);
 
     interface_item_refs.extend(supertrait_interface_item_refs);
-    impld_item_refs.extend(supertrait_impld_item_refs);
+    impld_item_refs.extend(supertrait_impld_item_refs.clone());
     let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
         interface_item_refs,
         BTreeMap::new(),
@@ -1001,7 +1015,10 @@ fn type_check_trait_implementation(
             });
         }
 
-        Ok(all_items_refs)
+        Ok((
+            all_items_refs,
+            supertrait_impld_item_refs.values().cloned().collect(),
+        ))
     })
 }
 

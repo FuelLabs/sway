@@ -22,6 +22,19 @@ pub enum Literal {
     B256([u8; 32]),
 }
 
+impl Literal {
+    pub fn cast_value_to_u64(&self) -> Option<u64> {
+        match self {
+            Literal::U8(v) => Some(*v as u64),
+            Literal::U16(v) => Some(*v as u64),
+            Literal::U32(v) => Some(*v as u64),
+            Literal::U64(v) => Some(*v),
+            Literal::Numeric(v) => Some(*v),
+            _ => None,
+        }
+    }
+}
+
 impl Hash for Literal {
     fn hash<H: Hasher>(&self, state: &mut H) {
         use Literal::*;

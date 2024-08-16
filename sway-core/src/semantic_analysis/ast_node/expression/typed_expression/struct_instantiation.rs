@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -137,6 +139,18 @@ pub(crate) fn struct_instantiation(
             is_in_storage_declaration: ctx.storage_declaration(),
             struct_can_be_changed,
         });
+    }
+
+    // Check that there are no duplicate fields.
+    let mut seen_fields: BTreeSet<Ident> = BTreeSet::new();
+    for field in fields.iter() {
+        if let Some(duplicate) = seen_fields.get(&field.name) {
+            handler.emit_err(CompileError::StructFieldDuplicated {
+                field_name: field.name.clone(),
+                duplicate: duplicate.clone(),
+            });
+        }
+        seen_fields.insert(field.name.clone());
     }
 
     // Check that there are no extra fields.

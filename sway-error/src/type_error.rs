@@ -15,7 +15,6 @@ pub enum TypeError {
         received: String,
         help_text: String,
         span: Span,
-        internal: String,
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
     UnknownType { span: Span },
@@ -30,6 +29,8 @@ pub enum TypeError {
         received: String,
         span: Span,
     },
+    #[error("Literal would overflow because its value does not fit into \"{expected}\"")]
+    LiteralOverflow { expected: String, span: Span },
 }
 
 impl Spanned for TypeError {
@@ -39,6 +40,7 @@ impl Spanned for TypeError {
             MismatchedType { span, .. } => span.clone(),
             UnknownType { span } => span.clone(),
             MatchArmScrutineeWrongType { span, .. } => span.clone(),
+            LiteralOverflow { span, .. } => span.clone(),
         }
     }
 }

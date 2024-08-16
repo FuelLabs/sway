@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-CA019CD48EEC4945"
+
+[[package]]
+name = "memcpyopt"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-CA019CD48EEC4945"
+dependencies = ["core"]

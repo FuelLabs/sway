@@ -193,6 +193,7 @@ impl ty::TyExpression {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     ref arguments,
                 } = *function_application_expression.clone();
                 Self::type_check_function_application(
@@ -906,6 +907,13 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
+        if asm.is_empty() {
+            handler.emit_warn(CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::AsmBlockIsEmpty,
+            });
+        }
+
         // Various checks that we can catch early to check that the assembly is valid. For now,
         // this includes two checks:
         // 1. Check that no control flow opcodes are used.
@@ -1107,7 +1115,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
@@ -1806,20 +1814,20 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let never_type = type_engine.insert(engines, TypeInfo::Never, None);
+            let elem_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
-                    elem_type: never_type,
+                    elem_type,
                     contents: Vec::new(),
                 },
                 return_type: type_engine.insert(
                     engines,
                     TypeInfo::Array(
                         TypeArgument {
-                            type_id: never_type,
+                            type_id: elem_type,
                             span: Span::dummy(),
                             call_path_tree: None,
-                            initial_type_id: never_type,
+                            initial_type_id: elem_type,
                         },
                         Length::new(0, Span::dummy()),
                     ),
@@ -2319,26 +2327,13 @@ impl ty::TyExpression {
         let expr = ty::TyExpression::type_check(handler, ctx, value)?;
 
         if to_mutable_value {
-            match expr.expression {
-                ty::TyExpressionVariant::ConstantExpression { .. } => {
-                    return Err(
-                        handler.emit_err(CompileError::RefMutCannotReferenceConstant {
-                            constant: expr_span.str(),
-                            span,
-                        }),
-                    )
-                }
-                ty::TyExpressionVariant::VariableExpression {
-                    name: decl_name,
-                    mutability: VariableMutability::Immutable,
-                    ..
-                } => {
-                    return Err(handler.emit_err(
-                        CompileError::RefMutCannotReferenceImmutableVariable { decl_name, span },
-                    ))
-                }
-                // TODO-IG: Check referencing parts of aggregates once reassignment is implemented.
-                _ => (),
+            if let Some(value) = Self::check_ref_mutability_mismatch(
+                &expr.expression,
+                handler,
+                expr_span,
+                span.clone(),
+            ) {
+                return value;
             }
         };
 
@@ -2357,6 +2352,54 @@ impl ty::TyExpression {
         };
 
         Ok(typed_expr)
+    }
+
+    fn check_ref_mutability_mismatch(
+        expr: &TyExpressionVariant,
+        handler: &Handler,
+        expr_span: Span,
+        ref_span: Span,
+    ) -> Option<Result<TyExpression, ErrorEmitted>> {
+        match expr {
+            ty::TyExpressionVariant::ConstantExpression { .. } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceConstant {
+                        constant: expr_span.str(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::VariableExpression {
+                name: decl_name,
+                mutability: VariableMutability::Immutable,
+                ..
+            } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceImmutableVariable {
+                        decl_name: decl_name.clone(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::StructFieldAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            ty::TyExpressionVariant::TupleElemAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            _ => (),
+        }
+        None
     }
 
     fn type_check_deref(
@@ -2617,7 +2660,7 @@ fn check_asm_block_validity(
             if reg.initializer.is_none() {
                 let span = reg.name.span();
 
-                // Emit warning if this register shadows a variable
+                // Emit warning if this register shadows a constant, or a configurable, or a variable.
                 let temp_handler = Handler::default();
                 let decl = ctx.namespace().resolve_call_path_typed(
                     &temp_handler,
@@ -2630,11 +2673,25 @@ fn check_asm_block_validity(
                     None,
                 );
 
-                if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                let shadowing_item = match decl {
+                    Ok(ty::TyDecl::ConstantDecl(decl)) => {
+                        let decl = ctx.engines.de().get_constant(&decl.decl_id);
+                        Some((decl.name().into(), "Constant"))
+                    }
+                    Ok(ty::TyDecl::ConfigurableDecl(decl)) => {
+                        let decl = ctx.engines.de().get_configurable(&decl.decl_id);
+                        Some((decl.name().into(), "Configurable"))
+                    }
+                    Ok(ty::TyDecl::VariableDecl(decl)) => Some((decl.name.into(), "Variable")),
+                    _ => None,
+                };
+
+                if let Some((item, item_kind)) = shadowing_item {
                     handler.emit_warn(CompileWarning {
                         span: span.clone(),
-                        warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                            name: decl.name.clone(),
+                        warning_content: Warning::UninitializedAsmRegShadowsItem {
+                            constant_or_configurable_or_variable: item_kind,
+                            item,
                         },
                     });
                 }

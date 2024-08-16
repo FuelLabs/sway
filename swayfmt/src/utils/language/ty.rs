@@ -117,15 +117,20 @@ fn format_ptr(
 
 fn format_slice(
     formatted_code: &mut FormattedCode,
-    slice_token: SliceToken,
+    slice_token: Option<SliceToken>,
     ty: SquareBrackets<Box<Ty>>,
 ) -> Result<(), FormatterError> {
-    write!(
-        formatted_code,
-        "{}[{}]",
-        slice_token.span().as_str(),
-        ty.into_inner().span().as_str()
-    )?;
+    if let Some(slice_token) = slice_token {
+        write!(
+            formatted_code,
+            "{}[{}]",
+            slice_token.span().as_str(),
+            ty.into_inner().span().as_str()
+        )?;
+    } else {
+        write!(formatted_code, "[{}]", ty.into_inner().span().as_str())?;
+    }
+
     Ok(())
 }
 
@@ -202,7 +207,11 @@ impl LeafSpans for Ty {
                 collected_spans
             }
             Ty::Slice { slice_token, ty } => {
-                let mut collected_spans = vec![ByteSpan::from(slice_token.span())];
+                let mut collected_spans = if let Some(slice_token) = slice_token {
+                    vec![ByteSpan::from(slice_token.span())]
+                } else {
+                    vec![]
+                };
                 collected_spans.append(&mut ty.leaf_spans());
                 collected_spans
             }

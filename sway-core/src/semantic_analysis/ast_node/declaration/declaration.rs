@@ -2,17 +2,21 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{
+        parsed_engine::ParsedDeclEngineReplace, DeclEngineGet, DeclEngineInsert, DeclRef,
+        ReplaceFunctionImplementingType,
+    },
     language::{
         parsed::{self, StorageEntry},
-        ty::{self, FunctionDecl, TyDecl, TyStorageField},
+        ty::{self, FunctionDecl, TyCodeBlock, TyDecl, TyStorageField},
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
-        collection_context::SymbolCollectionContext, type_check_context::EnforceTypeArguments,
-        ConstShadowingMode, GenericShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
+        symbol_collection_context::SymbolCollectionContext,
+        type_check_context::EnforceTypeArguments, ConstShadowingMode, GenericShadowingMode,
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
     },
     type_system::*,
     Engines,
@@ -42,14 +46,24 @@ impl TyDecl {
                 let trait_type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, trait_type_decl.name.clone(), decl)?;
             }
+            parsed::Declaration::TraitFnDeclaration(decl_id) => {
+                let trait_fn_decl = engines.pe().get_trait_fn(decl_id).as_ref().clone();
+                ctx.insert_parsed_symbol(handler, engines, trait_fn_decl.name.clone(), decl)?;
+            }
             parsed::Declaration::EnumDeclaration(decl_id) => {
                 let enum_decl = engines.pe().get_enum(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl)?;
             }
             parsed::Declaration::EnumVariantDeclaration(_decl) => {}
             parsed::Declaration::FunctionDeclaration(decl_id) => {
-                let fn_decl = engines.pe().get_function(decl_id);
+                let decl_id = *decl_id;
+                let mut fn_decl = engines.pe().get_function(&decl_id).as_ref().clone();
                 let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl);
+                let (_ret, lexical_scope_id) = ctx.scoped(engines, |scoped_ctx| {
+                    TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
+                });
+                fn_decl.lexical_scope = lexical_scope_id;
+                engines.pe().replace(decl_id, fn_decl);
             }
             parsed::Declaration::TraitDeclaration(decl_id) => {
                 let trait_decl = engines.pe().get_trait(decl_id).as_ref().clone();
@@ -608,6 +622,9 @@ impl TyDecl {
                 // insert the type alias name and decl into namespace
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
+            }
+            parsed::Declaration::TraitFnDeclaration(_decl_id) => {
+                unreachable!();
             }
         };
 

@@ -220,9 +220,12 @@ fn did_change_stress_test_random_wait() {
                 .join("generics_in_contract");
             let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
             let times = 60;
+
+            // Initialize cursor position
+            let mut cursor_line = 29;
             for version in 0..times {
-                //eprintln!("version: {}", version);
-                let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
+                let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+                let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
                 if version == 0 {
                     service.inner().wait_for_parsing().await;
                 }
@@ -265,39 +268,13 @@ fn garbage_collection_runner(path: PathBuf) {
             .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
         let times = 60;
+
+        // Initialize cursor position
+        let mut cursor_line = 20;
+
         for version in 1..times {
             //eprintln!("version: {}", version);
-            let params = if rand::random::<u64>() % 3 < 1 {
-                // enter keypress at line 20
-                lsp::create_did_change_params(
-                    &uri,
-                    version,
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    0,
-                )
-            } else {
-                // backspace keypress at line 21
-                lsp::create_did_change_params(
-                    &uri,
-                    version,
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    Position {
-                        line: 21,
-                        character: 0,
-                    },
-                    1,
-                )
-            };
+            let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
             let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
             if version == 0 {
                 service.inner().wait_for_parsing().await;
@@ -2158,4 +2135,37 @@ async fn write_all_example_asts() {
         }
     }
     let _ = server.shutdown_server();
+}
+
+#[test]
+fn test_url_to_session_existing_session() {
+    use std::sync::Arc;
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+
+        // First call to uri_and_session_from_workspace
+        let (first_uri, first_session) = service
+            .inner()
+            .uri_and_session_from_workspace(&uri)
+            .await
+            .unwrap();
+
+        // Second call to uri_and_session_from_workspace
+        let (second_uri, second_session) = service
+            .inner()
+            .uri_and_session_from_workspace(&uri)
+            .await
+            .unwrap();
+
+        // Assert that the URIs are the same
+        assert_eq!(first_uri, second_uri, "URIs should be identical");
+
+        // Assert that the sessions are the same (they should point to the same Arc)
+        assert!(
+            Arc::ptr_eq(&first_session, &second_session),
+            "Sessions should be identical"
+        );
+        shutdown_and_exit(&mut service).await;
+    });
 }

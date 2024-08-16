@@ -1,10 +1,10 @@
-mod ast_elements;
+pub(crate) mod ast_elements;
 mod engine;
 mod id;
 mod info;
 mod priv_prelude;
 mod substitute;
-mod unify;
+pub(crate) mod unify;
 
 #[allow(unused)]
 use std::ops::Deref;
