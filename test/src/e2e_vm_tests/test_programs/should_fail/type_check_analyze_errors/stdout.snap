@@ -1,5 +1,5 @@
 ---
-source: test/test/e2e_tests.rs
+source: test/tests/tests.rs
 ---
 exit status: 1
 stdout:
@@ -10,16 +10,31 @@ stdout:
 
 stderr:
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:23:18
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:23:27
    |
 21 | 
-22 |     let a = [8, 256u16, 8u8];
-23 |     let b: u32 = a[2];
+22 |     let a = [None, Some(1), Some(1u8)];
+23 |     let _b: Option<u16> = a[1];
+   |                           ^^^^ Mismatched types.
+expected: Option<u16>
+found:    Option<u8>.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+24 | 
+25 |     // Wrong cast
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:27:18
+   |
+25 | 
+26 |     let a = [8, 256u16, 8u8];
+27 |     let b: u32 = a[2];
    |                  ^^^^ Mismatched types.
 expected: u32
 found:    u16.
 help: Variable declaration's type annotation does not match up with the assigned expression's type.
-24 | }
+28 | }
    |
 ____
 
@@ -57,14 +72,29 @@ error
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:16:20
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:16:14
    |
 14 | 
 15 |     // Array
 16 |     let a = [1, 2, "hello"];
-   |                    ^^^^^^^ Mismatched types.
-expected: numeric
-found:    str.
+   |              ^ Mismatched types.
+expected: str
+found:    numeric.
+
+17 | 
+18 |     // Array - different numerics
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:16:17
+   |
+14 | 
+15 |     // Array
+16 |     let a = [1, 2, "hello"];
+   |                 ^ Mismatched types.
+expected: str
+found:    numeric.
 
 17 | 
 18 |     // Array - different numerics
@@ -82,7 +112,7 @@ expected: u8
 found:    u16.
 
 20 | 
-21 |     // Wrong cast
+21 |     // Array - unspecified generic structs
    |
 ____
 
@@ -97,7 +127,7 @@ expected: u8
 found:    u32.
 
 20 | 
-21 |     // Wrong cast
+21 |     // Array - unspecified generic structs
    |
 ____
 
@@ -112,24 +142,24 @@ expected: u8
 found:    u64.
 
 20 | 
-21 |     // Wrong cast
+21 |     // Array - unspecified generic structs
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:22:25
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:26:25
    |
-20 | 
-21 |     // Wrong cast
-22 |     let a = [8, 256u16, 8u8];
+24 | 
+25 |     // Wrong cast
+26 |     let a = [8, 256u16, 8u8];
    |                         ^^^ Mismatched types.
 expected: u16
 found:    u8.
 
-23 |     let b: u32 = a[2];
-24 | }
+27 |     let b: u32 = a[2];
+28 | }
    |
 ____
 
-  Aborting due to 9 errors.
+  Aborting due to 11 errors.
 error: Failed to compile type_check_analyze_errors

@@ -1870,6 +1870,13 @@ impl ty::TyExpression {
                         return Done(Some(last));
                     }
 
+                    if current
+                        .return_type
+                        .is_concrete(engines, NumericIsNonConcrete::Yes)
+                    {
+                        return Done(Some(current.return_type));
+                    }
+
                     let last_info = ctx.engines().te().get(last);
                     let current_info = ctx.engines().te().get(current.return_type);
                     match (&*last_info, &*current_info) {
