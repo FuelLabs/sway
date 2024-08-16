@@ -548,26 +548,24 @@ impl core::ops::Not for U128 {
 impl core::ops::Add for U128 {
     /// Add a `U128` to a `U128`. Reverts on overflow.
     fn add(self, other: Self) -> Self {
-        let self_parts = (0, 0, self.upper, self.lower);
-        let other_parts = (0, 0, other.upper, other.lower);
+        let mut upper_128 = self.upper.overflowing_add(other.upper);
 
-        let self_u256 = asm(r1: self_parts) {
-            r1: u256
-        };
-        let other_u256 = asm(r1: other_parts) {
-            r1: u256
-        };
+        // If the upper overflows, then the number cannot fit in 128 bits, so panic.
+        assert(upper_128.upper == 0);
+        let lower_128 = self.lower.overflowing_add(other.lower);
 
-        let res_u256 = self_u256 + other_u256;
-        let res_parts = asm(r1: res_u256) {
-            r1: (u64, u64, u64, u64)
-        };
+        // If overflow has occurred in the lower component addition, carry.
+        // Note: carry can be at most 1.
+        if lower_128.upper > 0 {
+            upper_128 = upper_128.lower.overflowing_add(lower_128.upper);
+        }
 
-        //assert(res_parts.0 == 0 && res_parts.1 == 0);
+        // If overflow has occurred in the upper component addition, panic.
+        assert(upper_128.upper == 0);
 
         Self {
-            upper: res_parts.2,
-            lower: res_parts.3,
+            upper: upper_128.lower,
+            lower: lower_128.lower,
         }
     }
 }
@@ -575,80 +573,75 @@ impl core::ops::Add for U128 {
 impl core::ops::Subtract for U128 {
     /// Subtract a `U128` from a `U128`. Reverts of overflow.
     fn subtract(self, other: Self) -> Self {
-        let self_parts = (0, 0, self.upper, self.lower);
-        let other_parts = (0, 0, other.upper, other.lower);
+        // If trying to subtract a larger number, panic.
+        assert(!(self < other));
 
-        let self_u256 = asm(r1: self_parts) {
-            r1: u256
-        };
-        let other_u256 = asm(r1: other_parts) {
-            r1: u256
-        };
+        let mut upper = self.upper - other.upper;
+        let mut lower = 0;
 
-        let res_u256 = self_u256 - other_u256;
-        let res_parts = asm(r1: res_u256) {
-            r1: (u64, u64, u64, u64)
-        };
-
-        //assert(res_parts.0 == 0 && res_parts.1 == 0);
-
-        Self {
-            upper: res_parts.2,
-            lower: res_parts.3,
+        // If necessary, borrow and carry for lower subtraction
+        if self.lower < other.lower {
+            lower = u64::max() - (other.lower - self.lower - 1);
+            upper -= 1;
+        } else {
+            lower = self.lower - other.lower;
         }
+
+        Self { upper, lower }
     }
 }
 impl core::ops::Multiply for U128 {
     /// Multiply a `U128` with a `U128`. Reverts of overflow.
     fn multiply(self, other: Self) -> Self {
-        let self_parts = (0, 0, self.upper, self.lower);
-        let other_parts = (0, 0, other.upper, other.lower);
+        // in case both of the `U128` upper parts are bigger than zero,
+        // it automatically means overflow, as any `U128` value
+        // is upper part multiplied by 2 ^ 64 + lower part
+        assert(self.upper == 0 || other.upper == 0);
 
-        let self_u256 = asm(r1: self_parts) {
-            r1: u256
-        };
-        let other_u256 = asm(r1: other_parts) {
-            r1: u256
-        };
-
-        let res_u256 = self_u256 * other_u256;
-        let res_parts = asm(r1: res_u256) {
-            r1: (u64, u64, u64, u64)
-        };
-
-        //assert(res_parts.0 == 0 && res_parts.1 == 0);
-
-        Self {
-            upper: res_parts.2,
-            lower: res_parts.3,
+        let mut result = self.lower.overflowing_mul(other.lower);
+        if self.upper == 0 {
+            // panic in case of overflow
+            result.upper += self.lower * other.upper;
+        } else if other.upper == 0 {
+            // panic in case of overflow
+            result.upper += self.upper * other.lower;
         }
+
+        result
     }
 }
 
 impl core::ops::Divide for U128 {
     /// Divide a `U128` by a `U128`. Reverts if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
-        let self_parts = (0, 0, self.upper, self.lower);
-        let divisor_parts = (0, 0, divisor.upper, divisor.lower);
+        let zero = Self::from((0, 0));
 
-        let self_u256 = asm(r1: self_parts) {
-            r1: u256
-        };
-        let divisor_u256 = asm(r1: divisor_parts) {
-            r1: u256
-        };
+        assert(divisor != zero);
 
-        let res_u256 = self_u256 / divisor_u256;
-        let res_parts = asm(r1: res_u256) {
-            r1: (u64, u64, u64, u64)
-        };
-
-        //assert(res_parts.0 == 0 && res_parts.1 == 0);
-
-        Self {
-            upper: res_parts.2,
-            lower: res_parts.3,
+        if self.upper == 0 && divisor.upper == 0 {
+            return Self::from((0, self.lower / divisor.lower));
         }
+
+        let mut quotient = Self::new();
+        let mut remainder = Self::new();
+        let mut i = 128 - 1;
+        while true {
+            quotient <<= 1;
+            remainder <<= 1;
+            remainder.lower = remainder.lower | (self >> i).lower & 1;
+            if remainder >= divisor {
+                remainder -= divisor;
+                quotient.lower = quotient.lower | 1;
+            }
+
+            if i == 0 {
+                break;
+            }
+
+            i -= 1;
+        }
+
+        quotient
     }
 }
 
