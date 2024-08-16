@@ -117,7 +117,7 @@ fn ecr_ed_verify() {
     let lo_1 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
     let signature_1: B512 = B512::from((hi_1, lo_1));
     // A verified public key with signature 
-    let verified_1 = ed_verify(pub_key_1, signature_1, Bytes::from(msg_hash_1), 32);
+    let verified_1 = ed_verify(pub_key_1, signature_1, Bytes::from(msg_hash_1));
     assert(verified_1.is_ok());
     assert(verified_1.unwrap());
 
@@ -128,12 +128,13 @@ fn ecr_ed_verify() {
     let hi_2 = b256::zero();
     let lo_2 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
     let signature_2: B512 = B512::from((hi_2, lo_2));
-    let verified_2 = ed_verify(pub_key_2, signature_2, Bytes::from(msg_hash_2), 32);
+    let verified_2 = ed_verify(pub_key_2, signature_2, Bytes::from(msg_hash_2));
 
     assert(verified_2.is_err());
 
     // Private key: 4DCB36B9ECB8ED0840360FDE9E485EFBFF7BD24954418C282E60108CF00C0550
     // Public key: 206B8944348E7540679293D3F2B3C003168C5FD101DD2149833197E6DD9A4613
+    // Generated with: https://cyphr.me/ed25519_tool/ed.html
     // Test case for 64-byte length
     let pub_key_3 = 0x206B8944348E7540679293D3F2B3C003168C5FD101DD2149833197E6DD9A4613;
     let mut msg_3 = Bytes::with_capacity(8);
@@ -149,7 +150,7 @@ fn ecr_ed_verify() {
     let hi_3 = 0x37D347472150AA32CB8040947EB3D982E4F117731F6E1FCAC3BEA2063D621F6B;
     let lo_3 = 0x6A66298B3C576AD63385A16C1E80C59FDED7EC2A416B04245D6EFC8B801D1704;
     let signature_3: B512 = B512::from((hi_3, lo_3));
-    let verified_3 = ed_verify(pub_key_3, signature_3, msg_3, 64);
+    let verified_3 = ed_verify(pub_key_3, signature_3, msg_hash_3);
     assert(verified_3.is_ok());
     assert(verified_3.unwrap());
 
@@ -168,7 +169,13 @@ fn ecr_ed_verify() {
     let hi_4 = 0xE2A1BB1915A356D796C186E78CD268F4188B7C0C8E04963A2F017F7557752CA2;
     let lo_4 = 0xA1E08611A65E287060C49C3814CCAB1265032AE800D54847D1E05CBC8911480E;
     let signature_4: B512 = B512::from((hi_4, lo_4));
-    let verified_4 = ed_verify(pub_key_4, signature_4, msg_4, 16);
+    let verified_4 = ed_verify(pub_key_4, signature_4, msg_hash_4);
     assert(verified_4.is_ok());
     assert(verified_4.unwrap());
+
+
+    // Test case for 0-length message
+    let msg_5 = Bytes::new();
+    let verified_5 = ed_verify(pub_key_4, signature_4, msg_5);
+    assert(verified_5.is_err());
 }
