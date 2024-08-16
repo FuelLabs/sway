@@ -24,7 +24,7 @@ struct Person {
 impl MyContract for Contract {
     fn large_blob() -> bool {
         asm() {
-            blob i9100;
+            blob i91000;
         }
         true
     }
