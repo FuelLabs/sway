@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 /// The name of the folder that forc generated proxy contract project will reside at.
-pub const PROXY_CONTRACT_FOLDER_NAME: &str = ".generated_proxy_contracts";
+pub const GENERATED_CONTRACT_FOLDER_NAME: &str = ".generated_contracts";
 pub const PROXY_CONTRACT_BIN: &[u8] = include_bytes!("../../proxy_abi/proxy_contract.bin");
 pub const PROXY_CONTRACT_STORAGE_SLOTS: &str =
     include_str!("../../proxy_abi/proxy_contract-storage_slots.json");
@@ -42,8 +42,8 @@ pub(crate) fn update_proxy_address_in_manifest(
 pub(crate) fn create_proxy_contract(pkg_name: &str) -> Result<PathBuf> {
     // Create the proxy contract folder.
     let proxy_contract_dir = user_forc_directory()
-        .join(PROXY_CONTRACT_FOLDER_NAME)
-        .join(pkg_name);
+        .join(GENERATED_CONTRACT_FOLDER_NAME)
+        .join(format!("{}-proxy", pkg_name));
     std::fs::create_dir_all(&proxy_contract_dir)?;
     std::fs::write(
         proxy_contract_dir.join(PROXY_BIN_FILE_NAME),
