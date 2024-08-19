@@ -5365,5 +5365,5 @@ fn ok_abi_encoding() {
 #[test(should_revert)]
 fn nok_abi_encoding_invalid_bool() {
     let actual = encode(2u8);
-    abi_decode::<bool>(actual);
+    let _ = abi_decode::<bool>(actual);
 }
