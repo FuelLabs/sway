@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-EF0A42ACCA18193C"
+
+[[package]]
+name = "purity_of_asm_instructions_and_intrinsics"
+source = "member"
+dependencies = ["core"]

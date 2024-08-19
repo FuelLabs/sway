@@ -1,3 +1,8 @@
 [[package]]
-name = 'nested_impure'
-source = 'member'
+name = "core"
+source = "path+from-root-817B68A1DC27AFAA"
+
+[[package]]
+name = "nested_impure"
+source = "member"
+dependencies = ["core"]

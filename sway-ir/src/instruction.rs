@@ -137,8 +137,9 @@ pub enum FuelVmInstruction {
     ReadRegister(Register),
     /// Revert VM execution.
     Revert(Value),
-    /// - Sends a message to an output via the `smo` FuelVM instruction. The first operand must be
-    /// a `B256` representing the recipient. The second operand is the message data being sent.
+    /// - Sends a message to an output via the `smo` FuelVM instruction.
+    /// - The first operand must be a `B256` representing the recipient.
+    /// - The second operand is the message data being sent.
     /// - `message_size` and `coins` must be of type `U64`.
     Smo {
         recipient: Value,
