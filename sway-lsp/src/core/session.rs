@@ -12,7 +12,8 @@ use crate::{
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
-        dependency, lexed_tree::{self, LexedTree}, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
+        dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
+        ParseContext,
     },
 };
 use dashmap::DashMap;
@@ -26,13 +27,12 @@ use pkg::{
     BuildPlan,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use sway_ast::{attribute::Annotated, ItemKind};
 use std::{
-    collections::BTreeMap,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
     time::SystemTime,
 };
+use sway_ast::{attribute::Annotated, ItemKind};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -277,7 +277,7 @@ pub fn compile(
     build_plan: &BuildPlan,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    lsp_mode: Option<LspConfig>,
+    lsp_mode: Option<&LspConfig>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
@@ -285,7 +285,7 @@ pub fn compile(
         build_plan,
         BuildTarget::default(),
         true,
-        lsp_mode,
+        lsp_mode.cloned(),
         true,
         engines,
         retrigger_compilation,
@@ -300,27 +300,22 @@ pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
     engines_clone: &Engines,
     session: Arc<Session>,
-    lsp_mode: Option<LspConfig>,
+    lsp_mode: Option<&LspConfig>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
-
     let modified_file = lsp_mode.and_then(|mode| {
         mode.file_versions
             .iter()
             .find_map(|(path, version)| version.map(|_| path.clone()))
     });
     if let Some(path) = &modified_file {
-        eprintln!("Clearing tokens for file: {:?}", path);
+        tracing::debug!("Clearing tokens for file: {:?}", path);
         session.token_map.remove_tokens_for_file(path);
     } else {
-        eprintln!("Clearing all tokens");
         session.token_map.clear();
     }
 
-    // session.token_map.clear();
-    // JOSH TODO: we probably only want to clear the metrics for the modified file also.
     session.metrics.clear();
-
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
@@ -357,15 +352,8 @@ pub fn traverse(
             let program_id = program_id_from_path(&path, engines)?;
             session.metrics.insert(program_id, metrics);
 
-            //eprintln!("path: {:?}", path);
             if let Some(modified_file) = &modified_file {
-                let modified_program_id = program_id_from_path(&modified_file, engines)?;
-
-                // eprintln!(
-                //     "program_id: {:?} | modified_program_id: {:?}",
-                //     program_id, modified_program_id
-                // );
-
+                let modified_program_id = program_id_from_path(modified_file, engines)?;
                 // We can skip traversing the programs for this iteration as they are unchanged.
                 if program_id != modified_program_id {
                     continue;
@@ -389,7 +377,6 @@ pub fn traverse(
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
-            let now = std::time::Instant::now();
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
             lexed_tree.collect_module_kinds(&lexed);
@@ -397,35 +384,24 @@ pub fn traverse(
                 lexed_tree.traverse_node(an)
             });
 
-            // lexed_tree::parse(&lexed, &ctx);
-
-        
-            eprintln!("Lexed took {:?}", now.elapsed());
-
-            let now = std::time::Instant::now();
             // Next, populate our token_map with un-typed yet parsed ast nodes.
             let parsed_tree = ParsedTree::new(&ctx);
             parsed_tree.collect_module_spans(&parsed);
             parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, _ctx| {
                 parsed_tree.traverse_node(an)
             });
-            eprintln!("Parsed took {:?}", now.elapsed());
 
-            let now = std::time::Instant::now();
             // Finally, populate our token_map with typed ast nodes.
             let typed_tree = TypedTree::new(&ctx);
             typed_tree.collect_module_spans(typed_program);
             parse_ast_to_typed_tokens(typed_program, &ctx, &modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
-            eprintln!("Typed took {:?}", now.elapsed());
 
-            let now = std::time::Instant::now();
             let compiled_program = &mut *session.compiled_program.write();
             compiled_program.lexed = Some(lexed);
             compiled_program.parsed = Some(parsed);
             compiled_program.typed = Some(typed_program.clone());
-            eprintln!("Write compiled_program took {:?}", now.elapsed());
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, ctx| {
@@ -458,7 +434,7 @@ pub fn parse_project(
         &build_plan,
         engines,
         retrigger_compilation,
-        lsp_mode.clone(),
+        lsp_mode.as_ref(),
         experimental,
     )?;
     if results.last().is_none() {
@@ -466,7 +442,7 @@ pub fn parse_project(
     }
 
     let now = std::time::Instant::now();
-    let diagnostics = traverse(results, engines, session.clone(), lsp_mode.clone())?;
+    let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
     eprintln!("Traverse took {:?}", now.elapsed());
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
