@@ -22,7 +22,10 @@ use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
-use fuels::programs::contract::{LoadConfiguration, StorageConfiguration};
+use fuels::{
+    programs::contract::{LoadConfiguration, StorageConfiguration},
+    types::{bech32::Bech32ContractId, transaction_builders::Blob},
+};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
@@ -38,10 +41,17 @@ use std::{
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 
+/// Maximum contract size allowed for a single contract. If the target
+/// contract size is bigger than this amount, forc-deploy will automatically
+/// starts dividing the contract and deploy them in chunks automatically.
+/// The value is in bytes.
+const MAX_CONTRACT_SIZE: usize = 100_000;
+
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
     pub proxy: Option<fuel_tx::ContractId>,
+    pub chunked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,13 +132,77 @@ fn validate_and_parse_salts<'a>(
     Ok(contract_salt_map)
 }
 
+/// Depending on the cli options user passed, either returns storage slots from
+/// compiled package, or the ones user provided as overrides.
+fn resolve_storage_slots(
+    command: &cmd::Deploy,
+    compiled: &BuiltPackage,
+) -> Result<Vec<fuel_tx::StorageSlot>> {
+    let mut storage_slots =
+        if let Some(storage_slot_override_file) = &command.override_storage_slots {
+            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
+            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
+            storage_slots
+        } else {
+            compiled.storage_slots.clone()
+        };
+    storage_slots.sort();
+    Ok(storage_slots)
+}
+
+/// Creates blobs from the contract to deploy contracts that are larger than
+/// `MAX_CONTRACT_SIZE`. Created blobs are deployed, and a loader contract is
+/// generated such that it loads all the deployed blobs, and provides the user
+/// a single contract (loader contract that loads the blobs) to call into.
+async fn deploy_chunked(
+    command: &cmd::Deploy,
+    compiled: &BuiltPackage,
+    salt: Salt,
+    signing_key: &SecretKey,
+    provider: &Provider,
+    pkg_name: &str,
+) -> anyhow::Result<ContractId> {
+    println_action_green("Deploying", &format!("contract {pkg_name} chunks"));
+
+    let storage_slots = resolve_storage_slots(command, compiled)?;
+    let chain_info = provider.chain_info().await?;
+    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+
+    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
+    let blobs = compiled
+        .bytecode
+        .bytes
+        .chunks(MAX_CONTRACT_SIZE)
+        .map(|chunk| Blob::new(chunk.to_vec()))
+        .collect();
+
+    let tx_policies = tx_policies_from_cmd(command);
+    let contract_id =
+        fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
+            .deploy(&wallet, tx_policies)
+            .await?
+            .into();
+
+    println_action_green(
+        "Finished",
+        &format!("deploying loader contract for {pkg_name} {contract_url}{contract_id}"),
+    );
+
+    Ok(contract_id)
+}
+
 /// Deploys a new proxy contract for the given package.
 async fn deploy_new_proxy(
+    command: &cmd::Deploy,
     pkg_name: &str,
     impl_contract: &fuel_tx::ContractId,
     provider: &Provider,
     signing_key: &SecretKey,
-) -> Result<fuel_tx::ContractId> {
+) -> Result<ContractId> {
     fuels::macros::abigen!(Contract(
         name = "ProxyContract",
         abi = "forc-plugins/forc-client/proxy_abi/proxy_contract-abi.json"
@@ -149,12 +223,14 @@ async fn deploy_new_proxy(
         .with_storage_configuration(storage_configuration)
         .with_configurables(configurables);
 
-    let proxy_contract_id = fuels::programs::contract::Contract::load_from(
+    let tx_policies = tx_policies_from_cmd(command);
+    let proxy_contract_id: ContractId = fuels::programs::contract::Contract::load_from(
         proxy_dir_output.join("proxy.bin"),
         configuration,
     )?
-    .deploy(&wallet, TxPolicies::default())
-    .await?;
+    .deploy(&wallet, tx_policies)
+    .await?
+    .into();
 
     let chain_info = provider.chain_info().await?;
     let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
@@ -168,10 +244,11 @@ async fn deploy_new_proxy(
         &format!("deploying proxy contract for {pkg_name} {contract_url}{proxy_contract_id}"),
     );
 
-    let instance = ProxyContract::new(&proxy_contract_id, wallet);
+    let proxy_contract_bech_id: Bech32ContractId = proxy_contract_id.into();
+    let instance = ProxyContract::new(&proxy_contract_bech_id, wallet);
     instance.methods().initialize_proxy().call().await?;
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
-    Ok(proxy_contract_id.into())
+    Ok(proxy_contract_id)
 }
 
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
@@ -277,7 +354,24 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 bail!("Both `--salt` and `--default-salt` were specified: must choose one")
             }
         };
-        let deployed_contract_id = deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?;
+        let bytecode_size = pkg.bytecode.bytes.len();
+        let deployed_contract_id = if bytecode_size > MAX_CONTRACT_SIZE {
+            // Deploy chunked
+            let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
+            let provider = Provider::connect(node_url).await?;
+
+            deploy_chunked(
+                &command,
+                pkg,
+                salt,
+                &signing_key,
+                &provider,
+                &pkg.descriptor.name,
+            )
+            .await?
+        } else {
+            deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?
+        };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
             Some(forc_pkg::manifest::Proxy {
@@ -306,9 +400,14 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             }) => {
                 let pkg_name = &pkg.descriptor.name;
                 // Deploy a new proxy contract.
-                let deployed_proxy_contract =
-                    deploy_new_proxy(pkg_name, &deployed_contract_id, &provider, &signing_key)
-                        .await?;
+                let deployed_proxy_contract = deploy_new_proxy(
+                    &command,
+                    pkg_name,
+                    &deployed_contract_id,
+                    &provider,
+                    &signing_key,
+                )
+                .await?;
 
                 // Update manifest file such that the proxy address field points to the new proxy contract.
                 update_proxy_address_in_manifest(
@@ -324,6 +423,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         let deployed_contract = DeployedContract {
             id: deployed_contract_id,
             proxy: proxy_id,
+            chunked: bytecode_size > MAX_CONTRACT_SIZE,
         };
         deployed_contracts.push(deployed_contract);
     }
@@ -357,8 +457,17 @@ async fn confirm_transaction_details(
                 _ => "",
             };
 
+            let pkg_bytecode_len = pkg.bytecode.bytes.len();
+            let blob_text = if pkg_bytecode_len > MAX_CONTRACT_SIZE {
+                let number_of_blobs = pkg_bytecode_len.div_ceil(MAX_CONTRACT_SIZE);
+                tx_count += number_of_blobs;
+                &format!(" + {number_of_blobs} blobs")
+            } else {
+                ""
+            };
+
             format!(
-                "deploy {}{proxy_text}",
+                "deploy {}{blob_text}{proxy_text}",
                 pkg.descriptor.manifest_file.project_name()
             )
         })
@@ -408,21 +517,12 @@ pub async fn deploy_pkg(
 
     let bytecode = &compiled.bytecode.bytes;
 
-    let mut storage_slots =
-        if let Some(storage_slot_override_file) = &command.override_storage_slots {
-            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
-            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
-            storage_slots
-        } else {
-            compiled.storage_slots.clone()
-        };
-    storage_slots.sort();
-
+    let storage_slots = resolve_storage_slots(command, compiled)?;
     let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-    let tx_policies = TxPolicies::default();
+    let tx_policies = tx_policies_from_cmd(command);
 
     let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
         bytecode.clone(),
@@ -521,6 +621,17 @@ pub async fn deploy_pkg(
     };
 
     Ok(contract_id)
+}
+
+fn tx_policies_from_cmd(cmd: &cmd::Deploy) -> TxPolicies {
+    let mut tx_policies = TxPolicies::default();
+    if let Some(max_fee) = cmd.gas.max_fee {
+        tx_policies = tx_policies.with_max_fee(max_fee);
+    }
+    if let Some(script_gas_limit) = cmd.gas.script_gas_limit {
+        tx_policies = tx_policies.with_script_gas_limit(script_gas_limit);
+    }
+    tx_policies
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
