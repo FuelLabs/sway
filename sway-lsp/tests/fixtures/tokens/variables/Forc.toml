@@ -6,4 +6,4 @@ name = "variables"
 implicit-std = false
 
 [dependencies]
-std = { git = "https://github.com/FuelLabs/sway", tag = "v0.63.0" }
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.62.0" }
