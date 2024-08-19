@@ -10,11 +10,25 @@ abi MyContract {
     
     fn struct_input_output(person: Person) -> Person;
     
+    fn array_of_enum_input_output(aoe: [Location; 2]) -> [Location; 2];
+    
     #[storage(read, write)]
-    fn push_storage(value: u16);
+    fn push_storage_u16(value: u16);
 
     #[storage(read)]
-    fn get_storage(index: u64) -> u16;
+    fn get_storage_u16(index: u64) -> u16;
+
+    #[storage(read, write)]
+    fn push_storage_simple(value: SimpleStruct);
+
+    #[storage(read)]
+    fn get_storage_simple(index: u64) -> SimpleStruct;
+
+    #[storage(read, write)]
+    fn push_storage_location(value: Location);
+
+    #[storage(read)]
+    fn get_storage_location(index: u64) -> Location;
 
     fn assert_configurables() -> bool;
 }
@@ -22,6 +36,15 @@ abi MyContract {
 enum Location {
     Earth: u64,
     Mars: (),
+    SimpleJupiter: Color,
+    Jupiter: [Color; 2],
+    SimplePluto: SimpleStruct,
+    Pluto: [SimpleStruct; 2],
+}
+
+enum Color {
+    Red: (),
+    Blue: u64,
 }
 
 struct Person {
@@ -41,6 +64,8 @@ struct SimpleStruct {
 
 storage {
     my_vec: StorageVec<u16> = StorageVec {},
+    my_simple_vec: StorageVec<SimpleStruct> = StorageVec {},
+    my_location_vec: StorageVec<Location> = StorageVec {},
 }
 
 configurable {
@@ -55,8 +80,26 @@ configurable {
     CONFIGURABLE_ENUM: Location = Location::Earth(1),
     ARRAY_BOOL: [bool; 3] = [true, false, true],
     ARRAY_U64: [u64; 3] = [9, 8, 7],
+    ARRAY_LOCATION: [Location; 2] = [Location::Earth(10), Location::Mars],
+    ARRAY_SIMPLE_STRUCT: [SimpleStruct; 3] = [ SimpleStruct { a: true, b: 5}, SimpleStruct { a: false, b: 0 }, SimpleStruct { a: true, b: u64::max() }],
     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
     STR_4: str[4] = __to_str_array("abcd"),
+}
+
+impl core::ops::Eq for Color {
+    fn eq(self, other: Color) -> bool {
+        match (self, other) {
+            (Color::Red, Color::Red) => true,
+            (Color::Blue(inner1), Color::Blue(inner2)) => inner1 == inner2,
+            _ => false,
+        }
+    }
+}
+
+impl core::ops::Eq for SimpleStruct {
+    fn eq(self, other: SimpleStruct) -> bool {
+        self.a == other.a && self.b == other.b
+    }
 }
 
 impl core::ops::Eq for Location {
@@ -64,6 +107,10 @@ impl core::ops::Eq for Location {
         match (self, other) {
             (Location::Earth(inner1), Location::Earth(inner2)) => inner1 == inner2,
             (Location::Mars, Location::Mars) => true,
+            (Location::SimpleJupiter(inner1), Location::SimpleJupiter(inner2)) => inner1 == inner2,
+            (Location::Jupiter(inner1), Location::Jupiter(inner2)) => (inner1[0] == inner2[0] && inner1[1] == inner2[1]),
+            (Location::SimplePluto(inner1), Location::SimplePluto(inner2)) => inner1 == inner2,
+            (Location::Pluto(inner1), Location::Pluto(inner2)) => (inner1[0] == inner2[0] && inner1[1] == inner2[1]),
             _ => false,
         }
     }
@@ -85,14 +132,38 @@ impl MyContract for Contract {
         person
     }
 
+    fn array_of_enum_input_output(aoe: [Location; 2]) -> [Location; 2] {
+        aoe
+    }
+
     #[storage(read, write)]
-    fn push_storage(value: u16) {
+    fn push_storage_u16(value: u16) {
         storage.my_vec.push(value);
     }
 
     #[storage(read)]
-    fn get_storage(index: u64) -> u16 {
+    fn get_storage_u16(index: u64) -> u16 {
         storage.my_vec.get(index).unwrap().read()
+    }
+
+    #[storage(read, write)]
+    fn push_storage_simple(value: SimpleStruct) {
+        storage.my_simple_vec.push(value);
+    }
+
+    #[storage(read)]
+    fn get_storage_simple(index: u64) -> SimpleStruct {
+        storage.my_simple_vec.get(index).unwrap().read()
+    }
+    
+    #[storage(read, write)]
+    fn push_storage_location(value: Location) {
+        storage.my_location_vec.push(value);
+    }
+
+    #[storage(read)]
+    fn get_storage_location(index: u64) -> Location {
+        storage.my_location_vec.get(index).unwrap().read()
     }
 
     fn assert_configurables() -> bool {
@@ -112,6 +183,16 @@ impl MyContract for Contract {
         assert(ARRAY_U64[0] == 9);
         assert(ARRAY_U64[1] == 8);
         assert(ARRAY_U64[2] == 7);
+        assert(ARRAY_LOCATION[0] == Location::Earth(10));
+        assert(ARRAY_LOCATION[1] == Location::Mars);
+        assert(ARRAY_SIMPLE_STRUCT[0].a == true);
+        assert(ARRAY_SIMPLE_STRUCT[0].b == 5);
+        assert(ARRAY_SIMPLE_STRUCT[1].a == false);
+        assert(ARRAY_SIMPLE_STRUCT[1].b == 0);
+        assert(ARRAY_SIMPLE_STRUCT[2].a == true);
+        assert(ARRAY_SIMPLE_STRUCT[2].b == u64::max());
+        assert(ARRAY_LOCATION[1] == Location::Mars);
+        assert(ARRAY_LOCATION[1] == Location::Mars);
         assert(TUPLE_BOOL_U64.0 == true);
         assert(TUPLE_BOOL_U64.1 == 11);
         assert(sha256_str_array(STR_4) == sha256("abcd"));
