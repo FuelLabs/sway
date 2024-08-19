@@ -1,11 +1,8 @@
 use crate::formatter::{format_header_line, format_line};
 use anyhow::{anyhow, Result};
-use std::collections::HashMap;
-use std::ffi::OsString;
-use std::process;
+use std::{collections::HashMap, ffi::OsString, process};
 
 pub fn possible_forc_commands() -> Vec<String> {
-    let mut possible_commands = Vec::new();
     let output = process::Command::new("forc")
         .arg("--help")
         .output()
@@ -14,18 +11,27 @@ pub fn possible_forc_commands() -> Vec<String> {
     let output_str = String::from_utf8_lossy(&output.stdout);
     let lines = output_str.lines();
 
-    let mut has_parsed_subcommand_header = false;
+    let mut possible_commands = Vec::new();
+    let mut in_commands_section = false;
 
     for line in lines {
-        if has_parsed_subcommand_header {
-            let (command, _) = line.trim().split_once(' ').unwrap_or(("", ""));
-            possible_commands.push(command.to_string());
+        if line.trim() == "Commands:" {
+            // Start of commands section
+            in_commands_section = true;
+            continue;
         }
-        if line == "SUBCOMMANDS:" {
-            has_parsed_subcommand_header = true;
+
+        if in_commands_section {
+            if line.trim().is_empty() || line.trim().starts_with("Options:") {
+                // End of commands section
+                break;
+            }
+            // Extract command name (first word of the line)
+            if let Some(command) = line.split_whitespace().next() {
+                possible_commands.push(command.to_string());
+            }
         }
     }
-
     possible_commands
 }
 

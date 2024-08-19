@@ -1,9 +1,10 @@
 //! ## Dead Code Elimination
 //!
-//! This optimization removes unused definitions. The pass is a combination of
+//! This optimization removes unused definitions. The pass is a combination of:
 //!   1. A liveness analysis that keeps track of the uses of a definition,
 //!   2. At the time of inspecting a definition, if it has no uses, it is removed.
-//! This pass does not do CFG transformations. That is handled by simplify_cfg.
+//!
+//! This pass does not do CFG transformations. That is handled by `simplify_cfg`.
 
 use rustc_hash::FxHashSet;
 

@@ -8,7 +8,20 @@ trait A {
 impl A for bool {
     #[storage(write)]
     fn f(self) -> bool {
-        self
+        let _ = __state_store_word(b256::zero(), 0);
+        true
+    }
+}
+
+abi Abi {
+    #[storage(read, write)]
+    fn test() -> bool;
+}
+
+impl Abi for Contract {
+    #[storage(read, write)]
+    fn test() -> bool {
+        g()
     }
 }
 

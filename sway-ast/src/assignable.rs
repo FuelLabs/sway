@@ -7,6 +7,7 @@ pub enum Assignable {
     /// E.g.:
     ///  - `my_variable`
     ///  - `array[0].field.x.1`
+    ///
     /// Note that within the path, we cannot have dereferencing
     /// (except, of course, in expressions inside of array index operator).
     /// This is guaranteed by the grammar.
