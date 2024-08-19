@@ -6,6 +6,6 @@ abi MyContract {
 
 impl MyContract for Contract {
     fn test_function() {
-        std::storage::storage_api::clear(0x0000000000000000000000000000000000000000000000000000000000000000);
+        let _ = __state_clear(b256::zero(), 0);
     }
 }

@@ -1,5 +1,11 @@
 category = "fail"
 
-# check: fn test_function() -> bool {
-# check: f()
-# check: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read, write)]" to the function declaration.
+#check: $()error
+#sameln: $()Storage read-only function cannot write to storage
+#check: $()fn test_function() -> bool
+#nextln: $()Function "test_function" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()f()
+#nextln: $()Function "f" writes to the storage.
+#check: $()Consider declaring the function "test_function" as `#[storage(read, write)]`
+
+#check: $()1 error.

@@ -1,5 +1,11 @@
 category = "fail"
 
-# check: pub fn g() -> bool {
-# nextln: true.f()
-# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read, write)]" to the function declaration.
+#check: $()error
+#sameln: $()Storage read-only function cannot write to storage
+#check: $()pub fn g() -> bool
+#nextln: $()Function "g" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()true.f()
+#nextln: $()Function "f" writes to the storage.
+#check: $()Consider declaring the function "g" as `#[storage(read, write)]`
+
+#check: 1 error.

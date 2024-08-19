@@ -11,5 +11,7 @@ impl ImpurityTest for Contract {
     }
 }
 
-#[storage(read, write)]
-fn foo() {}
+#[storage(write)]
+fn foo() {
+    let _ = __state_store_word(b256::zero(), 0);
+}
