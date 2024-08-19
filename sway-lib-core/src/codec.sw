@@ -2585,7 +2585,11 @@ impl AbiDecode for u8 {
 
 impl AbiDecode for bool {
     fn abi_decode(ref mut buffer: BufferReader) -> bool {
-        buffer.read::<bool>()
+        match buffer.read::<u8>() {
+            0 => false,
+            1 => true,
+            _ => __revert(0),
+        }
     }
 }
 
@@ -5356,4 +5360,10 @@ fn ok_abi_encoding() {
     let array = abi_decode::<[u8; 2]>(to_slice([255u8, 254u8]));
     assert_eq(array[0], 255u8, 0);
     assert_eq(array[1], 254u8, 0);
+}
+
+#[test(should_revert)]
+fn nok_abi_encoding_invalid_bool() {
+    let actual = encode(2u8);
+    abi_decode::<bool>(actual);
 }
