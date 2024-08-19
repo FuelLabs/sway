@@ -26,3 +26,8 @@ fn main() {
     let a = [8, 256u16, 8u8];
     let b: u32 = a[2];
 }
+
+fn insufficient_type_check(arg: u64) -> [u32;2] {
+    let res = [1u32, arg];
+    res
+}
