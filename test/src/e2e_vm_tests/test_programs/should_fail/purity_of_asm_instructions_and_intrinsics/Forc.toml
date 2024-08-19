@@ -1,9 +1,8 @@
 [project]
-name = "storage_conflict"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-implicit-std = false
+name = "purity_of_asm_instructions_and_intrinsics"
 
 [dependencies]
-std = { path = "../../../../../../sway-lib-std" }
+core = { path = "../../../../../../sway-lib-core" }

@@ -1,3 +1,0 @@
-[[package]]
-name = 'impure_read_calls_impure_write'
-source = 'member'

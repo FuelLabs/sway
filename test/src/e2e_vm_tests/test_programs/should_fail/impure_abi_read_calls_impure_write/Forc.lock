@@ -1,3 +1,8 @@
 [[package]]
-name = 'impure_abi_read_calls_impure_write'
-source = 'member'
+name = "core"
+source = "path+from-root-1FE39E672D7A7D13"
+
+[[package]]
+name = "impure_abi_read_calls_impure_write"
+source = "member"
+dependencies = ["core"]
