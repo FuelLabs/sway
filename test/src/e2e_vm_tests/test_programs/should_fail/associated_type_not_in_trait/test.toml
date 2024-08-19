@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Type "u" is not a part of trait "Trait"'s interface surface.

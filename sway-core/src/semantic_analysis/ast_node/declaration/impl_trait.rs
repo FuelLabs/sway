@@ -817,22 +817,28 @@ fn type_check_trait_implementation(
                         None,
                     ),
                 };
-                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(
-                        engines,
-                        old_type_decl_info1,
-                        type_decl.name.span().source_id(),
-                    )],
-                    vec![type_decl.ty.clone().unwrap().type_id],
-                ));
-                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(
-                        engines,
-                        old_type_decl_info2,
-                        type_decl.name.span().source_id(),
-                    )],
-                    vec![type_decl.ty.clone().unwrap().type_id],
-                ));
+                if let Some(type_arg) = type_decl.ty.clone() {
+                    trait_type_mapping.extend(
+                        &TypeSubstMap::from_type_parameters_and_type_arguments(
+                            vec![type_engine.insert(
+                                engines,
+                                old_type_decl_info1,
+                                type_decl.name.span().source_id(),
+                            )],
+                            vec![type_arg.type_id],
+                        ),
+                    );
+                    trait_type_mapping.extend(
+                        &TypeSubstMap::from_type_parameters_and_type_arguments(
+                            vec![type_engine.insert(
+                                engines,
+                                old_type_decl_info2,
+                                type_decl.name.span().source_id(),
+                            )],
+                            vec![type_arg.type_id],
+                        ),
+                    );
+                }
             }
         }
     }
