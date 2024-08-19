@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-EA042F5351E6BA99"
+
+[[package]]
+name = "return_path_analysis"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-EA042F5351E6BA99"
+dependencies = ["core"]
