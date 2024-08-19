@@ -26,9 +26,8 @@ pub fn possible_forc_commands() -> Vec<String> {
                 // End of commands section
                 break;
             }
-
             // Extract command name (first word of the line)
-            if let Some(command) = line.trim().split_whitespace().next() {
+            if let Some(command) = line.split_whitespace().next() {
                 possible_commands.push(command.to_string());
             }
         }
