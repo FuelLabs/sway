@@ -12,9 +12,9 @@ use std::{
 };
 
 use crate::{
-    function_print, AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function,
-    InstOp, IrError, Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind,
-    Value, DOMINATORS_NAME, POSTORDER_NAME,
+    AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function, InstOp, IrError,
+    Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind, Value,
+    DOMINATORS_NAME, POSTORDER_NAME,
 };
 
 pub const CSE_NAME: &str = "cse";
@@ -179,7 +179,6 @@ fn dominates(context: &Context, dom_tree: &DomTree, inst1: Value, inst2: Value) 
     let block2 = match &context.values[inst2.0].value {
         crate::ValueDatum::Argument(arg) => arg.block,
         crate::ValueDatum::Constant(_) => {
-            dbg!(inst1, inst2);
             panic!("Shouldn't be querying dominance info for constants")
         }
         crate::ValueDatum::Instruction(i) => i.parent,
@@ -207,9 +206,6 @@ pub fn cse(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    if function.get_name(context) == "sha256_6" {
-        function_print(context, function);
-    }
     let mut vntable = VNTable::default();
 
     // Function arg values map to themselves.
@@ -351,8 +347,6 @@ pub fn cse(
         }
         vntable.expr_map.clear();
     }
-
-    dbg!(&vntable);
 
     // create a partition of congruent (equal) values.
     let mut partition = FxHashMap::<ValueNumber, FxHashSet<Value>>::default();
