@@ -134,6 +134,68 @@ async fn assert_big_contract_calls(wallet: WalletUnlocked, contract_id: Contract
         .value;
     assert_eq!(result, Location::Mars);
 
+    // Test enum with "tuple like struct" with simple value.
+    let result = instance
+        .methods()
+        .enum_input_output(Location::Earth(u64::MAX))
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(result, Location::Earth(u64::MAX));
+
+    // Test enum with "tuple like struct" with enum value.
+    let result = instance
+        .methods()
+        .enum_input_output(Location::SimpleJupiter(Color::Red))
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(result, Location::SimpleJupiter(Color::Red));
+
+    // Test enum with "tuple like struct" with enum value.
+    let result = instance
+        .methods()
+        .enum_input_output(Location::SimpleJupiter(Color::Blue(u64::MAX)))
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(result, Location::SimpleJupiter(Color::Blue(u64::MAX)));
+
+    // Test enum with "tuple like struct" with enum array value.
+    let result = instance
+        .methods()
+        .enum_input_output(Location::Jupiter([Color::Red, Color::Blue(u64::MAX)]))
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(
+        result,
+        Location::Jupiter([Color::Red, Color::Blue(u64::MAX)])
+    );
+
+    // Test enum with "tuple like struct" with struct array value.
+    let result = instance
+        .methods()
+        .enum_input_output(Location::SimplePluto(SimpleStruct {
+            a: true,
+            b: u64::MAX,
+        }))
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(
+        result,
+        Location::SimplePluto(SimpleStruct {
+            a: true,
+            b: u64::MAX,
+        })
+    );
+
     let input = Person {
         name: AsciiString::new("Alice".into()).unwrap(),
         age: 42,
@@ -152,15 +214,92 @@ async fn assert_big_contract_calls(wallet: WalletUnlocked, contract_id: Contract
         .value;
     assert_eq!(result, input);
 
-    let _ = instance.methods().push_storage(42).call().await.unwrap();
+    let _ = instance
+        .methods()
+        .push_storage_u16(42)
+        .call()
+        .await
+        .unwrap();
     let result = instance
         .methods()
-        .get_storage(0)
+        .get_storage_u16(0)
         .call()
         .await
         .unwrap()
         .value;
     assert_eq!(result, 42);
+
+    let _ = instance
+        .methods()
+        .push_storage_simple(SimpleStruct {
+            a: true,
+            b: u64::MAX,
+        })
+        .call()
+        .await
+        .unwrap();
+    let result = instance
+        .methods()
+        .get_storage_simple(0)
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(
+        result,
+        SimpleStruct {
+            a: true,
+            b: u64::MAX,
+        }
+    );
+
+    let _ = instance
+        .methods()
+        .push_storage_location(Location::Mars)
+        .call()
+        .await
+        .unwrap();
+    let result = instance
+        .methods()
+        .get_storage_location(0)
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(result, Location::Mars);
+
+    let _ = instance
+        .methods()
+        .push_storage_location(Location::Earth(u64::MAX))
+        .call()
+        .await
+        .unwrap();
+    let result = instance
+        .methods()
+        .get_storage_location(1)
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(result, Location::Earth(u64::MAX));
+
+    let _ = instance
+        .methods()
+        .push_storage_location(Location::Jupiter([Color::Red, Color::Blue(u64::MAX)]))
+        .call()
+        .await
+        .unwrap();
+    let result = instance
+        .methods()
+        .get_storage_location(2)
+        .call()
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(
+        result,
+        Location::Jupiter([Color::Red, Color::Blue(u64::MAX)])
+    );
 
     let result = instance
         .methods()
