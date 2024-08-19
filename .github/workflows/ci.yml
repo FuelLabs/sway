@@ -268,7 +268,7 @@ jobs:
         run: (cd test-proj && cargo test --release)
 
   cargo-build-workspace:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
