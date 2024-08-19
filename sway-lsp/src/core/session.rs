@@ -12,7 +12,7 @@ use crate::{
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
-        dependency, lexed_tree, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
+        dependency, lexed_tree::{self, LexedTree}, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
     },
 };
 use dashmap::DashMap;
@@ -26,6 +26,7 @@ use pkg::{
     BuildPlan,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use sway_ast::{attribute::Annotated, ItemKind};
 use std::{
     collections::BTreeMap,
     path::PathBuf,
@@ -323,7 +324,6 @@ pub fn traverse(
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
-        dbg!();
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let current_diagnostics = handler.consume();
         diagnostics = current_diagnostics;
@@ -357,21 +357,21 @@ pub fn traverse(
             let program_id = program_id_from_path(&path, engines)?;
             session.metrics.insert(program_id, metrics);
 
-            eprintln!("path: {:?}", path);
+            //eprintln!("path: {:?}", path);
             if let Some(modified_file) = &modified_file {
                 let modified_program_id = program_id_from_path(&modified_file, engines)?;
 
-                eprintln!(
-                    "program_id: {:?} | modified_program_id: {:?}",
-                    program_id, modified_program_id
-                );
+                // eprintln!(
+                //     "program_id: {:?} | modified_program_id: {:?}",
+                //     program_id, modified_program_id
+                // );
 
+                // We can skip traversing the programs for this iteration as they are unchanged.
                 if program_id != modified_program_id {
                     continue;
                 }
             }
         }
-        dbg!();
 
         // Get a reference to the typed program AST.
         let typed_program = typed
@@ -391,7 +391,15 @@ pub fn traverse(
         if i == results_len - 1 {
             let now = std::time::Instant::now();
             // First, populate our token_map with sway keywords.
-            lexed_tree::parse(&lexed, &ctx);
+            let lexed_tree = LexedTree::new(&ctx);
+            lexed_tree.collect_module_kinds(&lexed);
+            parse_lexed_program(&lexed, &ctx, &modified_file, |an, _ctx| {
+                lexed_tree.traverse_node(an)
+            });
+
+            // lexed_tree::parse(&lexed, &ctx);
+
+        
             eprintln!("Lexed took {:?}", now.elapsed());
 
             let now = std::time::Instant::now();
@@ -475,6 +483,41 @@ pub fn parse_project(
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
     }
     Ok(())
+}
+
+/// Parse the [LexedProgram] to populate the [TokenMap] with lexed nodes.
+pub fn parse_lexed_program(
+    lexed_program: &LexedProgram,
+    ctx: &ParseContext,
+    modified_file: &Option<PathBuf>,
+    f: impl Fn(&Annotated<ItemKind>, &ParseContext) + Sync,
+) {
+    let should_process = |item: &&Annotated<ItemKind>| {
+        modified_file
+            .as_ref()
+            .map(|path| {
+                item.span()
+                    .source_id()
+                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+            })
+            .unwrap_or(true)
+    };
+
+    lexed_program
+        .root
+        .tree
+        .items
+        .iter()
+        .chain(
+            lexed_program
+                .root
+                .submodules_recursive()
+                .flat_map(|(_, submodule)| &submodule.module.tree.items),
+        )
+        .filter(should_process)
+        .collect::<Vec<_>>()
+        .par_iter()
+        .for_each(|item| f(item, ctx));
 }
 
 /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
