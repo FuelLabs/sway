@@ -187,7 +187,7 @@ async fn can_get_predicate_address() {
         }],
     );
     let mut node_config = NodeConfig::default();
-    node_config.static_gas_price = 0;
+    node_config.starting_gas_price = 0;
     let wallets = &launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
         .await
         .unwrap();
@@ -196,7 +196,7 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0xddd0922a689f07a4b08b589c38e1542a19b6002212c648e79f675a2d1d887971";
+        "0x421ed9a7b208036e67dc95b7f0c0ae085f5c0b3ee55af9719d146ea6a59e0716";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -322,7 +322,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0xddd0922a689f07a4b08b589c38e1542a19b6002212c648e79f675a2d1d887971";
+        "0x421ed9a7b208036e67dc95b7f0c0ae085f5c0b3ee55af9719d146ea6a59e0716";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -356,7 +356,7 @@ async fn can_get_predicate_address_in_message() {
 
     let mut wallet = WalletUnlocked::new_random(None);
     let mut node_config = NodeConfig::default();
-    node_config.static_gas_price = 0;
+    node_config.starting_gas_price = 0;
     let provider = setup_test_provider(coin_vec, message_vec, Some(node_config), None)
         .await
         .unwrap();

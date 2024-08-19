@@ -33,9 +33,7 @@ use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
-use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
-use semantic_analysis::symbol_resolve::ResolveSymbols;
-use semantic_analysis::symbol_resolve_context::SymbolResolveContext;
+use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -238,7 +236,7 @@ fn parse_in_memory(
 
 pub struct Submodule {
     name: Ident,
-    path: ModulePath,
+    path: Arc<PathBuf>,
     lexed: lexed::LexedSubmodule,
     parsed: parsed::ParseSubmodule,
 }
@@ -261,7 +259,6 @@ fn parse_submodules(
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
-
     module.submodules().for_each(|submod| {
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
@@ -277,7 +274,6 @@ fn parse_submodules(
                 return;
             }
         };
-
         if let Ok(ParsedModuleTree {
             tree_type: kind,
             lexed_module,
@@ -320,7 +316,6 @@ fn parse_submodules(
             submods.push(submodule);
         }
     });
-
     submods
 }
 
@@ -413,15 +408,19 @@ fn parse_module_tree(
     let version = lsp_mode
         .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
-    let cache_entry = ModuleCacheEntry {
-        path,
-        modified_time,
-        hash,
-        dependencies,
+
+    let common_info = ModuleCommonInfo {
+        path: path.clone(),
         include_tests,
+        dependencies,
+        hash,
+    };
+    let parsed_info = ParsedModuleInfo {
+        modified_time,
         version,
     };
-    query_engine.insert_parse_module_cache_entry(cache_entry);
+    let cache_entry = ModuleCacheEntry::new(common_info, parsed_info);
+    query_engine.update_or_insert_parsed_module_cache_entry(cache_entry);
 
     Ok(ParsedModuleTree {
         tree_type: kind,
@@ -430,59 +429,89 @@ fn parse_module_tree(
     })
 }
 
-fn is_parse_module_cache_up_to_date(
+/// Checks if the typed module cache for a given path is up to date.
+///
+/// This function determines whether the cached typed representation of a module
+/// is still valid based on file versions and dependencies.
+///
+/// Note: This functionality is currently only supported when the compiler is
+/// initiated from the language server.
+pub(crate) fn is_ty_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
     include_tests: bool,
     build_config: Option<&BuildConfig>,
 ) -> bool {
-    let query_engine = engines.qe();
+    let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    let entry = query_engine.get_parse_module_cache_entry(&key);
-    match entry {
-        Some(entry) => {
-            // Let's check if we can re-use the dependency information
-            // we got from the cache.
+    cache.get(&key).map_or(false, |entry| {
+        entry.typed.as_ref().map_or(false, |typed| {
+            // Check if the cache is up to date based on file versions
             let cache_up_to_date = build_config
-                .as_ref()
                 .and_then(|x| x.lsp_mode.as_ref())
-                .and_then(|lsp| {
-                    // First try to get the file version from lsp if it exists
-                    lsp.file_versions.get(path.as_ref())
-                })
-                .map_or_else(
-                    || {
-                        // Otherwise we can safely read the file from disk here, as the LSP has not modified it, or we are not in LSP mode.
-                        // Check if the file has been modified or if its hash is the same as the last compilation
-                        let modified_time = std::fs::metadata(path.as_path())
-                            .ok()
-                            .and_then(|m| m.modified().ok());
-                        entry.modified_time == modified_time || {
-                            let src = std::fs::read_to_string(path.as_path()).unwrap();
-                            let mut hasher = DefaultHasher::new();
-                            src.hash(&mut hasher);
-                            let hash = hasher.finish();
-                            hash == entry.hash
-                        }
-                    },
-                    |version| {
-                        // The cache is invalid if the lsp version is greater than the last compilation
-                        !version.map_or(false, |v| v > entry.version.unwrap_or(0))
-                    },
-                );
+                .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
+                .map_or(true, |version| {
+                    version.map_or(true, |v| typed.version.map_or(false, |tv| v <= tv))
+                });
 
-            // Look at the dependencies recursively to make sure they have not been
-            // modified either.
-            if cache_up_to_date {
-                entry.dependencies.iter().all(|path| {
-                    is_parse_module_cache_up_to_date(engines, path, include_tests, build_config)
+            // If the cache is up to date, recursively check all dependencies
+            cache_up_to_date
+                && entry.common.dependencies.iter().all(|dep_path| {
+                    is_ty_module_cache_up_to_date(engines, dep_path, include_tests, build_config)
                 })
-            } else {
-                false
-            }
-        }
-        None => false,
-    }
+        })
+    })
+}
+
+/// Checks if the parsed module cache for a given path is up to date.
+///
+/// This function determines whether the cached parsed representation of a module
+/// is still valid based on file versions, modification times, or content hashes.
+pub(crate) fn is_parse_module_cache_up_to_date(
+    engines: &Engines,
+    path: &Arc<PathBuf>,
+    include_tests: bool,
+    build_config: Option<&BuildConfig>,
+) -> bool {
+    let cache = engines.qe().module_cache.read();
+    let key = ModuleCacheKey::new(path.clone(), include_tests);
+    cache.get(&key).map_or(false, |entry| {
+        // Determine if the cached dependency information is still valid
+        let cache_up_to_date = build_config
+            .and_then(|x| x.lsp_mode.as_ref())
+            .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
+            .map_or_else(
+                || {
+                    // If LSP mode is not active or file version is unavailable, fall back to filesystem checks.
+                    let modified_time = std::fs::metadata(path.as_path())
+                        .ok()
+                        .and_then(|m| m.modified().ok());
+                    // Check if modification time matches, or if not, compare file content hash
+                    entry.parsed.modified_time == modified_time || {
+                        let src = std::fs::read_to_string(path.as_path()).unwrap();
+                        let mut hasher = DefaultHasher::new();
+                        src.hash(&mut hasher);
+                        hasher.finish() == entry.common.hash
+                    }
+                },
+                |version| {
+                    // Determine if the parse cache is up-to-date in LSP mode:
+                    // - If there's no LSP file version (version is None), consider the cache up-to-date.
+                    // - If there is an LSP file version:
+                    //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
+                    //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
+                    //     is not greater than the cached version.
+                    version.map_or(true, |v| entry.parsed.version.map_or(false, |ev| v <= ev))
+                },
+            );
+
+        // Checks if the typed module cache for a given path is up to date// If the cache is up to date, recursively check all dependencies to make sure they have not been
+        // modified either.
+        cache_up_to_date
+            && entry.common.dependencies.iter().all(|dep_path| {
+                is_parse_module_cache_up_to_date(engines, dep_path, include_tests, build_config)
+            })
+    })
 }
 
 fn module_path(
@@ -539,12 +568,8 @@ pub fn parsed_to_ast(
 
     let namespace = Namespace::init_root(initial_namespace);
     // Collect the program symbols.
-    let mut symbol_collection_ctx =
+    let _collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
-
-    // Resolve the program symbols.
-    let resolve_ctx = SymbolResolveContext::new(engines, &mut symbol_collection_ctx);
-    parse_program.resolve_symbols(handler, resolve_ctx);
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -579,17 +604,13 @@ pub fn parsed_to_ast(
         }
     };
 
-    // Skip collecting type metadata and control-flow analysis
-    // if we triggered an optimised build from LSP.
-
-    let is_lsp_optimized_build = lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build);
-    let types_metadata = if !is_lsp_optimized_build {
+    // Skip collecting metadata if we triggered an optimised build from LSP.
+    let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
         let types_metadata_result = typed_program.collect_types_metadata(
             handler,
             &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
         );
-
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,
             Err(e) => {
@@ -598,17 +619,19 @@ pub fn parsed_to_ast(
             }
         };
 
-        let logged_types = types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
-            _ => None,
-        });
-        typed_program.logged_types.extend(logged_types);
+        typed_program
+            .logged_types
+            .extend(types_metadata.iter().filter_map(|m| match m {
+                TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
+                _ => None,
+            }));
 
-        let message_types = types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
-            _ => None,
-        });
-        typed_program.messages_types.extend(message_types);
+        typed_program
+            .messages_types
+            .extend(types_metadata.iter().filter_map(|m| match m {
+                TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
+                _ => None,
+            }));
 
         let (print_graph, print_graph_url_format) = match build_config {
             Some(cfg) => (
@@ -705,12 +728,12 @@ pub fn compile_to_ast(
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
     check_should_abort(handler, retrigger_compilation.clone())?;
+
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;
-
         // Check if we can re-use the data in the cache.
         if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
@@ -836,13 +859,10 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
-    // IR generaterion requires type information to be fully resolved.
-    //
-    // If type information is found to still be generic inside of
-    // IR, this is considered an internal compiler error.
-    //
-    // But, there are genuine cases for types be unknown here, like `let a = []`. These should
-    // have friendly errors.
+    // The IR pipeline relies on type information being fully resolved.
+    // If type information is found to still be generic or unresolved inside of
+    // IR, this is considered an internal compiler error. To resolve this situation,
+    // we need to explicitly ensure all types are resolved before going into IR.
     //
     // We _could_ introduce a new type here that uses TypeInfo instead of TypeId and throw away
     // the engine, since we don't need inference for IR. That'd be a _lot_ of copy-pasted code,

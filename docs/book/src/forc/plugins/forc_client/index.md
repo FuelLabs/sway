@@ -114,6 +114,16 @@ forc-deploy --target beta-5
 
 Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
 
+## Delayed transactions
+
+For delayed transactions, you can use the `--submit-only` flag. This flag allows you to submit the transaction without waiting for its finalization.
+
+One use case for this is multisig transactions, where a deployment transaction may stay in a pending state while waiting for all signatures.
+
+```sh
+forc-deploy --submit-only
+```
+
 ## Deployment Artifacts
 
 forc-deploy saves the details of each deployment in the `out/deployments` folder within the project's root directory. Below is an example of a deployment artifact:
@@ -166,3 +176,7 @@ address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" #
 ```
 
 If an `address` is present, `forc` calls into that contract to update its `target` instead of deploying a new contract. Since a new proxy deployment adds its own `address` into the `Forc.toml` automatically, you can simply enable the proxy once and after the initial deployment, `forc` will keep updating the target accordingly for each new deployment of the same contract.
+
+## Large Contracts
+
+For contracts over 100KB, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
