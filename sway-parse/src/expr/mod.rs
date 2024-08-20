@@ -145,7 +145,7 @@ impl ParseToEnd for CodeBlockContents {
                     let (spans, error) = r
                         .recover_at_next_line_with_fallback_error(ParseErrorKind::InvalidStatement);
                     statements.push(Statement::Error(spans, error));
-		    Err(error)?
+                    Err(error)?
                 }
             }
         };

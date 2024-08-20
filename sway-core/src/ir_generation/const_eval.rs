@@ -788,9 +788,9 @@ fn const_eval_codeblock(
             ty::TyAstNodeContent::SideEffect(_) => Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: ast_node.span.clone(),
             }),
-            ty::TyAstNodeContent::Error(_, _) => {
-                Err(ConstEvalError::CannotBeEvaluatedToConst { span: ast_node.span.clone(), })
-            }
+            ty::TyAstNodeContent::Error(_, _) => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: ast_node.span.clone(),
+            }),
         };
 
         if result.is_err() {
