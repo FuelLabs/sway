@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Literal value is too large for type u32.

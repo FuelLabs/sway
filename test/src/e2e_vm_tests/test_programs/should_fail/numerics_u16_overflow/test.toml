@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()let mut a1 = 65536; //2^16
+# nextln: $()Literal value is too large for type u16.

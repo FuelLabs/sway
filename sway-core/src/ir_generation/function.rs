@@ -439,6 +439,18 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_string_slice(context, span_md_idx, string_data, string_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
+                let overflow = match &*self.engines.te().get(ast_expr.return_type) {
+                    TypeInfo::UnsignedInteger(IntegerBits::Eight) => *n > u8::MAX.into(),
+                    TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => *n > u16::MAX.into(),
+                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => *n > u32::MAX.into(),
+                    _ => false,
+                };
+                if overflow {
+                    return Err(CompileError::IntegerTooLarge {
+                        ty: self.engines.help_out(ast_expr.return_type).to_string(),
+                        span: ast_expr.span.clone(),
+                    });
+                }
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
                     TypeInfo::UnsignedInteger(IntegerBits::V256) => Literal::U256(U256::from(*n)),

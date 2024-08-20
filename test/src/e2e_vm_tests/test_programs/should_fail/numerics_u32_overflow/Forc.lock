@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-1AB6296909947AEE"
+
+[[package]]
+name = "numerics_u32_overflow"
+source = "member"
+dependencies = ["core"]

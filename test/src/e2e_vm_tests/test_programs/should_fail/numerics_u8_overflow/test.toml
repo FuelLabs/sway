@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()let mut a1 = 256; //2^8
+# nextln: $()Literal value is too large for type u8.

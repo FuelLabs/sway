@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-F921B5701856DAD9"
+
+[[package]]
+name = "numerics_u8_overflow"
+source = "member"
+dependencies = ["core"]
