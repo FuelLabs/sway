@@ -39,8 +39,8 @@ pub struct FunctionContent {
     pub module: Module,
     pub is_public: bool,
     pub is_entry: bool,
-    // True if the function was an entry, before getting wrapped
-    // by the `__entry` function. E.g, a script `main` function.
+    /// True if the function was an entry, before getting wrapped
+    /// by the `__entry` function. E.g, a script `main` function.
     pub is_original_entry: bool,
     pub is_fallback: bool,
     pub selector: Option<[u8; 4]>,

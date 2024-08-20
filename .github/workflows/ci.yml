@@ -268,7 +268,7 @@ jobs:
         run: (cd test-proj && cargo test --release)
 
   cargo-build-workspace:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
@@ -535,7 +535,7 @@ jobs:
           chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Run tests
-        run: cargo test --locked --release -p forc-client
+        run: cargo test --locked --release -p forc-client -- --test-threads 1
   cargo-test-sway-lsp:
     runs-on: ubuntu-latest
     steps:

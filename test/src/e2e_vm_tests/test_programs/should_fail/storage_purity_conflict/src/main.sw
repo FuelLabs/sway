@@ -32,7 +32,7 @@ impl MyContract for Contract {
 
 fn do_impure_stuff_a(choice: bool) -> bool {
     if choice {
-        let s = do_more_impure_stuff_a();
+        let _ = do_more_impure_stuff_a();
         false
     } else {
         true
@@ -55,7 +55,7 @@ fn do_impure_stuff_b() -> bool {
 }
 
 fn do_more_impure_stuff_b() -> bool {
-    let a = read_storage_b256();
+    let _ = read_storage_b256();
     true
 }
 
@@ -80,7 +80,7 @@ enum E {
 }
 
 fn do_impure_stuff_d() -> bool {
-    let a = E::b(do_more_impure_stuff_d());
+    let _ = E::b(do_more_impure_stuff_d());
     true
 }
 

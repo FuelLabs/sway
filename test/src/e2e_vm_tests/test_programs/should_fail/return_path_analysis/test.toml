@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: $()This path must return a value of type "bool" from function "f", but it does not.
+# check: $()Aborting due to 1 error.
+
+

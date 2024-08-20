@@ -39,15 +39,8 @@ pub(crate) fn instantiate_function_application(
             }),
         );
     }
-    let arguments = arguments.unwrap_or_default();
 
-    // 'purity' is that of the callee, 'opts.purity' of the caller.
-    if !ctx.purity().can_call(function_decl.purity) {
-        handler.emit_err(CompileError::StorageAccessMismatch {
-            attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path_binding.span(),
-        });
-    }
+    let arguments = arguments.unwrap_or_default();
 
     // check that the number of parameters and the number of the arguments is the same
     check_function_arguments_arity(

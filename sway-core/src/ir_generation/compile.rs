@@ -18,7 +18,7 @@ use super::{
 
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -390,6 +390,7 @@ pub(super) fn compile_function(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: &ty::TyFunctionDecl,
+    original_name: &Ident,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
@@ -408,6 +409,7 @@ pub(super) fn compile_function(
             md_mgr,
             module,
             ast_fn_decl,
+            original_name,
             is_entry,
             is_original_entry,
             None,
@@ -443,6 +445,7 @@ pub(super) fn compile_entry_function(
         md_mgr,
         module,
         &ast_fn_decl,
+        &ast_fn_decl.name,
         logged_types_map,
         messages_types_map,
         is_entry,
@@ -489,6 +492,11 @@ fn compile_fn(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: &ty::TyFunctionDecl,
+    // Original function name, before it is postfixed with
+    // a number, to get a unique name.
+    // The span in the name must point to the name in the
+    // function declaration.
+    original_name: &Ident,
     is_entry: bool,
     is_original_entry: bool,
     selector: Option<[u8; 4]>,
@@ -567,7 +575,9 @@ fn compile_fn(
 
     let span_md_idx = md_mgr.span_to_md(context, span);
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
+    let name_span_md_idx = md_mgr.fn_name_span_to_md(context, original_name);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+    metadata = md_combine(context, &metadata, &name_span_md_idx);
 
     let decl_index = test_decl_ref.map(|decl_ref| *decl_ref.id());
     if let Some(decl_index) = decl_index {
@@ -688,6 +698,7 @@ fn compile_abi_method(
         md_mgr,
         module,
         &ast_fn_decl,
+        &ast_fn_decl.name,
         // ABI methods are only entries when the "new encoding" is off
         !context.experimental.new_encoding,
         // ABI methods are always original entries

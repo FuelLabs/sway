@@ -14,5 +14,6 @@ impl MyContract for Contract {
 
 #[storage(write)]
 fn f() -> bool {
+    let _ = __state_store_word(b256::zero(), 0);
     true
 }

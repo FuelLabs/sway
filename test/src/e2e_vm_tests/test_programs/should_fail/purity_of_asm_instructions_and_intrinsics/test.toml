@@ -1,0 +1,76 @@
+category = "fail"
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn read_asm_instructions()
+#nextln: $()Function "read_asm_instructions" is pure and cannot access storage.
+#check: $()srw r1 r2 r3;
+#nextln: $()Reading a word from the storage happens here.
+#check: $()srwq r1 r2 r3 r4;
+#nextln: $()Reading storage slots happens here.
+#check: $()Consider declaring the function "read_asm_instructions" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Storage read-only function cannot write to storage
+#check: $()fn write_asm_instructions()
+#nextln: $()Function "write_asm_instructions" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()sww r1 r2 r3;
+#nextln: $()Writing a word to the storage happens here.
+#check: $()swwq r1 r2 r3 r4;
+#nextln: $()Writing to storage slots happens here.
+#check: $()Consider declaring the function "write_asm_instructions" as `#[storage(read, write)]`
+
+#check: $()error
+#sameln: $()Storage read-only function cannot write to storage
+#check: $()fn clear_asm_instruction()
+#nextln: $()Function "clear_asm_instruction" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()scwq r1 r2 r3;
+#nextln: $()Clearing the storage happens here.
+#check: $()Consider declaring the function "clear_asm_instruction" as `#[storage(read, write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn read_intrinsics(self) -> Self
+#nextln: $()Function "read_intrinsics" is pure and cannot access storage.
+#check: $()let _ = __state_load_word(b256::zero());
+#nextln: $()Reading a word from the storage happens here.
+#check: $()let _ = __state_load_quad(b256::zero(), ptr, 1);
+#nextln: $()Reading storage slots happens here.
+#check: $()Consider declaring the function "read_intrinsics" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Storage read-only function cannot write to storage
+#check: $()fn write_intrinsics(self) -> Self
+#nextln: $()Function "write_intrinsics" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()let _ = __state_store_word(b256::zero(), 0);
+#nextln: $()Writing a word to the storage happens here.
+#check: $()let _ = __state_store_quad(b256::zero(), ptr, 1);
+#nextln: $()Writing to storage slots happens here.
+#check: $()Consider declaring the function "write_intrinsics" as `#[storage(read, write)]`
+
+#check: $()error
+#sameln: $()Storage read-only function cannot write to storage
+#check: $()fn clear_intrinsic(self) -> Self
+#nextln: $()Function "clear_intrinsic" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()let _ = __state_clear(b256::zero(), 1);
+#nextln: $()Clearing the storage happens here.
+#check: $()Consider declaring the function "clear_intrinsic" as `#[storage(read, write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn test()
+#nextln: $()Function "test" is pure and cannot access storage.
+#check: $()read_asm_instructions();
+#nextln: $()Function "read_asm_instructions" reads from the storage.
+#check: $()write_asm_instructions();
+#nextln: $()Function "write_asm_instructions" writes to the storage.
+#check: $()clear_asm_instruction();
+#nextln: $()Function "clear_asm_instruction" writes to the storage.
+#check: $()let _ = s.read_intrinsics();
+#nextln: $()Function "read_intrinsics" reads from the storage.
+#check: $()let _ = s.write_intrinsics();
+#nextln: $()Function "write_intrinsics" writes to the storage.
+#check: $()let _ = s.clear_intrinsic();
+#nextln: $()Function "clear_intrinsic" writes to the storage.
+
+#check: $()7 errors.

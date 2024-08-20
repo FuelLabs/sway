@@ -12,5 +12,6 @@ impl MyContract for Contract {
 
 #[storage(read)]
 fn f() -> bool {
+    let _ = __state_load_word(b256::zero());
     true
 }

@@ -81,14 +81,14 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         return_ty: &TypeInfo,
     ) -> Vec<CompileError> {
         let mut rovers = vec![entry_point];
+        let mut visited = vec![];
         let mut errors = vec![];
-        let mut max_iterations = 50;
-        while !rovers.is_empty() && rovers[0] != exit_point && max_iterations > 0 {
-            max_iterations -= 1;
+        while !rovers.is_empty() && rovers[0] != exit_point {
             rovers.retain(|idx| *idx != exit_point);
             let mut next_rovers = vec![];
             let mut last_discovered_span;
             for rover in rovers {
+                visited.push(rover);
                 last_discovered_span = match &self.graph[rover] {
                     ControlFlowGraphNode::ProgramNode { node, .. } => Some(node.span.clone()),
                     ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(span.clone()),
@@ -122,6 +122,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 }
                 next_rovers.append(&mut neighbors);
             }
+            next_rovers.retain(|idx| !visited.contains(idx));
             rovers = next_rovers;
         }
 
