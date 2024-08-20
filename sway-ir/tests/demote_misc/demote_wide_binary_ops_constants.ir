@@ -10,7 +10,6 @@ script {
     }
 }
 
-// regex: VAL=v\d+
 // regex: ID=[[:alpha:]0-9_]+
 
 // check: v0 = get_local ptr u256, __wide_lhs

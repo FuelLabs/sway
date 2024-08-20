@@ -9,7 +9,7 @@ use crate::{
 };
 
 use std::sync::Arc;
-use sway_types::{ProgramId, Spanned};
+use sway_types::{ProgramId, SourceId, Spanned};
 
 use super::parsed_id::ParsedDeclId;
 
@@ -100,6 +100,30 @@ decl_engine_insert!(enum_slab, EnumDeclaration);
 decl_engine_insert!(enum_variant_slab, EnumVariant);
 decl_engine_insert!(type_alias_slab, TypeAliasDeclaration);
 
+macro_rules! decl_engine_replace {
+    ($slab:ident, $decl:ty) => {
+        impl ParsedDeclEngineReplace<$decl> for ParsedDeclEngine {
+            fn replace(&self, index: ParsedDeclId<$decl>, decl: $decl) {
+                self.$slab.replace(index.inner(), decl);
+            }
+        }
+    };
+}
+
+decl_engine_replace!(variable_slab, VariableDeclaration);
+decl_engine_replace!(function_slab, FunctionDeclaration);
+decl_engine_replace!(trait_slab, TraitDeclaration);
+decl_engine_replace!(trait_fn_slab, TraitFn);
+decl_engine_replace!(trait_type_slab, TraitTypeDeclaration);
+decl_engine_replace!(impl_self_or_trait_slab, ImplSelfOrTrait);
+decl_engine_replace!(struct_slab, StructDeclaration);
+decl_engine_replace!(storage_slab, StorageDeclaration);
+decl_engine_replace!(abi_slab, AbiDeclaration);
+decl_engine_replace!(configurable_slab, ConfigurableDeclaration);
+decl_engine_replace!(constant_slab, ConstantDeclaration);
+decl_engine_replace!(enum_slab, EnumDeclaration);
+decl_engine_replace!(type_alias_slab, TypeAliasDeclaration);
+
 macro_rules! decl_engine_clear {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl ParsedDeclEngine {
@@ -147,6 +171,46 @@ macro_rules! decl_engine_clear_program {
 }
 
 decl_engine_clear_program!(
+    (variable_slab, |item: &VariableDeclaration| item.name.span()),
+    (function_slab, |item: &FunctionDeclaration| item.name.span()),
+    (trait_slab, |item: &TraitDeclaration| item.name.span()),
+    (trait_fn_slab, |item: &TraitFn| item.name.span()),
+    (trait_type_slab, |item: &TraitTypeDeclaration| item
+        .name
+        .span()),
+    (impl_self_or_trait_slab, |item: &ImplSelfOrTrait| item
+        .block_span
+        .clone()),
+    (struct_slab, |item: &StructDeclaration| item.name.span()),
+    (storage_slab, |item: &StorageDeclaration| item.span.clone()),
+    (abi_slab, |item: &AbiDeclaration| item.name.span()),
+    (constant_slab, |item: &ConstantDeclaration| item.name.span()),
+    (enum_slab, |item: &EnumDeclaration| item.name.span()),
+    (type_alias_slab, |item: &TypeAliasDeclaration| item
+        .name
+        .span()),
+);
+
+macro_rules! decl_engine_clear_module {
+    ($(($slab:ident, $getter:expr)),* $(,)?) => {
+        impl ParsedDeclEngine {
+            pub fn clear_module(&mut self, program_id: &SourceId) {
+                $(
+                    self.$slab.retain(|_k, item| {
+                        #[allow(clippy::redundant_closure_call)]
+                        let span = $getter(item);
+                        match span.source_id() {
+                            Some(src_id) => src_id != program_id,
+                            None => true,
+                        }
+                    });
+                )*
+            }
+        }
+    };
+}
+
+decl_engine_clear_module!(
     (variable_slab, |item: &VariableDeclaration| item.name.span()),
     (function_slab, |item: &FunctionDeclaration| item.name.span()),
     (trait_slab, |item: &TraitDeclaration| item.name.span()),

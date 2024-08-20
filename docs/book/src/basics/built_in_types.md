@@ -13,6 +13,7 @@ Sway is a statically typed language. At compile time, the types of every value m
 <!-- prim_types:example:start -->
 Sway has the following primitive types:
 
+1. `()` (unit type)
 1. `u8` (8-bit unsigned integer)
 1. `u16` (16-bit unsigned integer)
 1. `u32` (32-bit unsigned integer)
@@ -25,6 +26,25 @@ Sway has the following primitive types:
 
 All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers&mdash;this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
 <!-- prim_types:example:end -->
+
+## Unit Type
+
+The unit type, `()`, is a type that allows only one value, and thus, represents a value with no information. It is used to indicate the absence of a meaningful value, or the result of a function that performs an action, but does not return any data. The value of the unit type, called simply unit, has the same symbol as the unit type, `()`. Unit type in Sway serves a similar purpose as `void` in imperative languages like C or Java.
+
+For example:
+
+```Sway
+fn returns_unit() -> () { // Here, `()` represent the unit type.
+    ()                    // Here, `()` represents the single unit value of the unit type.
+}
+```
+
+In Sway, if the function return type is not specified, it is `()` by default. Thus, the above example is semantically same as the following:
+
+```Sway
+fn returns_unit() {
+}
+```
 
 ## Numeric Types
 

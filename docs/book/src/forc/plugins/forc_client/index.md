@@ -1,26 +1,64 @@
-# `forc-client`
+# forc-client
 
-Forc plugin for interacting with a Fuel node.
+The forc plugin for interacting with a Fuel node.
 
-## Initializing the wallet and adding accounts
+Since transactions are going to require some gas, you need to sign them with an account that has enough coins to pay for them.
 
-If you don't have an initialized wallet or any account for your wallet you won't be able to sign transactions.
+We offer multiple ways to sign the transaction:
 
-To create a wallet you can use `forc wallet new`. It will ask you to choose a password to encrypt your wallet. After the initialization is done you will have your mnemonic phrase.
+  1. Sign the transaction via your local wallet using `forc-client` which integrates with our CLI wallet, `forc-wallet`.
+  2. Use the default signer to deploy to a local node
+  3. Use `forc-wallet` to manually sign transactions, and copy the signed transaction back to `forc-client`.
 
-After you have created a wallet, you can derive a new account by running `forc wallet account new`. It will ask your password to decrypt the wallet before deriving an account.
+The easiest and recommended way to interact with deployed networks such as our testnets is option 1, using `forc-client` to sign your transactions which reads your default `forc-wallet` vault. For interacting with local node, we recommend using the second option, which leads `forc-client` to sign transactions with the private key that comes pre-funded in local environments.
 
-## Signing transactions using `forc-wallet` CLI
+## Option 1: Sign transactions via forc-client using your local forc-wallet vault
 
-To submit the transactions created by `forc deploy` or `forc run`, you need to sign them first (unless you are using a client without UTXO validation). To sign a transaction you can use `forc-wallet` CLI. This section is going to walk you through the whole signing process.
+If you've used `forc-wallet` before, you'll already have a secure, password-protected vault holding your private key written to your file-system. `forc-client` is compatible with `forc-wallet` such that it can read that vault by asking you your password and use your account to sign transactions.
 
-By default `fuel-core` runs without UTXO validation, this allows you to send invalid inputs to emulate different conditions.
+Example:
 
-If you want to run `fuel-core` with UTXO validation, you can pass `--utxo-validation` to `fuel-core run`.
+```console
+> forc deploy
 
-To install `forc-wallet` please refer to `forc-wallet`'s [GitHub repo](https://github.com/FuelLabs/forc-wallet#forc-wallet).
+    Building /Users/yourname/test-projects/test-contract
+    Finished release [optimized + fuel] target(s) in 11.39s
+  Confirming transactions [deploy impl-contract]
+             Network: https://testnet.fuel.network
+             Wallet: /Users/yourname/.fuel/wallets/.wallet
+✔ Wallet password · ********
+? Wallet account ›
+❯ [0] fuel12pls73y9hnqdqthvduy2x44x48zt8s50pkerf32kq26f2afeqdwq6rj9ar - 0.002197245 ETH
+  [1] fuel1vzrm6kw9s3tv85gl25lpptsxrdguyzfhq6c8rk07tr6ft5g45nwqqh0uty - 0.001963631 ETH
+? Do you agree to sign 1 transaction? (y/n) › yes
+     Finished deploying impl-contract https://app.fuel.network/contract/0x94b712901f04332682d14c998a5fc5a078ed15321438f46d58d0383200cde43d
+     Deployed in block https://app.fuel.network/block/5958351
+```
 
-1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy` or `forc run` with your desired parameters. For a list of parameters please refer to the [forc-deploy](./forc_deploy.md) or [forc-run](./forc_run.md) section of the book. Once you run either command you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
+As it can be seen from the example, `forc-client` asks for your password to decrypt the `forc-wallet` vault, and list your accounts so that you can select the one you want to fund the transaction with.
+
+## Option 2: Using default signer
+
+If you are not interacting with a deployed network, such as testnets, your local `fuel-core` environment can be structured such that it funds an account by default. Using `--default-signer` flag with `forc-client` binaries (run, deploy) will instruct `forc-client` to sign transactions with this pre-funded account. This makes it a useful command while working against a local node.
+
+Example:
+
+```console
+> forc deploy --default-signer
+
+    Building /Users/test/test-projects/test-contract
+    Finished release [optimized + fuel] target(s) in 11.40s
+  Confirming transactions [deploy impl-contract]
+             Network: http://127.0.0.1:4000
+    Finished deploying impl-contract 0xf9fb08ef18ce226954270d6d4f67677d484b8782a5892b3d436572b405407544
+    Deployed in block 00000001
+```
+
+## Option 3: Manually signing through forc-wallet (Deprecated)
+
+This option is for creating the transaction first, signing it manually, and supplying the signed transaction back to forc-client. Since it requires multiple steps, it is more error-prone and not recommended for general use cases. Also this will be deprecated soon.
+
+1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy --manual-sign` or `forc run --manual-sign` with your desired parameters. For a list of parameters please refer to the [forc-deploy](./forc_deploy.md) or [forc-run](./forc_run.md) section of the book. Once you run either command you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
 2. Take the transaction ID generated in the first step and sign it with `forc wallet sign --account <account_index> tx-id <transaction_id>`. This will generate a signature.
 3. Take the signature generated in the second step and provide it to `forc-deploy` (or `forc-run`). Once the signature is provided, the signed transaction will be submitted.
 
@@ -56,7 +94,7 @@ By default `--default-signer` flag would sign your transactions with the followi
 
 ## Interacting with the testnet
 
-To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the `beta-4` testnet.
+To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the latest `testnet`.
 
 ```sh
 forc-deploy --testnet
@@ -68,13 +106,23 @@ It is also possible to pass the exact node URL while using `forc-deploy` or `for
 forc-deploy --node-url https://beta-3.fuel.network
 ```
 
-Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `beta-3` you can use:
+Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `beta-5` you can use:
 
 ```sh
-forc-deploy --target beta-3
+forc-deploy --target beta-5
 ```
 
 Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
+
+## Delayed transactions
+
+For delayed transactions, you can use the `--submit-only` flag. This flag allows you to submit the transaction without waiting for its finalization.
+
+One use case for this is multisig transactions, where a deployment transaction may stay in a pending state while waiting for all signatures.
+
+```sh
+forc-deploy --submit-only
+```
 
 ## Deployment Artifacts
 
@@ -91,3 +139,44 @@ forc-deploy saves the details of each deployment in the `out/deployments` folder
   "deployed_block_id": "0x915c6f372252be6bc54bd70df6362dae9bf750ba652bf5582d9b31c7023ca6cf"
 }
 ```
+
+## Proxy Contracts
+
+`forc-deploy` supports deploying proxy contracts automatically if it is enabled in the `Forc.toml` of the contract.
+
+```TOML
+[project]
+name = "test_contract"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[proxy]
+enabled = true
+```
+
+If there is no `address` field present under the proxy table, like the example above, `forc` will automatically create a proxy contract based on the [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating and deploying the proxy contract, the target is set to the current contract, and the owner of the proxy is set to the account that is signing the transaction for deployment.
+
+This means that if you simply enable proxy in the `Forc.toml`, forc will automatically deploy a proxy contract for you and you do not need to do anything manually aside from signing the deployment transactions for the proxy contract. After deploying the proxy contract, the address is added into the `address` field of the proxy table.
+
+If you want to update the target of an [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) compliant proxy contract rather than deploying a new one, simply add its `address` in the `address` field, like the following example:
+
+```TOML
+[project]
+name = "test_contract"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[proxy]
+enabled = true
+address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" # example proxy contract address
+```
+
+If an `address` is present, `forc` calls into that contract to update its `target` instead of deploying a new contract. Since a new proxy deployment adds its own `address` into the `Forc.toml` automatically, you can simply enable the proxy once and after the initial deployment, `forc` will keep updating the target accordingly for each new deployment of the same contract.
+
+## Large Contracts
+
+For contracts over 100KB, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.

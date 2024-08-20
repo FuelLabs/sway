@@ -3,9 +3,12 @@ use crate::{
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         node_url::get_node_url,
-        pkg::built_pkgs,
+        pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
-        tx::{prompt_forc_wallet_password, select_secret_key, WalletSelectionMode},
+        tx::{
+            bech32_from_secret, prompt_forc_wallet_password, select_secret_key,
+            update_proxy_contract_target, WalletSelectionMode,
+        },
     },
 };
 use anyhow::{bail, Context, Result};
@@ -14,11 +17,15 @@ use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
-use fuel_core_client::client::types::TransactionStatus;
+use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
+use fuels::{
+    programs::contract::{LoadConfiguration, StorageConfiguration},
+    types::{bech32::Bech32ContractId, transaction_builders::Blob},
+};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
@@ -28,14 +35,23 @@ use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
+    time::Duration,
 };
-use std::{sync::Arc, time::Duration};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 
-#[derive(Debug, PartialEq, Eq)]
+/// Maximum contract size allowed for a single contract. If the target
+/// contract size is bigger than this amount, forc-deploy will automatically
+/// starts dividing the contract and deploy them in chunks automatically.
+/// The value is in bytes.
+const MAX_CONTRACT_SIZE: usize = 100_000;
+
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
+    pub proxy: Option<fuel_tx::ContractId>,
+    pub chunked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,7 +62,7 @@ pub struct DeploymentArtifact {
     chain_id: ChainId,
     contract_id: String,
     deployment_size: usize,
-    deployed_block_height: u32,
+    deployed_block_height: Option<u32>,
 }
 
 impl DeploymentArtifact {
@@ -116,6 +132,849 @@ fn validate_and_parse_salts<'a>(
     Ok(contract_salt_map)
 }
 
+/// Depending on the cli options user passed, either returns storage slots from
+/// compiled package, or the ones user provided as overrides.
+fn resolve_storage_slots(
+    command: &cmd::Deploy,
+    compiled: &BuiltPackage,
+) -> Result<Vec<fuel_tx::StorageSlot>> {
+    let mut storage_slots =
+        if let Some(storage_slot_override_file) = &command.override_storage_slots {
+            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
+            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
+            storage_slots
+        } else {
+            compiled.storage_slots.clone()
+        };
+    storage_slots.sort();
+    Ok(storage_slots)
+}
+
+/// Creates blobs from the contract to deploy contracts that are larger than
+/// `MAX_CONTRACT_SIZE`. Created blobs are deployed, and a loader contract is
+/// generated such that it loads all the deployed blobs, and provides the user
+/// a single contract (loader contract that loads the blobs) to call into.
+async fn deploy_chunked(
+    command: &cmd::Deploy,
+    compiled: &BuiltPackage,
+    salt: Salt,
+    signing_key: &SecretKey,
+    provider: &Provider,
+    pkg_name: &str,
+) -> anyhow::Result<ContractId> {
+    println_action_green("Deploying", &format!("contract {pkg_name} chunks"));
+
+    let storage_slots = resolve_storage_slots(command, compiled)?;
+    let chain_info = provider.chain_info().await?;
+    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+
+    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
+    let blobs = compiled
+        .bytecode
+        .bytes
+        .chunks(MAX_CONTRACT_SIZE)
+        .map(|chunk| Blob::new(chunk.to_vec()))
+        .collect();
+
+    let tx_policies = tx_policies_from_cmd(command);
+    let contract_id =
+        fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
+            .deploy(&wallet, tx_policies)
+            .await?
+            .into();
+
+    println_action_green(
+        "Finished",
+        &format!("deploying loader contract for {pkg_name} {contract_url}{contract_id}"),
+    );
+
+    Ok(contract_id)
+}
+
+/// Deploys a new proxy contract for the given package.
+async fn deploy_new_proxy(
+    command: &cmd::Deploy,
+    pkg_name: &str,
+    impl_contract: &fuel_tx::ContractId,
+    provider: &Provider,
+    signing_key: &SecretKey,
+) -> Result<ContractId> {
+    fuels::macros::abigen!(Contract(
+        name = "ProxyContract",
+        abi = r#"
+{
+  "programType": "contract",
+  "specVersion": "1",
+  "encodingVersion": "1",
+  "concreteTypes": [
+    {
+      "type": "()",
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    },
+    {
+      "type": "enum standards::src5::AccessError",
+      "concreteTypeId": "3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d",
+      "metadataTypeId": 1
+    },
+    {
+      "type": "enum standards::src5::State",
+      "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
+      "metadataTypeId": 2
+    },
+    {
+      "type": "enum std::option::Option<struct std::contract_id::ContractId>",
+      "concreteTypeId": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
+      "metadataTypeId": 4,
+      "typeArguments": [
+        "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
+      ]
+    },
+    {
+      "type": "enum sway_libs::ownership::errors::InitializationError",
+      "concreteTypeId": "1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893",
+      "metadataTypeId": 5
+    },
+    {
+      "type": "enum sway_libs::upgradability::errors::SetProxyOwnerError",
+      "concreteTypeId": "3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74",
+      "metadataTypeId": 6
+    },
+    {
+      "type": "str",
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
+      "metadataTypeId": 9
+    },
+    {
+      "type": "struct sway_libs::upgradability::events::ProxyOwnerSet",
+      "concreteTypeId": "96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247",
+      "metadataTypeId": 10
+    },
+    {
+      "type": "struct sway_libs::upgradability::events::ProxyTargetSet",
+      "concreteTypeId": "1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8",
+      "metadataTypeId": 11
+    }
+  ],
+  "metadataTypes": [
+    {
+      "type": "b256",
+      "metadataTypeId": 0
+    },
+    {
+      "type": "enum standards::src5::AccessError",
+      "metadataTypeId": 1,
+      "components": [
+        {
+          "name": "NotOwner",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
+      "type": "enum standards::src5::State",
+      "metadataTypeId": 2,
+      "components": [
+        {
+          "name": "Uninitialized",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        },
+        {
+          "name": "Initialized",
+          "typeId": 3
+        },
+        {
+          "name": "Revoked",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
+      "type": "enum std::identity::Identity",
+      "metadataTypeId": 3,
+      "components": [
+        {
+          "name": "Address",
+          "typeId": 8
+        },
+        {
+          "name": "ContractId",
+          "typeId": 9
+        }
+      ]
+    },
+    {
+      "type": "enum std::option::Option",
+      "metadataTypeId": 4,
+      "components": [
+        {
+          "name": "None",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        },
+        {
+          "name": "Some",
+          "typeId": 7
+        }
+      ],
+      "typeParameters": [
+        7
+      ]
+    },
+    {
+      "type": "enum sway_libs::ownership::errors::InitializationError",
+      "metadataTypeId": 5,
+      "components": [
+        {
+          "name": "CannotReinitialized",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
+      "type": "enum sway_libs::upgradability::errors::SetProxyOwnerError",
+      "metadataTypeId": 6,
+      "components": [
+        {
+          "name": "CannotUninitialize",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
+      "type": "generic T",
+      "metadataTypeId": 7
+    },
+    {
+      "type": "struct std::address::Address",
+      "metadataTypeId": 8,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": 0
+        }
+      ]
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "metadataTypeId": 9,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": 0
+        }
+      ]
+    },
+    {
+      "type": "struct sway_libs::upgradability::events::ProxyOwnerSet",
+      "metadataTypeId": 10,
+      "components": [
+        {
+          "name": "new_proxy_owner",
+          "typeId": 2
+        }
+      ]
+    },
+    {
+      "type": "struct sway_libs::upgradability::events::ProxyTargetSet",
+      "metadataTypeId": 11,
+      "components": [
+        {
+          "name": "new_target",
+          "typeId": 9
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "inputs": [],
+      "name": "proxy_target",
+      "output": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
+      "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Returns the target contract of the proxy contract."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Returns"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * [Option<ContractId>] - The new proxy contract to which all fallback calls will be passed or `None`."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Number of Storage Accesses"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * Reads: `1`"
+          ]
+        },
+        {
+          "name": "storage",
+          "arguments": [
+            "read"
+          ]
+        }
+      ]
+    },
+    {
+      "inputs": [
+        {
+          "name": "new_target",
+          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
+        }
+      ],
+      "name": "set_proxy_target",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Change the target contract of the proxy contract."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Additional Information"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " This method can only be called by the `proxy_owner`."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Arguments"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * `new_target`: [ContractId] - The new proxy contract to which all fallback calls will be passed."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Reverts"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * When not called by `proxy_owner`."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Number of Storage Accesses"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * Reads: `1`"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * Write: `1`"
+          ]
+        },
+        {
+          "name": "storage",
+          "arguments": [
+            "read",
+            "write"
+          ]
+        }
+      ]
+    },
+    {
+      "inputs": [],
+      "name": "proxy_owner",
+      "output": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
+      "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Returns the owner of the proxy contract."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Returns"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * [State] - Represents the state of ownership for this contract."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Number of Storage Accesses"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * Reads: `1`"
+          ]
+        },
+        {
+          "name": "storage",
+          "arguments": [
+            "read"
+          ]
+        }
+      ]
+    },
+    {
+      "inputs": [],
+      "name": "initialize_proxy",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Initializes the proxy contract."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Additional Information"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " This method sets the storage values using the values of the configurable constants `INITIAL_TARGET` and `INITIAL_OWNER`."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " This then allows methods that write to storage to be called."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " This method can only be called once."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Reverts"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * When `storage::SRC14.proxy_owner` is not [State::Uninitialized]."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Number of Storage Accesses"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * Writes: `2`"
+          ]
+        },
+        {
+          "name": "storage",
+          "arguments": [
+            "write"
+          ]
+        }
+      ]
+    },
+    {
+      "inputs": [
+        {
+          "name": "new_proxy_owner",
+          "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c"
+        }
+      ],
+      "name": "set_proxy_owner",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": [
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " Changes proxy ownership to the passed State."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Additional Information"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " This method can be used to transfer ownership between Identities or to revoke ownership."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Arguments"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * `new_proxy_owner`: [State] - The new state of the proxy ownership."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Reverts"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * When the sender is not the current proxy owner."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * When the new state of the proxy ownership is [State::Uninitialized]."
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " # Number of Storage Accesses"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            ""
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * Reads: `1`"
+          ]
+        },
+        {
+          "name": "doc-comment",
+          "arguments": [
+            " * Writes: `1`"
+          ]
+        },
+        {
+          "name": "storage",
+          "arguments": [
+            "write"
+          ]
+        }
+      ]
+    }
+  ],
+  "loggedTypes": [
+    {
+      "logId": "4571204900286667806",
+      "concreteTypeId": "3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d"
+    },
+    {
+      "logId": "2151606668983994881",
+      "concreteTypeId": "1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8"
+    },
+    {
+      "logId": "2161305517876418151",
+      "concreteTypeId": "1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893"
+    },
+    {
+      "logId": "4354576968059844266",
+      "concreteTypeId": "3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74"
+    },
+    {
+      "logId": "10870989709723147660",
+      "concreteTypeId": "96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247"
+    },
+    {
+      "logId": "10098701174489624218",
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
+    }
+  ],
+  "messagesTypes": [],
+  "configurables": [
+    {
+      "name": "INITIAL_TARGET",
+      "concreteTypeId": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
+      "offset": 13616
+    },
+    {
+      "name": "INITIAL_OWNER",
+      "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
+      "offset": 13568
+    }
+  ]
+}"#,
+    ));
+    let proxy_dir_output = create_proxy_contract(pkg_name)?;
+    let address = bech32_from_secret(signing_key)?;
+    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
+
+    let storage_path = proxy_dir_output.join("proxy-storage_slots.json");
+    let storage_configuration =
+        StorageConfiguration::default().add_slot_overrides_from_file(storage_path)?;
+
+    let configurables = ProxyContractConfigurables::default()
+        .with_INITIAL_TARGET(Some(*impl_contract))?
+        .with_INITIAL_OWNER(State::Initialized(Address::from(address).into()))?;
+
+    let configuration = LoadConfiguration::default()
+        .with_storage_configuration(storage_configuration)
+        .with_configurables(configurables);
+
+    let tx_policies = tx_policies_from_cmd(command);
+    let proxy_contract_id: ContractId = fuels::programs::contract::Contract::load_from(
+        proxy_dir_output.join("proxy.bin"),
+        configuration,
+    )?
+    .deploy(&wallet, tx_policies)
+    .await?
+    .into();
+
+    let chain_info = provider.chain_info().await?;
+    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+
+    println_action_green(
+        "Finished",
+        &format!("deploying proxy contract for {pkg_name} {contract_url}{proxy_contract_id}"),
+    );
+
+    let proxy_contract_bech_id: Bech32ContractId = proxy_contract_id.into();
+    let instance = ProxyContract::new(&proxy_contract_bech_id, wallet);
+    instance.methods().initialize_proxy().call().await?;
+    println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
+    Ok(proxy_contract_id)
+}
+
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
 /// will be built and deployed.
 ///
@@ -127,7 +986,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
 
-    let mut contract_ids = Vec::new();
+    let mut deployed_contracts = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
     } else {
@@ -148,7 +1007,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     if pkgs_to_deploy.is_empty() {
         println_warning("No deployable contracts found in the current directory.");
-        return Ok(contract_ids);
+        return Ok(deployed_contracts);
     }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
@@ -219,18 +1078,80 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 bail!("Both `--salt` and `--default-salt` were specified: must choose one")
             }
         };
-        let contract_id = deploy_pkg(
-            &command,
-            pkg,
-            salt,
-            &provider,
-            &signing_key,
-            node_url.clone(),
-        )
-        .await?;
-        contract_ids.push(contract_id);
+        let bytecode_size = pkg.bytecode.bytes.len();
+        let deployed_contract_id = if bytecode_size > MAX_CONTRACT_SIZE {
+            // Deploy chunked
+            let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
+            let provider = Provider::connect(node_url).await?;
+
+            deploy_chunked(
+                &command,
+                pkg,
+                salt,
+                &signing_key,
+                &provider,
+                &pkg.descriptor.name,
+            )
+            .await?
+        } else {
+            deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?
+        };
+
+        let proxy_id = match &pkg.descriptor.manifest_file.proxy {
+            Some(forc_pkg::manifest::Proxy {
+                enabled: true,
+                address: Some(proxy_addr),
+            }) => {
+                // Make a call into the contract to update impl contract address to 'deployed_contract'.
+
+                // Create a contract instance for the proxy contract using default proxy contract abi and
+                // specified address.
+                let proxy_contract =
+                    ContractId::from_str(proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
+
+                update_proxy_contract_target(
+                    &provider,
+                    signing_key,
+                    proxy_contract,
+                    deployed_contract_id,
+                )
+                .await?;
+                Some(proxy_contract)
+            }
+            Some(forc_pkg::manifest::Proxy {
+                enabled: true,
+                address: None,
+            }) => {
+                let pkg_name = &pkg.descriptor.name;
+                // Deploy a new proxy contract.
+                let deployed_proxy_contract = deploy_new_proxy(
+                    &command,
+                    pkg_name,
+                    &deployed_contract_id,
+                    &provider,
+                    &signing_key,
+                )
+                .await?;
+
+                // Update manifest file such that the proxy address field points to the new proxy contract.
+                update_proxy_address_in_manifest(
+                    &format!("0x{}", deployed_proxy_contract),
+                    &pkg.descriptor.manifest_file,
+                )?;
+                Some(deployed_proxy_contract)
+            }
+            // Proxy not enabled.
+            _ => None,
+        };
+
+        let deployed_contract = DeployedContract {
+            id: deployed_contract_id,
+            proxy: proxy_id,
+            chunked: bytecode_size > MAX_CONTRACT_SIZE,
+        };
+        deployed_contracts.push(deployed_contract);
     }
-    Ok(contract_ids)
+    Ok(deployed_contracts)
 }
 
 /// Prompt the user to confirm the transactions required for deployment, as well as the signing key.
@@ -240,13 +1161,42 @@ async fn confirm_transaction_details(
     node_url: String,
 ) -> Result<(Provider, SecretKey)> {
     // Confirmation step. Summarize the transaction(s) for the deployment.
+    let mut tx_count = 0;
     let tx_summary = pkgs_to_deploy
         .iter()
-        .map(|pkg| format!("deploy {}", pkg.descriptor.manifest_file.project_name()))
+        .map(|pkg| {
+            tx_count += 1;
+            let proxy_text = match &pkg.descriptor.manifest_file.proxy {
+                Some(forc_pkg::manifest::Proxy {
+                    enabled: true,
+                    address,
+                }) => {
+                    tx_count += 1;
+                    if address.is_some() {
+                        " + update proxy"
+                    } else {
+                        " + deploy proxy"
+                    }
+                }
+                _ => "",
+            };
+
+            let pkg_bytecode_len = pkg.bytecode.bytes.len();
+            let blob_text = if pkg_bytecode_len > MAX_CONTRACT_SIZE {
+                let number_of_blobs = pkg_bytecode_len.div_ceil(MAX_CONTRACT_SIZE);
+                tx_count += number_of_blobs;
+                &format!(" + {number_of_blobs} blobs")
+            } else {
+                ""
+            };
+
+            format!(
+                "deploy {}{blob_text}{proxy_text}",
+                pkg.descriptor.manifest_file.project_name()
+            )
+        })
         .collect::<Vec<_>>()
         .join(" + ");
-
-    let tx_count = pkgs_to_deploy.len();
 
     println_action_green("Confirming", &format!("transactions [{tx_summary}]"));
     println_action_green("", &format!("Network: {node_url}"));
@@ -284,28 +1234,19 @@ pub async fn deploy_pkg(
     salt: Salt,
     provider: &Provider,
     signing_key: &SecretKey,
-    node_url: String,
-) -> Result<DeployedContract> {
+) -> Result<fuel_tx::ContractId> {
     let manifest = &compiled.descriptor.manifest_file;
-    let client = FuelClient::new(node_url.clone())?;
+    let node_url = provider.url();
+    let client = FuelClient::new(node_url)?;
 
     let bytecode = &compiled.bytecode.bytes;
 
-    let mut storage_slots =
-        if let Some(storage_slot_override_file) = &command.override_storage_slots {
-            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
-            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
-            storage_slots
-        } else {
-            compiled.storage_slots.clone()
-        };
-    storage_slots.sort();
-
+    let storage_slots = resolve_storage_slots(command, compiled)?;
     let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-    let tx_policies = TxPolicies::default();
+    let tx_policies = tx_policies_from_cmd(command);
 
     let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
         bytecode.clone(),
@@ -325,80 +1266,96 @@ pub async fn deploy_pkg(
     let chain_info = client.chain_info().await?;
     let chain_id = chain_info.consensus_parameters.chain_id();
 
-    let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
-        Ok(logs) => match logs {
-            TransactionStatus::Submitted { .. } => {
-                bail!("contract {} deployment timed out", &contract_id);
-            }
-            TransactionStatus::Success { block_height, .. } => {
-                let pkg_name = manifest.project_name();
-                let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
-                let (contract_url, block_url) = match target.explorer_url() {
-                    Some(explorer_url) => (
-                        format!("{explorer_url}/contract/0x"),
-                        format!("{explorer_url}/block/"),
-                    ),
-                    None => ("".to_string(), "".to_string()),
-                };
-                println_action_green(
-                    "Finished",
-                    &format!("deploying {pkg_name} {contract_url}{contract_id}"),
-                );
-                let block_height_formatted =
-                    match u32::from_str_radix(&block_height.to_string(), 16) {
-                        Ok(decimal) => format!("{block_url}{decimal}"),
-                        Err(_) => block_height.to_string(),
-                    };
-
-                println_action_green("Deployed", &format!("in block {block_height_formatted}"));
-
+    // If only submitting the transaction, don't wait for the deployment to complete
+    let contract_id: ContractId = if command.submit_only {
+        match client.submit(&tx).await {
+            Ok(transaction_id) => {
                 // Create a deployment artifact.
-                let deployment_size = bytecode.len();
-                let deployment_artifact = DeploymentArtifact {
-                    transaction_id: format!("0x{}", tx.id(&chain_id)),
-                    salt: format!("0x{}", salt),
-                    network_endpoint: node_url.to_string(),
-                    chain_id,
-                    contract_id: format!("0x{}", contract_id),
-                    deployment_size,
-                    deployed_block_height: *block_height,
-                };
+                create_deployment_artifact(
+                    DeploymentArtifact {
+                        transaction_id: format!("0x{}", transaction_id),
+                        salt: format!("0x{}", salt),
+                        network_endpoint: node_url.to_string(),
+                        chain_id,
+                        contract_id: format!("0x{}", contract_id),
+                        deployment_size: bytecode.len(),
+                        deployed_block_height: None,
+                    },
+                    command,
+                    manifest,
+                    chain_info,
+                )?;
 
-                let output_dir = command
-                    .pkg
-                    .output_directory
-                    .as_ref()
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|| default_output_directory(manifest.dir()))
-                    .join("deployments");
-                deployment_artifact.to_file(&output_dir, pkg_name, contract_id)?;
-
-                Ok(contract_id)
+                contract_id
             }
-            e => {
+            Err(e) => {
                 bail!(
                     "contract {} failed to deploy due to an error: {:?}",
                     &contract_id,
                     e
                 )
             }
-        },
-        Err(e) => bail!("{e}"),
-    });
+        }
+    } else {
+        let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
+            Ok(logs) => match logs {
+                TransactionStatus::Submitted { .. } => {
+                    bail!("contract {} deployment timed out", &contract_id);
+                }
+                TransactionStatus::Success { block_height, .. } => {
+                    // Create a deployment artifact.
+                    create_deployment_artifact(
+                        DeploymentArtifact {
+                            transaction_id: format!("0x{}", tx.id(&chain_id)),
+                            salt: format!("0x{}", salt),
+                            network_endpoint: node_url.to_string(),
+                            chain_id,
+                            contract_id: format!("0x{}", contract_id),
+                            deployment_size: bytecode.len(),
+                            deployed_block_height: Some(*block_height),
+                        },
+                        command,
+                        manifest,
+                        chain_info,
+                    )?;
 
-    // submit contract deployment with a timeout
-    let contract_id = tokio::time::timeout(
-        Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
-        deployment_request,
-    )
-    .await
-    .with_context(|| {
-        format!(
-            "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
-            &contract_id
+                    Ok(contract_id)
+                }
+                e => {
+                    bail!(
+                        "contract {} failed to deploy due to an error: {:?}",
+                        &contract_id,
+                        e
+                    )
+                }
+            },
+            Err(e) => bail!("{e}"),
+        });
+        tokio::time::timeout(
+            Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
+            deployment_request,
         )
-    })??;
-    Ok(DeployedContract { id: contract_id })
+            .await
+            .with_context(|| {
+                format!(
+                    "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
+                    &contract_id
+                )
+            })??
+    };
+
+    Ok(contract_id)
+}
+
+fn tx_policies_from_cmd(cmd: &cmd::Deploy) -> TxPolicies {
+    let mut tx_policies = TxPolicies::default();
+    if let Some(max_fee) = cmd.gas.max_fee {
+        tx_policies = tx_policies.with_max_fee(max_fee);
+    }
+    if let Some(script_gas_limit) = cmd.gas.script_gas_limit {
+        tx_policies = tx_policies.with_script_gas_limit(script_gas_limit);
+    }
+    tx_policies
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
@@ -409,7 +1366,6 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
-            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
             ipfs_node: cmd.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
@@ -440,6 +1396,55 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             new_encoding: !cmd.no_encoding_v1,
         },
     }
+}
+
+/// Creates a deployment artifact and writes it to a file.
+///
+/// This function is used to generate a deployment artifact containing details
+/// about the deployment, such as the transaction ID, salt, network endpoint,
+/// chain ID, contract ID, deployment size, and deployed block height. It then
+/// writes this artifact to a specified output directory.
+fn create_deployment_artifact(
+    deployment_artifact: DeploymentArtifact,
+    cmd: &cmd::Deploy,
+    manifest: &PackageManifestFile,
+    chain_info: ChainInfo,
+) -> Result<()> {
+    let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
+    let pkg_name = manifest.project_name();
+
+    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let (contract_url, block_url) = match target.explorer_url() {
+        Some(explorer_url) => (
+            format!("{explorer_url}/contract/0x"),
+            format!("{explorer_url}/block/"),
+        ),
+        None => ("".to_string(), "".to_string()),
+    };
+    println_action_green(
+        "Finished",
+        &format!("deploying {pkg_name} {contract_url}{contract_id}"),
+    );
+
+    let block_height = deployment_artifact.deployed_block_height;
+    if block_height.is_some() {
+        let block_height_formatted =
+            match u32::from_str_radix(&block_height.unwrap().to_string(), 16) {
+                Ok(decimal) => format!("{block_url}{decimal}"),
+                Err(_) => block_height.unwrap().to_string(),
+            };
+
+        println_action_green("Deployed", &format!("in block {block_height_formatted}"));
+    }
+
+    let output_dir = cmd
+        .pkg
+        .output_directory
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_output_directory(manifest.dir()))
+        .join("deployments");
+    deployment_artifact.to_file(&output_dir, pkg_name, contract_id)
 }
 
 #[cfg(test)]

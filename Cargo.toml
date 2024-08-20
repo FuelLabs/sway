@@ -34,25 +34,26 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.31.0", default-features = false }
-fuel-core-types = { version = "0.31.0", default-features = false }
+fuel-core-client = { version = "0.32.1", default-features = false }
+fuel-core-types = { version = "0.32.1", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.55.0"
-fuel-crypto = "0.55.0"
-fuel-types = "0.55.0"
-fuel-tx = "0.55.0"
-fuel-vm = "0.55.0"
+fuel-asm = "0.56.0"
+fuel-crypto = "0.56.0"
+fuel-types = "0.56.0"
+fuel-tx = "0.56.0"
+fuel-vm = "0.56.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.65.1"
-fuels-accounts = "0.65.1"
+fuels-core = "0.66.1"
+fuels-accounts = "0.66.1"
+fuels = "0.66.1"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.8.2"
+forc-wallet = "0.9.0"
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.5.2"
+fuel-abi-types = "0.7.0"
 
 [workspace.package]
 edition = "2021"
@@ -60,4 +61,3 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-

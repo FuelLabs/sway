@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_types::{Named, ProgramId, Spanned};
+use sway_types::{Named, ProgramId, SourceId, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
@@ -13,9 +13,10 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::{
-            AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration,
-            FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration, StructDeclaration,
-            TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration,
+            AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, Declaration,
+            EnumDeclaration, FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration,
+            StructDeclaration, TraitDeclaration, TraitFn, TraitTypeDeclaration,
+            TypeAliasDeclaration,
         },
         ty::{
             self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl,
@@ -120,6 +121,13 @@ where
     T: TyDeclParsedType,
 {
     fn get_parsed_decl_id(&self, decl_id: &DeclId<T>) -> Option<ParsedDeclId<T::ParsedType>>;
+}
+
+pub trait DeclEngineGetParsedDecl<T>
+where
+    T: TyDeclParsedType,
+{
+    fn get_parsed_decl(&self, decl_id: &DeclId<T>) -> Option<Declaration>;
 }
 
 pub trait DeclEngineInsert<T>
@@ -288,6 +296,82 @@ decl_engine_parsed_decl_id!(configurable_parsed_decl_id_map, ty::TyConfigurableD
 decl_engine_parsed_decl_id!(enum_parsed_decl_id_map, ty::TyEnumDecl);
 decl_engine_parsed_decl_id!(type_alias_parsed_decl_id_map, ty::TyTypeAliasDecl);
 
+macro_rules! decl_engine_parsed_decl {
+    ($slab:ident, $decl:ty, $ctor:expr) => {
+        impl DeclEngineGetParsedDecl<$decl> for DeclEngine {
+            fn get_parsed_decl(&self, decl_id: &DeclId<$decl>) -> Option<Declaration> {
+                let parsed_decl_id_map = self.$slab.read();
+                if let Some(parsed_decl_id) = parsed_decl_id_map.get(&decl_id) {
+                    return Some($ctor(parsed_decl_id.clone()));
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+decl_engine_parsed_decl!(
+    function_parsed_decl_id_map,
+    ty::TyFunctionDecl,
+    Declaration::FunctionDeclaration
+);
+decl_engine_parsed_decl!(
+    trait_parsed_decl_id_map,
+    ty::TyTraitDecl,
+    Declaration::TraitDeclaration
+);
+decl_engine_parsed_decl!(
+    trait_fn_parsed_decl_id_map,
+    ty::TyTraitFn,
+    Declaration::TraitFnDeclaration
+);
+decl_engine_parsed_decl!(
+    trait_type_parsed_decl_id_map,
+    ty::TyTraitType,
+    Declaration::TraitTypeDeclaration
+);
+decl_engine_parsed_decl!(
+    impl_self_or_trait_parsed_decl_id_map,
+    ty::TyImplSelfOrTrait,
+    Declaration::ImplSelfOrTrait
+);
+decl_engine_parsed_decl!(
+    struct_parsed_decl_id_map,
+    ty::TyStructDecl,
+    Declaration::StructDeclaration
+);
+decl_engine_parsed_decl!(
+    storage_parsed_decl_id_map,
+    ty::TyStorageDecl,
+    Declaration::StorageDeclaration
+);
+decl_engine_parsed_decl!(
+    abi_parsed_decl_id_map,
+    ty::TyAbiDecl,
+    Declaration::AbiDeclaration
+);
+decl_engine_parsed_decl!(
+    constant_parsed_decl_id_map,
+    ty::TyConstantDecl,
+    Declaration::ConstantDeclaration
+);
+decl_engine_parsed_decl!(
+    configurable_parsed_decl_id_map,
+    ty::TyConfigurableDecl,
+    Declaration::ConfigurableDeclaration
+);
+decl_engine_parsed_decl!(
+    enum_parsed_decl_id_map,
+    ty::TyEnumDecl,
+    Declaration::EnumDeclaration
+);
+decl_engine_parsed_decl!(
+    type_alias_parsed_decl_id_map,
+    ty::TyTypeAliasDecl,
+    Declaration::TypeAliasDeclaration
+);
+
 macro_rules! decl_engine_replace {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineReplace<$decl> for DeclEngine {
@@ -361,6 +445,53 @@ macro_rules! decl_engine_clear_program {
 }
 
 decl_engine_clear_program!(
+    function_slab, ty::TyFunctionDecl;
+    trait_slab, ty::TyTraitDecl;
+    trait_fn_slab, ty::TyTraitFn;
+    trait_type_slab, ty::TyTraitType;
+    impl_self_or_trait_slab, ty::TyImplTrait;
+    struct_slab, ty::TyStructDecl;
+    storage_slab, ty::TyStorageDecl;
+    abi_slab, ty::TyAbiDecl;
+    constant_slab, ty::TyConstantDecl;
+    configurable_slab, ty::TyConfigurableDecl;
+    enum_slab, ty::TyEnumDecl;
+    type_alias_slab, ty::TyTypeAliasDecl;
+);
+
+macro_rules! decl_engine_clear_module {
+    ($($slab:ident, $decl:ty);* $(;)?) => {
+        impl DeclEngine {
+            pub fn clear_module(&mut self, source_id: &SourceId) {
+                self.parents.write().retain(|key, _| {
+                    match key {
+                        AssociatedItemDeclId::TraitFn(decl_id) => {
+                            self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
+                        },
+                        AssociatedItemDeclId::Function(decl_id) => {
+                            self.get_function(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
+                        },
+                        AssociatedItemDeclId::Type(decl_id) => {
+                            self.get_type(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
+                        },
+                        AssociatedItemDeclId::Constant(decl_id) => {
+                            self.get_constant(decl_id).span().source_id().map_or(true, |src_id| src_id != source_id)
+                        },
+                    }
+                });
+
+                $(
+                    self.$slab.retain(|_k, ty| match ty.span().source_id() {
+                        Some(src_id) => src_id != source_id,
+                        None => true,
+                    });
+                )*
+            }
+        }
+    };
+}
+
+decl_engine_clear_module!(
     function_slab, ty::TyFunctionDecl;
     trait_slab, ty::TyTraitDecl;
     trait_fn_slab, ty::TyTraitFn;

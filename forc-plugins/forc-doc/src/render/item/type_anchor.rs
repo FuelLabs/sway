@@ -33,6 +33,18 @@ pub(crate) fn render_type_anchor(
                 : format!("; {}]", len.val());
             })
         }
+        TypeInfo::Slice(ty_arg) => {
+            let inner = render_type_anchor(
+                (*render_plan.engines.te().get(ty_arg.type_id)).clone(),
+                render_plan,
+                current_module_info,
+            )?;
+            Ok(box_html! {
+                : "__slice[";
+                : inner;
+                : "]";
+            })
+        }
         TypeInfo::Tuple(ty_args) => {
             let mut rendered_args: Vec<_> = Vec::new();
             for ty_arg in ty_args {
