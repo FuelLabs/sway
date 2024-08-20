@@ -1,0 +1,11 @@
+category = "fail"
+
+# check: $()const p={/);
+# nextln: $()mismatched delimiters
+
+# check: $()const p={/);
+# nextln: $()Expected an expression.
+
+# check: $()Aborting due to 2 errors.
+
+
