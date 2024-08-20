@@ -2679,12 +2679,10 @@ fn statement_to_ast_nodes(
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
         }
-        Statement::Error(spans, error) => {
-            let span = Span::join_all(spans.iter().cloned());
-            vec![AstNode {
-                content: AstNodeContent::Error(spans, error),
-                span,
-            }]
+        Statement::Error(_spans, error) => {
+	    // This occurs if the parser has encountered an error, but has attempted to recover from
+	    // it.  If this is the case, we report the error now.
+	    return Err(error)
         }
     };
     Ok(ast_nodes)
