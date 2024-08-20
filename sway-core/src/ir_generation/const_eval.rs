@@ -789,7 +789,7 @@ fn const_eval_codeblock(
                 span: ast_node.span.clone(),
             }),
             ty::TyAstNodeContent::Error(_, _) => {
-                unreachable!("error node found when generating IR");
+                Err(ConstEvalError::CannotBeEvaluatedToConst { span: ast_node.span.clone(), })
             }
         };
 
