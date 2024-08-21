@@ -17,7 +17,7 @@ use sway_error::{
     error::{CompileError, ShadowingSource, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, IdentUnique, Spanned};
 
 use std::sync::Arc;
 
@@ -36,6 +36,7 @@ impl ResolvedFunctionDecl {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
+pub(super) type SymbolUniqueMap = im::OrdMap<IdentUnique, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
@@ -76,6 +77,8 @@ pub struct LexicalScope {
 pub struct Items {
     /// An ordered map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
+    /// An ordered map from `IdentUnique`s to their associated declarations.
+    pub(crate) symbols_unique: SymbolUniqueMap,
     pub(crate) implemented_traits: TraitMap,
     /// Contains symbols imported using star imports (`use foo::*`.).
     ///
@@ -629,6 +632,8 @@ impl Items {
             );
         }
 
+        self.symbols_unique
+            .insert(name.clone().into(), item.clone());
         self.symbols.insert(name, item);
 
         Ok(())
@@ -677,6 +682,19 @@ impl Items {
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {
         self.symbols
             .get(name)
+            .cloned()
+            .ok_or_else(|| CompileError::SymbolNotFound {
+                name: name.clone(),
+                span: name.span(),
+            })
+    }
+
+    pub(crate) fn check_symbol_unique(
+        &self,
+        name: &Ident,
+    ) -> Result<ResolvedDeclaration, CompileError> {
+        self.symbols_unique
+            .get(&name.into())
             .cloned()
             .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),

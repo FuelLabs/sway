@@ -636,7 +636,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let (typed_block, block_return_type) =
-            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents) {
+            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents, false) {
                 Ok(res) => {
                     let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
                     (res, block_type)
@@ -2038,7 +2038,7 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)?;
+        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, false)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {

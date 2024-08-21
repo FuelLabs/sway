@@ -11,7 +11,7 @@ use crate::{
         ty::{self, FunctionDecl, TyCodeBlock, TyDecl, TyStorageField},
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, ResolvedDeclaration},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext,
         type_check_context::EnforceTypeArguments, ConstShadowingMode, GenericShadowingMode,
@@ -161,6 +161,29 @@ impl TyDecl {
                         _ => body.return_type,
                     },
                 };
+
+                if let Some(previous_namespace) = ctx.previous_namespace() {
+                    let previous_symbol = previous_namespace
+                        .module(engines)
+                        .current_items()
+                        .check_symbol_unique(&var_decl.name.clone())
+                        .ok();
+
+                    if let Some(ResolvedDeclaration::Typed(ty::TyDecl::VariableDecl(
+                        variable_decl,
+                    ))) = previous_symbol
+                    {
+                        type_engine.unify(
+                            handler,
+                            engines,
+                            body.return_type,
+                            variable_decl.body.return_type,
+                            &decl.span(engines),
+                            "",
+                            None,
+                        );
+                    }
+                }
 
                 let typed_var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
                     name: var_decl.name.clone(),

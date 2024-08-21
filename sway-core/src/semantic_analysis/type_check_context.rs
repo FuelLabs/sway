@@ -94,6 +94,13 @@ pub struct TypeCheckContext<'a> {
 
     /// Indicates when semantic analysis is type checking storage declaration.
     storage_declaration: bool,
+
+    /// The namespace context accumulated throughout a previous iteration of type-checking.
+    /// This is required because we are typechecking code blocks twice and relying on the
+    /// previous_namespace to unify the types of variable declarations on the second pass.
+    previous_namespace: Option<&'a Namespace>,
+
+    collecting_unifications: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -118,7 +125,9 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
+            previous_namespace: None,
             experimental,
+            collecting_unifications: false,
         }
     }
 
@@ -157,7 +166,9 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
+            previous_namespace: None,
             experimental,
+            collecting_unifications: false,
         }
     }
 
@@ -185,7 +196,9 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
+            previous_namespace: self.previous_namespace,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
         }
     }
 
@@ -210,7 +223,9 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
+            previous_namespace: None,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
         };
         with_scoped_ctx(ctx)
     }
@@ -236,9 +251,39 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
+            previous_namespace: None,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
         };
         Ok((with_scoped_ctx(ctx)?, namespace))
+    }
+
+    pub fn scoped_with_previous_namespace<T>(
+        self,
+        previous_namespace: &Namespace,
+        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
+    ) -> Result<T, ErrorEmitted> {
+        let mut namespace = self.namespace.clone();
+        let ctx = TypeCheckContext {
+            namespace: &mut namespace,
+            type_annotation: self.type_annotation,
+            function_type_annotation: self.function_type_annotation,
+            unify_generic: self.unify_generic,
+            self_type: self.self_type,
+            type_subst: self.type_subst,
+            abi_mode: self.abi_mode,
+            const_shadowing_mode: self.const_shadowing_mode,
+            generic_shadowing_mode: self.generic_shadowing_mode,
+            help_text: self.help_text,
+            kind: self.kind,
+            engines: self.engines,
+            disallow_functions: self.disallow_functions,
+            storage_declaration: self.storage_declaration,
+            previous_namespace: Some(previous_namespace),
+            experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
+        };
+        with_scoped_ctx(ctx)
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
@@ -348,6 +393,13 @@ impl<'a> TypeCheckContext<'a> {
         Self { self_type, ..self }
     }
 
+    pub(crate) fn with_collecting_unifications(self) -> Self {
+        Self {
+            collecting_unifications: true,
+            ..self
+        }
+    }
+
     /// Map this `TypeCheckContext` instance to a new one with
     /// `disallow_functions` set to `true`.
     pub(crate) fn disallow_functions(self) -> Self {
@@ -417,6 +469,14 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn storage_declaration(&self) -> bool {
         self.storage_declaration
+    }
+
+    pub(crate) fn previous_namespace(&self) -> Option<&Namespace> {
+        self.previous_namespace
+    }
+
+    pub(crate) fn collecting_unifications(&self) -> bool {
+        self.collecting_unifications
     }
 
     // Provide some convenience functions around the inner context.
@@ -1111,6 +1171,14 @@ impl<'a> TypeCheckContext<'a> {
 
         // default numeric types to u64
         if type_engine.contains_numeric(decl_engine, type_id) {
+            // While collecting unification we don't decay numeric and will ignore this error.
+            if self.collecting_unifications {
+                return Err(handler.emit_err(CompileError::MethodNotFound {
+                    method_name: method_name.clone(),
+                    type_name: self.engines.help_out(type_id).to_string(),
+                    span: method_name.span(),
+                }));
+            }
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
         }
 

@@ -143,7 +143,13 @@ impl TypeCheckAnalysis for TyExpression {
                             continue;
                         }
 
-                        unify.unify(handler, element.return_type, *elem_type, &element.span)
+                        unify.unify(
+                            handler,
+                            element.return_type,
+                            *elem_type,
+                            &element.span,
+                            true,
+                        )
                     }
                 }
             }

@@ -352,6 +352,7 @@ impl TypeParameter {
 
         // Trait constraints mutate so we replace the previous type id associated TypeInfo.
         type_engine.replace(
+            ctx.engines(),
             type_parameter.type_id,
             TypeSourceInfo {
                 type_info: TypeInfo::UnknownGeneric {
@@ -441,6 +442,7 @@ impl TypeParameter {
                         }
 
                         ctx.engines.te().replace(
+                            ctx.engines(),
                             *type_id,
                             TypeSourceInfo {
                                 type_info: TypeInfo::UnknownGeneric {
