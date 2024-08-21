@@ -586,15 +586,16 @@ pub fn input_message_data(index: u64, offset: u64) -> Option<Bytes> {
         Some(Input::Message) => {
             let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
             let data_with_offset = data.add_uint_offset(offset);
-            let length = input_message_data_length(index).unwrap();
-            if offset > length {
+            let mut total_length = input_message_data_length(index).unwrap();
+            if offset > total_length {
                 return None
             }
+            let offset_length = total_length - offset;
 
-            let new_ptr = alloc_bytes(length - offset);
+            let new_ptr = alloc_bytes(offset_length);
 
-            data_with_offset.copy_bytes_to(new_ptr, length - offset);
-            Some(Bytes::from(raw_slice::from_parts::<u8>(new_ptr, length - offset)))
+            data_with_offset.copy_bytes_to(new_ptr, offset_length);
+            Some(Bytes::from(raw_slice::from_parts::<u8>(new_ptr, offset_length)))
         },
         _ => None,
     }
