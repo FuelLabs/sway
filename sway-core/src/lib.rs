@@ -1283,7 +1283,7 @@ fn test_unary_ordering() {
 fn test_parser_recovery() {
     let handler = Handler::default();
     let engines = Engines::default();
-    let _prog = parse(
+    let prog = parse(
         r#"
     script;
     fn main() -> bool {
@@ -1296,6 +1296,7 @@ fn test_parser_recovery() {
         &engines,
         None,
     );
+    let (_, _) = prog.unwrap();
     assert!(handler.has_errors());
     dbg!(handler);
 }
