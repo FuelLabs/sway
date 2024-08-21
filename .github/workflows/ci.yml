@@ -146,7 +146,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -194,7 +194,7 @@ jobs:
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: '0.4.25'
+          mdbook-version: "0.4.25"
       - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book 2>&1 | tee tmp.txt
@@ -257,6 +257,8 @@ jobs:
       #   run: (cd test-proj && forc test)
       - name: Install cargo-generate
         run: cargo install --locked cargo-generate
+      - name: Install fuel-core
+        run: cargo install --locked fuel-core-bin
       - name: Generate Rust Integration Tests
         run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
       - name: Update project cargo manifest with workspace
@@ -276,10 +278,10 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: 'Build Workspace'
+      - name: "Build Workspace"
         run: cargo build --locked --workspace --all-features --all-targets
         env:
-          RUSTFLAGS: '-D warnings'
+          RUSTFLAGS: "-D warnings"
 
   cargo-clippy:
     runs-on: ubuntu-latest
@@ -306,7 +308,7 @@ jobs:
         uses: baptiste0928/cargo-install@v1
         with:
           crate: cargo-toml-lint
-          version: '0.1'
+          version: "0.1"
       - name: Run Cargo.toml linter
         run: git ls-files | grep Cargo.toml$ | grep -v 'templates/' | xargs --verbose -n 1 cargo-toml-lint
 
@@ -341,7 +343,7 @@ jobs:
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
-          fuel-core run --db-type in-memory --debug & 
+          fuel-core run --db-type in-memory --debug &
           sleep 5 &&
           cargo run --locked --release --bin test -- --locked
 
@@ -364,7 +366,7 @@ jobs:
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
-          fuel-core run --db-type in-memory --debug & 
+          fuel-core run --db-type in-memory --debug &
           sleep 5 &&
           cargo run --locked --release --bin test -- --locked --release
 
@@ -446,8 +448,8 @@ jobs:
         run: ./benchmark.sh --prepare-for-commit
       - uses: EndBug/add-and-commit@v9
         with:
-          cwd: './performance-data'
-          message: 'Updated benchmark data'
+          cwd: "./performance-data"
+          message: "Updated benchmark data"
           default_author: github_actions
 
   forc-unit-tests:
@@ -598,10 +600,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has {status_message}'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
-          footer: ''
-          notify_when: 'failure'
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -625,7 +627,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-debug/Cargo.toml          
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-debug/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-doc/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
@@ -651,10 +653,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has {status_message}'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
-          footer: ''
-          notify_when: 'failure'
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -701,10 +703,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has {status_message}'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
-          footer: ''
-          notify_when: 'failure'
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -778,10 +780,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has {status_message}'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
-          footer: ''
-          notify_when: 'failure'
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -833,10 +835,10 @@ jobs:
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has {status_message}'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>'
-          footer: ''
-          notify_when: 'failure'
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
@@ -881,13 +883,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-          key: '${{ matrix.job.target }}'
+          key: "${{ matrix.job.target }}"
 
       - name: Use Cross
         uses: baptiste0928/cargo-install@v1
         with:
           crate: cross
-          cache-key: '${{ matrix.job.target }}'
+          cache-key: "${{ matrix.job.target }}"
 
       - name: Build forc binaries
         run: |
