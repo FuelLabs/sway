@@ -6,6 +6,8 @@ use std::{
         disable_panic_on_unsafe_math,
         enable_panic_on_overflow,
         enable_panic_on_unsafe_math,
+        panic_on_overflow_enabled,
+        panic_on_unsafe_math_enabled,
         set_flags,
     },
     registers::error,
