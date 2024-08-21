@@ -140,11 +140,11 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// }
 /// ```
 pub fn caller_address() -> Result<Address, AuthError> {
+    // Note: `input_count()` is guaranteed to be at least 1 for any valid tx.
     let inputs = input_count().as_u64();
     let mut candidate = None;
     let mut iter = 0;
 
-    // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
     while iter < inputs {
         let type_of_input = input_type(iter);
         match type_of_input {
@@ -180,7 +180,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
         }
 
         // Compare current input owner to candidate.
-        // `candidate` and `input_coin_owner` must be `Some`.
+        // `candidate` and `owner_of_input` must be `Some`.
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
