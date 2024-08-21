@@ -4054,7 +4054,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc0bda45ed5b3a2904262c1bb91e526127aa70e7ef3758aba2ef93cf896b9b58"
 dependencies = [
- "clap 4.5.9",
+ "clap 4.5.16",
  "escape8259",
  "termcolor",
  "threadpool",
@@ -4634,6 +4634,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "num_cpus"
+version = "1.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
+dependencies = [
+ "hermit-abi 0.3.9",
+ "libc",
 ]
 
 [[package]]
@@ -7288,34 +7298,19 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 7332e18cb (simpler insta setup)
 name = "test"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "bytes",
-<<<<<<< HEAD
  "clap 4.5.16",
-=======
- "clap 4.5.9",
->>>>>>> 7332e18cb (simpler insta setup)
  "colored",
  "filecheck",
  "forc",
  "forc-client",
  "forc-pkg",
  "forc-test",
-<<<<<<< HEAD
  "forc-tracing 0.63.1",
- "fuel-vm",
- "futures",
- "gag",
- "hex",
-=======
- "forc-tracing 0.62.0",
  "fuel-vm",
  "futures",
  "gag",
@@ -7323,7 +7318,6 @@ dependencies = [
  "hex",
  "insta",
  "libtest-mimic",
->>>>>>> 7332e18cb (simpler insta setup)
  "miden",
  "prettydiff 0.6.4",
  "rand",
@@ -7339,18 +7333,10 @@ dependencies = [
  "tokio",
  "toml 0.7.8",
  "tracing",
-<<<<<<< HEAD
-]
-
-[[package]]
-=======
->>>>>>> 0db1bd6b9 (snapshot tests and fix for array with numerics)
-=======
  "vte 0.13.0",
 ]
 
 [[package]]
->>>>>>> 7332e18cb (simpler insta setup)
 name = "test-macros"
 version = "0.0.0"
 dependencies = [
