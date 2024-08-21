@@ -308,8 +308,8 @@ pub fn traverse(
             .iter()
             .find_map(|(path, version)| version.map(|_| path.clone()))
     });
+    let modified_file = None;
     if let Some(path) = &modified_file {
-        tracing::debug!("Clearing tokens for file: {:?}", path);
         session.token_map.remove_tokens_for_file(path);
     } else {
         session.token_map.clear();
@@ -441,9 +441,7 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
-    let now = std::time::Instant::now();
     let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
-    eprintln!("Traverse took {:?}", now.elapsed());
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
