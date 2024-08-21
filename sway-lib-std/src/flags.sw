@@ -210,3 +210,45 @@ pub fn enable_panic_on_unsafe_math() {
         flag flag_val;
     }
 }
+
+/// Checks if the `panic-on-overflow` flag is set in the FuelVM.
+///
+/// # Returns
+///
+/// * [bool] - `true` if `panic-on-overflow` is enabled. `false` otherwise.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::flags::panic_on_overflow_enabled;
+///
+/// fn main() {
+///     let is_enabled = panic_on_overflow_enabled();
+///     // Panic on overflow is enabled by default.
+///     assert(is_enabled);
+/// }
+/// ```
+pub fn panic_on_overflow_enabled() -> bool {
+    (flags() & F_WRAPPING_DISABLE_MASK) == F_WRAPPING_DISABLE_MASK
+}
+
+/// Checks if the `panic-on-unsafe-math` flag is set in the FuelVM.
+///
+/// # Returns
+///
+/// * [bool] - `true` if `panic-on-unsafe-math` is enabled. `false` otherwise.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::flags::panic_on_unsafe_math_enabled;
+///
+/// fn main() {
+///     let is_enabled = panic_on_unsafe_math_enabled();
+///     // Panic on unsafe math is enabled by default.
+///     assert(is_enabled);
+/// }
+/// ```
+pub fn panic_on_unsafe_math_enabled() -> bool {
+    (flags() & F_UNSAFEMATH_DISABLE_MASK) == F_UNSAFEMATH_DISABLE_MASK
+}
