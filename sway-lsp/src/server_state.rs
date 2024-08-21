@@ -50,6 +50,7 @@ pub struct ServerState {
     pub(crate) cb_rx: Arc<Receiver<TaskMessage>>,
     pub(crate) finished_compilation: Arc<Notify>,
     pub(crate) pid_locked_files: PidLockedFiles,
+    manifest_cache: DashMap<Url, Arc<PathBuf>>,
     last_compilation_state: Arc<RwLock<LastCompilationState>>,
 }
 
@@ -68,6 +69,7 @@ impl Default for ServerState {
             cb_rx: Arc::new(cb_rx),
             finished_compilation: Arc::new(Notify::new()),
             pid_locked_files: PidLockedFiles::new(),
+            manifest_cache: DashMap::new(),
             last_compilation_state: Arc::new(RwLock::new(LastCompilationState::Uninitialized)),
         };
         // Spawn a new thread dedicated to handling compilation tasks
@@ -351,19 +353,27 @@ impl ServerState {
     }
 
     async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
-        let path = PathBuf::from(uri.path());
-        let manifest = PackageManifestFile::from_dir(&path).map_err(|_| {
-            DocumentError::ManifestFileNotFound {
-                dir: path.to_string_lossy().to_string(),
-            }
-        })?;
-
-        // strip Forc.toml from the path to get the manifest directory
-        let manifest_dir = manifest
-            .path()
-            .parent()
-            .ok_or(DirectoryError::ManifestDirNotFound)?
-            .to_path_buf();
+        // Try to get the manifest directory from the cache
+        let manifest_dir = if let Some(cached_dir) = self.manifest_cache.get(uri) {
+            cached_dir.clone()
+        } else {
+            // Otherwise, find the manifest directory from the uri and cache it
+            let path = PathBuf::from(uri.path());
+            let manifest = PackageManifestFile::from_dir(&path).map_err(|_| {
+                DocumentError::ManifestFileNotFound {
+                    dir: path.to_string_lossy().to_string(),
+                }
+            })?;
+            let dir = Arc::new(
+                manifest
+                    .path()
+                    .parent()
+                    .ok_or(DirectoryError::ManifestDirNotFound)?
+                    .to_path_buf(),
+            );
+            self.manifest_cache.insert(uri.clone(), dir.clone());
+            dir
+        };
 
         // If the session is already in the cache, return it
         if let Some(session) = self.sessions.get(&manifest_dir) {
@@ -373,7 +383,8 @@ impl ServerState {
         // If no session can be found, then we need to call init and insert a new session into the map
         let session = Arc::new(Session::new());
         session.init(uri, &self.documents).await?;
-        self.sessions.insert(manifest_dir.clone(), session.clone());
+        self.sessions
+            .insert((*manifest_dir).clone(), session.clone());
 
         Ok(session)
     }
