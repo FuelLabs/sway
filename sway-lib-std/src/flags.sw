@@ -229,7 +229,7 @@ pub fn enable_panic_on_unsafe_math() {
 /// }
 /// ```
 pub fn panic_on_overflow_enabled() -> bool {
-    (flags() & F_WRAPPING_DISABLE_MASK) == F_WRAPPING_DISABLE_MASK
+    (flags() & F_WRAPPING_DISABLE_MASK) == 0
 }
 
 /// Checks if the `panic-on-unsafe-math` flag is set in the FuelVM.
@@ -250,5 +250,5 @@ pub fn panic_on_overflow_enabled() -> bool {
 /// }
 /// ```
 pub fn panic_on_unsafe_math_enabled() -> bool {
-    (flags() & F_UNSAFEMATH_DISABLE_MASK) == F_UNSAFEMATH_DISABLE_MASK
+    (flags() & F_UNSAFEMATH_DISABLE_MASK) == 0
 }
