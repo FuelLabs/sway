@@ -123,7 +123,7 @@ impl Power for u32 {
             r3: u64
         };
         // If panic on wrapping math is enabled, only then revert
-        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+        if panic_on_overflow_enabled() {
             assert(res <= Self::max().as_u64());
         }
         asm(r1: res) {
@@ -139,7 +139,7 @@ impl Power for u16 {
             r3: u64
         };
         // If panic on wrapping math is enabled, only then revert
-        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+        if panic_on_overflow_enabled() {
             assert(res <= Self::max().as_u64());
         }
         asm(r1: res) {
