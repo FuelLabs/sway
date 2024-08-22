@@ -23,6 +23,7 @@ impl Format for ItemStorage {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        eprintln!("ITEM STORAGE");
         formatter.with_shape(
             formatter
                 .shape
