@@ -176,6 +176,15 @@ impl Value {
         }
     }
 
+    /// Get a mutable reference to this value as an argument, iff it is one.
+    pub fn get_argument_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut BlockArgument> {
+        if let ValueDatum::Argument(arg) = &mut context.values[self.0].value {
+            Some(arg)
+        } else {
+            None
+        }
+    }
+
     /// Get the type for this value, if found.
     ///
     /// Arguments and constants always have a type, but only some instructions do.
