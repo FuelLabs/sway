@@ -244,7 +244,7 @@ impl Multiply for u8 {
         if __gt(res, Self::max()) && panic_on_overflow_enabled() {
             __revert(0)
         } else {
-            asm(input: res_u64) {
+            asm(input: res) {
                 input: u8
             }
         }

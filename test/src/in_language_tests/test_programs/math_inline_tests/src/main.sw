@@ -656,6 +656,86 @@ fn math_test_parity_u256_log_with_ruint() {
 }
 
 #[test(should_revert)]
+fn math_u8_log_fail_base_0() {
+    let _result = 2_u8.log(0_u8);
+}
+
+#[test(should_revert)]
+fn math_u8_log_fail_base_1() {
+    let _result = 2_u8.log(1_u8);
+}
+
+#[test(should_revert)]
+fn math_u8_log_fail_x_0() {
+    let _result = 0_u8.log(2_u8);
+}
+
+#[test(should_revert)]
+fn math_u8_log2_fail_x_0() {
+    let _result = 0_u8.log2();
+}
+
+#[test(should_revert)]
+fn math_u16_log_fail_base_0() {
+    let _result = 2_u16.log(0_u16);
+}
+
+#[test(should_revert)]
+fn math_u16_log_fail_base_1() {
+    let _result = 2_u16.log(1_u16);
+}
+
+#[test(should_revert)]
+fn math_u16_log_fail_x_0() {
+    let _result = 0_u16.log(2_u16);
+}
+
+#[test(should_revert)]
+fn math_u16_log2_fail_x_0() {
+    let _result = 0_u16.log2();
+}
+
+#[test(should_revert)]
+fn math_u32_log_fail_base_0() {
+    let _result = 2_u32.log(0_u32);
+}
+
+#[test(should_revert)]
+fn math_u32_log_fail_base_1() {
+    let _result = 2_u32.log(1_u32);
+}
+
+#[test(should_revert)]
+fn math_u32_log_fail_x_0() {
+    let _result = 0_u32.log(2_u32);
+}
+
+#[test(should_revert)]
+fn math_u32_log2_fail_x_0() {
+    let _result = 0_u32.log2();
+}
+
+#[test(should_revert)]
+fn math_u64_log_fail_base_0() {
+    let _result = 2_u64.log(0_u64);
+}
+
+#[test(should_revert)]
+fn math_u64_log_fail_base_1() {
+    let _result = 2_u64.log(1_u64);
+}
+
+#[test(should_revert)]
+fn math_u64_log_fail_x_0() {
+    let _result = 0_u64.log(2_u64);
+}
+
+#[test(should_revert)]
+fn math_u64_log2_fail_x_0() {
+    let _result = 0_u64.log2();
+}
+
+#[test(should_revert)]
 fn math_u256_log_fail_base_0() {
     let _result = u256::from(2_u64).log(u256::from(0_u64));
 }
