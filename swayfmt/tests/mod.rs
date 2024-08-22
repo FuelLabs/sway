@@ -7,7 +7,6 @@ use test_macros::assert_eq_pretty;
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Formatter) {
     let first_formatted = Formatter::format(formatter, Arc::from(unformatted), None).unwrap();
-    eprintln!("{:#?}", first_formatted);
     assert_eq_pretty!(first_formatted, expected);
 
     let second_formatted =
@@ -3141,7 +3140,7 @@ fn retain_in_keyword() {
         storage {
             SRC14 {
                 target in 0x7bb458adc1d118713319a5baa00a2d049dd64d2916477d2688d76970c898cd55: ContractId = ContractId::zero(),
-            }
+            },
         }
         "#},
         indoc! {r#"
@@ -3151,7 +3150,7 @@ fn retain_in_keyword() {
         storage {
             SRC14 {
                 target in 0x7bb458adc1d118713319a5baa00a2d049dd64d2916477d2688d76970c898cd55: ContractId = ContractId::zero(),
-            }
+            },
         }
         "#},
     );

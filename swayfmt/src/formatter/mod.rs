@@ -104,7 +104,6 @@ impl Formatter {
         self.with_comments_context(src)?;
 
         let annotated_module = parse_file(&self.source_engine, Arc::from(src), path.clone())?;
-        eprintln!("{:#?}", annotated_module);
         annotated_module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
