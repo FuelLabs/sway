@@ -1,4 +1,4 @@
-# `forc-client`
+# forc-client
 
 The forc plugin for interacting with a Fuel node.
 
