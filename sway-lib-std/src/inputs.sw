@@ -586,7 +586,7 @@ pub fn input_message_data(index: u64, offset: u64) -> Option<Bytes> {
         Some(Input::Message) => {
             let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
             let data_with_offset = data.add_uint_offset(offset);
-            let mut total_length = input_message_data_length(index).unwrap();
+            let total_length = input_message_data_length(index).unwrap();
             if offset > total_length {
                 return None
             }
