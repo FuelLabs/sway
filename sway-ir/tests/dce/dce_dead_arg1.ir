@@ -15,6 +15,9 @@ script {
         // check: $block()
         block0(v1v1: bool):
         v6v1 = const bool false
+        // not: cmp
+        v11 = cmp eq v1v1 v6v1
+        // check: ret
         ret bool v6v1
     }
 }
