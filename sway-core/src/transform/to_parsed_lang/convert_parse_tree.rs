@@ -3801,7 +3801,11 @@ fn statement_let_to_ast_nodes_unfold(
                     mutable,
                     name,
                 } => (reference, mutable, name),
-                Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_".into())),
+                Pattern::Wildcard { underscore_token } => (
+                    None,
+                    None,
+                    Ident::new_with_override("_".to_string(), underscore_token.span()),
+                ),
                 Pattern::AmbiguousSingleIdent(ident) => (None, None, ident),
                 _ => unreachable!(),
             };
@@ -3946,7 +3950,7 @@ fn statement_let_to_ast_nodes_unfold(
             let tuple_name =
                 generate_tuple_var_name(context.next_destructured_tuple_unique_suffix());
 
-            let tuple_name = Ident::new_with_override(tuple_name, span.clone());
+            let tuple_name = Ident::new_with_override(tuple_name, pat_tuple.span().clone());
 
             // Acript a second declaration to a tuple of placeholders to check that the tuple
             // is properly sized to the pattern
@@ -3958,13 +3962,16 @@ fn statement_let_to_ast_nodes_unfold(
                             .clone()
                             .into_inner()
                             .into_iter()
-                            .map(|_| {
+                            .map(|pat| {
                                 let initial_type_id =
                                     engines.te().insert(engines, TypeInfo::Unknown, None);
                                 let dummy_type_param = TypeParameter {
                                     type_id: initial_type_id,
                                     initial_type_id,
-                                    name_ident: Ident::new_with_override("_".into(), span.clone()),
+                                    name_ident: Ident::new_with_override(
+                                        "_".into(),
+                                        pat.span().clone(),
+                                    ),
                                     trait_constraints: vec![],
                                     trait_constraints_span: Span::dummy(),
                                     is_from_parent: false,
