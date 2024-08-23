@@ -20,6 +20,9 @@ pub struct Context {
     /// that store values matched in match expressions.
     match_expression_matched_value_unique_suffix: usize,
 
+    /// Unique suffix used to generate unique names for for loops.
+    for_unique_suffix: usize,
+
     /// The build target.
     build_target: BuildTarget,
 
@@ -40,6 +43,7 @@ impl Context {
             destructured_struct_unique_suffix: std::default::Default::default(),
             destructured_tuple_unique_suffix: std::default::Default::default(),
             match_expression_matched_value_unique_suffix: std::default::Default::default(),
+            for_unique_suffix: std::default::Default::default(),
             program_type: std::default::Default::default(),
             implementing_type: None,
         }
@@ -72,6 +76,12 @@ impl Context {
     pub fn next_match_expression_matched_value_unique_suffix(&mut self) -> usize {
         self.match_expression_matched_value_unique_suffix += 1;
         self.match_expression_matched_value_unique_suffix
+    }
+
+    /// Returns a unique suffix used to generate a unique name for a destructured struct.
+    pub fn next_for_unique_suffix(&mut self) -> usize {
+        self.for_unique_suffix += 1;
+        self.for_unique_suffix
     }
 
     /// Returns the build target.
