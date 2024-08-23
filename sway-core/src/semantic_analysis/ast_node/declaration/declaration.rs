@@ -162,8 +162,9 @@ impl TyDecl {
                     },
                 };
 
-                if let Some(previous_namespace) = ctx.previous_namespace() {
-                    let previous_symbol = previous_namespace
+                if !ctx.collecting_unifications() {
+                    let previous_symbol = ctx
+                        .namespace()
                         .module(engines)
                         .current_items()
                         .check_symbol_unique(&var_decl.name.clone())
@@ -382,6 +383,7 @@ impl TyDecl {
                     for i in &impl_trait.items {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
+                            let collecting_unifications = ctx.collecting_unifications();
                             let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
                                 m.current_items_mut().insert_typed_symbol(
                                     handler,
@@ -393,6 +395,7 @@ impl TyDecl {
                                     TyDecl::FunctionDecl(FunctionDecl { decl_id: *f.id() }),
                                     ConstShadowingMode::ItemStyle,
                                     GenericShadowingMode::Allow,
+                                    collecting_unifications,
                                 )
                             });
                         }

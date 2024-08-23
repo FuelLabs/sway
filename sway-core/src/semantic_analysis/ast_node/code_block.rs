@@ -25,22 +25,14 @@ impl ty::TyCodeBlock {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         code_block: &CodeBlock,
-        clear_unifications: bool,
+        is_root: bool,
     ) -> Result<Self, ErrorEmitted> {
-        // We should clear unifications only in the root code blocks
-        if clear_unifications {
-            ctx.engines.te().clear_unifications();
-        }
-
-        // While collecting unifications we type_check the code block once without error handling.
-        if ctx.collecting_unifications() {
+        if !is_root {
             let code_block_result = ctx.by_ref().scoped(|mut ctx| {
                 let evaluated_contents = code_block
                     .contents
                     .iter()
-                    .filter_map(|node| {
-                        ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok()
-                    })
+                    .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
                     .collect::<Vec<ty::TyAstNode>>();
                 Ok(ty::TyCodeBlock {
                     contents: evaluated_contents,
@@ -51,14 +43,16 @@ impl ty::TyCodeBlock {
             return Ok(code_block_result);
         }
 
+        ctx.engines.te().clear_unifications();
+
         // We are typechecking the code block AST nodes twice.
         // The first pass does all the unifications to the variables types.
         // In the second pass we use the previous_namespace on variable declaration to unify directly with the result of the first pass.
         // This is required to fix the test case numeric_type_propagation and issue #6371
-        let (_, previous_namespace) = ctx
+        let _ = ctx
             .by_ref()
             .with_collecting_unifications()
-            .scoped_and_namespace(|mut ctx| {
+            .scoped(|mut ctx| {
                 let evaluated_contents = code_block
                     .contents
                     .iter()
@@ -74,19 +68,18 @@ impl ty::TyCodeBlock {
 
         ctx.engines.te().reapply_unifications(ctx.engines());
 
-        ctx.by_ref()
-            .scoped_with_previous_namespace(&previous_namespace, |mut ctx| {
-                let evaluated_contents = code_block
-                    .contents
-                    .iter()
-                    .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
-                    .collect::<Vec<ty::TyAstNode>>();
+        ctx.by_ref().scoped(|mut ctx| {
+            let evaluated_contents = code_block
+                .contents
+                .iter()
+                .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
+                .collect::<Vec<ty::TyAstNode>>();
 
-                Ok(ty::TyCodeBlock {
-                    contents: evaluated_contents,
-                    whole_block_span: code_block.whole_block_span.clone(),
-                })
+            Ok(ty::TyCodeBlock {
+                contents: evaluated_contents,
+                whole_block_span: code_block.whole_block_span.clone(),
             })
+        })
     }
 
     pub fn compute_return_type_and_span(

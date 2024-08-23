@@ -13,6 +13,7 @@ use crate::{
 
 use super::{root::ResolvedDeclaration, TraitMap};
 
+use parking_lot::RwLock;
 use sway_error::{
     error::{CompileError, ShadowingSource, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
@@ -77,8 +78,13 @@ pub struct LexicalScope {
 pub struct Items {
     /// An ordered map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
+
     /// An ordered map from `IdentUnique`s to their associated declarations.
-    pub(crate) symbols_unique: SymbolUniqueMap,
+    /// This uses an Arc<RwLock<SymbolUniqueMap>> so it is shared between all
+    /// Items clones. This is intended so we can keep the symbols of previous
+    /// lexical scopes while collecting_unifications scopes.
+    pub(crate) symbols_unique_while_collecting_unifications: Arc<RwLock<SymbolUniqueMap>>,
+
     pub(crate) implemented_traits: TraitMap,
     /// Contains symbols imported using star imports (`use foo::*`.).
     ///
@@ -166,6 +172,7 @@ impl Items {
             ResolvedDeclaration::Parsed(item),
             const_shadowing_mode,
             generic_shadowing_mode,
+            false,
         )
     }
 
@@ -177,6 +184,7 @@ impl Items {
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
+        collecting_unifications: bool,
     ) -> Result<(), ErrorEmitted> {
         self.insert_symbol(
             handler,
@@ -185,6 +193,7 @@ impl Items {
             ResolvedDeclaration::Typed(item),
             const_shadowing_mode,
             generic_shadowing_mode,
+            collecting_unifications,
         )
     }
 
@@ -196,6 +205,7 @@ impl Items {
         item: ResolvedDeclaration,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
+        collecting_unifications: bool,
     ) -> Result<(), ErrorEmitted> {
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
@@ -632,8 +642,11 @@ impl Items {
             );
         }
 
-        self.symbols_unique
-            .insert(name.clone().into(), item.clone());
+        if collecting_unifications {
+            self.symbols_unique_while_collecting_unifications
+                .write()
+                .insert(name.clone().into(), item.clone());
+        }
         self.symbols.insert(name, item);
 
         Ok(())
@@ -693,7 +706,8 @@ impl Items {
         &self,
         name: &Ident,
     ) -> Result<ResolvedDeclaration, CompileError> {
-        self.symbols_unique
+        self.symbols_unique_while_collecting_unifications
+            .read()
             .get(&name.into())
             .cloned()
             .ok_or_else(|| CompileError::SymbolNotFound {

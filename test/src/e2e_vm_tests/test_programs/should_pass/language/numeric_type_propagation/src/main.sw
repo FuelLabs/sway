@@ -49,6 +49,26 @@ fn main() -> bool {
     assert_eq(a.baz(), 32);
     assert_eq(b.baz(), 32);
     assert_eq(c.baz(), 32);
+    {   // Test inside nested code block
+        let mut a = 0; // depth 1 type propagation
+        let mut b = 0; // depth 2 type propagation
+        let mut c = 0; // depth 3 type propagation
+        assert_eq(bar(a), 32);
+        assert_eq(bar(b), 32);
+        assert_eq(bar(c), 32);
+        {
+            c = b;
+        }
+        {
+            b = a;
+        }
+        {
+            let _: &u32 = &a;
+        }
+        assert_eq(a.baz(), 32);
+        assert_eq(b.baz(), 32);
+        assert_eq(c.baz(), 32);
+    }
 
     true
 }

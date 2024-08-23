@@ -95,11 +95,6 @@ pub struct TypeCheckContext<'a> {
     /// Indicates when semantic analysis is type checking storage declaration.
     storage_declaration: bool,
 
-    /// The namespace context accumulated throughout a previous iteration of type-checking.
-    /// This is required because we are typechecking code blocks twice and relying on the
-    /// previous_namespace to unify the types of variable declarations on the second pass.
-    previous_namespace: Option<&'a Namespace>,
-
     collecting_unifications: bool,
 }
 
@@ -125,7 +120,6 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
-            previous_namespace: None,
             experimental,
             collecting_unifications: false,
         }
@@ -166,7 +160,6 @@ impl<'a> TypeCheckContext<'a> {
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
-            previous_namespace: None,
             experimental,
             collecting_unifications: false,
         }
@@ -196,7 +189,6 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
-            previous_namespace: self.previous_namespace,
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
         }
@@ -223,7 +215,6 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
-            previous_namespace: None,
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
         };
@@ -251,39 +242,10 @@ impl<'a> TypeCheckContext<'a> {
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
-            previous_namespace: None,
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
         };
         Ok((with_scoped_ctx(ctx)?, namespace))
-    }
-
-    pub fn scoped_with_previous_namespace<T>(
-        self,
-        previous_namespace: &Namespace,
-        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
-    ) -> Result<T, ErrorEmitted> {
-        let mut namespace = self.namespace.clone();
-        let ctx = TypeCheckContext {
-            namespace: &mut namespace,
-            type_annotation: self.type_annotation,
-            function_type_annotation: self.function_type_annotation,
-            unify_generic: self.unify_generic,
-            self_type: self.self_type,
-            type_subst: self.type_subst,
-            abi_mode: self.abi_mode,
-            const_shadowing_mode: self.const_shadowing_mode,
-            generic_shadowing_mode: self.generic_shadowing_mode,
-            help_text: self.help_text,
-            kind: self.kind,
-            engines: self.engines,
-            disallow_functions: self.disallow_functions,
-            storage_declaration: self.storage_declaration,
-            previous_namespace: Some(previous_namespace),
-            experimental: self.experimental,
-            collecting_unifications: self.collecting_unifications,
-        };
-        with_scoped_ctx(ctx)
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
@@ -471,10 +433,6 @@ impl<'a> TypeCheckContext<'a> {
         self.storage_declaration
     }
 
-    pub(crate) fn previous_namespace(&self) -> Option<&Namespace> {
-        self.previous_namespace
-    }
-
     pub(crate) fn collecting_unifications(&self) -> bool {
         self.collecting_unifications
     }
@@ -540,6 +498,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
+        let collecting_unifications = self.collecting_unifications;
         let engines = self.engines();
         self.namespace_mut()
             .module_mut(engines)
@@ -551,6 +510,7 @@ impl<'a> TypeCheckContext<'a> {
                 ResolvedDeclaration::Typed(item),
                 const_shadowing_mode,
                 generic_shadowing_mode,
+                collecting_unifications,
             )
     }
 
