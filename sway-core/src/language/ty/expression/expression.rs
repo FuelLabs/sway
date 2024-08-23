@@ -136,7 +136,7 @@ impl TypeCheckAnalysis for TyExpression {
                         unify::unifier::UnifyKind::Default,
                     );
                     for element in contents {
-                        let element_type = ctx.engines.te().get(*elem_type);
+                        let element_type = ctx.engines.te().get(element.return_type);
 
                         // If the element is never, we do not need to check
                         if matches!(&*element_type, TypeInfo::Never) {

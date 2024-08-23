@@ -1841,7 +1841,12 @@ impl ty::TyExpression {
         // from the elements
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                (*ctx.engines().te().get(element_type.type_id)).clone()
+                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
+                if matches!(element_type, TypeInfo::Never) {
+                    TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
+                } else {
+                    element_type
+                }
             }
             _ => TypeInfo::Unknown,
         };
