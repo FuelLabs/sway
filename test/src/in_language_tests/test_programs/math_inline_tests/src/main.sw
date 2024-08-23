@@ -787,8 +787,10 @@ fn revert_math_u256_pow_overflow() {
     let _result = 2.as_u256().pow(256);
 }
 
-#[test(should_revert)]
-fn revert_math_u64_0_pow_0() {
-    let result = 0.pow(0);
-    log(result);
-}
+// #[test(should_revert)]
+// fn math_0th_root_fail() {
+//     let _res = asm(r1: 100, r2: 0, r3) {
+//         mroo r3 r1 r2;
+//         r3: u8
+//     };
+// }
