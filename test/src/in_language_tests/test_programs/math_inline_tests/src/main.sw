@@ -655,90 +655,105 @@ fn math_test_parity_u256_log_with_ruint() {
     }
 }
 
-// TODO: These tests fail and the fix should be done in fuel-core, so commenting them for now.
 // u8 log invalid operations tests
-// #[test(should_revert)]
-// fn math_u8_log_fail_base_0() {
-//     let _result = 2_u8.log(0_u8);
-// }
+#[test(should_revert)]
+fn math_u8_log_fail_base_0() {
+    let result = 2_u8.log(0_u8);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u8_log_fail_base_1() {
-//     let _result = 2_u8.log(1_u8);
-// }
+#[test(should_revert)]
+fn math_u8_log_fail_base_1() {
+    let result = 2_u8.log(1_u8);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u8_log_fail_x_0() {
-//     let _result = 0_u8.log(2_u8);
-// }
+#[test(should_revert)]
+fn math_u8_log_fail_x_0() {
+    let result = 0_u8.log(2_u8);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u8_log2_fail_x_0() {
-//     let _result = 0_u8.log2();
-// }
+#[test(should_revert)]
+fn math_u8_log2_fail_x_0() {
+    let result = 0_u8.log2();
+    log(result);
+}
 
-// // u16 log invalid operations tests
-// #[test(should_revert)]
-// fn math_u16_log_fail_base_0() {
-//     let _result = 2_u16.log(0_u16);
-// }
+// u16 log invalid operations tests
+#[test(should_revert)]
+fn math_u16_log_fail_base_0() {
+    let result = 2_u16.log(0_u16);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u16_log_fail_base_1() {
-//     let _result = 2_u16.log(1_u16);
-// }
+#[test(should_revert)]
+fn math_u16_log_fail_base_1() {
+    let result = 2_u16.log(1_u16);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u16_log_fail_x_0() {
-//     let _result = 0_u16.log(2_u16);
-// }
+#[test(should_revert)]
+fn math_u16_log_fail_x_0() {
+    let result = 0_u16.log(2_u16);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u16_log2_fail_x_0() {
-//     let _result = 0_u16.log2();
-// }
+#[test(should_revert)]
+fn math_u16_log2_fail_x_0() {
+    let result = 0_u16.log2();
+    log(result);
+}
 
-// // u32 log invalid operations tests
-// #[test(should_revert)]
-// fn math_u32_log_fail_base_0() {
-//     let _result = 2_u32.log(0_u32);
-// }
+// u32 log invalid operations tests
+#[test(should_revert)]
+fn math_u32_log_fail_base_0() {
+    let result = 2_u32.log(0_u32);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u32_log_fail_base_1() {
-//     let _result = 2_u32.log(1_u32);
-// }
+#[test(should_revert)]
+fn math_u32_log_fail_base_1() {
+    let result = 2_u32.log(1_u32);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u32_log_fail_x_0() {
-//     let _result = 0_u32.log(2_u32);
-// }
+#[test(should_revert)]
+fn math_u32_log_fail_x_0() {
+    let result = 0_u32.log(2_u32);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u32_log2_fail_x_0() {
-//     let _result = 0_u32.log2();
-// }
+#[test(should_revert)]
+fn math_u32_log2_fail_x_0() {
+    let result = 0_u32.log2();
+    log(result);
+}
 
-// // u64 log invalid operations tests
-// #[test(should_revert)]
-// fn math_u64_log_fail_base_0() {
-//     let _result = 2_u64.log(0_u64);
-// }
+// u64 log invalid operations tests
+#[test(should_revert)]
+fn math_u64_log_fail_base_0() {
+    let result = 2_u64.log(0_u64);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u64_log_fail_base_1() {
-//     let _result = 2_u64.log(1_u64);
-// }
+#[test(should_revert)]
+fn math_u64_log_fail_base_1() {
+    let result = 2_u64.log(1_u64);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u64_log_fail_x_0() {
-//     let _result = 0_u64.log(2_u64);
-// }
+#[test(should_revert)]
+fn math_u64_log_fail_x_0() {
+    let result = 0_u64.log(2_u64);
+    log(result);
+}
 
-// #[test(should_revert)]
-// fn math_u64_log2_fail_x_0() {
-//     let _result = 0_u64.log2();
-// }
+#[test(should_revert)]
+fn math_u64_log2_fail_x_0() {
+    let result = 0_u64.log2();
+    log(result);
+}
 
 // u256 log invalid operations tests
 #[test(should_revert)]
@@ -787,10 +802,11 @@ fn revert_math_u256_pow_overflow() {
     let _result = 2.as_u256().pow(256);
 }
 
-// #[test(should_revert)]
-// fn math_0th_root_fail() {
-//     let _res = asm(r1: 100, r2: 0, r3) {
-//         mroo r3 r1 r2;
-//         r3: u8
-//     };
-// }
+#[test(should_revert)]
+fn math_0th_root_fail() {
+    let res = asm(r1: 100, r2: 0, r3) {
+        mroo r3 r1 r2;
+        r3: u8
+    };
+    log(res);
+}
