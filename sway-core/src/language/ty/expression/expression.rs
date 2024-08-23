@@ -111,21 +111,19 @@ impl TypeCheckAnalysis for TyExpression {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         match &self.expression {
-            TyExpressionVariant::FunctionApplication { type_binding, .. } => {
-                if let Some(type_binding) = type_binding {
-                    let args = match &type_binding.type_arguments {
-                        TypeArgs::Regular(args) | TypeArgs::Prefix(args) => args,
-                    };
-                    for arg in args {
-                        match &*ctx.engines.te().get(arg.type_id) {
-                            TypeInfo::Placeholder(_) => {
-                                let _ = handler.emit_err(CompileError::UnableToInferGeneric {
-                                    ty: ctx.engines.help_out(arg.type_id).to_string(),
-                                    span: arg.span.clone(),
-                                });
-                            }
-                            _ => {}
-                        }
+            TyExpressionVariant::FunctionApplication {
+                type_binding: Some(type_binding),
+                ..
+            } => {
+                let args = match &type_binding.type_arguments {
+                    TypeArgs::Regular(args) | TypeArgs::Prefix(args) => args,
+                };
+                for arg in args {
+                    if let TypeInfo::Placeholder(_) = &*ctx.engines.te().get(arg.type_id) {
+                        let _ = handler.emit_err(CompileError::UnableToInferGeneric {
+                            ty: ctx.engines.help_out(arg.type_id).to_string(),
+                            span: arg.span.clone(),
+                        });
                     }
                 }
             }
