@@ -217,6 +217,12 @@ impl<T: DebugWithEngines> DebugWithEngines for Vec<T> {
     }
 }
 
+impl DebugWithEngines for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        DisplayWithEngines::fmt(self, f, engines)
+    }
+}
+
 pub trait HashWithEngines {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines);
 }
