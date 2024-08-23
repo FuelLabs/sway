@@ -3110,15 +3110,19 @@ fn for_expr_to_expression(
     //        let value = value_opt.unwrap();
     //        code_block
     //    }
-    let value_opt_ident =
-        Ident::new_no_span(format!("__for_value_opt_{}", context.next_for_unique_suffix()).into());
+    let value_opt_ident = Ident::new_no_span(format!(
+        "__for_value_opt_{}",
+        context.next_for_unique_suffix()
+    ));
     let value_opt_expr = Expression {
         kind: ExpressionKind::Variable(value_opt_ident.clone()),
         span: Span::dummy(),
     };
 
-    let iterable_ident =
-        Ident::new_no_span(format!("__for_iterable_{}", context.next_for_unique_suffix()).into());
+    let iterable_ident = Ident::new_no_span(format!(
+        "__for_iterable_{}",
+        context.next_for_unique_suffix()
+    ));
     let iterable_expr = Expression {
         kind: ExpressionKind::Variable(iterable_ident.clone()),
         span: Span::dummy(),
