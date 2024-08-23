@@ -176,6 +176,7 @@ impl Items {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_typed_symbol(
         &mut self,
         handler: &Handler,
@@ -197,6 +198,7 @@ impl Items {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_symbol(
         &mut self,
         handler: &Handler,
