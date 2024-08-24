@@ -308,7 +308,6 @@ pub fn traverse(
             .iter()
             .find_map(|(path, version)| version.map(|_| path.clone()))
     });
-    let modified_file = None;
     if let Some(path) = &modified_file {
         session.token_map.remove_tokens_for_file(path);
     } else {
