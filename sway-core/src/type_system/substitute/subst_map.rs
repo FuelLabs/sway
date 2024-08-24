@@ -76,13 +76,17 @@ impl TypeSubstMap {
         let type_engine = engines.te();
         let mapping = type_parameters
             .iter()
-            .map(|x| {
+            .filter(|type_param| {
+                let type_info = type_engine.get(type_param.type_id);
+                !matches!(*type_info, TypeInfo::Placeholder(_))
+            })
+            .map(|type_param| {
                 (
-                    x.type_id,
+                    type_param.type_id,
                     type_engine.insert(
                         engines,
-                        TypeInfo::Placeholder(x.clone()),
-                        x.name_ident.span().source_id(),
+                        TypeInfo::Placeholder(type_param.clone()),
+                        type_param.name_ident.span().source_id(),
                     ),
                 )
             })
