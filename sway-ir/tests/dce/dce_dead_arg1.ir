@@ -1,0 +1,23 @@
+// regex: ID=[[:alpha:]0-9]+
+
+script {
+    fn main() -> bool {
+        // check: entry
+        entry():
+        // not: const
+        v3v1 = const u64 0
+        v2v1 = const u64 11
+        // not: cmp
+        v4v1 = cmp eq v3v1 v2v1
+        // check: br $(block=$ID)()
+        br block0(v4v1)
+
+        // check: $block()
+        block0(v1v1: bool):
+        v6v1 = const bool false
+        // not: cmp
+        v11 = cmp eq v1v1 v6v1
+        // check: ret
+        ret bool v6v1
+    }
+}
