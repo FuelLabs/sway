@@ -29,7 +29,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             let engines = Engines::default();
             let _ = black_box(
-                session::compile(&build_plan, &engines, None, lsp_mode.clone(), experimental)
+                session::compile(&build_plan, &engines, None, lsp_mode.as_ref(), experimental)
                     .unwrap(),
             );
         })
@@ -38,12 +38,19 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("traverse", |b| {
         let engines = Engines::default();
         let results = black_box(
-            session::compile(&build_plan, &engines, None, lsp_mode.clone(), experimental).unwrap(),
+            session::compile(&build_plan, &engines, None, lsp_mode.as_ref(), experimental).unwrap(),
         );
         let session = Arc::new(session::Session::new());
         b.iter(|| {
-            let _ =
-                black_box(session::traverse(results.clone(), &engines, session.clone()).unwrap());
+            let _ = black_box(
+                session::traverse(
+                    results.clone(),
+                    &engines,
+                    session.clone(),
+                    lsp_mode.as_ref(),
+                )
+                .unwrap(),
+            );
         })
     });
 
@@ -53,7 +60,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..NUM_DID_CHANGE_ITERATIONS {
                 let _ = black_box(
-                    session::compile(&build_plan, &engines, None, lsp_mode.clone(), experimental)
+                    session::compile(&build_plan, &engines, None, lsp_mode.as_ref(), experimental)
                         .unwrap(),
                 );
             }
