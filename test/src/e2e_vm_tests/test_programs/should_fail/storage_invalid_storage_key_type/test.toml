@@ -1,0 +1,17 @@
+category = "fail"
+
+#check: $()error
+#check: $()field in u256::zero(): u64 = 0,
+#nextln: $()Mismatched types.
+#nextln: $()expected: b256
+#nextln: $()found:    u256.
+#nextln: $()Function return type does not match up with local type annotation.
+
+#check: $()error
+#check: $()field in u256::zero(): u64 = 0,
+#nextln: $()Mismatched types.
+#nextln: $()expected: b256
+#nextln: $()found:    u256.
+#nextln: $()Storage keys must have type "b256".
+
+#check: $()2 errors.

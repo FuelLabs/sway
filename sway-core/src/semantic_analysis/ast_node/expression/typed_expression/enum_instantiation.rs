@@ -140,9 +140,9 @@ pub(crate) fn instantiate_enum(
                 .with_help_text(help_text)
                 .with_type_annotation(enum_variant_type_id);
 
-            // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
-            //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
-            //          not treated as an error in the `type_check()`'s result.
+            // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+            //       We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+            //       not treated as an error in the `type_check()`'s result.
             let typed_expr = handler
                 .scope(|handler| ty::TyExpression::type_check(handler, enum_ctx, single_expr))?;
 
