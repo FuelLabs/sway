@@ -782,11 +782,6 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
-        "Storage attribute access mismatch. Try giving the surrounding function more access by \
-        adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
-    )]
-    StorageAccessMismatch { attrs: String, span: Span },
-    #[error(
         "The function \"{fn_name}\" in {interface_name} is pure, but this \
         implementation is not.  The \"{STORAGE_PURITY_ATTRIBUTE_NAME}\" annotation must be \
         removed, or the trait declaration must be changed to \
@@ -811,13 +806,17 @@ pub enum CompileError {
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
     #[error(
-        "This function performs a storage {storage_op} but does not have the required \
-        attribute(s).  Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function \
+        "This function performs storage access but does not have the required storage \
+        attribute(s). Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]\" to the function \
         declaration."
     )]
-    ImpureInPureContext {
-        storage_op: &'static str,
-        attrs: String,
+    StorageAccessMismatched {
+        /// True if the function with mismatched access is pure.
+        is_pure: bool,
+        storage_access_violations: Vec<(Span, StorageAccess)>,
+        suggested_attributes: String,
+        /// Span pointing to the name of the function in the function declaration,
+        /// whose storage attributes mismatch the storage access patterns.
         span: Span,
     },
     #[error(
@@ -1162,7 +1161,6 @@ impl Spanned for CompileError {
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             MatchedValueIsNotValid { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
-            StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
             TraitImplPurityMismatch { span, .. } => span.clone(),
             DeclIsNotAnEnum { span, .. } => span.clone(),
@@ -1177,7 +1175,7 @@ impl Spanned for CompileError {
             DeclIsNotAConstant { span, .. } => span.clone(),
             DeclIsNotATypeAlias { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
-            ImpureInPureContext { span, .. } => span.clone(),
+            StorageAccessMismatched { span, .. } => span.clone(),
             ParameterRefMutabilityMismatch { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
@@ -2671,6 +2669,60 @@ impl ToDiagnostic for CompileError {
                     "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
                 ],
             },
+            StorageAccessMismatched { span, is_pure, suggested_attributes, storage_access_violations } => Diagnostic {
+                // Pure function cannot access storage
+                //   or
+                // Storage read-only function cannot write to storage
+                reason: Some(Reason::new(code(1), format!("{} function cannot {} storage",
+                    if *is_pure {
+                        "Pure"
+                    } else {
+                        "Storage read-only"
+                    },
+                    if *is_pure {
+                        "access"
+                    } else {
+                        "write to"
+                    }
+                ))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Function \"{}\" is {} and cannot {} storage.",
+                        span.as_str(),
+                        if *is_pure {
+                            "pure"
+                        } else {
+                            "declared as `#[storage(read)]`"
+                        },
+                        if *is_pure {
+                            "access"
+                        } else {
+                            "write to"
+                        },
+                    )
+                ),
+                hints: storage_access_violations
+                    .iter()
+                    .map(|(span, storage_access)| Hint::info(
+                        source_engine,
+                        span.clone(),
+                        format!("{storage_access}")
+                    ))
+                    .collect(),
+                help: vec![
+                    format!("Consider declaring the function \"{}\" as `#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]`,",
+                        span.as_str()
+                    ),
+                    format!("or removing the {} from the function body.",
+                        if *is_pure {
+                            "storage access code".to_string()
+                        } else {
+                            format!("storage write{}", plural_s(storage_access_violations.len()))
+                        }
+                    ),
+                ],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -2758,6 +2810,56 @@ impl fmt::Display for ShadowingSource {
             Self::Const => f.write_str("Constant"),
             Self::LetVar => f.write_str("Variable"),
             Self::PatternMatchingStructFieldVar => f.write_str("Pattern variable"),
+        }
+    }
+}
+
+/// Defines how a storage gets accessed within a function body.
+/// E.g., calling `__state_clear` intrinsic or using `scwq` ASM instruction
+/// represent a [StorageAccess::Clear] access.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StorageAccess {
+    Clear,
+    ReadWord,
+    ReadSlots,
+    WriteWord,
+    WriteSlots,
+    /// Storage access happens via call to an impure function.
+    /// The parameters are the call path span and if the called function
+    /// reads from and writes to the storage: (call_path, reads, writes).
+    ImpureFunctionCall(Span, bool, bool),
+}
+
+impl StorageAccess {
+    pub fn is_write(&self) -> bool {
+        matches!(
+            self,
+            Self::Clear | Self::WriteWord | Self::WriteSlots | Self::ImpureFunctionCall(_, _, true)
+        )
+    }
+}
+
+impl fmt::Display for StorageAccess {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Clear => f.write_str("Clearing the storage happens here."),
+            Self::ReadWord => f.write_str("Reading a word from the storage happens here."),
+            Self::ReadSlots => f.write_str("Reading storage slots happens here."),
+            Self::WriteWord => f.write_str("Writing a word to the storage happens here."),
+            Self::WriteSlots => f.write_str("Writing to storage slots happens here."),
+            Self::ImpureFunctionCall(call_path, reads, writes) => f.write_fmt(format_args!(
+                "Function \"{}\" {} the storage.",
+                call_path_suffix_with_args(&call_path.as_str().to_string()),
+                match (reads, writes) {
+                    (true, true) => "reads from and writes to",
+                    (true, false) => "reads from",
+                    (false, true) => "writes to",
+                    (false, false) => unreachable!(
+                        "Function \"{}\" is impure, so it must read from or write to the storage.",
+                        call_path.as_str()
+                    ),
+                }
+            )),
         }
     }
 }

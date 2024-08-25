@@ -523,7 +523,14 @@ impl<'eng> FnCompiler<'eng> {
                     )
                 } else {
                     let function_decl = self.engines.de().get_function(fn_ref);
-                    self.compile_fn_call(context, md_mgr, arguments, &function_decl, span_md_idx)
+                    self.compile_fn_call(
+                        context,
+                        md_mgr,
+                        arguments,
+                        &function_decl,
+                        span_md_idx,
+                        name,
+                    )
                 }
             }
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
@@ -2868,6 +2875,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_args: &[(Ident, ty::TyExpression)],
         callee: &ty::TyFunctionDecl,
         span_md_idx: Option<MetadataIndex>,
+        call_path: &CallPath,
     ) -> Result<TerminatorValue, CompileError> {
         let new_callee = self.cache.ty_function_decl_to_unique_function(
             self.engines,
@@ -2893,11 +2901,14 @@ impl<'eng> FnCompiler<'eng> {
             args.push(arg);
         }
 
+        let call_path_span_md_idx = md_mgr.fn_call_path_span_to_md(context, call_path);
+        let md_idx = combine(context, &span_md_idx, &call_path_span_md_idx);
+
         let val = self
             .current_block
             .append(context)
             .call(new_callee, &args)
-            .add_metadatum(context, span_md_idx);
+            .add_metadatum(context, md_idx);
 
         Ok(TerminatorValue::new(val, context))
     }

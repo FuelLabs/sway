@@ -159,20 +159,10 @@ pub(crate) fn type_check_method_application(
         }));
     }
 
-    // check the function storage purity
-    if !method.is_contract_call {
-        // 'method.purity' is that of the callee, 'opts.purity' of the caller.
-        if !ctx.purity().can_call(method.purity) {
-            handler.emit_err(CompileError::StorageAccessMismatch {
-                attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
-                span: method_name_binding.inner.easy_name().span(),
-            });
-        }
-        if !contract_call_params.is_empty() {
-            handler.emit_err(CompileError::CallParamForNonContractCallMethod {
-                span: contract_call_params[0].name.span(),
-            });
-        }
+    if !method.is_contract_call && !contract_call_params.is_empty() {
+        handler.emit_err(CompileError::CallParamForNonContractCallMethod {
+            span: contract_call_params[0].name.span(),
+        });
     }
 
     // generate the map of the contract call params

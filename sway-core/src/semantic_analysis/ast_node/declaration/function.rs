@@ -83,7 +83,6 @@ impl ty::TyFunctionDecl {
 
         // create a namespace for the function
         ctx.by_ref()
-            .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
             .scoped(|mut ctx| {
@@ -181,7 +180,6 @@ impl ty::TyFunctionDecl {
     ) -> Result<Self, ErrorEmitted> {
         // create a namespace for the function
         ctx.by_ref()
-            .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
             .scoped(|mut ctx| {
@@ -189,7 +187,6 @@ impl ty::TyFunctionDecl {
 
                 let ty::TyFunctionDecl {
                     parameters,
-                    purity,
                     return_type,
                     type_parameters,
                     ..
@@ -212,7 +209,6 @@ impl ty::TyFunctionDecl {
 
                 let mut ctx = ctx
                     .by_ref()
-                    .with_purity(*purity)
                     .with_help_text(
                         "Function body's return type does not match up with its return type annotation.",
                     )

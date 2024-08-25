@@ -93,6 +93,7 @@ impl CompiledFunctionCache {
                     md_mgr,
                     module,
                     &callee_fn_decl,
+                    &decl.name,
                     logged_types_map,
                     messages_types_map,
                     is_entry,

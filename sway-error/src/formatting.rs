@@ -152,15 +152,15 @@ where
 /// with the text "and <number> more".
 ///
 /// E.g.:
-/// [a] =>
-///   - a
-/// [a, b] =>
-///   - a
-///   - b
-/// [a, b, c, d, e] =>
-///   - a
-///   - b
-///   - and three more
+/// * [a] =>
+///     - a
+/// * [a, b] =>
+///     - a
+///     - b
+/// * [a, b, c, d, e] =>
+///     - a
+///     - b
+///     - and three more
 ///
 /// Panics if the `sequence` is empty, or `max_items` is zero.
 pub(crate) fn sequence_to_list<T>(sequence: &[T], indent: Indent, max_items: usize) -> Vec<String>
