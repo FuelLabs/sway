@@ -1,5 +1,7 @@
 library;
 
+use std::flags::disable_panic_on_overflow;
+
 #[test]
 fn math_root_u256() {
     let max_u256 = u256::max();
@@ -809,4 +811,132 @@ fn math_0th_root_fail() {
         r3: u8
     };
     log(res);
+}
+
+#[test(should_revert)]
+fn math_u8_overflow_add_revert() {
+    let a = u8::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u16_overflow_add_revert() {
+    let a = u16::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u32_overflow_add_revert() {
+    let a = u32::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u64_overflow_add_revert() {
+    let a = u64::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u8_overflow_mul_revert() {
+    let a = u8::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u16_overflow_mul_revert() {
+    let a = u16::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u32_overflow_mul_revert() {
+    let a = u32::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u64_overflow_mul_revert() {
+    let a = u64::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test]
+fn math_u8_overflow_add() {
+    disable_panic_on_overflow();
+
+    let a = u8::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test]
+fn math_u16_overflow_add() {
+    disable_panic_on_overflow();
+
+    let a = u16::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test]
+fn math_u32_overflow_add() {
+    disable_panic_on_overflow();
+
+    let a = u32::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test]
+fn math_u64_overflow_add() {
+    disable_panic_on_overflow();
+    
+    let a = u64::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test]
+fn math_u8_overflow_mul() {
+    disable_panic_on_overflow();
+    
+    let a = u8::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test]
+fn math_u16_overflow_mul() {
+    disable_panic_on_overflow();
+    
+    let a = u16::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test]
+fn math_u32_overflow_mul() {
+    disable_panic_on_overflow();
+    
+    let a = u32::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test]
+fn math_u64_overflow_mul() {
+    disable_panic_on_overflow();
+    
+    let a = u64::max();
+    let b = a * 2;
+    log(b);
 }
