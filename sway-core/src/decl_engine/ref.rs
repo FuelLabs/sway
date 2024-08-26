@@ -29,8 +29,8 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait,
-        TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+        self, TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl,
+        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -96,8 +96,8 @@ impl<T> DeclRef<DeclId<T>> {
 
 impl<T> DeclRef<DeclId<T>>
 where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
+    DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
+    T: Named + Spanned + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,
@@ -107,7 +107,7 @@ where
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
         if decl.subst(type_mapping, engines).has_changes() {
-            Some(decl_engine.insert(decl))
+            Some(decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref()))
         } else {
             None
         }
@@ -132,8 +132,8 @@ where
 impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
+    DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
+    T: Named + Spanned + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
@@ -145,7 +145,7 @@ where
         if decl.subst(type_mapping, engines).has_changes() {
             Some(
                 decl_engine
-                    .insert(decl)
+                    .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
                     .with_parent(decl_engine, self.id.into()),
             )
         } else {

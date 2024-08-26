@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-CE974A175C1B7D31"
+
+[[package]]
+name = "reexport_paths"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-CE974A175C1B7D31"
+dependencies = ["core"]

@@ -10,7 +10,7 @@ use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
     has_changes,
-    language::{ty::*, CallPath, Visibility},
+    language::{parsed::ConstantDeclaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
@@ -25,6 +25,10 @@ pub struct TyConstantDecl {
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
+}
+
+impl TyDeclParsedType for TyConstantDecl {
+    type ParsedType = ConstantDeclaration;
 }
 
 impl DebugWithEngines for TyConstantDecl {

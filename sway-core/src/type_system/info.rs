@@ -1049,7 +1049,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
-            TypeInfo::Array(elem_ty, length) => length.val() > 0 && id_uninhabited(elem_ty.type_id),
+            TypeInfo::Array(elem_ty, _) => id_uninhabited(elem_ty.type_id),
             TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id),
             TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id),
             TypeInfo::Slice(ty) => id_uninhabited(ty.type_id),
@@ -1175,6 +1175,16 @@ impl TypeInfo {
         matches!(self, TypeInfo::Ref { .. })
     }
 
+    pub fn as_reference(&self) -> Option<(&bool, &TypeArgument)> {
+        match self {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type,
+            } => Some((to_mutable_value, referenced_type)),
+            _ => None,
+        }
+    }
+
     pub fn is_array(&self) -> bool {
         matches!(self, TypeInfo::Array(_, _))
     }
@@ -1189,6 +1199,18 @@ impl TypeInfo {
 
     pub fn is_tuple(&self) -> bool {
         matches!(self, TypeInfo::Tuple(_))
+    }
+
+    pub fn is_slice(&self) -> bool {
+        matches!(self, TypeInfo::Slice(_))
+    }
+
+    pub fn as_slice(&self) -> Option<&TypeArgument> {
+        if let TypeInfo::Slice(t) = self {
+            Some(t)
+        } else {
+            None
+        }
     }
 
     pub(crate) fn apply_type_arguments(
@@ -1413,7 +1435,6 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(_)
-            | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. }
             | TypeInfo::Never => false,
@@ -1423,6 +1444,7 @@ impl TypeInfo {
             | TypeInfo::Custom { .. }
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _)
+            | TypeInfo::Slice(_)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric

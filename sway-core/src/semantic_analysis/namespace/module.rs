@@ -36,11 +36,11 @@ pub struct Module {
     pub current_lexical_scope_id: LexicalScopeId,
     /// Name of the module, package name for root module, module name for other modules.
     /// Module name used is the same as declared in `mod name;`.
-    pub name: Option<Ident>,
+    name: Ident,
     /// Whether or not this is a `pub` module
-    pub visibility: Visibility,
+    visibility: Visibility,
     /// Empty span at the beginning of the file implementing the module
-    pub span: Option<Span>,
+    span: Option<Span>,
     /// Indicates whether the module is external to the current package. External modules are
     /// imported in the `Forc.toml` file.
     pub is_external: bool,
@@ -51,22 +51,57 @@ pub struct Module {
     pub(crate) mod_path: ModulePathBuf,
 }
 
-impl Default for Module {
-    fn default() -> Self {
+impl Module {
+    pub fn new(name: Ident, visibility: Visibility, span: Option<Span>) -> Self {
         Self {
-            visibility: Visibility::Private,
+            visibility,
             submodules: Default::default(),
             lexical_scopes: vec![LexicalScope::default()],
             current_lexical_scope_id: 0,
-            name: Default::default(),
-            span: Default::default(),
+            name,
+            span,
             is_external: Default::default(),
             mod_path: Default::default(),
         }
     }
-}
 
-impl Module {
+    // Specialized constructor for cloning Namespace::init. Should not be used for anything else
+    pub(super) fn new_submodule_from_init(
+        &self,
+        name: Ident,
+        visibility: Visibility,
+        span: Option<Span>,
+        is_external: bool,
+        mod_path: ModulePathBuf,
+    ) -> Self {
+        Self {
+            visibility,
+            submodules: self.submodules.clone(),
+            lexical_scopes: self.lexical_scopes.clone(),
+            current_lexical_scope_id: self.current_lexical_scope_id,
+            name,
+            span,
+            is_external,
+            mod_path,
+        }
+    }
+
+    pub fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    pub fn visibility(&self) -> &Visibility {
+        &self.visibility
+    }
+
+    pub fn span(&self) -> &Option<Span> {
+        &self.span
+    }
+
+    pub fn set_span(&mut self, span: Span) {
+        self.span = Some(span);
+    }
+
     pub fn read<R>(&self, _engines: &crate::Engines, mut f: impl FnMut(&Module) -> R) -> R {
         f(self)
     }
@@ -194,7 +229,7 @@ impl Module {
                 parent: Some(previous_scope_id),
                 ..Default::default()
             });
-            self.current_lexical_scope_id()
+            self.lexical_scopes.len() - 1
         };
         let previous_scope = self.lexical_scopes.get_mut(previous_scope_id).unwrap();
         previous_scope.children.push(new_scoped_id);

@@ -118,9 +118,10 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(logged_type.get_abi_type_str(
                         &AbiStrContext {
-                            program_name: Some(ctx.program_name.clone()),
+                            program_name: ctx.program_name.clone(),
                             abi_with_callpaths: true,
                             abi_with_fully_specified_types: true,
+                            abi_root_type_without_generic_type_parameters: false,
                         },
                         ctx.engines,
                         logged_type,

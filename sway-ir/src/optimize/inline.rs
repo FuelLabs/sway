@@ -125,7 +125,7 @@ pub fn fn_inline(
 
         // If the function is (still) small then also inline it.
         const MAX_INLINE_INSTRS_COUNT: usize = 4;
-        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
             return true;
         }
 
@@ -245,7 +245,7 @@ pub fn is_small_fn(
         max_blocks.map_or(true, |max_block_count| {
             function.num_blocks(context) <= max_block_count
         }) && max_instrs.map_or(true, |max_instrs_count| {
-            function.num_instructions(context) <= max_instrs_count
+            function.num_instructions_incl_asm_instructions(context) <= max_instrs_count
         }) && max_stack_size.map_or(true, |max_stack_size_count| {
             function
                 .locals_iter(context)

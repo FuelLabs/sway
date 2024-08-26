@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        engine::{DeclEngineGet, DeclEngineReplace},
+        engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
         DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
     },
     language::{
@@ -60,7 +60,7 @@ pub(crate) fn type_check_method_application(
                 x.return_type
                     .extract_inner_types(engines, IncludeSelf::Yes)
                     .iter()
-                    .any(|x| !x.is_concrete(engines, IncludeNumeric::Yes))
+                    .any(|x| !x.is_concrete(engines, TreatNumericAs::Abstract))
             })
             .unwrap_or_default();
         let needs_second_pass = has_errors || is_not_concrete;
@@ -159,20 +159,10 @@ pub(crate) fn type_check_method_application(
         }));
     }
 
-    // check the function storage purity
-    if !method.is_contract_call {
-        // 'method.purity' is that of the callee, 'opts.purity' of the caller.
-        if !ctx.purity().can_call(method.purity) {
-            handler.emit_err(CompileError::StorageAccessMismatch {
-                attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
-                span: method_name_binding.inner.easy_name().span(),
-            });
-        }
-        if !contract_call_params.is_empty() {
-            handler.emit_err(CompileError::CallParamForNonContractCallMethod {
-                span: contract_call_params[0].name.span(),
-            });
-        }
+    if !method.is_contract_call && !contract_call_params.is_empty() {
+        handler.emit_err(CompileError::CallParamForNonContractCallMethod {
+            span: contract_call_params[0].name.span(),
+        });
     }
 
     // generate the map of the contract call params
@@ -504,6 +494,7 @@ pub(crate) fn type_check_method_application(
                             ]),
                             span: Span::dummy(),
                         },
+                        resolved_call_path_binding: None,
                         arguments: vec![
                             Expression {
                                 kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
@@ -829,7 +820,7 @@ pub(crate) fn resolve_method_name(
                 ctx.namespace().prepend_module_path(&call_path.prefixes)
             } else {
                 let mut module_path = call_path.prefixes.clone();
-                if let (Some(root_mod), Some(root_name)) = (
+                if let (Some(root_mod), root_name) = (
                     module_path.first().cloned(),
                     ctx.namespace().root_module_name().clone(),
                 ) {
@@ -940,7 +931,10 @@ pub(crate) fn monomorphize_method(
     }
 
     let decl_ref = decl_engine
-        .insert(func_decl)
+        .insert(
+            func_decl,
+            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+        )
         .with_parent(decl_engine, (*decl_ref.id()).into());
 
     Ok(decl_ref)

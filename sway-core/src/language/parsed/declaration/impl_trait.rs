@@ -1,6 +1,6 @@
 use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
 use crate::{
-    decl_engine::parsed_id::ParsedDeclId,
+    decl_engine::{parsed_id::ParsedDeclId, ParsedInterfaceDeclId},
     engine_threading::{
         DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
@@ -69,6 +69,7 @@ pub struct ImplSelfOrTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
+    pub trait_decl_ref: Option<ParsedInterfaceDeclId>,
     pub implementing_for: TypeArgument,
     pub items: Vec<ImplItem>,
     // the span of the whole impl trait and block

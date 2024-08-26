@@ -1,3 +1,3 @@
 library;
 
-mod deeper_mod;
+pub mod deeper_mod;

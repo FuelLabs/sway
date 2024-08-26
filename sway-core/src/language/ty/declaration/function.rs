@@ -8,7 +8,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     has_changes,
-    language::{parsed::FunctionDeclarationKind, CallPath},
+    language::{
+        parsed::{FunctionDeclaration, FunctionDeclarationKind},
+        CallPath,
+    },
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform::AttributeKind,
 };
@@ -56,6 +59,10 @@ pub struct TyFunctionDecl {
     pub is_trait_method_dummy: bool,
     pub is_type_check_finalized: bool,
     pub kind: TyFunctionDeclKind,
+}
+
+impl TyDeclParsedType for TyFunctionDecl {
+    type ParsedType = FunctionDeclaration;
 }
 
 impl DebugWithEngines for TyFunctionDecl {
@@ -565,15 +572,16 @@ impl TyFunctionSig {
     }
 
     pub fn is_concrete(&self, engines: &Engines) -> bool {
-        self.return_type.is_concrete(engines, IncludeNumeric::No)
+        self.return_type
+            .is_concrete(engines, TreatNumericAs::Concrete)
             && self
                 .parameters
                 .iter()
-                .all(|p| p.is_concrete(engines, IncludeNumeric::No))
+                .all(|p| p.is_concrete(engines, TreatNumericAs::Concrete))
             && self
                 .type_parameters
                 .iter()
-                .all(|p| p.is_concrete(engines, IncludeNumeric::No))
+                .all(|p| p.is_concrete(engines, TreatNumericAs::Concrete))
     }
 
     /// Returns a String representing the function.

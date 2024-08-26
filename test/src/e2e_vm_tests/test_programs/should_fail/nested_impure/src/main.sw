@@ -1,22 +1,29 @@
 contract;
 
-fn main() {
-    foo();
+abi Abi {
+    fn test();
+}
+
+impl Abi for Contract {
+    fn test() {
+        foo();
+    }
 }
 
 fn foo() {
     bar();
-    baz();
+    let _ = baz();
 }
 
 // Although annotated, with no args is pure.
 #[storage()]
 fn bar() {
-    let z = baz();
+    let _ = baz();
 }
 
 // Explicitly impure.
 #[storage(read)]
 fn baz() -> u64 {
-  5
+    let _ = __state_load_word(b256::zero());
+    5
 }

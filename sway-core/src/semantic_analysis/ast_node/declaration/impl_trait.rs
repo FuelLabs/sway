@@ -11,7 +11,7 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::*,
+    decl_engine::{parsed_id::ParsedDeclId, *},
     engine_threading::*,
     language::{
         parsed::*,
@@ -37,6 +37,7 @@ impl TyImplSelfOrTrait {
             impl_type_parameters,
             trait_name,
             mut trait_type_arguments,
+            trait_decl_ref: _,
             mut implementing_for,
             items,
             block_span,
@@ -162,7 +163,7 @@ impl TyImplSelfOrTrait {
                             implementing_for.type_id,
                         );
 
-                        let new_items = type_check_trait_implementation(
+                        let (new_items, supertrait_items) = type_check_trait_implementation(
                             handler,
                             ctx.by_ref(),
                             implementing_for.type_id,
@@ -189,6 +190,7 @@ impl TyImplSelfOrTrait {
                             )),
                             span: block_span,
                             items: new_items,
+                            supertrait_items,
                             implementing_for,
                         }
                     }
@@ -239,7 +241,7 @@ impl TyImplSelfOrTrait {
                             None,
                         );
 
-                        let new_items = type_check_trait_implementation(
+                        let (new_items, supertrait_items) = type_check_trait_implementation(
                             handler,
                             ctx.by_ref(),
                             implementing_for.type_id,
@@ -266,6 +268,7 @@ impl TyImplSelfOrTrait {
                             )),
                             span: block_span,
                             items: new_items,
+                            supertrait_items,
                             implementing_for,
                         }
                     }
@@ -283,6 +286,7 @@ impl TyImplSelfOrTrait {
     pub(crate) fn type_check_impl_self(
         handler: &Handler,
         ctx: TypeCheckContext,
+        parsed_decl_id: &ParsedDeclId<ImplSelfOrTrait>,
         impl_self: ImplSelfOrTrait,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let ImplSelfOrTrait {
@@ -395,7 +399,9 @@ impl TyImplSelfOrTrait {
                                     Ok(res) => res,
                                     Err(_) => continue,
                                 };
-                                new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl)));
+                                new_items.push(TyImplItem::Fn(
+                                    decl_engine.insert(fn_decl, Some(fn_decl_id)),
+                                ));
                             }
                             ImplItem::Constant(decl_id) => {
                                 let const_decl =
@@ -408,7 +414,7 @@ impl TyImplSelfOrTrait {
                                     Ok(res) => res,
                                     Err(_) => continue,
                                 };
-                                let decl_ref = decl_engine.insert(const_decl);
+                                let decl_ref = decl_engine.insert(const_decl, Some(decl_id));
                                 new_items.push(TyImplItem::Constant(decl_ref.clone()));
 
                                 ctx.insert_symbol(
@@ -430,7 +436,7 @@ impl TyImplSelfOrTrait {
                                     Ok(res) => res,
                                     Err(_) => continue,
                                 };
-                                let decl_ref = decl_engine.insert(type_decl);
+                                let decl_ref = decl_engine.insert(type_decl, Some(decl_id));
                                 new_items.push(TyImplItem::Type(decl_ref.clone()));
                             }
                         }
@@ -443,6 +449,7 @@ impl TyImplSelfOrTrait {
                         trait_decl_ref: None,
                         span: block_span,
                         items: new_items,
+                        supertrait_items: vec![],
                         implementing_for,
                     };
 
@@ -485,11 +492,18 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
-                    let impl_trait_decl = decl_engine.insert(impl_trait.clone()).into();
+                    let impl_trait_decl = decl_engine
+                        .insert(impl_trait.clone(), Some(parsed_decl_id))
+                        .into();
 
                     // First lets perform an analysis pass.
                     // This returns a vector with ordered indexes to the items in the order that they
@@ -536,11 +550,18 @@ impl TyImplSelfOrTrait {
                             (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
                                 // Already processed.
                             }
-                            _ => unreachable!(),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected ImplItem tuple.",
+                                    Span::dummy(),
+                                ));
+                            }
                         }
                     }
 
-                    let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
+                    let impl_trait_decl: ty::TyDecl = decl_engine
+                        .insert(impl_trait.clone(), Some(parsed_decl_id))
+                        .into();
 
                     let mut finalizing_ctx =
                         TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
@@ -621,7 +642,7 @@ fn type_check_trait_implementation(
     trait_decl_span: &Span,
     block_span: &Span,
     is_contract: bool,
-) -> Result<Vec<TyImplItem>, ErrorEmitted> {
+) -> Result<(Vec<TyImplItem>, Vec<TyImplItem>), ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
@@ -789,7 +810,7 @@ fn type_check_trait_implementation(
                 type_checklist.remove(&name);
 
                 // Add this type to the "impld decls".
-                let decl_ref = decl_engine.insert(type_decl.clone());
+                let decl_ref = decl_engine.insert(type_decl.clone(), Some(decl_id));
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Type(decl_ref));
 
                 let old_type_decl_info1 = TypeInfo::TraitType {
@@ -810,22 +831,28 @@ fn type_check_trait_implementation(
                         None,
                     ),
                 };
-                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(
-                        engines,
-                        old_type_decl_info1,
-                        type_decl.name.span().source_id(),
-                    )],
-                    vec![type_decl.ty.clone().unwrap().type_id],
-                ));
-                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
-                    vec![type_engine.insert(
-                        engines,
-                        old_type_decl_info2,
-                        type_decl.name.span().source_id(),
-                    )],
-                    vec![type_decl.ty.clone().unwrap().type_id],
-                ));
+                if let Some(type_arg) = type_decl.ty.clone() {
+                    trait_type_mapping.extend(
+                        &TypeSubstMap::from_type_parameters_and_type_arguments(
+                            vec![type_engine.insert(
+                                engines,
+                                old_type_decl_info1,
+                                type_decl.name.span().source_id(),
+                            )],
+                            vec![type_arg.type_id],
+                        ),
+                    );
+                    trait_type_mapping.extend(
+                        &TypeSubstMap::from_type_parameters_and_type_arguments(
+                            vec![type_engine.insert(
+                                engines,
+                                old_type_decl_info2,
+                                type_decl.name.span().source_id(),
+                            )],
+                            vec![type_arg.type_id],
+                        ),
+                    );
+                }
             }
         }
     }
@@ -854,7 +881,7 @@ fn type_check_trait_implementation(
                 method_checklist.remove(&name);
 
                 // Add this method to the "impld items".
-                let decl_ref = decl_engine.insert(impl_method);
+                let decl_ref = decl_engine.insert(impl_method, Some(impl_method_id));
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Fn(decl_ref));
             }
             ImplItem::Constant(decl_id) => {
@@ -877,7 +904,7 @@ fn type_check_trait_implementation(
                 constant_checklist.remove(&name);
 
                 // Add this constant to the "impld decls".
-                let decl_ref = decl_engine.insert(const_decl);
+                let decl_ref = decl_engine.insert(const_decl, Some(decl_id));
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Constant(decl_ref));
             }
             ImplItem::Type(_) => {}
@@ -905,7 +932,7 @@ fn type_check_trait_implementation(
     type_mapping.extend(&trait_type_mapping);
 
     interface_item_refs.extend(supertrait_interface_item_refs);
-    impld_item_refs.extend(supertrait_impld_item_refs);
+    impld_item_refs.extend(supertrait_impld_item_refs.clone());
     let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
         interface_item_refs,
         BTreeMap::new(),
@@ -943,7 +970,10 @@ fn type_check_trait_implementation(
                 method.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Fn(
                     decl_engine
-                        .insert(method)
+                        .insert(
+                            method,
+                            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                        )
                         .with_parent(decl_engine, (*decl_ref.id()).into()),
                 ));
             }
@@ -951,12 +981,18 @@ fn type_check_trait_implementation(
                 let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
                 const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 const_decl.subst(&type_mapping, engines);
-                all_items_refs.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                all_items_refs.push(TyImplItem::Constant(decl_engine.insert(
+                    const_decl,
+                    decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                )));
             }
             TyImplItem::Type(decl_ref) => {
                 let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
                 type_decl.subst(&type_mapping, engines);
-                all_items_refs.push(TyImplItem::Type(decl_engine.insert(type_decl.clone())));
+                all_items_refs.push(TyImplItem::Type(decl_engine.insert(
+                    type_decl.clone(),
+                    decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                )));
             }
         }
     }
@@ -984,7 +1020,10 @@ fn type_check_trait_implementation(
             });
         }
 
-        Ok(all_items_refs)
+        Ok((
+            all_items_refs,
+            supertrait_impld_item_refs.values().cloned().collect(),
+        ))
     })
 }
 

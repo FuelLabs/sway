@@ -38,6 +38,7 @@ use crate::{
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use either::Either;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use std::collections::{HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
@@ -193,6 +194,7 @@ impl ty::TyExpression {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     ref arguments,
                 } = *function_application_expression.clone();
                 Self::type_check_function_application(
@@ -906,6 +908,13 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
+        if asm.is_empty() {
+            handler.emit_warn(CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::AsmBlockIsEmpty,
+            });
+        }
+
         // Various checks that we can catch early to check that the assembly is valid. For now,
         // this includes two checks:
         // 1. Check that no control flow opcodes are used.
@@ -1107,7 +1116,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
@@ -1132,7 +1141,12 @@ impl ty::TyExpression {
 
         // Update `access_type` to be the type of the monomorphized struct after inserting it
         // into the type engine
-        let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
+        let storage_key_struct_decl_ref = decl_engine.insert(
+            storage_key_struct_decl,
+            decl_engine
+                .get_parsed_decl_id(&storage_key_struct_decl_ref)
+                .as_ref(),
+        );
         access_type = type_engine.insert(
             engines,
             TypeInfo::Struct(*storage_key_struct_decl_ref.id()),
@@ -1722,20 +1736,32 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(
-                                AbiMode::ImplAbiFn(abi_name.suffix.clone(), Some(*abi_ref.id())),
-                                Some(return_type),
-                            ))
+                            .insert(
+                                method.to_dummy_func(
+                                    AbiMode::ImplAbiFn(
+                                        abi_name.suffix.clone(),
+                                        Some(*abi_ref.id()),
+                                    ),
+                                    Some(return_type),
+                                ),
+                                None,
+                            )
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(decl_ref);
-                    abi_items.push(TyImplItem::Constant(decl_engine.insert_arc(const_decl)));
+                    abi_items.push(TyImplItem::Constant(decl_engine.insert_arc(
+                        const_decl,
+                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                    )));
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
                     let type_decl = decl_engine.get_type(decl_ref);
-                    abi_items.push(TyImplItem::Type(decl_engine.insert_arc(type_decl)));
+                    abi_items.push(TyImplItem::Type(decl_engine.insert_arc(
+                        type_decl,
+                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                    )));
                 }
             }
         }
@@ -1788,20 +1814,20 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let never_type = type_engine.insert(engines, TypeInfo::Never, None);
+            let elem_type = type_engine.insert(engines, TypeInfo::Unknown, None);
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
-                    elem_type: never_type,
+                    elem_type,
                     contents: Vec::new(),
                 },
                 return_type: type_engine.insert(
                     engines,
                     TypeInfo::Array(
                         TypeArgument {
-                            type_id: never_type,
+                            type_id: elem_type,
                             span: Span::dummy(),
                             call_path_tree: None,
-                            initial_type_id: never_type,
+                            initial_type_id: elem_type,
                         },
                         Length::new(0, Span::dummy()),
                     ),
@@ -1833,7 +1859,36 @@ impl ty::TyExpression {
             })
             .collect();
 
-        let elem_type = typed_contents[0].return_type;
+        // choose the best type to be the array elem type
+        use itertools::FoldWhile::{Continue, Done};
+        let elem_type = typed_contents
+            .iter()
+            .fold_while(None, |last, current| match last {
+                None => Continue(Some(current.return_type)),
+                Some(last) => {
+                    if last.is_concrete(engines, TreatNumericAs::Abstract) {
+                        return Done(Some(last));
+                    }
+
+                    if current
+                        .return_type
+                        .is_concrete(engines, TreatNumericAs::Abstract)
+                    {
+                        return Done(Some(current.return_type));
+                    }
+
+                    let last_info = ctx.engines().te().get(last);
+                    let current_info = ctx.engines().te().get(current.return_type);
+                    match (&*last_info, &*current_info) {
+                        (TypeInfo::Numeric, TypeInfo::UnsignedInteger(_)) => {
+                            Done(Some(current.return_type))
+                        }
+                        _ => Continue(Some(last)),
+                    }
+                }
+            })
+            .into_inner();
+        let elem_type = elem_type.unwrap_or_else(|| typed_contents[0].return_type);
 
         let array_count = typed_contents.len();
         Ok(ty::TyExpression {
@@ -2301,26 +2356,13 @@ impl ty::TyExpression {
         let expr = ty::TyExpression::type_check(handler, ctx, value)?;
 
         if to_mutable_value {
-            match expr.expression {
-                ty::TyExpressionVariant::ConstantExpression { .. } => {
-                    return Err(
-                        handler.emit_err(CompileError::RefMutCannotReferenceConstant {
-                            constant: expr_span.str(),
-                            span,
-                        }),
-                    )
-                }
-                ty::TyExpressionVariant::VariableExpression {
-                    name: decl_name,
-                    mutability: VariableMutability::Immutable,
-                    ..
-                } => {
-                    return Err(handler.emit_err(
-                        CompileError::RefMutCannotReferenceImmutableVariable { decl_name, span },
-                    ))
-                }
-                // TODO-IG: Check referencing parts of aggregates once reassignment is implemented.
-                _ => (),
+            if let Some(value) = Self::check_ref_mutability_mismatch(
+                &expr.expression,
+                handler,
+                expr_span,
+                span.clone(),
+            ) {
+                return value;
             }
         };
 
@@ -2339,6 +2381,54 @@ impl ty::TyExpression {
         };
 
         Ok(typed_expr)
+    }
+
+    fn check_ref_mutability_mismatch(
+        expr: &TyExpressionVariant,
+        handler: &Handler,
+        expr_span: Span,
+        ref_span: Span,
+    ) -> Option<Result<TyExpression, ErrorEmitted>> {
+        match expr {
+            ty::TyExpressionVariant::ConstantExpression { .. } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceConstant {
+                        constant: expr_span.str(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::VariableExpression {
+                name: decl_name,
+                mutability: VariableMutability::Immutable,
+                ..
+            } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceImmutableVariable {
+                        decl_name: decl_name.clone(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::StructFieldAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            ty::TyExpressionVariant::TupleElemAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            _ => (),
+        }
+        None
     }
 
     fn type_check_deref(
@@ -2599,7 +2689,7 @@ fn check_asm_block_validity(
             if reg.initializer.is_none() {
                 let span = reg.name.span();
 
-                // Emit warning if this register shadows a variable
+                // Emit warning if this register shadows a constant, or a configurable, or a variable.
                 let temp_handler = Handler::default();
                 let decl = ctx.namespace().resolve_call_path_typed(
                     &temp_handler,
@@ -2612,11 +2702,25 @@ fn check_asm_block_validity(
                     None,
                 );
 
-                if let Ok(ty::TyDecl::VariableDecl(decl)) = decl {
+                let shadowing_item = match decl {
+                    Ok(ty::TyDecl::ConstantDecl(decl)) => {
+                        let decl = ctx.engines.de().get_constant(&decl.decl_id);
+                        Some((decl.name().into(), "Constant"))
+                    }
+                    Ok(ty::TyDecl::ConfigurableDecl(decl)) => {
+                        let decl = ctx.engines.de().get_configurable(&decl.decl_id);
+                        Some((decl.name().into(), "Configurable"))
+                    }
+                    Ok(ty::TyDecl::VariableDecl(decl)) => Some((decl.name.into(), "Variable")),
+                    _ => None,
+                };
+
+                if let Some((item, item_kind)) = shadowing_item {
                     handler.emit_warn(CompileWarning {
                         span: span.clone(),
-                        warning_content: Warning::UninitializedAsmRegShadowsVariable {
-                            name: decl.name.clone(),
+                        warning_content: Warning::UninitializedAsmRegShadowsItem {
+                            constant_or_configurable_or_variable: item_kind,
+                            item,
                         },
                     });
                 }
@@ -2663,7 +2767,12 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let mut root_module = namespace::Root::from(namespace::Module::default());
+        let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
+        let mut root_module = namespace::Root::from(namespace::Module::new(
+            root_module_name,
+            Visibility::Private,
+            None,
+        ));
         let mut namespace = Namespace::init_root(&mut root_module);
         let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
             .with_type_annotation(type_annotation);

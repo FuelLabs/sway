@@ -21,6 +21,10 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Span, Spanned};
 pub use type_alias::*;
 pub use variable::*;
@@ -29,6 +33,7 @@ use crate::{
     decl_engine::{
         parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet},
         parsed_id::ParsedDeclId,
+        DeclEngineGetParsedDeclId,
     },
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, PartialEqWithEngines,
@@ -53,6 +58,7 @@ pub enum Declaration {
     StorageDeclaration(ParsedDeclId<StorageDeclaration>),
     TypeAliasDeclaration(ParsedDeclId<TypeAliasDeclaration>),
     TraitTypeDeclaration(ParsedDeclId<TraitTypeDeclaration>),
+    TraitFnDeclaration(ParsedDeclId<TraitFn>),
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +90,7 @@ impl Declaration {
             TraitTypeDeclaration(_) => "type",
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",
+            TraitFnDeclaration(_) => "trait fn",
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
             EnumVariantDeclaration(_) => "enum variant",
@@ -111,9 +118,55 @@ impl Declaration {
             StorageDeclaration(decl_id) => pe.get_storage(decl_id).span(),
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
+            TraitFnDeclaration(decl_id) => pe.get_trait_fn(decl_id).span(),
         }
     }
 
+    pub(crate) fn to_fn_ref(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::FunctionDeclaration(decl_id) => Ok(*decl_id),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAFunction {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    pub(crate) fn to_struct_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::StructDeclaration(decl_id) => Ok(*decl_id),
+            Declaration::TypeAliasDeclaration(decl_id) => {
+                let alias = engines.pe().get_type_alias(decl_id);
+                let struct_decl_id = engines.te().get(alias.ty.type_id).expect_struct(
+                    handler,
+                    engines,
+                    &self.span(engines),
+                )?;
+
+                let parsed_decl_id = engines.de().get_parsed_decl_id(&struct_decl_id);
+                parsed_decl_id.ok_or_else(|| {
+                    handler.emit_err(CompileError::InternalOwned(
+                        "Cannot get parsed decl id from decl id".to_string(),
+                        self.span(engines),
+                    ))
+                })
+            }
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    #[allow(unused)]
     pub(crate) fn visibility(&self, decl_engine: &ParsedDeclEngine) -> Visibility {
         match self {
             Declaration::TraitDeclaration(decl_id) => decl_engine.get_trait(decl_id).visibility,
@@ -138,7 +191,8 @@ impl Declaration {
             Declaration::ImplSelfOrTrait(_)
             | Declaration::StorageDeclaration(_)
             | Declaration::AbiDeclaration(_)
-            | Declaration::TraitTypeDeclaration(_) => Visibility::Public,
+            | Declaration::TraitTypeDeclaration(_)
+            | Declaration::TraitFnDeclaration(_) => Visibility::Public,
         }
     }
 }

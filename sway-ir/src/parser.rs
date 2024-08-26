@@ -235,13 +235,13 @@ mod ir_builder {
                 / op_store()
 
             rule op_asm() -> IrAstOperation
-                = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
+                = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret() meta_idx:comma_metadata_idx()? "{" _
                     ops:asm_op()*
                 "}" _ {
                     IrAstOperation::Asm(
                         args,
-                        ret.clone().map(|(ty, _)| ty).unwrap_or(IrAstTy::Unit),
-                        ret.map(|(_, nm)| nm),
+                        ret.0,
+                        ret.1,
                         ops,
                         meta_idx
                     )
@@ -455,8 +455,8 @@ mod ir_builder {
                     IrAstAsmArgInit::Var(var)
                 }
 
-            rule asm_ret() -> (IrAstTy, Ident)
-                = "->" _ ty:ast_ty() ret:id_id() {
+            rule asm_ret() -> (IrAstTy, Option<Ident>)
+                = "->" _ ty:ast_ty() ret:id_id()? {
                     (ty, ret)
                 }
 

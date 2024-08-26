@@ -1,5 +1,7 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
+    decl_engine::{
+        engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+    },
     language::{
         ty::{self, TyFunctionSig},
         *,
@@ -37,15 +39,8 @@ pub(crate) fn instantiate_function_application(
             }),
         );
     }
-    let arguments = arguments.unwrap_or_default();
 
-    // 'purity' is that of the callee, 'opts.purity' of the caller.
-    if !ctx.purity().can_call(function_decl.purity) {
-        handler.emit_err(CompileError::StorageAccessMismatch {
-            attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path_binding.span(),
-        });
-    }
+    let arguments = arguments.unwrap_or_default();
 
     // check that the number of parameters and the number of the arguments is the same
     check_function_arguments_arity(
@@ -97,7 +92,12 @@ pub(crate) fn instantiate_function_application(
         let function_is_type_check_finalized = function_decl.is_type_check_finalized;
         let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
         let new_decl_ref = decl_engine
-            .insert(function_decl)
+            .insert(
+                function_decl,
+                decl_engine
+                    .get_parsed_decl_id(function_decl_ref.id())
+                    .as_ref(),
+            )
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
         if method_sig.is_concrete(engines)

@@ -29,6 +29,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
+    time::SystemTime,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -61,6 +62,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub runnables: RunnableMap,
+    pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -80,6 +82,7 @@ impl Session {
         Session {
             token_map: TokenMap::new(),
             runnables: DashMap::new(),
+            build_plan_cache: BuildPlanCache::default(),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
@@ -121,7 +124,11 @@ impl Session {
     }
 
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
-    pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
+    pub fn garbage_collect_program(
+        &self,
+        engines: &mut Engines,
+    ) -> Result<(), LanguageServerError> {
+        let _p = tracing::trace_span!("garbage_collect").entered();
         let path = self.sync.temp_dir()?;
         let program_id = { engines.se().get_program_id(&path) };
         if let Some(program_id) = program_id {
@@ -130,7 +137,20 @@ impl Session {
         Ok(())
     }
 
+    /// Clean up memory in the [TypeEngine] and [DeclEngine] for the modified file.
+    pub fn garbage_collect_module(
+        &self,
+        engines: &mut Engines,
+        uri: &Url,
+    ) -> Result<(), LanguageServerError> {
+        let path = uri.to_file_path().unwrap();
+        let source_id = { engines.se().get_source_id(&path) };
+        engines.clear_module(&source_id);
+        Ok(())
+    }
+
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
+        let _p = tracing::trace_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(url)
@@ -150,6 +170,7 @@ impl Session {
         uri: &Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
+        let _p = tracing::trace_span!("token_definition_response").entered();
         self.token_map
             .token_at_position(uri, position)
             .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
@@ -171,6 +192,7 @@ impl Session {
         position: Position,
         trigger_char: &str,
     ) -> Option<Vec<CompletionItem>> {
+        let _p = tracing::trace_span!("completion_items").entered();
         let shifted_position = Position {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
@@ -205,6 +227,7 @@ impl Session {
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
+        let _p = tracing::trace_span!("symbol_information").entered();
         let tokens = self.token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
@@ -223,7 +246,8 @@ impl Session {
 }
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
-pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+    let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
         ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
@@ -248,20 +272,19 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 }
 
 pub fn compile(
-    uri: &Url,
+    build_plan: &BuildPlan,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
-    let build_plan = build_plan(uri)?;
-    let tests_enabled = true;
+    let _p = tracing::trace_span!("compile").entered();
     pkg::check(
-        &build_plan,
+        build_plan,
         BuildTarget::default(),
         true,
         lsp_mode,
-        tests_enabled,
+        true,
         engines,
         retrigger_compilation,
         experimental,
@@ -276,6 +299,7 @@ pub fn traverse(
     engines_clone: &Engines,
     session: Arc<Session>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
+    let _p = tracing::trace_span!("traverse").entered();
     session.token_map.clear();
     session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
@@ -373,8 +397,13 @@ pub fn parse_project(
     session: Arc<Session>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
+    let _p = tracing::trace_span!("parse_project").entered();
+    let build_plan = session
+        .build_plan_cache
+        .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
+
     let results = compile(
-        uri,
+        &build_plan,
         engines,
         retrigger_compilation,
         lsp_mode.clone(),
@@ -383,6 +412,7 @@ pub fn parse_project(
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
+
     let diagnostics = traverse(results, engines, session.clone())?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
@@ -393,6 +423,7 @@ pub fn parse_project(
             }
         }
     }
+
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
@@ -448,7 +479,9 @@ fn create_runnables(
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
+    let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
+
     for (decl, _) in typed_program.test_fns(decl_engine) {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
@@ -465,7 +498,6 @@ fn create_runnables(
             runnables.entry(path).or_default().push(runnable);
         }
     }
-
     // Insert runnable main function if the program is a script.
     if let ty::TyProgramKind::Script {
         entry_function: ref main_function,
@@ -496,6 +528,56 @@ pub(crate) fn program_id_from_path(
             path: path.to_string_lossy().to_string(),
         })?;
     Ok(program_id)
+}
+
+/// A cache for storing and retrieving BuildPlan objects.
+#[derive(Debug, Clone)]
+pub struct BuildPlanCache {
+    /// The cached BuildPlan and its last update time
+    cache: Arc<RwLock<Option<(BuildPlan, SystemTime)>>>,
+}
+
+impl Default for BuildPlanCache {
+    fn default() -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(None)),
+        }
+    }
+}
+
+impl BuildPlanCache {
+    /// Retrieves a BuildPlan from the cache or updates it if necessary.
+    pub fn get_or_update<F>(
+        &self,
+        manifest_path: &Option<PathBuf>,
+        update_fn: F,
+    ) -> Result<BuildPlan, LanguageServerError>
+    where
+        F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
+    {
+        let should_update = {
+            let cache = self.cache.read();
+            manifest_path
+                .as_ref()
+                .and_then(|path| path.metadata().ok()?.modified().ok())
+                .map_or(cache.is_none(), |time| {
+                    cache.as_ref().map_or(true, |&(_, last)| time > last)
+                })
+        };
+
+        if should_update {
+            let new_plan = update_fn()?;
+            let mut cache = self.cache.write();
+            *cache = Some((new_plan.clone(), SystemTime::now()));
+            Ok(new_plan)
+        } else {
+            let cache = self.cache.read();
+            cache
+                .as_ref()
+                .map(|(plan, _)| plan.clone())
+                .ok_or(LanguageServerError::BuildPlanCacheIsEmpty)
+        }
+    }
 }
 
 #[cfg(test)]

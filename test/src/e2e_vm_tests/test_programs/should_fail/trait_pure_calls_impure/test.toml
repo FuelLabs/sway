@@ -1,4 +1,9 @@
 category = "fail"
 
-# check: self.f()
-# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read)]" to the function declaration.
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn g(self) -> bool
+#nextln: $()Function "g" is pure and cannot access storage.
+#check: $()self.f()
+#nextln: $()Function "f" reads from the storage.
+#check: $()Consider declaring the function "g" as `#[storage(read)]`

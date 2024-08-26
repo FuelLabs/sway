@@ -5,7 +5,12 @@ use std::{
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, has_changes, transform, type_system::*};
+use crate::{
+    engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration, transform,
+    type_system::*,
+};
+
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyTraitType {
@@ -14,6 +19,10 @@ pub struct TyTraitType {
     pub ty: Option<TypeArgument>,
     pub implementing_type: TypeId,
     pub span: Span,
+}
+
+impl TyDeclParsedType for TyTraitType {
+    type ParsedType = TraitTypeDeclaration;
 }
 
 impl DebugWithEngines for TyTraitType {

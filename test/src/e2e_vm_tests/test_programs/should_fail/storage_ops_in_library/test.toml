@@ -1,4 +1,19 @@
 category = "fail"
 
-# check: do_storage::side_effects();
-# nextln: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read, write)]" to the function declaration.
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn main()
+#nextln: $()Function "main" is pure and cannot access storage.
+#check: $()do_storage::side_effects();
+#nextln: $()Function "side_effects" reads from and writes to the storage.
+#check: $()Consider declaring the function "main" as `#[storage(read, write)]`
+
+#check: $()srw v is_set key;
+#nextln: $()Contract storage cannot be used in an external context.
+
+#check: $()sww key is_set v;
+
+#check: $()sww key is_set v;
+#nextln: $()Contract storage cannot be used in an external context.
+
+#check: $()3 errors.

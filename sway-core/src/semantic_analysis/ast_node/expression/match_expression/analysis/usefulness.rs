@@ -20,7 +20,7 @@ use super::{
 /// http://moscova.inria.fr/%7Emaranget/papers/warn/warn004.html
 ///
 /// Implemented in Rust here:
-/// https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
+/// https://doc.rust-lang.org/1.75.0/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
 ///
 /// ---
 ///

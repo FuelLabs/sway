@@ -3,11 +3,14 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRefMixedInterface, engine_threading::*, has_changes, language::CallPath,
+    decl_engine::DeclRefMixedInterface,
+    engine_threading::*,
+    has_changes,
+    language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
 
-use super::TyTraitItem;
+use super::{TyDeclParsedType, TyTraitItem};
 
 pub type TyImplItem = TyTraitItem;
 
@@ -18,6 +21,7 @@ pub struct TyImplSelfOrTrait {
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub items: Vec<TyImplItem>,
+    pub supertrait_items: Vec<TyImplItem>,
     pub trait_decl_ref: Option<DeclRefMixedInterface>,
     pub implementing_for: TypeArgument,
     pub span: Span,
@@ -27,6 +31,10 @@ impl TyImplSelfOrTrait {
     pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
         matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
     }
+}
+
+impl TyDeclParsedType for TyImplSelfOrTrait {
+    type ParsedType = ImplSelfOrTrait;
 }
 
 impl Named for TyImplSelfOrTrait {
@@ -68,6 +76,7 @@ impl HashWithEngines for TyImplSelfOrTrait {
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             span: _,
+            supertrait_items: _,
         } = self;
         trait_name.hash(state);
         impl_type_parameters.hash(state, engines);

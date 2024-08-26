@@ -32,3 +32,6 @@ forc-plugins/forc-debug/tests/**/Forc.lock
 # Generated files in example directories
 examples/**/*/Forc.lock
 docs/reference/src/code/examples/**/*/Forc.lock
+
+# Insta files
+*.snap.new

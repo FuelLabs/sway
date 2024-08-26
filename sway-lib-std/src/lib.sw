@@ -45,5 +45,3 @@ pub mod low_level_call;
 pub mod array_conversions;
 pub mod bytes_conversions;
 pub mod clone;
-
-use core::*;

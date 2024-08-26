@@ -2,12 +2,12 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::{
     build_config::ExperimentalFlags,
-    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
         ty::{self, TyDecl, TyTraitItem},
-        CallPath, Purity, QualifiedCallPath, Visibility,
+        CallPath, QualifiedCallPath, Visibility,
     },
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
@@ -42,6 +42,9 @@ pub struct TypeCheckContext<'a> {
     pub(crate) namespace: &'a mut Namespace,
 
     pub(crate) engines: &'a Engines,
+
+    /// Set of experimental flags.
+    pub(crate) experimental: ExperimentalFlags,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -80,9 +83,6 @@ pub struct TypeCheckContext<'a> {
     // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
     // to `unify` as necessary?
     help_text: &'static str,
-    /// Tracks the purity of the context, e.g. whether or not we should be allowed to write to
-    /// storage.
-    purity: Purity,
     /// Provides the kind of the module.
     /// This is useful for example to throw an error when while loops are present in predicates.
     kind: TreeType,
@@ -94,9 +94,6 @@ pub struct TypeCheckContext<'a> {
 
     /// Indicates when semantic analysis is type checking storage declaration.
     storage_declaration: bool,
-
-    /// Set of experimental flags
-    pub experimental: ExperimentalFlags,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -118,7 +115,6 @@ impl<'a> TypeCheckContext<'a> {
             abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
             generic_shadowing_mode: GenericShadowingMode::Disallow,
-            purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
@@ -133,7 +129,6 @@ impl<'a> TypeCheckContext<'a> {
     /// - type_annotation: unknown
     /// - mode: NoneAbi
     /// - help_text: ""
-    /// - purity: Pure
     pub fn from_root(
         root_namespace: &'a mut Namespace,
         engines: &'a Engines,
@@ -159,7 +154,6 @@ impl<'a> TypeCheckContext<'a> {
             abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
             generic_shadowing_mode: GenericShadowingMode::Disallow,
-            purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
@@ -187,7 +181,6 @@ impl<'a> TypeCheckContext<'a> {
             const_shadowing_mode: self.const_shadowing_mode,
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
-            purity: self.purity,
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
@@ -213,7 +206,6 @@ impl<'a> TypeCheckContext<'a> {
             const_shadowing_mode: self.const_shadowing_mode,
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
-            purity: self.purity,
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
@@ -240,7 +232,6 @@ impl<'a> TypeCheckContext<'a> {
             const_shadowing_mode: self.const_shadowing_mode,
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
-            purity: self.purity,
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
@@ -347,17 +338,12 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
-    /// Map this `TypeCheckContext` instance to a new one with the given purity.
-    pub(crate) fn with_purity(self, purity: Purity) -> Self {
-        Self { purity, ..self }
-    }
-
     /// Map this `TypeCheckContext` instance to a new one with the given module kind.
     pub(crate) fn with_kind(self, kind: TreeType) -> Self {
         Self { kind, ..self }
     }
 
-    /// Map this `TypeCheckContext` instance to a new one with the given purity.
+    /// Map this `TypeCheckContext` instance to a new one with the given self type.
     pub(crate) fn with_self_type(self, self_type: Option<TypeId>) -> Self {
         Self { self_type, ..self }
     }
@@ -418,10 +404,6 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn abi_mode(&self) -> AbiMode {
         self.abi_mode.clone()
-    }
-
-    pub(crate) fn purity(&self) -> Purity {
-        self.purity
     }
 
     #[allow(dead_code)]
@@ -590,6 +572,28 @@ impl<'a> TypeCheckContext<'a> {
                 self.engines.te().insert(
                     self.engines,
                     TypeInfo::Array(elem_ty.clone(), n.clone()),
+                    elem_ty.span.source_id(),
+                )
+            }
+            TypeInfo::Slice(mut elem_ty) => {
+                elem_ty.type_id = self
+                    .resolve(
+                        handler,
+                        elem_ty.type_id,
+                        span,
+                        enforce_type_arguments,
+                        None,
+                        mod_path,
+                    )
+                    .unwrap_or_else(|err| {
+                        self.engines
+                            .te()
+                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+                    });
+
+                self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Slice(elem_ty.clone()),
                     elem_ty.span.source_id(),
                 )
             }
@@ -774,7 +778,7 @@ impl<'a> TypeCheckContext<'a> {
             let module = self
                 .namespace()
                 .lookup_submodule_from_absolute_path(handler, engines, prefix)?;
-            if module.visibility.is_private() {
+            if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
                     span: prefix_last.span(),
@@ -904,7 +908,10 @@ impl<'a> TypeCheckContext<'a> {
                 )?;
 
                 // insert the new copy in the decl engine
-                let new_decl_ref = decl_engine.insert(new_copy);
+                let new_decl_ref = decl_engine.insert(
+                    new_copy,
+                    decl_engine.get_parsed_decl_id(&original_id).as_ref(),
+                );
 
                 // create the type id from the copy
                 type_engine.insert(
@@ -931,7 +938,10 @@ impl<'a> TypeCheckContext<'a> {
                 )?;
 
                 // insert the new copy in the decl engine
-                let new_decl_ref = decl_engine.insert(new_copy);
+                let new_decl_ref = decl_engine.insert(
+                    new_copy,
+                    decl_engine.get_parsed_decl_id(&original_id).as_ref(),
+                );
 
                 // create the type id from the copy
                 type_engine.insert(
@@ -1331,12 +1341,13 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         src: &ModulePath,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .star_import(handler, engines, src, &mod_path)
+            .star_import(handler, engines, src, &mod_path, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -1345,12 +1356,13 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &ModulePath,
         enum_name: &Ident,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .variant_star_import(handler, engines, src, &mod_path, enum_name)
+            .variant_star_import(handler, engines, src, &mod_path, enum_name, visibility)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -1359,12 +1371,13 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &ModulePath,
         alias: Option<Ident>,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .self_import(handler, engines, src, &mod_path, alias)
+            .self_import(handler, engines, src, &mod_path, alias, visibility)
     }
 
     // Import all impls for a struct/enum. Do nothing for other types.
@@ -1413,12 +1426,13 @@ impl<'a> TypeCheckContext<'a> {
         src: &ModulePath,
         item: &Ident,
         alias: Option<Ident>,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .item_import(handler, engines, src, item, &mod_path, alias)
+            .item_import(handler, engines, src, item, &mod_path, alias, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -1430,6 +1444,7 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
@@ -1441,6 +1456,7 @@ impl<'a> TypeCheckContext<'a> {
             variant_name,
             &mod_path,
             alias,
+            visibility,
         )
     }
 

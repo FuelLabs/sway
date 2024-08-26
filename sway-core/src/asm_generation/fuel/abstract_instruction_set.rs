@@ -52,7 +52,7 @@ impl AbstractInstructionSet {
         for idx in dead_jumps {
             self.ops[idx] = Op {
                 opcode: Either::Left(VirtualOp::NOOP),
-                comment: "removed redundant JUMP".into(),
+                comment: "remove redundant jump operation".into(),
                 owning_span: None,
             };
         }
@@ -105,7 +105,7 @@ impl AbstractInstructionSet {
             for idx in dead_moves {
                 self.ops[idx] = Op {
                     opcode: Either::Left(VirtualOp::NOOP),
-                    comment: "removed redundant MOVE".into(),
+                    comment: "remove redundant move operation".into(),
                     owning_span: None,
                 };
             }

@@ -4,9 +4,10 @@ use ansi_term::Colour;
 use std::str;
 use std::{env, io};
 use tracing::{Level, Metadata};
-use tracing_subscriber::{
+pub use tracing_subscriber::{
+    self,
     filter::{EnvFilter, LevelFilter},
-    fmt::MakeWriter,
+    fmt::{format::FmtSpan, MakeWriter},
 };
 
 const ACTION_COLUMN_WIDTH: usize = 12;
@@ -83,8 +84,8 @@ const LOG_FILTER: &str = "RUST_LOG";
 
 // This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
 // https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-struct StdioTracingWriter {
-    writer_mode: TracingWriterMode,
+pub struct StdioTracingWriter {
+    pub writer_mode: TracingWriterMode,
 }
 
 impl<'a> MakeWriter<'a> for StdioTracingWriter {
@@ -142,7 +143,6 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
-
     let level_filter = options
         .log_level
         .or_else(|| {

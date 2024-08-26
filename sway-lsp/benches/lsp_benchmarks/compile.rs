@@ -1,27 +1,36 @@
 use criterion::{black_box, criterion_group, Criterion};
-use lsp_types::Url;
 use std::sync::Arc;
 use sway_core::{Engines, ExperimentalFlags};
 use sway_lsp::core::session;
+use tokio::runtime::Runtime;
 
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 
 fn benchmarks(c: &mut Criterion) {
-    let experimental = ExperimentalFlags {
-        new_encoding: false,
-    };
+    let (uri, session, _) = Runtime::new()
+        .unwrap()
+        .block_on(async { black_box(super::compile_test_project().await) });
 
-    // Load the test project
-    let uri = Url::from_file_path(super::benchmark_dir().join("src/main.sw")).unwrap();
+    let build_plan = session
+        .build_plan_cache
+        .get_or_update(&session.sync.manifest_path(), || session::build_plan(&uri))
+        .unwrap();
+
     let mut lsp_mode = Some(sway_core::LspConfig {
         optimized_build: false,
         file_versions: Default::default(),
     });
+
+    let experimental = ExperimentalFlags {
+        new_encoding: false,
+    };
+
     c.bench_function("compile", |b| {
         b.iter(|| {
             let engines = Engines::default();
             let _ = black_box(
-                session::compile(&uri, &engines, None, lsp_mode.clone(), experimental).unwrap(),
+                session::compile(&build_plan, &engines, None, lsp_mode.clone(), experimental)
+                    .unwrap(),
             );
         })
     });
@@ -29,7 +38,7 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("traverse", |b| {
         let engines = Engines::default();
         let results = black_box(
-            session::compile(&uri, &engines, None, lsp_mode.clone(), experimental).unwrap(),
+            session::compile(&build_plan, &engines, None, lsp_mode.clone(), experimental).unwrap(),
         );
         let session = Arc::new(session::Session::new());
         b.iter(|| {
@@ -44,7 +53,8 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..NUM_DID_CHANGE_ITERATIONS {
                 let _ = black_box(
-                    session::compile(&uri, &engines, None, lsp_mode.clone(), experimental).unwrap(),
+                    session::compile(&build_plan, &engines, None, lsp_mode.clone(), experimental)
+                        .unwrap(),
                 );
             }
         })

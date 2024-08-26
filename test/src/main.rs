@@ -29,6 +29,14 @@ struct Cli {
     #[arg(long, visible_alias = "abi")]
     abi_only: bool,
 
+    /// Only run tests with no core dependencies
+    #[arg(long, visible_alias = "exclude_core")]
+    exclude_core: bool,
+
+    /// Only run tests with no std dependencies
+    #[arg(long, visible_alias = "exclude_std")]
+    exclude_std: bool,
+
     /// Only run tests that deploy contracts
     #[arg(long, visible_alias = "contract")]
     contract_only: bool,
@@ -80,6 +88,8 @@ pub struct FilterConfig {
     pub exclude: Option<regex::Regex>,
     pub skip_until: Option<regex::Regex>,
     pub abi_only: bool,
+    pub exclude_core: bool,
+    pub exclude_std: bool,
     pub contract_only: bool,
     pub first_only: bool,
 }
@@ -108,6 +118,8 @@ async fn main() -> Result<()> {
         exclude: cli.exclude,
         skip_until: cli.skip_until,
         abi_only: cli.abi_only,
+        exclude_core: cli.exclude_core,
+        exclude_std: cli.exclude_std,
         contract_only: cli.contract_only,
         first_only: cli.first_only,
     };
@@ -162,6 +174,14 @@ async fn main() -> Result<()> {
         .instrument(tracing::trace_span!("IR"))
         .await?;
     }
+
+    // Run snapshot tests
+    let args = vec!["t", "--release", "-p", "test"];
+    let mut t = std::process::Command::new("cargo")
+        .args(args)
+        .spawn()
+        .unwrap();
+    assert!(t.wait().unwrap().success());
 
     Ok(())
 }

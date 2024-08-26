@@ -76,4 +76,5 @@ members = [
   "test_artifacts/storage_vec/svec_u64",
   "test_artifacts/tx_contract",
   "test_artifacts/tx_output_predicate",
+  "test_artifacts/tx_output_contract_creation_predicate",
 ]

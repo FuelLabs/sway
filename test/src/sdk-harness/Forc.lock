@@ -405,6 +405,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "tx_output_contract_creation_predicate"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "tx_output_predicate"
 source = "member"
 dependencies = ["std"]

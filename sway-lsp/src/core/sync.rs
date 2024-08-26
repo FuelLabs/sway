@@ -175,7 +175,7 @@ impl SyncWorkspace {
             .ok()
     }
 
-    pub(crate) fn manifest_path(&self) -> Option<PathBuf> {
+    pub fn manifest_path(&self) -> Option<PathBuf> {
         self.manifest_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
             .ok()

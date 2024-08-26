@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-BABDDF1B461AF6DA"
+
+[[package]]
+name = "encode_buffer_empty_with_args"
+source = "member"
+dependencies = ["core"]

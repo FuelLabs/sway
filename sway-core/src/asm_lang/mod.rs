@@ -37,6 +37,31 @@ use std::{
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
 
+fn fmt_opcode_and_comment(
+    opcode: String,
+    comment: &str,
+    fmtr: &mut fmt::Formatter<'_>,
+) -> fmt::Result {
+    // We want the comment to be at the `COMMENT_START_COLUMN` offset to the right,
+    // to not interfere with the ASM but to be aligned.
+    // Some operations like, e.g., data section offset, can span multiple lines.
+    // In that case, we put the comment at the end of the last line, aligned.
+    let mut op_and_comment = opcode;
+    if !comment.is_empty() {
+        let mut op_length = match op_and_comment.rfind('\n') {
+            Some(new_line_index) => op_and_comment.len() - new_line_index - 1,
+            None => op_and_comment.len(),
+        };
+        while op_length < COMMENT_START_COLUMN {
+            op_and_comment.push(' ');
+            op_length += 1;
+        }
+        write!(op_and_comment, "; {}", comment)?;
+    }
+
+    write!(fmtr, "{op_and_comment}")
+}
+
 impl From<&AsmRegister> for VirtualRegister {
     fn from(o: &AsmRegister) -> Self {
         VirtualRegister::Virtual(o.name.clone())
@@ -46,7 +71,25 @@ impl From<&AsmRegister> for VirtualRegister {
 #[derive(Debug, Clone)]
 pub(crate) struct Op {
     pub(crate) opcode: Either<VirtualOp, OrganizationalOp>,
-    /// A descriptive comment for ASM readability
+    /// A descriptive comment for ASM readability.
+    ///
+    /// Comments are a part of the compiler output and meant to
+    /// help both Sway developers interested in the generated ASM
+    /// and the Sway compiler developers.
+    ///
+    /// Comments follow these guidelines:
+    ///   - they start with an imperative verb. E.g.: "allocate" and not "allocating".
+    ///   - they start with a lowercase letter. E.g.: "allocate" and not "Allocate".
+    ///   - they do not end in punctuation. E.g.: "store value" and not "store value.".
+    ///   - they use full words. E.g.: "load return address" and not "load reta" or "load return addr".
+    ///   - abbreviations are written in upper-case. E.g.: "ABI" and not "abi".
+    ///   - names (e.g., function, argument, etc.) are written without quotes. E.g. "main" and not "'main'".
+    ///   - assembly operations are written in lowercase. E.g.: "move" and not "MOVE".
+    ///   - they are short and concise.
+    ///   - if an operation is a part of a logical group of operations, start the comment
+    ///     by a descriptive group name enclosed in square brackets and followed by colon.
+    ///     The remaining part of the comment follows the above guidelines. E.g.:
+    ///     "[bitcast to bool]: convert value to inverted boolean".
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
 }
@@ -54,7 +97,9 @@ pub(crate) struct Op {
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
     pub(crate) opcode: Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>>,
-    /// A descriptive comment for ASM readability
+    /// A descriptive comment for ASM readability.
+    ///
+    /// For writing guidelines, see [Op::comment].
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
 }
@@ -62,7 +107,9 @@ pub(crate) struct AllocatedAbstractOp {
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
     pub(crate) opcode: AllocatedOpcode,
-    /// A descriptive comment for ASM readability
+    /// A descriptive comment for ASM readability.
+    ///
+    /// For writing guidelines, see [Op::comment].
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
 }
@@ -211,11 +258,24 @@ impl Op {
         }
     }
 
-    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg0` is not equal to zero.
+    /// Jumps to [Label] `label` if the given [VirtualRegister] `reg0` is not equal to zero.
     pub(crate) fn jump_if_not_zero(reg0: VirtualRegister, label: Label) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
             comment: String::new(),
+            owning_span: None,
+        }
+    }
+
+    /// Jumps to [Label] `label` if the given [VirtualRegister] `reg0` is not equal to zero.
+    pub(crate) fn jump_if_not_zero_comment(
+        reg0: VirtualRegister,
+        label: Label,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
+            comment: comment.into(),
             owning_span: None,
         }
     }
@@ -485,10 +545,13 @@ impl Op {
                 let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::CSIZ(r1, r2)
             }
-
+            "bsiz" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BSIZ(r1, r2)
+            }
             "ldc" => {
-                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
-                VirtualOp::LDC(r1, r2, r3)
+                let (r1, r2, r3, i0) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::LDC(r1, r2, r3, i0)
             }
             "log" => {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
@@ -557,8 +620,8 @@ impl Op {
                 VirtualOp::ECR1(r1, r2, r3)
             }
             "ed19" => {
-                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
-                VirtualOp::ED19(r1, r2, r3)
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ED19(r1, r2, r3, r4)
             }
             "k256" => {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
@@ -981,19 +1044,68 @@ fn two_regs_imm_12(
     Ok((reg.clone(), reg2.clone(), imm))
 }
 
+fn three_regs_imm_06(
+    handler: &Handler,
+    args: &[VirtualRegister],
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> Result<
+    (
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    ErrorEmitted,
+> {
+    if args.len() > 3 {
+        handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 3,
+            received: args.len(),
+        });
+    }
+    let (reg, reg2, reg3) = match (args.first(), args.get(1), args.get(2)) {
+        (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
+        _ => {
+            return Err(
+                handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
+                    span: whole_op_span,
+                    expected: 3,
+                    received: args.len(),
+                }),
+            );
+        }
+    };
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => {
+            return Err(handler.emit_err(CompileError::MissingImmediate {
+                span: whole_op_span,
+            }));
+        }
+        Some(i) => match i.as_str()[1..].parse() {
+            Ok(o) => (o, i.span()),
+            Err(_) => {
+                return Err(
+                    handler.emit_err(CompileError::InvalidImmediateValue { span: i.span() })
+                );
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate06::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            return Err(handler.emit_err(e));
+        }
+    };
+
+    Ok((reg.clone(), reg2.clone(), reg3.clone(), imm))
+}
+
 impl fmt::Display for Op {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // We want the comment to always be 40 characters offset to the right to not interfere with
-        // the ASM but to be aligned.
-        let mut op_and_comment = self.opcode.to_string();
-        if !self.comment.is_empty() {
-            while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push(' ');
-            }
-            write!(op_and_comment, "; {}", self.comment)?;
-        }
-
-        write!(fmtr, "{op_and_comment}")
+        fmt_opcode_and_comment(self.opcode.to_string(), &self.comment, fmtr)
     }
 }
 
@@ -1073,7 +1185,9 @@ impl fmt::Display for VirtualOp {
             CCP(a, b, c, d) => write!(fmtr, "ccp {a} {b} {c} {d}"),
             CROO(a, b) => write!(fmtr, "croo {a} {b}"),
             CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
-            LDC(a, b, c) => write!(fmtr, "ldc {a} {b} {c}"),
+            BSIZ(a, b) => write!(fmtr, "bsiz {a} {b}"),
+            LDC(a, b, c, d) => write!(fmtr, "ldc {a} {b} {c} {d}"),
+            BLDD(a, b, c, d) => write!(fmtr, "bldd {a} {b} {c} {d}"),
             LOG(a, b, c, d) => write!(fmtr, "log {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
             MINT(a, b) => write!(fmtr, "mint {a} {b}"),
@@ -1092,7 +1206,7 @@ impl fmt::Display for VirtualOp {
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1 {a} {b} {c}"),
             ECR1(a, b, c) => write!(fmtr, "ecr1 {a} {b} {c}"),
-            ED19(a, b, c) => write!(fmtr, "ed19 {a} {b} {c}"),
+            ED19(a, b, c, d) => write!(fmtr, "ed19 {a} {b} {c} {d}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
@@ -1113,17 +1227,7 @@ impl fmt::Display for VirtualOp {
 
 impl fmt::Display for AllocatedAbstractOp {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // We want the comment to always be 40 characters offset to the right to not interfere with
-        // the ASM but to be aligned.
-        let mut op_and_comment = self.opcode.to_string();
-        if !self.comment.is_empty() {
-            while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push(' ');
-            }
-            write!(op_and_comment, "; {}", self.comment)?;
-        }
-
-        write!(fmtr, "{op_and_comment}")
+        fmt_opcode_and_comment(self.opcode.to_string(), &self.comment, fmtr)
     }
 }
 
