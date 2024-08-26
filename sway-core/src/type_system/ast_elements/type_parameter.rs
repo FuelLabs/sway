@@ -112,7 +112,7 @@ impl Spanned for TypeParameter {
 
 impl IsConcrete for TypeParameter {
     fn is_concrete(&self, engines: &Engines) -> bool {
-        self.type_id.is_concrete(engines, IncludeNumeric::Yes)
+        self.type_id.is_concrete(engines, TreatNumericAs::Concrete)
     }
 }
 

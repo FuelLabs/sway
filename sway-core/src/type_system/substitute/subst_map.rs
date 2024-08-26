@@ -67,7 +67,7 @@ impl TypeSubstMap {
 
     pub(crate) fn source_ids_contains_concrete_type(&self, engines: &Engines) -> bool {
         for source_id in self.mapping.keys() {
-            if source_id.is_concrete(engines, IncludeNumeric::Yes) {
+            if source_id.is_concrete(engines, TreatNumericAs::Concrete) {
                 return true;
             }
         }

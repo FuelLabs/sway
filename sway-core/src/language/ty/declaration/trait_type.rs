@@ -40,7 +40,7 @@ impl Named for TyTraitType {
 impl IsConcrete for TyTraitType {
     fn is_concrete(&self, engines: &Engines) -> bool {
         if let Some(ty) = &self.ty {
-            ty.type_id.is_concrete(engines, IncludeNumeric::Yes)
+            ty.type_id.is_concrete(engines, TreatNumericAs::Concrete)
         } else {
             false
         }

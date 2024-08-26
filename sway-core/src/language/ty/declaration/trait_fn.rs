@@ -68,11 +68,11 @@ impl IsConcrete for TyTraitFn {
             && self
                 .return_type
                 .type_id
-                .is_concrete(engines, IncludeNumeric::Yes)
+                .is_concrete(engines, TreatNumericAs::Concrete)
             && self.parameters().iter().all(|t| {
                 t.type_argument
                     .type_id
-                    .is_concrete(engines, IncludeNumeric::Yes)
+                    .is_concrete(engines, TreatNumericAs::Concrete)
             })
     }
 }
