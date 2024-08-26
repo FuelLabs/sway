@@ -4,9 +4,6 @@ use std::{path::PathBuf, sync::Once};
 static FORC_COMPILATION: Once = Once::new();
 
 fn compile_forc() {
-    // e2e_tests::test_consistency::check().unwrap();
-    // e2e_tests::reduced_std_libs::create().unwrap();
-
     let args = vec!["b", "--release", "-p", "forc"];
     let o = std::process::Command::new("cargo")
         .args(args)
