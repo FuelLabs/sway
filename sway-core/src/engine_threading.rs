@@ -1,5 +1,6 @@
 use crate::{
     decl_engine::{parsed_engine::ParsedDeclEngine, DeclEngine},
+    language::parsed::ParsedModuleEngine,
     query_engine::QueryEngine,
     type_system::TypeEngine,
 };
@@ -15,6 +16,7 @@ pub struct Engines {
     type_engine: TypeEngine,
     decl_engine: DeclEngine,
     parsed_decl_engine: ParsedDeclEngine,
+    parsed_module_engine: ParsedModuleEngine,
     query_engine: QueryEngine,
     source_engine: SourceEngine,
 }
@@ -32,6 +34,10 @@ impl Engines {
         &self.parsed_decl_engine
     }
 
+    pub fn pme(&self) -> &ParsedModuleEngine {
+        &self.parsed_module_engine
+    }
+
     pub fn qe(&self) -> &QueryEngine {
         &self.query_engine
     }
@@ -46,6 +52,7 @@ impl Engines {
         self.type_engine.clear_program(program_id);
         self.decl_engine.clear_program(program_id);
         self.parsed_decl_engine.clear_program(program_id);
+        // self.parsed_module_engine.clear_program(program_id);
     }
 
     /// Removes all data associated with `source_id` from the declaration and type engines.
@@ -54,6 +61,7 @@ impl Engines {
         self.type_engine.clear_module(source_id);
         self.decl_engine.clear_module(source_id);
         self.parsed_decl_engine.clear_module(source_id);
+        // self.parsed_module_engine.clear_module(source_id);
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

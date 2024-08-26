@@ -1,0 +1,8 @@
+[project]
+authors = ["Harsh Bajpai"]
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "sway-module-order"
+implicit-std=false
+
+[dependencies]

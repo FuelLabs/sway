@@ -44,15 +44,18 @@ pub type ModuleDepGraphNodeId = petgraph::graph::NodeIndex;
 
 #[derive(Clone, Debug)]
 pub enum ModuleDepGraphNode {
-    Module {},
+    Module { id: ParseModuleId },
     Submodule { name: ModName },
 }
 
 impl DebugWithEngines for ModuleDepGraphNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         let text = match self {
-            ModuleDepGraphNode::Module { .. } => {
-                format!("{:?}", "Root module")
+            ModuleDepGraphNode::Module { id } => {
+                let module_arc = engines.pme().get(id);
+                let module = module_arc.read().unwrap();
+                let module_name = module.name.clone().unwrap_or_default();
+                format!("{:?}", module_name.as_str())
             }
             ModuleDepGraphNode::Submodule { name: mod_name } => {
                 format!("{:?}", mod_name.as_str())
@@ -68,7 +71,7 @@ pub type ModuleDepNodeGraph = petgraph::graph::DiGraph<ModuleDepGraphNode, Modul
 pub struct ModuleDepGraph {
     dep_graph: ModuleDepNodeGraph,
     root: ModuleDepGraphNodeId,
-    node_name_map: HashMap<String, ModuleDepGraphNodeId>,
+    node_id_map: HashMap<ParseModuleId, ModuleDepGraphNodeId>,
 }
 
 impl ModuleDepGraph {
@@ -76,31 +79,34 @@ impl ModuleDepGraph {
         Self {
             dep_graph: Default::default(),
             root: Default::default(),
-            node_name_map: Default::default(),
+            node_id_map: Default::default(),
+        }
+    }
+
+    pub fn get_or_add_node(&mut self, id: ParseModuleId) -> ModuleDepGraphNodeId {
+        match self.get_node_id_for_module(id) {
+            Some(node) => node,
+            None => self.add_node(ModuleDepGraphNode::Module { id }),
         }
     }
 
     pub fn add_node(&mut self, node: ModuleDepGraphNode) -> ModuleDepGraphNodeId {
         let node_id = self.dep_graph.add_node(node.clone());
         match node {
-            ModuleDepGraphNode::Module {} => {}
-            ModuleDepGraphNode::Submodule { name: mod_name } => {
-                self.node_name_map.insert(mod_name.to_string(), node_id);
+            ModuleDepGraphNode::Module { id } => {
+                self.node_id_map.insert(id, node_id);
             }
+            ModuleDepGraphNode::Submodule { .. } => unreachable!(),
         };
         node_id
     }
 
-    pub fn add_root_node(&mut self) -> ModuleDepGraphNodeId {
-        self.root = self.add_node(super::module::ModuleDepGraphNode::Module {});
-        self.root
+    pub fn add_module_node(&mut self, id: ParseModuleId) -> ModuleDepGraphNodeId {
+        self.add_node(ModuleDepGraphNode::Module { id })
     }
 
-    fn get_node_id_for_module(
-        &self,
-        mod_name: &sway_types::BaseIdent,
-    ) -> Option<ModuleDepGraphNodeId> {
-        self.node_name_map.get(&mod_name.to_string()).copied()
+    fn get_node_id_for_module(&self, id: ParseModuleId) -> Option<ModuleDepGraphNodeId> {
+        self.node_id_map.get(&id).copied()
     }
 
     /// Prints out GraphViz DOT format for the dependency graph.
@@ -147,16 +153,23 @@ impl ModuleDepGraph {
     pub(crate) fn compute_order(
         &self,
         handler: &Handler,
+        engines: &Engines,
     ) -> Result<ModuleEvaluationOrder, ErrorEmitted> {
         // Check for dependency cycles in the graph by running the Johnson's algorithm.
         let cycles = self.dep_graph.cycles();
         if !cycles.is_empty() {
             let mut modules = Vec::new();
             for cycle in cycles.first().unwrap() {
+                if *cycle == self.root {
+                    continue;
+                }
                 let node = self.dep_graph.node_weight(*cycle).unwrap();
                 match node {
-                    ModuleDepGraphNode::Module {} => unreachable!(),
-                    ModuleDepGraphNode::Submodule { name } => modules.push(name.clone()),
+                    ModuleDepGraphNode::Module { id } => {
+                        let name = id.read(engines, |m| m.name.clone()).unwrap_or_default();
+                        modules.push(name)
+                    }
+                    ModuleDepGraphNode::Submodule { .. } => unreachable!(),
                 };
             }
             return Err(handler.emit_err(CompileError::ModuleDepGraphCyclicReference { modules }));
@@ -177,8 +190,8 @@ impl ModuleDepGraph {
                 let node = self.dep_graph.node_weight(node_index);
                 match node {
                     Some(node) => match node {
-                        ModuleDepGraphNode::Module {} => None, // root module
-                        ModuleDepGraphNode::Submodule { name: mod_name } => Some(mod_name.clone()),
+                        ModuleDepGraphNode::Module { id } => Some(*id),
+                        ModuleDepGraphNode::Submodule { .. } => unreachable!(),
                     },
                     None => None,
                 }
@@ -194,29 +207,45 @@ impl ty::TyModule {
     /// Analyzes the given parsed module to produce a dependency graph.
     pub fn build_dep_graph(
         handler: &Handler,
-        parsed: &ParseModule,
-    ) -> Result<ModuleDepGraph, ErrorEmitted> {
-        let mut dep_graph = ModuleDepGraph::new();
-        dep_graph.add_root_node();
+        engines: &Engines,
+        dep_graph: &mut ModuleDepGraph,
+        root_module: &ParseModule,
+        module_id: &ParseModuleId,
+    ) -> Result<(), ErrorEmitted> {
+        let module_arc = module_id.get(engines);
+        let module = module_arc.read().unwrap();
 
-        let ParseModule { submodules, .. } = parsed;
+        let node = dep_graph.get_or_add_node(*module_id);
+        if module.parent.is_none() {
+            dep_graph.root = node;
+        }
 
         // Create graph nodes for each submodule.
-        submodules.iter().for_each(|(name, _submodule)| {
-            let sub_mod_node =
-                dep_graph.add_node(ModuleDepGraphNode::Submodule { name: name.clone() });
+        module.submodules.iter().for_each(|(_name, submodule)| {
+            let sub_mod_node = dep_graph.get_or_add_node(submodule.module);
             dep_graph
                 .dep_graph
-                .add_edge(dep_graph.root, sub_mod_node, ModuleDepGraphEdge {});
+                .add_edge(node, sub_mod_node, ModuleDepGraphEdge {});
         });
 
         // Analyze submodules first in order of declaration.
-        submodules.iter().for_each(|(name, submodule)| {
-            let _ =
-                ty::TySubmodule::build_dep_graph(handler, &mut dep_graph, name.clone(), submodule);
-        });
+        module
+            .submodules
+            .iter()
+            .map(|(_name, submodule)| {
+                let _ = ty::TySubmodule::build_dep_graph(
+                    handler,
+                    engines,
+                    dep_graph,
+                    root_module,
+                    submodule,
+                );
 
-        Ok(dep_graph)
+                Self::build_dep_graph(handler, engines, dep_graph, root_module, &submodule.module)
+            })
+            .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+
+        Ok(())
     }
 
     /// Collects the given parsed module to produce a module symbol map.
@@ -242,7 +271,7 @@ impl ty::TyModule {
         module_eval_order.iter().for_each(|eval_mod_name| {
             let (name, submodule) = submodules
                 .iter()
-                .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
+                .find(|(_name, submodule)| *eval_mod_name == submodule.module)
                 .unwrap();
             let _ = ty::TySubmodule::collect(handler, engines, ctx, name.clone(), submodule);
         });
@@ -325,15 +354,19 @@ impl ty::TyModule {
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
             .iter()
-            .map(|eval_mod_name| {
+            .map(|eval_mod_id| {
                 let (name, submodule) = submodules
                     .iter()
-                    .find(|(submod_name, _)| eval_mod_name == submod_name)
+                    .find(|(_name, submodule)| *eval_mod_id == submodule.module)
                     .unwrap();
+
+                let source_id = submodule
+                    .module
+                    .read(engines, |m| m.span.source_id().cloned());
 
                 // Try to get the cached submodule
                 if let Some(cached_module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
-                    submodule.module.span.source_id(),
+                    source_id.as_ref(),
                     engines,
                     build_config,
                 ) {
@@ -639,30 +672,35 @@ fn collect_fallback_fn(
 
 impl ty::TySubmodule {
     pub fn build_dep_graph(
-        _handler: &Handler,
+        handler: &Handler,
+        engines: &Engines,
         module_dep_graph: &mut ModuleDepGraph,
-        mod_name: ModName,
+        root_module: &ParseModule,
         submodule: &ParseSubmodule,
     ) -> Result<(), ErrorEmitted> {
         let ParseSubmodule { module, .. } = submodule;
-        let sub_mod_node = module_dep_graph.get_node_id_for_module(&mod_name).unwrap();
+        let submod_node = module_dep_graph.get_node_id_for_module(*module).unwrap();
+        let module_arc = module.get(engines);
+        let module = module_arc.read().unwrap();
         for node in module.tree.root_nodes.iter() {
             match &node.content {
                 AstNodeContent::UseStatement(use_stmt) => {
-                    if let Some(use_mod_ident) = use_stmt.call_path.first() {
-                        if let Some(mod_name_node) =
-                            module_dep_graph.get_node_id_for_module(use_mod_ident)
-                        {
-                            // Prevent adding edge loops between the same node as that will throw off
-                            // the cyclic dependency analysis.
-                            if sub_mod_node != mod_name_node {
-                                module_dep_graph.dep_graph.add_edge(
-                                    sub_mod_node,
-                                    mod_name_node,
-                                    ModuleDepGraphEdge {},
-                                );
-                            }
-                        }
+                    let used_submod_module_id = root_module.lookup_submodule(
+                        handler,
+                        engines,
+                        &vec![use_stmt.call_path.first().unwrap().clone()],
+                    )?;
+
+                    let used_submod_node = module_dep_graph.get_or_add_node(used_submod_module_id);
+
+                    // Prevent adding edge loops between the same node as that will throw off
+                    // the cyclic dependency analysis.
+                    if submod_node != used_submod_node {
+                        module_dep_graph.dep_graph.add_edge(
+                            submod_node,
+                            used_submod_node,
+                            ModuleDepGraphEdge {},
+                        );
                     }
                 }
                 AstNodeContent::Declaration(_) => {}
@@ -686,12 +724,14 @@ impl ty::TySubmodule {
             mod_name_span: _,
             visibility,
         } = submodule;
+        let module_arc = module.get(engines);
+        let module = module_arc.read().unwrap();
         parent_ctx.enter_submodule(
             engines,
             mod_name,
             *visibility,
             module.span.clone(),
-            |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
+            |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, &module),
         )
     }
 
@@ -709,9 +749,11 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
+        let module_arc = module.get(engines);
+        let module = module_arc.read().unwrap();
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
             let module_res =
-                ty::TyModule::type_check(handler, submod_ctx, engines, kind, module, build_config);
+                ty::TyModule::type_check(handler, submod_ctx, engines, kind, &module, build_config);
             module_res.map(|module| ty::TySubmodule {
                 module,
                 mod_name_span: mod_name_span.clone(),

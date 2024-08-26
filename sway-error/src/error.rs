@@ -58,7 +58,7 @@ pub enum CompileError {
         modules.iter().map(|ident| ident.as_str().to_string())
     .collect::<Vec<_>>()
     .join(", "))]
-    ModuleDepGraphCyclicReference { modules: Vec<BaseIdent> },
+    ModuleDepGraphCyclicReference { modules: Vec<String> },
 
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: Ident, span: Span },

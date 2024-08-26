@@ -18,7 +18,7 @@ use sway_types::{span::Span, Spanned};
 /// script/predicate/contract file or some library dependency whether introduced via `mod` or the
 /// `[dependencies]` table of a `forc` manifest.
 ///
-/// A `Module` contains a set of all items that exist within the lexical scope via declaration or
+/// A `Module` contains a set of all items that exist within its lexical scopes via declaration or
 /// importing, along with a map of each of its submodules.
 #[derive(Clone, Debug)]
 pub struct Module {

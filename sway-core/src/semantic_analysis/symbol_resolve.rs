@@ -27,7 +27,9 @@ pub trait ResolveSymbols {
 impl ResolveSymbols for ParseProgram {
     fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
         let ParseProgram { root, .. } = self;
-        root.resolve_symbols(handler, ctx.by_ref());
+        root.write(ctx.engines(), |root| {
+            root.resolve_symbols(handler, ctx.by_ref());
+        });
     }
 }
 
@@ -44,12 +46,12 @@ impl ResolveSymbols for ParseModule {
         } = self;
 
         // Analyze submodules first in order of evaluation previously computed by the dependency graph.
-        module_eval_order.iter().for_each(|eval_mod_name| {
+        module_eval_order.iter().for_each(|eval_mod_id| {
             let (_name, submodule) = submodules
                 .iter_mut()
-                .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
+                .find(|(_name, submodule)| *eval_mod_id == submodule.module)
                 .unwrap();
-            submodule.module.resolve_symbols(handler, ctx.by_ref());
+            submodule.module.write(ctx.engines(), |m| m.resolve_symbols(handler, ctx.by_ref()));
         });
 
         tree.root_nodes

@@ -31,8 +31,9 @@ impl TyProgram {
     ) -> Result<SymbolCollectionContext, ErrorEmitted> {
         let mut ctx = SymbolCollectionContext::new(namespace);
         let ParseProgram { root, kind: _ } = parsed;
-
-        ty::TyModule::collect(handler, engines, &mut ctx, root)?;
+        root.write(engines, |root| {
+            ty::TyModule::collect(handler, engines, &mut ctx, root)
+        })?;
         Ok(ctx)
     }
 
@@ -62,12 +63,15 @@ impl TyProgram {
 
         let ParseProgram { root, kind } = parsed;
 
+        let root_arc = root.get(engines);
+        let root = root_arc.read().unwrap();
+
         let root = ty::TyModule::type_check(
             handler,
             ctx.by_ref(),
             engines,
             parsed.kind,
-            root,
+            &root,
             build_config,
         )?;
 
