@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 anyhow = "1"
 forc-tracing = { version = "0.63.1", path = "../forc-tracing" }
+indoc = "2.0"
 ropey = "1.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1.9"

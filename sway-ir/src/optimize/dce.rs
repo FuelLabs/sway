@@ -6,6 +6,7 @@
 //!
 //! This pass does not do CFG transformations. That is handled by `simplify_cfg`.
 
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -38,13 +39,16 @@ pub fn create_fn_dce_pass() -> Pass {
     }
 }
 
-fn can_eliminate_instruction(
+fn can_eliminate_value(
     context: &Context,
     val: Value,
     num_symbol_loaded: &NumSymbolLoaded,
     escaped_symbols: &EscapedSymbols,
 ) -> bool {
-    let inst = val.get_instruction(context).unwrap();
+    let Some(inst) = val.get_instruction(context) else {
+        return true;
+    };
+
     (!inst.op.is_terminator() && !inst.op.may_have_side_effect())
         || is_removable_store(context, val, num_symbol_loaded, escaped_symbols)
 }
@@ -99,6 +103,22 @@ enum StoresOfSymbol {
     Known(HashMap<Symbol, Vec<Value>>),
 }
 
+fn get_operands(value: Value, context: &Context) -> Vec<Value> {
+    if let Some(inst) = value.get_instruction(context) {
+        inst.op.get_operands()
+    } else if let Some(arg) = value.get_argument(context) {
+        arg.block
+            .pred_iter(context)
+            .map(|pred| {
+                arg.get_val_coming_from(context, pred)
+                    .expect("Block arg doesn't have value passed from predecessor")
+            })
+            .collect()
+    } else {
+        vec![]
+    }
+}
+
 /// Perform dead code (if any) elimination and return true if the `function` is modified.
 pub fn dce(
     context: &mut Context,
@@ -111,8 +131,8 @@ pub fn dce(
     // independent of having any escaping symbols.
     let escaped_symbols: &EscapedSymbols = analyses.get_analysis_result(function);
 
-    // Number of uses that an instruction has. This number is always known.
-    let mut num_inst_uses: HashMap<Value, u32> = HashMap::new();
+    // Number of uses that an instruction / block arg has. This number is always known.
+    let mut num_ssa_uses: HashMap<Value, u32> = HashMap::new();
     // Number of times a local is accessed via `get_local`. This number is always known.
     let mut num_local_uses: HashMap<LocalVar, u32> = HashMap::new();
     // Number of times a symbol, local or a function argument, is loaded, directly or indirectly. This number can be unknown.
@@ -179,17 +199,17 @@ pub fn dce(
                 .or_insert(1);
         }
 
-        // An instruction is used if it is an operand in another instruction.
+        // An instruction or block-arg is used if it is an operand in another instruction.
         let opds = inst.op.get_operands();
         for opd in opds {
             match context.values[opd.0].value {
-                ValueDatum::Instruction(_) => {
-                    num_inst_uses
+                ValueDatum::Instruction(_) | ValueDatum::Argument(_) => {
+                    num_ssa_uses
                         .entry(opd)
                         .and_modify(|count| *count += 1)
                         .or_insert(1);
                 }
-                ValueDatum::Constant(_) | ValueDatum::Argument(_) => {}
+                ValueDatum::Constant(_) => {}
             }
         }
     }
@@ -200,52 +220,64 @@ pub fn dce(
     // is sufficient to filter those that are not used.
     let mut worklist = function
         .instruction_iter(context)
-        .filter_map(|(_, inst)| (!num_inst_uses.contains_key(&inst)).then_some(inst))
+        .filter_map(|(_, inst)| (!num_ssa_uses.contains_key(&inst)).then_some(inst))
         .collect::<Vec<_>>();
+    let dead_args = function
+        .block_iter(context)
+        .flat_map(|block| {
+            block
+                .arg_iter(context)
+                .filter_map(|arg| (!num_ssa_uses.contains_key(arg)).then_some(*arg))
+                .collect_vec()
+        })
+        .collect_vec();
+    worklist.extend(dead_args);
 
     let mut modified = false;
     let mut cemetery = FxHashSet::default();
     while let Some(dead) = worklist.pop() {
-        if !can_eliminate_instruction(context, dead, &num_symbol_loaded, escaped_symbols)
+        if !can_eliminate_value(context, dead, &num_symbol_loaded, escaped_symbols)
             || cemetery.contains(&dead)
         {
             continue;
         }
         // Process dead's operands.
-        let opds = dead.get_instruction(context).unwrap().op.get_operands();
+        let opds = get_operands(dead, context);
         for opd in opds {
             // Reduce the use count of the operand used in the dead instruction.
             // If it reaches 0, add it to the worklist, since it is not used
             // anywhere else.
             match context.values[opd.0].value {
-                ValueDatum::Instruction(_) => {
-                    let nu = num_inst_uses.get_mut(&opd).unwrap();
+                ValueDatum::Instruction(_) | ValueDatum::Argument(_) => {
+                    let nu = num_ssa_uses.get_mut(&opd).unwrap();
                     *nu -= 1;
                     if *nu == 0 {
                         worklist.push(opd);
                     }
                 }
-                ValueDatum::Constant(_) | ValueDatum::Argument(_) => {}
+                ValueDatum::Constant(_) => {}
             }
         }
 
-        // If the `dead` instruction was the only instruction loading from a `sym`bol,
-        // after removing it, there will be no loads anymore, so all the stores to
-        // that `sym`bol can be added to the worklist.
-        if let ReferredSymbols::Complete(loaded_symbols) =
-            memory_utils::get_loaded_symbols(context, dead)
-        {
-            if let (
-                NumSymbolLoaded::Known(known_num_symbol_loaded),
-                StoresOfSymbol::Known(known_stores_of_sym),
-            ) = (&mut num_symbol_loaded, &mut stores_of_sym)
+        if dead.get_instruction(context).is_some() {
+            // If the `dead` instruction was the only instruction loading from a `sym`bol,
+            // after removing it, there will be no loads anymore, so all the stores to
+            // that `sym`bol can be added to the worklist.
+            if let ReferredSymbols::Complete(loaded_symbols) =
+                memory_utils::get_loaded_symbols(context, dead)
             {
-                for sym in loaded_symbols {
-                    let nu = known_num_symbol_loaded.get_mut(&sym).unwrap();
-                    *nu -= 1;
-                    if *nu == 0 {
-                        for store in known_stores_of_sym.get(&sym).unwrap_or(&vec![]) {
-                            worklist.push(*store);
+                if let (
+                    NumSymbolLoaded::Known(known_num_symbol_loaded),
+                    StoresOfSymbol::Known(known_stores_of_sym),
+                ) = (&mut num_symbol_loaded, &mut stores_of_sym)
+                {
+                    for sym in loaded_symbols {
+                        let nu = known_num_symbol_loaded.get_mut(&sym).unwrap();
+                        *nu -= 1;
+                        if *nu == 0 {
+                            for store in known_stores_of_sym.get(&sym).unwrap_or(&vec![]) {
+                                worklist.push(*store);
+                            }
                         }
                     }
                 }
@@ -266,8 +298,40 @@ pub fn dce(
         modified = true;
     }
 
-    // Remove all dead instructions.
-    for block in function.block_iter(context) {
+    // Remove all dead instructions and arguments.
+    // We collect here and below because we want &mut Context for modifications.
+    for block in function.block_iter(context).collect_vec() {
+        if block != function.get_entry_block(context) {
+            // dead_args[arg_idx] indicates whether the argument is dead.
+            let dead_args = block
+                .arg_iter(context)
+                .map(|arg| cemetery.contains(arg))
+                .collect_vec();
+            for pred in block.pred_iter(context).cloned().collect_vec() {
+                let params = pred
+                    .get_succ_params_mut(context, &block)
+                    .expect("Invalid IR");
+                let mut index = 0;
+                // Remove parameters passed to a dead argument.
+                params.retain(|_| {
+                    let retain = !dead_args[index];
+                    index += 1;
+                    retain
+                });
+            }
+            // Remove the dead argument itself.
+            let mut index = 0;
+            context.blocks[block.0].args.retain(|_| {
+                let retain = !dead_args[index];
+                index += 1;
+                retain
+            });
+            // Update the self-index stored in each arg.
+            for (arg_idx, arg) in block.arg_iter(context).cloned().enumerate().collect_vec() {
+                let arg = arg.get_argument_mut(context).unwrap();
+                arg.idx = arg_idx;
+            }
+        }
         block.remove_instructions(context, |inst| cemetery.contains(&inst));
     }
 
