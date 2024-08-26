@@ -672,10 +672,7 @@ pub(crate) fn type_check_method_application(
                         );
                         method.subst(
                             &type_subst,
-                            &SubstTypesContext::new(
-                                engines,
-                                !ctx.collecting_unifications(),
-                            ),
+                            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                         );
                     }
                 }

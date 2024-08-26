@@ -358,10 +358,7 @@ impl TyTraitDecl {
                     let r = if method
                         .subst(
                             &type_mapping,
-                            &SubstTypesContext::new(
-                                engines,
-                                !ctx.collecting_unifications(),
-                            ),
+                            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                         )
                         .has_changes()
                     {
@@ -383,10 +380,7 @@ impl TyTraitDecl {
                     let r = if const_decl
                         .subst(
                             &type_mapping,
-                            &SubstTypesContext::new(
-                                engines,
-                                !ctx.collecting_unifications(),
-                            ),
+                            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                         )
                         .has_changes()
                     {
@@ -405,10 +399,7 @@ impl TyTraitDecl {
                     let r = if t
                         .subst(
                             &type_mapping,
-                            &SubstTypesContext::new(
-                                engines,
-                                !ctx.collecting_unifications(),
-                            ),
+                            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                         )
                         .has_changes()
                     {
@@ -465,10 +456,7 @@ impl TyTraitDecl {
                     let mut method = (*decl_engine.get_trait_fn(decl_ref)).clone();
                     method.subst(
                         &type_mapping,
-                        &SubstTypesContext::new(
-                            engines,
-                            !ctx.collecting_unifications(),
-                        ),
+                        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                     );
                     all_items.push(TyImplItem::Fn(
                         decl_engine
@@ -499,10 +487,7 @@ impl TyTraitDecl {
                     let mut method = (*decl_engine.get_function(decl_ref)).clone();
                     method.subst(
                         &type_mapping,
-                        &SubstTypesContext::new(
-                            engines,
-                            !ctx.collecting_unifications(),
-                        ),
+                        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                     );
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
@@ -518,10 +503,7 @@ impl TyTraitDecl {
                     let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
                     const_decl.subst(
                         &type_mapping,
-                        &SubstTypesContext::new(
-                            engines,
-                            !ctx.collecting_unifications(),
-                        ),
+                        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                     );
                     all_items.push(TyImplItem::Constant(decl_engine.insert(
                         const_decl,
@@ -532,10 +514,7 @@ impl TyTraitDecl {
                     let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
                     type_decl.subst(
                         &type_mapping,
-                        &SubstTypesContext::new(
-                            engines,
-                            !ctx.collecting_unifications(),
-                        ),
+                        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
                     );
                     all_items.push(TyImplItem::Type(decl_engine.insert(
                         type_decl,
