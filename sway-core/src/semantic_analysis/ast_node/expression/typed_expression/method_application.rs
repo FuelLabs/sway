@@ -670,7 +670,13 @@ pub(crate) fn type_check_method_application(
                             vec![t.initial_type_id],
                             vec![call_path_typeid],
                         );
-                        method.subst(&type_subst, engines);
+                        method.subst(
+                            &type_subst,
+                            &SubstTypesContext::new(
+                                engines,
+                                !ctx.collecting_unifications(),
+                            ),
+                        );
                     }
                 }
             }

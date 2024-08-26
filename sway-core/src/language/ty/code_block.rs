@@ -38,8 +38,12 @@ impl HashWithEngines for TyCodeBlock {
 }
 
 impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.contents.subst(type_mapping, engines)
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        if ctx.subst_codeblocks {
+            self.contents.subst(type_mapping, ctx)
+        } else {
+            HasChanges::No
+        }
     }
 }
 

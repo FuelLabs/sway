@@ -18,7 +18,7 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    CreateTypeId, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck,
+    CreateTypeId, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -700,7 +700,10 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         let mut type_id = type_id;
-        type_id.subst(&self.type_subst(), self.engines());
+        type_id.subst(
+            &self.type_subst(),
+            &SubstTypesContext::new(engines, !self.collecting_unifications()),
+        );
 
         Ok(type_id)
     }
@@ -1436,7 +1439,7 @@ impl<'a> TypeCheckContext<'a> {
             src_mod
                 .current_items()
                 .implemented_traits
-                .filter_by_type_item_import(type_id, engines),
+                .filter_by_type_item_import(type_id, engines, self.collecting_unifications()),
             engines,
         );
 
@@ -1608,7 +1611,10 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             mod_path,
         )?;
-        value.subst(&type_mapping, self.engines);
+        value.subst(
+            &type_mapping,
+            &SubstTypesContext::new(self.engines, !self.collecting_unifications()),
+        );
         Ok(())
     }
 
@@ -1732,11 +1738,12 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
+        let collecting_unifications = self.collecting_unifications();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
             .implemented_traits
-            .insert_for_type(engines, type_id);
+            .insert_for_type(engines, type_id, collecting_unifications);
     }
 
     pub fn check_type_impls_traits(
@@ -1746,7 +1753,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
         let engines = self.engines;
-
+        let collecting_unifications = self.collecting_unifications();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
@@ -1758,6 +1765,7 @@ impl<'a> TypeCheckContext<'a> {
                 &Span::dummy(),
                 engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
+                collecting_unifications,
             )
             .is_ok()
     }

@@ -92,11 +92,11 @@ impl IsConcrete for TyConstantDecl {
 }
 
 impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, engines);
-            self.type_ascription.subst(type_mapping, engines);
-            self.value.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, ctx);
+            self.type_ascription.subst(type_mapping, ctx);
+            self.value.subst(type_mapping, ctx);
         }
     }
 }

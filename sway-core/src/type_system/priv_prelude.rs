@@ -6,7 +6,11 @@ pub(crate) use super::{
         create_type_id::CreateTypeId,
     },
     info::VecSet,
-    substitute::{subst_map::TypeSubstMap, subst_types::HasChanges, subst_types::SubstTypes},
+    substitute::{
+        subst_map::TypeSubstMap,
+        subst_types::HasChanges,
+        subst_types::{SubstTypes, SubstTypesContext},
+    },
     unify::unify_check::UnifyCheck,
 };
 

@@ -96,10 +96,10 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.type_id.subst(type_mapping, engines);
-            self.trait_constraints.subst(type_mapping, engines);
+            self.type_id.subst(type_mapping, ctx);
+            self.trait_constraints.subst(type_mapping, ctx);
         }
     }
 }
@@ -507,7 +507,8 @@ impl TypeParameter {
                     ..
                 } = type_param;
 
-                if !ctx.collecting_unifications() {
+                let collecting_unifications = ctx.collecting_unifications();
+                if !collecting_unifications {
                     // Check to see if the trait constraints are satisfied.
                     match ctx
                         .namespace_mut()
@@ -521,6 +522,7 @@ impl TypeParameter {
                             access_span,
                             engines,
                             TryInsertingTraitImplOnFailure::Yes,
+                            collecting_unifications,
                         ) {
                         Ok(res) => res,
                         Err(_) => continue,
