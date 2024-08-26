@@ -49,8 +49,7 @@ impl ty::TyCodeBlock {
         // The first pass does all the unifications to the variables types.
         // In the second pass we use the previous_namespace on variable declaration to unify directly with the result of the first pass.
         // This is required to fix the test case numeric_type_propagation and issue #6371
-        let _ = ctx
-            .by_ref()
+        ctx.by_ref()
             .with_collecting_unifications()
             .scoped(|mut ctx| {
                 code_block.contents.iter().for_each(|node| {

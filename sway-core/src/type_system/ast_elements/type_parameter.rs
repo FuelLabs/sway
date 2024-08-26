@@ -501,22 +501,24 @@ impl TypeParameter {
                     ..
                 } = type_param;
 
-                // Check to see if the trait constraints are satisfied.
-                match ctx
-                    .namespace_mut()
-                    .module_mut(engines)
-                    .current_items_mut()
-                    .implemented_traits
-                    .check_if_trait_constraints_are_satisfied_for_type(
-                        handler,
-                        *type_id,
-                        trait_constraints,
-                        access_span,
-                        engines,
-                        TryInsertingTraitImplOnFailure::Yes,
-                    ) {
-                    Ok(res) => res,
-                    Err(_) => continue,
+                if !ctx.collecting_unifications() {
+                    // Check to see if the trait constraints are satisfied.
+                    match ctx
+                        .namespace_mut()
+                        .module_mut(engines)
+                        .current_items_mut()
+                        .implemented_traits
+                        .check_if_trait_constraints_are_satisfied_for_type(
+                            handler,
+                            *type_id,
+                            trait_constraints,
+                            access_span,
+                            engines,
+                            TryInsertingTraitImplOnFailure::Yes,
+                        ) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    }
                 }
 
                 for trait_constraint in trait_constraints {

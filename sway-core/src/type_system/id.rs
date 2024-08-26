@@ -517,6 +517,10 @@ impl TypeId {
         span: &Span,
         type_param: Option<TypeParameter>,
     ) -> Result<(), ErrorEmitted> {
+        if ctx.collecting_unifications() {
+            return Ok(());
+        }
+
         let engines = ctx.engines();
 
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
