@@ -53,17 +53,10 @@ impl ty::TyCodeBlock {
             .by_ref()
             .with_collecting_unifications()
             .scoped(|mut ctx| {
-                let evaluated_contents = code_block
-                    .contents
-                    .iter()
-                    .filter_map(|node| {
-                        ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok()
-                    })
-                    .collect::<Vec<ty::TyAstNode>>();
-                Ok(ty::TyCodeBlock {
-                    contents: evaluated_contents,
-                    whole_block_span: code_block.whole_block_span.clone(),
-                })
+                code_block.contents.iter().for_each(|node| {
+                    ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
+                });
+                Ok(())
             })?;
 
         ctx.engines.te().reapply_unifications(ctx.engines());
