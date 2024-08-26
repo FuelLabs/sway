@@ -49,6 +49,7 @@ use sway_error::{
     warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
+use symbol_collection_context::SymbolCollectionContext;
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -136,6 +137,131 @@ impl ty::TyExpression {
             span,
         };
         Ok(exp)
+    }
+
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        expr: &Expression,
+    ) -> Result<(), ErrorEmitted> {
+        match &expr.kind {
+            ExpressionKind::Error(_, _) => {}
+            ExpressionKind::Literal(_) => {}
+            ExpressionKind::AmbiguousPathExpression(expr) => {
+                let _ = expr.args.iter().for_each(|arg_expr| {
+                    let _ = Self::collect(handler, engines, ctx, arg_expr);
+                });
+            }
+            ExpressionKind::FunctionApplication(expr) => {
+                let _ = expr.arguments.iter().for_each(|arg_expr| {
+                    let _ = Self::collect(handler, engines, ctx, arg_expr);
+                });
+            }
+            ExpressionKind::LazyOperator(expr) => {
+                Self::collect(handler, engines, ctx, &expr.lhs)?;
+                Self::collect(handler, engines, ctx, &expr.rhs)?;
+            }
+            ExpressionKind::AmbiguousVariableExpression(_) => {}
+            ExpressionKind::Variable(_) => {}
+            ExpressionKind::Tuple(exprs) => {
+                let _ = exprs.iter().for_each(|expr| {
+                    let _ = Self::collect(handler, engines, ctx, expr);
+                });
+            }
+            ExpressionKind::TupleIndex(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+            }
+            ExpressionKind::Array(expr) => {
+                let _ = expr.contents.iter().for_each(|expr| {
+                    let _ = Self::collect(handler, engines, ctx, &expr);
+                });
+            }
+            ExpressionKind::Struct(expr) => {
+                let _ = expr.fields.iter().for_each(|field| {
+                    let _ = Self::collect(handler, engines, ctx, &field.value);
+                });
+            }
+            ExpressionKind::CodeBlock(code_block) => {
+                TyCodeBlock::collect(handler, engines, ctx, code_block)?
+            }
+            ExpressionKind::If(if_expr) => {
+                Self::collect(handler, engines, ctx, &if_expr.condition)?;
+                Self::collect(handler, engines, ctx, &if_expr.then)?;
+                if let Some(r#else) = &if_expr.r#else {
+                    Self::collect(handler, engines, ctx, r#else)?
+                }
+            }
+            ExpressionKind::Match(expr) => {
+                Self::collect(handler, engines, ctx, &expr.value)?;
+                let _ = expr.branches.iter().for_each(|branch| {
+                    // create a new namespace for this branch result
+                    let _ = ctx.scoped(engines, branch.span.clone(), |scoped_ctx| {
+                        Self::collect(handler, engines, scoped_ctx, &branch.result)
+                    });
+                });
+            }
+            ExpressionKind::Asm(_) => {}
+            ExpressionKind::MethodApplication(expr) => {
+                let _ = expr.arguments.iter().for_each(|expr| {
+                    let _ = Self::collect(handler, engines, ctx, expr);
+                });
+            }
+            ExpressionKind::Subfield(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+            }
+            ExpressionKind::DelineatedPath(expr) => {
+                if let Some(expr_args) = &expr.args {
+                    let _ = expr_args.iter().for_each(|arg_expr| {
+                        let _ = Self::collect(handler, engines, ctx, arg_expr);
+                    });
+                }
+            }
+            ExpressionKind::AbiCast(expr) => {
+                Self::collect(handler, engines, ctx, &expr.address)?;
+            }
+            ExpressionKind::ArrayIndex(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+                Self::collect(handler, engines, ctx, &expr.index)?;
+            }
+            ExpressionKind::StorageAccess(_) => {}
+            ExpressionKind::IntrinsicFunction(expr) => {
+                let _ = expr.arguments.iter().for_each(|arg_expr| {
+                    let _ = Self::collect(handler, engines, ctx, arg_expr);
+                });
+            }
+            ExpressionKind::WhileLoop(expr) => {
+                Self::collect(handler, engines, ctx, &expr.condition)?;
+                TyCodeBlock::collect(handler, engines, ctx, &expr.body)?
+            }
+            ExpressionKind::ForLoop(expr) => {
+                Self::collect(handler, engines, ctx, &expr.desugared)?;
+            }
+            ExpressionKind::Break => {}
+            ExpressionKind::Continue => {}
+            ExpressionKind::Reassignment(expr) => {
+                match &expr.lhs {
+                    ReassignmentTarget::ElementAccess(expr) => {
+                        Self::collect(handler, engines, ctx, expr)?;
+                    }
+                    ReassignmentTarget::Deref(expr) => {
+                        Self::collect(handler, engines, ctx, expr)?;
+                    }
+                }
+                Self::collect(handler, engines, ctx, &expr.rhs)?;
+            }
+            ExpressionKind::ImplicitReturn(expr) => Self::collect(handler, engines, ctx, &expr)?,
+            ExpressionKind::Return(expr) => {
+                Self::collect(handler, engines, ctx, &expr)?;
+            }
+            ExpressionKind::Ref(expr) => {
+                Self::collect(handler, engines, ctx, &expr.value)?;
+            }
+            ExpressionKind::Deref(expr) => {
+                Self::collect(handler, engines, ctx, &expr)?;
+            }
+        }
+        Ok(())
     }
 
     pub(crate) fn type_check(

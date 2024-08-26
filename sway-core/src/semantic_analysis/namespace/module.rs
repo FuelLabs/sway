@@ -248,12 +248,10 @@ impl Module {
                 self.current_lexical_scope_id = *id;
                 Ok(*id)
             }
-            None => {
-                Err(handler.emit_err(CompileError::Internal(
-                    "Could not find a valid lexical scope for this source location.",
-                    span.clone(),
-                )))
-            }
+            None => Err(handler.emit_err(CompileError::Internal(
+                "Could not find a valid lexical scope for this source location.",
+                span.clone(),
+            ))),
         }
     }
 
