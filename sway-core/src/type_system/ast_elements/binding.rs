@@ -4,7 +4,8 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
+        parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
+        DeclId, DeclRef,
     },
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
@@ -350,6 +351,30 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
             )
             .with_parent(ctx.engines.de(), fn_ref.id().into());
+
+        let decl = ctx.engines.de().get(new_fn_ref.id());
+
+        // Normalize all function calls to have the same generic argument count
+        // as the definition
+        if decl.type_parameters.len() != self.type_arguments.as_slice().len() {
+            self.type_arguments = TypeArgs::Regular(
+                decl.type_parameters
+                    .iter()
+                    .map(|x| TypeArgument {
+                        type_id: x.type_id,
+                        initial_type_id: x.initial_type_id,
+                        span: self.span.clone(),
+                        call_path_tree: None,
+                    })
+                    .collect(),
+            );
+        }
+
+        assert_eq!(
+            decl.type_parameters.len(),
+            self.type_arguments.as_slice().len()
+        );
+
         Ok((new_fn_ref, None, None))
     }
 }

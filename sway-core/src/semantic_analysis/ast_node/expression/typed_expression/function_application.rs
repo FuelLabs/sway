@@ -93,7 +93,7 @@ pub(crate) fn instantiate_function_application(
         let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
         let new_decl_ref = decl_engine
             .insert(
-                function_decl.clone(),
+                function_decl,
                 decl_engine
                     .get_parsed_decl_id(function_decl_ref.id())
                     .as_ref(),
@@ -115,37 +115,13 @@ pub(crate) fn instantiate_function_application(
         new_decl_ref
     };
 
-    let call_path = call_path_binding.inner.clone();
-    let mut type_binding = call_path_binding.strip_inner();
-
-    // Normalize all function calls to have the same generic argument count
-    // as the definition
-    if function_decl.type_parameters.len() != type_binding.type_arguments.as_slice().len() {
-        type_binding.type_arguments = TypeArgs::Regular(
-            function_decl
-                .type_parameters
-                .iter()
-                .map(|x| TypeArgument {
-                    type_id: x.type_id,
-                    initial_type_id: x.initial_type_id,
-                    span: span.clone(),
-                    call_path_tree: None,
-                })
-                .collect(),
-        );
-    }
-    assert_eq!(
-        function_decl.type_parameters.len(),
-        type_binding.type_arguments.as_slice().len()
-    );
-
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
+            call_path: call_path_binding.inner.clone(),
             arguments: typed_arguments_with_names,
             fn_ref: new_decl_ref,
             selector: None,
-            type_binding: Some(type_binding),
+            type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
             contract_call_params: IndexMap::new(),
             contract_caller: None,
