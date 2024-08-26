@@ -82,11 +82,22 @@ impl Add for u16 {
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        let res = __add(self, other);
-        if __gt(res, Self::max()) && panic_on_overflow_enabled() {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __add(self_u64, other_u64);
+        let max_u8_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u8_u64) && panic_on_overflow_enabled() {
             __revert(0)
         } else {
-            res
+            asm(input: res_u64) {
+                input: u8
+            }
         }
     }
 }
@@ -240,11 +251,20 @@ impl Multiply for u16 {
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        let res = __mul(self, other);
-        if __gt(res, Self::max()) && panic_on_overflow_enabled() {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __mul(self_u64, other_u64);
+        let max_u8_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u8_u64) && panic_on_overflow_enabled() {
             __revert(0)
         } else {
-            asm(input: res) {
+            asm(input: res_u64) {
                 input: u8
             }
         }
