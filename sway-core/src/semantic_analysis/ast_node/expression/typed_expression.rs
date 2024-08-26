@@ -1866,13 +1866,13 @@ impl ty::TyExpression {
             .fold_while(None, |last, current| match last {
                 None => Continue(Some(current.return_type)),
                 Some(last) => {
-                    if last.is_concrete(engines, NumericIsNonConcrete::Yes) {
+                    if last.is_concrete(engines, TreatNumericAs::Abstract) {
                         return Done(Some(last));
                     }
 
                     if current
                         .return_type
-                        .is_concrete(engines, NumericIsNonConcrete::Yes)
+                        .is_concrete(engines, TreatNumericAs::Abstract)
                     {
                         return Done(Some(current.return_type));
                     }

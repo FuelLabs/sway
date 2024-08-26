@@ -27,9 +27,9 @@ pub enum IncludeSelf {
     No,
 }
 
-pub enum NumericIsNonConcrete {
-    Yes,
-    No,
+pub enum TreatNumericAs {
+    Abstract,
+    Concrete,
 }
 
 /// A identifier to uniquely refer to our type terms
@@ -464,13 +464,13 @@ impl TypeId {
     pub(crate) fn is_concrete(
         &self,
         engines: &Engines,
-        numeric_non_concrete: NumericIsNonConcrete,
+        numeric_non_concrete: TreatNumericAs,
     ) -> bool {
         let nested_types = (*self).extract_nested_types(engines);
         !nested_types
             .into_iter()
             .any(|x| match numeric_non_concrete {
-                NumericIsNonConcrete::Yes => matches!(
+                TreatNumericAs::Abstract => matches!(
                     x,
                     TypeInfo::UnknownGeneric { .. }
                         | TypeInfo::Custom { .. }
@@ -479,7 +479,7 @@ impl TypeId {
                         | TypeInfo::TypeParam(..)
                         | TypeInfo::Numeric
                 ),
-                NumericIsNonConcrete::No => matches!(
+                TreatNumericAs::Concrete => matches!(
                     x,
                     TypeInfo::UnknownGeneric { .. }
                         | TypeInfo::Custom { .. }

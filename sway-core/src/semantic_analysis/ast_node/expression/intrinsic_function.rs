@@ -523,7 +523,7 @@ fn type_check_encode_append(
     };
 
     // only supported types
-    if item_type.is_concrete(engines, NumericIsNonConcrete::Yes) {
+    if item_type.is_concrete(engines, TreatNumericAs::Abstract) {
         match &*engines.te().get(item_type) {
             TypeInfo::Boolean
             | TypeInfo::UnsignedInteger(IntegerBits::Eight)
