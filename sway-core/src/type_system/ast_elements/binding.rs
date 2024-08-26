@@ -354,26 +354,27 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
 
         let decl = ctx.engines.de().get(new_fn_ref.id());
 
-        // Normalize all function calls to have the same generic argument count
-        // as the definition
+        // Complete missing type parameters using TypeId from the declaration
         if decl.type_parameters.len() != self.type_arguments.as_slice().len() {
-            self.type_arguments = TypeArgs::Regular(
+            let args = match &mut self.type_arguments {
+                TypeArgs::Regular(args) | TypeArgs::Prefix(args) => args,
+            };
+
+            let args_len = args.len();
+            args.extend(
                 decl.type_parameters
                     .iter()
+                    .skip(args_len)
                     .map(|x| TypeArgument {
                         type_id: x.type_id,
                         initial_type_id: x.initial_type_id,
                         span: self.span.clone(),
                         call_path_tree: None,
-                    })
-                    .collect(),
+                    }),
             );
         }
 
-        assert_eq!(
-            decl.type_parameters.len(),
-            self.type_arguments.as_slice().len()
-        );
+        assert!(self.type_arguments.as_slice().len() >= decl.type_parameters.len(),);
 
         Ok((new_fn_ref, None, None))
     }
