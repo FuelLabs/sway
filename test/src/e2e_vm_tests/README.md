@@ -3,6 +3,7 @@
 In order to minimize compilation time of individual tests, strive to reduce dependencies in tests.
 
 To achieve that, follow these guidelines:
+
 - Use `implicit-std = false` if dependency on `core` is not needed. This is often possible when testing `should_pass/language` features.
 - If the dependency on `core` is not needed, instead of using the project type `script`, that will, because of the encoding, depend on `core`, try using `library` instead.
 - Do not use `std` just to conveniently get an arbitrary type or trait. E.g., if a test requires an arbitrary type or trait, go with `struct Dummy {}` or `trait Trait {}` instead of importing `Option` or `Hash`.
@@ -87,3 +88,17 @@ SWAY_TEST_VERBOSE=true cargo run [pattern]
 ```
 
 from the `sway/test` directory.
+
+# Snapshot tests
+
+When an "e2e" test has a file named `snapshot.toml` it will run as `cargo insta` snapshot tests.
+These tests can be run as normal: `cargo r -p test`, and in two new ways:
+
+```
+> cargo t -p test
+> cargo insta test
+```
+
+Snapshots can be reviewed using normal "cargo insta" workflow (see [insta.rs](https://insta.rs/)).
+
+For the moment, there is no configuration for `snapshot.toml`, so they are just empty files.
