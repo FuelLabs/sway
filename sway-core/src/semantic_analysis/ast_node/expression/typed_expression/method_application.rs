@@ -679,20 +679,22 @@ pub(crate) fn type_check_method_application(
             }
         }
 
-        // Handle the trait constraints. This includes checking to see if the trait
-        // constraints are satisfied and replacing old decl ids based on the
-        // constraint with new decl ids based on the new type.
-        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-            handler,
-            ctx.by_ref(),
-            &method.type_parameters,
-            method.name.as_str(),
-            &call_path.span(),
-        )
-        .ok();
+        if !ctx.collecting_unifications() {
+            // Handle the trait constraints. This includes checking to see if the trait
+            // constraints are satisfied and replacing old decl ids based on the
+            // constraint with new decl ids based on the new type.
+            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+                handler,
+                ctx.by_ref(),
+                &method.type_parameters,
+                method.name.as_str(),
+                &call_path.span(),
+            )
+            .ok();
 
-        if let Some(decl_mapping) = decl_mapping {
-            method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            if let Some(decl_mapping) = decl_mapping {
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            }
         }
 
         let method_sig = TyFunctionSig::from_fn_decl(&method);

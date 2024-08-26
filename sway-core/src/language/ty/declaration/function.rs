@@ -221,12 +221,21 @@ impl HashWithEngines for TyFunctionDecl {
 
 impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.type_parameters.subst(type_mapping, ctx);
-            self.parameters.subst(type_mapping, ctx);
-            self.return_type.subst(type_mapping, ctx);
-            self.body.subst(type_mapping, ctx);
-            self.implementing_for_typeid.subst(type_mapping, ctx);
+        if ctx.subst_function_body {
+            has_changes! {
+                self.type_parameters.subst(type_mapping, ctx);
+                self.parameters.subst(type_mapping, ctx);
+                self.return_type.subst(type_mapping, ctx);
+                self.body.subst(type_mapping, ctx);
+                self.implementing_for_typeid.subst(type_mapping, ctx);
+            }
+        } else {
+            has_changes! {
+                self.type_parameters.subst(type_mapping, ctx);
+                self.parameters.subst(type_mapping, ctx);
+                self.return_type.subst(type_mapping, ctx);
+                self.implementing_for_typeid.subst(type_mapping, ctx);
+            }
         }
     }
 }

@@ -26,14 +26,14 @@ impl std::ops::BitOr for HasChanges {
 
 pub struct SubstTypesContext<'a> {
     pub engines: &'a Engines,
-    pub subst_codeblocks: bool,
+    pub subst_function_body: bool,
 }
 
 impl<'a> SubstTypesContext<'a> {
-    pub fn new(engines: &Engines, subst_codeblocks: bool) -> SubstTypesContext {
+    pub fn new(engines: &Engines, subst_function_body: bool) -> SubstTypesContext {
         SubstTypesContext {
             engines,
-            subst_codeblocks,
+            subst_function_body,
         }
     }
 }

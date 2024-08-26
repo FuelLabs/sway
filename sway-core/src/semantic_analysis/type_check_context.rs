@@ -1611,10 +1611,7 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             mod_path,
         )?;
-        value.subst(
-            &type_mapping,
-            &SubstTypesContext::new(self.engines, !self.collecting_unifications()),
-        );
+        value.subst(&type_mapping, &SubstTypesContext::new(self.engines, true));
         Ok(())
     }
 
