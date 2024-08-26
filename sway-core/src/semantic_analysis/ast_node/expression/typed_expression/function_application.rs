@@ -100,7 +100,8 @@ pub(crate) fn instantiate_function_application(
             )
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
-        if method_sig.is_concrete(engines)
+        if !ctx.collecting_unifications()
+            && method_sig.is_concrete(engines)
             && function_is_type_check_finalized
             && !function_is_trait_method_dummy
         {

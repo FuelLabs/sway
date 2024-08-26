@@ -697,7 +697,8 @@ pub(crate) fn type_check_method_application(
         method_return_type_id = method.return_type.type_id;
         decl_engine.replace(*fn_ref.id(), method.clone());
 
-        if method_sig.is_concrete(engines)
+        if !ctx.collecting_unifications()
+            && method_sig.is_concrete(engines)
             && method.is_type_check_finalized
             && !method.is_trait_method_dummy
         {
