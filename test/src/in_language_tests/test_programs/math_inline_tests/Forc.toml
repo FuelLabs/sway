@@ -6,3 +6,4 @@ name = "math_inline_tests"
 
 [dependencies]
 std = { path = "../../../../../sway-lib-std" }
+core = { path = "../../../../../sway-lib-core" }

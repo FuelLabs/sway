@@ -64,7 +64,7 @@ impl Add for u32 {
             __revert(0)
         } else {
             // no overflow or overflow enabled
-            res
+            __mod(res, __add(Self::max(), 1))
         }
     }
 }
@@ -75,7 +75,7 @@ impl Add for u16 {
         if __gt(res, Self::max()) && panic_on_overflow_enabled() {
             __revert(0)
         } else {
-            res
+            __mod(res, __add(Self::max(), 1))
         }
     }
 }
@@ -92,11 +92,10 @@ impl Add for u8 {
         let max_u8_u64 = asm(input: Self::max()) {
             input: u64
         };
-        if __gt(res_u64, max_u8_u64)
-            && panic_on_overflow_enabled()
-        {
+        if __gt(res_u64, max_u8_u64) && panic_on_overflow_enabled() {
             __revert(0)
         } else {
+            let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
             asm(input: res_u64) {
                 input: u8
             }
@@ -235,7 +234,7 @@ impl Multiply for u32 {
             __revert(0)
         } else {
             // no overflow
-            res
+            __mod(res, __add(Self::max(), 1))
         }
     }
 }
@@ -246,7 +245,7 @@ impl Multiply for u16 {
         if __gt(res, Self::max()) && panic_on_overflow_enabled() {
             __revert(0)
         } else {
-            res
+            __mod(res, __add(Self::max(), 1))
         }
     }
 }
@@ -263,11 +262,10 @@ impl Multiply for u8 {
         let max_u8_u64 = asm(input: Self::max()) {
             input: u64
         };
-        if __gt(res_u64, max_u8_u64)
-            && panic_on_overflow_enabled()
-        {
+        if __gt(res_u64, max_u8_u64) && panic_on_overflow_enabled() {
             __revert(0)
         } else {
+            let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
             asm(input: res_u64) {
                 input: u8
             }
