@@ -1,14 +1,23 @@
 use sway_types::Ident;
 
+use super::parsed::ParseModuleId;
+
 /// The name used within a module to refer to one of its submodules.
 ///
 /// If an alias was given to the `mod`, this will be the alias. If not, this is the submodule's
 /// library name.
 pub type ModName = Ident;
 
+pub type ModPath = Vec<ModName>;
+
+pub trait HasModuleId
+{
+    /// Returns the associated module id.
+    fn module_id(&self) -> ParseModuleId;
+}
+
 pub trait HasModule<T>
 where
-    T: HasSubmodules<Self>,
     Self: Sized,
 {
     /// Returns the module of this submodule.
@@ -17,7 +26,6 @@ where
 
 pub trait HasSubmodules<E>
 where
-    E: HasModule<Self>,
     Self: Sized,
 {
     /// Returns the submodules of this module.

@@ -2,7 +2,7 @@ use strum::EnumString;
 
 use crate::Engines;
 
-use super::ParseModule;
+use super::ParseModuleId;
 
 /// A parsed, but not yet type-checked, Sway program.
 ///
@@ -10,7 +10,7 @@ use super::ParseModule;
 #[derive(Debug, Clone)]
 pub struct ParseProgram {
     pub kind: TreeType,
-    pub root: ParseModule,
+    pub root: ParseModuleId,
 }
 
 /// A Sway program can be either a contract, script, predicate, or a library.
@@ -46,6 +46,6 @@ impl std::fmt::Display for TreeType {
 impl ParseProgram {
     /// Excludes all test functions from the parse tree.
     pub(crate) fn exclude_tests(&mut self, engines: &Engines) {
-        self.root.tree.exclude_tests(engines)
+        self.root.write(engines, |m| m.tree.exclude_tests(engines))
     }
 }

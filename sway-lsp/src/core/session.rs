@@ -535,21 +535,19 @@ fn parse_ast_to_tokens(
             .unwrap_or(true)
     };
 
-    parse_program
-        .root
-        .tree
-        .root_nodes
-        .iter()
-        .chain(
-            parse_program
-                .root
-                .submodules_recursive()
-                .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes),
-        )
-        .filter(should_process)
-        .collect::<Vec<_>>()
-        .par_iter()
-        .for_each(|n| f(n, ctx));
+    parse_program.root.read(ctx.engines, |root| {
+        root.tree
+            .root_nodes
+            .iter()
+            .chain(parse_program.root.read(ctx.engines, |root| {
+                root.submodules_recursive()
+                    .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes)
+            }))
+            .filter(should_process)
+            .collect::<Vec<_>>()
+            .par_iter()
+            .for_each(|n| f(n, ctx));
+    });
 }
 
 /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
