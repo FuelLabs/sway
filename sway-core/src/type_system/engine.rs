@@ -25,6 +25,10 @@ pub struct TypeEngine {
     last_replace: RwLock<Instant>,
 }
 
+pub trait IsConcrete {
+    fn is_concrete(&self, engines: &Engines) -> bool;
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Unification {
     pub received: TypeId,

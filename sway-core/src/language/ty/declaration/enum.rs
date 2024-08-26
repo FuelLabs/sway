@@ -84,6 +84,14 @@ impl Spanned for TyEnumDecl {
     }
 }
 
+impl IsConcrete for TyEnumDecl {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_parameters
+            .iter()
+            .all(|tp| tp.is_concrete(engines))
+    }
+}
+
 impl MonomorphizeHelper for TyEnumDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
         &self.type_parameters

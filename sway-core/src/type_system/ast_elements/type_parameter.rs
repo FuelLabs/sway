@@ -110,6 +110,12 @@ impl Spanned for TypeParameter {
     }
 }
 
+impl IsConcrete for TypeParameter {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_id.is_concrete(engines, IncludeNumeric::Yes)
+    }
+}
+
 impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{}", self.name_ident)?;

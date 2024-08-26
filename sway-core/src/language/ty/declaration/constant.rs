@@ -85,6 +85,12 @@ impl Spanned for TyConstantDecl {
     }
 }
 
+impl IsConcrete for TyConstantDecl {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.return_type.is_concrete(engines, IncludeNumeric::Yes)
+    }
+}
+
 impl SubstTypes for TyConstantDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {

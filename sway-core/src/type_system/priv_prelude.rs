@@ -15,6 +15,7 @@ pub use super::{
         length::Length, trait_constraint::TraitConstraint, type_argument::TypeArgument,
         type_parameter::TypeParameter,
     },
+    engine::IsConcrete,
     engine::TypeEngine,
     id::{IncludeSelf, TreatNumericAs, TypeId},
     info::{AbiEncodeSizeHint, AbiName, TypeInfo, TypeSourceInfo},

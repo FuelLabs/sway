@@ -60,6 +60,23 @@ impl Spanned for TyTraitFn {
     }
 }
 
+impl IsConcrete for TyTraitFn {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_parameters()
+            .iter()
+            .all(|tp| tp.is_concrete(engines))
+            && self
+                .return_type
+                .type_id
+                .is_concrete(engines, IncludeNumeric::Yes)
+            && self.parameters().iter().all(|t| {
+                t.type_argument
+                    .type_id
+                    .is_concrete(engines, IncludeNumeric::Yes)
+            })
+    }
+}
+
 impl declaration::FunctionSignature for TyTraitFn {
     fn parameters(&self) -> &Vec<TyFunctionParameter> {
         &self.parameters

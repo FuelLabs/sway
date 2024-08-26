@@ -65,6 +65,15 @@ impl TypeSubstMap {
         }
     }
 
+    pub(crate) fn source_ids_contains_concrete_type(&self, engines: &Engines) -> bool {
+        for source_id in self.mapping.keys() {
+            if source_id.is_concrete(engines, IncludeNumeric::Yes) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Constructs a new [TypeSubstMap] from a list of [TypeParameter]s
     /// `type_parameters`. The [SourceType]s of the resulting [TypeSubstMap] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the

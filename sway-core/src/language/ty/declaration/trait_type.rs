@@ -37,6 +37,16 @@ impl Named for TyTraitType {
     }
 }
 
+impl IsConcrete for TyTraitType {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        if let Some(ty) = &self.ty {
+            ty.type_id.is_concrete(engines, IncludeNumeric::Yes)
+        } else {
+            false
+        }
+    }
+}
+
 impl EqWithEngines for TyTraitType {}
 impl PartialEqWithEngines for TyTraitType {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
