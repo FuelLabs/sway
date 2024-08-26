@@ -175,5 +175,13 @@ async fn main() -> Result<()> {
         .await?;
     }
 
+    // Run snapshot tests
+    let args = vec!["t", "--release", "-p", "test"];
+    let mut t = std::process::Command::new("cargo")
+        .args(args)
+        .spawn()
+        .unwrap();
+    assert!(t.wait().unwrap().success());
+
     Ok(())
 }
