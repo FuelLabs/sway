@@ -895,25 +895,25 @@ fn math_u32_overflow_add() {
 
     let a = u32::max();
     let b = a + 1;
-    
+
     require(b == 0_u32, b);
 }
 
 #[test]
 fn math_u64_overflow_add() {
     disable_panic_on_overflow();
-    
+
     let a = u64::max();
     let b = a + 1;
-    
+
     require(b == 0_u64, b);
 }
 
 #[test]
 fn math_u8_overflow_mul() {
     disable_panic_on_overflow();
-    
-    let a = (u8::max() / 2 ) + 1;
+
+    let a = (u8::max() / 2) + 1;
     let b = a * 2;
 
     require(b == 0_u8, b)
@@ -922,8 +922,8 @@ fn math_u8_overflow_mul() {
 #[test]
 fn math_u16_overflow_mul() {
     disable_panic_on_overflow();
-    
-    let a = (u16::max() / 2 ) + 1;
+
+    let a = (u16::max() / 2) + 1;
     let b = a * 2;
 
     require(b == 0_u16, b)
@@ -932,19 +932,19 @@ fn math_u16_overflow_mul() {
 #[test]
 fn math_u32_overflow_mul() {
     disable_panic_on_overflow();
-    
-    let a = (u32::max() / 2 ) + 1;
+
+    let a = (u32::max() / 2) + 1;
     let b = a * 2;
-    
+
     require(b == 0_u32, b)
 }
 
 #[test]
 fn math_u64_overflow_mul() {
     disable_panic_on_overflow();
-    
-    let a = (u64::max() / 2 ) + 1;
+
+    let a = (u64::max() / 2) + 1;
     let b = a * 2;
-    
+
     require(b == 0_u64, b)
 }
