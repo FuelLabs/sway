@@ -14,6 +14,7 @@ impl ty::TyStructDecl {
         ctx: &mut SymbolCollectionContext,
         decl: &StructDeclaration,
     ) -> Result<(), ErrorEmitted> {
+        // create a namespace for the decl, used to create a scope for generics
         let _ = ctx.scoped(engines, decl.span.clone(), |_scoped_ctx| {
             decl.fields.iter().for_each(|_field| {
                 //let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);

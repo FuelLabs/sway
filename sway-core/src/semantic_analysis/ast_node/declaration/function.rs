@@ -27,6 +27,7 @@ impl ty::TyFunctionDecl {
         ctx: &mut SymbolCollectionContext,
         fn_decl: &FunctionDeclaration,
     ) -> Result<(), ErrorEmitted> {
+        // create a namespace for the function
         let _ = ctx.scoped(engines, fn_decl.span.clone(), |scoped_ctx| {
             TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
         });
@@ -99,7 +100,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, None, |mut ctx| {
+            .scoped(handler, Some(span.clone()), |mut ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -196,7 +197,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, None, |mut ctx| {
+            .scoped(handler, Some(fn_decl.span.clone()), |mut ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {

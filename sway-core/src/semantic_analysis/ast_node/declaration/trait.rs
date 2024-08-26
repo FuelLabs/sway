@@ -11,7 +11,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyFunctionDecl, TyImplItem, TyTraitDecl, TyTraitItem},
+        ty::{self, TyFunctionDecl, TyImplItem, TyTraitDecl, TyTraitFn, TyTraitItem},
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -32,7 +32,18 @@ impl TyTraitDecl {
         ctx: &mut SymbolCollectionContext,
         decl: &TraitDeclaration,
     ) -> Result<(), ErrorEmitted> {
+        // A temporary namespace for checking within the trait's scope.
         let _ = ctx.scoped(engines, decl.span.clone(), |scoped_ctx| {
+            decl.interface_surface.iter().for_each(|item| match item {
+                TraitItem::TraitFn(decl_id) => {
+                    let trait_fn = engines.pe().get_trait_fn(decl_id).as_ref().clone();
+                    let _ = TyTraitFn::collect(handler, engines, scoped_ctx, &trait_fn);
+                }
+                TraitItem::Constant(_) => todo!(),
+                TraitItem::Type(_) => {}
+                TraitItem::Error(_, _) => todo!(),
+            });
+
             decl.methods.iter().for_each(|m| {
                 let method_decl = engines.pe().get_function(m).as_ref().clone();
                 let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);

@@ -149,14 +149,16 @@ impl ty::TyExpression {
             ExpressionKind::Error(_, _) => {}
             ExpressionKind::Literal(_) => {}
             ExpressionKind::AmbiguousPathExpression(expr) => {
-                let _ = expr.args.iter().for_each(|arg_expr| {
-                    let _ = Self::collect(handler, engines, ctx, arg_expr);
-                });
+                expr.args
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::FunctionApplication(expr) => {
-                let _ = expr.arguments.iter().for_each(|arg_expr| {
-                    let _ = Self::collect(handler, engines, ctx, arg_expr);
-                });
+                expr.arguments
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::LazyOperator(expr) => {
                 Self::collect(handler, engines, ctx, &expr.lhs)?;
@@ -165,22 +167,25 @@ impl ty::TyExpression {
             ExpressionKind::AmbiguousVariableExpression(_) => {}
             ExpressionKind::Variable(_) => {}
             ExpressionKind::Tuple(exprs) => {
-                let _ = exprs.iter().for_each(|expr| {
-                    let _ = Self::collect(handler, engines, ctx, expr);
-                });
+                exprs
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::TupleIndex(expr) => {
                 Self::collect(handler, engines, ctx, &expr.prefix)?;
             }
             ExpressionKind::Array(expr) => {
-                let _ = expr.contents.iter().for_each(|expr| {
-                    let _ = Self::collect(handler, engines, ctx, &expr);
-                });
+                expr.contents
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::Struct(expr) => {
-                let _ = expr.fields.iter().for_each(|field| {
-                    let _ = Self::collect(handler, engines, ctx, &field.value);
-                });
+                expr.fields
+                    .iter()
+                    .map(|field| Self::collect(handler, engines, ctx, &field.value))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::CodeBlock(code_block) => {
                 TyCodeBlock::collect(handler, engines, ctx, code_block)?
@@ -194,27 +199,33 @@ impl ty::TyExpression {
             }
             ExpressionKind::Match(expr) => {
                 Self::collect(handler, engines, ctx, &expr.value)?;
-                let _ = expr.branches.iter().for_each(|branch| {
-                    // create a new namespace for this branch result
-                    let _ = ctx.scoped(engines, branch.span.clone(), |scoped_ctx| {
-                        Self::collect(handler, engines, scoped_ctx, &branch.result)
-                    });
-                });
+                expr.branches
+                    .iter()
+                    .map(|branch| {
+                        // create a new namespace for this branch result
+                        ctx.scoped(engines, branch.span.clone(), |scoped_ctx| {
+                            Self::collect(handler, engines, scoped_ctx, &branch.result)
+                        })
+                        .0
+                    })
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::Asm(_) => {}
             ExpressionKind::MethodApplication(expr) => {
-                let _ = expr.arguments.iter().for_each(|expr| {
-                    let _ = Self::collect(handler, engines, ctx, expr);
-                });
+                expr.arguments
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::Subfield(expr) => {
                 Self::collect(handler, engines, ctx, &expr.prefix)?;
             }
             ExpressionKind::DelineatedPath(expr) => {
                 if let Some(expr_args) = &expr.args {
-                    let _ = expr_args.iter().for_each(|arg_expr| {
-                        let _ = Self::collect(handler, engines, ctx, arg_expr);
-                    });
+                    expr_args
+                        .iter()
+                        .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                        .collect::<Result<Vec<_>, ErrorEmitted>>()?;
                 }
             }
             ExpressionKind::AbiCast(expr) => {
@@ -226,9 +237,10 @@ impl ty::TyExpression {
             }
             ExpressionKind::StorageAccess(_) => {}
             ExpressionKind::IntrinsicFunction(expr) => {
-                let _ = expr.arguments.iter().for_each(|arg_expr| {
-                    let _ = Self::collect(handler, engines, ctx, arg_expr);
-                });
+                expr.arguments
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
             }
             ExpressionKind::WhileLoop(expr) => {
                 Self::collect(handler, engines, ctx, &expr.condition)?;
@@ -250,15 +262,15 @@ impl ty::TyExpression {
                 }
                 Self::collect(handler, engines, ctx, &expr.rhs)?;
             }
-            ExpressionKind::ImplicitReturn(expr) => Self::collect(handler, engines, ctx, &expr)?,
+            ExpressionKind::ImplicitReturn(expr) => Self::collect(handler, engines, ctx, expr)?,
             ExpressionKind::Return(expr) => {
-                Self::collect(handler, engines, ctx, &expr)?;
+                Self::collect(handler, engines, ctx, expr)?;
             }
             ExpressionKind::Ref(expr) => {
                 Self::collect(handler, engines, ctx, &expr.value)?;
             }
             ExpressionKind::Deref(expr) => {
-                Self::collect(handler, engines, ctx, &expr)?;
+                Self::collect(handler, engines, ctx, expr)?;
             }
         }
         Ok(())

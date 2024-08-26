@@ -11,13 +11,15 @@ impl ty::TyCodeBlock {
         ctx: &mut SymbolCollectionContext,
         code_block: &CodeBlock,
     ) -> Result<(), ErrorEmitted> {
-        let _ = code_block
-            .contents
-            .iter()
-            .map(|node| ty::TyAstNode::collect(handler, engines, ctx, node))
-            .filter_map(|res| res.ok())
-            .collect::<Vec<_>>();
-
+        let _ = ctx.scoped(engines, code_block.whole_block_span.clone(), |scoped_ctx| {
+            let _ = code_block
+                .contents
+                .iter()
+                .map(|node| ty::TyAstNode::collect(handler, engines, scoped_ctx, node))
+                .filter_map(|res| res.ok())
+                .collect::<Vec<_>>();
+            Ok(())
+        });
         Ok(())
     }
 

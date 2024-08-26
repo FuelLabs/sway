@@ -10,10 +10,12 @@ use symbol_collection_context::SymbolCollectionContext;
 impl ty::TyEnumDecl {
     pub(crate) fn collect(
         _handler: &Handler,
-        _engines: &Engines,
-        _ctx: &mut SymbolCollectionContext,
-        _decl: &EnumDeclaration,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl: &EnumDeclaration,
     ) -> Result<(), ErrorEmitted> {
+        // create a namespace for the decl, used to create a scope for generics
+        let _ = ctx.scoped(engines, decl.span.clone(), |mut _ctx| Ok(()));
         Ok(())
     }
 

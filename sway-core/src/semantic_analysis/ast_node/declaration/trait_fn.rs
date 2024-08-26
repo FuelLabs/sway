@@ -2,8 +2,15 @@ use sway_types::Spanned;
 
 use crate::{
     decl_engine::DeclId,
-    language::{parsed, ty, CallPath, Visibility},
-    semantic_analysis::type_check_context::EnforceTypeArguments,
+    language::{
+        parsed::{self, TraitFn},
+        ty, CallPath, Visibility,
+    },
+    semantic_analysis::{
+        symbol_collection_context::SymbolCollectionContext,
+        type_check_context::EnforceTypeArguments,
+    },
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -13,6 +20,16 @@ use crate::{
 };
 
 impl ty::TyTraitFn {
+    pub(crate) fn collect(
+        _handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl: &TraitFn,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = ctx.scoped(engines, decl.span.clone(), |_scoped_ctx| Ok(()));
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -31,7 +48,7 @@ impl ty::TyTraitFn {
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().scoped(handler, None, |mut ctx| {
+        ctx.by_ref().scoped(handler, Some(span.clone()), |mut ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.
