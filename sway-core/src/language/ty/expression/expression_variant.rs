@@ -179,40 +179,6 @@ impl TyExpressionVariant {
             _ => None,
         }
     }
-
-    /// When the expression has type arguments, it normalizes the type binding
-    /// to have the same amount and use TypeId from the declaration.
-    pub fn normalize_type_args(&mut self, engines: &Engines, span: &Span) {
-        if let TyExpressionVariant::FunctionApplication {
-            fn_ref,
-            type_binding: Some(type_binding),
-            ..
-        } = self
-        {
-            let decl = engines.de().get(fn_ref.id());
-
-            if decl.type_parameters.len() != type_binding.type_arguments.as_slice().len() {
-                let args = match &mut type_binding.type_arguments {
-                    TypeArgs::Regular(args) | TypeArgs::Prefix(args) => args,
-                };
-
-                let args_len = args.len();
-                args.extend(
-                    decl.type_parameters
-                        .iter()
-                        .skip(args_len)
-                        .map(|x| TypeArgument {
-                            type_id: x.type_id,
-                            initial_type_id: x.initial_type_id,
-                            span: span.clone(),
-                            call_path_tree: None,
-                        }),
-                );
-            }
-
-            assert!(type_binding.type_arguments.as_slice().len() >= decl.type_parameters.len(),);
-        }
-    }
 }
 
 impl EqWithEngines for TyExpressionVariant {}

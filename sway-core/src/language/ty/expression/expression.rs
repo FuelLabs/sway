@@ -111,22 +111,40 @@ impl TypeCheckAnalysis for TyExpression {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         match &self.expression {
-            // Collect unresolved generic arguments
+            // Search for TypeInfo::Placeholder
             TyExpressionVariant::FunctionApplication {
+                fn_ref,
                 type_binding: Some(type_binding),
                 ..
             } => {
-                let args = match &type_binding.type_arguments {
-                    TypeArgs::Regular(args) | TypeArgs::Prefix(args) => args,
-                };
-                for arg in args {
-                    if let TypeInfo::Placeholder(_) = &*ctx.engines.te().get(arg.type_id) {
-                        let _ = handler.emit_err(CompileError::UnableToInferGeneric {
-                            ty: ctx.engines.help_out(arg.type_id).to_string(),
-                            span: arg.span.clone(),
-                        });
-                    }
-                }
+                // let decl = ctx.engines.de().get(fn_ref.id());
+                // for (idx, p) in decl.type_parameters.iter().enumerate() {
+                //     if let TypeInfo::Placeholder(_) = &*ctx.engines.te().get(p.type_id) {
+                //         let span = type_binding
+                //             .type_arguments
+                //             .as_slice()
+                //             .get(idx)
+                //             .map(|x| x.span.clone())
+                //             .unwrap_or_else(|| type_binding.span.clone());
+
+                //         let _ = handler.emit_err(CompileError::UnableToInferGeneric {
+                //             ty: ctx.engines.help_out(p.type_id).to_string(),
+                //             span,
+                //         });
+                //     }
+                // }
+
+                // let args = match &type_binding.type_arguments {
+                //     TypeArgs::Regular(args) | TypeArgs::Prefix(args) => args,
+                // };
+                // for arg in args {
+                //     if let TypeInfo::Placeholder(_) = &*ctx.engines.te().get(arg.type_id) {
+                //         let _ = handler.emit_err(CompileError::UnableToInferGeneric {
+                //             ty: ctx.engines.help_out(arg.type_id).to_string(),
+                //             span: arg.span.clone(),
+                //         });
+                //     }
+                // }
             }
             // Check literal "fits" into assigned typed.
             TyExpressionVariant::Literal(Literal::Numeric(literal_value)) => {
@@ -208,7 +226,12 @@ impl CollectTypesMetadata for TyExpression {
 
                 ctx.call_site_push();
                 for type_parameter in &function_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span())
+                    ctx.call_site_insert(type_parameter.type_id, call_path.span());
+                    res.append(
+                        &mut type_parameter
+                            .type_id
+                            .collect_types_metadata(handler, ctx)?
+                    );
                 }
 
                 for content in function_decl.body.contents.iter() {
