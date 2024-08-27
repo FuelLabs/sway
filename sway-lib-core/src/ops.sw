@@ -59,12 +59,18 @@ impl Add for u32 {
         // any non-64-bit value is compiled to a u64 value under-the-hood
         // constants (like Self::max() below) are also automatically promoted to u64
         let res = __add(self, other);
-        if __gt(res, Self::max()) && panic_on_overflow_enabled() {
-            // integer overflow
-            __revert(0)
+        // integer overflow
+        if __gt(res, Self::max()) {
+            if panic_on_overflow_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
-            // no overflow or overflow enabled
-            __mod(res, __add(Self::max(), 1))
+            // no overflow
+            res
         }
     }
 }
@@ -72,10 +78,14 @@ impl Add for u32 {
 impl Add for u16 {
     fn add(self, other: Self) -> Self {
         let res = __add(self, other);
-        if __gt(res, Self::max()) && panic_on_overflow_enabled() {
-            __revert(0)
+        if __gt(res, Self::max()) {
+            if panic_on_overflow_enabled() {
+                __revert(0)
+            } else {
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
-            __mod(res, __add(Self::max(), 1))
+            res
         }
     }
 }
@@ -92,12 +102,16 @@ impl Add for u8 {
         let max_u8_u64 = asm(input: Self::max()) {
             input: u64
         };
-        if __gt(res_u64, max_u8_u64)
-            && panic_on_overflow_enabled()
-        {
-            __revert(0)
+        if __gt(res_u64, max_u8_u64) {
+            if panic_on_overflow_enabled() {
+                __revert(0)
+            } else {
+                let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
+                asm(input: res_u64) {
+                    input: u8
+                }
+            }
         } else {
-            let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
             asm(input: res_u64) {
                 input: u8
             }
@@ -231,12 +245,18 @@ impl Multiply for u32 {
         // any non-64-bit value is compiled to a u64 value under-the-hood
         // constants (like Self::max() below) are also automatically promoted to u64
         let res = __mul(self, other);
-        if __gt(res, Self::max()) && panic_on_overflow_enabled() {
-            // integer overflow
-            __revert(0)
+        if __gt(res, Self::max()) {
+            if panic_on_overflow_enabled() {
+                // integer overflow
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
             // no overflow
-            __mod(res, __add(Self::max(), 1))
+            res
         }
     }
 }
@@ -244,10 +264,14 @@ impl Multiply for u32 {
 impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
         let res = __mul(self, other);
-        if __gt(res, Self::max()) && panic_on_overflow_enabled() {
-            __revert(0)
+        if __gt(res, Self::max()) {
+            if panic_on_overflow_enabled() {
+                __revert(0)
+            } else {
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
-            __mod(res, __add(Self::max(), 1))
+            res
         }
     }
 }
@@ -264,12 +288,16 @@ impl Multiply for u8 {
         let max_u8_u64 = asm(input: Self::max()) {
             input: u64
         };
-        if __gt(res_u64, max_u8_u64)
-            && panic_on_overflow_enabled()
-        {
-            __revert(0)
+        if __gt(res_u64, max_u8_u64) {
+            if panic_on_overflow_enabled() {
+                __revert(0)
+            } else {
+                let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
+                asm(input: res_u64) {
+                    input: u8
+                }
+            }
         } else {
-            let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
             asm(input: res_u64) {
                 input: u8
             }
