@@ -111,6 +111,7 @@ impl TypeCheckAnalysis for TyExpression {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         match &self.expression {
+            // Collect unresolved generic arguments
             TyExpressionVariant::FunctionApplication {
                 type_binding: Some(type_binding),
                 ..

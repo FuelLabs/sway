@@ -707,7 +707,7 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    let fn_app = ty::TyExpressionVariant::FunctionApplication {
+    let mut fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
         arguments,
         fn_ref,
@@ -717,6 +717,7 @@ pub(crate) fn type_check_method_application(
         contract_call_params: contract_call_params_map,
         contract_caller: None,
     };
+    fn_app.normalize_type_args(engines, &span);
 
     let exp = ty::TyExpression {
         expression: fn_app.clone(),

@@ -115,22 +115,23 @@ pub(crate) fn instantiate_function_application(
         new_decl_ref
     };
 
-    let exp = ty::TyExpression {
-        expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path: call_path_binding.inner.clone(),
-            arguments: typed_arguments_with_names,
-            fn_ref: new_decl_ref,
-            selector: None,
-            type_binding: Some(call_path_binding.strip_inner()),
-            call_path_typeid: None,
-            contract_call_params: IndexMap::new(),
-            contract_caller: None,
-        },
+    let mut expression = ty::TyExpressionVariant::FunctionApplication {
+        call_path: call_path_binding.inner.clone(),
+        arguments: typed_arguments_with_names,
+        fn_ref: new_decl_ref,
+        selector: None,
+        type_binding: Some(call_path_binding.strip_inner()),
+        call_path_typeid: None,
+        contract_call_params: IndexMap::new(),
+        contract_caller: None,
+    };
+    expression.normalize_type_args(engines, &span);
+
+    Ok(ty::TyExpression {
+        expression,
         return_type: function_return_type_id,
         span,
-    };
-
-    Ok(exp)
+    })
 }
 
 /// Type checks the arguments.

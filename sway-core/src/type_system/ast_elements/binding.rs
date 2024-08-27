@@ -4,8 +4,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
-        DeclId, DeclRef,
+        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
     },
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
@@ -351,31 +350,6 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
             )
             .with_parent(ctx.engines.de(), fn_ref.id().into());
-
-        let decl = ctx.engines.de().get(new_fn_ref.id());
-
-        // Complete missing type parameters using TypeId from the declaration
-        if decl.type_parameters.len() != self.type_arguments.as_slice().len() {
-            let args = match &mut self.type_arguments {
-                TypeArgs::Regular(args) | TypeArgs::Prefix(args) => args,
-            };
-
-            let args_len = args.len();
-            args.extend(
-                decl.type_parameters
-                    .iter()
-                    .skip(args_len)
-                    .map(|x| TypeArgument {
-                        type_id: x.type_id,
-                        initial_type_id: x.initial_type_id,
-                        span: self.span.clone(),
-                        call_path_tree: None,
-                    }),
-            );
-        }
-
-        assert!(self.type_arguments.as_slice().len() >= decl.type_parameters.len(),);
-
         Ok((new_fn_ref, None, None))
     }
 }
