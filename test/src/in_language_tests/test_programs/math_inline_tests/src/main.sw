@@ -657,7 +657,6 @@ fn math_test_parity_u256_log_with_ruint() {
     }
 }
 
-
 #[test(should_revert)]
 fn math_u8_overflow_add_revert() {
     let a = u8::max();
