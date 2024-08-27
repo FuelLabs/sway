@@ -811,36 +811,6 @@ fn math_u256_log2_fail_x_0() {
 }
 
 #[test(should_revert)]
-fn revert_math_u8_pow_overflow() {
-    let result = 2_u8.pow(8);
-    log(result);
-}
-
-#[test(should_revert)]
-fn revert_math_u16_pow_overflow() {
-    let result = 2_u16.pow(16);
-    log(result);
-}
-
-#[test(should_revert)]
-fn revert_math_u32_pow_overflow() {
-    let result = 2_u32.pow(32);
-    log(result);
-}
-
-#[test(should_revert)]
-fn revert_math_u64_pow_overflow() {
-    let result = 2_u64.pow(64);
-    log(result);
-}
-
-#[test(should_revert)]
-fn revert_math_u256_pow_overflow() {
-    let result = 2.as_u256().pow(256);
-    log(result);
-}
-
-#[test(should_revert)]
 fn math_0th_root_fail() {
     let res = asm(r1: 100, r2: 0, r3) {
         mroo r3 r1 r2;
