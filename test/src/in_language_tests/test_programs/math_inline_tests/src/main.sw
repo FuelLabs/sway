@@ -655,108 +655,28 @@ fn math_test_parity_u256_log_with_ruint() {
     }
 }
 
+// u256 log invalid operations tests
 #[test(should_revert)]
-fn revert_math_u8_pow_overflow() {
-    let result = 2_u8.pow(8);
+fn math_u256_log_fail_base_0() {
+    let result = u256::from(2_u64).log(u256::from(0_u64));
     log(result);
 }
 
 #[test(should_revert)]
-fn revert_math_u16_pow_overflow() {
-    let result = 2_u16.pow(16);
+fn math_u256_log_fail_base_1() {
+    let result = u256::from(2_u64).log(u256::from(1_u64));
     log(result);
 }
 
 #[test(should_revert)]
-fn revert_math_u32_pow_overflow() {
-    let result = 2_u32.pow(32);
+fn math_u256_log_fail_x_0() {
+    let result = u256::from(0_u64).log(u256::from(2_u64));
     log(result);
 }
 
 #[test(should_revert)]
-fn revert_math_u64_pow_overflow() {
-    let result = 2_u64.pow(64);
-    log(result);
-}
-
-#[test(should_revert)]
-fn revert_math_u256_pow_overflow() {
-    let result = 2.as_u256().pow(256);
-    log(result);
-}
-
-// u8 log invalid operations tests
-#[test(should_revert)]
-fn math_u8_log_fail_base_0() {
-    let result = 2_u8.log(0_u8);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u8_log_fail_base_1() {
-    let result = 2_u8.log(1_u8);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u8_log_fail_x_0() {
-    let result = 0_u8.log(2_u8);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u8_log2_fail_x_0() {
-    let result = 0_u8.log2();
-    log(result);
-}
-
-// u16 log invalid operations tests
-#[test(should_revert)]
-fn math_u16_log_fail_base_0() {
-    let result = 2_u16.log(0_u16);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u16_log_fail_base_1() {
-    let result = 2_u16.log(1_u16);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u16_log_fail_x_0() {
-    let result = 0_u16.log(2_u16);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u16_log2_fail_x_0() {
-    let result = 0_u16.log2();
-    log(result);
-}
-
-// u32 log invalid operations tests
-#[test(should_revert)]
-fn math_u32_log_fail_base_0() {
-    let result = 2_u32.log(0_u32);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u32_log_fail_base_1() {
-    let result = 2_u32.log(1_u32);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u32_log_fail_x_0() {
-    let result = 0_u32.log(2_u32);
-    log(result);
-}
-
-#[test(should_revert)]
-fn math_u32_log2_fail_x_0() {
-    let result = 0_u32.log2();
+fn math_u256_log2_fail_x_0() {
+    let result = u256::from(0_u64).log2();
     log(result);
 }
 
@@ -785,28 +705,109 @@ fn math_u64_log2_fail_x_0() {
     log(result);
 }
 
-// u256 log invalid operations tests
+// u32 log invalid operations tests
 #[test(should_revert)]
-fn math_u256_log_fail_base_0() {
-    let result = u256::from(2_u64).log(u256::from(0_u64));
+fn math_u32_log_fail_base_0() {
+    let result = 2_u32.log(0_u32);
     log(result);
 }
 
 #[test(should_revert)]
-fn math_u256_log_fail_base_1() {
-    let result = u256::from(2_u64).log(u256::from(1_u64));
+fn math_u32_log_fail_base_1() {
+    let result = 2_u32.log(1_u32);
     log(result);
 }
 
 #[test(should_revert)]
-fn math_u256_log_fail_x_0() {
-    let result = u256::from(0_u64).log(u256::from(2_u64));
+fn math_u32_log_fail_x_0() {
+    let result = 0_u32.log(2_u32);
     log(result);
 }
 
 #[test(should_revert)]
-fn math_u256_log2_fail_x_0() {
-    let result = u256::from(0_u64).log2();
+fn math_u32_log2_fail_x_0() {
+    let result = 0_u32.log2();
+    log(result);
+}
+
+// u16 log invalid operations tests
+#[test(should_revert)]
+fn math_u16_log_fail_base_0() {
+    let result = 2_u16.log(0_u16);
+    log(result);
+}
+
+#[test(should_revert)]
+fn math_u16_log_fail_base_1() {
+    let result = 2_u16.log(1_u16);
+    log(result);
+}
+
+#[test(should_revert)]
+fn math_u16_log_fail_x_0() {
+    let result = 0_u16.log(2_u16);
+    log(result);
+}
+
+#[test(should_revert)]
+fn math_u16_log2_fail_x_0() {
+    let result = 0_u16.log2();
+    log(result);
+}
+
+// u8 log invalid operations tests
+#[test(should_revert)]
+fn math_u8_log_fail_base_0() {
+    let result = 2_u8.log(0_u8);
+    log(result);
+}
+
+#[test(should_revert)]
+fn math_u8_log_fail_base_1() {
+    let result = 2_u8.log(1_u8);
+    log(result);
+}
+
+#[test(should_revert)]
+fn math_u8_log_fail_x_0() {
+    let result = 0_u8.log(2_u8);
+    log(result);
+}
+
+#[test(should_revert)]
+fn math_u8_log2_fail_x_0() {
+    let result = 0_u8.log2();
+    log(result);
+}
+
+#[test(should_revert)]
+fn revert_math_u8_pow_overflow() {
+    let result = 2_u8.pow(8);
+    log(result);
+}
+
+// pow overflow tests
+#[test(should_revert)]
+fn revert_math_u16_pow_overflow() {
+    let result = 2_u16.pow(16);
+    log(result);
+}
+
+#[test(should_revert)]
+fn revert_math_u32_pow_overflow() {
+    let result = 2_u32.pow(32);
+    log(result);
+}
+
+#[test(should_revert)]
+fn revert_math_u64_pow_overflow() {
+    let result = 2_u64.pow(64);
+    log(result);
+}
+
+#[test(should_revert)]
+fn revert_math_u256_pow_overflow() {
+    let result = 2.as_u256().pow(256);
     log(result);
 }
 
