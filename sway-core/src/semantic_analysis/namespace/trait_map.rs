@@ -6,7 +6,6 @@ use std::{
     sync::Arc,
 };
 
-use hashbrown::HashSet;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -127,7 +126,7 @@ struct TraitEntry {
 }
 
 /// Map of trait name and type to [TraitItems].
-type TraitImpls = Vec<TraitEntry>;
+type TraitImpls = im::Vector<TraitEntry>;
 
 /// Map holding trait implementations for types.
 ///
@@ -136,7 +135,7 @@ type TraitImpls = Vec<TraitEntry>;
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
-    satisfied_cache: hashbrown::HashSet<u64>,
+    satisfied_cache: im::HashSet<u64>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -413,10 +412,11 @@ impl TraitMap {
             impl_span,
         };
         let entry = TraitEntry { key, value };
-        let trait_impls: TraitImpls = vec![entry];
+        let mut trait_impls: TraitImpls = im::Vector::new();
+        trait_impls.push_back(entry);
         let trait_map = TraitMap {
             trait_impls,
-            satisfied_cache: HashSet::default(),
+            satisfied_cache: im::HashSet::default(),
         };
 
         self.extend(trait_map, engines);
@@ -549,7 +549,7 @@ impl TraitMap {
                 .as_ref()
                 .map_or(false, |span| span == &trait_decl_span)
             {
-                trait_map.trait_impls.push(entry.clone());
+                trait_map.trait_impls.push_back(entry.clone());
             }
         }
         trait_map
