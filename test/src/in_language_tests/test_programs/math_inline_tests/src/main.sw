@@ -678,6 +678,32 @@ fn math_u256_log2_fail_x_0() {
 }
 
 #[test(should_revert)]
+fn revert_math_u8_pow_overflow() {
+    let _result = 2_u8.pow(8);
+}
+
+#[test(should_revert)]
+fn revert_math_u16_pow_overflow() {
+    let _result = 2_u16.pow(16);
+}
+
+#[test(should_revert)]
+fn revert_math_u32_pow_overflow() {
+    let _result = 2_u32.pow(32);
+}
+
+#[test(should_revert)]
+fn revert_math_u64_pow_overflow() {
+    let _result = 2_u64.pow(64);
+    log(_result);
+}
+
+#[test(should_revert)]
+fn revert_math_u256_pow_overflow() {
+    let _result = 2.as_u256().pow(256);
+}
+
+#[test(should_revert)]
 fn math_u8_overflow_add_revert() {
     let a = u8::max();
     let b = a + 1;
