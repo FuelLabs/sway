@@ -658,6 +658,26 @@ fn math_test_parity_u256_log_with_ruint() {
 }
 
 #[test(should_revert)]
+fn math_u256_log_fail_base_0() {
+    let _result = u256::from(2_u64).log(u256::from(0_u64));
+}
+
+#[test(should_revert)]
+fn math_u256_log_fail_base_1() {
+    let _result = u256::from(2_u64).log(u256::from(1_u64));
+}
+
+#[test(should_revert)]
+fn math_u256_log_fail_x_0() {
+    let _result = u256::from(0_u64).log(u256::from(2_u64));
+}
+
+#[test(should_revert)]
+fn math_u256_log2_fail_x_0() {
+    let _result = u256::from(0_u64).log2();
+}
+
+#[test(should_revert)]
 fn math_u8_overflow_add_revert() {
     let a = u8::max();
     let b = a + 1;
