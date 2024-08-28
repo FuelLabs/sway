@@ -30,3 +30,6 @@ category = "fail"
 
 # check: $()S{}.two_generics();
 # nextln: $()Cannot infer type for type parameter "B". Insufficient type information provided. Try annotating its type.
+
+# check: $()one_generic::<W>();
+# nextln: $()Cannot infer type for type parameter "A". Insufficient type information provided. Try annotating its type.

@@ -61,8 +61,10 @@ impl CollectTypesMetadata for TypeId {
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         fn filter_fn(type_info: &TypeInfo) -> bool {
-            matches!(type_info, TypeInfo::UnknownGeneric { .. })
-                || matches!(type_info, TypeInfo::Placeholder(_))
+            matches!(
+                type_info,
+                TypeInfo::UnknownGeneric { .. } | TypeInfo::Placeholder(_)
+            )
         }
         let engines = ctx.engines;
         let possible = self.extract_any_including_self(engines, &filter_fn, vec![], 0);

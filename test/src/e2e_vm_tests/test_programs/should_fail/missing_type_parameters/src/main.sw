@@ -7,6 +7,8 @@ impl S {
     fn two_generics<A, B>(self) { }
 }
 
+struct W<A> { }
+
 fn main() {
     let g: bool = three_generics(true, "foo", 10);
 
@@ -27,6 +29,9 @@ fn main() {
 
     // Two generics arguments expected
     S{}.two_generics::<u64>();
+
+    // Missing generic argument of W
+    one_generic::<W>();
 }
 
 fn three_generics(a: A, b: B, c: C) -> A {

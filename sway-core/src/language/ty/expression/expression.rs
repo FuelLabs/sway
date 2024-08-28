@@ -182,6 +182,7 @@ impl CollectTypesMetadata for TyExpression {
                 arguments,
                 fn_ref,
                 call_path,
+                type_binding,
                 ..
             } => {
                 for arg in arguments.iter() {
@@ -190,12 +191,29 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for type_parameter in &function_decl.type_parameters {
+                for (idx, type_parameter) in function_decl.type_parameters.iter().enumerate() {
                     ctx.call_site_insert(type_parameter.type_id, call_path.span());
-                    res.append(
-                        &mut type_parameter
+
+                    // Verify type arguments are concrete
+                    res.extend(
+                        type_parameter
                             .type_id
-                            .collect_types_metadata(handler, ctx)?,
+                            .collect_types_metadata(handler, ctx)?
+                            .into_iter()
+                            // try to use the caller span for better error messages
+                            .map(|x| match x {
+                                TypeMetadata::UnresolvedType(ident, original_span) => {
+                                    let span = type_binding
+                                        .as_ref()
+                                        .and_then(|type_binding| {
+                                            type_binding.type_arguments.as_slice().get(idx)
+                                        })
+                                        .map(|type_argument| Some(type_argument.span.clone()))
+                                        .unwrap_or(original_span);
+                                    TypeMetadata::UnresolvedType(ident, span)
+                                }
+                                x => x,
+                            }),
                     );
                 }
 
