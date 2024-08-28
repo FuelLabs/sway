@@ -17,6 +17,7 @@ jobs:
   benchmarks:
     runs-on: ubuntu-latest
     steps:
+      - uses: Swatinem/rust-cache@v2      
       - uses: actions/checkout@v3
 
       - name: Setup rust toolchain, cache and cargo-codspeed binary
