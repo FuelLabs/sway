@@ -118,7 +118,7 @@ impl Power for u64 {
 
 impl Power for u32 {
     fn pow(self, exponent: u32) -> Self {
-        let res = asm(r1: self, r2: exponent, r3) {
+        let mut res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
             r3: u64
         };
@@ -126,6 +126,10 @@ impl Power for u32 {
         if flags() & F_WRAPPING_DISABLE_MASK == 0 {
             assert(res <= Self::max().as_u64());
         }
+
+        // Cap value at the max value of the type
+        res = res % (Self::max().as_u64() + 1);
+
         asm(r1: res) {
             r1: Self
         }
@@ -134,7 +138,7 @@ impl Power for u32 {
 
 impl Power for u16 {
     fn pow(self, exponent: u32) -> Self {
-        let res = asm(r1: self, r2: exponent, r3) {
+        let mut res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
             r3: u64
         };
@@ -142,6 +146,9 @@ impl Power for u16 {
         if flags() & F_WRAPPING_DISABLE_MASK == 0 {
             assert(res <= Self::max().as_u64());
         }
+
+        res = res % (Self::max().as_u64() + 1);
+
         asm(r1: res) {
             r1: Self
         }
@@ -150,7 +157,7 @@ impl Power for u16 {
 
 impl Power for u8 {
     fn pow(self, exponent: u32) -> Self {
-        let res = asm(r1: self, r2: exponent, r3) {
+        let mut res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
             r3: u64
         };
@@ -158,6 +165,9 @@ impl Power for u8 {
         if flags() & F_WRAPPING_DISABLE_MASK == 0 {
             assert(res <= Self::max().as_u64());
         }
+
+        res = res % (Self::max().as_u64() + 1);
+
         asm(r1: res) {
             r1: Self
         }
