@@ -13,10 +13,12 @@ use sway_error::{
 use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
+    },
     engine_threading::*,
     language::{
-        parsed::ImplItem,
+        parsed::{EnumDeclaration, ImplItem, StructDeclaration},
         ty::{self, TyImplItem, TyTraitItem},
         CallPath,
     },
@@ -148,8 +150,8 @@ enum TypeRootFilter {
     Contract,
     ErrorRecovery,
     Tuple(usize),
-    Enum(String),
-    Struct(String),
+    Enum(ParsedDeclId<EnumDeclaration>),
+    Struct(ParsedDeclId<StructDeclaration>),
     ContractCaller(String),
     Array(usize),
     Storage,
@@ -1509,13 +1511,13 @@ impl TraitMap {
             Contract => TypeRootFilter::Contract,
             ErrorRecovery(_) => TypeRootFilter::ErrorRecovery,
             Tuple(fields) => TypeRootFilter::Tuple(fields.len()),
-            Enum(decl_ref) => {
-                let decl = engines.de().get_enum(decl_ref);
-                TypeRootFilter::Enum(decl.call_path.to_string())
+            Enum(decl_id) => {
+                // TODO Remove unwrap once #6475 is fixed
+                TypeRootFilter::Enum(engines.de().get_parsed_decl_id(decl_id).unwrap())
             }
-            Struct(decl_ref) => {
-                let decl = engines.de().get_struct(decl_ref);
-                TypeRootFilter::Struct(decl.call_path.to_string())
+            Struct(decl_id) => {
+                // TODO Remove unwrap once #6475 is fixed
+                TypeRootFilter::Struct(engines.de().get_parsed_decl_id(decl_id).unwrap())
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
             Array(_, length) => TypeRootFilter::Array(length.val()),
