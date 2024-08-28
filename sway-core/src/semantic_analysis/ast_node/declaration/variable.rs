@@ -1,16 +1,27 @@
 use crate::{
     language::{
         parsed::*,
-        ty::{self, TyVariableDecl},
+        ty::{self, TyExpression, TyVariableDecl},
     },
     namespace::ResolvedDeclaration,
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Spanned;
+use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyVariableDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl: &VariableDeclaration,
+    ) -> Result<(), ErrorEmitted> {
+        TyExpression::collect(handler, engines, ctx, &decl.body)
+    }
+
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,

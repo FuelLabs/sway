@@ -7,7 +7,7 @@ use crate::{
         parsed::{self, StorageEntry},
         ty::{
             self, FunctionDecl, TyAbiDecl, TyDecl, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait,
-            TyStorageField, TyStructDecl, TyTraitDecl,
+            TyStorageField, TyStructDecl, TyTraitDecl, TyVariableDecl,
         },
         CallPath,
     },
@@ -33,6 +33,7 @@ impl TyDecl {
             parsed::Declaration::VariableDeclaration(decl_id) => {
                 let var_decl = engines.pe().get_variable(decl_id);
                 ctx.insert_parsed_symbol(handler, engines, var_decl.name.clone(), decl)?;
+                TyVariableDecl::collect(handler, engines, ctx, &var_decl)?
             }
             parsed::Declaration::ConstantDeclaration(decl_id) => {
                 let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
