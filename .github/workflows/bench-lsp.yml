@@ -1,4 +1,4 @@
-name: Benchmark LSP
+name: Codspeed Benchmarks
 
 on:
   push:
@@ -33,5 +33,4 @@ jobs:
         uses: CodSpeedHQ/action@v3
         with:
           run: cargo codspeed run
-          working-directory: "./sway-lsp"
           token: ${{ secrets.CODSPEED_TOKEN }}
