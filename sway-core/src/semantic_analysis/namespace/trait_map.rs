@@ -23,10 +23,27 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    IncludeSelf, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
+    IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
+    TypeSubstMap, UnifyCheck,
 };
 
 use super::TryInsertingTraitImplOnFailure;
+
+#[derive(Clone)]
+pub enum CollectingUnification {
+    Yes,
+    No,
+}
+
+impl From<bool> for CollectingUnification {
+    fn from(value: bool) -> Self {
+        if value {
+            CollectingUnification::Yes
+        } else {
+            CollectingUnification::No
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 struct TraitSuffix {
@@ -549,8 +566,16 @@ impl TraitMap {
     /// re-insert them under `type_id`. Moreover, the impl block for
     /// `Data<T, T>` needs to be able to call methods that are defined in the
     /// impl block of `Data<T, F>`
-    pub(crate) fn insert_for_type(&mut self, engines: &Engines, type_id: TypeId) {
-        self.extend(self.filter_by_type(type_id, engines), engines);
+    pub(crate) fn insert_for_type(
+        &mut self,
+        engines: &Engines,
+        type_id: TypeId,
+        collecting_unifications: CollectingUnification,
+    ) {
+        self.extend(
+            self.filter_by_type(type_id, engines, collecting_unifications),
+            engines,
+        );
     }
 
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
@@ -717,7 +742,12 @@ impl TraitMap {
     /// have `Data<T, T>: get_first(self) -> T` and
     /// `Data<T, T>: get_second(self) -> T`, and we can create a new [TraitMap]
     /// with those entries for `Data<T, T>`.
-    pub(crate) fn filter_by_type(&self, type_id: TypeId, engines: &Engines) -> TraitMap {
+    pub(crate) fn filter_by_type(
+        &self,
+        type_id: TypeId,
+        engines: &Engines,
+        collecting_unifications: CollectingUnification,
+    ) -> TraitMap {
         let unify_checker = UnifyCheck::constraint_subset(engines);
 
         // a curried version of the decider protocol to use in the helper functions
@@ -725,7 +755,7 @@ impl TraitMap {
         let mut all_types = type_id.extract_inner_types(engines, IncludeSelf::No);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
-        self.filter_by_type_inner(engines, all_types, decider)
+        self.filter_by_type_inner(engines, all_types, decider, collecting_unifications)
     }
 
     /// Filters the entries in `self` with the given [TypeId] `type_id` and
@@ -790,6 +820,7 @@ impl TraitMap {
         &self,
         type_id: TypeId,
         engines: &Engines,
+        collecting_unifications: CollectingUnification,
     ) -> TraitMap {
         let unify_checker = UnifyCheck::constraint_subset(engines);
         let unify_checker_for_item_import = UnifyCheck::non_generic_constraint_subset(engines);
@@ -798,7 +829,12 @@ impl TraitMap {
         let decider = |left: TypeId, right: TypeId| {
             unify_checker.check(left, right) || unify_checker_for_item_import.check(right, left)
         };
-        let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
+        let mut trait_map = self.filter_by_type_inner(
+            engines,
+            vec![type_id],
+            decider,
+            collecting_unifications.clone(),
+        );
         let all_types = type_id
             .extract_inner_types(engines, IncludeSelf::No)
             .into_iter()
@@ -807,7 +843,7 @@ impl TraitMap {
         let decider2 = |left: TypeId, right: TypeId| unify_checker.check(left, right);
 
         trait_map.extend(
-            self.filter_by_type_inner(engines, all_types, decider2),
+            self.filter_by_type_inner(engines, all_types, decider2, collecting_unifications),
             engines,
         );
         trait_map
@@ -818,6 +854,7 @@ impl TraitMap {
         engines: &Engines,
         mut all_types: Vec<TypeId>,
         decider: impl Fn(TypeId, TypeId) -> bool,
+        collecting_unifications: CollectingUnification,
     ) -> TraitMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -867,7 +904,13 @@ impl TraitMap {
                         *map_type_id,
                         *type_id,
                     );
-                    type_id.subst(&type_mapping, engines);
+                    type_id.subst(
+                        &type_mapping,
+                        &SubstTypesContext::new(
+                            engines,
+                            matches!(collecting_unifications, CollectingUnification::No),
+                        ),
+                    );
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
@@ -879,7 +922,16 @@ impl TraitMap {
                                     if decl.is_trait_method_dummy && !insertable {
                                         None
                                     } else {
-                                        decl.subst(&type_mapping, engines);
+                                        decl.subst(
+                                            &type_mapping,
+                                            &SubstTypesContext::new(
+                                                engines,
+                                                matches!(
+                                                    collecting_unifications,
+                                                    CollectingUnification::No
+                                                ),
+                                            ),
+                                        );
                                         let new_ref = decl_engine
                                             .insert(
                                                 decl,
@@ -896,7 +948,16 @@ impl TraitMap {
                                 }
                                 ty::TyTraitItem::Constant(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(&type_mapping, engines);
+                                    decl.subst(
+                                        &type_mapping,
+                                        &SubstTypesContext::new(
+                                            engines,
+                                            matches!(
+                                                collecting_unifications,
+                                                CollectingUnification::No
+                                            ),
+                                        ),
+                                    );
                                     let new_ref = decl_engine.insert(
                                         decl,
                                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
@@ -908,7 +969,16 @@ impl TraitMap {
                                 }
                                 ty::TyTraitItem::Type(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(&type_mapping, engines);
+                                    decl.subst(
+                                        &type_mapping,
+                                        &SubstTypesContext::new(
+                                            engines,
+                                            matches!(
+                                                collecting_unifications,
+                                                CollectingUnification::No
+                                            ),
+                                        ),
+                                    );
                                     let new_ref = decl_engine.insert(
                                         decl,
                                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
@@ -1263,6 +1333,7 @@ impl TraitMap {
     }
 
     /// Checks to see if the trait constraints are satisfied for a given type.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
         &mut self,
         handler: &Handler,
@@ -1271,6 +1342,7 @@ impl TraitMap {
         access_span: &Span,
         engines: &Engines,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
+        collecting_unifications: CollectingUnification,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
 
@@ -1301,6 +1373,7 @@ impl TraitMap {
             access_span,
             engines,
             try_inserting_trait_impl_on_failure,
+            collecting_unifications,
         ) {
             Ok(()) => {
                 self.satisfied_cache.insert(hash);
@@ -1310,6 +1383,7 @@ impl TraitMap {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn check_if_trait_constraints_are_satisfied_for_type_inner(
         &mut self,
         handler: &Handler,
@@ -1318,6 +1392,7 @@ impl TraitMap {
         access_span: &Span,
         engines: &Engines,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
+        collecting_unifications: CollectingUnification,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
 
@@ -1421,7 +1496,7 @@ impl TraitMap {
                     try_inserting_trait_impl_on_failure,
                     TryInsertingTraitImplOnFailure::Yes
                 ) {
-                    self.insert_for_type(engines, type_id);
+                    self.insert_for_type(engines, type_id, collecting_unifications.clone());
                     return self.check_if_trait_constraints_are_satisfied_for_type(
                         handler,
                         type_id,
@@ -1429,6 +1504,7 @@ impl TraitMap {
                         access_span,
                         engines,
                         TryInsertingTraitImplOnFailure::No,
+                        collecting_unifications.clone(),
                     );
                 } else {
                     let mut type_arguments_string = "".to_string();

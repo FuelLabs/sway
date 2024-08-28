@@ -56,10 +56,10 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, engines);
-            self.expression.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, ctx);
+            self.expression.subst(type_mapping, ctx);
         }
     }
 }
@@ -136,14 +136,20 @@ impl TypeCheckAnalysis for TyExpression {
                         unify::unifier::UnifyKind::Default,
                     );
                     for element in contents {
-                        let element_type = ctx.engines.te().get(*elem_type);
+                        let element_type = ctx.engines.te().get(element.return_type);
 
                         // If the element is never, we do not need to check
                         if matches!(&*element_type, TypeInfo::Never) {
                             continue;
                         }
 
-                        unify.unify(handler, element.return_type, *elem_type, &element.span)
+                        unify.unify(
+                            handler,
+                            element.return_type,
+                            *elem_type,
+                            &element.span,
+                            true,
+                        )
                     }
                 }
             }
