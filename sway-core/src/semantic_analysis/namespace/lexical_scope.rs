@@ -704,7 +704,7 @@ impl Items {
             })
     }
 
-    pub(crate) fn check_symbol_unique(
+    pub(crate) fn check_symbols_unique_while_collecting_unifications(
         &self,
         name: &Ident,
     ) -> Result<ResolvedDeclaration, CompileError> {
@@ -716,6 +716,12 @@ impl Items {
                 name: name.clone(),
                 span: name.span(),
             })
+    }
+
+    pub(crate) fn clear_symbols_unique_while_collecting_unifications(&self) {
+        self.symbols_unique_while_collecting_unifications
+            .write()
+            .clear();
     }
 
     pub fn get_items_for_type(

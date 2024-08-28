@@ -44,6 +44,11 @@ impl ty::TyCodeBlock {
         }
 
         ctx.engines.te().clear_unifications();
+        ctx.namespace()
+            .module(ctx.engines)
+            .current_lexical_scope()
+            .items
+            .clear_symbols_unique_while_collecting_unifications();
 
         // We are typechecking the code block AST nodes twice.
         // The first pass does all the unifications to the variables types.
