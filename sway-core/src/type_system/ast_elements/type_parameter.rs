@@ -522,7 +522,7 @@ impl TypeParameter {
                             access_span,
                             engines,
                             TryInsertingTraitImplOnFailure::Yes,
-                            collecting_unifications,
+                            collecting_unifications.into(),
                         ) {
                         Ok(res) => res,
                         Err(_) => continue,

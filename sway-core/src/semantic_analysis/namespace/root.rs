@@ -375,7 +375,11 @@ impl Root {
                     src_mod
                         .current_items()
                         .implemented_traits
-                        .filter_by_type_item_import(type_id, engines, false),
+                        .filter_by_type_item_import(
+                            type_id,
+                            engines,
+                            super::CollectingUnification::No,
+                        ),
                     engines,
                 );
             }

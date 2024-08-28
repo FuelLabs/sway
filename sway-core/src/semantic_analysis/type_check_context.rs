@@ -1439,7 +1439,11 @@ impl<'a> TypeCheckContext<'a> {
             src_mod
                 .current_items()
                 .implemented_traits
-                .filter_by_type_item_import(type_id, engines, self.collecting_unifications()),
+                .filter_by_type_item_import(
+                    type_id,
+                    engines,
+                    self.collecting_unifications().into(),
+                ),
             engines,
         );
 
@@ -1740,7 +1744,7 @@ impl<'a> TypeCheckContext<'a> {
             .module_mut(engines)
             .current_items_mut()
             .implemented_traits
-            .insert_for_type(engines, type_id, collecting_unifications);
+            .insert_for_type(engines, type_id, collecting_unifications.into());
     }
 
     pub fn check_type_impls_traits(
@@ -1762,7 +1766,7 @@ impl<'a> TypeCheckContext<'a> {
                 &Span::dummy(),
                 engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
-                collecting_unifications,
+                collecting_unifications.into(),
             )
             .is_ok()
     }

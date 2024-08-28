@@ -665,7 +665,7 @@ fn type_check_trait_implementation(
                     block_span,
                     engines,
                     TryInsertingTraitImplOnFailure::Yes,
-                    collecting_unifications,
+                    collecting_unifications.into(),
                 )
         })?;
 
