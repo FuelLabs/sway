@@ -676,4 +676,8 @@ impl TypeId {
     pub fn get_type_str(&self, engines: &Engines) -> String {
         engines.te().get(*self).get_type_str(engines)
     }
+
+    pub fn get_type_str_filter(&self, engines: &Engines) -> String {
+        engines.te().get(*self).get_type_str_filter(engines)
+    }
 }
