@@ -239,10 +239,6 @@ impl Module {
         span: Span,
     ) -> Result<LexicalScopeId, ErrorEmitted> {
         let id_opt = self.lexical_scopes_spans.get(&span);
-        if id_opt.is_none() {
-            eprintln!("Error: {:?}", engines.help_out(span.clone()));
-            panic!();
-        }
         match id_opt {
             Some(id) => {
                 self.current_lexical_scope_id = *id;
