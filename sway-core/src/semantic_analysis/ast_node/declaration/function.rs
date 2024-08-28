@@ -215,7 +215,7 @@ impl ty::TyFunctionDecl {
                     .with_type_annotation(return_type.type_id)
                     .with_function_type_annotation(return_type.type_id);
 
-                let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)
+                let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
                 ty_fn_decl.body = body;

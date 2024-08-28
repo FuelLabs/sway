@@ -89,9 +89,9 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        let type_engine = engines.te();
-        if let Some(matching_id) = type_mapping.find_match(*self, engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        let type_engine = ctx.engines.te();
+        if let Some(matching_id) = type_mapping.find_match(*self, ctx.engines) {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
                 HasChanges::Yes
@@ -517,6 +517,10 @@ impl TypeId {
         span: &Span,
         type_param: Option<TypeParameter>,
     ) -> Result<(), ErrorEmitted> {
+        if ctx.collecting_unifications() {
+            return Ok(());
+        }
+
         let engines = ctx.engines();
 
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
