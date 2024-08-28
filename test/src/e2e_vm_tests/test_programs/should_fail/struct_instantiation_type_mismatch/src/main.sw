@@ -84,9 +84,6 @@ fn main() {
         _ => false,
     };
 
-    // TODO: Unfortunately, at the moment we do not provide a help message here that
-    // the error is coming from the enum declaration and not variable annotation.
-    // This will wait until we introduce a separate type inference step.
     let s: GenericStruct<_, bool> = GenericStruct::<u8, _> { a: 123u64, b: true };
     let _ = s.a == 123u8; // No error here.
     let _ = s.b == true; // No error here.

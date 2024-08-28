@@ -636,7 +636,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let (typed_block, block_return_type) =
-            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents) {
+            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents, false) {
                 Ok(res) => {
                     let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
                     (res, block_type)
@@ -1841,7 +1841,12 @@ impl ty::TyExpression {
         // from the elements
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                (*ctx.engines().te().get(element_type.type_id)).clone()
+                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
+                if matches!(element_type, TypeInfo::Never) {
+                    TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
+                } else {
+                    element_type
+                }
             }
             _ => TypeInfo::Unknown,
         };
@@ -2038,7 +2043,7 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)?;
+        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, false)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
