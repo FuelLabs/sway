@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};

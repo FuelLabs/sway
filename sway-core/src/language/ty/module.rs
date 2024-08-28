@@ -20,9 +20,6 @@ pub struct TyModule {
     pub attributes: transform::AttributesMap,
 }
 
-unsafe impl Send for TyModule {}
-unsafe impl Sync for TyModule {}
-
 impl TyModule {
     /// Iter on all constants in this module, which means, globals constants and
     /// local constants, but it does not enter into submodules.
