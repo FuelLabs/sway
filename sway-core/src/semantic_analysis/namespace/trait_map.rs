@@ -10,7 +10,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert},
@@ -127,7 +127,38 @@ struct TraitEntry {
 /// Map of string of type entry id and vec of [TraitEntry].
 /// We are using the HashMap as a wrapper to the vec so the TraitMap algorithms
 /// don't need to traverse every TraitEntry.
-type TraitImpls = im::HashMap<String, im::Vector<TraitEntry>>;
+type TraitImpls = im::HashMap<TypeRootFilter, im::Vector<TraitEntry>>;
+
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+enum TypeRootFilter {
+    Unknown,
+    Never,
+    Placeholder,
+    TypeParam(usize),
+    StringSlice,
+    StringArray(usize),
+    U8,
+    U16,
+    U32,
+    U64,
+    U256,
+    Bool,
+    Custom(String),
+    B256,
+    Contract,
+    ErrorRecovery,
+    Tuple(usize),
+    Enum(String),
+    Struct(String),
+    ContractCaller(String),
+    Array(usize),
+    Storage,
+    RawUntypedPtr,
+    RawUntypedSlice,
+    Ptr,
+    Slice,
+    TraitType(String),
+}
 
 /// Map holding trait implementations for types.
 ///
@@ -415,11 +446,12 @@ impl TraitMap {
             impl_span,
         };
         let entry = TraitEntry { key, value };
-        let mut trait_impls: TraitImpls = im::HashMap::<String, im::Vector<TraitEntry>>::new();
-        let type_str = (*engines.te().get(type_id)).get_type_str_filter(engines);
+        let mut trait_impls: TraitImpls =
+            im::HashMap::<TypeRootFilter, im::Vector<TraitEntry>>::new();
+        let type_root_filter = Self::get_type_root_filter(engines, type_id);
         let mut impls_vector = im::Vector::<TraitEntry>::new();
         impls_vector.push_back(entry);
-        trait_impls.insert(type_str, impls_vector);
+        trait_impls.insert(type_root_filter, impls_vector);
 
         let trait_map = TraitMap {
             trait_impls,
@@ -1422,25 +1454,81 @@ impl TraitMap {
     }
 
     fn get_impls_mut(&mut self, engines: &Engines, type_id: TypeId) -> &mut im::Vector<TraitEntry> {
-        let type_str = (*engines.te().get(type_id)).get_type_str_filter(engines);
-        if !self.trait_impls.contains_key(&type_str) {
-            self.trait_impls.insert(type_str.clone(), im::Vector::new());
+        let type_root_filter = Self::get_type_root_filter(engines, type_id);
+        if !self.trait_impls.contains_key(&type_root_filter) {
+            self.trait_impls
+                .insert(type_root_filter.clone(), im::Vector::new());
         }
 
-        self.trait_impls.get_mut(&type_str).unwrap()
+        self.trait_impls.get_mut(&type_root_filter).unwrap()
     }
 
     fn get_impls(&self, engines: &Engines, type_id: TypeId) -> im::Vector<TraitEntry> {
-        let type_str = (*engines.te().get(type_id)).get_type_str_filter(engines);
-        let mut vec = self.trait_impls.get(&type_str).cloned().unwrap_or_default();
-        if type_str != *"_" {
+        let type_root_filter = Self::get_type_root_filter(engines, type_id);
+        let mut vec = self
+            .trait_impls
+            .get(&type_root_filter)
+            .cloned()
+            .unwrap_or_default();
+        if type_root_filter != TypeRootFilter::Placeholder {
             vec.extend(
                 self.trait_impls
-                    .get(&"_".to_string())
+                    .get(&TypeRootFilter::Placeholder)
                     .cloned()
                     .unwrap_or_default(),
             );
         }
         vec
+    }
+
+    // Return a string representing only the base type.
+    // This is used by the trait map to filter the entries into a HashMap with the return type string as key.
+    fn get_type_root_filter(engines: &Engines, type_id: TypeId) -> TypeRootFilter {
+        use TypeInfo::*;
+        match &*engines.te().get(type_id) {
+            Unknown => TypeRootFilter::Unknown,
+            Never => TypeRootFilter::Never,
+            UnknownGeneric { .. } | Placeholder(_) => TypeRootFilter::Placeholder,
+            TypeParam(n) => TypeRootFilter::TypeParam(*n),
+            StringSlice => TypeRootFilter::StringSlice,
+            StringArray(x) => TypeRootFilter::StringArray(x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => TypeRootFilter::U8,
+                IntegerBits::Sixteen => TypeRootFilter::U16,
+                IntegerBits::ThirtyTwo => TypeRootFilter::U32,
+                IntegerBits::SixtyFour => TypeRootFilter::U64,
+                IntegerBits::V256 => TypeRootFilter::U256,
+            },
+            Boolean => TypeRootFilter::Bool,
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => TypeRootFilter::Custom(call_path.call_path.suffix.to_string()),
+            B256 => TypeRootFilter::B256,
+            Numeric => TypeRootFilter::U64, // u64 is the default
+            Contract => TypeRootFilter::Contract,
+            ErrorRecovery(_) => TypeRootFilter::ErrorRecovery,
+            Tuple(fields) => TypeRootFilter::Tuple(fields.len()),
+            Enum(decl_ref) => {
+                let decl = engines.de().get_enum(decl_ref);
+                TypeRootFilter::Enum(decl.call_path.to_string())
+            }
+            Struct(decl_ref) => {
+                let decl = engines.de().get_struct(decl_ref);
+                TypeRootFilter::Struct(decl.call_path.to_string())
+            }
+            ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
+            Array(_, length) => TypeRootFilter::Array(length.val()),
+            Storage { .. } => TypeRootFilter::Storage,
+            RawUntypedPtr => TypeRootFilter::RawUntypedPtr,
+            RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
+            Ptr(_) => TypeRootFilter::Ptr,
+            Slice(_) => TypeRootFilter::Slice,
+            Alias { ty, .. } => Self::get_type_root_filter(engines, ty.type_id),
+            TraitType { name, .. } => TypeRootFilter::TraitType(name.to_string()),
+            Ref {
+                referenced_type, ..
+            } => Self::get_type_root_filter(engines, referenced_type.type_id),
+        }
     }
 }

@@ -1751,68 +1751,6 @@ impl TypeInfo {
             }
         }
     }
-
-    // Return a string representing only the base type.
-    // This is used by the trait map to filter the entries into a HashMap with the return type string as key.
-    pub fn get_type_str_filter(&self, engines: &Engines) -> String {
-        use TypeInfo::*;
-        match self {
-            Unknown => "unknown".into(),
-            Never => "never".into(),
-            UnknownGeneric { .. } | Placeholder(_) => "_".to_string(),
-            TypeParam(n) => format!("typeparam({n})"),
-            StringSlice => "str".into(),
-            StringArray(x) => format!("str[{}]", x.val()),
-            UnsignedInteger(x) => match x {
-                IntegerBits::Eight => "u8",
-                IntegerBits::Sixteen => "u16",
-                IntegerBits::ThirtyTwo => "u32",
-                IntegerBits::SixtyFour => "u64",
-                IntegerBits::V256 => "u256",
-            }
-            .into(),
-            Boolean => "bool".into(),
-            Custom {
-                qualified_call_path: call_path,
-                ..
-            } => call_path.call_path.suffix.to_string(),
-            B256 => "b256".into(),
-            Numeric => "u64".into(), // u64 is the default
-            Contract => "contract".into(),
-            ErrorRecovery(_) => "unknown due to error".into(),
-            Tuple(fields) => {
-                let field_strs = fields
-                    .iter()
-                    .map(|_| "_".to_string())
-                    .collect::<Vec<String>>();
-                format!("({})", field_strs.join(", "))
-            }
-            Enum(decl_ref) => {
-                let decl = engines.de().get_enum(decl_ref);
-                format!("enum {}", &decl.call_path)
-            }
-            Struct(decl_ref) => {
-                let decl = engines.de().get_struct(decl_ref);
-                format!("struct {}", &decl.call_path)
-            }
-            ContractCaller { abi_name, .. } => {
-                format!("contract caller {abi_name}")
-            }
-            Array(_, length) => {
-                format!("[_; {}]", length.val())
-            }
-            Storage { .. } => "contract storage".into(),
-            RawUntypedPtr => "raw untyped ptr".into(),
-            RawUntypedSlice => "raw untyped slice".into(),
-            Ptr(_) => "__ptr".into(),
-            Slice(_) => "__slice".into(),
-            Alias { ty, .. } => ty.type_id.get_type_str_filter(engines),
-            TraitType { name, .. } => format!("trait type {}", name),
-            Ref {
-                referenced_type, ..
-            } => referenced_type.type_id.get_type_str_filter(engines),
-        }
-    }
 }
 
 #[derive(Debug)]
