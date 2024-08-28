@@ -167,7 +167,7 @@ impl TyDecl {
                         .namespace()
                         .module(engines)
                         .current_items()
-                        .check_symbol_unique(&var_decl.name.clone())
+                        .check_symbols_unique_while_collecting_unifications(&var_decl.name.clone())
                         .ok();
 
                     if let Some(ResolvedDeclaration::Typed(ty::TyDecl::VariableDecl(
