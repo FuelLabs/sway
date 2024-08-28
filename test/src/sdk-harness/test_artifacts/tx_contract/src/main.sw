@@ -40,7 +40,7 @@ abi TxContractTest {
     fn get_input_message_data_length(index: u64) -> Option<u64>;
     fn get_input_predicate_length(index: u64) -> Option<u64>;
     fn get_input_predicate_data_length(index: u64) -> Option<u64>;
-    fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
+    fn get_input_message_data(index: u64, offset: u64, expected_data_bytes: Bytes) -> bool;
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool;
 
     fn get_output_type(ptr: u64) -> Option<Output>;
@@ -123,18 +123,25 @@ impl TxContractTest for Contract {
     fn get_input_predicate_data_length(index: u64) -> Option<u64> {
         input_predicate_data_length(index)
     }
-    fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool {
+    fn get_input_message_data(index: u64, offset: u64, expected_data_bytes: Bytes) -> bool {
         let data = match input_message_data(index, offset) {
             Some(b) => b,
             None => return false,
         };
 
-        let mut expected_data_bytes = Bytes::new();
+        if expected_data_bytes.len() != data.len() {
+            return false
+        }
 
-        expected_data_bytes.push(expected[0]);
-        expected_data_bytes.push(expected[1]);
-        expected_data_bytes.push(expected[2]);
-        (data.get(0).unwrap() == expected_data_bytes.get(0).unwrap()) && (data.get(1).unwrap() == expected_data_bytes.get(1).unwrap()) && (data.get(2).unwrap() == expected_data_bytes.get(2).unwrap())
+        let mut iter = 0;
+        while iter < expected_data_bytes.len() {
+            if data.get(iter).unwrap() != expected_data_bytes.get(iter).unwrap() {
+                return false
+            }
+            iter += 1;
+        }
+
+        return true
     }
 
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
