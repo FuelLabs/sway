@@ -32,7 +32,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         &member_manifests,
         locked,
         offline,
-        ipfs_node.unwrap_or_default(),
+        &ipfs_node.unwrap_or_default(),
     )?;
     let tests_enabled = !disable_tests;
 

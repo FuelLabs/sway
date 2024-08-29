@@ -2,7 +2,7 @@ use super::{EntryPoint, ExitPoint};
 use crate::{
     language::{
         parsed::TreeType,
-        ty::{self, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
+        ty::{self, TyConfigurableDecl, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
         CallPath,
     },
     type_system::TypeInfo,
@@ -57,6 +57,7 @@ pub struct ControlFlowNamespace {
     /// TODO this should be an Ident and not a String, switch when static spans are implemented
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
+    pub(crate) configurable_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
     pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
     pub(crate) alias: HashMap<IdentUnique, NodeIndex>,
@@ -83,9 +84,15 @@ impl ControlFlowNamespace {
         self.function_namespace
             .insert((ident, TyFunctionSig::from_fn_decl(fn_decl)), entry);
     }
+
     pub(crate) fn get_constant(&self, const_decl: &TyConstantDecl) -> Option<&NodeIndex> {
         self.const_namespace.get(&const_decl.name().clone())
     }
+
+    pub(crate) fn get_configurable(&self, decl: &TyConfigurableDecl) -> Option<&NodeIndex> {
+        self.configurable_namespace.get(&decl.name().clone())
+    }
+
     #[allow(dead_code)]
     pub(crate) fn insert_constant(
         &mut self,
@@ -95,9 +102,11 @@ impl ControlFlowNamespace {
         self.const_namespace
             .insert(const_decl.name().clone(), declaration_node);
     }
+
     pub(crate) fn get_global_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
         self.const_namespace.get(ident)
     }
+
     pub(crate) fn insert_global_constant(
         &mut self,
         const_name: Ident,
@@ -105,6 +114,12 @@ impl ControlFlowNamespace {
     ) {
         self.const_namespace.insert(const_name, declaration_node);
     }
+
+    pub(crate) fn insert_configurable(&mut self, const_name: Ident, declaration_node: NodeIndex) {
+        self.configurable_namespace
+            .insert(const_name, declaration_node);
+    }
+
     pub(crate) fn insert_enum(&mut self, enum_name: Ident, enum_decl_index: NodeIndex) {
         self.enum_namespace
             .insert(enum_name.into(), (enum_decl_index, HashMap::new()));

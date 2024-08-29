@@ -4,13 +4,13 @@ library;
 use ::{assert::assert, logging::log, registers::{error, flags}};
 
 // Mask second bit, which is `F_WRAPPING`.
-const F_WRAPPING_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
+pub const F_WRAPPING_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
 // Mask second bit, which is `F_WRAPPING`.
-const F_WRAPPING_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101;
+pub const F_WRAPPING_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111101;
 // Mask first bit, which is `F_UNSAFEMATH`.
-const F_UNSAFEMATH_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001;
+pub const F_UNSAFEMATH_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001;
 // Mask first bit, which is `F_UNSAFEMATH`.
-const F_UNSAFEMATH_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111110;
+pub const F_UNSAFEMATH_ENABLE_MASK: u64 = 0b11111111_11111111_11111111_11111111_11111111_11111111_11111111_11111110;
 
 /// Sets the flag register to the given value.
 ///
@@ -209,59 +209,4 @@ pub fn enable_panic_on_unsafe_math() {
     asm(flag_val: flag_val) {
         flag flag_val;
     }
-}
-
-#[test]
-fn test_disable_panic_on_overflow() {
-    let _ = disable_panic_on_overflow();
-    let _bar = u64::max() + 1;
-    enable_panic_on_overflow();
-}
-
-#[test]
-fn test_disable_panic_on_overflow_preserving() {
-    let _ = disable_panic_on_overflow();
-
-    let prior_flags = disable_panic_on_overflow();
-    let _bar = u64::max() + 1;
-    set_flags(prior_flags);
-
-    let _bar = u64::max() + 1;
-
-    enable_panic_on_overflow();
-}
-
-#[test]
-fn test_disable_panic_on_unsafe_math() {
-    let _ = disable_panic_on_unsafe_math();
-
-    let _bar = asm(r2: 1, r3: 0, r1) {
-        div r1 r2 r3;
-        r1: u64
-    };
-
-    assert(error() == 1);
-
-    enable_panic_on_unsafe_math();
-}
-
-#[test]
-fn test_disable_panic_on_unsafe_math_preserving() {
-    let _ = disable_panic_on_unsafe_math();
-
-    let prior_flags = disable_panic_on_unsafe_math();
-    let _bar = asm(r2: 1, r3: 0, r1) {
-        div r1 r2 r3;
-        r1: u64
-    };
-    assert(error() == 1);
-    set_flags(prior_flags);
-
-    let _bar = asm(r2: 1, r3: 0, r1) {
-        div r1 r2 r3;
-        r1: u64
-    };
-    assert(error() == 1);
-
-    enable_panic_on_unsafe_math();
 }

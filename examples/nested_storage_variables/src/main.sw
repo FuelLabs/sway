@@ -2,7 +2,6 @@ contract;
 
 use std::{
     bytes::Bytes,
-    constants::ZERO_B256,
     hash::{
         Hash,
         sha256,

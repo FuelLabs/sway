@@ -7,8 +7,9 @@ pub(crate) use super::{
     },
     info::VecSet,
     substitute::{
-        subst_list::SubstList, subst_map::TypeSubstMap, subst_types::HasChanges,
-        subst_types::SubstTypes,
+        subst_map::TypeSubstMap,
+        subst_types::HasChanges,
+        subst_types::{SubstTypes, SubstTypesContext},
     },
     unify::unify_check::UnifyCheck,
 };
@@ -18,7 +19,8 @@ pub use super::{
         length::Length, trait_constraint::TraitConstraint, type_argument::TypeArgument,
         type_parameter::TypeParameter,
     },
+    engine::IsConcrete,
     engine::TypeEngine,
-    id::TypeId,
-    info::{AbiName, TypeInfo, TypeSourceInfo},
+    id::{IncludeSelf, TreatNumericAs, TypeId},
+    info::{AbiEncodeSizeHint, AbiName, TypeInfo, TypeSourceInfo},
 };

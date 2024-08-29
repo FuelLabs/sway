@@ -61,7 +61,7 @@ impl Renderable for AllDocIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        : generate_searchbar(self.project_name.clone());
+                        : generate_searchbar(&self.project_name);
                         section(id="main-content", class="content") {
                             h1(class="fqn") {
                                 span(class="in-band") { : "List of all items" }
@@ -102,9 +102,10 @@ impl ModuleIndex {
 }
 impl SidebarNav for ModuleIndex {
     fn sidebar(&self) -> Sidebar {
-        let style = match self.module_info.is_root_module() {
-            true => self.module_docs.style.clone(),
-            false => DocStyle::ModuleIndex,
+        let style = if self.module_info.is_root_module() {
+            self.module_docs.style.clone()
+        } else {
+            DocStyle::ModuleIndex
         };
         Sidebar::new(
             self.version_opt.clone(),
@@ -169,7 +170,7 @@ impl Renderable for ModuleIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        : generate_searchbar(self.module_info.clone());
+                        : generate_searchbar(&self.module_info);
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {

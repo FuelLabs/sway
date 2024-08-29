@@ -1,6 +1,7 @@
 use crate::{
     engine_threading::*,
     language::{parsed::*, *},
+    namespace::LexicalScopeId,
     transform::{self, AttributeKind},
     type_system::*,
 };
@@ -27,6 +28,22 @@ pub struct FunctionDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub kind: FunctionDeclarationKind,
+    pub implementing_type: Option<Declaration>,
+    pub lexical_scope: LexicalScopeId,
+}
+
+impl EqWithEngines for FunctionDeclaration {}
+impl PartialEqWithEngines for FunctionDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.purity == other.purity
+            && self.attributes == other.attributes
+            && self.name == other.name
+            && self.visibility == other.visibility
+            && self.body.eq(&other.body, ctx)
+            && self.parameters.eq(&other.parameters, ctx)
+            && self.return_type.eq(&other.return_type, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
+    }
 }
 
 impl DebugWithEngines for FunctionDeclaration {

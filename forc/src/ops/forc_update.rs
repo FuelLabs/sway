@@ -20,7 +20,7 @@ use tracing::info;
 ///
 /// Use the `--package <package-name>` flag to update only a specific package throughout the
 /// dependency graph.
-pub async fn update(command: UpdateCommand) -> Result<()> {
+pub fn update(command: UpdateCommand) -> Result<()> {
     let UpdateCommand {
         path,
         check,
@@ -40,7 +40,7 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let offline = false;
     let member_manifests = manifest.member_manifests()?;
     let ipfs_node = command.ipfs_node.unwrap_or_default();
-    let new_plan = pkg::BuildPlan::from_manifests(&member_manifests, offline, ipfs_node)?;
+    let new_plan = pkg::BuildPlan::from_manifests(&member_manifests, offline, &ipfs_node)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     let member_names = member_manifests

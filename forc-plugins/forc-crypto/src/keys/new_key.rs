@@ -28,7 +28,7 @@ pub struct Arg {
         long = "key-type",
         short = 'k',
         value_enum,
-        default_value = KeyType::BlockProduction.into(),
+        default_value = <&'static str>::from(KeyType::BlockProduction),
     )]
     key_type: KeyType,
 }

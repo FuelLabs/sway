@@ -20,7 +20,7 @@ use super::{
 /// http://moscova.inria.fr/%7Emaranget/papers/warn/warn004.html
 ///
 /// Implemented in Rust here:
-/// https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
+/// https://doc.rust-lang.org/1.75.0/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
 ///
 /// ---
 ///
@@ -183,7 +183,7 @@ use super::{
 ///
 /// # Details
 ///
-/// This algorithm checks is a match expression is exhaustive and if its match
+/// This algorithm checks if a match expression is exhaustive and if its match
 /// arms are reachable by applying the above definitions of usefulness and
 /// witnesses. This algorithm sequentially creates a [WitnessReport] for every
 /// match arm by calling *U(P, q)*, where *P* is the [Matrix] of patterns seen

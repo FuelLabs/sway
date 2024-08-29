@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, Criterion};
+use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
 use lsp_types::Position;
 use tokio::runtime::Runtime;
 
@@ -27,7 +27,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             session
                 .token_map()
-                .tokens_at_position(engines.se(), &uri, position, None)
+                .tokens_at_position(&engines, &uri, position, None)
         })
     });
 
@@ -39,7 +39,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             session
                 .token_map()
-                .parent_decl_at_position(engines.se(), &uri, position)
+                .parent_decl_at_position(&engines, &uri, position)
         })
     });
 }

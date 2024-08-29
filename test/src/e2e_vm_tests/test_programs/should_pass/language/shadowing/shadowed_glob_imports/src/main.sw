@@ -6,7 +6,7 @@ mod lib;
 use lib::*;
 
 // const shadowing an imported const with glob 
-const X1 = 7;
+const X1: u64 = 0;
 
 // types and traits shadowing imported items with glob 
 struct MyStruct11 {}
@@ -32,8 +32,13 @@ enum MyAbi24 {}
 trait MyAbi34 {}
 abi MyAbi44 {}
 
+configurable {
+    X3: u64 = 22,
+}
 
-fn main() {
+fn main() -> u64 {
     // var shadowing an imported const with glob
-    let X2 = 4;
+    let X2 = 20;
+
+    X1 + X2 + X3
 }

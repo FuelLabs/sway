@@ -14,7 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3.1", features = [ "derive" ] }
+clap = { version = "4.5.4", features = ["derive"] }
 mdbook = { version = "0.4", default-features = false }
 semver = "1.0"
 serde = "1.0"

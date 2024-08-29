@@ -70,6 +70,12 @@ Declaring these variables in storage requires a `storage` block as follows:
 
 Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. Refer to [Storage Maps](../common-collections/storage_map.md) for more information about `StorageMap<K, V>`.
 
+**Warning** While the `StorageMap<K, V>` is currently included in the prelude, to use it the `Hash` trait must still be imported. This is a known issue and will be resolved.
+
+```sway
+{{#include ../../../../examples/advanced_storage_variables/src/main.sw:temp_hash_import}}
+```
+
 To write to a storage map, call either the `insert()` or `try_insert()` functions as follows:
 
 ```sway
@@ -85,6 +91,14 @@ The following demonstrates how to read from a storage map:
 ### `StorageVec<T>`
 
 Generic storage vectors are available in the standard library as `StorageVec<T>` which have to be defined inside a `storage` block and allow you to call `push()` and `pop()` to push and pop values from a vector respectively. Refer to [Storage Vector](../common-collections/storage_vec.md) for more information about `StorageVec<T>`.
+
+The following demonstrates how to import `StorageVec<T>`:
+
+```sway
+{{#include ../../../../examples/advanced_storage_variables/src/main.sw:storage_vec_import}}
+```
+
+> **NOTE**: When importing the `StorageVec<T>`, please be sure to use the glob operator: `use std::storage::storage_vec::*`.
 
 The following demonstrates how to write to a `StorageVec<T>`:
 
@@ -102,6 +116,14 @@ The following demonstrates how to read from a `StorageVec<T>`:
 
 Storage of `Bytes` is available in the standard library as `StorageBytes` which have to be defined inside a `storage` block. `StorageBytes` cannot be manipulated in the same way a `StorageVec<T>` or `StorageMap<K, V>` can but stores bytes more efficiently thus reducing gas. Only the entirety of a `Bytes` may be read/written to storage. This means any changes would require loading the entire `Bytes` to the heap, making changes, and then storing it once again. If frequent changes are needed, a `StorageVec<u8>` is recommended.
 
+The following demonstrates how to import `StorageBytes`:
+
+```sway
+{{#include ../../../../examples/advanced_storage_variables/src/main.sw:storage_bytes_import}}
+```
+
+> **NOTE**: When importing the `StorageBytes`, please be sure to use the glob operator: `use std::storage::storage_bytes::*`.
+
 The following demonstrates how to write to a `StorageBytes`:
 
 ```sway
@@ -117,6 +139,14 @@ The following demonstrates how to read from a `StorageBytes`:
 ### `StorageString`
 
 Storage of `String` is available in the standard library as `StorageString` which have to be defined inside a `storage` block. `StorageString` cannot be manipulated in the same way a `StorageVec<T>` or `StorageMap<K, V>`. Only the entirety of a `String` may be read/written to storage.
+
+The following demonstrates how to import `StorageString`:
+
+```sway
+{{#include ../../../../examples/advanced_storage_variables/src/main.sw:storage_string_import}}
+```
+
+> **NOTE**: When importing the `StorageString`, please be sure to use the glob operator: `use std::storage::storage_string::*`.
 
 The following demonstrates how to write to a `StorageString`:
 

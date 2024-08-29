@@ -131,14 +131,16 @@ impl<T> RawVec<T> {
 
 impl<T> From<raw_slice> for RawVec<T> {
     fn from(slice: raw_slice) -> Self {
-        Self {
-            ptr: slice.ptr(),
-            cap: slice.len::<T>(),
+        let cap = slice.len::<T>();
+        let ptr = alloc::<T>(cap);
+        if cap > 0 {
+            slice.ptr().copy_to::<T>(ptr, cap);
         }
+        Self { ptr, cap }
     }
 }
 
-/// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
+/// A contiguous growable array type, written as `Vec<T>`, short for 'vector'. It has ownership over its buffer.
 pub struct Vec<T> {
     buf: RawVec<T>,
     len: u64,
@@ -419,7 +421,7 @@ impl<T> Vec<T> {
         // Shift everything down to fill in that spot.
         let mut i = index;
         if self.len > 1 {
-            while i < self.len {
+            while i < self.len - 1 {
                 let ptr = buf_start.add::<T>(i);
                 ptr.add::<T>(1).copy_to::<T>(ptr, 1);
                 i += 1;
@@ -651,16 +653,18 @@ impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
 {
-    fn abi_encode(self, ref mut buffer: Buffer) {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
         let len = self.len();
-        buffer.push_u64(len);
+        let mut buffer = len.abi_encode(buffer);
 
         let mut i = 0;
         while i < len {
             let item = self.get(i).unwrap();
-            item.abi_encode(buffer);
+            buffer = item.abi_encode(buffer);
             i += 1;
         }
+
+        buffer
     }
 }
 
@@ -701,28 +705,26 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-#[test()]
-fn test_vec_with_len_1() {
-    let mut ve: Vec<u64> = Vec::new();
-    assert(ve.len == 0);
-    ve.push(1);
-    assert(ve.len == 1);
-    let _ = ve.remove(0);
-    assert(ve.len == 0);
-}
+#[test]
+fn ok_vec_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
 
-#[test()]
-fn encode_and_decode_vec() {
-    let mut v1: Vec<u64> = Vec::new();
-    v1.push(1);
-    v1.push(2);
-    v1.push(3);
+    // Check Vec duplicates the original slice
+    let mut bytes = Vec::<u8>::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
 
-    let v2 = abi_decode::<Vec<u64>>(encode(v1));
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
 
-    assert(v2.len() == 3);
-    assert(v2.capacity() == 3);
-    assert(v2.get(0) == Some(1));
-    assert(v2.get(1) == Some(2));
-    assert(v2.get(2) == Some(3));
+    // `Vec<u8>` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
+
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
 }

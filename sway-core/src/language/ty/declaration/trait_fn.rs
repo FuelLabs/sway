@@ -8,7 +8,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     has_changes,
-    language::{ty::*, Purity},
+    language::{parsed::TraitFn, ty::*, Purity},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
@@ -22,6 +22,10 @@ pub struct TyTraitFn {
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeArgument,
     pub attributes: transform::AttributesMap,
+}
+
+impl TyDeclParsedType for TyTraitFn {
+    type ParsedType = TraitFn;
 }
 
 impl DebugWithEngines for TyTraitFn {
@@ -53,6 +57,23 @@ impl Named for TyTraitFn {
 impl Spanned for TyTraitFn {
     fn span(&self) -> Span {
         self.span.clone()
+    }
+}
+
+impl IsConcrete for TyTraitFn {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_parameters()
+            .iter()
+            .all(|tp| tp.is_concrete(engines))
+            && self
+                .return_type
+                .type_id
+                .is_concrete(engines, TreatNumericAs::Concrete)
+            && self.parameters().iter().all(|t| {
+                t.type_argument
+                    .type_id
+                    .is_concrete(engines, TreatNumericAs::Concrete)
+            })
     }
 }
 
@@ -101,10 +122,10 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.parameters.subst(type_mapping, engines);
-            self.return_type.subst(type_mapping, engines);
+            self.parameters.subst(type_mapping, ctx);
+            self.return_type.subst(type_mapping, ctx);
         }
     }
 }

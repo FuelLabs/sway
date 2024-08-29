@@ -4,7 +4,7 @@
 use crate::{
     capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
 };
-use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
+use forc_tracing::{tracing_subscriber, FmtSpan, StdioTracingWriter, TracingWriterMode};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
@@ -37,15 +37,17 @@ pub fn handle_initialize(
         state.spawn_client_heartbeat(client_pid as usize);
     }
 
-    // Initalizing tracing library based on the user's config
+    // Initializing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
-        let tracing_options = TracingSubscriberOptions {
-            log_level: Some(config.logging.level),
-            writer_mode: Some(TracingWriterMode::Stderr),
-            ..Default::default()
-        };
-        init_tracing_subscriber(tracing_options);
+        tracing_subscriber::fmt::Subscriber::builder()
+            .with_ansi(false)
+            .with_max_level(config.logging.level)
+            .with_span_events(FmtSpan::CLOSE)
+            .with_writer(StdioTracingWriter {
+                writer_mode: TracingWriterMode::Stderr,
+            })
+            .init();
     }
     tracing::info!("Initializing the Sway Language Server");
     Ok(InitializeResult {
@@ -132,6 +134,7 @@ pub async fn handle_hover(
                 &state.keyword_docs,
                 &uri,
                 position,
+                state.config.read().client.clone(),
             ))
         }
         Err(err) => {
@@ -346,7 +349,7 @@ pub(crate) async fn handle_inlay_hints(
 ///
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
-/// seperate side panel.
+/// separate side panel.
 pub async fn handle_show_ast(
     state: &ServerState,
     params: lsp_ext::ShowAstParams,
@@ -502,7 +505,7 @@ pub(crate) async fn metrics(
                     .engines
                     .read()
                     .se()
-                    .get_path_from_module_id(kv.key())
+                    .get_manifest_path_from_program_id(kv.key())
                     .unwrap()
                     .to_string_lossy()
                     .to_string();

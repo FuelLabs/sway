@@ -130,6 +130,7 @@ impl From<(u64, u64)> for U128 {
     }
 }
 
+// NOTE: To import, use the glob operator i.e. `use std::u128::*;`
 impl From<U128> for (u64, u64) {
     fn from(val: U128) -> (u64, u64) {
         (val.upper, val.lower)
@@ -152,9 +153,8 @@ impl core::ops::Ord for U128 {
     }
 }
 
-// TODO this doesn't work?
-// impl core::ops::OrdEq for U128 {
-// }
+impl core::ops::OrdEq for U128 {}
+
 impl u64 {
     /// Performs addition between two `u64` values, returning a `U128`.
     ///
@@ -429,6 +429,49 @@ impl U128 {
     pub fn lower(self) -> u64 {
         self.lower
     }
+
+    /// Returns the zero value for the `U128` type.
+    ///
+    /// # Returns
+    ///
+    /// * [U128] -> The zero value for the `U128` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let zero_u128 = U128::zero();
+    ///     assert(zero_u128 == U128::from((0, 0)));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            upper: 0,
+            lower: 0,
+        }
+    }
+
+    /// Returns whether a `U128` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `U128` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let zero_u128 = u128::zero();
+    ///     assert(zero_u128.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.upper == 0 && self.lower == 0
+    }
 }
 
 impl core::ops::BitwiseAnd for U128 {
@@ -586,8 +629,7 @@ impl core::ops::Divide for U128 {
             quotient <<= 1;
             remainder <<= 1;
             remainder.lower = remainder.lower | (self >> i).lower & 1;
-            // TODO use >= once OrdEq can be implemented.
-            if remainder > divisor || remainder == divisor {
+            if remainder >= divisor {
                 remainder -= divisor;
                 quotient.lower = quotient.lower | 1;
             }
@@ -688,52 +730,4 @@ impl Logarithm for U128 {
         let base_log2 = base.log2();
         self_log2 / base_log2
     }
-}
-
-#[test]
-fn test_u128_from_u8() {
-    let u8_1: u8 = 0u8;
-    let u8_2: u8 = 255u8;
-
-    let u128_1 = <U128 as From<u8>>::from(u8_1);
-    let u128_2 = <U128 as From<u8>>::from(u8_2);
-
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 255u64);
-}
-
-#[test]
-fn test_u128_from_u16() {
-    let u16_1: u16 = 0u16;
-    let u16_2: u16 = 65535u16;
-
-    let u128_1 = <U128 as From<u16>>::from(u16_1);
-    let u128_2 = <U128 as From<u16>>::from(u16_2);
-
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 65535u64);
-}
-
-#[test]
-fn test_u128_from_u32() {
-    let u32_1: u32 = 0u32;
-    let u32_2: u32 = 4294967295u32;
-
-    let u128_1 = <U128 as From<u32>>::from(u32_1);
-    let u128_2 = <U128 as From<u32>>::from(u32_2);
-
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 4294967295u64);
-}
-
-#[test]
-fn test_u128_from_u64() {
-    let u64_1: u64 = 0u64;
-    let u64_2: u64 = 18446744073709551615u64;
-
-    let u128_1 = <U128 as From<u64>>::from(u64_1);
-    let u128_2 = <U128 as From<u64>>::from(u64_2);
-
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 18446744073709551615u64);
 }

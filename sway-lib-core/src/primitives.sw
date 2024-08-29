@@ -55,6 +55,24 @@ impl u256 {
     pub fn bits() -> u64 {
         256
     }
+
+    /// Returns the zero value for the `u256` type.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] -> The zero value for the `u256` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u256 = u256::zero();
+    ///     assert(zero_u256 == 0x00u256);
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        0x00u256
+    }
 }
 
 impl u64 {
@@ -111,6 +129,24 @@ impl u64 {
     /// ```
     pub fn bits() -> u64 {
         64
+    }
+
+    /// Returns the zero value for the `u64` type.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] -> The zero value for the `u64` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u64 = u64::zero();
+    ///     assert(zero_u64 == 0u64);
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        0u64
     }
 }
 
@@ -169,6 +205,24 @@ impl u32 {
     pub fn bits() -> u64 {
         32
     }
+
+    /// Returns the zero value for the `u32` type.
+    ///
+    /// # Returns
+    ///
+    /// * [u32] -> The zero value for the `u32` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u32 = u32::zero();
+    ///     assert(zero_u32 == 0u32);
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        0u32
+    }
 }
 
 impl u16 {
@@ -225,6 +279,24 @@ impl u16 {
     /// ```
     pub fn bits() -> u64 {
         16
+    }
+
+    /// Returns the zero value for the `u16` type.
+    ///
+    /// # Returns
+    ///
+    /// * [u16] -> The zero value for the `u16` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u16 = u16::zero();
+    ///     assert(zero_u16 == 0u16);
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        0u16
     }
 }
 
@@ -283,6 +355,24 @@ impl u8 {
     pub fn bits() -> u64 {
         8
     }
+
+    // Returns the zero value for the `u8` type.
+    ///
+    /// # Returns
+    ///
+    /// * [u8] -> The zero value for the `u8` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u8 = u8::zero();
+    ///     assert(zero_u8 == 0u8);
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        0u8
+    }
 }
 
 impl b256 {
@@ -295,11 +385,9 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
     ///     let val = b256::min();
-    ///     assert(val == ZERO_B256);
+    ///     assert(val == b256::zero());
     /// }
     /// ```
     pub fn min() -> Self {
@@ -341,5 +429,23 @@ impl b256 {
     /// ```
     pub fn bits() -> u64 {
         256
+    }
+
+    /// Returns the zero value for the `b256` type.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] -> The zero value for the `b256` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_b256 = b256::zero();
+    ///     assert(zero_b256 == 0x0000000000000000000000000000000000000000000000000000000000000000);
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        0x0000000000000000000000000000000000000000000000000000000000000000
     }
 }

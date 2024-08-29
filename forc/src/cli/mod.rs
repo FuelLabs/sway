@@ -43,14 +43,14 @@ fn help() -> &'static str {
 }
 
 #[derive(Debug, Parser)]
-#[clap(name = "forc", about = "Fuel Orchestrator", version, after_help = help())]
+#[clap(name = "forc", about = "Fuel Orchestrator", version, after_long_help = help())]
 struct Opt {
     /// The command to run
     #[clap(subcommand)]
     command: Forc,
 
     /// Use verbose output
-    #[clap(short, long, parse(from_occurrences), global = true)]
+    #[clap(short, long, action = clap::ArgAction::Count, global = true)]
     verbose: u8,
 
     /// Silence all output
@@ -58,7 +58,7 @@ struct Opt {
     silent: bool,
 
     /// Set the log level
-    #[clap(short='L', long, global = true, parse(try_from_str = LevelFilter::from_str))]
+    #[clap(short='L', long, global = true, value_parser = LevelFilter::from_str)]
     log_level: Option<LevelFilter>,
 }
 
@@ -137,12 +137,12 @@ pub async fn run_cli() -> ForcResult<()> {
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Plugins(command) => plugins::exec(command),
         Forc::Test(command) => test::exec(command),
-        Forc::Update(command) => update::exec(command).await,
+        Forc::Update(command) => update::exec(command),
         Forc::Template(command) => template::exec(command),
         Forc::ContractId(command) => contract_id::exec(command),
         Forc::PredicateRoot(command) => predicate_root::exec(command),
         Forc::Plugin(args) => {
-            let output = plugin::execute_external_subcommand(args, opt.silent)?;
+            let output = plugin::execute_external_subcommand(&args)?;
             let code = output
                 .status
                 .code()

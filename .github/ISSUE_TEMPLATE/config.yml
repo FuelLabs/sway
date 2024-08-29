@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Fuel Network & Sway Language Community Support
+    url: https://forum.fuel.network/
+    about: Please ask and answer questions here.
+  - name: Fuel Network Security Bug Bounty
+    url: https://immunefi.com/boost/fuel-network-attackathon/
+    about: Please report security vulnerabilities here.

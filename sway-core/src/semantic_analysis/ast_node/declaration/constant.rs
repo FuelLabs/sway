@@ -11,7 +11,7 @@ use crate::{
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    Engines, SubstTypes, TypeInfo,
+    Engines, SubstTypes, SubstTypesContext, TypeInfo,
 };
 
 impl ty::TyConstantDecl {
@@ -28,7 +28,6 @@ impl ty::TyConstantDecl {
             span,
             mut type_ascription,
             value,
-            is_configurable,
             attributes,
             visibility,
         } = decl;
@@ -44,37 +43,30 @@ impl ty::TyConstantDecl {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.type_subst(), engines);
+        type_ascription.type_id.subst(
+            &ctx.type_subst(),
+            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+        );
+
+        if !is_screaming_snake_case(name.as_str()) {
+            handler.emit_warn(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonScreamingSnakeCaseConstName { name: name.clone() },
+            })
+        }
 
         let mut ctx = ctx
             .by_ref()
             .with_type_annotation(type_ascription.type_id)
             .with_help_text(
                 "This declaration's type annotation does not match up with the assigned \
-            expression's type.",
+        expression's type.",
             );
 
-        let value = match value {
-            Some(value) => {
-                let result = ty::TyExpression::type_check(handler, ctx.by_ref(), value);
-
-                if !is_screaming_snake_case(name.as_str()) {
-                    handler.emit_warn(CompileWarning {
-                        span: name.span(),
-                        warning_content: Warning::NonScreamingSnakeCaseConstName {
-                            name: name.clone(),
-                        },
-                    })
-                }
-
-                let value =
-                    result.unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines));
-
-                Some(value)
-            }
-            None => None,
-        };
-
+        let value = value.map(|value| {
+            ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
+                .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
+        });
         // Integers are special in the sense that we can't only rely on the type of `expression`
         // to get the type of the variable. The type of the variable *has* to follow
         // `type_ascription` if `type_ascription` is a concrete integer type that does not
@@ -94,13 +86,11 @@ impl ty::TyConstantDecl {
         let decl = ty::TyConstantDecl {
             call_path,
             attributes,
-            is_configurable,
             return_type,
             type_ascription,
             span,
             value,
             visibility,
-            implementing_type: None,
         };
         Ok(decl)
     }
@@ -123,10 +113,8 @@ impl ty::TyConstantDecl {
             attributes: Default::default(),
             return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
             type_ascription,
-            is_configurable: false,
             value: None,
             visibility,
-            implementing_type: None,
         }
     }
 }

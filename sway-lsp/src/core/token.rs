@@ -8,8 +8,8 @@ use sway_core::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
             EnumVariant, Expression, FunctionApplicationExpression, FunctionParameter,
             IncludeStatement, MethodApplicationExpression, Scrutinee, StorageField,
-            StructExpression, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-            TraitFn, UseStatement,
+            StorageNamespace, StructExpression, StructExpressionField, StructField,
+            StructScrutineeField, Supertrait, TraitFn, UseStatement,
         },
         ty,
     },
@@ -44,6 +44,7 @@ pub enum AstToken {
     MethodApplicationExpression(MethodApplicationExpression),
     Scrutinee(Scrutinee),
     StorageField(StorageField),
+    StorageNamespace(StorageNamespace),
     StructExpression(StructExpression),
     StructExpressionField(StructExpressionField),
     StructField(StructField),
@@ -65,6 +66,7 @@ pub enum TypedAstToken {
     TypedScrutinee(ty::TyScrutinee),
     TyStructScrutineeField(ty::TyStructScrutineeField),
     TypedConstantDeclaration(ty::TyConstantDecl),
+    TypedConfigurableDeclaration(ty::TyConfigurableDecl),
     TypedTraitTypeDeclaration(ty::TyTraitType),
     TypedFunctionDeclaration(ty::TyFunctionDecl),
     TypedFunctionParameter(ty::TyFunctionParameter),
@@ -185,7 +187,7 @@ impl Token {
 /// This type is used as the key in the [TokenMap]. It's constructed during AST traversal
 /// where we compute the [Range] of the token and the convert [SourceId]'s to [PathBuf]'s.
 /// Although this introduces a small amount of overhead while traversing, precomputing this
-/// greatly speeds up performace in all other areas of the language server.
+/// greatly speeds up performance in all other areas of the language server.
 ///
 /// [TokenMap]: crate::core::token_map::TokenMap
 /// [SourceId]: sway_types::SourceId
@@ -280,6 +282,10 @@ pub fn type_info_to_symbol_kind(
         }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
+            let type_info = type_engine.get(elem_ty.type_id);
+            type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
+        }
+        TypeInfo::Slice(elem_ty) => {
             let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }

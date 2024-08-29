@@ -1,13 +1,19 @@
 use crate::{
     constants::RAW_MODIFIER,
     formatter::{shape::LineStyle, *},
-    utils::map::byte_span::{ByteSpan, LeafSpans},
+    utils::{
+        map::byte_span::{ByteSpan, LeafSpans},
+        CurlyBrace,
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
-    keywords::CommaToken, punctuated::Punctuated, ConfigurableField, StorageField, TypeField,
+    keywords::CommaToken, punctuated::Punctuated, ConfigurableField, ItemStorage, StorageEntry,
+    StorageField, TypeField,
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
+
+use self::shape::ExprKind;
 
 use super::expr::should_write_multiline;
 
@@ -156,14 +162,14 @@ where
             let p_comment_spans = pair.1.leaf_spans();
             // Since we do not want to have comments between T and P we are extending the ByteSpans coming from T with spans coming from P
             // Since formatter can insert a trailing comma after a field, comments next to a field can be falsely inserted between the comma and the field
-            // So we shouldn't allow inserting comments (or searching for one) between T and P as in Punctuated scenerio this can/will result in formattings that breaks the build process
+            // So we shouldn't allow inserting comments (or searching for one) between T and P as in Punctuated scenario this can/will result in formatting that breaks the build process
             let mut comment_spans = pair
                 .0
                 .leaf_spans()
                 .iter_mut()
                 .map(|comment_map| {
                     // Since the length of P' ByteSpan is same for each pair we are using the first one's length for all of the pairs.
-                    // This assumtion always holds because for each pair P is formatted to same str so the length is going to be the same.
+                    // This assumption always holds because for each pair P is formatted to same str so the length is going to be the same.
                     // For example when P is CommaToken, the length of P is always 1.
                     comment_map.end += p_comment_spans[0].len();
                     comment_map.clone()
@@ -252,12 +258,15 @@ impl Format for StorageField {
         formatter.with_shape(
             formatter.shape.with_default_code_line(),
             |formatter| -> Result<(), FormatterError> {
-                write!(
-                    formatted_code,
-                    "{}{} ",
-                    self.name.span().as_str(),
-                    self.colon_token.span().as_str(),
-                )?;
+                write!(formatted_code, "{}", self.name.span().as_str())?;
+                if let Some(in_token) = &self.in_token {
+                    write!(formatted_code, " {}", in_token.span().as_str())?;
+                }
+                if let Some(key_expr) = &self.key_expr {
+                    write!(formatted_code, " {}", key_expr.span().as_str())?;
+                }
+                write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
+
                 self.ty.format(formatted_code, formatter)?;
                 write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
 
@@ -266,6 +275,48 @@ impl Format for StorageField {
         )?;
 
         self.initializer.format(formatted_code, formatter)?;
+        Ok(())
+    }
+}
+
+impl Format for StorageEntry {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        if let Some(field) = &self.field {
+            field.format(formatted_code, formatter)?;
+        } else if let Some(namespace) = &self.namespace {
+            self.name.format(formatted_code, formatter)?;
+            ItemStorage::open_curly_brace(formatted_code, formatter)?;
+            formatter.shape.code_line.update_expr_new_line(true);
+            formatter.with_shape(
+                formatter
+                    .shape
+                    .with_code_line_from(LineStyle::Multiline, ExprKind::Struct),
+                |formatter| -> Result<(), FormatterError> {
+                    namespace
+                        .clone()
+                        .into_inner()
+                        .format(formatted_code, formatter)?;
+                    Ok(())
+                },
+            )?;
+            ItemStorage::close_curly_brace(formatted_code, formatter)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<T: Format + Spanned + std::fmt::Debug> Format for Box<T> {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        (**self).format(formatted_code, formatter)?;
 
         Ok(())
     }

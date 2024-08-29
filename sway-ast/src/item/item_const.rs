@@ -24,6 +24,6 @@ impl Spanned for ItemConst {
                 None => self.name.span(),
             },
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }

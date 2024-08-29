@@ -2,7 +2,6 @@
 library;
 
 use ::b512::B512;
-use ::registers::error;
 use ::ecr::{ec_recover, EcRecoverError};
 use ::hash::*;
 use ::result::Result::{self, *};

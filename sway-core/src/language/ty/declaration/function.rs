@@ -1,5 +1,4 @@
 use std::{
-    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -9,7 +8,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     has_changes,
-    language::{parsed::FunctionDeclarationKind, CallPath},
+    language::{
+        parsed::{FunctionDeclaration, FunctionDeclarationKind},
+        CallPath,
+    },
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform::AttributeKind,
 };
@@ -55,7 +57,12 @@ pub struct TyFunctionDecl {
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub is_trait_method_dummy: bool,
+    pub is_type_check_finalized: bool,
     pub kind: TyFunctionDeclKind,
+}
+
+impl TyDeclParsedType for TyFunctionDecl {
+    type ParsedType = FunctionDeclaration;
 }
 
 impl DebugWithEngines for TyFunctionDecl {
@@ -138,6 +145,22 @@ impl Named for TyFunctionDecl {
     }
 }
 
+impl IsConcrete for TyFunctionDecl {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_parameters
+            .iter()
+            .all(|tp| tp.is_concrete(engines))
+            && self
+                .return_type
+                .type_id
+                .is_concrete(engines, TreatNumericAs::Concrete)
+            && self.parameters().iter().all(|t| {
+                t.type_argument
+                    .type_id
+                    .is_concrete(engines, TreatNumericAs::Concrete)
+            })
+    }
+}
 impl declaration::FunctionSignature for TyFunctionDecl {
     fn parameters(&self) -> &Vec<TyFunctionParameter> {
         &self.parameters
@@ -182,6 +205,7 @@ impl HashWithEngines for TyFunctionDecl {
             implementing_for_typeid: _,
             where_clause: _,
             is_trait_method_dummy: _,
+            is_type_check_finalized: _,
             kind: _,
         } = self;
         name.hash(state);
@@ -196,13 +220,22 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        has_changes! {
-            self.type_parameters.subst(type_mapping, engines);
-            self.parameters.subst(type_mapping, engines);
-            self.return_type.subst(type_mapping, engines);
-            self.body.subst(type_mapping, engines);
-            self.implementing_for_typeid.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        if ctx.subst_function_body {
+            has_changes! {
+                self.type_parameters.subst(type_mapping, ctx);
+                self.parameters.subst(type_mapping, ctx);
+                self.return_type.subst(type_mapping, ctx);
+                self.body.subst(type_mapping, ctx);
+                self.implementing_for_typeid.subst(type_mapping, ctx);
+            }
+        } else {
+            has_changes! {
+                self.type_parameters.subst(type_mapping, ctx);
+                self.parameters.subst(type_mapping, ctx);
+                self.return_type.subst(type_mapping, ctx);
+                self.implementing_for_typeid.subst(type_mapping, ctx);
+            }
         }
     }
 }
@@ -237,35 +270,6 @@ impl MonomorphizeHelper for TyFunctionDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
-    }
-}
-
-impl UnconstrainedTypeParameters for TyFunctionDecl {
-    fn type_parameter_is_unconstrained(
-        &self,
-        engines: &Engines,
-        type_parameter: &TypeParameter,
-    ) -> bool {
-        let type_engine = engines.te();
-        let mut all_types: HashSet<TypeId> = self
-            .type_parameters
-            .iter()
-            .map(|type_param| type_param.type_id)
-            .collect();
-        all_types.extend(self.parameters.iter().flat_map(|param| {
-            let mut inner = param.type_argument.type_id.extract_inner_types(engines);
-            inner.insert(param.type_argument.type_id);
-            inner
-        }));
-        all_types.extend(self.return_type.type_id.extract_inner_types(engines));
-        all_types.insert(self.return_type.type_id);
-        let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types.iter().any(|type_id| {
-            type_engine.get(*type_id).eq(
-                &type_parameter_info,
-                &PartialEqWithEnginesContext::new(engines),
-            )
-        })
     }
 }
 
@@ -334,6 +338,7 @@ impl TyFunctionDecl {
             type_parameters: Default::default(),
             where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
+            is_type_check_finalized: true,
             kind: match kind {
                 FunctionDeclarationKind::Default => TyFunctionDeclKind::Default,
                 FunctionDeclarationKind::Entry => TyFunctionDeclKind::Entry,
@@ -350,7 +355,7 @@ impl TyFunctionDecl {
                 // TODO: Use Span::join_all().
                 self.parameters[0].name.span(),
                 |acc, TyFunctionParameter { type_argument, .. }| {
-                    Span::join(acc, type_argument.span.clone())
+                    Span::join(acc, &type_argument.span)
                 },
             )
         } else {
@@ -461,7 +466,7 @@ impl TyFunctionDecl {
         };
 
         match &self.implementing_type {
-            Some(TyDecl::ImplTrait(t)) => {
+            Some(TyDecl::ImplSelfOrTrait(t)) => {
                 let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
                 let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id;
@@ -522,8 +527,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.type_argument.type_id.subst(type_mapping, engines)
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.type_id.subst(type_mapping, ctx)
     }
 }
 
@@ -537,6 +542,41 @@ impl TyFunctionParameter {
 pub struct TyFunctionSig {
     pub return_type: TypeId,
     pub parameters: Vec<TypeId>,
+    pub type_parameters: Vec<TypeId>,
+}
+
+impl DisplayWithEngines for TyFunctionSig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TyFunctionSig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let tp_str = if self.type_parameters.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "<{}>",
+                self.type_parameters
+                    .iter()
+                    .map(|p| format!("{}", engines.help_out(p)))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
+        write!(
+            f,
+            "fn{}({}) -> {}",
+            tp_str,
+            self.parameters
+                .iter()
+                .map(|p| format!("{}", engines.help_out(p)))
+                .collect::<Vec<_>>()
+                .join(", "),
+            engines.help_out(self.return_type),
+        )
+    }
 }
 
 impl TyFunctionSig {
@@ -548,6 +588,52 @@ impl TyFunctionSig {
                 .iter()
                 .map(|p| p.type_argument.type_id)
                 .collect::<Vec<_>>(),
+            type_parameters: fn_decl
+                .type_parameters
+                .iter()
+                .map(|p| p.type_id)
+                .collect::<Vec<_>>(),
         }
+    }
+
+    pub fn is_concrete(&self, engines: &Engines) -> bool {
+        self.return_type
+            .is_concrete(engines, TreatNumericAs::Concrete)
+            && self
+                .parameters
+                .iter()
+                .all(|p| p.is_concrete(engines, TreatNumericAs::Concrete))
+            && self
+                .type_parameters
+                .iter()
+                .all(|p| p.is_concrete(engines, TreatNumericAs::Concrete))
+    }
+
+    /// Returns a String representing the function.
+    /// When the function is monomorphized the returned String is unique.
+    /// Two monomorphized functions that generate the same String can be assumed to be the same.
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        let tp_str = if self.type_parameters.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "<{}>",
+                self.type_parameters
+                    .iter()
+                    .map(|p| p.get_type_str(engines))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
+        format!(
+            "fn{}({}) -> {}",
+            tp_str,
+            self.parameters
+                .iter()
+                .map(|p| p.get_type_str(engines))
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type.get_type_str(engines),
+        )
     }
 }

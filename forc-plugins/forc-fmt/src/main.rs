@@ -6,6 +6,7 @@ use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     WorkspaceManifestFile,
 };
+use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
 use forc_util::fs_locking::PidFileLocking;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
@@ -14,13 +15,11 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use taplo::formatter as taplo_fmt;
-use tracing::{debug, error, info};
-
-use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
+use taplo::formatter as taplo_fmt;
+use tracing::{debug, info};
 
 forc_util::cli_examples! {
     crate::App {
@@ -268,10 +267,10 @@ fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
             write_file_formatted(&manifest_file, &formatted_content)?;
         } else if formatted_content != manifest_content {
             edited = true;
-            error!(
+            println_error(&format!(
                 "Improperly formatted manifest file: {}",
                 manifest_file.display()
-            );
+            ));
             display_file_diff(&manifest_content, &formatted_content)?;
         } else {
             info!(

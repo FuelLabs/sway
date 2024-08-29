@@ -6,6 +6,6 @@ There is one function that can be used to transfer an asset to any entity:
 
 - [`transfer()`](./address-or-contract.md)
 
-Specific implementation details on transfering assets to addresses can be found [here](./address.md).
+Specific implementation details on transferring assets to addresses can be found [here](./address.md).
 
-Specific implementation details on transfering assets to contracts can be found [here](./contract.md).
+Specific implementation details on transferring assets to contracts can be found [here](./contract.md).

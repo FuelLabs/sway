@@ -6,10 +6,10 @@ mod errors;
 use abi::IdentityExample;
 use errors::MyError;
 
-use std::{asset::transfer, constants::{ZERO_B256,},};
+use std::asset::transfer;
 
 storage {
-    owner: Identity = Identity::ContractId(ContractId::from(ZERO_B256)),
+    owner: Identity = Identity::ContractId(ContractId::zero()),
 }
 
 impl IdentityExample for Contract {

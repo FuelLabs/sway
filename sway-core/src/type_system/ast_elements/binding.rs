@@ -1,11 +1,20 @@
+use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    language::{ty, CallPath, QualifiedCallPath},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
+    },
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::{
+        parsed::{FunctionDeclaration, StructDeclaration},
+        ty, CallPath, QualifiedCallPath,
+    },
+    semantic_analysis::{
+        symbol_resolve::ResolveSymbols, symbol_resolve_context::SymbolResolveContext,
+        type_check_context::EnforceTypeArguments, TypeCheckContext,
+    },
     type_system::priv_prelude::*,
     Ident,
 };
@@ -111,6 +120,12 @@ impl TypeArgs {
         }
     }
 
+    pub fn as_slice(&self) -> &[TypeArgument] {
+        match self {
+            TypeArgs::Regular(vec) | TypeArgs::Prefix(vec) => vec,
+        }
+    }
+
     pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,
@@ -121,7 +136,7 @@ impl TypeArgs {
 
 impl Spanned for TypeArgs {
     fn span(&self) -> Span {
-        Span::join_all(self.to_vec().iter().map(|t| t.span()))
+        Span::join_all(self.to_vec().iter().map(sway_types::Spanned::span))
     }
 }
 
@@ -141,9 +156,31 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
-impl PartialEqWithEngines for TypeBinding<()> {
+impl PartialEqWithEngines for TypeBinding<Ident> {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.span == other.span && self.type_arguments.eq(&other.type_arguments, ctx)
+        self.inner == other.inner
+            && self.span == other.span
+            && self.type_arguments.eq(&other.type_arguments, ctx)
+    }
+}
+
+impl PartialEqWithEngines for TypeBinding<Intrinsic> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.inner == other.inner
+            && self.span == other.span
+            && self.type_arguments.eq(&other.type_arguments, ctx)
+    }
+}
+
+impl<T> EqWithEngines for TypeBinding<T> where T: EqWithEngines {}
+impl<T> PartialEqWithEngines for TypeBinding<T>
+where
+    T: PartialEqWithEngines,
+{
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.inner.eq(&other.inner, ctx)
+            && self.span == other.span
+            && self.type_arguments.eq(&other.type_arguments, ctx)
     }
 }
 
@@ -153,6 +190,17 @@ impl<T> TypeBinding<T> {
             inner: (),
             type_arguments: self.type_arguments,
             span: self.span,
+        }
+    }
+
+    pub(crate) fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext<'_>) {
+        match self.type_arguments {
+            TypeArgs::Regular(ref mut args) => args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
+            TypeArgs::Prefix(ref mut args) => args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
         }
     }
 }
@@ -196,6 +244,13 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
     }
 }
 
+impl EqWithEngines for (TypeInfo, Ident) {}
+impl PartialEqWithEngines for (TypeInfo, Ident) {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.0.eq(&other.0, ctx) && self.1 == other.1
+    }
+}
+
 impl TypeBinding<CallPath> {
     pub(crate) fn strip_prefixes(&mut self) {
         self.inner.prefixes = vec![];
@@ -211,6 +266,32 @@ pub(crate) trait TypeCheckTypeBinding<T> {
         handler: &Handler,
         ctx: TypeCheckContext,
     ) -> Result<(DeclRef<DeclId<T>>, Option<TypeId>, Option<ty::TyDecl>), ErrorEmitted>;
+}
+
+#[allow(clippy::type_complexity)]
+pub trait SymbolResolveTypeBinding<T> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<T>, ErrorEmitted>;
+}
+
+impl SymbolResolveTypeBinding<FunctionDeclaration> for TypeBinding<CallPath> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
+        let engines = ctx.engines();
+        // Grab the declaration.
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        // Check to see if this is a function declaration.
+        let fn_decl = unknown_decl
+            .resolve_parsed(engines.de())
+            .to_fn_ref(handler, engines)?;
+        Ok(fn_decl)
+    }
 }
 
 impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
@@ -232,7 +313,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a fn declaration.
-        let fn_ref = unknown_decl.to_fn_ref(handler)?;
+        let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
         match self.type_arguments {
@@ -263,12 +344,31 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             }
         }
         // Insert the new copy into the declaration engine.
-        let new_fn_ref = ctx
-            .engines
-            .de()
-            .insert(new_copy)
+        let new_fn_ref = decl_engine
+            .insert(
+                new_copy,
+                decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
+            )
             .with_parent(ctx.engines.de(), fn_ref.id().into());
         Ok((new_fn_ref, None, None))
+    }
+}
+
+impl SymbolResolveTypeBinding<StructDeclaration> for TypeBinding<CallPath> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
+        let engines = ctx.engines();
+        // Grab the declaration.
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+
+        // Check to see if this is a struct declaration.
+        let struct_decl = unknown_decl.to_struct_decl(handler, engines)?;
+        struct_decl
+            .resolve_parsed(engines.de())
+            .to_struct_decl(handler, engines)
     }
 }
 
@@ -291,9 +391,9 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a struct declaration.
-        let struct_ref = unknown_decl.to_struct_ref(handler, engines)?;
+        let struct_id = unknown_decl.to_struct_decl(handler, engines)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = (*decl_engine.get_struct(struct_ref.id())).clone();
+        let mut new_copy = (*decl_engine.get_struct(&struct_id)).clone();
         // Monomorphize the copy, in place.
         ctx.monomorphize(
             handler,
@@ -303,10 +403,13 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             &self.span,
         )?;
         // Insert the new copy into the declaration engine.
-        let new_struct_ref = ctx.engines.de().insert(new_copy);
+        let new_struct_ref = decl_engine.insert(
+            new_copy,
+            decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
+        );
         let type_id = type_engine.insert(
             engines,
-            TypeInfo::Struct(new_struct_ref.clone()),
+            TypeInfo::Struct(*new_struct_ref.id()),
             new_struct_ref.span().source_id(),
         );
         Ok((new_struct_ref, Some(type_id), None))
@@ -333,17 +436,16 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Get a new copy from the declaration engine.
-        let mut new_copy = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-            enum_ref,
-            ..
-        }) = &unknown_decl
+        let enum_id = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) =
+            &unknown_decl
         {
-            (*decl_engine.get_enum(enum_ref.id())).clone()
+            *enum_ref.id()
         } else {
             // Check to see if this is a enum declaration.
-            let enum_ref = unknown_decl.to_enum_ref(handler, engines)?;
-            (*decl_engine.get_enum(enum_ref.id())).clone()
+            unknown_decl.to_enum_id(handler, engines)?
         };
+
+        let mut new_copy = (*decl_engine.get_enum(&enum_id)).clone();
 
         // Monomorphize the copy, in place.
         ctx.monomorphize(
@@ -354,10 +456,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             &self.span,
         )?;
         // Insert the new copy into the declaration engine.
-        let new_enum_ref = ctx.engines.de().insert(new_copy);
+        let new_enum_ref =
+            decl_engine.insert(new_copy, decl_engine.get_parsed_decl_id(&enum_id).as_ref());
         let type_id = type_engine.insert(
             engines,
-            TypeInfo::Enum(new_enum_ref.clone()),
+            TypeInfo::Enum(*new_enum_ref.id()),
             new_enum_ref.span().source_id(),
         );
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
@@ -375,7 +478,7 @@ impl TypeBinding<QualifiedCallPath> {
             ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok(const_ref)
     }
@@ -398,7 +501,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok((const_ref, None, None))
     }

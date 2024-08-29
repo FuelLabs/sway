@@ -19,13 +19,20 @@ use crate::{
     instruction::{FuelVmInstruction, InstOp},
     value::{Value, ValueDatum},
     BranchToWithArgs, DebugWithContext, Instruction, InstructionInserter, InstructionIterator,
-    Type,
+    Module, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Block(pub slotmap::DefaultKey);
+
+impl Block {
+    pub fn get_module<'a>(&self, context: &'a Context) -> &'a Module {
+        let f = context.blocks[self.0].function;
+        &context.functions[f.0].module
+    }
+}
 
 #[doc(hidden)]
 pub struct BlockContent {
@@ -113,7 +120,7 @@ impl Block {
         context.blocks[self.0].label = unique_label;
     }
 
-    /// Get the number of instructions in this block
+    /// Get the number of instructions in this block.
     pub fn num_instructions(&self, context: &Context) -> usize {
         context.blocks[self.0].instructions.len()
     }
@@ -336,7 +343,7 @@ impl Block {
                     if old_succ == *true_block {
                         modified = true;
                         *true_block = new_succ;
-                        *true_opds = new_params.clone();
+                        true_opds.clone_from(&new_params);
                     }
                     if old_succ == *false_block {
                         modified = true;

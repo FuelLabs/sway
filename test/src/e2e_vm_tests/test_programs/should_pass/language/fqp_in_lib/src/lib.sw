@@ -1,6 +1,5 @@
 library;
 use std::convert::{From, Into};
-use std::primitive_conversions::u64::*;
 
 pub struct U128_2 {
     upper: u64,

@@ -3,7 +3,10 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
+use crate::{
+    abi_generation::abi_str::AbiStrContext, engine_threading::*, has_changes, language::ty::*,
+    type_system::*, types::*,
+};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -70,10 +73,10 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.arguments.subst(type_mapping, engines);
-            self.type_arguments.subst(type_mapping, engines);
+            self.arguments.subst(type_mapping, ctx);
+            self.type_arguments.subst(type_mapping, ctx);
         }
     }
 }
@@ -113,10 +116,18 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
             Intrinsic::Log => {
                 let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
-                    LogId::new(ctx.log_id_counter()),
+                    LogId::new(logged_type.get_abi_type_str(
+                        &AbiStrContext {
+                            program_name: ctx.program_name.clone(),
+                            abi_with_callpaths: true,
+                            abi_with_fully_specified_types: true,
+                            abi_root_type_without_generic_type_parameters: false,
+                        },
+                        ctx.engines,
+                        logged_type,
+                    )),
                     logged_type,
                 ));
-                *ctx.log_id_counter_mut() += 1;
             }
             Intrinsic::Smo => {
                 types_metadata.push(TypeMetadata::MessageType(

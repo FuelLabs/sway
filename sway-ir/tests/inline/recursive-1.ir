@@ -1,0 +1,71 @@
+//
+// regex: VAR=v\d+
+// regex: LABEL=[[:alpha:]0-9_]+
+// regex: PING=(ping|id_from_ping)
+// regex: PONG=(pong|id_from_pong)
+script {
+
+    fn id_from_foo(b: u64) -> u64, !1 {
+       entry(b: u64):
+       ret u64 b
+    }
+
+    // check: fn foo
+    fn foo(b: u64) -> u64 {
+        entry(b: u64):
+
+        // check: call id_from_foo
+        v1 = call id_from_foo(b)
+        // check: call foo
+        v0 = call foo(v1)
+        ret u64 v0
+    }
+
+    fn id_from_ping(b: u64) -> u64, !1 {
+       entry(b: u64):
+       ret u64 b
+    }
+
+    fn id_from_pong(b: u64) -> u64, !1 {
+       entry(b: u64):
+       ret u64 b
+    }
+
+    // check: fn main
+    fn main() -> u64 {
+        entry():
+
+        v0 = const u64 11
+        // check: call foo
+        v1 = call foo(v0)
+
+        // check: $PING
+        v2 = call ping(v1)
+        v3 = add v1, v2
+
+        ret u64 v3
+    }
+
+    // check: fn ping
+    fn ping(b: u64) -> u64 {
+        entry(b: u64):
+
+        // check: id_from_ping
+        v1 = call id_from_ping(b)
+        v0 = call pong(v1)
+        ret u64 v0
+    }
+
+    // check: fn pong
+    fn pong(b: u64) -> u64 {
+        entry(b: u64):
+
+        // check: $PONG
+        v1 = call id_from_pong(b)
+        v0 = call ping(v1)
+        ret u64 v0
+    }
+
+}
+
+!1 = inline "never"

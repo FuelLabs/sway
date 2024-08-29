@@ -16,7 +16,7 @@ impl Spanned for ItemUse {
             None => self.use_token.span(),
         };
         let end = self.semicolon_token.span();
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -52,9 +52,9 @@ impl Spanned for UseTree {
         match self {
             UseTree::Group { imports } => imports.span(),
             UseTree::Name { name } => name.span(),
-            UseTree::Rename { name, alias, .. } => Span::join(name.span(), alias.span()),
+            UseTree::Rename { name, alias, .. } => Span::join(name.span(), &alias.span()),
             UseTree::Glob { star_token } => star_token.span(),
-            UseTree::Path { prefix, suffix, .. } => Span::join(prefix.span(), suffix.span()),
+            UseTree::Path { prefix, suffix, .. } => Span::join(prefix.span(), &suffix.span()),
             UseTree::Error { spans } => Span::join_all(spans.to_vec().clone()),
         }
     }

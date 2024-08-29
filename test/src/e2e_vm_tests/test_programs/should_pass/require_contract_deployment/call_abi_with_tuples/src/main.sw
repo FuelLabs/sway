@@ -1,11 +1,12 @@
 script;
 
-use abi_with_tuples::*;
+use abi_with_tuples::{MyContract, Location, Person};
+
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0xb351aff8258ce46d16a71be666dd2b0b09d72243105c51f4423765824e59cac9;
+const CONTRACT_ID = 0xfdc14550c8aee742cd556d0ab7f378b7be0d3b1e6e086c097352e94590d4ed02;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xa3eb70744fd03ddbfceffbd640d0fe4d704925ff8773b9f009e5939f12aa3439;
+const CONTRACT_ID = 0x95a6752ed4ad94a442f54a90edcda5ff722889f6640c5ecc5dbde676443bad06; // AUTO-CONTRACT-ID ../../test_contracts/abi_with_tuples_contract --release
 
 fn main() -> bool {
     let the_abi = abi(MyContract, CONTRACT_ID);
@@ -25,6 +26,19 @@ fn main() -> bool {
     );
     let bar = the_abi.bug2(param2);
     assert(bar);
+
+    // This fn returns some_module::SomeStruct, and this struct
+    // should not be manually imported
+    // We want the compiler to import its AbiDecode impl automatically
+    let a = the_abi.struct_at_return();
+    assert(a.0.data == 1);
+
+    // We should be able to call functions on the return type.
+    a.0.g();
+
+    // But we should not be able to reference the type name,
+    // because it is not bound.
+    // let a = SomeStruct { data: 2 }; // This will fail
 
     true
 }

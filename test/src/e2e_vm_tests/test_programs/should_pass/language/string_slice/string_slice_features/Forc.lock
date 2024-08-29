@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-FB31F3B8BBBDDB33"
+
+[[package]]
+name = "string_slice_features"
+source = "member"
+dependencies = ["core"]

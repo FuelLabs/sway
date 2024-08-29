@@ -34,5 +34,7 @@ impl MyAbi for Contract {
 fn tests() {
     let caller = abi(MyAbi, CONTRACT_ID);
     assert(caller.method1() == 42);
-    assert(caller.method() == 0xBAD)
+
+    // we disallow calling supertrait methods externally
+    //assert(caller.method() == 0xBAD)
 }

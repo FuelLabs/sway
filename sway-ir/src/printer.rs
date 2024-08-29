@@ -18,12 +18,12 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
-    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, IrError, Module,
-    Pass, PassMutability, ScopedPass, UnaryOpKind,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, ConfigContent,
+    IrError, Module, Pass, PassMutability, ScopedPass, UnaryOpKind,
 };
 
 #[derive(Debug)]
-enum Doc {
+pub(crate) enum Doc {
     Empty,
     Space,
     Comma,
@@ -42,7 +42,7 @@ enum Doc {
 }
 
 impl Doc {
-    fn text<S: Into<String>>(s: S) -> Self {
+    pub(crate) fn text<S: Into<String>>(s: S) -> Self {
         Doc::Text(s.into())
     }
 
@@ -50,7 +50,7 @@ impl Doc {
         Doc::Line(Box::new(doc))
     }
 
-    fn text_line<S: Into<String>>(s: S) -> Self {
+    pub(crate) fn text_line<S: Into<String>>(s: S) -> Self {
         Doc::Line(Box::new(Doc::Text(s.into())))
     }
 
@@ -66,7 +66,7 @@ impl Doc {
         Doc::Parens(Box::new(Doc::list_sep(docs, Doc::Comma)))
     }
 
-    fn append(self, doc: Doc) -> Doc {
+    pub(crate) fn append(self, doc: Doc) -> Doc {
         match (&self, &doc) {
             (Doc::Empty, _) => doc,
             (_, Doc::Empty) => self,
@@ -81,7 +81,7 @@ impl Doc {
         }
     }
 
-    fn build(self) -> String {
+    pub(crate) fn build(self) -> String {
         build_doc(self, 0)
     }
 }
@@ -90,15 +90,30 @@ impl Doc {
 ///
 /// The output from this function must always be suitable for [crate::parser::parse].
 pub fn to_string(context: &Context) -> String {
+    context_print(context, &|_, doc| doc)
+}
+
+pub(crate) fn context_print(context: &Context, map_doc: &impl Fn(&Value, Doc) -> Doc) -> String {
     let mut md_namer = MetadataNamer::default();
     context
         .modules
         .iter()
         .fold(Doc::Empty, |doc, (_, module)| {
-            doc.append(module_to_doc(context, &mut md_namer, module))
+            doc.append(module_to_doc(context, &mut md_namer, module, map_doc))
         })
         .append(md_namer.to_doc(context))
         .build()
+}
+
+pub(crate) fn block_print(
+    context: &Context,
+    function: Function,
+    block: Block,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
+) -> String {
+    let mut md_namer = MetadataNamer::default();
+    let mut namer = Namer::new(function);
+    block_to_doc(context, &mut md_namer, &mut namer, &block, map_doc).build()
 }
 
 pub struct ModulePrinterResult;
@@ -116,7 +131,8 @@ pub fn module_printer_pass(
         module_to_doc(
             context,
             &mut md_namer,
-            context.modules.get(module.0).unwrap()
+            context.modules.get(module.0).unwrap(),
+            &|_, doc| doc
         )
         .append(md_namer.to_doc(context))
         .build()
@@ -132,7 +148,8 @@ pub fn module_print(context: &Context, _analyses: &AnalysisResults, module: Modu
         module_to_doc(
             context,
             &mut md_namer,
-            context.modules.get(module.0).unwrap()
+            context.modules.get(module.0).unwrap(),
+            &|_, doc| doc
         )
         .append(md_namer.to_doc(context))
         .build()
@@ -147,19 +164,20 @@ pub fn function_print(context: &Context, function: Function) {
         function_to_doc(
             context,
             &mut md_namer,
-            &mut Namer::new(function, GlobalNamer::new()),
-            context.functions.get(function.0).unwrap()
+            &mut Namer::new(function),
+            context.functions.get(function.0).unwrap(),
+            &|_, doc| doc
         )
         .append(md_namer.to_doc(context))
         .build()
     );
 }
 
-pub const MODULEPRINTER_NAME: &str = "module_printer";
+pub const MODULE_PRINTER_NAME: &str = "module-printer";
 
 pub fn create_module_printer_pass() -> Pass {
     Pass {
-        name: MODULEPRINTER_NAME,
+        name: MODULE_PRINTER_NAME,
         descr: "Print module to stdout",
         deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Analysis(module_printer_pass)),
@@ -170,8 +188,8 @@ fn module_to_doc<'a>(
     context: &'a Context,
     md_namer: &mut MetadataNamer,
     module: &'a ModuleContent,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> Doc {
-    let mut global_namer = GlobalNamer::new();
     Doc::line(Doc::Text(format!(
         "{} {{",
         match module.kind {
@@ -185,13 +203,13 @@ fn module_to_doc<'a>(
         4,
         Doc::List(
             module
-                .global_configurable
+                .configs
                 .values()
-                .map(|value| config_to_doc(context, md_namer, &mut global_namer, value))
+                .map(|value| config_to_doc(context, value, md_namer))
                 .collect(),
         ),
     ))
-    .append(if !module.global_configurable.is_empty() {
+    .append(if !module.configs.is_empty() {
         Doc::line(Doc::Empty)
     } else {
         Doc::Empty
@@ -206,8 +224,9 @@ fn module_to_doc<'a>(
                     function_to_doc(
                         context,
                         md_namer,
-                        &mut Namer::new(*function, global_namer.clone()),
+                        &mut Namer::new(*function),
                         &context.functions[function.0],
+                        map_doc,
                     )
                 })
                 .collect(),
@@ -217,14 +236,81 @@ fn module_to_doc<'a>(
     .append(Doc::text_line("}"))
 }
 
+fn config_to_doc(
+    context: &Context,
+    configurable: &ConfigContent,
+    md_namer: &mut MetadataNamer,
+) -> Doc {
+    match configurable {
+        ConfigContent::V0 {
+            name,
+            constant,
+            opt_metadata,
+            ..
+        } => Doc::line(
+            Doc::text(format!(
+                "{} = config {}",
+                name,
+                constant.as_lit_string(context)
+            ))
+            .append(md_namer.md_idx_to_doc(context, opt_metadata)),
+        ),
+        ConfigContent::V1 {
+            name,
+            ty,
+            encoded_bytes,
+            decode_fn,
+            opt_metadata,
+            ..
+        } => {
+            let ty = ty.as_string(context);
+            let bytes = encoded_bytes
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<Vec<String>>()
+                .concat();
+            Doc::line(
+                Doc::text(format!(
+                    "{} = config {}, {}, 0x{}",
+                    name,
+                    ty,
+                    decode_fn.get_name(context),
+                    bytes,
+                ))
+                .append(md_namer.md_idx_to_doc(context, opt_metadata)),
+            )
+        }
+    }
+}
+
 fn function_to_doc<'a>(
     context: &'a Context,
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     function: &'a FunctionContent,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> Doc {
     let public = if function.is_public { "pub " } else { "" };
     let entry = if function.is_entry { "entry " } else { "" };
+    // TODO: Remove outer `if` once old encoding is fully removed.
+    //       This is an intentional "complication" so that we see
+    //       explicit using of `new_encoding` here.
+    //       For the time being, for the old encoding, we don't want
+    //       to show both `entry` and `entry_orig` although both
+    //       values will be true.
+    // TODO: When removing old encoding, remove also the TODO in the
+    //       `rule fn_decl()` definition of the IR parser.
+    let original_entry = if context.experimental.new_encoding {
+        if function.is_original_entry {
+            "entry_orig "
+        } else {
+            ""
+        }
+    } else if !function.is_entry && function.is_original_entry {
+        "entry_orig "
+    } else {
+        ""
+    };
     let fallback = if function.is_fallback {
         "fallback "
     } else {
@@ -232,8 +318,8 @@ fn function_to_doc<'a>(
     };
     Doc::line(
         Doc::text(format!(
-            "{}{}{}fn {}",
-            public, entry, fallback, function.name
+            "{}{}{}{}fn {}",
+            public, entry, original_entry, fallback, function.name
         ))
         .append(
             function
@@ -308,7 +394,7 @@ fn function_to_doc<'a>(
                     function
                         .blocks
                         .iter()
-                        .map(|block| block_to_doc(context, md_namer, namer, block))
+                        .map(|block| block_to_doc(context, md_namer, namer, block, map_doc))
                         .collect(),
                     Doc::line(Doc::Empty),
                 ),
@@ -324,6 +410,7 @@ fn block_to_doc(
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     block: &Block,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> Doc {
     let block_content = &context.blocks[block.0];
     Doc::line(
@@ -345,33 +432,12 @@ fn block_to_doc(
     .append(Doc::List(
         block
             .instruction_iter(context)
-            .map(|ins| instruction_to_doc(context, md_namer, namer, block, &ins))
+            .map(|current_value| {
+                let doc = instruction_to_doc(context, md_namer, namer, block, &current_value);
+                (map_doc)(&current_value, doc)
+            })
             .collect(),
     ))
-}
-
-fn config_to_doc(
-    context: &Context,
-    md_namer: &mut MetadataNamer,
-    global_namer: &mut GlobalNamer,
-    const_val: &Value,
-) -> Doc {
-    if let ValueContent {
-        value: ValueDatum::Configurable(configurable),
-        metadata,
-    } = &context.values[const_val.0]
-    {
-        Doc::line(
-            Doc::text(format!(
-                "{} = config {}",
-                global_namer.name(context, const_val),
-                configurable.as_lit_string(context)
-            ))
-            .append(md_namer.md_idx_to_doc(context, metadata)),
-        )
-    } else {
-        unreachable!("Not a constant value.")
-    }
 }
 
 fn constant_to_doc(
@@ -893,6 +959,18 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
             }
+            InstOp::GetConfig(_, name) => Doc::line(
+                match block.get_module(context).get_config(context, name).unwrap() {
+                    ConfigContent::V0 { name, ptr_ty, .. }
+                    | ConfigContent::V1 { name, ptr_ty, .. } => Doc::text(format!(
+                        "{} = get_config {}, {}",
+                        namer.name(context, ins_value),
+                        ptr_ty.as_string(context),
+                        name,
+                    )),
+                }
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            ),
             InstOp::IntToPtr(value, ty) => maybe_constant_to_doc(context, md_namer, namer, value)
                 .append(Doc::line(
                     Doc::text(format!(
@@ -1016,13 +1094,14 @@ fn asm_block_to_doc(
                         .collect(),
                 ))
                 .append(
-                    return_name
-                        .as_ref()
-                        .map(|rn| {
-                            Doc::text(format!(" -> {} {rn}", return_type.as_string(context)))
-                                .append(md_namer.md_idx_to_doc(context, metadata))
-                        })
-                        .unwrap_or(Doc::Empty),
+                    Doc::text(format!(
+                        " -> {}{}",
+                        return_type.as_string(context),
+                        return_name
+                            .as_ref()
+                            .map_or("".to_string(), |rn| format!(" {rn}"))
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
                 .append(Doc::text(" {")),
         ))
@@ -1110,6 +1189,15 @@ impl Constant {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            ConstantValue::Slice(elems) => format!(
+                "__slice[{}] [{}]",
+                self.ty.as_string(context),
+                elems
+                    .iter()
+                    .map(|elem| elem.as_lit_string(context))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
             ConstantValue::Struct(fields) => format!(
                 "{} {{ {} }}",
                 self.ty.as_string(context),
@@ -1120,56 +1208,31 @@ impl Constant {
                     .join(", ")
             ),
             ConstantValue::Reference(constant) => format!("&({})", constant.as_lit_string(context)),
+            ConstantValue::RawUntypedSlice(bytes) => {
+                format!(
+                    "{} 0x{}",
+                    self.ty.as_string(context),
+                    bytes
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<String>>()
+                        .concat()
+                )
+            }
         }
-    }
-}
-
-#[derive(Clone)]
-struct GlobalNamer {
-    names: HashMap<Value, String>,
-    next_configurable_idx: u64,
-}
-
-impl GlobalNamer {
-    fn new() -> Self {
-        GlobalNamer {
-            names: HashMap::new(),
-            next_configurable_idx: 0,
-        }
-    }
-
-    fn name(&mut self, context: &Context, value: &Value) -> String {
-        match &context.values[value.0].value {
-            ValueDatum::Configurable(_) => self.default_configurable_name(value),
-            _ => todo!(),
-        }
-    }
-
-    fn default_configurable_name(&mut self, value: &Value) -> String {
-        self.names.get(value).cloned().unwrap_or_else(|| {
-            let new_name = format!("c{}", self.next_configurable_idx);
-            self.next_configurable_idx += 1;
-            self.names.insert(*value, new_name.clone());
-            new_name
-        })
     }
 }
 
 struct Namer {
     function: Function,
-
-    // To make things easier, each `Namer` also gets a `GlobalNamer` which includes all globally
-    // available names (such as config constants).
-    global_namer: GlobalNamer,
     names: HashMap<Value, String>,
     next_value_idx: u64,
 }
 
 impl Namer {
-    fn new(function: Function, global_namer: GlobalNamer) -> Self {
+    fn new(function: Function) -> Self {
         Namer {
             function,
-            global_namer,
             names: HashMap::new(),
             next_value_idx: 0,
         }
@@ -1182,7 +1245,6 @@ impl Namer {
                 .lookup_arg_name(context, value)
                 .cloned()
                 .unwrap_or_else(|| self.default_name(value)),
-            ValueDatum::Configurable(_) => self.global_namer.name(context, value),
             ValueDatum::Constant(_) => self.default_name(value),
             ValueDatum::Instruction(_) => self.default_name(value),
         }

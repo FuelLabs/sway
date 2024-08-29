@@ -11,7 +11,7 @@ use sway_utils::mapped_stack::MappedStack;
 use crate::{
     AnalysisResults, Block, BranchToWithArgs, Context, DomFronts, DomTree, Function, InstOp,
     Instruction, IrError, LocalVar, Pass, PassMutability, PostOrder, ScopedPass, Type, Value,
-    ValueDatum, DOMFRONTS_NAME, DOMINATORS_NAME, POSTORDER_NAME,
+    ValueDatum, DOMINATORS_NAME, DOM_FRONTS_NAME, POSTORDER_NAME,
 };
 
 pub const MEM2REG_NAME: &str = "mem2reg";
@@ -19,8 +19,8 @@ pub const MEM2REG_NAME: &str = "mem2reg";
 pub fn create_mem2reg_pass() -> Pass {
     Pass {
         name: MEM2REG_NAME,
-        descr: "Promote local memory to SSA registers.",
-        deps: vec![POSTORDER_NAME, DOMINATORS_NAME, DOMFRONTS_NAME],
+        descr: "Promotion of local memory to SSA registers",
+        deps: vec![POSTORDER_NAME, DOMINATORS_NAME, DOM_FRONTS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(promote_to_registers)),
     }
 }

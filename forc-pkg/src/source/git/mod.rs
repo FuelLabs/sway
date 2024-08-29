@@ -6,15 +6,16 @@ use crate::{
     source,
 };
 use anyhow::{anyhow, bail, Context, Result};
+use forc_tracing::println_action_green;
 use forc_util::git_checkouts_directory;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use std::{
     collections::hash_map,
     fmt, fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
-use tracing::info;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Url {
@@ -28,6 +29,12 @@ pub struct Source {
     pub repo: Url,
     /// A git reference, e.g. a branch or tag.
     pub reference: Reference,
+}
+
+impl Display for Source {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.repo, self.reference)
+    }
 }
 
 /// Used to distinguish between types of git references.
@@ -67,7 +74,7 @@ const DEFAULT_REMOTE_NAME: &str = "origin";
 
 /// Everything needed to recognize a checkout in offline mode
 ///
-/// Since we are omiting `.git` folder to save disk space, we need an indexing file
+/// Since we are omitting `.git` folder to save disk space, we need an indexing file
 /// to recognize a checkout while searching local checkouts in offline mode
 #[derive(Serialize, Deserialize)]
 pub struct SourceIndex {
@@ -197,11 +204,13 @@ impl source::Fetch for Pinned {
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {
-                info!(
-                    "  {} {} {}",
-                    ansi_term::Color::Green.bold().paint("Fetching"),
-                    ansi_term::Style::new().bold().paint(ctx.name),
-                    self
+                println_action_green(
+                    "Fetching",
+                    &format!(
+                        "{} {}",
+                        ansi_term::Style::new().bold().paint(ctx.name),
+                        self
+                    ),
                 );
                 fetch(ctx.fetch_id(), ctx.name(), self)?;
             }
@@ -377,7 +386,7 @@ fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
 
-/// Given a git reference, build a list of `refspecs` required for the fetch opration.
+/// Given a git reference, build a list of `refspecs` required for the fetch operation.
 ///
 /// Also returns whether or not our reference implies we require fetching tags.
 fn git_ref_to_refspecs(reference: &Reference) -> (Vec<String>, bool) {
@@ -479,7 +488,7 @@ pub fn pin(fetch_id: u64, name: &str, source: Source) -> Result<Pinned> {
         let commit_id = source
             .reference
             .resolve(&repo)
-            .with_context(|| "failed to resolve reference".to_string())?;
+            .with_context(|| format!("Failed to resolve manifest reference: {source}"))?;
         Ok(format!("{commit_id}"))
     })?;
     Ok(Pinned {
@@ -508,7 +517,7 @@ pub fn commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 ///
 /// Returns the location of the checked out commit.
 ///
-/// NOTE: This function assumes that the caller has aquired an advisory lock to co-ordinate access
+/// NOTE: This function assumes that the caller has acquired an advisory lock to co-ordinate access
 /// to the git repository checkout path.
 pub fn fetch(fetch_id: u64, name: &str, pinned: &Pinned) -> Result<PathBuf> {
     let path = commit_path(name, &pinned.source.repo, &pinned.commit_hash);
@@ -621,7 +630,7 @@ fn find_repo_with_tag(
         let current_head = repo_index.head_with_time.0;
         if let Reference::Tag(curr_repo_tag) = repo_index.git_reference {
             if curr_repo_tag == tag {
-                found_local_repo = Some((repo_dir_path, current_head))
+                found_local_repo = Some((repo_dir_path, current_head));
             }
         }
         Ok(())

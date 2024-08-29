@@ -8,7 +8,7 @@ impl AuthTesting for Contract {
         caller_is_external()
     }
 
-    fn returns_msg_sender(expected_id: ContractId) -> bool {
+    fn returns_msg_sender(_expected_id: ContractId) -> bool {
         let result: Result<Identity, AuthError> = msg_sender();
         let mut ret = false;
         if result.is_err() {
@@ -16,7 +16,7 @@ impl AuthTesting for Contract {
         }
         let unwrapped = result.unwrap();
         match unwrapped {
-            Identity::ContractId(v) => {
+            Identity::ContractId(_) => {
                 ret = true
             },
             _ => {
@@ -34,8 +34,8 @@ impl AuthTesting for Contract {
         }
         let unwrapped = result.unwrap();
         match unwrapped {
-            Identity::Address(v) => {
-                ret = true
+            Identity::Address(address) => {
+                ret = expected_id == address
             },
             _ => {
                 ret = false

@@ -1,6 +1,9 @@
 use fuels::{prelude::*, types::SizedAsciiString};
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
+// https://github.com/FuelLabs/sway/issues/5727
 #[tokio::test]
+#[ignore]
 async fn contract_uses_default_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
@@ -45,7 +48,10 @@ async fn contract_uses_default_configurables() -> Result<()> {
     Ok(())
 }
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
+// https://github.com/FuelLabs/sway/issues/5727
 #[tokio::test]
+#[ignore]
 async fn contract_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
@@ -69,7 +75,7 @@ async fn contract_configurables() -> Result<()> {
         .with_STRUCT(new_struct.clone())?
         .with_ENUM(new_enum.clone())?
         .with_ADDRESS(new_address.clone())?
-        .with_CONTRACT_ID(new_contract_id.clone())?;
+        .with_MY_CONTRACT_ID(new_contract_id.clone())?;
 
     let contract_id = Contract::load_from(
         "test_projects/configurables_in_contract/out/release/configurables_in_contract.bin",

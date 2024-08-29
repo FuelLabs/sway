@@ -12,11 +12,13 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     has_changes,
-    language::{CallPath, Visibility},
+    language::{parsed::EnumDeclaration, CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };
+
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyEnumDecl {
@@ -26,6 +28,10 @@ pub struct TyEnumDecl {
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
     pub visibility: Visibility,
+}
+
+impl TyDeclParsedType for TyEnumDecl {
+    type ParsedType = EnumDeclaration;
 }
 
 impl Named for TyEnumDecl {
@@ -64,10 +70,10 @@ impl HashWithEngines for TyEnumDecl {
 }
 
 impl SubstTypes for TyEnumDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.variants.subst(type_mapping, engines);
-            self.type_parameters.subst(type_mapping, engines);
+            self.variants.subst(type_mapping, ctx);
+            self.type_parameters.subst(type_mapping, ctx);
         }
     }
 }
@@ -75,6 +81,14 @@ impl SubstTypes for TyEnumDecl {
 impl Spanned for TyEnumDecl {
     fn span(&self) -> Span {
         self.span.clone()
+    }
+}
+
+impl IsConcrete for TyEnumDecl {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_parameters
+            .iter()
+            .all(|tp| tp.is_concrete(engines))
     }
 }
 
@@ -172,7 +186,7 @@ impl OrdWithEngines for TyEnumVariant {
 }
 
 impl SubstTypes for TyEnumVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.type_argument.subst_inner(type_mapping, engines)
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(type_mapping, ctx)
     }
 }

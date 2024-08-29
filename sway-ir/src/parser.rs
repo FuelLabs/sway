@@ -25,6 +25,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
+    use slotmap::KeyData;
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
     type MdIdxRef = u64;
@@ -66,25 +67,36 @@ mod ir_builder {
                     }
                 }
 
+            rule config_encoded_bytes() -> Vec<u8>
+                = "0x" s:$(hex_digit()*) _ {
+                    hex_string_to_vec(s)
+                }
+
             rule init_config() -> IrAstConfig
-                = value_name:value_assign() "config" _ val_ty:ast_ty() cv:constant()
+                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:id() _ "," _ encoded_bytes:config_encoded_bytes()
                 metadata:comma_metadata_idx()? {
                     IrAstConfig {
                         value_name,
                         ty: val_ty,
-                        const_val: cv,
+                        encoded_bytes,
+                        decode_fn,
                         metadata,
                     }
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = is_public:is_public() _ is_entry:is_entry() _  is_fallback:is_fallback() _ "fn" _
+                = is_public:is_public() _ is_entry:is_entry() _  is_original_entry:is_original_entry() _ is_fallback:is_fallback() _ "fn" _
                         name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
                         locals:fn_local()*
                         blocks:block_decl()*
                     "}" _ {
+                    // TODO: Remove once old decoding is removed.
+                    //       In the case of old decoding, every entry is at the same time an original entry, but in the IR
+                    //       we mark them only as `entry`s so there is a bit of information lost at the roundtrip.
+                    //       Remove this hack to recognize the new encoding once it becomes the only encoding.
+                    let is_original_entry = is_original_entry || (is_entry && !name.starts_with("__entry"));
                     IrAstFnDecl {
                         name,
                         args,
@@ -95,6 +107,7 @@ mod ir_builder {
                         blocks,
                         selector,
                         is_entry,
+                        is_original_entry,
                         is_fallback,
                     }
                 }
@@ -105,6 +118,10 @@ mod ir_builder {
 
             rule is_entry() -> bool
                 = "entry" _ { true }
+                / "" _ { false }
+
+            rule is_original_entry() -> bool
+                = "entry_orig" _ { true }
                 / "" _ { false }
 
             rule is_fallback() -> bool
@@ -197,6 +214,7 @@ mod ir_builder {
                 / op_contract_call()
                 / op_get_elem_ptr()
                 / op_get_local()
+                / op_get_config()
                 / op_gtf()
                 / op_int_to_ptr()
                 / op_load()
@@ -217,13 +235,13 @@ mod ir_builder {
                 / op_store()
 
             rule op_asm() -> IrAstOperation
-                = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
+                = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret() meta_idx:comma_metadata_idx()? "{" _
                     ops:asm_op()*
                 "}" _ {
                     IrAstOperation::Asm(
                         args,
-                        ret.clone().map(|(ty, _)| ty).unwrap_or(IrAstTy::Unit),
-                        ret.map(|(_, nm)| nm),
+                        ret.0,
+                        ret.1,
                         ops,
                         meta_idx
                     )
@@ -311,6 +329,11 @@ mod ir_builder {
             rule op_get_local() -> IrAstOperation
                 = "get_local" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetLocal(name)
+                }
+
+            rule op_get_config() -> IrAstOperation
+                = "get_config" _ ast_ty() comma() name:id() {
+                    IrAstOperation::GetConfig(name)
                 }
 
             rule op_gtf() -> IrAstOperation
@@ -432,8 +455,8 @@ mod ir_builder {
                     IrAstAsmArgInit::Var(var)
                 }
 
-            rule asm_ret() -> (IrAstTy, Ident)
-                = "->" _ ty:ast_ty() ret:id_id() {
+            rule asm_ret() -> (IrAstTy, Option<Ident>)
+                = "->" _ ty:ast_ty() ret:id_id()? {
                     (ty, ret)
                 }
 
@@ -663,7 +686,8 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, ExperimentalFlags, Instruction, UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, ConfigContent, ExperimentalFlags, Instruction, UnaryOpKind,
+        B256,
     };
 
     #[derive(Debug)]
@@ -685,6 +709,7 @@ mod ir_builder {
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
+        is_original_entry: bool,
         is_fallback: bool,
     }
 
@@ -723,6 +748,7 @@ mod ir_builder {
         ContractCall(IrAstTy, String, String, String, String, String),
         GetElemPtr(String, IrAstTy, Vec<String>),
         GetLocal(String),
+        GetConfig(String),
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
         Load(String),
@@ -752,7 +778,8 @@ mod ir_builder {
     struct IrAstConfig {
         value_name: String,
         ty: IrAstTy,
-        const_val: IrAstConst,
+        encoded_bytes: Vec<u8>,
+        decode_fn: String,
         metadata: Option<MdIdxRef>,
     }
 
@@ -925,7 +952,10 @@ mod ir_builder {
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    use std::{collections::HashMap, iter::FromIterator};
+    use std::{
+        collections::{BTreeMap, HashMap},
+        iter::FromIterator,
+    };
 
     pub(super) fn build_context(
         ir_ast_mod: IrAstModule,
@@ -945,6 +975,7 @@ mod ir_builder {
         for fn_decl in ir_ast_mod.fn_decls {
             builder.add_fn_decl(&mut ctx, fn_decl)?;
         }
+
         builder.resolve_calls(&mut ctx)?;
 
         Ok(ctx)
@@ -952,7 +983,7 @@ mod ir_builder {
 
     struct IrBuilder {
         module: Module,
-        configs_map: HashMap<String, Value>,
+        configs_map: BTreeMap<String, String>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -988,13 +1019,12 @@ mod ir_builder {
                 fn_decl.selector,
                 fn_decl.is_public,
                 fn_decl.is_entry,
+                fn_decl.is_original_entry,
                 fn_decl.is_fallback,
                 convert_md_idx(&fn_decl.metadata),
             );
 
-            // Gather all the (new) arg values by name into a map. Initialize this map with all
-            // config variables as they are globally available
-            let mut arg_map = self.configs_map.clone();
+            let mut arg_map = HashMap::default();
             let mut local_map = HashMap::<String, LocalVar>::new();
             for (ty, name, initializer, mutable) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
@@ -1278,6 +1308,10 @@ mod ir_builder {
                         .append(context)
                         .get_local(*local_map.get(&local_name).unwrap())
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetConfig(name) => block
+                        .append(context)
+                        .get_config(self.module, name)
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Gtf(index, tx_field_id) => block
                         .append(context)
                         .gtf(*val_map.get(&index).unwrap(), tx_field_id)
@@ -1417,6 +1451,24 @@ mod ir_builder {
         }
 
         fn resolve_calls(self, context: &mut Context) -> Result<(), IrError> {
+            for (configurable_name, fn_name) in self.configs_map {
+                let f = self
+                    .module
+                    .function_iter(context)
+                    .find(|x| x.get_name(context) == fn_name)
+                    .unwrap();
+
+                if let Some(ConfigContent::V1 { decode_fn, .. }) = context
+                    .modules
+                    .get_mut(self.module.0)
+                    .unwrap()
+                    .configs
+                    .get_mut(&configurable_name)
+                {
+                    *decode_fn = f;
+                }
+            }
+
             // All of the call instructions are currently invalid (recursive) CALLs to their own
             // function, which need to be replaced with the proper callee function.  We couldn't do
             // it above until we'd gone and created all the functions first.
@@ -1450,28 +1502,32 @@ mod ir_builder {
     fn build_configs_map(
         context: &mut Context,
         module: &Module,
-        ir_configs: Vec<IrAstConfig>,
+        configs: Vec<IrAstConfig>,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-    ) -> HashMap<String, Value> {
-        ir_configs
-            .iter()
+    ) -> BTreeMap<String, String> {
+        configs
+            .into_iter()
             .map(|config| {
                 let opt_metadata = config
                     .metadata
                     .map(|mdi| md_map.get(&mdi).unwrap())
                     .copied();
-                let as_const = config
-                    .const_val
-                    .value
-                    .as_constant(context, config.ty.clone());
-                let config_val =
-                    Value::new_configurable(context, as_const).add_metadatum(context, opt_metadata);
-                module.add_global_configurable(
-                    context,
-                    vec![config.value_name.clone()],
-                    config_val,
-                );
-                (config.value_name.clone(), config_val)
+
+                let ty = config.ty.to_ir_type(context);
+
+                let config_val = ConfigContent::V1 {
+                    name: config.value_name.clone(),
+                    ty,
+                    ptr_ty: Type::new_ptr(context, ty),
+                    encoded_bytes: config.encoded_bytes,
+                    // this will point to the correct function after all functions are compiled
+                    decode_fn: Function(KeyData::default().into()),
+                    opt_metadata,
+                };
+
+                module.add_config(context, config.value_name.clone(), config_val.clone());
+
+                (config.value_name.clone(), config.decode_fn.clone())
             })
             .collect()
     }
@@ -1528,6 +1584,19 @@ mod ir_builder {
             cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
             if idx % 2 == 1 {
                 bytes[idx / 2] = cur_byte;
+                cur_byte = 0;
+            }
+        }
+        bytes
+    }
+
+    fn hex_string_to_vec(s: &str) -> Vec<u8> {
+        let mut bytes = vec![];
+        let mut cur_byte: u8 = 0;
+        for (idx, ch) in s.chars().enumerate() {
+            cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
+            if idx % 2 == 1 {
+                bytes.push(cur_byte);
                 cur_byte = 0;
             }
         }

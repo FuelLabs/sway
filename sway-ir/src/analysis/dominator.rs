@@ -198,12 +198,12 @@ fn compute_dom_tree(
     Ok(Box::new(dom_tree))
 }
 
-pub const DOMFRONTS_NAME: &str = "dominance_frontiers";
+pub const DOM_FRONTS_NAME: &str = "dominance-frontiers";
 
 pub fn create_dom_fronts_pass() -> Pass {
     Pass {
-        name: DOMFRONTS_NAME,
-        descr: "Dominator frontiers computation",
+        name: DOM_FRONTS_NAME,
+        descr: "Dominance frontiers computation",
         deps: vec![DOMINATORS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_dom_fronts)),
     }

@@ -13,10 +13,7 @@ pub enum StorageMapError<V> {
 }
 
 /// A persistent key-value pair mapping struct.
-pub struct StorageMap<K, V>
-where
-    K: Hash,
-{}
+pub struct StorageMap<K, V> {}
 
 impl<K, V> StorageKey<StorageMap<K, V>>
 where
@@ -88,11 +85,8 @@ where
     where
         K: Hash,
     {
-        StorageKey::<V>::new(
-            sha256((key, self.field_id())),
-            0,
-            sha256((key, self.field_id())),
-        )
+        let key = sha256((key, self.field_id()));
+        StorageKey::<V>::new(key, 0, key)
     }
 
     /// Clears a value previously stored using a key
@@ -130,7 +124,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((key, self.slot()));
+        let key = sha256((key, self.field_id()));
         clear::<V>(key, 0)
     }
 

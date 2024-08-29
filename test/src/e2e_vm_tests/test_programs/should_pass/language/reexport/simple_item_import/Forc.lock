@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-628D42C449EC89D5"
+
+[[package]]
+name = "simple_item_import"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-628D42C449EC89D5"
+dependencies = ["core"]

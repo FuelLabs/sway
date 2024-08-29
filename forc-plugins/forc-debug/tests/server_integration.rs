@@ -192,7 +192,7 @@ fn test_server_launch_mode() {
                 ("Opcode", "SW"),
                 ("rA", "reg59"),
                 ("rB", "one"),
-                ("imm", "0x2"),
+                ("imm", "0x1"),
             ];
             assert_variables_eq(expected, res.variables);
         }

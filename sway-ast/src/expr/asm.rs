@@ -39,6 +39,6 @@ impl Spanned for AsmImmediate {
 
 impl Spanned for AsmBlock {
     fn span(&self) -> Span {
-        Span::join(self.asm_token.span(), self.contents.span())
+        Span::join(self.asm_token.span(), &self.contents.span())
     }
 }

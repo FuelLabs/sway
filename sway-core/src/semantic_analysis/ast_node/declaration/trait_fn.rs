@@ -1,4 +1,4 @@
-use sway_types::{Span, Spanned};
+use sway_types::Spanned;
 
 use crate::{
     decl_engine::DeclId,
@@ -31,7 +31,7 @@ impl ty::TyTraitFn {
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().with_purity(*purity).scoped(|mut ctx| {
+        ctx.by_ref().scoped(|mut ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.
@@ -90,15 +90,13 @@ impl ty::TyTraitFn {
             body: ty::TyCodeBlock::default(),
             parameters: self.parameters.clone(),
             implementing_type: match abi_mode.clone() {
-                AbiMode::ImplAbiFn(abi_name, abi_decl_id) => {
+                AbiMode::ImplAbiFn(_abi_name, abi_decl_id) => {
                     // ABI and their super-ABI methods cannot have the same names,
                     // so in order to provide meaningful error messages if this condition
                     // is violated, we need to keep track of ABI names before we can
                     // provide type-checked `AbiDecl`s
                     Some(ty::TyDecl::AbiDecl(ty::AbiDecl {
-                        name: abi_name,
                         decl_id: abi_decl_id.unwrap_or(DeclId::dummy()),
-                        decl_span: Span::dummy(),
                     }))
                 }
                 AbiMode::NonAbi => None,
@@ -113,6 +111,7 @@ impl ty::TyTraitFn {
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
             is_trait_method_dummy: true,
+            is_type_check_finalized: true,
             kind: ty::TyFunctionDeclKind::Default,
         }
     }

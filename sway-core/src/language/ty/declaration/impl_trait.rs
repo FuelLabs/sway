@@ -3,46 +3,54 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRefMixedInterface, engine_threading::*, has_changes, language::CallPath,
+    decl_engine::DeclRefMixedInterface,
+    engine_threading::*,
+    has_changes,
+    language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
 
-use super::TyTraitItem;
+use super::{TyDeclParsedType, TyTraitItem};
 
 pub type TyImplItem = TyTraitItem;
 
 // impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
 #[derive(Clone, Debug)]
-pub struct TyImplTrait {
+pub struct TyImplSelfOrTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub items: Vec<TyImplItem>,
+    pub supertrait_items: Vec<TyImplItem>,
     pub trait_decl_ref: Option<DeclRefMixedInterface>,
     pub implementing_for: TypeArgument,
     pub span: Span,
 }
 
-impl TyImplTrait {
+impl TyImplSelfOrTrait {
     pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
         matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
     }
 }
 
-impl Named for TyImplTrait {
+impl TyDeclParsedType for TyImplSelfOrTrait {
+    type ParsedType = ImplSelfOrTrait;
+}
+
+impl Named for TyImplSelfOrTrait {
     fn name(&self) -> &Ident {
         &self.trait_name.suffix
     }
 }
 
-impl Spanned for TyImplTrait {
+impl Spanned for TyImplSelfOrTrait {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl EqWithEngines for TyImplTrait {}
-impl PartialEqWithEngines for TyImplTrait {
+impl EqWithEngines for TyImplSelfOrTrait {}
+impl PartialEqWithEngines for TyImplSelfOrTrait {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.impl_type_parameters
             .eq(&other.impl_type_parameters, ctx)
@@ -56,9 +64,9 @@ impl PartialEqWithEngines for TyImplTrait {
     }
 }
 
-impl HashWithEngines for TyImplTrait {
+impl HashWithEngines for TyImplSelfOrTrait {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let TyImplTrait {
+        let TyImplSelfOrTrait {
             impl_type_parameters,
             trait_name,
             trait_type_arguments,
@@ -68,6 +76,7 @@ impl HashWithEngines for TyImplTrait {
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             span: _,
+            supertrait_items: _,
         } = self;
         trait_name.hash(state);
         impl_type_parameters.hash(state, engines);
@@ -78,12 +87,12 @@ impl HashWithEngines for TyImplTrait {
     }
 }
 
-impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+impl SubstTypes for TyImplSelfOrTrait {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.impl_type_parameters.subst(type_mapping, engines);
-            self.implementing_for.subst_inner(type_mapping, engines);
-            self.items.subst(type_mapping, engines);
+            self.impl_type_parameters.subst(type_mapping, ctx);
+            self.implementing_for.subst_inner(type_mapping, ctx);
+            self.items.subst(type_mapping, ctx);
         }
     }
 }

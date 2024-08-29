@@ -21,8 +21,23 @@ async fn test_storage_vec_nested_instance() -> TestStorageVecNestedContract<Wall
 }
 
 #[tokio::test]
-async fn nested_vec_access() {
+async fn nested_vec_access_push() {
     let methods = test_storage_vec_nested_instance().await.methods();
 
-    methods.nested_vec_access().call().await.unwrap();
+    methods.nested_vec_access_push().call().await.unwrap();
+}
+
+#[tokio::test]
+async fn nested_vec_access_insert() {
+    let methods = test_storage_vec_nested_instance().await.methods();
+
+    methods.nested_vec_access_insert().call().await.unwrap();
+}
+
+#[tokio::test]
+#[should_panic]
+async fn revert_on_load_storage_vec() {
+    let methods = test_storage_vec_nested_instance().await.methods();
+
+    methods.revert_on_load_storage_vec().call().await.unwrap();
 }

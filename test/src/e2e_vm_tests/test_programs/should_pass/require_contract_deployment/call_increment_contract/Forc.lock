@@ -19,7 +19,10 @@ dependencies = ["std"]
 [[package]]
 name = "increment_abi"
 source = "path+from-root-2711CA1D0E2938B8"
-dependencies = ["core"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "std"

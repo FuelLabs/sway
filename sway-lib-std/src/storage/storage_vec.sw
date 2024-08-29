@@ -35,7 +35,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     assert(five == storage.vec.get(0).unwrap());
+    ///     assert(five == storage.vec.get(0).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -77,7 +77,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     let popped_value = storage.vec.pop().unwrap();
     ///     assert(five == popped_value);
     ///     let none_value = storage.vec.pop();
-    ///     assert(none_value.is_none())
+    ///     assert(none_value.is_none());
     /// }
     /// ```
     #[storage(read, write)]
@@ -124,8 +124,8 @@ impl<V> StorageKey<StorageVec<V>> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     assert(five == storage.vec.get(0).unwrap());
-    ///     assert(storage.vec.get(1).is_none())
+    ///     assert(five == storage.vec.get(0).unwrap().read());
+    ///     assert(storage.vec.get(1).is_none());
     /// }
     /// ```
     #[storage(read)]
@@ -253,7 +253,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///     let removed_value = storage.vec.swap_remove(0);
     ///     assert(5 == removed_value);
-    ///     let swapped_value = storage.vec.get(0).unwrap();
+    ///     let swapped_value = storage.vec.get(0).unwrap().read();
     ///     assert(15 == swapped_value);
     /// }
     /// ```
@@ -311,7 +311,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///
     ///     storage.vec.set(0, 20);
-    ///     let set_value = storage.vec.get(0).unwrap();
+    ///     let set_value = storage.vec.get(0).unwrap().read();
     ///     assert(20 == set_value);
     /// }
     /// ```
@@ -363,9 +363,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.insert(1, 10);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(15 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -510,9 +510,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///
     ///     storage.vec.swap(0, 2);
-    ///     assert(15 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(5 == storage.vec.get(2).unwrap());
+    ///     assert(15 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(5 == storage.vec.get(2).unwrap().read());
     /// ```
     #[storage(read, write)]
     pub fn swap(self, element1_index: u64, element2_index: u64) {
@@ -562,7 +562,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.push(5);
     ///
-    ///     assert(5 == storage.vec.first().unwrap());
+    ///     assert(5 == storage.vec.first().unwrap().read());
     /// }
     /// ```
     #[storage(read)]
@@ -598,7 +598,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
     ///
-    ///     assert(10 == storage.vec.last().unwrap());
+    ///     assert(10 == storage.vec.last().unwrap().read());
     /// }
     /// ```
     #[storage(read)]
@@ -633,9 +633,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///     storage.vec.reverse();
     ///
-    ///     assert(15 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(5 == storage.vec.get(2).unwrap());
+    ///     assert(15 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(5 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -686,9 +686,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///     storage.vec.fill(20);
     ///
-    ///     assert(20 == storage.vec.get(0).unwrap());
-    ///     assert(20 == storage.vec.get(1).unwrap());
-    ///     assert(20 == storage.vec.get(2).unwrap());
+    ///     assert(20 == storage.vec.get(0).unwrap().read());
+    ///     assert(20 == storage.vec.get(1).unwrap().read());
+    ///     assert(20 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -734,15 +734,15 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(10);
     ///     storage.vec.resize(4, 20);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(20 == storage.vec.get(2).unwrap());
-    ///     assert(20 == storage.vec.get(3).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(20 == storage.vec.get(2).unwrap().read());
+    ///     assert(20 == storage.vec.get(3).unwrap().read());
     ///
     ///     storage.vec.resize(2, 0);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
     ///     assert(None == storage.vec.get(2));
     ///     assert(None == storage.vec.get(3));
     /// }
@@ -802,14 +802,36 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.store_vec(vec);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(15 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(write)]
     pub fn store_vec(self, vec: Vec<V>) {
-        let slice = vec.as_raw_slice();
+        let size_V_bytes = __size_of::<V>();
+
+        // Handle cases where elements are less than the size of word and pad to the size of a word
+        let slice = if size_V_bytes < 8 {
+            let vec_slice = vec.as_raw_slice();
+            let number_of_words = 8 * vec.len();
+            let ptr = alloc_bytes(number_of_words);
+            let mut i = 0;
+            while i < vec.len() {
+                // Insert into raw slice as offsets of 1 word per element
+                // (size_of_word * element)
+                vec_slice
+                    .ptr()
+                    .add::<V>(i)
+                    .copy_bytes_to(ptr.add_uint_offset(8 * i), size_V_bytes);
+                i += 1;
+            }
+
+            raw_slice::from_parts::<V>(ptr, number_of_words)
+        } else {
+            vec.as_raw_slice()
+        };
+
         // Get the number of storage slots needed based on the size of bytes.
         let number_of_bytes = slice.number_of_bytes();
         let number_of_slots = (number_of_bytes + 31) >> 5;
@@ -824,14 +846,22 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // Store the length, NOT the bytes. 
         // This differs from the existing `write_slice()` function to be compatible with `StorageVec`.
-        write::<u64>(self.field_id(), 0, number_of_bytes / __size_of::<V>());
+        write::<u64>(self.field_id(), 0, vec.len());
     }
 
     /// Load a `Vec` from the `StorageVec`.
     ///
+    /// # Additional Information
+    ///
+    /// This method does not work for any `V` type that has a 0 size, such as `StorageVec` itself. Meaning you cannot use this method on a `StorageVec<StorageVec<T>>`.
+    ///
     /// # Returns
     ///
     /// * [Option<Vec<V>>] - The vector constructed from storage or `None`.
+    ///
+    /// # Reverts
+    ///
+    /// * If the size of type `V` is 0.
     ///
     /// # Number of Storage Accesses
     ///
@@ -865,14 +895,47 @@ impl<V> StorageKey<StorageVec<V>> {
             0 => Vec::new(),
             len => {
                 // Get the number of storage slots needed based on the size.
-                let bytes = len * __size_of::<V>();
+                let size_V_bytes = __size_of::<V>();
+
+                assert(size_V_bytes != 0);
+
+                let bytes = if size_V_bytes < 8 {
+                    // Len * size_of_word
+                    len * 8
+                } else {
+                    len * size_V_bytes
+                };
+
                 let number_of_slots = (bytes + 31) >> 5;
                 let ptr = alloc_bytes(number_of_slots * 32);
                 // Load the stored slice into the pointer.
                 let _ = __state_load_quad(sha256(self.field_id()), ptr, number_of_slots);
-                Vec::from(asm(ptr: (ptr, bytes)) {
-                    ptr: raw_slice
-                })
+
+                if size_V_bytes < 8 {
+                    let len_bytes = len * size_V_bytes;
+                    let new_vec = alloc_bytes(len_bytes);
+                    let mut i = 0;
+                    while i < len {
+                        // The stored vec is offset with 1 word per element, remove the padding for elements less than the size of a word
+                        // (size_of_word * element)
+                        ptr
+                            .add_uint_offset((8 * i))
+                            .copy_bytes_to(new_vec.add::<V>(i), size_V_bytes);
+                        i += 1;
+                    }
+
+                    Vec::from(
+                        asm(ptr: (new_vec, len_bytes)) {
+                            ptr: raw_slice
+                        },
+                    )
+                } else {
+                    Vec::from(
+                        asm(ptr: (ptr, bytes)) {
+                            ptr: raw_slice
+                        },
+                    )
+                }
             }
         }
     }

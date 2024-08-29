@@ -7,6 +7,7 @@ pub enum Assignable {
     /// E.g.:
     ///  - `my_variable`
     ///  - `array[0].field.x.1`
+    ///
     /// Note that within the path, we cannot have dereferencing
     /// (except, of course, in expressions inside of array index operator).
     /// This is guaranteed by the grammar.
@@ -47,7 +48,7 @@ impl Spanned for Assignable {
     fn span(&self) -> Span {
         match self {
             Assignable::ElementAccess(element_access) => element_access.span(),
-            Assignable::Deref { star_token, expr } => Span::join(star_token.span(), expr.span()),
+            Assignable::Deref { star_token, expr } => Span::join(star_token.span(), &expr.span()),
         }
     }
 }
@@ -56,13 +57,13 @@ impl Spanned for ElementAccess {
     fn span(&self) -> Span {
         match self {
             ElementAccess::Var(name) => name.span(),
-            ElementAccess::Index { target, arg } => Span::join(target.span(), arg.span()),
+            ElementAccess::Index { target, arg } => Span::join(target.span(), &arg.span()),
             ElementAccess::FieldProjection { target, name, .. } => {
-                Span::join(target.span(), name.span())
+                Span::join(target.span(), &name.span())
             }
             ElementAccess::TupleFieldProjection {
                 target, field_span, ..
-            } => Span::join(target.span(), field_span.clone()),
+            } => Span::join(target.span(), field_span),
         }
     }
 }

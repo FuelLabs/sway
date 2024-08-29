@@ -97,6 +97,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "implementation"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
 name = "liquidity_pool"
 source = "member"
 dependencies = [
@@ -162,6 +170,14 @@ dependencies = [
 
 [[package]]
 name = "ownership"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "proxy"
 source = "member"
 dependencies = [
     "core",

@@ -49,7 +49,7 @@ pub(super) enum ReqOrVarDecl {
 /// The tree represents a logical expression that consists of equality comparisons, and
 /// lazy AND and OR operators.
 ///
-/// The leafs of the tree are either equality comparisons or eventual variable declarations
+/// The leaves of the tree are either equality comparisons or eventual variable declarations
 /// or none of those in the case of catch-all `_` pattern or only a single rest `..` in structs.
 pub(super) struct ReqDeclTree {
     root: ReqDeclNode,
@@ -408,7 +408,7 @@ fn match_constant(
         ty::TyExpression {
             expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
-                const_decl: Box::new(const_decl),
+                decl: Box::new(const_decl),
                 call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
             },
             return_type,

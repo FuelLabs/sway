@@ -23,8 +23,10 @@ pub enum ConstantValue {
     B256(B256),
     String(Vec<u8>),
     Array(Vec<Constant>),
+    Slice(Vec<Constant>),
     Struct(Vec<Constant>),
     Reference(Box<Constant>),
+    RawUntypedSlice(Vec<u8>),
 }
 
 /// A [Constant] with its required [Padding].
@@ -267,5 +269,12 @@ impl Constant {
                 }
                 _ => false,
             }
+    }
+
+    pub fn as_uint(&self) -> Option<u64> {
+        match &self.value {
+            ConstantValue::Uint(v) => Some(*v),
+            _ => None,
+        }
     }
 }

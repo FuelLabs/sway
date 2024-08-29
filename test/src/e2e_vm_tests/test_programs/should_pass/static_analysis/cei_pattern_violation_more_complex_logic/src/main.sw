@@ -12,7 +12,7 @@ abi EnglishAuction {
     fn bid(auction_id: u64, bid_asset: AuctionAsset);
 
     #[storage(read, write)]
-    fn create(bid_asset: AuctionAsset, duration: u64, inital_price: u64, reserve_price: Option<u64>, seller: Identity, sell_asset: AuctionAsset) -> u64;
+    fn create(bid_asset: AuctionAsset, duration: u64, initial_price: u64, reserve_price: Option<u64>, seller: Identity, sell_asset: AuctionAsset) -> u64;
 }
 
 abi NFT {

@@ -3,9 +3,8 @@ use annotate_snippets::{
     renderer::{AnsiColor, Style},
     Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
-use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
-use forc_tracing::{println_red_err, println_yellow_err};
+use forc_tracing::{println_action_green, println_error, println_red_err, println_yellow_err};
 use std::{
     collections::{hash_map, HashSet},
     fmt::Display,
@@ -21,9 +20,8 @@ use sway_error::{
     error::CompileError,
     warning::CompileWarning,
 };
-use sway_types::{LineCol, SourceEngine, Span};
+use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
-use tracing::error;
 
 pub mod fs_locking;
 pub mod restricted;
@@ -117,7 +115,7 @@ impl<T> Termination for ForcCliResult<T> {
         match self.result {
             Ok(_) => DEFAULT_SUCCESS_EXIT_CODE.into(),
             Err(e) => {
-                error!("Error: {}", e);
+                println_error(&format!("{}", e));
                 e.exit_code.into()
             }
         }
@@ -347,10 +345,9 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
         Some(ty) => format!("{} ", program_type_str(ty)),
         None => "".to_string(),
     };
-    tracing::debug!(
-        " {} {ty}{} ({src})",
-        Colour::Green.bold().paint("Compiling"),
-        ansi_term::Style::new().bold().paint(name)
+    println_action_green(
+        "Compiling",
+        &format!("{ty}{} ({src})", ansi_term::Style::new().bold().paint(name)),
     );
 }
 
@@ -525,7 +522,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             let input = span.input();
             let mut start_pos = span.start();
             let mut end_pos = span.end();
-            let (mut start, end) = span.line_col();
+            let LineColRange { mut start, end } = span.line_col();
             let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
 
             let slice = Slice {
@@ -655,7 +652,7 @@ fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, u
     // how many lines to prepend or append to the highlighted region in the window
     const NUM_LINES_BUFFER: usize = 2;
 
-    let (start, end) = span.line_col();
+    let LineColRange { start, end } = span.line_col();
 
     let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
     debug_assert!(end.line >= start.line);

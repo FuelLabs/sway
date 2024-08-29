@@ -7,14 +7,14 @@ use std::constants::DEFAULT_SUB_ID;
 use test_fuel_coin_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const FUEL_COIN_CONTRACT_ID = 0x9e84e7e3006c94d5e23545829dbc926f50f90c6809c6e599ecddbf9a119e8104;
+const FUEL_COIN_CONTRACT_ID = 0xec2277ebe007ade87e3d797c3b1e070dcd542d5ef8f038b471f262ef9cebc87c;
 #[cfg(experimental_new_encoding = true)]
-const FUEL_COIN_CONTRACT_ID = 0xce6ae40e4e24b52d0f6046923b4ac59ed6899a8f590c86994def3e200f9ea7ec;
+const FUEL_COIN_CONTRACT_ID = 0xf5d8dc006c7686b126c6a8d4e8aa5ec53e73f23c367d2427f930cb3783c4dbb2;
 
 #[cfg(experimental_new_encoding = false)]
-const BALANCE_CONTRACT_ID = 0x3b8cb681056f61a41e138b8884d7e3bb9332fbd7a8e38e3e0b0ada766cabfa4e;
+const BALANCE_CONTRACT_ID = 0xf6cd545152ac83225e8e7df2efb5c6fa6e37bc9b9e977b5ea8103d28668925df;
 #[cfg(experimental_new_encoding = true)]
-const BALANCE_CONTRACT_ID = 0xdcd79a58e8c7f562009109211e8855c023eb91d3d387ba9477e505e6a6643893;
+const BALANCE_CONTRACT_ID = 0x51088b17e33a9fbbcac387cd3e462571dfce54e340579d7130c5b6fe08793ea9; // AUTO-CONTRACT-ID ../../test_contracts/balance_test_contract --release
 
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;

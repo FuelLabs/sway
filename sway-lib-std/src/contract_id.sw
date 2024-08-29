@@ -1,4 +1,4 @@
-//! A wrapper around the `b256` type to help enhance type-safety.
+//! The `ContractId` type used for interacting with contracts on the fuel network.
 library;
 
 use ::convert::From;
@@ -20,11 +20,9 @@ impl ContractId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() -> {
-    ///     let my_contract = ContractId::from(ZERO_B256);
-    ///     assert(my_contract.bits() == ZERO_B256);
+    ///     let my_contract = ContractId:zero();
+    ///     assert(my_contract.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
@@ -38,7 +36,6 @@ impl core::ops::Eq for ContractId {
     }
 }
 
-/// Functions for casting between the `b256` and `ContractId` types.
 impl From<b256> for ContractId {
     /// Casts raw `b256` data to a `ContractId`.
     ///
@@ -53,10 +50,8 @@ impl From<b256> for ContractId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let contract_id = ContractId::from(ZERO_B256);
+    ///    let contract_id = ContractId::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -74,12 +69,10 @@ impl From<ContractId> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let contract_id = ContractId::from(ZERO_B256);
-    ///     let b256_data = contract_id.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     let contract_id = ContractId::from(b256::zero());
+    ///     let b256_data: b256 = contract_id.into();
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(id: ContractId) -> Self {
@@ -99,8 +92,6 @@ impl ContractId {
     ///
     /// # Additional Information
     ///
-    /// This is equivalent to std::callframes::contract_id().
-    ///
     /// **_Note:_** If called in an external context, this will **not** return a ContractId.
     /// If called externally, will actually return a pointer to the Transaction Id (Wrapped in the ContractId struct).
     ///
@@ -111,17 +102,55 @@ impl ContractId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, asset::mint};
+    /// use std::asset::mint;
     ///
     /// fn foo() {
     ///     let this_contract = ContractId::this();
-    ///     mint(ZERO_B256, 50);
-    ///     Address::from(ZERO_B256).transfer(AssetId::default(this_contract), 50);
+    ///     mint(b256::zero(), 50);
+    ///     Address::zero().transfer(AssetId::default(this_contract), 50);
     /// }
     /// ```
     pub fn this() -> ContractId {
         ContractId::from(asm() {
             fp: b256
         })
+    }
+
+    /// Returns the zero value for the `ContractId` type.
+    ///
+    /// # Returns
+    ///
+    /// * [ContractId] -> The zero value for the `ContractId` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_contract_id = ContractId::zero();
+    ///     assert(zero_contract_id == ContractId::from(b256::zero()));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: b256::zero(),
+        }
+    }
+
+    /// Returns whether a `ContractId` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `ContractId` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_contract_id = ContractId::zero();
+    ///     assert(zero_contract_id.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }

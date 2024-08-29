@@ -11,7 +11,7 @@ fn main() -> bool {
     // test early exit from loop with manual "break" (by invalidating the condition):
     let mut counter_2 = 0;
     let mut counter_3 = 0;
-    while counter_2 < 10 {
+    while counter_2 < 10 && 1 < 2 {
         if counter_2 == 3 {
             // ensure that condition is now invalid:
             counter_2 = 10;

@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: $()fn main(a: raw_slice) -> raw_slice
+# nextln: $()Returning a type containing `raw_slice` from `main()` is not allowed. Consider converting it into a flat `raw_slice` first
+
+category_new_encoding = "run"
+script_data_new_encoding = "0000000000000001 65"
+expected_result_new_encoding = { action = "return_data", value = "0000000000000001 65" }
+
+validate_abi = true

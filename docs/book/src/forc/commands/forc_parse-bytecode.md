@@ -1,1 +1,1 @@
-# `forc parse-bytecode`
+# forc parse-bytecode

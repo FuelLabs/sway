@@ -1,10 +1,5 @@
 library;
 
-// ANCHOR: strings_import
-use std::primitive_conversions::str::*;
-// ANCHOR_END: strings_import
-
-
 pub fn convert_str_to_str_array() {
     // ANCHOR: str_to_str_array
     let fuel_str: str = "fuel";

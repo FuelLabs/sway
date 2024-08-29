@@ -1,3 +1,6 @@
 category = "compile"
+expected_warnings = 1
 
-expected_warnings = 0
+# check: $()struct Bar {
+# nextln: $()value: u64
+# nextln: $()This struct field is never accessed.

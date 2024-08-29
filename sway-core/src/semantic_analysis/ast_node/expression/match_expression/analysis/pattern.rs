@@ -229,7 +229,7 @@ impl Pattern {
     ///
     /// ---
     ///
-    /// If if is the case that at lease one element of *args* is a
+    /// If it is the case that at lease one element of *args* is a
     /// or-pattern, then *args* is first "serialized". Meaning, that all
     /// or-patterns are extracted to create a vec of `PatStack`s *args*' where
     /// each `PatStack` is a copy of *args* where the index of the or-pattern is

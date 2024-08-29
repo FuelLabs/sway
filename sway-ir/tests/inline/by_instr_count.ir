@@ -18,7 +18,7 @@ script {
         ret u64 v1
     }
 
-    // Three instrutions.
+    // Three instructions.
     fn less_three_blocks(b: bool) -> u64 {
         entry(b: bool):
         cbr b, then_block(), else_block()

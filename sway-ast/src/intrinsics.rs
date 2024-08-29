@@ -3,10 +3,10 @@ use std::fmt;
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub enum Intrinsic {
     IsReferenceType,
-    IsStrArray,
     SizeOfType,
     SizeOfVal,
     SizeOfStr,
+    IsStrArray,
     AssertIsStrArray,
     ToStrArray,
     Eq,
@@ -36,8 +36,13 @@ pub enum Intrinsic {
     Smo,
     Not,
     JmpMem,
-    ContractCall, // __contract_call(params, coins, asset_id, gas)
-    ContractRet,  // __contract_ret(ptr, len)
+    ContractCall,           // __contract_call(params, coins, asset_id, gas)
+    ContractRet,            // __contract_ret(ptr, len)
+    EncodeBufferEmpty,      // let buffer: (raw_ptr, u64, u64) = __encode_buffer_empty()
+    EncodeBufferAppend, // let buffer: (raw_ptr, u64, u64) = __encode_buffer_append(buffer, primitive data type)
+    EncodeBufferAsRawSlice, // let slice: raw_slice = __encode_buffer_as_raw_slice(buffer)
+    Slice, // let ref_to_slice = __slice::<T: array or ref_to_slice>(item: T, inclusive_start_index, exclusive_end_index)
+    ElemAt, // let elem: &T = __elem_at::<T: array or ref_to_slice>(item: T, index)
 }
 
 impl fmt::Display for Intrinsic {
@@ -79,6 +84,11 @@ impl fmt::Display for Intrinsic {
             Intrinsic::JmpMem => "jmp_mem",
             Intrinsic::ContractCall => "contract_call",
             Intrinsic::ContractRet => "contract_ret",
+            Intrinsic::EncodeBufferEmpty => "encode_buffer_empty",
+            Intrinsic::EncodeBufferAppend => "encode_buffer_append",
+            Intrinsic::EncodeBufferAsRawSlice => "encode_buffer_as_raw_slice",
+            Intrinsic::Slice => "slice",
+            Intrinsic::ElemAt => "elem_at",
         };
         write!(f, "{s}")
     }
@@ -124,6 +134,11 @@ impl Intrinsic {
             "__jmp_mem" => JmpMem,
             "__contract_call" => ContractCall,
             "__contract_ret" => ContractRet,
+            "__encode_buffer_empty" => EncodeBufferEmpty,
+            "__encode_buffer_append" => EncodeBufferAppend,
+            "__encode_buffer_as_raw_slice" => EncodeBufferAsRawSlice,
+            "__slice" => Slice,
+            "__elem_at" => ElemAt,
             _ => return None,
         })
     }

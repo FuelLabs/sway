@@ -1,6 +1,9 @@
 use fuels::{prelude::*, types::SizedAsciiString};
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
+// https://github.com/FuelLabs/sway/issues/5727
 #[tokio::test]
+#[ignore]
 async fn script_uses_default_configurables() -> Result<()> {
     abigen!(Script(
         name = "MyScript",
@@ -30,7 +33,10 @@ async fn script_uses_default_configurables() -> Result<()> {
     Ok(())
 }
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
+// https://github.com/FuelLabs/sway/issues/5727
 #[tokio::test]
+#[ignore]
 async fn script_configurables() -> Result<()> {
     abigen!(Script(
         name = "MyScript",

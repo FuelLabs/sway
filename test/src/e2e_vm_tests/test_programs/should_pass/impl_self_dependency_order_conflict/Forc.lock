@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-0C133FB33C94FAC1"
+
+[[package]]
+name = "impl_self_dependency_order_conflict"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-0C133FB33C94FAC1"
+dependencies = ["core"]

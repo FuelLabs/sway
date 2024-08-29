@@ -76,7 +76,7 @@ impl Spanned for LitChar {
 impl Spanned for LitInt {
     fn span(&self) -> Span {
         match &self.ty_opt {
-            Some((_lit_int_ty, span)) => Span::join(self.span.clone(), span.clone()),
+            Some((_lit_int_ty, span)) => Span::join(self.span.clone(), span),
             None => self.span.clone(),
         }
     }

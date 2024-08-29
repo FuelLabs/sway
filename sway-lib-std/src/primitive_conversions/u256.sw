@@ -1,7 +1,44 @@
 library;
 
-use ::convert::From;
+use ::convert::{From, TryFrom};
+use ::option::Option::{self, *};
 use ::u128::U128;
+use ::b512::B512;
+
+impl TryFrom<B512> for u256 {
+    /// Attempts conversion from a `B512` to a `u256`.
+    ///
+    /// # Additional Information
+    ///
+    /// If the high bits of the `B512` are not zero, the conversion will fail.
+    ///
+    /// # Arguments
+    ///
+    /// * `val`: [B512] - The `B512` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// * [Option<u256>] - The `u256` representation of the `B512` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let b512_value = B512::new();
+    ///     let u256_value = u256::try_from(b512_value).unwrap();
+    /// }
+    /// ```
+    fn try_from(val: B512) -> Option<Self> {
+        let bits = val.bits();
+        if bits[0] == b256::zero() {
+            Some(bits[1].as_u256())
+        } else {
+            None
+        }
+    }
+}
 
 /// Functions for casting between `u256` and other types.
 impl From<u8> for u256 {
@@ -114,10 +151,8 @@ impl From<b256> for u256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let u256_value = u256::from(ZERO_B256);
+    ///    let u256_value = u256::zero();
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -178,80 +213,4 @@ impl From<(u64, u64, u64, u64)> for u256 {
             nums: u256
         }
     }
-}
-
-// TODO: Replace <u256 as From<T>> with u256::from when https://github.com/FuelLabs/sway/issues/5798 is resolved.
-#[test]
-fn test_u256_from_u8() {
-    use ::assert::assert;
-
-    let u256_value = <u256 as From<u8>>::from(255_u8);
-    assert(
-        u256_value == 0x00000000000000000000000000000000000000000000000000000000000000ff_u256,
-    );
-}
-
-#[test]
-fn test_u256_from_u16() {
-    use ::assert::assert;
-
-    let u256_value = <u256 as From<u16>>::from(65535_u16);
-    assert(
-        u256_value == 0x000000000000000000000000000000000000000000000000000000000000ffff_u256,
-    );
-}
-
-#[test]
-fn test_u256_from_u32() {
-    use ::assert::assert;
-
-    let u256_value = <u256 as From<u32>>::from(4294967295_u32);
-    assert(
-        u256_value == 0x00000000000000000000000000000000000000000000000000000000ffffffff_u256,
-    );
-}
-
-#[test]
-fn test_u256_from_u64() {
-    use ::assert::assert;
-
-    let u256_value = <u256 as From<u64>>::from(18446744073709551615_u64);
-    assert(
-        u256_value == 0x000000000000000000000000000000000000000000000000ffffffffffffffff_u256,
-    );
-}
-
-#[test]
-fn test_u256_from_b256() {
-    use ::assert::assert;
-
-    let u256_value = <u256 as From<b256>>::from(0x0000000000000000000000000000000000000000000000000000000000000000);
-    assert(
-        u256_value == 0x0000000000000000000000000000000000000000000000000000000000000000_u256,
-    );
-
-    let u256_value = <u256 as From<b256>>::from(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
-    assert(
-        u256_value == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_u256,
-    );
-}
-
-#[test]
-fn test_u256_from_u128() {
-    use ::assert::assert;
-
-    let u256_value = <u256 as From<U128>>::from(U128::from((18446744073709551615_u64, 18446744073709551615_u64)));
-    assert(
-        u256_value == 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff_u256,
-    );
-}
-
-#[test]
-fn test_u256_from_tuple() {
-    use ::assert::assert;
-
-    let u256_value = <u256 as From<(u64, u64, u64, u64)>>::from((1, 2, 3, 4));
-    assert(
-        u256_value == 0x0000000000000001000000000000000200000000000000030000000000000004_u256,
-    );
 }

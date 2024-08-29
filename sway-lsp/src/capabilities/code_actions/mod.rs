@@ -100,7 +100,7 @@ pub fn code_actions(
 }
 
 pub(crate) trait CodeAction<'a, T: Spanned> {
-    /// Creates a new [`CodeAction`] with the given [Engines], delcaration type, and [Url].
+    /// Creates a new [`CodeAction`] with the given [Engines], declaration type, and [Url].
     fn new(ctx: &CodeActionContext<'a>, decl: &'a T) -> Self;
 
     /// Returns a [String] of text to insert into the document.

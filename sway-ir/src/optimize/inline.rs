@@ -21,37 +21,26 @@ use crate::{
     AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
 };
 
-pub const INLINE_MAIN_NAME: &str = "inline_main";
+pub const FN_INLINE_NAME: &str = "inline";
 
-pub fn create_inline_in_main_pass() -> Pass {
+pub fn create_fn_inline_pass() -> Pass {
     Pass {
-        name: INLINE_MAIN_NAME,
-        descr: "inline from main fn.",
+        name: FN_INLINE_NAME,
+        descr: "Function inlining",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_main)),
-    }
-}
-
-pub const INLINE_MODULE_NAME: &str = "inline_module";
-
-pub fn create_inline_in_module_pass() -> Pass {
-    Pass {
-        name: INLINE_MODULE_NAME,
-        descr: "inline function calls in a module.",
-        deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_module)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(fn_inline)),
     }
 }
 
 /// This is a copy of sway_core::inline::Inline.
 /// TODO: Reuse: Depend on sway_core? Move it to sway_types?
 #[derive(Debug)]
-enum Inline {
+pub enum Inline {
     Always,
     Never,
 }
 
-fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
+pub fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
     fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(
         context: &Context,
         md_idx: Option<MetadataIndex>,
@@ -83,7 +72,7 @@ fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Optio
     })
 }
 
-pub fn inline_in_module(
+pub fn fn_inline(
     context: &mut Context,
     _: &AnalysisResults,
     module: Module,
@@ -109,6 +98,14 @@ pub fn inline_in_module(
             });
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        // The encoding code in the `__entry` functions contains pointer patterns that mark
+        // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
+        // like SROA nad DCE. If we inline original entries, like e.g., `main`, the code in them will
+        // also not be optimized. Therefore, we forbid inlining of original entries into `__entry`.
+        if func.is_original_entry(ctx) {
+            return false;
+        }
+
         let attributed_inline = metadata_to_inline(ctx, func.get_metadata(ctx));
         match attributed_inline {
             Some(Inline::Always) => {
@@ -128,7 +125,7 @@ pub fn inline_in_module(
 
         // If the function is (still) small then also inline it.
         const MAX_INLINE_INSTRS_COUNT: usize = 4;
-        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
             return true;
         }
 
@@ -144,20 +141,6 @@ pub fn inline_in_module(
         modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
     }
     Ok(modified)
-}
-
-pub fn inline_in_main(
-    context: &mut Context,
-    _: &AnalysisResults,
-    module: Module,
-) -> Result<bool, IrError> {
-    // For now we inline everything into `main()`.  Eventually we can be more selective.
-    for function in module.function_iter(context) {
-        if function.get_name(context) == "main" {
-            return inline_all_function_calls(context, &function);
-        }
-    }
-    Ok(false)
 }
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
@@ -206,6 +189,12 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     for call_site in &call_sites {
         let call_site_in = call_data.get(call_site).unwrap();
         let (block, inlined_function) = *call_site_in.borrow();
+
+        if function == &inlined_function {
+            // We can't inline a function into itself.
+            continue;
+        }
+
         inline_function_call(
             context,
             *function,
@@ -256,7 +245,7 @@ pub fn is_small_fn(
         max_blocks.map_or(true, |max_block_count| {
             function.num_blocks(context) <= max_block_count
         }) && max_instrs.map_or(true, |max_instrs_count| {
-            function.num_instructions(context) <= max_instrs_count
+            function.num_instructions_incl_asm_instructions(context) <= max_instrs_count
         }) && max_stack_size.map_or(true, |max_stack_size_count| {
             function
                 .locals_iter(context)
@@ -617,6 +606,7 @@ fn inline_instruction(
             InstOp::GetLocal(local_var) => {
                 new_block.append(context).get_local(map_local(local_var))
             }
+            InstOp::GetConfig(module, name) => new_block.append(context).get_config(module, name),
             InstOp::IntToPtr(value, ty) => {
                 new_block.append(context).int_to_ptr(map_value(value), ty)
             }

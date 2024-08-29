@@ -1,9 +1,11 @@
 category = "fail"
 
 #check: $()error
-
+#sameln: $()Constant of the same name already exists
+#check: $()use lib::X as Y;
+#nextln: $()Constant "Y" is already declared here.
 #check: $()const Y = 7;
-#nextln: $()Constant "Y" was already defined in scope.
+#nextln: $()Constant "Y" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed

@@ -1,7 +1,5 @@
 contract;
 
-use std::constants::ZERO_B256;
-
 // SRC-5 Ownership Standard `State` enum
 pub enum State {
     Uninitialized: (),
@@ -46,7 +44,7 @@ abi OwnershipExample {
 
 // ANCHOR: set_owner_example_storage
 storage {
-    owner: Ownership = Ownership::initialized(Identity::Address(Address::from(ZERO_B256))),
+    owner: Ownership = Ownership::initialized(Identity::Address(Address::zero())),
 }
 // ANCHOR_END: set_owner_example_storage
 

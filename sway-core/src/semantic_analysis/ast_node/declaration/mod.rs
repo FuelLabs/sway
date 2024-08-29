@@ -1,5 +1,6 @@
 mod abi;
 pub mod auto_impl;
+mod configurable;
 mod constant;
 #[allow(clippy::module_inception)]
 mod declaration;

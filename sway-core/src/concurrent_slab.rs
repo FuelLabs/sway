@@ -1,7 +1,5 @@
-use std::{
-    fmt,
-    sync::{Arc, RwLock},
-};
+use parking_lot::RwLock;
+use std::{fmt, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct Inner<T> {
@@ -28,7 +26,7 @@ where
     T: Clone,
 {
     fn clone(&self) -> Self {
-        let inner = self.inner.read().unwrap();
+        let inner = self.inner.read();
         Self {
             inner: RwLock::new(inner.clone()),
         }
@@ -69,12 +67,12 @@ where
 {
     #[allow(dead_code)]
     pub fn len(&self) -> usize {
-        let inner = self.inner.read().unwrap();
+        let inner = self.inner.read();
         inner.items.len()
     }
 
     pub fn values(&self) -> Vec<Arc<T>> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.inner.read();
         inner.items.iter().filter_map(|x| x.clone()).collect()
     }
 
@@ -83,7 +81,7 @@ where
     }
 
     pub fn insert_arc(&self, value: Arc<T>) -> usize {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.inner.write();
 
         if let Some(free) = inner.free_list.pop() {
             assert!(inner.items[free].is_none());
@@ -96,14 +94,14 @@ where
     }
 
     pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.inner.write();
         let item = inner.items.get_mut(index)?;
         let old = item.replace(Arc::new(new_value))?;
         Arc::into_inner(old)
     }
 
     pub fn get(&self, index: usize) -> Arc<T> {
-        let inner = self.inner.read().unwrap();
+        let inner = self.inner.read();
         inner.items[index]
             .as_ref()
             .expect("invalid slab index for ConcurrentSlab::get")
@@ -111,7 +109,7 @@ where
     }
 
     pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.inner.write();
 
         let Inner { items, free_list } = &mut *inner;
         for (idx, item) in items.iter_mut().enumerate() {
@@ -125,7 +123,7 @@ where
     }
 
     pub fn clear(&self) {
-        let mut inner = self.inner.write().unwrap();
+        let mut inner = self.inner.write();
         inner.items.clear();
         inner.items.shrink_to(0);
 

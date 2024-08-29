@@ -1,5 +1,8 @@
 category = "fail"
 
-# check: $()C0: bool = true,
-# nextln: $()Configurable constants are not allowed in libraries.
+# check: $()configurable {
+# nextln: $()C0: bool = true,
 # nextln: $()C1: u64 = 42,
+# nextln: $()C2: b256 = 0x1111111111111111111111111111111111111111111111111111111111111111,
+# nextln: $()}
+# nextln: $()Configurable constants are not allowed in libraries.

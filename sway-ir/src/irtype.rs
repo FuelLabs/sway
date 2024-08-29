@@ -11,8 +11,19 @@
 
 use crate::{context::Context, pretty::DebugWithContext, Constant, ConstantValue, Value};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Type(pub slotmap::DefaultKey);
+
+impl DebugWithContext for Type {
+    fn fmt_with_context(
+        &self,
+        formatter: &mut std::fmt::Formatter,
+        context: &Context,
+    ) -> std::fmt::Result {
+        self.get_content(context)
+            .fmt_with_context(formatter, context)
+    }
+}
 
 #[derive(Debug, Clone, DebugWithContext, Hash, PartialEq, Eq)]
 pub enum TypeContent {
@@ -28,6 +39,7 @@ pub enum TypeContent {
     Struct(Vec<Type>),
     Slice,
     Pointer(Type),
+    TypedSlice(Type),
 }
 
 impl Type {
@@ -151,6 +163,11 @@ impl Type {
         Self::get_type(context, &TypeContent::Slice).expect("create_basic_types not called")
     }
 
+    /// Get typed slice type
+    pub fn get_typed_slice(context: &mut Context, item_ty: Type) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::TypedSlice(item_ty))
+    }
+
     /// Return a string representation of type, used for printing.
     pub fn as_string(&self, context: &Context) -> String {
         let sep_types_str = |agg_content: &Vec<Type>, sep: &str| {
@@ -179,6 +196,7 @@ impl Type {
                 format!("{{ {} }}", sep_types_str(agg, ", "))
             }
             TypeContent::Slice => "slice".into(),
+            TypeContent::TypedSlice(ty) => format!("__slice[{}]", ty.as_string(context)),
             TypeContent::Pointer(ty) => format!("ptr {}", ty.as_string(context)),
         }
     }
@@ -198,6 +216,9 @@ impl Type {
             (TypeContent::Array(l, llen), TypeContent::Array(r, rlen)) => {
                 llen == rlen && l.eq(context, r)
             }
+
+            (TypeContent::TypedSlice(l), TypeContent::TypedSlice(r)) => l.eq(context, r),
+
             (TypeContent::Struct(l), TypeContent::Struct(r))
             | (TypeContent::Union(l), TypeContent::Union(r)) => {
                 l.len() == r.len() && l.iter().zip(r.iter()).all(|(l, r)| l.eq(context, r))
@@ -440,6 +461,15 @@ impl Type {
         }
     }
 
+    /// Get the type of the array element, if applicable.
+    pub fn get_typed_slice_elem_type(&self, context: &Context) -> Option<Type> {
+        if let TypeContent::TypedSlice(ty) = *self.get_content(context) {
+            Some(ty)
+        } else {
+            None
+        }
+    }
+
     /// Get the length of the array , if applicable.
     pub fn get_array_len(&self, context: &Context) -> Option<u64> {
         if let TypeContent::Array(_, n) = *self.get_content(context) {
@@ -531,6 +561,7 @@ impl Type {
             TypeContent::Uint(256) => TypeSize::new(32),
             TypeContent::Uint(_) => unreachable!(),
             TypeContent::Slice => TypeSize::new(16),
+            TypeContent::TypedSlice(..) => TypeSize::new(16),
             TypeContent::B256 => TypeSize::new(32),
             TypeContent::StringSlice => TypeSize::new(16),
             TypeContent::StringArray(n) => {

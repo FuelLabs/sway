@@ -1,4 +1,4 @@
-script;
+library;
 
 struct MyStruct {
     x: u64
@@ -18,7 +18,3 @@ const B: MyStruct = MyStruct {
         1
     }
 };
-
-fn main() -> u64 {
-    0
-}

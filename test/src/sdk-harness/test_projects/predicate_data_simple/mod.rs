@@ -5,10 +5,7 @@ use fuels::{
     accounts::wallet::{Wallet, WalletUnlocked},
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
-    types::{
-        input::Input, transaction_builders::ScriptTransactionBuilder,
-        unresolved_bytes::UnresolvedBytes, Token,
-    },
+    types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
 };
 use std::str::FromStr;
 
@@ -18,7 +15,16 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
             .unwrap();
     let predicate_address = fuel_tx::Input::predicate_owner(&predicate_code);
 
-    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let mut node_config = NodeConfig::default();
+    node_config.starting_gas_price = 0;
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(Some(1), None, None),
+        Some(node_config),
+        None,
+    )
+    .await
+    .unwrap();
+    let wallet = wallets.pop().unwrap();
     (
         predicate_code,
         predicate_address,
@@ -36,7 +42,11 @@ async fn create_predicate(
 ) {
     let provider = wallet.provider().unwrap();
     let wallet_coins = wallet
-        .get_asset_inputs_for_amount(asset_id, wallet.get_asset_balance(&asset_id).await.unwrap())
+        .get_asset_inputs_for_amount(
+            asset_id,
+            wallet.get_asset_balance(&asset_id).await.unwrap(),
+            None,
+        )
         .await
         .unwrap();
 
@@ -63,7 +73,7 @@ async fn submit_to_predicate(
     amount_to_predicate: u64,
     asset_id: AssetId,
     receiver_address: Address,
-    predicate_data: UnresolvedBytes,
+    predicate_data: Vec<u8>,
 ) -> Result<()> {
     let filter = ResourceFilter {
         from: predicate_address.into(),

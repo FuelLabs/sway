@@ -5,22 +5,25 @@ use crate::execute::TestExecutor;
 use crate::setup::{
     ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
 };
-use forc_pkg as pkg;
+use forc_pkg::{self as pkg, BuildOpts};
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
+use fuels_core::codec::ABIDecoder;
+use fuels_core::types::param_types::ParamType;
 use pkg::manifest::build_profile::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
+use sway_core::asm_generation::ProgramABI;
 use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
-use vm::interpreter::InterpreterParams;
+use vm::interpreter::{InterpreterParams, MemoryInstance};
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -71,7 +74,7 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: pkg::TestPassCondition,
-    /// Emitted `Recipt`s during the execution of the test.
+    /// Emitted `Receipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
@@ -162,6 +165,11 @@ pub struct TestPrintOpts {
     pub print_logs: bool,
 }
 
+/// A `LogData` decoded into a human readable format with its type information.
+pub struct DecodedLog {
+    pub value: String,
+}
+
 impl TestedPackage {
     pub fn tests_passed(&self) -> bool {
         self.tests.iter().all(|test| test.passed())
@@ -201,8 +209,12 @@ impl PackageWithDeploymentToTest {
         let params = maxed_consensus_params();
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
-        let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-            vm::interpreter::Interpreter::with_storage(storage, interpreter_params);
+        let mut interpreter: vm::prelude::Interpreter<_, _, _, vm::interpreter::NotSupportedEcal> =
+            vm::interpreter::Interpreter::with_storage(
+                MemoryInstance::new(),
+                storage,
+                interpreter_params,
+            );
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
@@ -274,7 +286,7 @@ fn get_contract_dependency_map(
             let pinned_member = graph[member_node].clone();
             let contract_dependencies = build_plan
                 .contract_dependencies(member_node)
-                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                .map(|contract_dependency_node_ix| graph[contract_dependency_node_ix].clone())
                 .filter_map(|pinned| built_members.get(&pinned))
                 .cloned()
                 .collect::<Vec<_>>();
@@ -589,9 +601,9 @@ impl BuiltTests {
 
 /// First builds the package or workspace, ready for execution.
 pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.into();
-    let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
-    let built = pkg::build_with_options(build_opts)?;
+    let build_opts: BuildOpts = opts.into();
+    let build_plan = pkg::BuildPlan::from_pkg_opts(&build_opts.pkg)?;
+    let built = pkg::build_with_options(&build_opts)?;
     BuiltTests::from_built(built, &build_plan)
 }
 
@@ -638,7 +650,10 @@ fn deployment_transaction(
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
-    let asset_id = rng.gen();
+    // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
+    // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
+    // base asset id is indeed the static `tx::AssetId::BASE`.
+    let asset_id = tx::AssetId::BASE;
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
@@ -649,6 +664,44 @@ fn deployment_transaction(
         .maturity(maturity)
         .finalize_checked(block_height);
     (contract_id, tx)
+}
+
+pub fn decode_log_data(
+    log_id: &str,
+    log_data: &[u8],
+    program_abi: &ProgramABI,
+) -> anyhow::Result<DecodedLog> {
+    let program_abi = match program_abi {
+        ProgramABI::Fuel(fuel_abi) => Some(
+            fuel_abi_types::abi::unified_program::UnifiedProgramABI::from_counterpart(fuel_abi)?,
+        ),
+        _ => None,
+    }
+    .ok_or_else(|| anyhow::anyhow!("only fuelvm is supported for log decoding"))?;
+    // Create type lookup (id, TypeDeclaration)
+    let type_lookup = program_abi
+        .types
+        .iter()
+        .map(|decl| (decl.type_id, decl.clone()))
+        .collect::<HashMap<_, _>>();
+
+    let logged_type_lookup: HashMap<_, _> = program_abi
+        .logged_types
+        .iter()
+        .flatten()
+        .map(|logged_type| (logged_type.log_id.as_str(), logged_type.application.clone()))
+        .collect();
+
+    let type_application = logged_type_lookup
+        .get(&log_id)
+        .ok_or_else(|| anyhow::anyhow!("log id is missing"))?;
+
+    let abi_decoder = ABIDecoder::default();
+    let param_type = ParamType::try_from_type_application(type_application, &type_lookup)?;
+    let decoded_str = abi_decoder.decode_as_debug_str(&param_type, log_data)?;
+    let decoded_log = DecodedLog { value: decoded_str };
+
+    Ok(decoded_log)
 }
 
 /// Build the given package and run its tests after applying the filter provided.

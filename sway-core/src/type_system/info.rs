@@ -1,7 +1,13 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
-    engine_threading::*,
-    language::{ty, CallPath, QualifiedCallPath},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclId},
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
+        OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    language::{
+        ty::{self, TyEnumDecl, TyStructDecl},
+        CallPath, QualifiedCallPath,
+    },
     type_system::priv_prelude::*,
     Ident,
 };
@@ -100,7 +106,7 @@ pub enum TypeInfo {
         name: Ident,
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
-        // Methods can have type parameters with unkown generic that extend the trait constraints of a parent unkown generic.
+        // Methods can have type parameters with unknown generic that extend the trait constraints of a parent unknown generic.
         parent: Option<TypeId>,
         // This is true when the UnknownGeneric is used in a type parameter.
         is_from_type_parameter: bool,
@@ -125,8 +131,8 @@ pub enum TypeInfo {
     StringSlice,
     StringArray(Length),
     UnsignedInteger(IntegerBits),
-    Enum(DeclRefEnum),
-    Struct(DeclRefStruct),
+    Enum(DeclId<TyEnumDecl>),
+    Struct(DeclId<TyStructDecl>),
     Boolean,
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
@@ -203,11 +209,11 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Tuple(fields) => {
                 fields.hash(state, engines);
             }
-            TypeInfo::Enum(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Enum(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
-            TypeInfo::Struct(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Struct(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 abi_name.hash(state);
@@ -482,9 +488,9 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
-            (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = decl_engine.get_enum(l_decl_ref);
-                let r_decl = decl_engine.get_enum(r_decl_ref);
+            (Self::Enum(l_decl_id), Self::Enum(r_decl_id)) => {
+                let l_decl = decl_engine.get_enum(l_decl_id);
+                let r_decl = decl_engine.get_enum(r_decl_id);
                 l_decl
                     .call_path
                     .suffix
@@ -606,7 +612,7 @@ impl DisplayWithEngines for TypeInfo {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -614,7 +620,7 @@ impl DisplayWithEngines for TypeInfo {
                 let decl = engines.de().get_struct(decl_ref);
                 print_inner_types(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -653,7 +659,12 @@ impl DisplayWithEngines for TypeInfo {
 
 impl DebugWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        use TypeInfo::*;
+        use TypeInfo::{
+            Alias, Array, Boolean, Contract, ContractCaller, Custom, Enum, ErrorRecovery, Never,
+            Numeric, Placeholder, Ptr, RawUntypedPtr, RawUntypedSlice, Ref, Slice, Storage,
+            StringArray, StringSlice, Struct, TraitType, Tuple, TypeParam, Unknown, UnknownGeneric,
+            UnsignedInteger, B256,
+        };
         let s = match self {
             Unknown => "unknown".into(),
             Never => "!".into(),
@@ -676,7 +687,7 @@ impl DebugWithEngines for TypeInfo {
                 type_arguments,
                 ..
             } => {
-                let mut s = "".to_string();
+                let mut s = String::new();
                 if let Some(type_arguments) = type_arguments {
                     if !type_arguments.is_empty() {
                         s = format!(
@@ -706,7 +717,7 @@ impl DebugWithEngines for TypeInfo {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types_debug(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -714,7 +725,7 @@ impl DebugWithEngines for TypeInfo {
                 let decl = engines.de().get_struct(decl_ref);
                 print_inner_types_debug(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -722,10 +733,10 @@ impl DebugWithEngines for TypeInfo {
                 format!(
                     "contract caller {} ( {} )",
                     abi_name,
-                    address
-                        .as_ref()
-                        .map(|address| address.span.as_str().to_string())
-                        .unwrap_or_else(|| "None".into())
+                    address.as_ref().map_or_else(
+                        || "None".into(),
+                        |address| address.span.as_str().to_string()
+                    )
                 )
             }
             Array(elem_ty, count) => {
@@ -843,11 +854,14 @@ impl TypeInfo {
     ) -> Result<String, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
-        use TypeInfo::*;
+        use TypeInfo::{
+            Alias, Array, Boolean, Enum, RawUntypedPtr, RawUntypedSlice, StringArray, Struct,
+            Tuple, UnsignedInteger, B256,
+        };
         let name = match self {
             StringArray(len) => format!("str[{}]", len.val()),
             UnsignedInteger(bits) => {
-                use IntegerBits::*;
+                use IntegerBits::{Eight, Sixteen, SixtyFour, ThirtyTwo, V256};
                 match bits {
                     Eight => "u8",
                     Sixteen => "u16",
@@ -1035,7 +1049,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
-            TypeInfo::Array(elem_ty, length) => length.val() > 0 && id_uninhabited(elem_ty.type_id),
+            TypeInfo::Array(elem_ty, _) => id_uninhabited(elem_ty.type_id),
             TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id),
             TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id),
             TypeInfo::Slice(ty) => id_uninhabited(ty.type_id),
@@ -1052,7 +1066,7 @@ impl TypeInfo {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let mut found_unit_variant = false;
-                for variant_type in decl.variants.iter() {
+                for variant_type in &decl.variants {
                     let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         continue;
@@ -1068,7 +1082,7 @@ impl TypeInfo {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let mut all_zero_sized = true;
-                for field in decl.fields.iter() {
+                for field in &decl.fields {
                     let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         return true;
@@ -1161,6 +1175,16 @@ impl TypeInfo {
         matches!(self, TypeInfo::Ref { .. })
     }
 
+    pub fn as_reference(&self) -> Option<(&bool, &TypeArgument)> {
+        match self {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type,
+            } => Some((to_mutable_value, referenced_type)),
+            _ => None,
+        }
+    }
+
     pub fn is_array(&self) -> bool {
         matches!(self, TypeInfo::Array(_, _))
     }
@@ -1175,6 +1199,18 @@ impl TypeInfo {
 
     pub fn is_tuple(&self) -> bool {
         matches!(self, TypeInfo::Tuple(_))
+    }
+
+    pub fn is_slice(&self) -> bool {
+        matches!(self, TypeInfo::Slice(_))
+    }
+
+    pub fn as_slice(&self) -> Option<&TypeArgument> {
+        if let TypeInfo::Slice(t) = self {
+            Some(t)
+        } else {
+            None
+        }
     }
 
     pub(crate) fn apply_type_arguments(
@@ -1247,11 +1283,12 @@ impl TypeInfo {
         engines: &Engines,
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
-        const CURRENTLY_SUPPORTED_TYPES_MESSAGE: [&str; 8] = [
+        const CURRENTLY_SUPPORTED_TYPES_MESSAGE: [&str; 9] = [
             "Sway currently supports pattern matching on these types:",
             "  - b256",
             "  - boolean",
             "  - enums",
+            "  - string slices",
             "  - structs",
             "  - tuples",
             "  - unsigned integers",
@@ -1267,7 +1304,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Never => Ok(()),
+            | TypeInfo::Never
+            | TypeInfo::StringSlice => Ok(()),
             TypeInfo::Alias { ty, .. } => {
                 let ty = engines.te().get(ty.type_id);
                 ty.expect_is_supported_in_match_expressions(handler, engines, span)
@@ -1277,7 +1315,6 @@ impl TypeInfo {
             | TypeInfo::Ptr(..)
             | TypeInfo::Slice(..)
             | TypeInfo::StringArray(_)
-            | TypeInfo::StringSlice
             | TypeInfo::Array(_, _) => Err(handler.emit_err(CompileError::Unimplemented {
                 feature: format!(
                     "Matched value has type \"{}\". Matching on this type",
@@ -1398,7 +1435,6 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(_)
-            | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. }
             | TypeInfo::Never => false,
@@ -1408,6 +1444,7 @@ impl TypeInfo {
             | TypeInfo::Custom { .. }
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _)
+            | TypeInfo::Slice(_)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric
@@ -1453,9 +1490,9 @@ impl TypeInfo {
         engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> Result<DeclRefEnum, ErrorEmitted> {
+    ) -> Result<DeclId<TyEnumDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Enum(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Enum(decl_ref) => Ok(*decl_ref),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1494,9 +1531,9 @@ impl TypeInfo {
         handler: &Handler,
         engines: &Engines,
         debug_span: &Span,
-    ) -> Result<DeclRefStruct, ErrorEmitted> {
+    ) -> Result<DeclId<TyStructDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Struct(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Struct(decl_id) => Ok(*decl_id),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1515,11 +1552,347 @@ impl TypeInfo {
     pub fn is_unknown_generic(&self) -> bool {
         matches!(self, TypeInfo::UnknownGeneric { .. })
     }
+
+    /// Calculate the needed buffer for "abi encoding" the self type. If "inside" this
+    /// type there is a custom AbiEncode impl, we cannot calculate the buffer size.
+    pub fn abi_encode_size_hint(&self, engines: &Engines) -> AbiEncodeSizeHint {
+        // TODO we need to check if this type has a custom AbiEncode impl or not
+        // https://github.com/FuelLabs/sway/issues/5727
+        // if has_custom_abi_encode_impl {
+        //     AbiEncodeSizeHint::CustomImpl
+        // }
+
+        match self {
+            TypeInfo::Boolean => AbiEncodeSizeHint::Exact(1),
+            TypeInfo::UnsignedInteger(IntegerBits::Eight) => AbiEncodeSizeHint::Exact(1),
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => AbiEncodeSizeHint::Exact(2),
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => AbiEncodeSizeHint::Exact(4),
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => AbiEncodeSizeHint::Exact(8),
+            // TODO: We should not be receiving Numeric here. All uints
+            // should be correctly typed here.
+            // https://github.com/FuelLabs/sway/issues/5727
+            TypeInfo::Numeric => AbiEncodeSizeHint::Exact(8),
+            TypeInfo::UnsignedInteger(IntegerBits::V256) => AbiEncodeSizeHint::Exact(32),
+            TypeInfo::B256 => AbiEncodeSizeHint::Exact(32),
+
+            TypeInfo::Slice(_) => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::RawUntypedSlice => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::StringSlice => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::RawUntypedPtr => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::Ptr(_) => AbiEncodeSizeHint::PotentiallyInfinite,
+
+            TypeInfo::Alias { ty, .. } => {
+                let elem_type = engines.te().get(ty.type_id);
+                elem_type.abi_encode_size_hint(engines)
+            }
+
+            TypeInfo::Array(elem, len) => {
+                let elem_type = engines.te().get(elem.type_id);
+                let size_hint = elem_type.abi_encode_size_hint(engines);
+                size_hint * len.val()
+            }
+
+            TypeInfo::StringArray(len) => AbiEncodeSizeHint::Exact(len.val()),
+
+            TypeInfo::Tuple(items) => {
+                items
+                    .iter()
+                    .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, t| {
+                        let field_type = engines.te().get(t.type_id);
+                        let field_size_hint = field_type.abi_encode_size_hint(engines);
+                        old_size_hint + field_size_hint
+                    })
+            }
+
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
+                decl.fields
+                    .iter()
+                    .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, f| {
+                        let field_type = engines.te().get(f.type_argument.type_id);
+                        let field_size_hint = field_type.abi_encode_size_hint(engines);
+                        old_size_hint + field_size_hint
+                    })
+            }
+            TypeInfo::Enum(decl_id) => {
+                let decl = engines.de().get(decl_id);
+
+                let min = decl
+                    .variants
+                    .iter()
+                    .fold(None, |old_size_hint: Option<AbiEncodeSizeHint>, v| {
+                        let variant_type = engines.te().get(v.type_argument.type_id);
+                        let current_size_hint = variant_type.abi_encode_size_hint(engines);
+                        match old_size_hint {
+                            Some(old_size_hint) => Some(old_size_hint.min(current_size_hint)),
+                            None => Some(current_size_hint),
+                        }
+                    })
+                    .unwrap_or(AbiEncodeSizeHint::Exact(0));
+
+                let max =
+                    decl.variants
+                        .iter()
+                        .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, v| {
+                            let variant_type = engines.te().get(v.type_argument.type_id);
+                            let current_size_hint = variant_type.abi_encode_size_hint(engines);
+                            old_size_hint.max(current_size_hint)
+                        });
+
+                AbiEncodeSizeHint::range_from_min_max(min, max) + 8
+            }
+
+            x => unimplemented!("abi_encode_size_hint for [{}]", engines.help_out(x)),
+        }
+    }
+
+    /// Returns a String representing the type.
+    /// When the type is monomorphized the returned String is unique.
+    /// Two monomorphized types that generate the same string can be assumed to be the same.
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        use TypeInfo::*;
+        match self {
+            Unknown => "unknown".into(),
+            Never => "never".into(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            Placeholder(_) => "_".to_string(),
+            TypeParam(n) => format!("typeparam({n})"),
+            StringSlice => "str".into(),
+            StringArray(x) => format!("str[{}]", x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => call_path.call_path.suffix.to_string(),
+            Tuple(fields) => {
+                let field_strs = fields
+                    .iter()
+                    .map(|field| field.type_id.get_type_str(engines))
+                    .collect::<Vec<String>>();
+                format!("({})", field_strs.join(", "))
+            }
+            B256 => "b256".into(),
+            Numeric => "u64".into(), // u64 is the default
+            Contract => "contract".into(),
+            ErrorRecovery(_) => "unknown due to error".into(),
+            Enum(decl_ref) => {
+                let decl = engines.de().get_enum(decl_ref);
+                let type_params = if decl.type_parameters.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "<{}>",
+                        decl.type_parameters
+                            .iter()
+                            .map(|p| p.type_id.get_type_str(engines))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                };
+                format!("enum {}{}", &decl.call_path, type_params)
+            }
+            Struct(decl_ref) => {
+                let decl = engines.de().get_struct(decl_ref);
+                let type_params = if decl.type_parameters.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "<{}>",
+                        decl.type_parameters
+                            .iter()
+                            .map(|p| p.type_id.get_type_str(engines))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                };
+                format!("struct {}{}", &decl.call_path, type_params)
+            }
+            ContractCaller { abi_name, .. } => {
+                format!("contract caller {abi_name}")
+            }
+            Array(elem_ty, length) => {
+                format!(
+                    "[{}; {}]",
+                    elem_ty.type_id.get_type_str(engines),
+                    length.val()
+                )
+            }
+            Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
+            RawUntypedSlice => "raw untyped slice".into(),
+            Ptr(ty) => {
+                format!("__ptr {}", ty.type_id.get_type_str(engines))
+            }
+            Slice(ty) => {
+                format!("__slice {}", ty.type_id.get_type_str(engines))
+            }
+            Alias { ty, .. } => ty.type_id.get_type_str(engines),
+            TraitType {
+                name,
+                trait_type_id: _,
+            } => format!("trait type {}", name),
+            Ref {
+                to_mutable_value,
+                referenced_type,
+            } => {
+                format!(
+                    "__ref {}{}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    referenced_type.type_id.get_type_str(engines)
+                )
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum AbiEncodeSizeHint {
+    CustomImpl,
+    PotentiallyInfinite,
+    Exact(usize),
+    Range(usize, usize),
+}
+
+impl AbiEncodeSizeHint {
+    fn range(min: usize, max: usize) -> AbiEncodeSizeHint {
+        assert!(min <= max);
+        AbiEncodeSizeHint::Range(min, max)
+    }
+
+    fn range_from_min_max(a: AbiEncodeSizeHint, b: AbiEncodeSizeHint) -> AbiEncodeSizeHint {
+        match (a, b) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                let min = l.min(r);
+                let max = l.max(r);
+                AbiEncodeSizeHint::range(min, max)
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                let min = l.min(rmin);
+                let max = l.max(rmax);
+                AbiEncodeSizeHint::range(min, max)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Exact(r)) => {
+                let min = r.min(lmin);
+                let max = r.max(lmax);
+                AbiEncodeSizeHint::range(min, max)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                let min = lmin.min(rmin);
+                let max = lmax.max(rmax);
+                AbiEncodeSizeHint::range(min, max)
+            }
+        }
+    }
+
+    fn min(&self, other: AbiEncodeSizeHint) -> AbiEncodeSizeHint {
+        match (self, &other) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*l.min(r))
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, _)) => {
+                AbiEncodeSizeHint::Exact(*l.min(rmin))
+            }
+            (AbiEncodeSizeHint::Range(lmin, _), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*r.min(lmin))
+            }
+            (AbiEncodeSizeHint::Range(lmin, _), AbiEncodeSizeHint::Range(rmin, _)) => {
+                AbiEncodeSizeHint::Exact(*lmin.min(rmin))
+            }
+        }
+    }
+
+    fn max(&self, other: AbiEncodeSizeHint) -> AbiEncodeSizeHint {
+        match (self, &other) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*l.max(r))
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(_, rmax)) => {
+                AbiEncodeSizeHint::Exact(*l.max(rmax))
+            }
+            (AbiEncodeSizeHint::Range(_, lmax), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*r.max(lmax))
+            }
+            (AbiEncodeSizeHint::Range(_, lmax), AbiEncodeSizeHint::Range(_, rmax)) => {
+                AbiEncodeSizeHint::Exact(*lmax.max(rmax))
+            }
+        }
+    }
+}
+
+impl std::ops::Add<usize> for AbiEncodeSizeHint {
+    type Output = AbiEncodeSizeHint;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        match self {
+            AbiEncodeSizeHint::CustomImpl => AbiEncodeSizeHint::CustomImpl,
+            AbiEncodeSizeHint::PotentiallyInfinite => AbiEncodeSizeHint::PotentiallyInfinite,
+            AbiEncodeSizeHint::Exact(current) => AbiEncodeSizeHint::Exact(current + rhs),
+            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::range(min + rhs, max + rhs),
+        }
+    }
+}
+
+impl std::ops::Add<AbiEncodeSizeHint> for AbiEncodeSizeHint {
+    type Output = AbiEncodeSizeHint;
+
+    fn add(self, rhs: AbiEncodeSizeHint) -> Self::Output {
+        match (self, &rhs) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(l + r)
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                AbiEncodeSizeHint::range(rmin + l, rmax + l)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::range(lmin + r, lmax + r)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                AbiEncodeSizeHint::range(lmin + rmin, lmax + rmax)
+            }
+        }
+    }
+}
+
+impl std::ops::Mul<usize> for AbiEncodeSizeHint {
+    type Output = AbiEncodeSizeHint;
+
+    fn mul(self, rhs: usize) -> Self::Output {
+        match self {
+            AbiEncodeSizeHint::CustomImpl => AbiEncodeSizeHint::CustomImpl,
+            AbiEncodeSizeHint::PotentiallyInfinite => AbiEncodeSizeHint::PotentiallyInfinite,
+            AbiEncodeSizeHint::Exact(current) => AbiEncodeSizeHint::Exact(current * rhs),
+            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::range(min * rhs, max * rhs),
+        }
+    }
 }
 
 fn print_inner_types(
     engines: &Engines,
-    name: String,
+    name: &str,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
     let inner_types = inner_types
@@ -1529,7 +1902,7 @@ fn print_inner_types(
         "{}{}",
         name,
         if inner_types.is_empty() {
-            "".into()
+            String::new()
         } else {
             format!("<{}>", inner_types.join(", "))
         }
@@ -1538,7 +1911,7 @@ fn print_inner_types(
 
 fn print_inner_types_debug(
     engines: &Engines,
-    name: String,
+    name: &str,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
     let inner_types = inner_types
@@ -1548,7 +1921,7 @@ fn print_inner_types_debug(
         "{}{}",
         name,
         if inner_types.is_empty() {
-            "".into()
+            String::new()
         } else {
             format!("<{}>", inner_types.join(", "))
         }

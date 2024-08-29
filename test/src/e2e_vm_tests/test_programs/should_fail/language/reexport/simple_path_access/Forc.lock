@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-F3FE5D74B284BFAB"
+
+[[package]]
+name = "simple_path_access"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-F3FE5D74B284BFAB"
+dependencies = ["core"]

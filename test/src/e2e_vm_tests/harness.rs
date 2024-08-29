@@ -82,7 +82,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
-        no_encoding_v1: !dbg!(run_config.experimental.new_encoding),
+        no_encoding_v1: !run_config.experimental.new_encoding,
         ..Default::default()
     })
     .await
@@ -203,8 +203,9 @@ pub(crate) fn runs_in_vm(
                 .into_ready(gas_price, params.gas_costs(), params.fee_params())
                 .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
-            let mut i: Interpreter<_, _, NotSupportedEcal> =
-                Interpreter::with_storage(storage, Default::default());
+            let mem_instance = MemoryInstance::new();
+            let mut i: Interpreter<_, _, _, NotSupportedEcal> =
+                Interpreter::with_storage(mem_instance, storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 
             Ok(VMExecutionResult::Fuel(
@@ -275,9 +276,10 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             ast: false,
             dca_graph: None,
             dca_graph_url_format: None,
-            finalized_asm: false,
-            intermediate_asm: false,
-            ir: false,
+            asm: run_config.print_asm,
+            bytecode: run_config.print_bytecode,
+            bytecode_spans: run_config.print_bytecode,
+            ir: run_config.print_ir.clone(),
             reverse_order: false,
         },
         pkg: forc_pkg::PkgOpts {
@@ -286,7 +288,6 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             )),
             locked: run_config.locked,
             terse: false,
-            json_abi_with_callpaths: true,
             ..Default::default()
         },
         experimental: ExperimentalFlags {
@@ -294,7 +295,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         },
         ..Default::default()
     };
-    match std::panic::catch_unwind(|| forc_pkg::build_with_options(build_opts)) {
+    match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
         Ok(result) => {
             // Print the result of the compilation (i.e., any errors Forc produces).
             if let Err(ref e) = result {
@@ -325,6 +326,7 @@ pub(crate) async fn compile_and_run_unit_tests(
         ]
         .iter()
         .collect();
+
         match std::panic::catch_unwind(|| {
             forc_test::build(forc_test::TestOpts {
                 pkg: forc_pkg::PkgOpts {
@@ -332,6 +334,9 @@ pub(crate) async fn compile_and_run_unit_tests(
                     locked: run_config.locked,
                     terse: !(capture_output || run_config.verbose),
                     ..Default::default()
+                },
+                experimental: ExperimentalFlags {
+                    new_encoding: run_config.experimental.new_encoding,
                 },
                 ..Default::default()
             })

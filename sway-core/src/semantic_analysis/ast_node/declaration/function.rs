@@ -83,7 +83,6 @@ impl ty::TyFunctionDecl {
 
         // create a namespace for the function
         ctx.by_ref()
-            .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
             .scoped(|mut ctx| {
@@ -160,6 +159,7 @@ impl ty::TyFunctionDecl {
                     purity: *purity,
                     where_clause: where_clause.clone(),
                     is_trait_method_dummy: false,
+                    is_type_check_finalized: false,
                     kind: match kind {
                         FunctionDeclarationKind::Default => ty::TyFunctionDeclKind::Default,
                         FunctionDeclarationKind::Entry => ty::TyFunctionDeclKind::Entry,
@@ -180,7 +180,6 @@ impl ty::TyFunctionDecl {
     ) -> Result<Self, ErrorEmitted> {
         // create a namespace for the function
         ctx.by_ref()
-            .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
             .scoped(|mut ctx| {
@@ -188,7 +187,6 @@ impl ty::TyFunctionDecl {
 
                 let ty::TyFunctionDecl {
                     parameters,
-                    purity,
                     return_type,
                     type_parameters,
                     ..
@@ -211,17 +209,17 @@ impl ty::TyFunctionDecl {
 
                 let mut ctx = ctx
                     .by_ref()
-                    .with_purity(*purity)
                     .with_help_text(
                         "Function body's return type does not match up with its return type annotation.",
                     )
                     .with_type_annotation(return_type.type_id)
                     .with_function_type_annotation(return_type.type_id);
 
-                let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)
+                let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
                 ty_fn_decl.body = body;
+                ty_fn_decl.is_type_check_finalized = true;
 
                 return_type.type_id.check_type_parameter_bounds(
                     handler,
@@ -324,6 +322,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
     };
 
@@ -384,6 +383,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
     };
 

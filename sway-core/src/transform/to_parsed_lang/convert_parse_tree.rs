@@ -34,11 +34,12 @@ use sway_types::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
         CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
         DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, FALLBACK_ATTRIBUTE_NAME,
-        INLINE_ATTRIBUTE_NAME, NAMESPACE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME,
-        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-        TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
+        INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
+        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
+        VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
+    BaseIdent,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -173,9 +174,17 @@ pub fn item_to_ast_nodes(
             .into_iter()
             .map(AstNodeContent::UseStatement)
             .collect(),
-        ItemKind::Struct(item_struct) => decl(Declaration::StructDeclaration(
-            item_struct_to_struct_declaration(context, handler, engines, item_struct, attributes)?,
-        )),
+        ItemKind::Struct(item_struct) => {
+            let struct_decl = Declaration::StructDeclaration(item_struct_to_struct_declaration(
+                context,
+                handler,
+                engines,
+                item_struct,
+                attributes,
+            )?);
+            context.implementing_type = Some(struct_decl.clone());
+            decl(struct_decl)
+        }
         ItemKind::Enum(item_enum) => decl(Declaration::EnumDeclaration(
             item_enum_to_enum_declaration(context, handler, engines, item_enum, attributes)?,
         )),
@@ -202,15 +211,25 @@ pub fn item_to_ast_nodes(
                 function_declaration_decl_id,
             ))
         }
-        ItemKind::Trait(item_trait) => decl(Declaration::TraitDeclaration(
-            item_trait_to_trait_declaration(context, handler, engines, item_trait, attributes)?,
-        )),
-        ItemKind::Impl(item_impl) => decl(item_impl_to_declaration(
-            context, handler, engines, item_impl,
-        )?),
-        ItemKind::Abi(item_abi) => decl(Declaration::AbiDeclaration(item_abi_to_abi_declaration(
-            context, handler, engines, item_abi, attributes,
-        )?)),
+        ItemKind::Trait(item_trait) => {
+            let trait_decl = Declaration::TraitDeclaration(item_trait_to_trait_declaration(
+                context, handler, engines, item_trait, attributes,
+            )?);
+            context.implementing_type = Some(trait_decl.clone());
+            decl(trait_decl)
+        }
+        ItemKind::Impl(item_impl) => {
+            let impl_decl = item_impl_to_declaration(context, handler, engines, item_impl)?;
+            context.implementing_type = Some(impl_decl.clone());
+            decl(impl_decl)
+        }
+        ItemKind::Abi(item_abi) => {
+            let abi_decl = Declaration::AbiDeclaration(item_abi_to_abi_declaration(
+                context, handler, engines, item_abi, attributes,
+            )?);
+            context.implementing_type = Some(abi_decl.clone());
+            decl(abi_decl)
+        }
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration({
             item_const_to_constant_declaration(
                 context, handler, engines, item_const, attributes, true,
@@ -225,16 +244,18 @@ pub fn item_to_ast_nodes(
                 attributes,
             )?,
         )),
-        ItemKind::Configurable(item_configurable) => item_configurable_to_constant_declarations(
-            context,
-            handler,
-            engines,
-            item_configurable,
-            attributes,
-        )?
-        .into_iter()
-        .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
-        .collect(),
+        ItemKind::Configurable(item_configurable) => {
+            item_configurable_to_configurable_declarations(
+                context,
+                handler,
+                engines,
+                item_configurable,
+                &attributes,
+            )?
+            .into_iter()
+            .map(|decl| AstNodeContent::Declaration(Declaration::ConfigurableDeclaration(decl)))
+            .collect()
+        }
         ItemKind::TypeAlias(item_type_alias) => decl(Declaration::TypeAliasDeclaration(
             item_type_alias_to_type_alias_declaration(
                 context,
@@ -263,13 +284,6 @@ fn item_use_to_use_statements(
     handler: &Handler,
     item_use: ItemUse,
 ) -> Result<Vec<UseStatement>, ErrorEmitted> {
-    if let Some(pub_token) = item_use.visibility {
-        let error = ConvertParseTreeError::PubUseNotSupported {
-            span: pub_token.span(),
-        };
-        return Err(handler.emit_err(error.into()));
-    }
-
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
     let item_span = item_use.span();
@@ -277,6 +291,7 @@ fn item_use_to_use_statements(
     use_tree_to_use_statements(
         item_use.tree,
         item_use.root_import.is_some(),
+        pub_token_opt_to_visibility(item_use.visibility),
         &mut prefix,
         &mut ret,
         item_span,
@@ -300,6 +315,7 @@ fn item_use_to_use_statements(
 fn use_tree_to_use_statements(
     use_tree: UseTree,
     is_absolute: bool,
+    reexport: Visibility,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
     item_span: Span,
@@ -307,7 +323,14 @@ fn use_tree_to_use_statements(
     match use_tree {
         UseTree::Group { imports } => {
             for use_tree in imports.into_inner() {
-                use_tree_to_use_statements(use_tree, is_absolute, path, ret, item_span.clone());
+                use_tree_to_use_statements(
+                    use_tree,
+                    is_absolute,
+                    reexport,
+                    path,
+                    ret,
+                    item_span.clone(),
+                );
             }
         }
         UseTree::Name { name } => {
@@ -321,6 +344,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
+                reexport,
                 alias: None,
             });
         }
@@ -335,6 +359,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
+                reexport,
                 alias: Some(alias),
             });
         }
@@ -344,12 +369,13 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type: ImportType::Star,
                 is_absolute,
+                reexport,
                 alias: None,
             });
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, path, ret, item_span);
+            use_tree_to_use_statements(*suffix, is_absolute, reexport, path, ret, item_span);
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
@@ -402,14 +428,14 @@ fn item_struct_to_struct_declaration(
 
     // Make sure each struct field is declared once
     let mut names_of_fields = std::collections::HashSet::new();
-    fields.iter().for_each(|v| {
+    for v in &fields {
         if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStructField {
                 name: v.name.clone(),
                 span: v.name.span(),
             });
         }
-    });
+    }
 
     if let Some(emitted) = emit_all(handler, errors) {
         return Err(emitted);
@@ -471,14 +497,14 @@ fn item_enum_to_enum_declaration(
 
     // Make sure each enum variant is declared once
     let mut names_of_variants = std::collections::HashSet::new();
-    variants.iter().for_each(|v| {
+    for v in variants.iter() {
         if !names_of_variants.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateEnumVariant {
                 name: v.name.clone(),
                 span: v.name.span(),
             });
         }
-    });
+    }
 
     if let Some(emitted) = emit_all(handler, errors) {
         return Err(emitted);
@@ -537,6 +563,7 @@ pub fn item_fn_to_function_declaration(
     };
 
     let kind = override_kind.unwrap_or(kind);
+    let implementing_type = context.implementing_type.clone();
 
     let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
@@ -570,6 +597,8 @@ pub fn item_fn_to_function_declaration(
             .transpose()?
             .unwrap_or(vec![]),
         kind,
+        implementing_type,
+        lexical_scope: 0,
     };
     let decl_id = engines.pe().insert(fn_decl);
     Ok(decl_id)
@@ -765,29 +794,39 @@ pub fn item_impl_to_declaration(
         Some((path_type, _)) => {
             let (trait_name, trait_type_arguments) =
                 path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
-            let impl_trait = ImplTrait {
+            let impl_trait = ImplSelfOrTrait {
+                is_self: false,
                 impl_type_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
+                trait_decl_ref: None,
                 implementing_for,
                 items,
                 block_span,
             };
             let impl_trait = engines.pe().insert(impl_trait);
-            Ok(Declaration::ImplTrait(impl_trait))
+            Ok(Declaration::ImplSelfOrTrait(impl_trait))
         }
         None => match &*engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
-                let impl_self = ImplSelf {
+                let impl_self = ImplSelfOrTrait {
+                    is_self: true,
+                    trait_name: CallPath {
+                        is_absolute: false,
+                        prefixes: vec![],
+                        suffix: BaseIdent::dummy(),
+                    },
+                    trait_decl_ref: None,
+                    trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
                     items,
                     block_span,
                 };
                 let impl_self = engines.pe().insert(impl_self);
-                Ok(Declaration::ImplSelf(impl_self))
+                Ok(Declaration::ImplSelfOrTrait(impl_self))
             }
         },
     }
@@ -800,7 +839,7 @@ fn path_type_to_call_path_and_type_arguments(
     path_type: PathType,
 ) -> Result<(QualifiedCallPath, Vec<TypeArgument>), ErrorEmitted> {
     let root_opt = path_type.root_opt.clone();
-    let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type)?;
+    let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type.clone())?;
 
     let (is_absolute, qualified_path) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
@@ -963,7 +1002,6 @@ pub(crate) fn item_const_to_constant_declaration(
         type_ascription,
         value: expr,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
-        is_configurable: false,
         attributes,
         span,
     };
@@ -1003,36 +1041,50 @@ fn item_storage_to_storage_declaration(
 ) -> Result<ParsedDeclId<StorageDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_storage.span();
-    let fields: Vec<StorageField> = item_storage
-        .fields
+    let entries: Vec<StorageEntry> = item_storage
+        .entries
         .into_inner()
         .into_iter()
-        .map(|storage_field| {
-            let attributes = item_attrs_to_map(context, handler, &storage_field.attribute_list)?;
+        .map(|storage_entry| {
+            let attributes = item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(storage_field_to_storage_field(
+            Ok(Some(storage_entry_to_storage_entry(
                 context,
                 handler,
                 engines,
-                storage_field.value,
+                storage_entry.value,
                 attributes,
             )?))
         })
-        .filter_map_ok(|field| field)
+        .filter_map_ok(|entry| entry)
         .collect::<Result<_, _>>()?;
 
-    // Make sure each storage field is declared once
-    let mut names_of_fields = std::collections::HashSet::new();
-    fields.iter().for_each(|v| {
-        if !names_of_fields.insert(v.name.clone()) {
-            errors.push(ConvertParseTreeError::DuplicateStorageField {
-                name: v.name.clone(),
-                span: v.name.span(),
-            });
+    fn check_duplicate_names(entries: Vec<StorageEntry>, errors: &mut Vec<ConvertParseTreeError>) {
+        // Make sure each storage field is declared once
+        let mut names_of_fields = std::collections::HashSet::new();
+        for v in entries {
+            if !names_of_fields.insert(v.name().clone()) {
+                errors.push(ConvertParseTreeError::DuplicateStorageField {
+                    name: v.name().clone(),
+                    span: v.name().span(),
+                });
+            }
+            if let StorageEntry::Namespace(namespace) = v {
+                check_duplicate_names(
+                    namespace
+                        .entries
+                        .iter()
+                        .map(|e| (**e).clone())
+                        .collect::<Vec<_>>(),
+                    errors,
+                );
+            }
         }
-    });
+    }
+
+    check_duplicate_names(entries.clone(), &mut errors);
 
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -1041,20 +1093,20 @@ fn item_storage_to_storage_declaration(
     let storage_declaration = StorageDeclaration {
         attributes,
         span,
-        fields,
+        entries,
         storage_keyword: item_storage.storage_token.into(),
     };
     let storage_declaration = engines.pe().insert(storage_declaration);
     Ok(storage_declaration)
 }
 
-fn item_configurable_to_constant_declarations(
+fn item_configurable_to_configurable_declarations(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     item_configurable: ItemConfigurable,
-    _attributes: AttributesMap,
-) -> Result<Vec<ParsedDeclId<ConstantDeclaration>>, ErrorEmitted> {
+    _attributes: &AttributesMap,
+) -> Result<Vec<ParsedDeclId<ConfigurableDeclaration>>, ErrorEmitted> {
     let mut errors = Vec::new();
 
     if context.module_has_configurable_block() {
@@ -1063,7 +1115,14 @@ fn item_configurable_to_constant_declarations(
         });
     }
 
-    let declarations: Vec<ParsedDeclId<ConstantDeclaration>> = item_configurable
+    if let Some(TreeType::Library) = context.program_type() {
+        handler.emit_err(CompileError::ConfigurableInLibrary {
+            span: item_configurable.span(),
+        });
+    }
+
+    let item_configurable_keyword_span = item_configurable.configurable_token.span();
+    let declarations: Vec<ParsedDeclId<ConfigurableDeclaration>> = item_configurable
         .fields
         .into_inner()
         .into_iter()
@@ -1073,12 +1132,13 @@ fn item_configurable_to_constant_declarations(
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(configurable_field_to_constant_declaration(
+            Ok(Some(configurable_field_to_configurable_declaration(
                 context,
                 handler,
                 engines,
                 configurable_field.value,
                 attributes,
+                item_configurable_keyword_span.clone(),
             )?))
         })
         .filter_map_ok(|decl| decl)
@@ -1087,7 +1147,7 @@ fn item_configurable_to_constant_declarations(
     // Make sure each configurable is declared once
     let mut names_of_declarations = std::collections::HashSet::new();
     declarations.iter().for_each(|decl_id| {
-        let v = engines.pe().get_constant(decl_id);
+        let v = engines.pe().get_configurable(decl_id);
         if !names_of_declarations.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateConfigurable {
                 name: v.name.clone(),
@@ -1245,7 +1305,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
             continue;
         };
 
-        param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
+        param_to_edit.trait_constraints_span = Span::join(ty_name.span(), &bounds.span());
 
         param_to_edit
             .trait_constraints
@@ -1345,7 +1405,7 @@ fn fn_args_to_function_parameters(
                 (None, None) => Span::dummy(),
                 (None, Some(mutable)) => mutable.span(),
                 (Some(reference), None) => reference.span(),
-                (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+                (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
             };
             let type_id = engines.te().insert(
                 engines,
@@ -1724,6 +1784,7 @@ fn struct_path_and_fields_to_struct_expression(
     };
     Ok(Box::new(StructExpression {
         call_path_binding,
+        resolved_call_path_binding: None,
         fields,
     }))
 }
@@ -1742,7 +1803,7 @@ fn method_call_fields_to_method_application_expression(
 
     let span = match &*type_arguments {
         [] => method_name.span(),
-        [.., last] => Span::join(method_name.span(), last.span.clone()),
+        [.., last] => Span::join(method_name.span(), &last.span),
     };
 
     let method_name_binding = TypeBinding {
@@ -1783,7 +1844,7 @@ fn expr_func_app_to_expression_kind(
     func: Box<Expr>,
     args: Parens<Punctuated<Expr, CommaToken>>,
 ) -> Result<ExpressionKind, ErrorEmitted> {
-    let span = Span::join(func.span(), args.span());
+    let span = Span::join(func.span(), &args.span());
 
     // For now, the callee has to be a path to a function.
     let PathExpr {
@@ -1840,7 +1901,7 @@ fn expr_func_app_to_expression_kind(
         .collect::<Result<_, _>>()?;
 
     let name_args_span = |start, end: Option<_>| match end {
-        Some(end) => Span::join(start, end),
+        Some(end) => Span::join(start, &end),
         None => start,
     };
 
@@ -1872,6 +1933,7 @@ fn expr_func_app_to_expression_kind(
                                     type_arguments: TypeArgs::Regular(type_arguments),
                                     span: span.clone(),
                                 },
+                                resolved_call_path_binding: None,
                                 arguments,
                             },
                         )),
@@ -1910,7 +1972,7 @@ fn expr_func_app_to_expression_kind(
                 is_absolute,
             };
             let span = match type_arguments_span {
-                Some(span) => Span::join(call_path.span(), span),
+                Some(span) => Span::join(call_path.span(), &span),
                 None => call_path.span(),
             };
             let call_path_binding = TypeBinding {
@@ -2102,7 +2164,7 @@ fn expr_to_expression(
             context,
             handler,
             engines,
-            value_pattern,
+            &value_pattern,
             iterator,
             block,
             span,
@@ -2160,11 +2222,15 @@ fn expr_to_expression(
                     // Parent is `storage`. We found what we were looking for.
                     Expr::Path(path_expr)
                         if path_expr.root_opt.is_none()
-                            && path_expr.suffix.is_empty()
                             && path_expr.prefix.generics_opt.is_none()
                             && path_expr.prefix.name.as_str() == "storage" =>
                     {
                         break ExpressionKind::StorageAccess(StorageAccessExpression {
+                            namespace_names: path_expr
+                                .suffix
+                                .iter()
+                                .map(|s| s.1.name.clone())
+                                .collect(),
                             field_names: idents.into_iter().rev().cloned().collect(),
                             storage_keyword_span: path_expr.prefix.name.span(),
                         })
@@ -2470,6 +2536,52 @@ fn op_call(
     })
 }
 
+fn storage_entry_to_storage_entry(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    storage_entry: sway_ast::StorageEntry,
+    attributes: AttributesMap,
+) -> Result<StorageEntry, ErrorEmitted> {
+    if let Some(storage_field) = storage_entry.field {
+        Ok(StorageEntry::Field(storage_field_to_storage_field(
+            context,
+            handler,
+            engines,
+            storage_field,
+            attributes,
+        )?))
+    } else {
+        let mut entries = vec![];
+        let namespace = storage_entry.namespace.unwrap();
+        for entry in namespace
+            .into_inner()
+            .into_iter()
+            .flat_map(|storage_entry| {
+                let attributes =
+                    item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
+                if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                    return Ok::<Option<StorageEntry>, ErrorEmitted>(None);
+                }
+                Ok(Some(storage_entry_to_storage_entry(
+                    context,
+                    handler,
+                    engines,
+                    *storage_entry.value,
+                    attributes,
+                )?))
+            })
+            .flatten()
+        {
+            entries.push(Box::new(entry));
+        }
+        Ok(StorageEntry::Namespace(StorageNamespace {
+            name: storage_entry.name,
+            entries,
+        }))
+    }
+}
+
 fn storage_field_to_storage_field(
     context: &mut Context,
     handler: &Handler,
@@ -2478,9 +2590,14 @@ fn storage_field_to_storage_field(
     attributes: AttributesMap,
 ) -> Result<StorageField, ErrorEmitted> {
     let span = storage_field.span();
+    let mut key_expr_opt = None;
+    if let Some(key_expr) = storage_field.key_expr {
+        key_expr_opt = Some(expr_to_expression(context, handler, engines, key_expr)?);
+    }
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
+        key_expression: key_expr_opt,
         type_argument: ty_to_type_argument(context, handler, engines, storage_field.ty)?,
         span,
         initializer: expr_to_expression(context, handler, engines, storage_field.initializer)?,
@@ -2488,30 +2605,52 @@ fn storage_field_to_storage_field(
     Ok(storage_field)
 }
 
-fn configurable_field_to_constant_declaration(
+fn configurable_field_to_configurable_declaration(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
-) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
+    item_configurable_keyword_span: Span,
+) -> Result<ParsedDeclId<ConfigurableDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
-    let const_decl = ConstantDeclaration {
-        name: configurable_field.name,
-        type_ascription: ty_to_type_argument(context, handler, engines, configurable_field.ty)?,
-        value: Some(expr_to_expression(
-            context,
-            handler,
-            engines,
-            configurable_field.initializer,
-        )?),
-        visibility: Visibility::Public,
-        is_configurable: true,
-        attributes,
-        span,
+
+    let type_ascription = ty_to_type_argument(context, handler, engines, configurable_field.ty)?;
+
+    let value = expr_to_expression(context, handler, engines, configurable_field.initializer)?;
+    let value = if context.experimental.new_encoding {
+        let call_encode =
+            ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+                call_path_binding: TypeBinding {
+                    inner: CallPath {
+                        prefixes: vec![],
+                        suffix: Ident::new_with_override("encode".into(), span.clone()),
+                        is_absolute: false,
+                    },
+                    type_arguments: TypeArgs::Regular(vec![type_ascription.clone()]),
+                    span: span.clone(),
+                },
+                resolved_call_path_binding: None,
+                arguments: vec![value],
+            }));
+        Expression {
+            kind: call_encode,
+            span: span.clone(),
+        }
+    } else {
+        value
     };
-    let const_decl = engines.pe().insert(const_decl);
-    Ok(const_decl)
+
+    let config_decl = ConfigurableDeclaration {
+        name: configurable_field.name,
+        type_ascription,
+        value: Some(value),
+        visibility: Visibility::Public,
+        attributes,
+        span: span.clone(),
+        block_keyword_span: item_configurable_keyword_span,
+    };
+    Ok(engines.pe().insert(config_decl))
 }
 
 fn statement_to_ast_nodes(
@@ -2599,7 +2738,7 @@ fn fn_arg_to_function_parameter(
         (None, None) => Span::dummy(),
         (None, Some(mutable)) => mutable.span(),
         (Some(reference), None) => reference.span(),
-        (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+        (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
     };
     let function_parameter = FunctionParameter {
         name,
@@ -2722,7 +2861,7 @@ fn path_expr_segment_to_ident_or_type_argument(
 ) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
     let type_args = match generics_opt {
         Some((_, x)) => generic_args_to_type_arguments(context, handler, engines, x)?,
-        None => Default::default(),
+        None => Vec::default(),
     };
     Ok((name, type_args))
 }
@@ -2752,7 +2891,7 @@ fn path_expr_to_expression(
         && path_expr.suffix.is_empty()
         && path_expr.prefix.generics_opt.is_none()
     {
-        // only `foo`, it coult either be a variable or an enum variant
+        // only `foo`, it could either be a variable or an enum variant
 
         let name = path_expr_segment_to_ident(context, handler, &path_expr.prefix)?;
         Expression {
@@ -2846,7 +2985,7 @@ fn if_expr_to_expression(
             let mut branches = vec![MatchBranch {
                 scrutinee,
                 result: then_block.clone(),
-                span: Span::join(scrutinee_span, then_block_span),
+                span: Span::join(scrutinee_span, &then_block_span),
             }];
             branches.push(match else_block {
                 Some(else_block) => {
@@ -2956,7 +3095,7 @@ fn for_expr_to_expression(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
-    value_pattern: Pattern,
+    value_pattern: &Pattern,
     iterator: Box<Expr>,
     block: Braces<CodeBlockContents>,
     span: Span,
@@ -2971,13 +3110,19 @@ fn for_expr_to_expression(
     //        let value = value_opt.unwrap();
     //        code_block
     //    }
-    let value_opt_ident = Ident::new_no_span("__for_value_opt".into());
+    let value_opt_ident = Ident::new_no_span(format!(
+        "__for_value_opt_{}",
+        context.next_for_unique_suffix()
+    ));
     let value_opt_expr = Expression {
         kind: ExpressionKind::Variable(value_opt_ident.clone()),
         span: Span::dummy(),
     };
 
-    let iterable_ident = Ident::new_no_span("__for_iterable".into());
+    let iterable_ident = Ident::new_no_span(format!(
+        "__for_iterable_{}",
+        context.next_for_unique_suffix()
+    ));
     let iterable_expr = Expression {
         kind: ExpressionKind::Variable(iterable_ident.clone()),
         span: Span::dummy(),
@@ -3238,7 +3383,7 @@ fn literal_to_literal(
                 full_span.src().clone(),
                 full_span.start() + 1,
                 full_span.end() - 1,
-                full_span.source_id().cloned(),
+                full_span.source_id().copied(),
             )
             .unwrap();
             Literal::String(inner_span)
@@ -3552,6 +3697,7 @@ fn asm_block_to_asm_expression(
     let whole_block_span = asm_block.span();
     let asm_block_contents = asm_block.contents.into_inner();
     let (returns, return_type) = match asm_block_contents.final_expr_opt {
+        // If the return register is specified.
         Some(asm_final_expr) => {
             let asm_register = AsmRegister {
                 name: asm_final_expr.register.as_str().to_owned(),
@@ -3559,10 +3705,12 @@ fn asm_block_to_asm_expression(
             let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
                 Some((_colon_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
+                // If the return type is not specified, the ASM block returns `u64` as the default.
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             };
             (returns, return_type)
         }
+        // If the return register is not specified, the return type is unit, `()`.
         None => (None, TypeInfo::Tuple(Vec::new())),
     };
     let registers = {
@@ -3584,7 +3732,7 @@ fn asm_block_to_asm_expression(
         asm_block_contents
             .instructions
             .into_iter()
-            .map(|(instruction, _semicolon_token)| instruction_to_asm_op(instruction))
+            .map(|(instruction, _semicolon_token)| instruction_to_asm_op(&instruction))
             .collect()
     };
     Ok(Box::new(AsmExpression {
@@ -3659,7 +3807,11 @@ fn statement_let_to_ast_nodes_unfold(
                     mutable,
                     name,
                 } => (reference, mutable, name),
-                Pattern::Wildcard { .. } => (None, None, Ident::new_no_span("_".into())),
+                Pattern::Wildcard { underscore_token } => (
+                    None,
+                    None,
+                    Ident::new_with_override("_".to_string(), underscore_token.span()),
+                ),
                 Pattern::AmbiguousSingleIdent(ident) => (None, None, ident),
                 _ => unreachable!(),
             };
@@ -3752,7 +3904,7 @@ fn statement_let_to_ast_nodes_unfold(
 
             // for all of the fields of the struct destructuring on the LHS,
             // recursively create variable declarations
-            for pattern_struct_field in fields.into_inner().into_iter() {
+            for pattern_struct_field in fields.into_inner() {
                 let (field, recursive_pattern) = match pattern_struct_field {
                     PatternStructField::Field {
                         field_name,
@@ -3804,7 +3956,7 @@ fn statement_let_to_ast_nodes_unfold(
             let tuple_name =
                 generate_tuple_var_name(context.next_destructured_tuple_unique_suffix());
 
-            let tuple_name = Ident::new_with_override(tuple_name, span.clone());
+            let tuple_name = Ident::new_with_override(tuple_name, pat_tuple.span().clone());
 
             // Acript a second declaration to a tuple of placeholders to check that the tuple
             // is properly sized to the pattern
@@ -3816,13 +3968,16 @@ fn statement_let_to_ast_nodes_unfold(
                             .clone()
                             .into_inner()
                             .into_iter()
-                            .map(|_| {
+                            .map(|pat| {
                                 let initial_type_id =
                                     engines.te().insert(engines, TypeInfo::Unknown, None);
                                 let dummy_type_param = TypeParameter {
                                     type_id: initial_type_id,
                                     initial_type_id,
-                                    name_ident: Ident::new_with_override("_".into(), span.clone()),
+                                    name_ident: Ident::new_with_override(
+                                        "_".into(),
+                                        pat.span().clone(),
+                                    ),
                                     trait_constraints: vec![],
                                     trait_constraints_span: Span::dummy(),
                                     is_from_parent: false,
@@ -3975,7 +4130,7 @@ fn asm_register_declaration_to_asm_register_declaration(
     })
 }
 
-fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
+fn instruction_to_asm_op(instruction: &Instruction) -> AsmOp {
     AsmOp {
         op_name: instruction.op_code_ident(),
         op_args: instruction.register_arg_idents(),
@@ -4032,7 +4187,7 @@ fn pattern_to_scrutinee(
                         "If you want to change the matched value, or some of its parts, consider using the matched value".to_string(),
                         format!("directly in the block, instead of the pattern variable \"{name}\"."),
                     ],
-                    Span::join(reference.span(), mutable.span())
+                    Span::join(reference.span(), &mutable.span())
                 )),
                 (Some(reference), None) => Some((
                     "ref",
@@ -4168,7 +4323,7 @@ fn ty_to_type_parameter(
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
                 name_ident: underscore_token.into(),
-                trait_constraints: Default::default(),
+                trait_constraints: Vec::default(),
                 trait_constraints_span: Span::dummy(),
                 is_from_parent: false,
             });
@@ -4340,6 +4495,7 @@ fn assignable_to_expression(
                         let field_names = field_names.into_iter().rev().cloned().collect();
                         Expression {
                             kind: ExpressionKind::StorageAccess(StorageAccessExpression {
+                                namespace_names: vec![],
                                 field_names,
                                 storage_keyword_span: storage_name.span(),
                             }),
@@ -4433,7 +4589,7 @@ fn ty_tuple_descriptor_to_type_arguments(
         TyTupleDescriptor::Nil => vec![],
         TyTupleDescriptor::Cons { head, tail, .. } => {
             let mut type_arguments = vec![ty_to_type_argument(context, handler, engines, *head)?];
-            for ty in tail.into_iter() {
+            for ty in tail {
                 type_arguments.push(ty_to_type_argument(context, handler, engines, ty)?);
             }
             type_arguments
@@ -4509,7 +4665,8 @@ fn path_type_to_type_info(
                 };
                 let abi_name = match generic_ty {
                     Ty::Path(path_type) => {
-                        let call_path = path_type_to_call_path(context, handler, path_type)?;
+                        let call_path =
+                            path_type_to_call_path(context, handler, path_type.clone())?;
                         AbiName::Known(call_path)
                     }
                     Ty::Infer { .. } => AbiName::Deferred,
@@ -4588,7 +4745,7 @@ fn item_attrs_to_map(
                     warning_content: Warning::UnrecognizedAttribute {
                         attrib_name: attr.name.clone(),
                     },
-                })
+                });
             }
 
             let args = attr
@@ -4624,7 +4781,6 @@ fn item_attrs_to_map(
                 ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
                 CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
                 DEPRECATED_ATTRIBUTE_NAME => Some(AttributeKind::Deprecated),
-                NAMESPACE_ATTRIBUTE_NAME => Some(AttributeKind::Namespace),
                 FALLBACK_ATTRIBUTE_NAME => Some(AttributeKind::Fallback),
                 _ => None,
             } {
@@ -4657,7 +4813,7 @@ fn item_attrs_to_map(
                         expected_min_len,
                         expected_max_len,
                     },
-                })
+                });
             }
 
             // check attribute argument value

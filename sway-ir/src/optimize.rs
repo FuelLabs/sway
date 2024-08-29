@@ -54,7 +54,7 @@ pub mod tests {
     ///
     /// ```rust, ignore
     /// assert_optimization(
-    ///     &["constcombine"],
+    ///     &[CONST_FOLDING_NAME],
     ///     "entry fn main() -> u64 {
     ///        entry():
     ///             l = const u64 1
@@ -128,7 +128,7 @@ pub mod tests {
 
         for (actual, expected) in actual.iter().zip(expected) {
             if !actual.contains(expected) {
-                panic!("error: {actual:?} {expected:?}");
+                panic!("Actual: {actual:?} does not contains expected: {expected:?}. (Run with --nocapture to see a diff)");
             } else {
                 expected_matches -= 1;
             }

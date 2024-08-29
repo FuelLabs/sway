@@ -8,7 +8,7 @@ abigen!(Script(
 
 async fn get_script_instance() -> MyScript<WalletUnlocked> {
     // Launch a local network
-    let mut wallets = launch_custom_provider_and_get_wallets(
+    let wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
             Some(1),             /* Single wallet */
             Some(1),             /* Single coin (UTXO) */
@@ -18,7 +18,7 @@ async fn get_script_instance() -> MyScript<WalletUnlocked> {
         None,
     )
     .await;
-    let wallet = wallets.pop().unwrap();
+    let wallet = wallets.unwrap().pop().unwrap();
 
     let bin_path = "./out/debug/{{project-name}}.bin";
 
@@ -30,7 +30,7 @@ async fn get_script_instance() -> MyScript<WalletUnlocked> {
 #[tokio::test]
 async fn can_get_script_instance() {
     const LUCKY_NUMBER: u64 = 777; 
-    let configurables = MyScriptConfigurables::new().with_SECRET_NUMBER(LUCKY_NUMBER.clone());
+    let configurables = MyScriptConfigurables::default().with_SECRET_NUMBER(LUCKY_NUMBER.clone()).unwrap();
     
     let instance = get_script_instance().await;
     

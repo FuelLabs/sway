@@ -8,6 +8,9 @@ struct Validation {
 }
 
 fn main() -> bool {
-    let validation: Validation = input_predicate_data::<Validation>(0);
+    let validation: Validation = match input_predicate_data::<Validation>(0) {
+        Some(data) => data,
+        None => return false,
+    };
     validation.total_complete == 100 && validation.has_account
 }

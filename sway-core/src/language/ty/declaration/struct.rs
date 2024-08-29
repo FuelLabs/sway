@@ -9,12 +9,14 @@ use crate::{
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{CallPath, Visibility},
+    language::{parsed::StructDeclaration, CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
     Namespace,
 };
+
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyStructDecl {
@@ -24,6 +26,10 @@ pub struct TyStructDecl {
     pub visibility: Visibility,
     pub span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl TyDeclParsedType for TyStructDecl {
+    type ParsedType = StructDeclaration;
 }
 
 impl Named for TyStructDecl {
@@ -62,10 +68,10 @@ impl HashWithEngines for TyStructDecl {
 }
 
 impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.fields.subst(type_mapping, engines);
-            self.type_parameters.subst(type_mapping, engines);
+            self.fields.subst(type_mapping, ctx);
+            self.type_parameters.subst(type_mapping, ctx);
         }
     }
 }
@@ -109,7 +115,7 @@ impl TyStructDecl {
     /// within the struct memory layout, or `None` if the field with the
     /// name `field_name` does not exist.
     pub(crate) fn get_field_index_and_type(&self, field_name: &Ident) -> Option<(u64, TypeId)> {
-        // TODO-MEMLAY: Warning! This implementation assumes that fields are layed out in
+        // TODO-MEMLAY: Warning! This implementation assumes that fields are laid out in
         //              memory in the order of their declaration.
         //              This assumption can be changed in the future.
         self.fields
@@ -273,7 +279,7 @@ impl OrdWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.type_argument.subst_inner(type_mapping, engines)
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(type_mapping, ctx)
     }
 }

@@ -14,6 +14,6 @@ impl Spanned for ItemTypeAlias {
     fn span(&self) -> Span {
         let start = self.type_token.span();
         let end = self.semicolon_token.span();
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }

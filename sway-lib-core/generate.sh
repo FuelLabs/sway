@@ -13,7 +13,7 @@ remove_generated_code "ARRAY_ENCODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, ref mut buffer: Buffer) { let mut i = 0; while i < $i { self[i].abi_encode(buffer); i += 1; } } }"
+    CODE="impl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
     sed -i "s/\/\/ BEGIN ARRAY_ENCODE/\/\/ BEGIN ARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
@@ -29,7 +29,7 @@ remove_generated_code "STRARRAY_ENCODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl AbiEncode for str[$i] { fn abi_encode(self, ref mut buffer: Buffer) { use ::str::*; let s = from_str_array(self); let len = s.len(); let ptr = s.as_ptr(); let mut i = 0; while i < len { let byte = ptr.add::<u8>(i).read::<u8>(); buffer.push_byte(byte); i += 1; } } }"
+    CODE="impl AbiEncode for str[$i] { fn abi_encode(self, buffer: Buffer) -> Buffer { Buffer { buffer: __encode_buffer_append(buffer.buffer, self) } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
@@ -64,16 +64,16 @@ generate_tuple_encode() {
         CODE="$CODE $element: AbiEncode, "
     done
 
-    CODE="$CODE{ fn abi_encode(self, ref mut buffer: Buffer) { "
+    CODE="$CODE{ fn abi_encode(self, buffer: Buffer) -> Buffer { "
 
     i=0
     for element in ${elements[@]}
     do
-        CODE="$CODE self.$i.abi_encode(buffer);"
+        CODE="$CODE let buffer = self.$i.abi_encode(buffer);"
         i=$((i+1))
     done
 
-    CODE="$CODE } }"
+    CODE="$CODE buffer } }"
 
     sed -i "s/\/\/ BEGIN TUPLES_ENCODE/\/\/ BEGIN TUPLES_ENCODE\n$CODE/g" ./src/codec.sw
 }

@@ -35,7 +35,7 @@ impl PidFileLocking {
     }
 
     /// Checks if the given pid is active
-    #[cfg(not(target = "windows"))]
+    #[cfg(not(target_os = "windows"))]
     fn is_pid_active(pid: usize) -> bool {
         // Not using sysinfo here because it has compatibility issues with fuel.nix
         // https://github.com/FuelLabs/fuel.nix/issues/64
@@ -50,7 +50,7 @@ impl PidFileLocking {
         output_str.contains(&format!("{} ", pid))
     }
 
-    #[cfg(target = "windows")]
+    #[cfg(target_os = "windows")]
     fn is_pid_active(pid: usize) -> bool {
         // Not using sysinfo here because it has compatibility issues with fuel.nix
         // https://github.com/FuelLabs/fuel.nix/issues/64
@@ -150,7 +150,7 @@ mod test {
     #[test]
     fn test_fs_locking_same_process() {
         let x = PidFileLocking::lsp("test");
-        assert!(!x.is_locked()); // checks the non-existance of the lock (therefore it is not locked)
+        assert!(!x.is_locked()); // checks the non-existence of the lock (therefore it is not locked)
         assert!(x.lock().is_ok());
         // The current process is locking "test"
         let x = PidFileLocking::lsp("test");

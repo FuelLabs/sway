@@ -51,7 +51,7 @@ impl Preprocessor for ForcDocumenter {
         book.for_each_mut(|item| {
             if let BookItem::Chapter(ref mut chapter) = item {
                 if chapter.name == "Plugins" {
-                    for sub_item in chapter.sub_items.iter_mut() {
+                    for sub_item in &mut chapter.sub_items {
                         if let BookItem::Chapter(ref mut plugin_chapter) = sub_item {
                             if let Some(content) = plugin_contents.remove(&plugin_chapter.name) {
                                 inject_content(plugin_chapter, &content, &examples);
@@ -64,7 +64,7 @@ impl Preprocessor for ForcDocumenter {
                                     removed_commands.push(plugin_chapter.name.clone());
                                 }
                             };
-                            for sub_sub_item in plugin_chapter.sub_items.iter_mut() {
+                            for sub_sub_item in &mut plugin_chapter.sub_items {
                                 if let BookItem::Chapter(ref mut plugin_sub_chapter) = sub_sub_item
                                 {
                                     if let Some(content) =
@@ -81,8 +81,7 @@ impl Preprocessor for ForcDocumenter {
                 }
                 if chapter.name == "Commands" {
                     let mut command_index_content = String::new();
-
-                    for sub_item in chapter.sub_items.iter_mut() {
+                    for sub_item in &mut chapter.sub_items {
                         if let BookItem::Chapter(ref mut command_chapter) = sub_item {
                             if let Some(content) = command_contents.remove(&command_chapter.name) {
                                 command_index_content
@@ -93,7 +92,6 @@ impl Preprocessor for ForcDocumenter {
                             };
                         }
                     }
-
                     chapter.content.push_str(&command_index_content);
                 }
             }

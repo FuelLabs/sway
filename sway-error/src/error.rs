@@ -12,6 +12,7 @@ use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
+use self::ShadowingSource::*;
 use self::StructFieldUsageContext::*;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -367,6 +368,8 @@ pub enum CompileError {
         struct_is_empty: bool,
         usage_context: StructFieldUsageContext,
     },
+    #[error("Field \"{field_name}\" has multiple definitions.")]
+    StructFieldDuplicated { field_name: Ident, duplicate: Ident },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         method_name: Ident,
@@ -426,6 +429,12 @@ pub enum CompileError {
     DeclIsNotATypeAlias { actually: String, span: Span },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
+    #[error("Found multiple bindings for \"{name}\" in this scope.")]
+    SymbolWithMultipleBindings {
+        name: Ident,
+        paths: Vec<String>,
+        span: Span,
+    },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
     #[error("Module \"{name}\" is private.")]
@@ -555,6 +564,10 @@ pub enum CompileError {
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
     CannotBeEvaluatedToConst { span: Span },
+    #[error(
+        "This code cannot be evaluated to a configurable because its size is not always limited."
+    )]
+    CannotBeEvaluatedToConfigurableSizeUnknown { span: Span },
     #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
         if *dot_syntax_used { "Method" } else { "Function" },
         if *expected == 1usize { "argument" } else {"arguments"},
@@ -644,8 +657,12 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("The {opcode} opcode cannot be used in a predicate.")]
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
-    #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
+    #[error("Index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
+    #[error(
+        "Invalid range; the range end at index {end} is smaller than its start at index {start}"
+    )]
+    InvalidRangeEndGreaterThanStart { start: u64, end: u64, span: Span },
     #[error("Tuple index {index} is out of bounds. The tuple has {count} element{}.", plural_s(*count))]
     TupleIndexOutOfBounds {
         index: usize,
@@ -654,20 +671,58 @@ pub enum CompileError {
         span: Span,
         prefix_span: Span,
     },
-    #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
+    #[error("Constants cannot be shadowed. {shadowing_source} \"{name}\" shadows constant of the same name.")]
     ConstantsCannotBeShadowed {
-        variable_or_constant: String,
+        /// Defines what shadows the constant.
+        ///
+        /// Although being ready in the diagnostic, the `PatternMatchingStructFieldVar` option
+        /// is currently not used. Getting the information about imports and aliases while
+        /// type checking match branches is too much effort at the moment, compared to gained
+        /// additional clarity of the error message. We might add support for this option in
+        /// the future.
+        shadowing_source: ShadowingSource,
         name: IdentUnique,
         constant_span: Span,
-        constant_decl: Span,
+        constant_decl_span: Span,
         is_alias: bool,
     },
-    #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
+    #[error("Configurables cannot be shadowed. {shadowing_source} \"{name}\" shadows configurable of the same name.")]
+    ConfigurablesCannotBeShadowed {
+        /// Defines what shadows the configurable.
+        ///
+        /// Using configurable in pattern matching, expecting to behave same as a constant,
+        /// will result in [CompileError::ConfigurablesCannotBeMatchedAgainst].
+        /// Otherwise, we would end up with a very confusing error message that
+        /// a configurable cannot be shadowed by a variable.
+        /// In the, unlikely but equally confusing, case of a struct field pattern variable
+        /// named same as the configurable we also want to provide a better explanation
+        /// and `shadowing_source` helps us distinguish that case as well.
+        shadowing_source: ShadowingSource,
+        name: IdentUnique,
+        configurable_span: Span,
+    },
+    #[error("Configurables cannot be matched against. Configurable \"{name}\" cannot be used in pattern matching.")]
+    ConfigurablesCannotBeMatchedAgainst {
+        name: IdentUnique,
+        configurable_span: Span,
+    },
+    #[error(
+        "Constants cannot shadow variables. Constant \"{name}\" shadows variable of the same name."
+    )]
     ConstantShadowsVariable {
         name: IdentUnique,
         variable_span: Span,
     },
-    #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
+    #[error("{existing_constant_or_configurable} of the name \"{name}\" already exists.")]
+    ConstantDuplicatesConstantOrConfigurable {
+        /// Text "Constant" or "Configurable". Denotes already declared constant or configurable.
+        existing_constant_or_configurable: &'static str,
+        /// Text "Constant" or "Configurable". Denotes constant or configurable attempted to be declared.
+        new_constant_or_configurable: &'static str,
+        name: IdentUnique,
+        existing_span: Span,
+    },
+    #[error("Imported symbol \"{name}\" shadows another symbol of the same name.")]
     ShadowsOtherSymbol { name: IdentUnique },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: IdentUnique },
@@ -727,11 +782,6 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
-        "Storage attribute access mismatch. Try giving the surrounding function more access by \
-        adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
-    )]
-    StorageAccessMismatch { attrs: String, span: Span },
-    #[error(
         "The function \"{fn_name}\" in {interface_name} is pure, but this \
         implementation is not.  The \"{STORAGE_PURITY_ATTRIBUTE_NAME}\" annotation must be \
         removed, or the trait declaration must be changed to \
@@ -756,13 +806,17 @@ pub enum CompileError {
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
     #[error(
-        "This function performs a storage {storage_op} but does not have the required \
-        attribute(s).  Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function \
+        "This function performs storage access but does not have the required storage \
+        attribute(s). Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]\" to the function \
         declaration."
     )]
-    ImpureInPureContext {
-        storage_op: &'static str,
-        attrs: String,
+    StorageAccessMismatched {
+        /// True if the function with mismatched access is pure.
+        is_pure: bool,
+        storage_access_violations: Vec<(Span, StorageAccess)>,
+        suggested_attributes: String,
+        /// Span pointing to the name of the function in the function declaration,
+        /// whose storage attributes mismatch the storage access patterns.
         span: Span,
     },
     #[error(
@@ -798,7 +852,7 @@ pub enum CompileError {
     #[error("Storage field \"{field_name}\" does not exist.")]
     StorageFieldDoesNotExist {
         field_name: IdentUnique,
-        available_fields: Vec<Ident>,
+        available_fields: Vec<(Vec<Ident>, Ident)>,
         storage_decl_span: Span,
     },
     #[error("No storage has been declared")]
@@ -918,7 +972,7 @@ pub enum CompileError {
     NonStrGenericType { span: Span },
     #[error("A contract method cannot call methods belonging to the same ABI")]
     ContractCallsItsOwnMethod { span: Span },
-    #[error("ABI cannot define a method with the same name as its super-ABI \"{superabi}\"")]
+    #[error("ABI cannot define a method of the same name as its super-ABI \"{superabi}\"")]
     AbiShadowsSuperAbiMethod { span: Span, superabi: Ident },
     #[error("ABI cannot inherit samely named method (\"{method_name}\") from several super-ABIs: \"{superabi1}\" and \"{superabi2}\"")]
     ConflictingSuperAbiMethods {
@@ -952,6 +1006,19 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingCore { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
+    EncodingUnsupportedType { span: Span },
+    #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
+    ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Collision detected between two different types.\n  Shared hash:{hash}\n  First type:{first_type}\n  Second type:{second_type}")]
+    ABIHashCollision {
+        span: Span,
+        hash: String,
+        first_type: String,
+        second_type: String,
+    },
+    #[error("Type must be known at this point")]
+    TypeMustBeKnownAtThisPoint { span: Span, internal: String },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1012,6 +1079,7 @@ impl Spanned for CompileError {
             StructCannotBeInstantiated { span, .. } => span.clone(),
             StructFieldIsPrivate { field_name, .. } => field_name.span(),
             StructFieldDoesNotExist { field_name, .. } => field_name.span(),
+            StructFieldDuplicated { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             TupleElementAccessOnNonTuple { span, .. } => span.clone(),
@@ -1019,6 +1087,7 @@ impl Spanned for CompileError {
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
+            SymbolWithMultipleBindings { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
@@ -1079,7 +1148,10 @@ impl Spanned for CompileError {
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ConstantsCannotBeShadowed { name, .. } => name.span(),
+            ConfigurablesCannotBeShadowed { name, .. } => name.span(),
+            ConfigurablesCannotBeMatchedAgainst { name, .. } => name.span(),
             ConstantShadowsVariable { name, .. } => name.span(),
+            ConstantDuplicatesConstantOrConfigurable { name, .. } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -1089,7 +1161,6 @@ impl Spanned for CompileError {
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
             MatchedValueIsNotValid { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
-            StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
             TraitImplPurityMismatch { span, .. } => span.clone(),
             DeclIsNotAnEnum { span, .. } => span.clone(),
@@ -1104,7 +1175,7 @@ impl Spanned for CompileError {
             DeclIsNotAConstant { span, .. } => span.clone(),
             DeclIsNotATypeAlias { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
-            ImpureInPureContext { span, .. } => span.clone(),
+            StorageAccessMismatched { span, .. } => span.clone(),
             ParameterRefMutabilityMismatch { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
@@ -1160,6 +1231,12 @@ impl Spanned for CompileError {
             CouldNotGenerateEntry { span } => span.clone(),
             CouldNotGenerateEntryMissingCore { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
+            CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
+            EncodingUnsupportedType { span } => span.clone(),
+            ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            ABIHashCollision { span, .. } => span.clone(),
+            InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
+            TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
         }
     }
 }
@@ -1168,28 +1245,31 @@ impl Spanned for CompileError {
 // - Guide-level explanation: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#guide-level-explanation
 // - Wording guidelines: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#wording-guidelines
 // For concrete examples, look at the existing diagnostics.
+//
+// The issue and the hints are not displayed if set to `Span::dummy()`.
+//
+// NOTE: Issue level should actually be the part of the reason. But it would complicate handling of labels in the transitional
+//       period when we still have "old-style" diagnostics.
+//       Let's leave it like this. Refactoring currently doesn't pay off.
+//       And our #[error] macro will anyhow encapsulate it and ensure consistency.
 impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         let code = Code::semantic_analysis;
         use CompileError::*;
         match self {
-            ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
+            ConstantsCannotBeShadowed { shadowing_source, name, constant_span, constant_decl_span, is_alias } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Constants cannot be shadowed".to_string())),
-                // NOTE: Issue level should actually be the part of the reason. But it would complicate handling of labels in the transitional
-                //       period when we still have "old-style" diagnostics.
-                //       Let's leave it like this, refactoring at the moment does not pay of.
-                //       And our #[error] macro will anyhow encapsulate it and ensure consistency.
                 issue: Issue::error(
                     source_engine,
                     name.span(),
                     format!(
-                        // Variable "x" shadows constant with the same name
+                        // Variable "x" shadows constant with of same name.
                         //  or
-                        // Constant "x" shadows imported constant with the same name
+                        // Constant "x" shadows imported constant of the same name.
                         //  or
                         // ...
-                        "{variable_or_constant} \"{name}\" shadows {}constant of the same name.",
-                        if constant_decl.clone() != Span::dummy() { "imported " } else { "" }
+                        "{shadowing_source} \"{name}\" shadows {}constant of the same name.",
+                        if constant_decl_span.clone() != Span::dummy() { "imported " } else { "" }
                     )
                 ),
                 hints: vec![
@@ -1197,32 +1277,132 @@ impl ToDiagnostic for CompileError {
                         source_engine,
                         constant_span.clone(),
                         format!(
-                            // Constant "x" is declared here.
+                            // Shadowed constant "x" is declared here.
                             //  or
-                            // Constant "x" gets imported here.
+                            // Shadowed constant "x" gets imported here.
+                            //  or
+                            // ...
                             "Shadowed constant \"{name}\" {} here{}.",
-                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" },
+                            if constant_decl_span.clone() != Span::dummy() { "gets imported" } else { "is declared" },
                             if *is_alias { " as alias" } else { "" }
                         )
                     ),
-                    Hint::info( // Ignored if the constant_decl is Span::dummy().
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        Hint::help(
+                            source_engine,
+                            name.span(),
+                            format!("\"{name}\" is a struct field that defines a pattern variable of the same name.")
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::info( // Ignored if the `constant_decl_span` is `Span::dummy()`.
                         source_engine,
-                        constant_decl.clone(),
+                        constant_decl_span.clone(),
                         format!("This is the original declaration of the imported constant \"{name}\".")
                     ),
                 ],
                 help: vec![
-                    format!("Unlike variables, constants cannot be shadowed by other constants or variables."),
-                    match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
-                        ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
-                        ("Constant", false) => "Consider renaming one of the constants.".to_string(),
-                        (variable_or_constant, true) => format!(
+                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    match (shadowing_source, *constant_decl_span != Span::dummy()) {
+                        (LetVar | PatternMatchingStructFieldVar, false) => format!("Consider renaming either the {} \"{name}\" or the constant \"{name}\".", 
+                            format!("{shadowing_source}").to_lowercase(),
+                        ),
+                        (Const, false) => "Consider renaming one of the constants.".to_string(),
+                        (shadowing_source, true) => format!(
                             "Consider renaming the {} \"{name}\" or using {} for the imported constant.",
-                            variable_or_constant.to_lowercase(),
+                            format!("{shadowing_source}").to_lowercase(),
                             if *is_alias { "a different alias" } else { "an alias" }
                         ),
-                        _ => unreachable!("We can have only the listed combinations: variable/constant shadows a non imported/imported constant.")
+                    },
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        format!("To rename the pattern variable use the `:`. E.g.: `{name}: some_other_name`.")
+                    } else {
+                        Diagnostic::help_none()
                     }
+                ],
+            },
+            ConfigurablesCannotBeShadowed { shadowing_source, name, configurable_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Configurables cannot be shadowed".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("{shadowing_source} \"{name}\" shadows configurable of the same name.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        configurable_span.clone(),
+                        format!("Shadowed configurable \"{name}\" is declared here.")
+                    ),
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        Hint::help(
+                            source_engine,
+                            name.span(),
+                            format!("\"{name}\" is a struct field that defines a pattern variable of the same name.")
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                ],
+                help: vec![
+                    "Unlike variables, configurables cannot be shadowed by constants or variables.".to_string(),
+                    format!(
+                        "Consider renaming either the {} \"{name}\" or the configurable \"{name}\".",
+                        format!("{shadowing_source}").to_lowercase()
+                    ),
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        format!("To rename the pattern variable use the `:`. E.g.: `{name}: some_other_name`.")
+                    } else {
+                        Diagnostic::help_none()
+                    }
+                ],
+            },
+            ConfigurablesCannotBeMatchedAgainst { name, configurable_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Configurables cannot be matched against".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("\"{name}\" is a configurable and configurables cannot be matched against.")
+                ),
+                hints: {
+                    let mut hints = vec![
+                        Hint::info(
+                            source_engine,
+                            configurable_span.clone(),
+                            format!("Configurable \"{name}\" is declared here.")
+                        ),
+                    ];
+
+                    hints.append(&mut Hint::multi_help(source_engine, &name.span(), vec![
+                        format!("Are you trying to define a pattern variable named \"{name}\"?"),
+                        format!("In that case, use some other name for the pattern variable,"),
+                        format!("or consider renaming the configurable \"{name}\"."),
+                    ]));
+
+                    hints
+                },
+                help: vec![
+                    "Unlike constants, configurables cannot be matched against in pattern matching.".to_string(),
+                    "That's not possible, because patterns to match against must be compile-time constants.".to_string(),
+                    "Configurables are run-time constants. Their values are defined during the deployment.".to_string(),
+                    Diagnostic::help_empty_line(),
+                    "To test against a configurable, consider:".to_string(),
+                    format!("{}- replacing the `match` expression with `if-else`s altogether.", Indent::Single),
+                    format!("{}- matching against a variable and comparing that variable afterwards with the configurable.", Indent::Single),
+                    format!("{}  E.g., instead of:", Indent::Single),
+                    Diagnostic::help_empty_line(),
+                    format!("{}  SomeStruct {{ x: A_CONFIGURABLE, y: 42 }} => {{", Indent::Double),
+                    format!("{}      do_something();", Indent::Double),
+                    format!("{}  }}", Indent::Double),
+                    Diagnostic::help_empty_line(),
+                    format!("{}  to have:", Indent::Single),
+                    Diagnostic::help_empty_line(),
+                    format!("{}  SomeStruct {{ x, y: 42 }} => {{", Indent::Double),
+                    format!("{}      if x == A_CONFIGURABLE {{", Indent::Double),
+                    format!("{}          do_something();", Indent::Double),
+                    format!("{}      }}", Indent::Double),
+                    format!("{}  }}", Indent::Double),
                 ],
             },
             ConstantShadowsVariable { name , variable_span } => Diagnostic {
@@ -1242,6 +1422,41 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     format!("Variables can shadow other variables, but constants cannot."),
                     format!("Consider renaming either the variable or the constant."),
+                ],
+            },
+            ConstantDuplicatesConstantOrConfigurable { existing_constant_or_configurable, new_constant_or_configurable, name, existing_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), match (*existing_constant_or_configurable, *new_constant_or_configurable) {
+                    ("Constant", "Constant") => "Constant of the same name already exists".to_string(),
+                    ("Constant", "Configurable") => "Constant of the same name as configurable already exists".to_string(),
+                    ("Configurable", "Constant") => "Configurable of the same name as constant already exists".to_string(),
+                    _ => unreachable!("We can have only the listed combinations. Configurable duplicating configurable is not a valid combination.")
+                })),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("{new_constant_or_configurable} \"{name}\" has the same name as an already declared {}.",
+                        existing_constant_or_configurable.to_lowercase()
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        existing_span.clone(),
+                        format!("{existing_constant_or_configurable} \"{name}\" is {}declared here.",
+                            // If a constant clashes with an already declared constant.
+                            if existing_constant_or_configurable == new_constant_or_configurable {
+                                "already "
+                            } else {
+                                ""
+                            }
+                        )
+                    ),
+                ],
+                help: vec![
+                    match (*existing_constant_or_configurable, *new_constant_or_configurable) {
+                        ("Constant", "Constant") => "Consider renaming one of the constants, or in case of imported constants, using an alias.".to_string(),
+                        _ => "Consider renaming either the configurable or the constant, or in case of an imported constant, using an alias.".to_string(),
+                    },
                 ],
             },
             MultipleDefinitionsOfMatchArmVariable { match_value, match_type, first_definition, first_definition_is_struct_field, duplicate, duplicate_is_struct_field } => Diagnostic {
@@ -1855,6 +2070,24 @@ impl ToDiagnostic for CompileError {
                 },
                 help: vec![],
             },
+            StructFieldDuplicated { field_name, duplicate } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct field has multiple definitions".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" has multiple definitions.")
+                ),
+                hints: {
+                    vec![
+                        Hint::info(
+                            source_engine,
+                            duplicate.span(),
+                            "Field definition duplicated here.".into(),
+                        )
+                   ]
+                },
+                help: vec![],
+            },
             NotIndexable { actually, span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Type is not indexable".to_string())),
                 issue: Issue::error(
@@ -1907,6 +2140,16 @@ impl ToDiagnostic for CompileError {
                     ]
                 }
             },
+	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
+		issue: Issue::error(
+		    source_engine,
+		    span.clone(),
+		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
+		),
+		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
+		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
+	    },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
                 issue: Issue::error(
@@ -1919,9 +2162,17 @@ impl ToDiagnostic for CompileError {
                         ("The storage is empty. It doesn't have any fields.".to_string(), false)
                     } else {
                         const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
-                        match &available_fields[..] {
+                        let display_fields = available_fields.iter().map(|(path, field_name)| {
+                            let path = path.iter().map(ToString::to_string).collect::<Vec<_>>().join("::");
+                            if path.is_empty() {
+                                format!("storage.{field_name}")
+                            } else {
+                                format!("storage::{path}.{field_name}")
+                            }
+                        }).collect::<Vec<_>>();
+                        match &display_fields[..] {
                             [field] => (format!("Only available storage field is \"{field}\"."), false),
-                            _ => (format!("Available storage fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
+                            _ => (format!("Available storage fields are {}.", sequence_to_str(&display_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
                                     available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
                                 ),
                         }
@@ -2405,6 +2656,73 @@ impl ToDiagnostic for CompileError {
                         },
                 }
             },
+            ConfigurableMissingAbiDecodeInPlace { span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Configurables need a function named \"abi_decode_in_place\" to be in scope".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![],
+                help: vec![
+                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"core::codec\".".into(),
+                    "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
+                ],
+            },
+            StorageAccessMismatched { span, is_pure, suggested_attributes, storage_access_violations } => Diagnostic {
+                // Pure function cannot access storage
+                //   or
+                // Storage read-only function cannot write to storage
+                reason: Some(Reason::new(code(1), format!("{} function cannot {} storage",
+                    if *is_pure {
+                        "Pure"
+                    } else {
+                        "Storage read-only"
+                    },
+                    if *is_pure {
+                        "access"
+                    } else {
+                        "write to"
+                    }
+                ))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Function \"{}\" is {} and cannot {} storage.",
+                        span.as_str(),
+                        if *is_pure {
+                            "pure"
+                        } else {
+                            "declared as `#[storage(read)]`"
+                        },
+                        if *is_pure {
+                            "access"
+                        } else {
+                            "write to"
+                        },
+                    )
+                ),
+                hints: storage_access_violations
+                    .iter()
+                    .map(|(span, storage_access)| Hint::info(
+                        source_engine,
+                        span.clone(),
+                        format!("{storage_access}")
+                    ))
+                    .collect(),
+                help: vec![
+                    format!("Consider declaring the function \"{}\" as `#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]`,",
+                        span.as_str()
+                    ),
+                    format!("or removing the {} from the function body.",
+                        if *is_pure {
+                            "storage access code".to_string()
+                        } else {
+                            format!("storage write{}", plural_s(storage_access_violations.len()))
+                        }
+                    ),
+                ],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -2439,6 +2757,9 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+
+    #[error("slices or types containing slices on `const` are not allowed.")]
+    SliceInConst,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2464,9 +2785,81 @@ pub enum InvalidImplementingForType {
 impl fmt::Display for InvalidImplementingForType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            InvalidImplementingForType::SelfType => f.write_str("\"Self\""),
-            InvalidImplementingForType::Placeholder => f.write_str("Placeholder `_`"),
-            InvalidImplementingForType::Other => f.write_str("This"),
+            Self::SelfType => f.write_str("\"Self\""),
+            Self::Placeholder => f.write_str("Placeholder `_`"),
+            Self::Other => f.write_str("This"),
+        }
+    }
+}
+
+/// Defines what shadows a constant or a configurable.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ShadowingSource {
+    /// A constant or a configurable is shadowed by a constant.
+    Const,
+    /// A constant or a configurable is shadowed by a local variable declared with the `let` keyword.
+    LetVar,
+    /// A constant or a configurable is shadowed by a variable declared in pattern matching,
+    /// being a struct field. E.g., `S { some_field }`.
+    PatternMatchingStructFieldVar,
+}
+
+impl fmt::Display for ShadowingSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Const => f.write_str("Constant"),
+            Self::LetVar => f.write_str("Variable"),
+            Self::PatternMatchingStructFieldVar => f.write_str("Pattern variable"),
+        }
+    }
+}
+
+/// Defines how a storage gets accessed within a function body.
+/// E.g., calling `__state_clear` intrinsic or using `scwq` ASM instruction
+/// represent a [StorageAccess::Clear] access.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StorageAccess {
+    Clear,
+    ReadWord,
+    ReadSlots,
+    WriteWord,
+    WriteSlots,
+    /// Storage access happens via call to an impure function.
+    /// The parameters are the call path span and if the called function
+    /// reads from and writes to the storage: (call_path, reads, writes).
+    ImpureFunctionCall(Span, bool, bool),
+}
+
+impl StorageAccess {
+    pub fn is_write(&self) -> bool {
+        matches!(
+            self,
+            Self::Clear | Self::WriteWord | Self::WriteSlots | Self::ImpureFunctionCall(_, _, true)
+        )
+    }
+}
+
+impl fmt::Display for StorageAccess {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Clear => f.write_str("Clearing the storage happens here."),
+            Self::ReadWord => f.write_str("Reading a word from the storage happens here."),
+            Self::ReadSlots => f.write_str("Reading storage slots happens here."),
+            Self::WriteWord => f.write_str("Writing a word to the storage happens here."),
+            Self::WriteSlots => f.write_str("Writing to storage slots happens here."),
+            Self::ImpureFunctionCall(call_path, reads, writes) => f.write_fmt(format_args!(
+                "Function \"{}\" {} the storage.",
+                call_path_suffix_with_args(&call_path.as_str().to_string()),
+                match (reads, writes) {
+                    (true, true) => "reads from and writes to",
+                    (true, false) => "reads from",
+                    (false, true) => "writes to",
+                    (false, false) => unreachable!(
+                        "Function \"{}\" is impure, so it must read from or write to the storage.",
+                        call_path.as_str()
+                    ),
+                }
+            )),
         }
     }
 }

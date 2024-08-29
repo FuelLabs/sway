@@ -791,7 +791,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                                 value: offset_bytes,
                             },
                         )),
-                        comment: "Spill/Refill: Set offset".to_string(),
+                        comment: "[spill/refill]: set offset".to_string(),
                         owning_span: None,
                     };
                     inst_list.push(offset_mov_instr);
@@ -801,7 +801,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                         )),
-                        comment: "Spill/Refill: Add offset to stack base".to_string(),
+                        comment: "[spill/refill]: add offset to stack base".to_string(),
                         owning_span: None,
                     };
                     inst_list.push(offset_add_instr);
@@ -827,7 +827,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                                 value: offset_upper_12,
                             },
                         )),
-                        comment: "Spill/Refill: Offset computation".to_string(),
+                        comment: "[spill/refill]: compute offset".to_string(),
                         owning_span: None,
                     };
                     inst_list.push(offset_upper_mov_instr);
@@ -837,7 +837,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate12 { value: 12 },
                         )),
-                        comment: "Spill/Refill: Offset computation".to_string(),
+                        comment: "[spill/refill]: compute offset".to_string(),
                         owning_span: None,
                     };
                     inst_list.push(offset_upper_shift_instr);
@@ -847,7 +847,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                         )),
-                        comment: "Spill/Refill: Offset computation".to_string(),
+                        comment: "[spill/refill]: compute offset".to_string(),
                         owning_span: None,
                     };
                     inst_list.push(offset_add_instr);
@@ -876,7 +876,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                                 value: (offset_bytes / 8) as u16,
                             },
                         )),
-                        comment: "Refilling from spill".to_string(),
+                        comment: "[spill/refill]: refill from spill".to_string(),
                         owning_span: None,
                     });
                 } else {
@@ -889,7 +889,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                             // This will be multiplied by 8 by the VM
                             offset_imm_word,
                         )),
-                        comment: "Refilling from spill".to_string(),
+                        comment: "[spill/refill]: refill from spill".to_string(),
                         owning_span: None,
                     };
                     spilled.push(lw);
@@ -914,7 +914,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                                 value: (offset_bytes / 8) as u16,
                             },
                         )),
-                        comment: "Spill".to_string(),
+                        comment: "[spill/refill]: spill".to_string(),
                         owning_span: None,
                     });
                 } else {
@@ -927,7 +927,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                             // This will be multiplied by 8 by the VM
                             offset_imm_word,
                         )),
-                        comment: "Spill".to_string(),
+                        comment: "[spill/refill]: spill".to_string(),
                         owning_span: None,
                     };
                     spilled.push(sw);

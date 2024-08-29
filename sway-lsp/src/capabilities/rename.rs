@@ -20,6 +20,7 @@ pub fn rename(
     url: &Url,
     position: Position,
 ) -> Result<WorkspaceEdit, LanguageServerError> {
+    let _p = tracing::trace_span!("rename").entered();
     // Make sure the new name is not a keyword or a literal int type
     if sway_parse::RESERVED_KEYWORDS.contains(&new_name)
         || sway_parse::parse_int_suffix(&new_name).is_some()
@@ -69,7 +70,7 @@ pub fn rename(
         }
         let mut range = ident.range;
         if ident.is_raw_ident() {
-            // Make sure the start char starts at the begining,
+            // Make sure the start char starts at the beginning,
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
@@ -154,7 +155,7 @@ fn is_token_in_workspace(
         .declared_token_ident(engines)
         .ok_or(RenameError::TokenNotFound)?;
 
-    // Check the span of the tokens defintions to determine if it's in the users workspace.
+    // Check the span of the tokens definitions to determine if it's in the users workspace.
     let temp_path = &session.sync.temp_dir()?;
     if let Some(path) = &decl_ident.path {
         if !path.starts_with(temp_path) {
@@ -191,7 +192,7 @@ fn find_all_methods_for_decl<'a>(
     // Find the parent declaration
     let t = session
         .token_map()
-        .parent_decl_at_position(engines.se(), url, position)
+        .parent_decl_at_position(engines, url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let decl_token = t.value();
 
@@ -217,8 +218,8 @@ fn find_all_methods_for_decl<'a>(
                             engines.se(),
                         ))
                     }
-                    ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
-                        let impl_trait = engines.de().get_impl_trait(decl_id);
+                    ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. }) => {
+                        let impl_trait = engines.de().get_impl_self_or_trait(decl_id);
                         Some(
                             impl_trait
                                 .items

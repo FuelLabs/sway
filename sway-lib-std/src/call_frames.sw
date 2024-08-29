@@ -46,7 +46,7 @@ pub fn msg_asset_id() -> AssetId {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -63,10 +63,11 @@ pub fn msg_asset_id() -> AssetId {
 /// }
 /// ```
 pub fn code_size() -> u64 {
-    asm(size, ptr, offset: 576) {
+    let ptr = asm(size, ptr, offset: 576) {
         add size fp offset;
-        size: u64
-    }
+        size: raw_ptr
+    };
+    ptr.read::<u64>()
 }
 
 /// Get the first parameter from the current call frame.
@@ -74,7 +75,7 @@ pub fn code_size() -> u64 {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -99,7 +100,7 @@ pub fn first_param() -> u64 {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -141,7 +142,7 @@ where
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Arguments
 ///

@@ -5,7 +5,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::{
-        namespace::{self, Namespace},
+        namespace::{self},
         TypeCheckContext,
     },
     BuildConfig, Engines,
@@ -14,12 +14,12 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
 use super::{
-    collection_context::SymbolCollectionContext, TypeCheckAnalysis, TypeCheckAnalysisContext,
-    TypeCheckFinalization, TypeCheckFinalizationContext,
+    symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+    TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
 };
 
 impl TyProgram {
-    /// Collects the given parsed program to produce a symbol map and module evaluation order.
+    /// Collects the given parsed program to produce a symbol maps.
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
@@ -27,9 +27,8 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        initial_namespace: namespace::Root,
+        namespace: namespace::Namespace,
     ) -> Result<SymbolCollectionContext, ErrorEmitted> {
-        let namespace = Namespace::init_root(initial_namespace);
         let mut ctx = SymbolCollectionContext::new(namespace);
         let ParseProgram { root, kind: _ } = parsed;
 
@@ -39,13 +38,13 @@ impl TyProgram {
 
     /// Type-check the given parsed program to produce a typed program.
     ///
-    /// The given `initial_namespace` acts as an initial state for each module within this program.
+    /// The given `namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        initial_namespace: namespace::Root,
+        mut namespace: namespace::Namespace,
         package_name: &str,
         build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
@@ -56,13 +55,19 @@ impl TyProgram {
                     new_encoding: false,
                 });
 
-        let mut namespace = Namespace::init_root(initial_namespace);
         let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
             .with_kind(parsed.kind);
 
         let ParseProgram { root, kind } = parsed;
 
-        let root = ty::TyModule::type_check(handler, ctx.by_ref(), engines, parsed.kind, root)?;
+        let root = ty::TyModule::type_check(
+            handler,
+            ctx.by_ref(),
+            engines,
+            parsed.kind,
+            root,
+            build_config,
+        )?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
@@ -75,7 +80,7 @@ impl TyProgram {
 
         let program = TyProgram {
             kind,
-            root,
+            root: (*root).clone(),
             declarations,
             configurables,
             storage_slots: vec![],
@@ -104,11 +109,7 @@ impl TyProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })) => {
+                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. })) => {
                         let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = decl.get_initialized_storage_slots(
                             handler, engines, context, md_mgr, module,

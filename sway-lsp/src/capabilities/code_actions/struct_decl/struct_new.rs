@@ -6,13 +6,13 @@ use crate::{
     core::{token::TypedAstToken, token_map::TokenMapExt},
 };
 use lsp_types::{CodeActionDisabled, Position, Range, Url};
-use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
+use sway_core::language::ty::{self, TyImplSelfOrTrait, TyStructDecl, TyStructField};
 use sway_types::{LineCol, Spanned};
 
 pub(crate) struct StructNewCodeAction<'a> {
     decl: &'a TyStructDecl,
     uri: &'a Url,
-    existing_impl_decl: Option<TyImplTrait>,
+    existing_impl_decl: Option<TyImplSelfOrTrait>,
 }
 
 impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
@@ -31,11 +31,11 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             .iter()
             .all_references_of_token(ctx.token, ctx.engines)
             .find_map(|item| {
-                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
-                    ty::ImplTrait { decl_id, .. },
+                if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplSelfOrTrait(
+                    ty::ImplSelfOrTrait { decl_id, .. },
                 ))) = item.value().typed
                 {
-                    Some((*ctx.engines.de().get_impl_trait(&decl_id)).clone())
+                    Some((*ctx.engines.de().get_impl_self_or_trait(&decl_id)).clone())
                 } else {
                     None
                 }

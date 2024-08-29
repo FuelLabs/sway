@@ -50,6 +50,18 @@ let my_contract_id: ContractId = ContractId::from(my_number);
 let forty_two: b256 = my_contract_id.into();
 ```
 
+### Getting a Contract's `ContractId`
+
+To get the `ContractId` of a contract in an internal context use the `ContractId::this()` function:
+
+```sway
+impl MyContract for Contract {
+    fn foo() {
+        let this_contract_id: ContractId = ContractId::this();
+    }
+}
+```
+
 ## `Identity` Type
 
 <!-- This section should explain the `Identity` type -->

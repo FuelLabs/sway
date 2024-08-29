@@ -4,10 +4,10 @@
 library;
 
 // Error handling
-use ::assert::{assert, assert_eq, assert_ne};
-use ::option::Option::{self, *};
-use ::result::Result::{self, *};
-use ::revert::{require, revert};
+pub use ::assert::{assert, assert_eq, assert_ne};
+pub use ::option::Option::{self, *};
+pub use ::result::Result::{self, *};
+pub use ::revert::{require, revert};
 
 // Logging
-use ::logging::log;
+pub use ::logging::log;
