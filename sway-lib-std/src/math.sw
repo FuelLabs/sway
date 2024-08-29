@@ -118,17 +118,17 @@ impl Power for u256 {
             if (exp & 1) == 1 {
                 // acc = acc * base;
                 let res = u256_checked_mul(acc, base);
-                match res {
+                acc = match res {
                     Option::None => return u256::zero(),
-                    Option::Some(val) => acc = val,
+                    Option::Some(val) => val,
                 }
             }
             exp = exp >> 1;
             // base = base * base;
             let res = u256_checked_mul(base, base);
-            match res {
+            base = match res {
                 Option::None => return u256::zero(),
-                Option::Some(val) => base = val,
+                Option::Some(val) => val,
             }
         }
 
