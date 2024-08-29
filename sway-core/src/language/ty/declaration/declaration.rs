@@ -250,33 +250,33 @@ impl HashWithEngines for TyDecl {
 }
 
 impl SubstTypes for TyDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         match self {
-            TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(type_mapping, engines),
+            TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(type_mapping, ctx),
             TyDecl::FunctionDecl(FunctionDecl {
                 ref mut decl_id, ..
-            }) => decl_id.subst(type_mapping, engines),
+            }) => decl_id.subst(type_mapping, ctx),
             TyDecl::TraitDecl(TraitDecl {
                 ref mut decl_id, ..
-            }) => decl_id.subst(type_mapping, engines),
+            }) => decl_id.subst(type_mapping, ctx),
             TyDecl::StructDecl(StructDecl {
                 ref mut decl_id, ..
-            }) => decl_id.subst(type_mapping, engines),
+            }) => decl_id.subst(type_mapping, ctx),
             TyDecl::EnumDecl(EnumDecl {
                 ref mut decl_id, ..
-            }) => decl_id.subst(type_mapping, engines),
+            }) => decl_id.subst(type_mapping, ctx),
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 ref mut enum_ref, ..
-            }) => enum_ref.subst(type_mapping, engines),
+            }) => enum_ref.subst(type_mapping, ctx),
             TyDecl::ImplSelfOrTrait(ImplSelfOrTrait {
                 ref mut decl_id, ..
-            }) => decl_id.subst(type_mapping, engines),
+            }) => decl_id.subst(type_mapping, ctx),
             TyDecl::TypeAliasDecl(TypeAliasDecl {
                 ref mut decl_id, ..
-            }) => decl_id.subst(type_mapping, engines),
+            }) => decl_id.subst(type_mapping, ctx),
             TyDecl::TraitTypeDecl(TraitTypeDecl {
                 ref mut decl_id, ..
-            }) => decl_id.subst(type_mapping, engines),
+            }) => decl_id.subst(type_mapping, ctx),
             // generics in an ABI is unsupported by design
             TyDecl::AbiDecl(_)
             | TyDecl::ConstantDecl(_)

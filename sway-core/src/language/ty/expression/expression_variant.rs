@@ -649,7 +649,7 @@ impl HashWithEngines for TyExpressionVariant {
 }
 
 impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => HasChanges::No,
@@ -659,36 +659,36 @@ impl SubstTypes for TyExpressionVariant {
                 ref mut call_path_typeid,
                 ..
             } => has_changes! {
-                arguments.subst(type_mapping, engines);
+                arguments.subst(type_mapping, ctx);
                 if let Some(new_decl_ref) = fn_ref
                     .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines)
+                    .subst_types_and_insert_new_with_parent(type_mapping, ctx)
                 {
                     fn_ref.replace_id(*new_decl_ref.id());
                     HasChanges::Yes
                 } else {
                     HasChanges::No
                 };
-                call_path_typeid.subst(type_mapping, engines);
+                call_path_typeid.subst(type_mapping, ctx);
             },
             LazyOperator { lhs, rhs, .. } => has_changes! {
-                lhs.subst(type_mapping, engines);
-                rhs.subst(type_mapping, engines);
+                lhs.subst(type_mapping, ctx);
+                rhs.subst(type_mapping, ctx);
             },
-            ConstantExpression { decl, .. } => decl.subst(type_mapping, engines),
-            ConfigurableExpression { decl, .. } => decl.subst(type_mapping, engines),
+            ConstantExpression { decl, .. } => decl.subst(type_mapping, ctx),
+            ConfigurableExpression { decl, .. } => decl.subst(type_mapping, ctx),
             VariableExpression { .. } => HasChanges::No,
-            Tuple { fields } => fields.subst(type_mapping, engines),
+            Tuple { fields } => fields.subst(type_mapping, ctx),
             Array {
                 ref mut elem_type,
                 contents,
             } => has_changes! {
-                elem_type.subst(type_mapping, engines);
-                contents.subst(type_mapping, engines);
+                elem_type.subst(type_mapping, ctx);
+                contents.subst(type_mapping, ctx);
             },
             ArrayIndex { prefix, index } => has_changes! {
-                prefix.subst(type_mapping, engines);
-                index.subst(type_mapping, engines);
+                prefix.subst(type_mapping, ctx);
+                index.subst(type_mapping, ctx);
             },
             StructExpression {
                 struct_id,
@@ -698,30 +698,30 @@ impl SubstTypes for TyExpressionVariant {
             } => has_changes! {
                 if let Some(new_struct_ref) = struct_id
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines) {
+                    .subst_types_and_insert_new(type_mapping, ctx) {
                     struct_id.replace_id(*new_struct_ref.id());
                     HasChanges::Yes
                 } else {
                     HasChanges::No
                 };
-                fields.subst(type_mapping, engines);
+                fields.subst(type_mapping, ctx);
             },
-            CodeBlock(block) => block.subst(type_mapping, engines),
+            CodeBlock(block) => block.subst(type_mapping, ctx),
             FunctionParameter => HasChanges::No,
-            MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
+            MatchExp { desugared, .. } => desugared.subst(type_mapping, ctx),
             IfExp {
                 condition,
                 then,
                 r#else,
             } => has_changes! {
-                condition.subst(type_mapping, engines);
-                then.subst(type_mapping, engines);
-                r#else.subst(type_mapping, engines);
+                condition.subst(type_mapping, ctx);
+                then.subst(type_mapping, ctx);
+                r#else.subst(type_mapping, ctx);
             },
             AsmExpression {
                 registers, //: Vec<TyAsmRegisterDeclaration>,
                 ..
-            } => registers.subst(type_mapping, engines),
+            } => registers.subst(type_mapping, ctx),
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
             StructFieldAccess {
@@ -730,59 +730,59 @@ impl SubstTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => has_changes! {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                field_to_access.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                resolved_type_of_parent.subst(type_mapping, ctx);
+                field_to_access.subst(type_mapping, ctx);
+                prefix.subst(type_mapping, ctx);
             },
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => has_changes! {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                resolved_type_of_parent.subst(type_mapping, ctx);
+                prefix.subst(type_mapping, ctx);
             },
             EnumInstantiation {
                 enum_ref, contents, ..
             } => has_changes! {
                 if let Some(new_enum_ref) = enum_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines)
+                    .subst_types_and_insert_new(type_mapping, ctx)
                 {
                     enum_ref.replace_id(*new_enum_ref.id());
                     HasChanges::Yes
                 } else {
                     HasChanges::No
                 };
-                contents.subst(type_mapping, engines);
+                contents.subst(type_mapping, ctx);
             },
-            AbiCast { address, .. } => address.subst(type_mapping, engines),
+            AbiCast { address, .. } => address.subst(type_mapping, ctx),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => HasChanges::No,
-            IntrinsicFunction(kind) => kind.subst(type_mapping, engines),
-            EnumTag { exp } => exp.subst(type_mapping, engines),
+            IntrinsicFunction(kind) => kind.subst(type_mapping, ctx),
+            EnumTag { exp } => exp.subst(type_mapping, ctx),
             UnsafeDowncast {
                 exp,
                 variant,
                 call_path_decl: _,
             } => has_changes! {
-                exp.subst(type_mapping, engines);
-                variant.subst(type_mapping, engines);
+                exp.subst(type_mapping, ctx);
+                variant.subst(type_mapping, ctx);
             },
             AbiName(_) => HasChanges::No,
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.subst(type_mapping, engines);
-                body.subst(type_mapping, engines)
+                condition.subst(type_mapping, ctx);
+                body.subst(type_mapping, ctx)
             }
-            ForLoop { ref mut desugared } => desugared.subst(type_mapping, engines),
+            ForLoop { ref mut desugared } => desugared.subst(type_mapping, ctx),
             Break => HasChanges::No,
             Continue => HasChanges::No,
-            Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
-            ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, engines),
-            Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),
+            Reassignment(reassignment) => reassignment.subst(type_mapping, ctx),
+            ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, ctx),
+            Ref(exp) | Deref(exp) => exp.subst(type_mapping, ctx),
         }
     }
 }

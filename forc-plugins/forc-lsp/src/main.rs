@@ -1,7 +1,7 @@
 //! A simple `forc` plugin for starting the sway language server.
 //!
 //! Once installed and available via `PATH`, can be executed via `forc lsp`.
-
+#![recursion_limit = "256"]
 // Use Jemalloc for main binary
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;

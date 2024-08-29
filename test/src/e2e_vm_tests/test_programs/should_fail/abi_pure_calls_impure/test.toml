@@ -1,4 +1,9 @@
 category = "fail"
 
-# check: f()
-# check: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read)]" to the function declaration.
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn test_function() -> bool
+#nextln: $()Function "test_function" is pure and cannot access storage.
+#check: $()f()
+#nextln: $()Function "f" reads from the storage.
+#check: $()Consider declaring the function "test_function" as `#[storage(read)]`

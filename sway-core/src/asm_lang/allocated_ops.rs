@@ -180,7 +180,19 @@ pub(crate) enum AllocatedOpcode {
     ),
     CROO(AllocatedRegister, AllocatedRegister),
     CSIZ(AllocatedRegister, AllocatedRegister),
-    LDC(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    BSIZ(AllocatedRegister, AllocatedRegister),
+    LDC(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    BLDD(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     LOG(
         AllocatedRegister,
         AllocatedRegister,
@@ -229,7 +241,12 @@ pub(crate) enum AllocatedOpcode {
     /* Cryptographic Instructions */
     ECK1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     ECR1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
-    ED19(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ED19(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     K256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
@@ -330,7 +347,9 @@ impl AllocatedOpcode {
             CCP(_r1, _r2, _r3, _r4) => vec![],
             CROO(_r1, _r2) => vec![],
             CSIZ(r1, _r2) => vec![r1],
-            LDC(_r1, _r2, _r3) => vec![],
+            BSIZ(r1, _r2) => vec![r1],
+            LDC(_r1, _r2, _r3, _i0) => vec![],
+            BLDD(_r1, _r2, _r3, _r4) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1, _r2) => vec![],
@@ -349,7 +368,7 @@ impl AllocatedOpcode {
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
             ECR1(_r1, _r2, _r3) => vec![],
-            ED19(_r1, _r2, _r3) => vec![],
+            ED19(_r1, _r2, _r3, _r4) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -454,7 +473,9 @@ impl fmt::Display for AllocatedOpcode {
             CCP(a, b, c, d) => write!(fmtr, "ccp  {a} {b} {c} {d}"),
             CROO(a, b) => write!(fmtr, "croo {a} {b}"),
             CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
-            LDC(a, b, c) => write!(fmtr, "ldc  {a} {b} {c}"),
+            BSIZ(a, b) => write!(fmtr, "bsiz {a} {b}"),
+            LDC(a, b, c, d) => write!(fmtr, "ldc  {a} {b} {c} {d}"),
+            BLDD(a, b, c, d) => write!(fmtr, "bldd {a} {b} {c} {d}"),
             LOG(a, b, c, d) => write!(fmtr, "log  {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
             MINT(a, b) => write!(fmtr, "mint {a} {b}"),
@@ -473,7 +494,7 @@ impl fmt::Display for AllocatedOpcode {
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1  {a} {b} {c}"),
             ECR1(a, b, c) => write!(fmtr, "ecr1  {a} {b} {c}"),
-            ED19(a, b, c) => write!(fmtr, "ed19  {a} {b} {c}"),
+            ED19(a, b, c, d) => write!(fmtr, "ed19  {a} {b} {c} {d}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
@@ -630,7 +651,13 @@ impl AllocatedOp {
             }
             CROO(a, b) => op::CROO::new(a.to_reg_id(), b.to_reg_id()).into(),
             CSIZ(a, b) => op::CSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
-            LDC(a, b, c) => op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            BSIZ(a, b) => op::BSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
+            LDC(a, b, c, d) => {
+                op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            BLDD(a, b, c, d) => {
+                op::BLDD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             LOG(a, b, c, d) => {
                 op::LOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -661,7 +688,9 @@ impl AllocatedOp {
             /* Cryptographic Instructions */
             ECK1(a, b, c) => op::ECK1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             ECR1(a, b, c) => op::ECR1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ED19(a, b, c) => op::ED19::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ED19(a, b, c, d) => {
+                op::ED19::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             K256(a, b, c) => op::K256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             S256(a, b, c) => op::S256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
 

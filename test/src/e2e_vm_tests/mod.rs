@@ -494,8 +494,8 @@ impl TestContext {
                             )
                         })
                         .await;
-                        result?;
                         output.push_str(&out);
+                        result?;
                     }
                 }
 

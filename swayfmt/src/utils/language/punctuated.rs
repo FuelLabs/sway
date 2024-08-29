@@ -258,12 +258,15 @@ impl Format for StorageField {
         formatter.with_shape(
             formatter.shape.with_default_code_line(),
             |formatter| -> Result<(), FormatterError> {
-                write!(
-                    formatted_code,
-                    "{}{} ",
-                    self.name.span().as_str(),
-                    self.colon_token.span().as_str(),
-                )?;
+                write!(formatted_code, "{}", self.name.span().as_str())?;
+                if let Some(in_token) = &self.in_token {
+                    write!(formatted_code, " {}", in_token.span().as_str())?;
+                }
+                if let Some(key_expr) = &self.key_expr {
+                    write!(formatted_code, " {}", key_expr.span().as_str())?;
+                }
+                write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
+
                 self.ty.format(formatted_code, formatter)?;
                 write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
 
@@ -272,7 +275,6 @@ impl Format for StorageField {
         )?;
 
         self.initializer.format(formatted_code, formatter)?;
-
         Ok(())
     }
 }

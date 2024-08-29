@@ -25,10 +25,10 @@ pub(crate) fn generate_searchbar(module_info: &ModuleInfo) -> Box<dyn RenderBox>
             const searchbar = document.getElementById("search-input");
             const searchForm = document.getElementById("search-form");
             searchbar.addEventListener("keyup", function(event) {{
-                searchForm.dispatchEvent(new Event('submit'));
+                onSearchFormSubmit(event);
             }});
             searchbar.addEventListener("search", function(event) {{
-                searchForm.dispatchEvent(new Event('submit'));
+                onSearchFormSubmit(event);
             }});
         
             function onQueryParamsChange() {{

@@ -60,7 +60,7 @@ pub(crate) fn type_check_method_application(
                 x.return_type
                     .extract_inner_types(engines, IncludeSelf::Yes)
                     .iter()
-                    .any(|x| !x.is_concrete(engines, IncludeNumeric::Yes))
+                    .any(|x| !x.is_concrete(engines, TreatNumericAs::Abstract))
             })
             .unwrap_or_default();
         let needs_second_pass = has_errors || is_not_concrete;
@@ -159,20 +159,10 @@ pub(crate) fn type_check_method_application(
         }));
     }
 
-    // check the function storage purity
-    if !method.is_contract_call {
-        // 'method.purity' is that of the callee, 'opts.purity' of the caller.
-        if !ctx.purity().can_call(method.purity) {
-            handler.emit_err(CompileError::StorageAccessMismatch {
-                attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
-                span: method_name_binding.inner.easy_name().span(),
-            });
-        }
-        if !contract_call_params.is_empty() {
-            handler.emit_err(CompileError::CallParamForNonContractCallMethod {
-                span: contract_call_params[0].name.span(),
-            });
-        }
+    if !method.is_contract_call && !contract_call_params.is_empty() {
+        handler.emit_err(CompileError::CallParamForNonContractCallMethod {
+            span: contract_call_params[0].name.span(),
+        });
     }
 
     // generate the map of the contract call params
@@ -680,26 +670,31 @@ pub(crate) fn type_check_method_application(
                             vec![t.initial_type_id],
                             vec![call_path_typeid],
                         );
-                        method.subst(&type_subst, engines);
+                        method.subst(
+                            &type_subst,
+                            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                        );
                     }
                 }
             }
         }
 
-        // Handle the trait constraints. This includes checking to see if the trait
-        // constraints are satisfied and replacing old decl ids based on the
-        // constraint with new decl ids based on the new type.
-        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-            handler,
-            ctx.by_ref(),
-            &method.type_parameters,
-            method.name.as_str(),
-            &call_path.span(),
-        )
-        .ok();
+        if !ctx.collecting_unifications() {
+            // Handle the trait constraints. This includes checking to see if the trait
+            // constraints are satisfied and replacing old decl ids based on the
+            // constraint with new decl ids based on the new type.
+            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+                handler,
+                ctx.by_ref(),
+                &method.type_parameters,
+                method.name.as_str(),
+                &call_path.span(),
+            )
+            .ok();
 
-        if let Some(decl_mapping) = decl_mapping {
-            method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            if let Some(decl_mapping) = decl_mapping {
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            }
         }
 
         let method_sig = TyFunctionSig::from_fn_decl(&method);
@@ -707,7 +702,8 @@ pub(crate) fn type_check_method_application(
         method_return_type_id = method.return_type.type_id;
         decl_engine.replace(*fn_ref.id(), method.clone());
 
-        if method_sig.is_concrete(engines)
+        if !ctx.collecting_unifications()
+            && method_sig.is_concrete(engines)
             && method.is_type_check_finalized
             && !method.is_trait_method_dummy
         {

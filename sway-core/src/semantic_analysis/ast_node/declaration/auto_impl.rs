@@ -1,6 +1,6 @@
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-    decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    decl_engine::{DeclEngineGet, DeclId},
     engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
@@ -570,7 +570,7 @@ where
         &mut self,
         engines: &Engines,
         program_id: Option<ProgramId>,
-        contract_fns: &[DeclRef<DeclId<TyFunctionDecl>>],
+        contract_fns: &[DeclId<TyFunctionDecl>],
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
@@ -580,7 +580,7 @@ where
         let mut writes = false;
 
         for r in contract_fns {
-            let decl = engines.de().get(r.id());
+            let decl = engines.de().get(r);
 
             match decl.purity {
                 Purity::Pure => {}
@@ -679,13 +679,12 @@ where
             format!("__revert({});", MISMATCHED_SELECTOR_REVERT_CODE)
         };
 
-        let att: String = match (reads, writes) {
+        let att = match (reads, writes) {
             (true, true) => "#[storage(read, write)]",
             (true, false) => "#[storage(read)]",
             (false, true) => "#[storage(write)]",
             (false, false) => "",
-        }
-        .into();
+        };
 
         let code = format!(
             "{att} pub fn __entry() {{
