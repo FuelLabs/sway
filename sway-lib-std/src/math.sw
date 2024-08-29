@@ -83,8 +83,15 @@ pub trait Power {
 fn u256_checked_mul(a: u256, b: u256) -> Option<u256> {
     let empty_tuple = (u256::zero(), 0u64);
 
+    // The six-bit immediate value is used to select operating mode, as follows:
+
+    // Bits	Short name	Description
+    // ..XXXX	reserved	Reserved and must be zero
+    // .X....	indirect0	Is lhs operand ($rB) indirect or not
+    // X.....	indirect1	Is rhs operand ($rC) indirect or not
+    // As both operands are indirect, 110000 is used, which is 48 in decimal.
     let res = asm(output: empty_tuple, r1: a, r2: b, r3) {
-        mul r3 r1 r2;
+        wqml r3 r1 r2 48;
         sw output of i1;
         sw output r3 i0;
         output: (u256, u64)
