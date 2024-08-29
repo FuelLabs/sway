@@ -409,7 +409,11 @@ pub fn parse_project(
         lsp_mode.clone(),
         experimental,
     )?;
-    if results.last().is_none() {
+
+    // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
+    // If we don't return an error here, then we will likely crash when trying to access the Engines
+    // during traversal or when creating runnables.
+    if results.last().map_or(true, |(value, _)| value.is_none()) {
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
