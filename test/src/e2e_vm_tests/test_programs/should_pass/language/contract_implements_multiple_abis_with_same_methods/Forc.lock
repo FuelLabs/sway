@@ -1,0 +1,13 @@
+[[package]]
+name = "contract_implements_multiple_abis_with_same_methods"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-3480CC9F7FAAA8DF"
+
+[[package]]
+name = "std"
+source = "path+from-root-3480CC9F7FAAA8DF"
+dependencies = ["core"]

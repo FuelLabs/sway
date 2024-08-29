@@ -1,8 +1,0 @@
-[[package]]
-name = "associated_const_abi_default"
-source = "member"
-dependencies = ["core"]
-
-[[package]]
-name = "core"
-source = "path+from-root-4DE28390654F2914"

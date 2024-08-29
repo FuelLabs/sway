@@ -185,7 +185,7 @@ fn create_payload(
 /// ```sway
 /// use std::low_level_call::{bytes::Bytes, create_payload, call_with_raw_payload, CallParams};
 ///
-/// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams, single_value_type_arg: bool) {
+/// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
 ///     let payload = create_payload(target, function_selector, calldata);
 ///
 ///     call_with_raw_payload(payload, call_params);
@@ -262,8 +262,8 @@ pub fn call_with_function_selector(
 /// ```sway
 /// use std::low_level_call::{bytes::Bytes, call_with_function_selector, CallParams};
 ///
-/// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams, single_value_type_arg: bool) {
-///     call_with_function_selector(target, function_selector, calldata, single_value_type_arg, call_params);
+/// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
+///     call_with_function_selector(target, function_selector, calldata, call_params);
 /// }
 /// ```
 #[cfg(experimental_new_encoding = true)]

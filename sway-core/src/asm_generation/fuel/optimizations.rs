@@ -1,11 +1,11 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use either::Either;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     asm_generation::fuel::compiler_constants,
-    asm_lang::{ControlFlowOp, VirtualImmediate12, VirtualOp, VirtualRegister},
+    asm_lang::{ControlFlowOp, Label, VirtualImmediate12, VirtualOp, VirtualRegister},
 };
 
 use super::{
@@ -266,6 +266,46 @@ impl AbstractInstructionSet {
             })
             .collect();
         std::mem::swap(&mut self.ops, &mut new_ops);
+
+        self
+    }
+
+    // Remove unreachable instructions.
+    pub(crate) fn simplify_cfg(mut self) -> AbstractInstructionSet {
+        let ops = &self.ops;
+
+        if ops.is_empty() {
+            return self;
+        }
+
+        // Keep track of a map between jump labels and op indices. Useful to compute op successors.
+        let mut label_to_index: HashMap<Label, usize> = HashMap::default();
+        for (idx, op) in ops.iter().enumerate() {
+            if let Either::Right(ControlFlowOp::Label(op_label)) = op.opcode {
+                label_to_index.insert(op_label, idx);
+            }
+        }
+
+        let mut reachables = vec![false; ops.len()];
+        let mut worklist = vec![0];
+        while let Some(op_idx) = worklist.pop() {
+            assert!(!reachables[op_idx]);
+            reachables[op_idx] = true;
+            let op = &ops[op_idx];
+            for s in &op.successors(op_idx, ops, &label_to_index) {
+                if !reachables[*s] {
+                    worklist.push(*s);
+                }
+            }
+        }
+
+        let reachable_ops = self
+            .ops
+            .into_iter()
+            .enumerate()
+            .filter_map(|(idx, op)| if reachables[idx] { Some(op) } else { None })
+            .collect();
+        self.ops = reachable_ops;
 
         self
     }

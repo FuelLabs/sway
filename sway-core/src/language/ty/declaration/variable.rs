@@ -5,7 +5,7 @@ use sway_types::Ident;
 
 use crate::{
     engine_threading::*,
-    language::ty::*,
+    language::{parsed::VariableDeclaration, ty::*},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
@@ -20,6 +20,10 @@ pub struct TyVariableDecl {
     pub mutability: VariableMutability,
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
+}
+
+impl TyDeclParsedType for TyVariableDecl {
+    type ParsedType = VariableDeclaration;
 }
 
 impl EqWithEngines for TyVariableDecl {}
@@ -55,10 +59,10 @@ impl HashWithEngines for TyVariableDecl {
 }
 
 impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines)
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        self.return_type.subst(type_mapping, ctx);
+        self.type_ascription.subst(type_mapping, ctx);
+        self.body.subst(type_mapping, ctx)
     }
 }
 

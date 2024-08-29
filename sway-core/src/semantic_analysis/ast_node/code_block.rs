@@ -5,12 +5,67 @@ use crate::language::{
 };
 
 impl ty::TyCodeBlock {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        code_block: &CodeBlock,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = code_block
+            .contents
+            .iter()
+            .map(|node| ty::TyAstNode::collect(handler, engines, ctx, node))
+            .filter_map(|res| res.ok())
+            .collect::<Vec<_>>();
+
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         code_block: &CodeBlock,
+        is_root: bool,
     ) -> Result<Self, ErrorEmitted> {
-        ctx.scoped(|mut ctx| {
+        if !is_root {
+            let code_block_result = ctx.by_ref().scoped(|mut ctx| {
+                let evaluated_contents = code_block
+                    .contents
+                    .iter()
+                    .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
+                    .collect::<Vec<ty::TyAstNode>>();
+                Ok(ty::TyCodeBlock {
+                    contents: evaluated_contents,
+                    whole_block_span: code_block.whole_block_span.clone(),
+                })
+            })?;
+
+            return Ok(code_block_result);
+        }
+
+        ctx.engines.te().clear_unifications();
+        ctx.namespace()
+            .module(ctx.engines)
+            .current_lexical_scope()
+            .items
+            .clear_symbols_unique_while_collecting_unifications();
+
+        // We are typechecking the code block AST nodes twice.
+        // The first pass does all the unifications to the variables types.
+        // In the second pass we use the previous_namespace on variable declaration to unify directly with the result of the first pass.
+        // This is required to fix the test case numeric_type_propagation and issue #6371
+        ctx.by_ref()
+            .with_collecting_unifications()
+            .scoped(|mut ctx| {
+                code_block.contents.iter().for_each(|node| {
+                    ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
+                });
+                Ok(())
+            })?;
+
+        ctx.engines.te().reapply_unifications(ctx.engines());
+
+        ctx.by_ref().scoped(|mut ctx| {
             let evaluated_contents = code_block
                 .contents
                 .iter()

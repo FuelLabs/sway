@@ -12,6 +12,17 @@ impl Buffer {
             buffer: __encode_buffer_empty(),
         }
     }
+
+    fn with_capacity(cap: u64) -> Self {
+        let ptr = asm(cap: cap) {
+            aloc cap;
+            hp: raw_ptr
+        };
+
+        Buffer {
+            buffer: (ptr, cap, 0),
+        }
+    }
 }
 
 impl AsRawSlice for Buffer {
@@ -22,12 +33,11 @@ impl AsRawSlice for Buffer {
 
 pub struct BufferReader {
     ptr: raw_ptr,
-    pos: u64,
 }
 
 impl BufferReader {
     pub fn from_parts(ptr: raw_ptr, _len: u64) -> BufferReader {
-        BufferReader { ptr, pos: 0 }
+        BufferReader { ptr }
     }
 
     pub fn from_first_parameter() -> BufferReader {
@@ -43,7 +53,6 @@ impl BufferReader {
             ptr: asm(ptr: ptr) {
                 ptr: raw_ptr
             },
-            pos: 0,
         }
     }
 
@@ -60,14 +69,13 @@ impl BufferReader {
             ptr: asm(ptr: ptr) {
                 ptr: raw_ptr
             },
-            pos: 0,
         }
     }
 
     pub fn from_script_data() -> BufferReader {
         let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
         let _len = __gtf::<u64>(0, 0x4); // SCRIPT_DATA_LEN
-        BufferReader { ptr, pos: 0 }
+        BufferReader { ptr }
     }
 
     pub fn from_predicate_data() -> BufferReader {
@@ -83,56 +91,60 @@ impl BufferReader {
             0u8 => {
                 let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
                 let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
-                BufferReader { ptr, pos: 0 }
+                BufferReader { ptr }
             },
             2u8 => {
                 let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
                 let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
-                BufferReader { ptr, pos: 0 }
+                BufferReader { ptr }
             },
             _ => __revert(0),
         }
     }
 
-    pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
-        let next_pos = self.pos + count;
+    pub fn read_8_bytes<T>(ref mut self) -> T {
+        let v = asm(ptr: self.ptr, val) {
+            lw val ptr i0;
+            val: T
+        };
+        self.ptr = __ptr_add::<u8>(self.ptr, 8);
+        v
+    }
 
-        let ptr = self.ptr.add::<u8>(self.pos);
-        let slice = asm(ptr: (ptr, count)) {
+    pub fn read_32_bytes<T>(ref mut self) -> T {
+        let v = asm(ptr: self.ptr) {
+            ptr: T
+        };
+        self.ptr = __ptr_add::<u8>(self.ptr, 32);
+        v
+    }
+
+    pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
+        let slice = asm(ptr: (self.ptr, count)) {
             ptr: raw_slice
         };
-
-        self.pos = next_pos;
-
+        self.ptr = __ptr_add::<u8>(self.ptr, count);
         slice
     }
 
     pub fn read<T>(ref mut self) -> T {
-        let ptr = self.ptr.add::<u8>(self.pos);
-
         let size = __size_of::<T>();
-        let next_pos = self.pos + size;
 
         if __is_reference_type::<T>() {
-            let v = asm(ptr: ptr) {
+            let v = asm(ptr: self.ptr) {
                 ptr: T
             };
-            self.pos = next_pos;
+            self.ptr = __ptr_add::<u8>(self.ptr, size);
             v
         } else if size == 1 {
-            let v = asm(ptr: ptr, val) {
+            let v = asm(ptr: self.ptr, val) {
                 lb val ptr i0;
                 val: T
             };
-            self.pos = next_pos;
+            self.ptr = __ptr_add::<u8>(self.ptr, 1);
             v
         } else {
-            let v = asm(ptr: ptr, val) {
-                lw val ptr i0;
-                val: T
-            };
-            self.pos = next_pos;
-            v
+            self.read_8_bytes::<T>()
         }
     }
 
@@ -2521,7 +2533,7 @@ where
     }
 }
 
-// Decode 
+// Decode
 
 pub trait AbiDecode {
     fn abi_decode(ref mut buffer: BufferReader) -> Self;
@@ -2529,19 +2541,19 @@ pub trait AbiDecode {
 
 impl AbiDecode for b256 {
     fn abi_decode(ref mut buffer: BufferReader) -> b256 {
-        buffer.read::<b256>()
+        buffer.read_32_bytes::<b256>()
     }
 }
 
 impl AbiDecode for u256 {
     fn abi_decode(ref mut buffer: BufferReader) -> u256 {
-        buffer.read::<u256>()
+        buffer.read_32_bytes::<u256>()
     }
 }
 
 impl AbiDecode for u64 {
     fn abi_decode(ref mut buffer: BufferReader) -> u64 {
-        buffer.read::<u64>()
+        buffer.read_8_bytes::<u64>()
     }
 }
 
@@ -2573,23 +2585,24 @@ impl AbiDecode for u8 {
 
 impl AbiDecode for bool {
     fn abi_decode(ref mut buffer: BufferReader) -> bool {
-        buffer.read::<bool>()
+        match buffer.read::<u8>() {
+            0 => false,
+            1 => true,
+            _ => __revert(0),
+        }
     }
 }
 
 impl AbiDecode for raw_slice {
     fn abi_decode(ref mut buffer: BufferReader) -> raw_slice {
-        let len = u64::abi_decode(buffer);
-        let data = buffer.read_bytes(len);
-        asm(s: (data.ptr(), len)) {
-            s: raw_slice
-        }
+        let len = buffer.read_8_bytes::<u64>();
+        buffer.read_bytes(len)
     }
 }
 
 impl AbiDecode for str {
     fn abi_decode(ref mut buffer: BufferReader) -> str {
-        let len = u64::abi_decode(buffer);
+        let len = buffer.read_8_bytes::<u64>();
         let data = buffer.read_bytes(len);
         asm(s: (data.ptr(), len)) {
             s: str
@@ -4986,6 +4999,85 @@ where
 // END TUPLES_DECODE
 use ::ops::*;
 
+pub fn contract_call<T, TArgs>(
+    contract_id: b256,
+    method_name: str,
+    args: TArgs,
+    coins: u64,
+    asset_id: b256,
+    gas: u64,
+) -> T
+where
+    T: AbiDecode,
+    TArgs: AbiEncode,
+{
+    let first_parameter = encode(method_name);
+    let second_parameter = encode(args);
+    let params = encode((
+        contract_id,
+        asm(a: first_parameter.ptr()) {
+            a: u64
+        },
+        asm(a: second_parameter.ptr()) {
+            a: u64
+        },
+    ));
+
+    __contract_call(params.ptr(), coins, asset_id, gas);
+    let ptr = asm() {
+        ret: raw_ptr
+    };
+    let len = asm() {
+        retl: u64
+    };
+
+    let mut buffer = BufferReader::from_parts(ptr, len);
+    T::abi_decode(buffer)
+}
+
+pub fn decode_script_data<T>() -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_script_data();
+    T::abi_decode(buffer)
+}
+
+pub fn decode_predicate_data<T>() -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_predicate_data();
+    T::abi_decode(buffer)
+}
+
+pub fn decode_predicate_data_by_index<T>(index: u64) -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_predicate_data_by_index(index);
+    T::abi_decode(buffer)
+}
+
+pub fn decode_first_param<T>() -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_first_parameter();
+    T::abi_decode(buffer)
+}
+
+pub fn decode_second_param<T>() -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_second_parameter();
+    T::abi_decode(buffer)
+}
+
+// Tests
+
+
 fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
 where
     T: AbiEncode,
@@ -5064,13 +5156,97 @@ fn to_slice<T>(array: T) -> raw_slice {
     raw_slice::from_parts::<u8>(__addr_of(array), len)
 }
 
-fn assert_eq<T>(a: T, b: T)
+fn assert_eq<T>(a: T, b: T, revert_code: u64)
 where
     T: Eq,
 {
     if a != b {
-        __revert(0)
+        __revert(revert_code)
     }
+}
+
+fn assert_neq<T>(a: T, b: T, revert_code: u64)
+where
+    T: Eq,
+{
+    if a == b {
+        __revert(revert_code)
+    }
+}
+
+fn assert_no_write_after_buffer<T>(value_to_append: T, size_of_t: u64)
+where
+    T: AbiEncode,
+{
+    // This red zone should not be overwritten
+    let red_zone1 = asm(size: 1024) {
+        aloc size;
+        hp: raw_ptr
+    };
+    red_zone1.write(0xFFFFFFFFFFFFFFFF);
+
+    // Create encoding buffer with capacity for one item
+    let mut buffer = Buffer::with_capacity(size_of_t);
+    let ptr1 = buffer.buffer.0;
+
+    // Append one item
+    let buffer = value_to_append.abi_encode(buffer);
+    assert_eq(ptr1, buffer.buffer.0, 1); // no buffer grow is expected
+    assert_eq(buffer.buffer.1, size_of_t, 2); // capacity must be still be one item
+    assert_eq(buffer.buffer.2, size_of_t, 3); // buffer has one item
+
+    // This red zone should not be overwritten
+    let red_zone2 = asm(size: 1024) {
+        aloc size;
+        hp: raw_ptr
+    };
+    red_zone2.write(0xFFFFFFFFFFFFFFFF);
+
+    // Append another item
+    let buffer = value_to_append.abi_encode(buffer);
+    assert_neq(ptr1, buffer.buffer.0, 4); // must have allocated new buffer
+    assert_eq(buffer.buffer.1, size_of_t * 2, 5); // capacity for two items
+    assert_eq(buffer.buffer.2, size_of_t * 2, 6); // buffer has two items
+
+    // Check that red zones were not overwritten
+    assert_eq(red_zone1.read::<u64>(), 0xFFFFFFFFFFFFFFFF, 7);
+    assert_eq(red_zone2.read::<u64>(), 0xFFFFFFFFFFFFFFFF, 8);
+}
+
+#[test]
+fn ok_encoding_should_not_write_outside_buffer() {
+    assert_no_write_after_buffer::<bool>(true, 1);
+
+    // numbers
+    assert_no_write_after_buffer::<u8>(1, 1);
+    assert_no_write_after_buffer::<u16>(1, 2);
+    assert_no_write_after_buffer::<u32>(1, 4);
+    assert_no_write_after_buffer::<u64>(1, 8);
+    assert_no_write_after_buffer::<u256>(
+        0x0000000000000000000000000000000000000000000000000000000000000001u256,
+        32,
+    );
+    assert_no_write_after_buffer::<b256>(
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+        32,
+    );
+
+    // arrays
+    assert_no_write_after_buffer::<[u8; 1]>([1], 1);
+    assert_no_write_after_buffer::<[u8; 2]>([1, 1], 2);
+    assert_no_write_after_buffer::<[u8; 3]>([1, 1, 1], 3);
+    assert_no_write_after_buffer::<[u8; 4]>([1, 1, 1, 1], 4);
+    assert_no_write_after_buffer::<[u8; 5]>([1, 1, 1, 1, 1], 5);
+
+    // string arrays
+    assert_no_write_after_buffer::<str[1]>(__to_str_array("h"), 1);
+    assert_no_write_after_buffer::<str[2]>(__to_str_array("he"), 2);
+    assert_no_write_after_buffer::<str[11]>(__to_str_array("hello world"), 11);
+
+    // string slices
+    assert_no_write_after_buffer::<str>("h", 9);
+    assert_no_write_after_buffer::<str>("he", 10);
+    assert_no_write_after_buffer::<str>("hello world", 19);
 }
 
 #[test]
@@ -5179,85 +5355,15 @@ fn ok_abi_encoding() {
     assert_encoding([255u8; 5], [255u8; 5]);
 
     let array = abi_decode::<[u8; 1]>(to_slice([255u8]));
-    assert_eq(array[0], 255u8);
+    assert_eq(array[0], 255u8, 0);
 
     let array = abi_decode::<[u8; 2]>(to_slice([255u8, 254u8]));
-    assert_eq(array[0], 255u8);
-    assert_eq(array[1], 254u8);
+    assert_eq(array[0], 255u8, 0);
+    assert_eq(array[1], 254u8, 0);
 }
 
-pub fn contract_call<T, TArgs>(
-    contract_id: b256,
-    method_name: str,
-    args: TArgs,
-    coins: u64,
-    asset_id: b256,
-    gas: u64,
-) -> T
-where
-    T: AbiDecode,
-    TArgs: AbiEncode,
-{
-    let first_parameter = encode(method_name);
-    let second_parameter = encode(args);
-    let params = encode((
-        contract_id,
-        asm(a: first_parameter.ptr()) {
-            a: u64
-        },
-        asm(a: second_parameter.ptr()) {
-            a: u64
-        },
-    ));
-
-    __contract_call(params.ptr(), coins, asset_id, gas);
-    let ptr = asm() {
-        ret: raw_ptr
-    };
-    let len = asm() {
-        retl: u64
-    };
-
-    let mut buffer = BufferReader::from_parts(ptr, len);
-    T::abi_decode(buffer)
-}
-
-pub fn decode_script_data<T>() -> T
-where
-    T: AbiDecode,
-{
-    let mut buffer = BufferReader::from_script_data();
-    T::abi_decode(buffer)
-}
-
-pub fn decode_predicate_data<T>() -> T
-where
-    T: AbiDecode,
-{
-    let mut buffer = BufferReader::from_predicate_data();
-    T::abi_decode(buffer)
-}
-
-pub fn decode_predicate_data_by_index<T>(index: u64) -> T
-where
-    T: AbiDecode,
-{
-    let mut buffer = BufferReader::from_predicate_data_by_index(index);
-    T::abi_decode(buffer)
-}
-
-pub fn decode_first_param<T>() -> T
-where
-    T: AbiDecode,
-{
-    let mut buffer = BufferReader::from_first_parameter();
-    T::abi_decode(buffer)
-}
-
-pub fn decode_second_param<T>() -> T
-where
-    T: AbiDecode,
-{
-    let mut buffer = BufferReader::from_second_parameter();
-    T::abi_decode(buffer)
+#[test(should_revert)]
+fn nok_abi_encoding_invalid_bool() {
+    let actual = encode(2u8);
+    let _ = abi_decode::<bool>(actual);
 }

@@ -4,7 +4,7 @@ use core::fmt;
 
 use either::Either;
 
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{Ident, IdentUnique, SourceId, Span, Spanned};
 
 // TODO: since moving to using Idents instead of strings,
 // the warning_content will usually contain a duplicate of the span.
@@ -67,8 +67,14 @@ pub enum Warning {
     ShadowsOtherSymbol {
         name: Ident,
     },
-    UninitializedAsmRegShadowsVariable {
-        name: Ident,
+    AsmBlockIsEmpty,
+    UninitializedAsmRegShadowsItem {
+        /// Text "Constant" or "Configurable" or "Variable".
+        /// Denotes the type of the `item` that shadows the uninitialized ASM register.
+        constant_or_configurable_or_variable: &'static str,
+        /// The name of the item that shadows the register, that points to the name in
+        /// the item declaration.
+        item: IdentUnique,
     },
     OverridingTraitImplementation,
     DeadDeclaration,
@@ -120,6 +126,11 @@ pub enum Warning {
     ModulePrivacyDisabled,
     UsingDeprecated {
         message: String,
+    },
+    DuplicatedStorageKey {
+        key: String,
+        field1: String,
+        field2: String,
     },
 }
 
@@ -185,9 +196,8 @@ impl fmt::Display for Warning {
             NonScreamingSnakeCaseConstName { name } => {
                 write!(
                     f,
-                    "Constant name \"{}\" is not idiomatic. Constant names should be SCREAMING_SNAKE_CASE, like \
+                    "Constant name \"{name}\" is not idiomatic. Constant names should be SCREAMING_SNAKE_CASE, like \
                     \"{}\".",
-                    name,
                     to_screaming_snake_case(name.as_str()),
                 )
             },
@@ -205,9 +215,14 @@ impl fmt::Display for Warning {
                 f,
                 "This shadows another symbol in this scope with the same name \"{name}\"."
             ),
-            UninitializedAsmRegShadowsVariable { name } => write!(
+            AsmBlockIsEmpty => write!(
                 f,
-                "This uninitialized register is shadowing a variable, you probably meant to also initialize it like \"{name}: {name}\"."
+                "This ASM block is empty."
+            ),
+            UninitializedAsmRegShadowsItem { constant_or_configurable_or_variable, item } => write!(
+                f,
+                "This uninitialized register is shadowing a {}. You probably meant to also initialize it, like \"{item}: {item}\".",
+                constant_or_configurable_or_variable.to_ascii_lowercase(),
             ),
             OverridingTraitImplementation => write!(
                 f,
@@ -264,6 +279,7 @@ impl fmt::Display for Warning {
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
             UsingDeprecated { message } => write!(f, "{}", message),
+            DuplicatedStorageKey { key, field1, field2 } => write!(f, "Two storage fields are using the same storage key.\nFirst field: {field1}\nSecond field: {field2}\nKey: {key}"),
         }
     }
 }
@@ -353,6 +369,48 @@ impl ToDiagnostic for CompileWarning {
                         format!("Consider removing the unreachable arm."),
                     ]
                 }
+            },
+            UninitializedAsmRegShadowsItem { constant_or_configurable_or_variable, item } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("Uninitialized ASM register is shadowing a {}", constant_or_configurable_or_variable.to_ascii_lowercase()))),
+                issue: Issue::warning(
+                    source_engine,
+                    self.span(),
+                    format!("Uninitialized register \"{item}\" is shadowing a {} of the same name.", constant_or_configurable_or_variable.to_ascii_lowercase()),
+                ),
+                hints: {
+                    let mut hints = vec![
+                        Hint::info(
+                            source_engine,
+                            item.span(),
+                            format!("{constant_or_configurable_or_variable} \"{item}\" is declared here.")
+                        ),
+                    ];
+
+                    hints.append(&mut Hint::multi_help(
+                        source_engine,
+                        &self.span(),
+                        vec![
+                            format!("Are you trying to initialize the register to the value of the {}?", constant_or_configurable_or_variable.to_ascii_lowercase()),
+                            format!("In that case, you must do it explicitly: `{item}: {item}`."),
+                            format!("Otherwise, to avoid the confusion with the shadowed {}, consider renaming the register \"{item}\".", constant_or_configurable_or_variable.to_ascii_lowercase()),
+                        ]
+                    ));
+
+                    hints
+                },
+                help: vec![],
+            },
+            AsmBlockIsEmpty => Diagnostic {
+                reason: Some(Reason::new(code(1), "ASM block is empty".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    self.span(),
+                    "This ASM block is empty.".to_string(),
+                ),
+                hints: vec![],
+                help: vec![
+                    "Consider adding assembly instructions or a return register to the ASM block, or removing the block altogether.".to_string(),
+                ],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

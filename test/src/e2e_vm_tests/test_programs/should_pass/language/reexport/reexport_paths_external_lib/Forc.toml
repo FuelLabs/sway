@@ -1,0 +1,14 @@
+[workspace]
+members = ["program",
+	   "ext_1_items",
+	   "ext_1_lib",
+	   "ext_2_items",
+	   "ext_2_lib",
+	   "ext_3_items",
+	   "ext_3_lib",
+	   "ext_4_items",
+	   "ext_4_lib",
+	   "ext_5_items",
+	   "ext_5_1_lib",
+	   "ext_5_2_lib",
+	   ] 

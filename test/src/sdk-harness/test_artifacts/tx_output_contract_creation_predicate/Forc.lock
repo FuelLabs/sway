@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-1EABD6DBC885D01E"
+
+[[package]]
+name = "std"
+source = "path+from-root-1EABD6DBC885D01E"
+dependencies = ["core"]
+
+[[package]]
+name = "tx_output_contract_creation_predicate"
+source = "member"
+dependencies = ["std"]

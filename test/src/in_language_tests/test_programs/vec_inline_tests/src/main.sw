@@ -641,7 +641,7 @@ fn vec_from_raw_slice() {
     };
 
     let mut vec: Vec<u64> = Vec::from(slice);
-    assert(vec.ptr() == slice.ptr());
+    assert(vec.ptr() != slice.ptr()); // Vec should own its buffer
     assert(vec.len() == slice.len::<u64>());
 }
 
@@ -683,7 +683,7 @@ fn vec_raw_slice_into() {
 
     let vec: Vec<u64> = slice.into();
 
-    assert(vec.ptr() == slice.ptr());
+    assert(vec.ptr() != slice.ptr()); // Vec should own its buffer
     assert(vec.len() == slice.len::<u64>());
 }
 

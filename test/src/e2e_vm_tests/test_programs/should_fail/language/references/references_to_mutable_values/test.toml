@@ -93,3 +93,24 @@ category = "fail"
 #check: $()let _ = &mut n;
 #nextln: $()"n" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "n", by returning it from a block: `&mut { n }`.
+
+#check: $()References to mutable values cannot reference immutable variables
+#check: $()let s = S { x: 0 };
+#nextln: $()Variable "s" is declared here as immutable.
+#check: $()let _ = &mut s.x;
+#nextln: $()"s" is an immutable variable. `&mut` cannot reference immutable variables.
+#check: $()- referencing a mutable copy of "s", by returning it from a block: `&mut { s }`.
+
+#check: $()References to mutable values cannot reference immutable variables
+#check: $()let s2 = S2 { s: S { x: 0 } };
+#nextln: $()Variable "s2" is declared here as immutable.
+#check: $()let _ = &mut s2.s.x;
+#nextln: $()"s2" is an immutable variable. `&mut` cannot reference immutable variables.
+#check: $()- referencing a mutable copy of "s2", by returning it from a block: `&mut { s2 }`.
+
+#check: $()References to mutable values cannot reference immutable variables
+#check: $()let t : (u32, u32) = (0, 0);
+#nextln: $()Variable "t" is declared here as immutable.
+#check: $()let _ : &mut u32 = &mut t.0;
+#nextln: $()"t" is an immutable variable. `&mut` cannot reference immutable variables.
+#check: $()- referencing a mutable copy of "t", by returning it from a block: `&mut { t }`.

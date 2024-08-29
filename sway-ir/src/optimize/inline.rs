@@ -35,12 +35,12 @@ pub fn create_fn_inline_pass() -> Pass {
 /// This is a copy of sway_core::inline::Inline.
 /// TODO: Reuse: Depend on sway_core? Move it to sway_types?
 #[derive(Debug)]
-enum Inline {
+pub enum Inline {
     Always,
     Never,
 }
 
-fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
+pub fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
     fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(
         context: &Context,
         md_idx: Option<MetadataIndex>,
@@ -98,6 +98,14 @@ pub fn fn_inline(
             });
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        // The encoding code in the `__entry` functions contains pointer patterns that mark
+        // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
+        // like SROA nad DCE. If we inline original entries, like e.g., `main`, the code in them will
+        // also not be optimized. Therefore, we forbid inlining of original entries into `__entry`.
+        if func.is_original_entry(ctx) {
+            return false;
+        }
+
         let attributed_inline = metadata_to_inline(ctx, func.get_metadata(ctx));
         match attributed_inline {
             Some(Inline::Always) => {
@@ -117,7 +125,7 @@ pub fn fn_inline(
 
         // If the function is (still) small then also inline it.
         const MAX_INLINE_INSTRS_COUNT: usize = 4;
-        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
             return true;
         }
 
@@ -181,6 +189,12 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     for call_site in &call_sites {
         let call_site_in = call_data.get(call_site).unwrap();
         let (block, inlined_function) = *call_site_in.borrow();
+
+        if function == &inlined_function {
+            // We can't inline a function into itself.
+            continue;
+        }
+
         inline_function_call(
             context,
             *function,
@@ -231,7 +245,7 @@ pub fn is_small_fn(
         max_blocks.map_or(true, |max_block_count| {
             function.num_blocks(context) <= max_block_count
         }) && max_instrs.map_or(true, |max_instrs_count| {
-            function.num_instructions(context) <= max_instrs_count
+            function.num_instructions_incl_asm_instructions(context) <= max_instrs_count
         }) && max_stack_size.map_or(true, |max_stack_size_count| {
             function
                 .locals_iter(context)

@@ -128,7 +128,7 @@ pub mod tests {
 
         for (actual, expected) in actual.iter().zip(expected) {
             if !actual.contains(expected) {
-                panic!("error: {actual:?} {expected:?}");
+                panic!("Actual: {actual:?} does not contains expected: {expected:?}. (Run with --nocapture to see a diff)");
             } else {
                 expected_matches -= 1;
             }

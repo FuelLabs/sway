@@ -18,4 +18,4 @@ script {
 
 // regex: VAL=v\d+
 
-// not: mem_copy_val $VAL, VAL
+// not: mem_copy_val $VAL, $VAL

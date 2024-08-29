@@ -114,14 +114,14 @@ impl HashWithEngines for TyReassignment {
 }
 
 impl SubstTypes for TyReassignmentTarget {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
             match self {
-                TyReassignmentTarget::Deref(exp) => exp.subst(type_mapping, engines),
+                TyReassignmentTarget::Deref(exp) => exp.subst(type_mapping, ctx),
                 TyReassignmentTarget::ElementAccess { base_type, indices, .. } => {
                     has_changes! {
-                        base_type.subst(type_mapping, engines);
-                        indices.subst(type_mapping, engines);
+                        base_type.subst(type_mapping, ctx);
+                        indices.subst(type_mapping, ctx);
                     }
                 }
             };
@@ -130,10 +130,10 @@ impl SubstTypes for TyReassignmentTarget {
 }
 
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.lhs.subst(type_mapping, engines);
-            self.rhs.subst(type_mapping, engines);
+            self.lhs.subst(type_mapping, ctx);
+            self.rhs.subst(type_mapping, ctx);
         }
     }
 }
@@ -330,10 +330,10 @@ impl HashWithEngines for ProjectionKind {
 }
 
 impl SubstTypes for ProjectionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         use ProjectionKind::*;
         match self {
-            ArrayIndex { index, .. } => index.subst(type_mapping, engines),
+            ArrayIndex { index, .. } => index.subst(type_mapping, ctx),
             _ => HasChanges::No,
         }
     }

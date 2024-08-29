@@ -124,7 +124,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((key, self.slot()));
+        let key = sha256((key, self.field_id()));
         clear::<V>(key, 0)
     }
 

@@ -5,7 +5,7 @@ use crate::execute::TestExecutor;
 use crate::setup::{
     ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
 };
-use forc_pkg as pkg;
+use forc_pkg::{self as pkg, BuildOpts};
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
@@ -23,7 +23,7 @@ use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
-use vm::interpreter::InterpreterParams;
+use vm::interpreter::{InterpreterParams, MemoryInstance};
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -209,8 +209,12 @@ impl PackageWithDeploymentToTest {
         let params = maxed_consensus_params();
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
-        let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-            vm::interpreter::Interpreter::with_storage(storage, interpreter_params);
+        let mut interpreter: vm::prelude::Interpreter<_, _, _, vm::interpreter::NotSupportedEcal> =
+            vm::interpreter::Interpreter::with_storage(
+                MemoryInstance::new(),
+                storage,
+                interpreter_params,
+            );
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
@@ -597,8 +601,8 @@ impl BuiltTests {
 
 /// First builds the package or workspace, ready for execution.
 pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.into();
-    let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
+    let build_opts: BuildOpts = opts.into();
+    let build_plan = pkg::BuildPlan::from_pkg_opts(&build_opts.pkg)?;
     let built = pkg::build_with_options(&build_opts)?;
     BuiltTests::from_built(built, &build_plan)
 }
@@ -668,7 +672,9 @@ pub fn decode_log_data(
     program_abi: &ProgramABI,
 ) -> anyhow::Result<DecodedLog> {
     let program_abi = match program_abi {
-        ProgramABI::Fuel(fuel_abi) => Some(fuel_abi),
+        ProgramABI::Fuel(fuel_abi) => Some(
+            fuel_abi_types::abi::unified_program::UnifiedProgramABI::from_counterpart(fuel_abi)?,
+        ),
         _ => None,
     }
     .ok_or_else(|| anyhow::anyhow!("only fuelvm is supported for log decoding"))?;

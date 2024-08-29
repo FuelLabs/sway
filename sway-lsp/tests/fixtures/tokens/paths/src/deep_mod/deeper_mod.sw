@@ -8,5 +8,5 @@ pub enum DeepEnum {
 }
 
 pub struct DeepStruct<T> {
-    field: T,
+    pub field: T,
 }

@@ -225,7 +225,7 @@ impl AbstractProgram {
         let entry = self.entries.iter().find(|x| x.name == "__entry").unwrap();
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Right(ControlFlowOp::Jump(entry.label)),
-            comment: "jump to abi method selector".into(),
+            comment: "jump to ABI function selector".into(),
             owning_span: None,
         });
     }
@@ -247,7 +247,7 @@ impl AbstractProgram {
         // Build the switch statement for selectors.
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Right(ControlFlowOp::Comment),
-            comment: "Begin contract ABI selector switch".into(),
+            comment: "[function selection]: begin contract function selector switch".into(),
             owning_span: None,
         });
 
@@ -261,7 +261,7 @@ impl AbstractProgram {
                     "constant infallible value",
                 ),
             )),
-            comment: "load input function selector".into(),
+            comment: "[function selection]: load input function selector".into(),
             owning_span: None,
         });
 
@@ -283,7 +283,10 @@ impl AbstractProgram {
             // Load the data into a register for comparison.
             asm.ops.push(AllocatedAbstractOp {
                 opcode: Either::Left(AllocatedOpcode::LoadDataId(PROG_SELECTOR_REG, data_label)),
-                comment: format!("load fn selector for comparison {}", entry.name),
+                comment: format!(
+                    "[function selection]: load function {} selector for comparison",
+                    entry.name
+                ),
                 owning_span: None,
             });
 
@@ -294,7 +297,10 @@ impl AbstractProgram {
                     INPUT_SELECTOR_REG,
                     PROG_SELECTOR_REG,
                 )),
-                comment: "function selector comparison".into(),
+                comment: format!(
+                    "[function selection]: compare function {} selector with input selector",
+                    entry.name
+                ),
                 owning_span: None,
             });
 
@@ -302,7 +308,7 @@ impl AbstractProgram {
             asm.ops.push(AllocatedAbstractOp {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
                 opcode: Either::Right(ControlFlowOp::JumpIfNotZero(CMP_RESULT_REG, entry.label)),
-                comment: "jump to selected function".into(),
+                comment: "[function selection]: jump to selected contract function".into(),
                 owning_span: None,
             });
         }
@@ -310,7 +316,7 @@ impl AbstractProgram {
         if let Some(fallback_fn) = fallback_fn {
             asm.ops.push(AllocatedAbstractOp {
                 opcode: Either::Right(ControlFlowOp::Call(fallback_fn)),
-                comment: "call fallback function".into(),
+                comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,
             });
         }
@@ -322,14 +328,15 @@ impl AbstractProgram {
                     value: compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
                 },
             )),
-            comment: "special code for mismatched selector".into(),
+            comment: "[function selection]: load revert code for mismatched function selector"
+                .into(),
             owning_span: None,
         });
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
                 ConstantRegister::Scratch,
             ))),
-            comment: "revert if no selectors matched".into(),
+            comment: "[function selection]: revert if no selectors have matched".into(),
             owning_span: None,
         });
     }
@@ -340,7 +347,7 @@ impl AbstractProgram {
             opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24 {
                 value: len_in_bytes as u32,
             })),
-            comment: "stack space for globals".into(),
+            comment: "allocate stack space for globals".into(),
             owning_span: None,
         });
     }

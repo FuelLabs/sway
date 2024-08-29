@@ -3,10 +3,11 @@ contract;
 use std::storage::storage_api::{read, write};
 
 // ANCHOR: storage_namespace
-#[namespace(example_namespace)]
 storage {
+    example_namespace {
+        foo: u64 = 0,
+    },
     // ANCHOR_END: storage_namespace
-    foo: u64 = 0,
 }
 
 abi StorageNamespaceExample {

@@ -1,6 +1,15 @@
 //! Utilities for common math operations.
 library;
 
+use ::assert::*;
+use ::flags::{
+    disable_panic_on_overflow,
+    F_UNSAFEMATH_DISABLE_MASK,
+    F_WRAPPING_DISABLE_MASK,
+    set_flags,
+};
+use ::registers::{flags, overflow};
+
 /// Calculates the square root.
 pub trait Root {
     fn sqrt(self) -> Self;
@@ -109,27 +118,48 @@ impl Power for u64 {
 
 impl Power for u32 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+        // If panic on wrapping math is enabled, only then revert
+        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            assert(res <= Self::max().as_u64());
+        }
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
 
 impl Power for u16 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+        // If panic on wrapping math is enabled, only then revert
+        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            assert(res <= Self::max().as_u64());
+        }
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
 
 impl Power for u8 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+        // If panic on wrapping math is enabled, only then revert
+        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            assert(res <= Self::max().as_u64());
+        }
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
@@ -213,8 +243,12 @@ impl BinaryLogarithm for u8 {
 
 impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
-        use ::assert::*;
-        assert(self != 0);
+        // If panic on unsafe math is enabled, only then revert
+        if flags() & F_UNSAFEMATH_DISABLE_MASK == 0 {
+            // Logarithm is undefined for 0
+            assert(self != 0);
+        }
+
         let (a, b, c, d) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
@@ -233,9 +267,58 @@ impl BinaryLogarithm for u256 {
 
 impl Logarithm for u256 {
     fn log(self, base: Self) -> Self {
+        let flags = disable_panic_on_overflow();
+
+        // If panic on unsafe math is enabled, only then revert
+        if flags & F_UNSAFEMATH_DISABLE_MASK == 0 {
+            // Logarithm is undefined for bases less than 2
+            assert(base >= 2);
+            // Logarithm is undefined for 0
+            assert(self != 0);
+        }
+
+        // Decimals rounded to 0
+        if self < base {
+            return 0x00u256;
+        }
+
+        // Estimating the result using change of base formula. Only an estimate because we are doing uint calculations.
         let self_log2 = self.log2();
         let base_log2 = base.log2();
-        self_log2 / base_log2
+        let mut result = (self_log2 / base_log2);
+
+        // Converting u256 to u32, this cannot fail as the result will be atmost ~256
+        let parts = asm(r1: result) {
+            r1: (u64, u64, u64, u64)
+        };
+        let res_u32 = asm(r1: parts.3) {
+            r1: u32
+        };
+
+        // Raising the base to the power of the result
+        let mut pow_res = base.pow(res_u32);
+        let mut of = overflow();
+
+        // Adjusting the result until the power is less than or equal to self
+        // If pow_res is > than self, then there is an overestimation. If there is an overflow then there is definitely an overestimation.
+        while (pow_res > self) || (of > 0) {
+            result -= 1;
+
+            // Converting u256 to u32, this cannot fail as the result will be atmost ~256
+            let parts = asm(r1: result) {
+                r1: (u64, u64, u64, u64)
+            };
+            let res_u32 = asm(r1: parts.3) {
+                r1: u32
+            };
+
+            pow_res = base.pow(res_u32);
+            of = overflow();
+        };
+
+        set_flags(flags);
+
+        result
     }
 }
 

@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-40643AD438531682"
+
+[[package]]
+name = "duplicated_storage_keys"
+source = "member"
+dependencies = ["core"]

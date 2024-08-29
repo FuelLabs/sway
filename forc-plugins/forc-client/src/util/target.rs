@@ -1,7 +1,8 @@
 use crate::constants::{
     BETA_2_ENDPOINT_URL, BETA_2_FAUCET_URL, BETA_3_ENDPOINT_URL, BETA_3_FAUCET_URL,
     BETA_4_ENDPOINT_URL, BETA_4_FAUCET_URL, BETA_5_ENDPOINT_URL, BETA_5_FAUCET_URL,
-    DEVNET_ENDPOINT_URL, DEVNET_FAUCET_URL, NODE_URL, TESTNET_ENDPOINT_URL, TESTNET_FAUCET_URL,
+    DEVNET_ENDPOINT_URL, DEVNET_FAUCET_URL, NODE_URL, TESTNET_ENDPOINT_URL, TESTNET_EXPLORER_URL,
+    TESTNET_FAUCET_URL,
 };
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,13 @@ impl Target {
             Target::Devnet => DEVNET_FAUCET_URL.to_string(),
             Target::Testnet => TESTNET_FAUCET_URL.to_string(),
             Target::Local => "http://localhost:3000".to_string(),
+        }
+    }
+
+    pub fn explorer_url(&self) -> Option<String> {
+        match self {
+            Target::Testnet | Target::Devnet => Some(TESTNET_EXPLORER_URL.to_string()),
+            _ => None,
         }
     }
 }

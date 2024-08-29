@@ -11,10 +11,10 @@ fn b256_try_from_bytes() {
         initial_bytes.push(51u8);
         i += 1;
     }
-    let res = b256::try_from(initial_bytes);
-    let expected = 0x3333333333333333333333333333333333333333333333333333333333333333;
-
-    assert(res.unwrap() == expected);
+    let res1 = b256::try_from(initial_bytes);
+    let expected1 = 0x3333333333333333333333333333333333333333333333333333333333333333;
+    assert(res1.is_some());
+    assert(res1.unwrap() == expected1);
 
     let mut second_bytes = Bytes::with_capacity(33);
     i = 0;
@@ -23,12 +23,22 @@ fn b256_try_from_bytes() {
         second_bytes.push(51u8);
         i += 1;
     }
-    let res = b256::try_from(second_bytes);
-    assert(res.is_none());
+    let res2 = b256::try_from(second_bytes);
+    assert(res2.is_none());
 
     // bytes is still available to use:
     assert(second_bytes.len() == 33);
     assert(second_bytes.capacity() == 33);
+
+    let mut third_bytes = Bytes::with_capacity(31);
+    let mut i = 0;
+    while i < 31 {
+        // 0x33 is 51 in decimal
+        third_bytes.push(51u8);
+        i += 1;
+    }
+    let res3 = b256::try_from(third_bytes);
+    assert(res3.is_none());
 }
 
 #[test]

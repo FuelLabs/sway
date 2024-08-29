@@ -11,14 +11,14 @@ use crate::{
 
 use super::{
     const_eval::{compile_const_decl, LookupEnv},
-    convert::convert_resolved_typeid,
+    convert::convert_resolved_type_id,
     function::FnCompiler,
     CompiledFunctionCache,
 };
 
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -298,11 +298,11 @@ pub(crate) fn compile_configurables(
         {
             let decl = engines.de().get(decl_id);
 
-            let ty = convert_resolved_typeid(
+            let ty = convert_resolved_type_id(
                 engines.te(),
                 engines.de(),
                 context,
-                &decl.type_ascription.type_id,
+                decl.type_ascription.type_id,
                 &decl.type_ascription.span,
             )
             .unwrap();
@@ -322,10 +322,22 @@ pub(crate) fn compile_configurables(
             let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 
             if context.experimental.new_encoding {
-                let encoded_bytes = match constant.value {
+                let mut encoded_bytes = match constant.value {
                     ConstantValue::RawUntypedSlice(bytes) => bytes,
                     _ => unreachable!(),
                 };
+
+                let config_type_info = engines.te().get(decl.type_ascription.type_id);
+                let buffer_size = match config_type_info.abi_encode_size_hint(engines) {
+                    crate::AbiEncodeSizeHint::Exact(len) => len,
+                    crate::AbiEncodeSizeHint::Range(_, len) => len,
+                    _ => unreachable!("unexpected type accepted as configurable"),
+                };
+
+                if buffer_size > encoded_bytes.len() {
+                    encoded_bytes.extend([0].repeat(buffer_size - encoded_bytes.len()));
+                }
+                assert!(encoded_bytes.len() == buffer_size);
 
                 let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
                 let decode_fn = cache.ty_function_decl_to_unique_function(
@@ -378,9 +390,11 @@ pub(super) fn compile_function(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: &ty::TyFunctionDecl,
+    original_name: &Ident,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
+    is_original_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Option<Function>, Vec<CompileError>> {
@@ -395,7 +409,9 @@ pub(super) fn compile_function(
             md_mgr,
             module,
             ast_fn_decl,
+            original_name,
             is_entry,
+            is_original_entry,
             None,
             logged_types_map,
             messages_types_map,
@@ -419,6 +435,9 @@ pub(super) fn compile_entry_function(
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     let is_entry = true;
+    // In the new encoding, the only entry function is the `__entry`,
+    // which is not an original entry.
+    let is_original_entry = !context.experimental.new_encoding;
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
     compile_function(
         engines,
@@ -426,9 +445,11 @@ pub(super) fn compile_entry_function(
         md_mgr,
         module,
         &ast_fn_decl,
+        &ast_fn_decl.name,
         logged_types_map,
         messages_types_map,
         is_entry,
+        is_original_entry,
         test_decl_ref,
         cache,
     )
@@ -471,7 +492,13 @@ fn compile_fn(
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: &ty::TyFunctionDecl,
+    // Original function name, before it is postfixed with
+    // a number, to get a unique name.
+    // The span in the name must point to the name in the
+    // function declaration.
+    original_name: &Ident,
     is_entry: bool,
+    is_original_entry: bool,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -513,11 +540,11 @@ fn compile_fn(
         .iter()
         .map(|param| {
             // Convert to an IR type.
-            convert_resolved_typeid(
+            convert_resolved_type_id(
                 type_engine,
                 decl_engine,
                 context,
-                &param.type_argument.type_id,
+                param.type_argument.type_id,
                 &param.type_argument.span,
             )
             .map(|ty| {
@@ -537,18 +564,20 @@ fn compile_fn(
         .collect::<Result<Vec<_>, CompileError>>()
         .map_err(|err| vec![err])?;
 
-    let ret_type = convert_resolved_typeid(
+    let ret_type = convert_resolved_type_id(
         type_engine,
         decl_engine,
         context,
-        &return_type.type_id,
+        return_type.type_id,
         &return_type.span,
     )
     .map_err(|err| vec![err])?;
 
     let span_md_idx = md_mgr.span_to_md(context, span);
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
+    let name_span_md_idx = md_mgr.fn_name_span_to_md(context, original_name);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+    metadata = md_combine(context, &metadata, &name_span_md_idx);
 
     let decl_index = test_decl_ref.map(|decl_ref| *decl_ref.id());
     if let Some(decl_index) = decl_index {
@@ -569,6 +598,7 @@ fn compile_fn(
         selector,
         *visibility == Visibility::Public,
         is_entry,
+        is_original_entry,
         ast_fn_decl.is_fallback(),
         metadata,
     );
@@ -636,23 +666,30 @@ fn compile_abi_method(
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let handler = Handler::default();
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
-    let (errors, _warnings) = handler.consume();
-    let selector = match get_selector_result.ok() {
-        Some(selector) => selector,
-        None => {
-            return if !errors.is_empty() {
-                Err(vec![errors[0].clone()])
-            } else {
-                Err(vec![CompileError::InternalOwned(
-                    format!(
-                        "Cannot generate selector for ABI method: {}",
-                        ast_fn_decl.name.as_str()
-                    ),
-                    ast_fn_decl.name.span(),
-                )])
-            };
-        }
+
+    // method selector is only used for encoding v0
+    let selector = if context.experimental.new_encoding {
+        None
+    } else {
+        let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
+        let (errors, _warnings) = handler.consume();
+        let selector = match get_selector_result.ok() {
+            Some(selector) => selector,
+            None => {
+                return if !errors.is_empty() {
+                    Err(vec![errors[0].clone()])
+                } else {
+                    Err(vec![CompileError::InternalOwned(
+                        format!(
+                            "Cannot generate selector for ABI method: {}",
+                            ast_fn_decl.name.as_str()
+                        ),
+                        ast_fn_decl.name.span(),
+                    )])
+                };
+            }
+        };
+        Some(selector)
     };
 
     compile_fn(
@@ -661,9 +698,12 @@ fn compile_abi_method(
         md_mgr,
         module,
         &ast_fn_decl,
-        // ABI are only entries when the "new encoding" is off
+        &ast_fn_decl.name,
+        // ABI methods are only entries when the "new encoding" is off
         !context.experimental.new_encoding,
-        Some(selector),
+        // ABI methods are always original entries
+        true,
+        selector,
         logged_types_map,
         messages_types_map,
         None,

@@ -1,5 +1,6 @@
 use crate::{pkg, source, DepKind, Edge};
 use anyhow::{anyhow, Result};
+use forc_tracing::{println_action_green, println_action_red};
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -351,10 +352,9 @@ where
                 true => format!(" {}", pkg.source),
                 false => String::new(),
             };
-            tracing::info!(
-                "  {} {}{src}",
-                ansi_term::Colour::Red.bold().paint("Removing"),
-                ansi_term::Style::new().bold().paint(&pkg.name)
+            println_action_red(
+                "Removing",
+                &format!("{}{src}", ansi_term::Style::new().bold().paint(&pkg.name)),
             );
         }
     }
@@ -370,10 +370,9 @@ where
                 true => format!(" {}", pkg.source),
                 false => "".to_string(),
             };
-            tracing::info!(
-                "    {} {}{src}",
-                ansi_term::Colour::Green.bold().paint("Adding"),
-                ansi_term::Style::new().bold().paint(&pkg.name)
+            println_action_green(
+                "Adding",
+                &format!("{}{src}", ansi_term::Style::new().bold().paint(&pkg.name)),
             );
         }
     }

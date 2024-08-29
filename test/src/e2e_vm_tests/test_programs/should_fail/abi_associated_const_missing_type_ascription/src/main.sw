@@ -1,9 +1,5 @@
-script;
+library;
 
 abi ConstantId {
     const ID;
-}
-
-fn main() -> u32 {
-  0
 }

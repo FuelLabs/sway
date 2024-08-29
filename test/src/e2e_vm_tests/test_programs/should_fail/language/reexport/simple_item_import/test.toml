@@ -1,0 +1,91 @@
+category = "fail"
+
+#check: $()error
+#check: $()use ::lib_1::Items1_Struct;
+#nextln: $()Symbol "Items1_Struct" is private.
+
+#check: $()error
+#check: $()use ::lib_1::Items1_Enum;
+#nextln: $()Symbol "Items1_Enum" is private.
+
+#check: $()error
+#check: $()use ::lib_1::X;
+#nextln: $()Symbol "X" is private.
+
+#check: $()error
+#check: $()use ::lib_1::Y;
+#nextln: $()Symbol "Y" is private.
+
+#check: $()error
+#check: $()use ::lib_1::ITEMS_1_FUNCTION_RES;
+#nextln: $()Symbol "ITEMS_1_FUNCTION_RES" is private.
+
+#check: $()error
+#check: $()use ::lib_1::items_1_function;
+#nextln: $()Symbol "items_1_function" is private.
+
+#check: $()error
+#check: $()use ::lib_1::Items1Trait;
+#nextln: $()Symbol "Items1Trait" is private.
+
+#check: $()error
+#check: $()use ::lib_2::Items2_Struct;
+#nextln: $()Symbol "Items2_Struct" is private.
+
+#check: $()error
+#check: $()use ::lib_2::Items2_Enum;
+#nextln: $()Symbol "Items2_Enum" is private.
+
+#check: $()error
+#check: $()use ::lib_2::Items2_Variants;
+#nextln: $()Symbol "Items2_Variants" is private.
+
+#check: $()error
+#check: $()use ::lib_2::O;
+#nextln: $()Symbol "O" is private.
+
+#check: $()error
+#check: $()use ::lib_2::P;
+#nextln: $()Symbol "P" is private.
+
+#check: $()error
+#check: $()use ::lib_2::ITEMS_2_FUNCTION_RES;
+#nextln: $()Symbol "ITEMS_2_FUNCTION_RES" is private.
+
+#check: $()error
+#check: $()use ::lib_2::items_2_function;
+#nextln: $()Symbol "items_2_function" is private.
+
+#check: $()error
+#check: $()use ::lib_2::Items2Trait;
+#nextln: $()Symbol "Items2Trait" is private.
+
+#check: $()error
+#check: $()use ::lib_3::Items3_Variants::S;
+#nextln: $()Module "lib_3::Items3_Variants" could not be found.
+
+#check: $()error
+#check: $()fn project_items_3_variants(input: Items3_Variants) -> u64 {
+#nextln: $()Could not find symbol "Items3_Variants" in this scope.
+
+#check: $()error
+#check: $()fn project_items_3_variants(input: Items3_Variants) -> u64 {
+#nextln: $()Unknown type name "Items3_Variants".
+
+#check: $()error
+#check: $()let items_3_variants = Items3_Variants::S(513);
+#nextln: $()Could not find symbol "Items3_Variants" in this scope.
+
+#check: $()error
+#check: $()let items_3_variants = Items3_Variants::S(513);
+#nextln: $()Unknown type name "Items3_Variants".
+
+#check: $()error
+#check: $()let items_3_variants_res = project_items_3_variants(items_3_variants);
+#nextln: $()Could not find symbol "project_items_3_variants" in this scope.
+
+#check: $()error
+#check: $()assert(items_3_variants_res == 513);
+#nextln: $()No method named "eq" found for type "{unknown}".
+
+#check: $()Aborting due to 22 errors.

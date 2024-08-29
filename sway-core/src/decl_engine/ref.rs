@@ -29,8 +29,8 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
-        TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+        self, TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl,
+        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -40,7 +40,7 @@ pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
 pub type DeclRefTrait = DeclRef<DeclId<TyTraitDecl>>;
 pub type DeclRefTraitFn = DeclRef<DeclId<TyTraitFn>>;
 pub type DeclRefTraitType = DeclRef<DeclId<TyTraitType>>;
-pub type DeclRefImplTrait = DeclRef<DeclId<TyImplTrait>>;
+pub type DeclRefImplTrait = DeclRef<DeclId<TyImplSelfOrTrait>>;
 pub type DeclRefStruct = DeclRef<DeclId<TyStructDecl>>;
 pub type DeclRefStorage = DeclRef<DeclId<TyStorageDecl>>;
 pub type DeclRefAbi = DeclRef<DeclId<TyAbiDecl>>;
@@ -96,18 +96,24 @@ impl<T> DeclRef<DeclId<T>> {
 
 impl<T> DeclRef<DeclId<T>>
 where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
+    DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
+    T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,
         type_mapping: &TypeSubstMap,
-        engines: &Engines,
+        ctx: &SubstTypesContext,
     ) -> Option<Self> {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, engines).has_changes() {
-            Some(decl_engine.insert(decl))
+        let decl_engine = ctx.engines.de();
+        if type_mapping.source_ids_contains_concrete_type(ctx.engines)
+            || !decl_engine.get(&self.id).is_concrete(ctx.engines)
+        {
+            let mut decl = (*decl_engine.get(&self.id)).clone();
+            if decl.subst(type_mapping, ctx).has_changes() {
+                Some(decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref()))
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -132,22 +138,28 @@ where
 impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
+    DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
+    T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
         type_mapping: &TypeSubstMap,
-        engines: &Engines,
+        ctx: &SubstTypesContext,
     ) -> Option<Self> {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, engines).has_changes() {
-            Some(
-                decl_engine
-                    .insert(decl)
-                    .with_parent(decl_engine, self.id.into()),
-            )
+        let decl_engine = ctx.engines.de();
+        if type_mapping.source_ids_contains_concrete_type(ctx.engines)
+            || !decl_engine.get(&self.id).is_concrete(ctx.engines)
+        {
+            let mut decl = (*decl_engine.get(&self.id)).clone();
+            if decl.subst(type_mapping, ctx).has_changes() {
+                Some(
+                    decl_engine
+                        .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
+                        .with_parent(decl_engine, self.id.into()),
+                )
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -160,6 +172,7 @@ where
     T: Named + Spanned + PartialEqWithEngines + EqWithEngines,
 {
 }
+
 impl<T> PartialEqWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
@@ -256,10 +269,10 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        let decl_engine = engines.de();
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, engines).has_changes() {
+        if decl.subst(type_mapping, ctx).has_changes() {
             decl_engine.replace(self.id, decl);
             HasChanges::Yes
         } else {

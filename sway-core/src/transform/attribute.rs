@@ -67,7 +67,6 @@ pub enum AttributeKind {
     Allow,
     Cfg,
     Deprecated,
-    Namespace,
     Fallback,
 }
 
@@ -80,7 +79,7 @@ impl AttributeKind {
             Doc | DocComment | Storage | Inline | Test | Payable | Deprecated | Fallback => {
                 (0, None)
             }
-            Allow | Cfg | Namespace => (1, Some(1)),
+            Allow | Cfg => (1, Some(1)),
         }
     }
 
@@ -88,8 +87,7 @@ impl AttributeKind {
     pub fn expected_args_values(self, _arg_index: usize) -> Option<Vec<String>> {
         use AttributeKind::*;
         match self {
-            Deprecated | Namespace | Doc | DocComment | Storage | Inline | Test | Payable
-            | Fallback => None,
+            Deprecated | Doc | DocComment | Storage | Inline | Test | Payable | Fallback => None,
             Allow => Some(vec![
                 ALLOW_DEAD_CODE_NAME.to_string(),
                 ALLOW_DEPRECATED_NAME.to_string(),

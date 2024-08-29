@@ -8,8 +8,8 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program, namespace,
-    BuildTarget, Engines,
+    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program,
+    language::Visibility, namespace, BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
 
@@ -31,7 +31,7 @@ impl Checker {
     /// of the file.
     /// Example:
     ///
-    /// ```
+    /// ```sway
     /// // ::check-ir::
     /// // ::check-ir-optimized::
     /// // ::check-ir-asm::
@@ -42,7 +42,7 @@ impl Checker {
     /// Optimized IR checker can be configured with `pass: <PASSNAME or o1>`. When
     /// `o1` is chosen, all the configured passes are chosen automatically.
     ///
-    /// ```
+    /// ```sway
     /// // ::check-ir-optimized::
     /// // pass: o1
     /// ```
@@ -171,16 +171,16 @@ pub(super) async fn run(
     // TODO the way modules are built for these tests, new_encoding is not working.
     experimental.new_encoding = false;
 
-    // Compile core library and reuse it when compiling tests.
-    let engines = Engines::default();
-    let build_target = BuildTarget::default();
-    let mut core_lib = compile_core(build_target, &engines, experimental);
-
     // Create new initial namespace for every test by reusing the precompiled
     // standard libraries. The namespace, thus its root module, must have the
     // name set.
     const PACKAGE_NAME: &str = "test_lib";
-    core_lib.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
+    let core_lib_name = sway_types::Ident::new_no_span(PACKAGE_NAME.to_string());
+
+    // Compile core library and reuse it when compiling tests.
+    let engines = Engines::default();
+    let build_target = BuildTarget::default();
+    let core_lib = compile_core(core_lib_name, build_target, &engines, experimental);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -238,12 +238,12 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-                let initial_namespace = namespace::Root::from(core_lib.clone());
+                let mut initial_namespace = namespace::Root::from(core_lib.clone());
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
                     Arc::from(sway_str),
-                    initial_namespace,
+                    &mut initial_namespace,
                     Some(&bld_cfg),
                     PACKAGE_NAME,
                     None,
@@ -527,6 +527,7 @@ fn discover_test_files() -> Vec<PathBuf> {
 }
 
 fn compile_core(
+    lib_name: sway_types::Ident,
     build_target: BuildTarget,
     engines: &Engines,
     experimental: ExperimentalFlags,
@@ -563,7 +564,11 @@ fn compile_core(
                 .submodules()
                 .into_iter()
                 .fold(
-                    namespace::Module::default(),
+                    namespace::Module::new(
+                        sway_types::Ident::new_no_span("core".to_string()),
+                        Visibility::Private,
+                        None,
+                    ),
                     |mut core_mod, (name, sub_mod)| {
                         core_mod.insert_submodule(name.clone(), sub_mod.clone());
                         core_mod
@@ -571,7 +576,7 @@ fn compile_core(
                 );
 
             // Create a module for std and insert the core module.
-            let mut std_module = namespace::Module::default();
+            let mut std_module = namespace::Module::new(lib_name, Visibility::Private, None);
             std_module.insert_submodule("core".to_owned(), core_module);
             std_module
         }

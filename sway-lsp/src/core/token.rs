@@ -8,8 +8,8 @@ use sway_core::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
             EnumVariant, Expression, FunctionApplicationExpression, FunctionParameter,
             IncludeStatement, MethodApplicationExpression, Scrutinee, StorageField,
-            StructExpression, StructExpressionField, StructField, StructScrutineeField, Supertrait,
-            TraitFn, UseStatement,
+            StorageNamespace, StructExpression, StructExpressionField, StructField,
+            StructScrutineeField, Supertrait, TraitFn, UseStatement,
         },
         ty,
     },
@@ -44,6 +44,7 @@ pub enum AstToken {
     MethodApplicationExpression(MethodApplicationExpression),
     Scrutinee(Scrutinee),
     StorageField(StorageField),
+    StorageNamespace(StorageNamespace),
     StructExpression(StructExpression),
     StructExpressionField(StructExpressionField),
     StructField(StructField),
@@ -281,6 +282,10 @@ pub fn type_info_to_symbol_kind(
         }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
+            let type_info = type_engine.get(elem_ty.type_id);
+            type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
+        }
+        TypeInfo::Slice(elem_ty) => {
             let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }

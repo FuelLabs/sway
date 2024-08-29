@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-9B828159C14C020E"
+
+[[package]]
+name = "std"
+source = "path+from-root-9B828159C14C020E"
+dependencies = ["core"]
+
+[[package]]
+name = "vec_byte_remove"
+source = "member"
+dependencies = ["std"]

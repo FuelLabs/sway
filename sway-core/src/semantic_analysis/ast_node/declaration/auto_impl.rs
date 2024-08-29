@@ -1,6 +1,6 @@
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-    decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    decl_engine::{DeclEngineGet, DeclId},
     engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
@@ -38,7 +38,7 @@ where
         T: Parse,
     {
         // Uncomment this to see what is being generated
-        // println!("{}", input);
+        //println!("{}", input);
 
         let handler = <_>::default();
         let source_id =
@@ -221,7 +221,7 @@ where
                     },
                     _ => {
                         let variant_type_name = Self::generate_type(engines, x.type_argument.type_id)?;
-                        format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n", 
+                        format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n",
                             tag_value = x.tag,
                             enum_name = enum_name,
                             variant_name = name,
@@ -333,7 +333,7 @@ where
         });
 
         // Uncomment this to understand why an entry function was not generated
-        // println!("{:#?}", handler);
+        //println!("{:#?}", handler);
 
         let (decl, namespace) = r.map_err(|_| handler.clone())?;
 
@@ -368,7 +368,7 @@ where
         .unwrap();
 
         let decl = match nodes[0].content {
-            AstNodeContent::Declaration(Declaration::ImplTrait(f)) => f,
+            AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(f)) => f,
             _ => unreachable!("unexpected item"),
         };
 
@@ -376,11 +376,11 @@ where
 
         let ctx = self.ctx.by_ref();
         let r = ctx.scoped_and_namespace(|ctx| {
-            TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
+            TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 
         // Uncomment this to understand why auto impl failed for a type.
-        // println!("{:#?}", handler);
+        //println!("{:#?}", handler);
 
         let (decl, namespace) = r.map_err(|_| handler.clone())?;
 
@@ -401,13 +401,12 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if matches!(self.ctx.namespace.root().module.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
-        {
+        if self.ctx.namespace.root().module.name().as_str() == "core" {
             return Some((None, None));
         }
 
-        let implementing_for_decl_ref = decl.to_struct_ref(&Handler::default(), engines).unwrap();
-        let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
+        let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
+        let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
         let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
 
@@ -437,13 +436,12 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if matches!(self.ctx.namespace.root().module.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
-        {
+        if self.ctx.namespace.root().module.name().as_str() == "core" {
             return Some((None, None));
         }
 
-        let enum_decl_ref = decl.to_enum_ref(&Handler::default(), engines).unwrap();
-        let enum_decl = self.ctx.engines().de().get(enum_decl_ref.id());
+        let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
+        let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
         let program_id = enum_decl.span().source_id().map(|sid| sid.program_id());
 
@@ -510,8 +508,8 @@ where
                 format!("({},)", field_strs.join(", "))
             }
             TypeInfo::B256 => "b256".into(),
-            TypeInfo::Enum(decl_ref) => {
-                let decl = engines.de().get(decl_ref.id());
+            TypeInfo::Enum(decl_id) => {
+                let decl = engines.de().get_enum(decl_id);
 
                 let type_parameters = decl
                     .type_parameters
@@ -528,8 +526,8 @@ where
 
                 format!("{}{type_parameters}", decl.call_path.suffix.as_str())
             }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = engines.de().get(decl_ref.id());
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
 
                 let type_parameters = decl
                     .type_parameters
@@ -553,6 +551,12 @@ where
                     count.val()
                 )
             }
+            TypeInfo::Slice(elem_ty) => {
+                format!(
+                    "__slice[{}]",
+                    Self::generate_type(engines, elem_ty.type_id)?
+                )
+            }
             TypeInfo::RawUntypedPtr => "raw_ptr".into(),
             TypeInfo::RawUntypedSlice => "raw_slice".into(),
             TypeInfo::Alias { name, .. } => name.to_string(),
@@ -566,7 +570,7 @@ where
         &mut self,
         engines: &Engines,
         program_id: Option<ProgramId>,
-        contract_fns: &[DeclRef<DeclId<TyFunctionDecl>>],
+        contract_fns: &[DeclId<TyFunctionDecl>],
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
@@ -576,7 +580,7 @@ where
         let mut writes = false;
 
         for r in contract_fns {
-            let decl = engines.de().get(r.id());
+            let decl = engines.de().get(r);
 
             match decl.purity {
                 Purity::Pure => {}
@@ -625,18 +629,29 @@ where
 
             let method_name = decl.name.as_str();
 
+            code.push_str(&format!("if _method_name == \"{method_name}\" {{\n"));
+
             if args_types == "()" {
-                code.push_str(&format!("if _method_name == \"{method_name}\" {{
-                    let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}());
-                    __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
-                }}\n"));
+                code.push_str(&format!(
+                    "let _result = __contract_entry_{method_name}();\n"
+                ));
             } else {
-                code.push_str(&format!("if _method_name == \"{method_name}\" {{
-                    let args: {args_types} = decode_second_param::<{args_types}>();
-                    let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
-                    __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
-                }}\n"));
+                code.push_str(&format!(
+                    "let args: {args_types} = _buffer.decode::<{args_types}>();
+                    let _result: {return_type} = __contract_entry_{method_name}({expanded_args});\n"
+                ));
             }
+
+            if return_type == "()" {
+                code.push_str("__contract_ret(asm() { zero: raw_ptr }, 0);");
+            } else {
+                code.push_str(&format!(
+                    "let _result: raw_slice = encode::<{return_type}>(_result);
+                    __contract_ret(_result.ptr(), _result.len::<u8>());"
+                ));
+            }
+
+            code.push_str("\n}\n");
         }
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
@@ -664,16 +679,16 @@ where
             format!("__revert({});", MISMATCHED_SELECTOR_REVERT_CODE)
         };
 
-        let att: String = match (reads, writes) {
+        let att = match (reads, writes) {
             (true, true) => "#[storage(read, write)]",
             (true, false) => "#[storage(read)]",
             (false, true) => "#[storage(write)]",
             (false, false) => "",
-        }
-        .into();
+        };
 
         let code = format!(
             "{att} pub fn __entry() {{
+            let mut _buffer = BufferReader::from_second_parameter();
             let _method_name = decode_first_param::<str>();
             {code}
             {fallback}
@@ -837,7 +852,7 @@ where
         let code = if args_types == "()" {
             format!(
                 "pub fn __entry() -> raw_slice {{
-                let result: {return_type} = main(); 
+                let result: {return_type} = main();
                 encode::<{return_type}>(result)
             }}"
             )
@@ -845,7 +860,7 @@ where
             format!(
                 "pub fn __entry() -> raw_slice {{
                 let args: {args_types} = decode_script_data::<{args_types}>();
-                let result: {return_type} = main({expanded_args}); 
+                let result: {return_type} = main({expanded_args});
                 encode::<{return_type}>(result)
             }}"
             )

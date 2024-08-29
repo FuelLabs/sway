@@ -7,6 +7,7 @@ use std::sync::Arc;
 use swayfmt::Formatter;
 
 pub fn format_text(documents: &Documents, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
+    let _p = tracing::trace_span!("format_text").entered();
     let document = documents.try_get(url.path()).try_unwrap().ok_or_else(|| {
         DocumentError::DocumentNotFound {
             path: url.path().to_string(),

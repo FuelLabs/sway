@@ -1,10 +1,13 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineGet, DeclRefEnum, DeclRefStruct},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclId},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
         OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
-    language::{ty, CallPath, QualifiedCallPath},
+    language::{
+        ty::{self, TyEnumDecl, TyStructDecl},
+        CallPath, QualifiedCallPath,
+    },
     type_system::priv_prelude::*,
     Ident,
 };
@@ -128,8 +131,8 @@ pub enum TypeInfo {
     StringSlice,
     StringArray(Length),
     UnsignedInteger(IntegerBits),
-    Enum(DeclRefEnum),
-    Struct(DeclRefStruct),
+    Enum(DeclId<TyEnumDecl>),
+    Struct(DeclId<TyStructDecl>),
     Boolean,
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
@@ -206,11 +209,11 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Tuple(fields) => {
                 fields.hash(state, engines);
             }
-            TypeInfo::Enum(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Enum(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
-            TypeInfo::Struct(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Struct(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 abi_name.hash(state);
@@ -485,9 +488,9 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
-            (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = decl_engine.get_enum(l_decl_ref);
-                let r_decl = decl_engine.get_enum(r_decl_ref);
+            (Self::Enum(l_decl_id), Self::Enum(r_decl_id)) => {
+                let l_decl = decl_engine.get_enum(l_decl_id);
+                let r_decl = decl_engine.get_enum(r_decl_id);
                 l_decl
                     .call_path
                     .suffix
@@ -1046,7 +1049,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
-            TypeInfo::Array(elem_ty, length) => length.val() > 0 && id_uninhabited(elem_ty.type_id),
+            TypeInfo::Array(elem_ty, _) => id_uninhabited(elem_ty.type_id),
             TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id),
             TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id),
             TypeInfo::Slice(ty) => id_uninhabited(ty.type_id),
@@ -1172,6 +1175,16 @@ impl TypeInfo {
         matches!(self, TypeInfo::Ref { .. })
     }
 
+    pub fn as_reference(&self) -> Option<(&bool, &TypeArgument)> {
+        match self {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type,
+            } => Some((to_mutable_value, referenced_type)),
+            _ => None,
+        }
+    }
+
     pub fn is_array(&self) -> bool {
         matches!(self, TypeInfo::Array(_, _))
     }
@@ -1186,6 +1199,18 @@ impl TypeInfo {
 
     pub fn is_tuple(&self) -> bool {
         matches!(self, TypeInfo::Tuple(_))
+    }
+
+    pub fn is_slice(&self) -> bool {
+        matches!(self, TypeInfo::Slice(_))
+    }
+
+    pub fn as_slice(&self) -> Option<&TypeArgument> {
+        if let TypeInfo::Slice(t) = self {
+            Some(t)
+        } else {
+            None
+        }
     }
 
     pub(crate) fn apply_type_arguments(
@@ -1258,11 +1283,12 @@ impl TypeInfo {
         engines: &Engines,
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
-        const CURRENTLY_SUPPORTED_TYPES_MESSAGE: [&str; 8] = [
+        const CURRENTLY_SUPPORTED_TYPES_MESSAGE: [&str; 9] = [
             "Sway currently supports pattern matching on these types:",
             "  - b256",
             "  - boolean",
             "  - enums",
+            "  - string slices",
             "  - structs",
             "  - tuples",
             "  - unsigned integers",
@@ -1278,7 +1304,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Never => Ok(()),
+            | TypeInfo::Never
+            | TypeInfo::StringSlice => Ok(()),
             TypeInfo::Alias { ty, .. } => {
                 let ty = engines.te().get(ty.type_id);
                 ty.expect_is_supported_in_match_expressions(handler, engines, span)
@@ -1288,7 +1315,6 @@ impl TypeInfo {
             | TypeInfo::Ptr(..)
             | TypeInfo::Slice(..)
             | TypeInfo::StringArray(_)
-            | TypeInfo::StringSlice
             | TypeInfo::Array(_, _) => Err(handler.emit_err(CompileError::Unimplemented {
                 feature: format!(
                     "Matched value has type \"{}\". Matching on this type",
@@ -1409,7 +1435,6 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(_)
-            | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. }
             | TypeInfo::Never => false,
@@ -1419,6 +1444,7 @@ impl TypeInfo {
             | TypeInfo::Custom { .. }
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _)
+            | TypeInfo::Slice(_)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric
@@ -1464,9 +1490,9 @@ impl TypeInfo {
         engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> Result<DeclRefEnum, ErrorEmitted> {
+    ) -> Result<DeclId<TyEnumDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Enum(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Enum(decl_ref) => Ok(*decl_ref),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1505,9 +1531,9 @@ impl TypeInfo {
         handler: &Handler,
         engines: &Engines,
         debug_span: &Span,
-    ) -> Result<DeclRefStruct, ErrorEmitted> {
+    ) -> Result<DeclId<TyStructDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Struct(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Struct(decl_id) => Ok(*decl_id),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1578,8 +1604,8 @@ impl TypeInfo {
                     })
             }
 
-            TypeInfo::Struct(s) => {
-                let decl = engines.de().get(s.id());
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
                 decl.fields
                     .iter()
                     .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, f| {
@@ -1588,8 +1614,8 @@ impl TypeInfo {
                         old_size_hint + field_size_hint
                     })
             }
-            TypeInfo::Enum(e) => {
-                let decl = engines.de().get(e.id());
+            TypeInfo::Enum(decl_id) => {
+                let decl = engines.de().get(decl_id);
 
                 let min = decl
                     .variants
