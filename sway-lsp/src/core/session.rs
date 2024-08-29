@@ -409,7 +409,7 @@ pub fn parse_project(
         lsp_mode.clone(),
         experimental,
     )?;
-    
+
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
     // If we don't return an error here, then we will likely crash when trying to access the Engines
     // during traversal or when creating runnables.
