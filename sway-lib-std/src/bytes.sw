@@ -7,7 +7,6 @@ use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
-use ::revert::revert;
 
 struct RawBytes {
     ptr: raw_ptr,
