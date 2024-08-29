@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 mod lsp_benchmarks;
 use criterion::criterion_main;
 
