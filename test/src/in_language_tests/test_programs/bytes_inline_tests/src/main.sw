@@ -713,7 +713,14 @@ fn bytes_append() {
     bytes.append(bytes2);
     assert(bytes.len() == first_length + second_length);
     assert(bytes.capacity() == first_length + first_length);
-    assert(bytes2.is_empty());
+
+    assert(bytes2.len() == second_length);
+    assert(!bytes2.is_empty());
+    
+    assert(bytes2.get(0).unwrap() == d);
+    assert(bytes2.get(1).unwrap() == e);
+    assert(bytes2.get(2).unwrap() == f);
+
     let values = [a, b, c, d, e, f];
     let mut i = 0;
     while i < 6 {
@@ -757,7 +764,12 @@ fn bytes_append_to_empty() {
     empty_bytes.append(bytes);
     assert(empty_bytes.len() == bytes_length);
     assert(empty_bytes.capacity() == bytes_original_capacity);
-    assert(bytes.is_empty());
+
+    assert(bytes.len() == bytes_length);
+    assert(!bytes.is_empty());
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
 
     let values = [a, b, c];
     let mut i = 0;
