@@ -38,6 +38,7 @@ use crate::{
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use either::Either;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use std::collections::{HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
@@ -635,7 +636,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let (typed_block, block_return_type) =
-            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents) {
+            match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), contents, false) {
                 Ok(res) => {
                     let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
                     (res, block_type)
@@ -1840,7 +1841,12 @@ impl ty::TyExpression {
         // from the elements
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                (*ctx.engines().te().get(element_type.type_id)).clone()
+                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
+                if matches!(element_type, TypeInfo::Never) {
+                    TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
+                } else {
+                    element_type
+                }
             }
             _ => TypeInfo::Unknown,
         };
@@ -1858,7 +1864,36 @@ impl ty::TyExpression {
             })
             .collect();
 
-        let elem_type = typed_contents[0].return_type;
+        // choose the best type to be the array elem type
+        use itertools::FoldWhile::{Continue, Done};
+        let elem_type = typed_contents
+            .iter()
+            .fold_while(None, |last, current| match last {
+                None => Continue(Some(current.return_type)),
+                Some(last) => {
+                    if last.is_concrete(engines, TreatNumericAs::Abstract) {
+                        return Done(Some(last));
+                    }
+
+                    if current
+                        .return_type
+                        .is_concrete(engines, TreatNumericAs::Abstract)
+                    {
+                        return Done(Some(current.return_type));
+                    }
+
+                    let last_info = ctx.engines().te().get(last);
+                    let current_info = ctx.engines().te().get(current.return_type);
+                    match (&*last_info, &*current_info) {
+                        (TypeInfo::Numeric, TypeInfo::UnsignedInteger(_)) => {
+                            Done(Some(current.return_type))
+                        }
+                        _ => Continue(Some(last)),
+                    }
+                }
+            })
+            .into_inner();
+        let elem_type = elem_type.unwrap_or_else(|| typed_contents[0].return_type);
 
         let array_count = typed_contents.len();
         Ok(ty::TyExpression {
@@ -2008,7 +2043,7 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)?;
+        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, false)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
@@ -2326,26 +2361,13 @@ impl ty::TyExpression {
         let expr = ty::TyExpression::type_check(handler, ctx, value)?;
 
         if to_mutable_value {
-            match expr.expression {
-                ty::TyExpressionVariant::ConstantExpression { .. } => {
-                    return Err(
-                        handler.emit_err(CompileError::RefMutCannotReferenceConstant {
-                            constant: expr_span.str(),
-                            span,
-                        }),
-                    )
-                }
-                ty::TyExpressionVariant::VariableExpression {
-                    name: decl_name,
-                    mutability: VariableMutability::Immutable,
-                    ..
-                } => {
-                    return Err(handler.emit_err(
-                        CompileError::RefMutCannotReferenceImmutableVariable { decl_name, span },
-                    ))
-                }
-                // TODO-IG: Check referencing parts of aggregates once reassignment is implemented.
-                _ => (),
+            if let Some(value) = Self::check_ref_mutability_mismatch(
+                &expr.expression,
+                handler,
+                expr_span,
+                span.clone(),
+            ) {
+                return value;
             }
         };
 
@@ -2364,6 +2386,54 @@ impl ty::TyExpression {
         };
 
         Ok(typed_expr)
+    }
+
+    fn check_ref_mutability_mismatch(
+        expr: &TyExpressionVariant,
+        handler: &Handler,
+        expr_span: Span,
+        ref_span: Span,
+    ) -> Option<Result<TyExpression, ErrorEmitted>> {
+        match expr {
+            ty::TyExpressionVariant::ConstantExpression { .. } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceConstant {
+                        constant: expr_span.str(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::VariableExpression {
+                name: decl_name,
+                mutability: VariableMutability::Immutable,
+                ..
+            } => {
+                return Some(Err(handler.emit_err(
+                    CompileError::RefMutCannotReferenceImmutableVariable {
+                        decl_name: decl_name.clone(),
+                        span: ref_span,
+                    },
+                )))
+            }
+            ty::TyExpressionVariant::StructFieldAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            ty::TyExpressionVariant::TupleElemAccess { ref prefix, .. } => {
+                return Self::check_ref_mutability_mismatch(
+                    &prefix.expression,
+                    handler,
+                    expr_span,
+                    ref_span,
+                )
+            }
+            _ => (),
+        }
+        None
     }
 
     fn type_check_deref(

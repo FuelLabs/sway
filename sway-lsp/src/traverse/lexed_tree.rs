@@ -4,8 +4,8 @@ use crate::{
 };
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use sway_ast::{
-    assignable::ElementAccess, expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable,
-    CodeBlockContents, ConfigurableField, Expr, ExprArrayDescriptor, ExprStructField,
+    assignable::ElementAccess, attribute::Annotated, expr::LoopControlFlow, ty::TyTupleDescriptor,
+    Assignable, CodeBlockContents, ConfigurableField, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
     ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemImplItem, ItemKind, ItemStorage,
     ItemStruct, ItemTrait, ItemTypeAlias, ItemUse, MatchBranchKind, ModuleKind, Pattern,
@@ -15,21 +15,28 @@ use sway_ast::{
 use sway_core::language::{lexed::LexedProgram, HasSubmodules};
 use sway_types::{Ident, Span, Spanned};
 
-pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
-    insert_module_kind(ctx, &lexed_program.root.tree.kind);
-    adaptive_iter(&lexed_program.root.tree.items, |item| {
-        item.value.parse(ctx);
-    });
+pub struct LexedTree<'a> {
+    ctx: &'a ParseContext<'a>,
+}
 
-    lexed_program
-        .root
-        .submodules_recursive()
-        .for_each(|(_, dep)| {
-            insert_module_kind(ctx, &dep.module.tree.kind);
-            adaptive_iter(&dep.module.tree.items, |item| {
-                item.value.parse(ctx);
+impl<'a> LexedTree<'a> {
+    pub fn new(ctx: &'a ParseContext<'a>) -> Self {
+        Self { ctx }
+    }
+
+    pub fn traverse_node(&self, node: &Annotated<ItemKind>) {
+        node.value.parse(self.ctx);
+    }
+
+    pub fn collect_module_kinds(&self, lexed_program: &LexedProgram) {
+        insert_module_kind(self.ctx, &lexed_program.root.tree.kind);
+        lexed_program
+            .root
+            .submodules_recursive()
+            .for_each(|(_, dep)| {
+                insert_module_kind(self.ctx, &dep.module.tree.kind);
             });
-        });
+    }
 }
 
 fn insert_module_kind(ctx: &ParseContext, kind: &ModuleKind) {

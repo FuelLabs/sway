@@ -1,3 +1,8 @@
 [[package]]
-name = 'impure_trait_read_calls_impure_write'
-source = 'member'
+name = "core"
+source = "path+from-root-DA75D6DB25B7E1EA"
+
+[[package]]
+name = "impure_trait_read_calls_impure_write"
+source = "member"
+dependencies = ["core"]

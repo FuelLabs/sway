@@ -4,6 +4,7 @@ ASM
 IDE
 IDEs
 LSP
+lsp
 namespace
 ALU
 APIs
@@ -216,3 +217,14 @@ underflows
 Codec
 bool
 str
+multisig
+addr
+addr2line
+contract-id
+init
+parse-bytecode
+predicate-root
+forc-client
+crypto
+doc
+fmt

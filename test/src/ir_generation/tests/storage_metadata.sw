@@ -49,12 +49,17 @@ impl Incrementor for Contract {
 // check: fn increment<e543c666>(increment_by $MD: u64) -> u64, $(increment_md=$MD) {
 // check: fn initialize<557ac400>(initial_value $MD: u64) -> u64, $(init_md=$MD) {
 
-// unordered: $(write_md=$MD) = storage "writes"
-// unordered: $(readwrite_md=$MD) = storage "readswrites"
-// unordered: $(read_md=$MD) = storage "reads"
+// unordered: $(write_md=$MD) = purity "writes"
+// unordered: $(write_fn_name_md=$MD) = fn_name_span $MD 359 369
 
-// The span idx is first, then the storage attribute.
+// unordered: $(readwrite_md=$MD) = purity "readswrites"
+// unordered: $(readwrite_fn_name_md=$MD) = fn_name_span $MD 553 562
 
-// unordered: $init_md = ($MD $write_md)
-// unordered: $increment_md = ($MD $readwrite_md)
-// unordered: $get_md = ($MD $read_md)
+// unordered: $(read_md=$MD) = purity "reads"
+// unordered: $(read_fn_name_md=$MD) = fn_name_span $MD 833 836
+
+// The span idx is first, then the storage attribute, then the function name attribute.
+
+// unordered: $init_md = ($MD $write_md $write_fn_name_md)
+// unordered: $increment_md = ($MD $readwrite_md $readwrite_fn_name_md)
+// unordered: $get_md = ($MD $read_md $read_fn_name_md)

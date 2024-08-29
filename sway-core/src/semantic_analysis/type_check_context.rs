@@ -7,7 +7,7 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{self, TyDecl, TyTraitItem},
-        CallPath, Purity, QualifiedCallPath, Visibility,
+        CallPath, QualifiedCallPath, Visibility,
     },
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
@@ -18,7 +18,7 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    CreateTypeId, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck,
+    CreateTypeId, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -42,6 +42,9 @@ pub struct TypeCheckContext<'a> {
     pub(crate) namespace: &'a mut Namespace,
 
     pub(crate) engines: &'a Engines,
+
+    /// Set of experimental flags.
+    pub(crate) experimental: ExperimentalFlags,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -80,9 +83,6 @@ pub struct TypeCheckContext<'a> {
     // TODO: We probably shouldn't carry this through the `Context`, but instead pass it directly
     // to `unify` as necessary?
     help_text: &'static str,
-    /// Tracks the purity of the context, e.g. whether or not we should be allowed to write to
-    /// storage.
-    purity: Purity,
     /// Provides the kind of the module.
     /// This is useful for example to throw an error when while loops are present in predicates.
     kind: TreeType,
@@ -95,8 +95,7 @@ pub struct TypeCheckContext<'a> {
     /// Indicates when semantic analysis is type checking storage declaration.
     storage_declaration: bool,
 
-    /// Set of experimental flags
-    pub experimental: ExperimentalFlags,
+    collecting_unifications: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -118,11 +117,11 @@ impl<'a> TypeCheckContext<'a> {
             abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
             generic_shadowing_mode: GenericShadowingMode::Disallow,
-            purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
             experimental,
+            collecting_unifications: false,
         }
     }
 
@@ -133,7 +132,6 @@ impl<'a> TypeCheckContext<'a> {
     /// - type_annotation: unknown
     /// - mode: NoneAbi
     /// - help_text: ""
-    /// - purity: Pure
     pub fn from_root(
         root_namespace: &'a mut Namespace,
         engines: &'a Engines,
@@ -159,11 +157,11 @@ impl<'a> TypeCheckContext<'a> {
             abi_mode: AbiMode::NonAbi,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
             generic_shadowing_mode: GenericShadowingMode::Disallow,
-            purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
             storage_declaration: false,
             experimental,
+            collecting_unifications: false,
         }
     }
 
@@ -187,12 +185,12 @@ impl<'a> TypeCheckContext<'a> {
             const_shadowing_mode: self.const_shadowing_mode,
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
-            purity: self.purity,
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
         }
     }
 
@@ -213,12 +211,12 @@ impl<'a> TypeCheckContext<'a> {
             const_shadowing_mode: self.const_shadowing_mode,
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
-            purity: self.purity,
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
         };
         with_scoped_ctx(ctx)
     }
@@ -240,12 +238,12 @@ impl<'a> TypeCheckContext<'a> {
             const_shadowing_mode: self.const_shadowing_mode,
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
-            purity: self.purity,
             kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
         };
         Ok((with_scoped_ctx(ctx)?, namespace))
     }
@@ -347,19 +345,21 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
-    /// Map this `TypeCheckContext` instance to a new one with the given purity.
-    pub(crate) fn with_purity(self, purity: Purity) -> Self {
-        Self { purity, ..self }
-    }
-
     /// Map this `TypeCheckContext` instance to a new one with the given module kind.
     pub(crate) fn with_kind(self, kind: TreeType) -> Self {
         Self { kind, ..self }
     }
 
-    /// Map this `TypeCheckContext` instance to a new one with the given purity.
+    /// Map this `TypeCheckContext` instance to a new one with the given self type.
     pub(crate) fn with_self_type(self, self_type: Option<TypeId>) -> Self {
         Self { self_type, ..self }
+    }
+
+    pub(crate) fn with_collecting_unifications(self) -> Self {
+        Self {
+            collecting_unifications: true,
+            ..self
+        }
     }
 
     /// Map this `TypeCheckContext` instance to a new one with
@@ -420,10 +420,6 @@ impl<'a> TypeCheckContext<'a> {
         self.abi_mode.clone()
     }
 
-    pub(crate) fn purity(&self) -> Purity {
-        self.purity
-    }
-
     #[allow(dead_code)]
     pub(crate) fn kind(&self) -> TreeType {
         self.kind
@@ -435,6 +431,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn storage_declaration(&self) -> bool {
         self.storage_declaration
+    }
+
+    pub(crate) fn collecting_unifications(&self) -> bool {
+        self.collecting_unifications
     }
 
     // Provide some convenience functions around the inner context.
@@ -498,6 +498,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
+        let collecting_unifications = self.collecting_unifications;
         let engines = self.engines();
         self.namespace_mut()
             .module_mut(engines)
@@ -509,6 +510,7 @@ impl<'a> TypeCheckContext<'a> {
                 ResolvedDeclaration::Typed(item),
                 const_shadowing_mode,
                 generic_shadowing_mode,
+                collecting_unifications,
             )
     }
 
@@ -698,7 +700,10 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         let mut type_id = type_id;
-        type_id.subst(&self.type_subst(), self.engines());
+        type_id.subst(
+            &self.type_subst(),
+            &SubstTypesContext::new(engines, !self.collecting_unifications()),
+        );
 
         Ok(type_id)
     }
@@ -1129,6 +1134,14 @@ impl<'a> TypeCheckContext<'a> {
 
         // default numeric types to u64
         if type_engine.contains_numeric(decl_engine, type_id) {
+            // While collecting unification we don't decay numeric and will ignore this error.
+            if self.collecting_unifications {
+                return Err(handler.emit_err(CompileError::MethodNotFound {
+                    method_name: method_name.clone(),
+                    type_name: self.engines.help_out(type_id).to_string(),
+                    span: method_name.span(),
+                }));
+            }
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
         }
 
@@ -1426,7 +1439,11 @@ impl<'a> TypeCheckContext<'a> {
             src_mod
                 .current_items()
                 .implemented_traits
-                .filter_by_type_item_import(type_id, engines),
+                .filter_by_type_item_import(
+                    type_id,
+                    engines,
+                    self.collecting_unifications().into(),
+                ),
             engines,
         );
 
@@ -1598,7 +1615,7 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             mod_path,
         )?;
-        value.subst(&type_mapping, self.engines);
+        value.subst(&type_mapping, &SubstTypesContext::new(self.engines, true));
         Ok(())
     }
 
@@ -1722,11 +1739,12 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
+        let collecting_unifications = self.collecting_unifications();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
             .implemented_traits
-            .insert_for_type(engines, type_id);
+            .insert_for_type(engines, type_id, collecting_unifications.into());
     }
 
     pub fn check_type_impls_traits(
@@ -1736,7 +1754,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
         let engines = self.engines;
-
+        let collecting_unifications = self.collecting_unifications();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
@@ -1748,6 +1766,7 @@ impl<'a> TypeCheckContext<'a> {
                 &Span::dummy(),
                 engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
+                collecting_unifications.into(),
             )
             .is_ok()
     }

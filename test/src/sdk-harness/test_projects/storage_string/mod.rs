@@ -8,7 +8,7 @@ abigen!(Contract(
 
 async fn setup() -> TestStorageStringContract<WalletUnlocked> {
     let mut node_config = NodeConfig::default();
-    node_config.static_gas_price = 0;
+    node_config.starting_gas_price = 0;
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(Some(1), None, None),
         Some(node_config),

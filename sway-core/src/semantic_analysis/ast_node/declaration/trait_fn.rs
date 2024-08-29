@@ -31,7 +31,7 @@ impl ty::TyTraitFn {
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().with_purity(*purity).scoped(|mut ctx| {
+        ctx.by_ref().scoped(|mut ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.

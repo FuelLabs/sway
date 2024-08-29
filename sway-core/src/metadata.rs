@@ -1,41 +1,46 @@
 use crate::{
     decl_engine::DeclId,
-    language::{ty::TyFunctionDecl, Inline, Purity},
+    language::{ty::TyFunctionDecl, CallPath, Inline, Purity},
 };
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
-use sway_types::{SourceId, Span};
+use sway_types::{Ident, SourceId, Span, Spanned};
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-/// IR metadata needs to be consistent between IR generation (converting Spans, etc. to metadata)
+/// IR metadata needs to be consistent between IR generation (converting [Span]s, etc. to metadata)
 /// and ASM generation (converting the metadata back again).  Here we consolidate all of
 /// `sway-core`s metadata needs into a single place to enable that consistency.
 ///
-/// The [`MetadataManager`] also does its best to reduce redundancy by caching certain common
+/// The [MetadataManager] also does its best to reduce redundancy by caching certain common
 /// elements, such as source paths and storage attributes, and to avoid recreating the same
 /// indices repeatedly.
 
 #[derive(Default)]
 pub(crate) struct MetadataManager {
+    // We want to be able to store more then one `Span` per `MetadataIndex`.
+    // E.g., storing the span of the function name, and the whole function declaration.
+    // The spans differ then by the tag property of their `Metadatum::Struct`.
+    // We could cache all such spans in a single `HashMap` where the key would be (Span, tag).
+    // But since the vast majority of stored spans will be tagged with the generic "span" tag,
+    // and only a few elements will have additional spans in their `MetadataIndex`, it is
+    // more efficient to provide two separate caches, one for the spans tagged with "span",
+    // and one for all other spans, tagged with arbitrary tags.
+    /// Holds [Span]s tagged with "span".
     md_span_cache: HashMap<MetadataIndex, Span>,
+    /// Holds [Span]s tagged with an arbitrary tag.
+    md_tagged_span_cache: HashMap<MetadataIndex, (Span, &'static str)>,
     md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
-    md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
+    md_purity_cache: HashMap<MetadataIndex, Purity>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
     md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDecl>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
+    tagged_span_md_cache: HashMap<(Span, &'static str), MetadataIndex>,
     file_loc_md_cache: HashMap<SourceId, MetadataIndex>,
-    storage_op_md_cache: HashMap<Purity, MetadataIndex>,
+    purity_md_cache: HashMap<Purity, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
     test_decl_index_md_cache: HashMap<DeclId<TyFunctionDecl>, MetadataIndex>,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum StorageOperation {
-    Reads,
-    Writes,
-    ReadsWrites,
 }
 
 impl MetadataManager {
@@ -46,24 +51,67 @@ impl MetadataManager {
     ) -> Option<Span> {
         Self::for_each_md_idx(context, md_idx, |md_idx| {
             self.md_span_cache.get(&md_idx).cloned().or_else(|| {
-                // Create a new span and save it in the cache.
                 md_idx
                     .get_content(context)
                     .unwrap_struct("span", 3)
                     .and_then(|fields| {
-                        let (path, src) = self.md_to_file_location(context, &fields[0])?;
-                        let start = fields[1].unwrap_integer()?;
-                        let end = fields[2].unwrap_integer()?;
-                        let source_engine = context.source_engine();
-                        let source_id = source_engine.get_source_id(&path);
-                        let span = Span::new(src, start as usize, end as usize, Some(source_id))?;
-
+                        // Create a new span and save it in the cache.
+                        let span = self.create_span_from_metadatum_fields(context, fields)?;
                         self.md_span_cache.insert(md_idx, span.clone());
-
                         Some(span)
                     })
             })
         })
+    }
+
+    /// Returns the [Span] tagged with `tag` from the `md_idx`,
+    /// or `None` if such span does not exist.
+    /// If there are more spans tagged with `tag` inside of the
+    /// `md_idx`, the first one will be returned.
+    pub(crate) fn md_to_tagged_span(
+        &mut self,
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+        tag: &'static str,
+    ) -> Option<Span> {
+        Self::for_each_md_idx(context, md_idx, |md_idx| {
+            let fields = md_idx.get_content(context).unwrap_struct(tag, 3);
+
+            match fields {
+                Some(fields) => self
+                    .md_tagged_span_cache
+                    .get(&md_idx)
+                    .map(|span_and_tag| span_and_tag.0.clone())
+                    .or_else(|| {
+                        // Create a new span and save it in the cache.
+                        let span = self.create_span_from_metadatum_fields(context, fields)?;
+                        self.md_tagged_span_cache
+                            .insert(md_idx, (span.clone(), tag));
+                        Some(span)
+                    }),
+                None => None,
+            }
+        })
+    }
+
+    /// Returns the [Span] pointing to the function name in the function declaration from the `md_idx`,
+    /// or `None` if such span does not exist.
+    pub(crate) fn md_to_fn_name_span(
+        &mut self,
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+    ) -> Option<Span> {
+        self.md_to_tagged_span(context, md_idx, "fn_name_span")
+    }
+
+    /// Returns the [Span] pointing to the call path in the function call from the `md_idx`,
+    /// or `None` if such span does not exist.
+    pub(crate) fn md_to_fn_call_path_span(
+        &mut self,
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+    ) -> Option<Span> {
+        self.md_to_tagged_span(context, md_idx, "fn_call_path_span")
     }
 
     pub(crate) fn md_to_test_decl_index(
@@ -91,33 +139,37 @@ impl MetadataManager {
         })
     }
 
-    pub(crate) fn md_to_storage_op(
+    pub(crate) fn md_to_purity(
         &mut self,
         context: &Context,
         md_idx: Option<MetadataIndex>,
-    ) -> Option<StorageOperation> {
+    ) -> Purity {
+        // If the purity metadata is not available, we assume the function to
+        // be pure, because in the case of a pure function, we do not store
+        // its purity attribute, to avoid bloating the metadata.
         Self::for_each_md_idx(context, md_idx, |md_idx| {
-            self.md_storage_op_cache.get(&md_idx).copied().or_else(|| {
-                // Create a new storage op and save it in the cache.
+            self.md_purity_cache.get(&md_idx).copied().or_else(|| {
+                // Create a new purity and save it in the cache.
                 md_idx
                     .get_content(context)
-                    .unwrap_struct("storage", 1)
+                    .unwrap_struct("purity", 1)
                     .and_then(|fields| {
-                        fields[0].unwrap_string().and_then(|stor_str| {
-                            let op = match stor_str {
-                                "reads" => Some(StorageOperation::Reads),
-                                "writes" => Some(StorageOperation::Writes),
-                                "readswrites" => Some(StorageOperation::ReadsWrites),
-                                _otherwise => None,
+                        fields[0].unwrap_string().and_then(|purity_str| {
+                            let purity = match purity_str {
+                                "reads" => Some(Purity::Reads),
+                                "writes" => Some(Purity::Writes),
+                                "readswrites" => Some(Purity::ReadsWrites),
+                                _otherwise => panic!("Invalid purity metadata: {purity_str}."),
                             }?;
 
-                            self.md_storage_op_cache.insert(md_idx, op);
+                            self.md_purity_cache.insert(md_idx, purity);
 
-                            Some(op)
+                            Some(purity)
                         })
                     })
             })
         })
+        .unwrap_or(Purity::Pure)
     }
 
     /// Gets Inline information from metadata index.
@@ -189,23 +241,67 @@ impl MetadataManager {
     ) -> Option<MetadataIndex> {
         self.span_md_cache.get(span).copied().or_else(|| {
             span.source_id().and_then(|source_id| {
-                // Create new metadata.
-                let file_location_md_idx = self.file_location_to_md(context, *source_id)?;
-                let md_idx = MetadataIndex::new_struct(
-                    context,
-                    "span",
-                    vec![
-                        Metadatum::Index(file_location_md_idx),
-                        Metadatum::Integer(span.start() as u64),
-                        Metadatum::Integer(span.end() as u64),
-                    ],
-                );
-
+                let md_idx = self.create_metadata_from_span(context, source_id, span, "span")?;
                 self.span_md_cache.insert(span.clone(), md_idx);
-
                 Some(md_idx)
             })
         })
+    }
+
+    /// Returns [MetadataIndex] with [Metadatum::Struct] tagged with `tag`
+    /// whose content will be the provided `span`.
+    ///
+    /// If the `span` does not have [Span::source_id], `None` is returned.
+    ///
+    /// This [Span] can later be retrieved from the [MetadataIndex] by calling
+    /// [Self::md_to_tagged_span].
+    pub(crate) fn tagged_span_to_md(
+        &mut self,
+        context: &mut Context,
+        span: &Span,
+        tag: &'static str,
+    ) -> Option<MetadataIndex> {
+        let span_and_tag = (span.clone(), tag);
+        self.tagged_span_md_cache
+            .get(&span_and_tag)
+            .copied()
+            .or_else(|| {
+                span.source_id().and_then(|source_id| {
+                    let md_idx = self.create_metadata_from_span(context, source_id, span, tag)?;
+                    self.tagged_span_md_cache.insert(span_and_tag, md_idx);
+                    Some(md_idx)
+                })
+            })
+    }
+
+    /// Returns [MetadataIndex] with [Metadatum::Struct]
+    /// whose content will be the [Span] of the `fn_name` [Ident].
+    ///
+    /// If that span does not have [Span::source_id], `None` is returned.
+    ///
+    /// This [Span] can later be retrieved from the [MetadataIndex] by calling
+    /// [Self::md_to_fn_name_span].
+    pub(crate) fn fn_name_span_to_md(
+        &mut self,
+        context: &mut Context,
+        fn_name: &Ident,
+    ) -> Option<MetadataIndex> {
+        self.tagged_span_to_md(context, &fn_name.span(), "fn_name_span")
+    }
+
+    /// Returns [MetadataIndex] with [Metadatum::Struct]
+    /// whose content will be the [Span] of the `call_path`.
+    ///
+    /// If that span does not have [Span::source_id], `None` is returned.
+    ///
+    /// This [Span] can later be retrieved from the [MetadataIndex] by calling
+    /// [Self::md_to_fn_call_path_span].
+    pub(crate) fn fn_call_path_span_to_md(
+        &mut self,
+        context: &mut Context,
+        call_path: &CallPath,
+    ) -> Option<MetadataIndex> {
+        self.tagged_span_to_md(context, &call_path.span(), "fn_call_path_span")
     }
 
     pub(crate) fn test_decl_index_to_md(
@@ -233,8 +329,10 @@ impl MetadataManager {
         context: &mut Context,
         purity: Purity,
     ) -> Option<MetadataIndex> {
+        // If the function is pure, we do not store the purity attribute,
+        // to avoid bloating the metadata.
         (purity != Purity::Pure).then(|| {
-            self.storage_op_md_cache
+            self.purity_md_cache
                 .get(&purity)
                 .copied()
                 .unwrap_or_else(|| {
@@ -247,11 +345,11 @@ impl MetadataManager {
                     };
                     let md_idx = MetadataIndex::new_struct(
                         context,
-                        "storage",
+                        "purity",
                         vec![Metadatum::String(field.to_owned())],
                     );
 
-                    self.storage_op_md_cache.insert(purity, md_idx);
+                    self.purity_md_cache.insert(purity, md_idx);
 
                     md_idx
                 })
@@ -313,5 +411,39 @@ impl MetadataManager {
                 f(md_idx)
             }
         })
+    }
+
+    fn create_span_from_metadatum_fields(
+        &mut self,
+        context: &Context,
+        fields: &[Metadatum],
+    ) -> Option<Span> {
+        let (path, src) = self.md_to_file_location(context, &fields[0])?;
+        let start = fields[1].unwrap_integer()?;
+        let end = fields[2].unwrap_integer()?;
+        let source_engine = context.source_engine();
+        let source_id = source_engine.get_source_id(&path);
+        let span = Span::new(src, start as usize, end as usize, Some(source_id))?;
+        Some(span)
+    }
+
+    fn create_metadata_from_span(
+        &mut self,
+        context: &mut Context,
+        source_id: &SourceId,
+        span: &Span,
+        tag: &'static str,
+    ) -> Option<MetadataIndex> {
+        let file_location_md_idx = self.file_location_to_md(context, *source_id)?;
+        let md_idx = MetadataIndex::new_struct(
+            context,
+            tag,
+            vec![
+                Metadatum::Index(file_location_md_idx),
+                Metadatum::Integer(span.start() as u64),
+                Metadatum::Integer(span.end() as u64),
+            ],
+        );
+        Some(md_idx)
     }
 }

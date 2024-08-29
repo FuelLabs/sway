@@ -4,7 +4,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineGet, DeclRef, DeclRefFunction},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclId, DeclRef, DeclRefFunction},
     language::{ty::*, HasModule, HasSubmodules, ModName},
     semantic_analysis::namespace,
     transform::{self, AllowDeprecatedState},
@@ -75,7 +75,7 @@ impl TyModule {
 
 #[derive(Clone, Debug)]
 pub struct TySubmodule {
-    pub module: TyModule,
+    pub module: Arc<TyModule>,
     pub mod_name_span: Span,
 }
 
@@ -123,10 +123,20 @@ impl TyModule {
     pub fn contract_fns<'a: 'b, 'b>(
         &'b self,
         engines: &'a Engines,
-    ) -> impl '_ + Iterator<Item = DeclRefFunction> {
+    ) -> impl '_ + Iterator<Item = DeclId<TyFunctionDecl>> {
         self.all_nodes
             .iter()
             .flat_map(move |node| node.contract_fns(engines))
+    }
+
+    /// All contract supertrait functions within this module.
+    pub fn contract_supertrait_fns<'a: 'b, 'b>(
+        &'b self,
+        engines: &'a Engines,
+    ) -> impl '_ + Iterator<Item = DeclId<TyFunctionDecl>> {
+        self.all_nodes
+            .iter()
+            .flat_map(move |node| node.contract_supertrait_fns(engines))
     }
 
     pub(crate) fn check_deprecated(

@@ -180,18 +180,22 @@ impl From<&IdentUnique> for Ident {
 impl Hash for IdentUnique {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.span().hash(state);
+        self.0.as_str().hash(state);
     }
 }
 
 impl PartialEq for IdentUnique {
     fn eq(&self, other: &Self) -> bool {
-        self.0.span() == other.0.span()
+        self.0.as_str() == other.0.as_str() && self.0.span() == other.0.span()
     }
 }
 
 impl Ord for IdentUnique {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.span().cmp(&other.0.span())
+        self.0
+            .span()
+            .cmp(&other.0.span())
+            .then(self.0.as_str().cmp(other.0.as_str()))
     }
 }
 

@@ -88,7 +88,9 @@ define_op_codes!(
     (Ccp, CcpOpcode, "ccp", (dst_addr, contract, src_addr, size)),
     (Croo, CrooOpcode, "croo", (addr, contract)),
     (Csiz, CsizOpcode, "csiz", (ret, contract)),
-    (Ldc, LdcOpcode, "ldc", (contract, addr, size)),
+    (Bsiz, BsizOpcode, "bsiz", (ret, contract)),
+    (Ldc, LdcOpcode, "ldc", (contract, addr, size, imm)),
+    (Bldd, BlddOpcode, "bldd", (dst_ptr, addr, offset, len)),
     (Log, LogOpcode, "log", (reg_a, reg_b, reg_c, reg_d)),
     (Logd, LogdOpcode, "logd", (reg_a, reg_b, addr, size)),
     (Mint, MintOpcode, "mint", (coins, sub_id)),
@@ -106,7 +108,7 @@ define_op_codes!(
     /* Cryptographic Instructions */
     (Eck1, Eck1Opcode, "eck1", (addr, sig, hash)),
     (Ecr1, Ecr1Opcode, "ecr1", (addr, sig, hash)),
-    (Ed19, Ed19Opcode, "ed19", (addr, sig, hash)),
+    (Ed19, Ed19Opcode, "ed19", (addr, sig, hash, len)),
     (K256, K256Opcode, "k256", (addr, data, size)),
     (S256, S256Opcode, "s256", (addr, data, size)),
     /* Other Instructions */

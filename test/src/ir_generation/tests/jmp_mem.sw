@@ -19,7 +19,7 @@ impl MyContract for Contract {
             csiz length code_id;
             // Save the old ssp
             move ssp_saved ssp;
-            ldc code_id zero length;
+            ldc code_id zero length i0;
             // Store the old ssp to MEM[$hp] so that we can jump to it.
             // allocate a word the stack
             addi word zero i64;
@@ -40,7 +40,7 @@ impl MyContract for Contract {
 // check: pub entry fn test_function
 // not: local
 // check: csiz   length code_id
-// check: ldc    code_id zero length,
+// check: ldc    code_id zero length i0,
 // check: jmp_mem
 
 // ::check-asm::
@@ -48,7 +48,7 @@ impl MyContract for Contract {
 // regex: REG=.r\d+\b
 
 // check: csiz $(len=$REG) $REG
-// check: ldc  $REG $$zero $len
+// check: ldc  $REG $$zero $len i0
 // check: lw   $(target=$REG) $$hp i0
 // check: sub  $(jmp_target_4=$REG) $target $$is
 // check: divi $(jmp_target=$REG) $jmp_target_4 i4
