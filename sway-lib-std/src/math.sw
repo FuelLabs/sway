@@ -2,6 +2,8 @@
 library;
 
 use ::assert::*;
+use ::revert::revert;
+use ::option::Option;
 use ::flags::{
     disable_panic_on_overflow,
     F_UNSAFEMATH_DISABLE_MASK,
@@ -78,6 +80,23 @@ pub trait Power {
     fn pow(self, exponent: u32) -> Self;
 }
 
+fn u256_checked_mul(a: u256, b: u256) -> Option<u256> {
+    let empty_tuple = (u256::zero(), 0u64);
+
+    let res = asm(output: empty_tuple, r1: a, r2: b, r3) {
+        mul r3 r1 r2;
+        sw output of i1;
+        sw output r3 i0;
+        output: (u256, u64)
+    };
+
+    if res.1 != 0 {
+        return Option::None;
+    }
+
+    Option::Some(res.0)
+}
+
 impl Power for u256 {
     /// Raises self to the power of `exponent`, using exponentiation by squaring.
     ///
@@ -97,13 +116,28 @@ impl Power for u256 {
 
         while exp > 1 {
             if (exp & 1) == 1 {
-                acc = acc * base;
+                // acc = acc * base;
+                let res = u256_checked_mul(acc, base);
+                match res {
+                    Option::None => return u256::zero(),
+                    Option::Some(val) => acc = val,
+                }
             }
             exp = exp >> 1;
-            base = base * base;
+            // base = base * base;
+            let res = u256_checked_mul(base, base);
+            match res {
+                Option::None => return u256::zero(),
+                Option::Some(val) => base = val,
+            }
         }
 
-        acc * base
+        // acc * base
+        let res = u256_checked_mul(acc, base);
+        match res {
+            Option::None => u256::zero(),
+            Option::Some(val) => val,
+        }
     }
 }
 
@@ -122,13 +156,16 @@ impl Power for u32 {
             exp r3 r1 r2;
             r3: u64
         };
-        // If panic on wrapping math is enabled, only then revert
-        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
-            assert(res <= Self::max().as_u64());
-        }
 
-        // Cap value at the max value of the type
-        res = res % (Self::max().as_u64() + 1);
+        if res > Self::max().as_u64() {
+            // If panic on wrapping math is enabled, only then revert
+            if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+                revert(0);
+            } else {
+                // Follow spec of returning 0 for overflow
+                res = 0;
+            }
+        }
 
         asm(r1: res) {
             r1: Self
@@ -142,12 +179,16 @@ impl Power for u16 {
             exp r3 r1 r2;
             r3: u64
         };
-        // If panic on wrapping math is enabled, only then revert
-        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
-            assert(res <= Self::max().as_u64());
-        }
 
-        res = res % (Self::max().as_u64() + 1);
+        if res > Self::max().as_u64() {
+            // If panic on wrapping math is enabled, only then revert
+            if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+                revert(0);
+            } else {
+                // Follow spec of returning 0 for overflow
+                res = 0;
+            }
+        }
 
         asm(r1: res) {
             r1: Self
@@ -161,12 +202,16 @@ impl Power for u8 {
             exp r3 r1 r2;
             r3: u64
         };
-        // If panic on wrapping math is enabled, only then revert
-        if flags() & F_WRAPPING_DISABLE_MASK == 0 {
-            assert(res <= Self::max().as_u64());
-        }
 
-        res = res % (Self::max().as_u64() + 1);
+        if res > Self::max().as_u64() {
+            // If panic on wrapping math is enabled, only then revert
+            if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+                revert(0);
+            } else {
+                // Follow spec of returning 0 for overflow
+                res = 0;
+            }
+        }
 
         asm(r1: res) {
             r1: Self
