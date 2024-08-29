@@ -1,3 +1,0 @@
-library;
-
-pub fn quix() {}
