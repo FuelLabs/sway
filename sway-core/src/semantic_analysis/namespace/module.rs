@@ -194,7 +194,7 @@ impl Module {
     }
 
     /// Returns the current lexical scope associated with this module.
-    fn current_lexical_scope(&self) -> &LexicalScope {
+    pub fn current_lexical_scope(&self) -> &LexicalScope {
         self.lexical_scopes
             .get(self.current_lexical_scope_id)
             .unwrap()

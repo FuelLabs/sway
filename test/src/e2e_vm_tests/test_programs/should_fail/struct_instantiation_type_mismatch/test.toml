@@ -132,7 +132,7 @@ category = "fail"
 #nextln: $()Mismatched types.
 #nextln: $()expected: u8
 #nextln: $()found:    u64.
-#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#nextln: $()Struct field's type must match the type specified in its declaration.
 #nextln: $()let _ = s.a == 123u8; // No error here.
 #nextln: $()let _ = s.b == true; // No error here.
 

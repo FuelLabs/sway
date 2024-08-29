@@ -6,11 +6,12 @@ use sway_types::Span;
 use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
     language::{ty, CallPath},
-    type_system::priv_prelude::*,
+    type_system::{engine::Unification, priv_prelude::*},
 };
 
 use super::occurs_check::OccursCheck;
 
+#[derive(Debug, Clone)]
 pub(crate) enum UnifyKind {
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
@@ -63,6 +64,7 @@ impl<'a> Unifier<'a> {
         let type_engine = self.engines.te();
         let source_id = span.source_id().copied();
         type_engine.replace(
+            self.engines,
             received,
             TypeSourceInfo {
                 type_info: expected_type_info.clone().into(),
@@ -81,6 +83,7 @@ impl<'a> Unifier<'a> {
         let type_engine = self.engines.te();
         let source_id = span.source_id().copied();
         type_engine.replace(
+            self.engines,
             expected,
             TypeSourceInfo {
                 type_info: received_type_info.clone().into(),
@@ -90,7 +93,26 @@ impl<'a> Unifier<'a> {
     }
 
     /// Performs type unification with `received` and `expected`.
-    pub(crate) fn unify(&self, handler: &Handler, received: TypeId, expected: TypeId, span: &Span) {
+    pub(crate) fn unify(
+        &self,
+        handler: &Handler,
+        received: TypeId,
+        expected: TypeId,
+        span: &Span,
+        push_unification: bool,
+    ) {
+        if push_unification {
+            let unification = Unification {
+                received,
+                expected,
+                span: span.clone(),
+                help_text: self.help_text.clone(),
+                unify_kind: self.unify_kind.clone(),
+            };
+
+            self.engines.te().push_unification(unification);
+        }
+
         use TypeInfo::{
             Alias, Array, Boolean, Contract, Enum, Never, Numeric, Placeholder, RawUntypedPtr,
             RawUntypedSlice, Ref, Slice, StringArray, StringSlice, Struct, Tuple, Unknown,
@@ -224,8 +246,8 @@ impl<'a> Unifier<'a> {
             (Never, _) => {}
 
             // Type aliases and the types they encapsulate coerce to each other.
-            (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
-            (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span),
+            (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span, false),
+            (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span, false),
 
             (Enum(r_decl_ref), Enum(e_decl_ref)) => {
                 let r_decl = self.engines.de().get_enum(r_decl_ref);
@@ -363,7 +385,7 @@ impl<'a> Unifier<'a> {
 
     fn unify_tuples(&self, handler: &Handler, rfs: &[TypeArgument], efs: &[TypeArgument]) {
         for (rf, ef) in rfs.iter().zip(efs.iter()) {
-            self.unify(handler, rf.type_id, ef.type_id, &rf.span);
+            self.unify(handler, rf.type_id, ef.type_id, &rf.span, false);
         }
     }
 
@@ -385,10 +407,11 @@ impl<'a> Unifier<'a> {
                     rf.type_argument.type_id,
                     ef.type_argument.type_id,
                     span,
+                    false,
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                self.unify(handler, rtp.type_id, etp.type_id, span);
+                self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });
         } else {
             let (received, expected) = self.assign_args(received, expected);
@@ -422,10 +445,11 @@ impl<'a> Unifier<'a> {
                     rv.type_argument.type_id,
                     ev.type_argument.type_id,
                     span,
+                    false,
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                self.unify(handler, rtp.type_id, etp.type_id, span);
+                self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });
         } else {
             let (received, expected) = self.assign_args(received, expected);
@@ -460,6 +484,7 @@ impl<'a> Unifier<'a> {
             received_type_argument.type_id,
             expected_type_argument.type_id,
             span,
+            false,
         );
         let (new_errors, warnings) = h.consume();
 

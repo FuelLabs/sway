@@ -56,10 +56,10 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, engines);
-            self.expression.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, ctx);
+            self.expression.subst(type_mapping, ctx);
         }
     }
 }
@@ -136,14 +136,20 @@ impl TypeCheckAnalysis for TyExpression {
                         unify::unifier::UnifyKind::Default,
                     );
                     for element in contents {
-                        let element_type = ctx.engines.te().get(*elem_type);
+                        let element_type = ctx.engines.te().get(element.return_type);
 
                         // If the element is never, we do not need to check
                         if matches!(&*element_type, TypeInfo::Never) {
                             continue;
                         }
 
-                        unify.unify(handler, element.return_type, *elem_type, &element.span)
+                        unify.unify(
+                            handler,
+                            element.return_type,
+                            *elem_type,
+                            &element.span,
+                            true,
+                        )
                     }
                 }
             }
@@ -182,6 +188,7 @@ impl CollectTypesMetadata for TyExpression {
                 arguments,
                 fn_ref,
                 call_path,
+                type_binding,
                 ..
             } => {
                 for arg in arguments.iter() {
@@ -190,8 +197,30 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for type_parameter in &function_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span())
+                for (idx, type_parameter) in function_decl.type_parameters.iter().enumerate() {
+                    ctx.call_site_insert(type_parameter.type_id, call_path.span());
+
+                    // Verify type arguments are concrete
+                    res.extend(
+                        type_parameter
+                            .type_id
+                            .collect_types_metadata(handler, ctx)?
+                            .into_iter()
+                            // try to use the caller span for better error messages
+                            .map(|x| match x {
+                                TypeMetadata::UnresolvedType(ident, original_span) => {
+                                    let span = type_binding
+                                        .as_ref()
+                                        .and_then(|type_binding| {
+                                            type_binding.type_arguments.as_slice().get(idx)
+                                        })
+                                        .map(|type_argument| Some(type_argument.span.clone()))
+                                        .unwrap_or(original_span);
+                                    TypeMetadata::UnresolvedType(ident, span)
+                                }
+                                x => x,
+                            }),
+                    );
                 }
 
                 for content in function_decl.body.contents.iter() {
