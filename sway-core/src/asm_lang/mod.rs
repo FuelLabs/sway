@@ -415,6 +415,34 @@ impl Op {
                 let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
                 VirtualOp::SUBI(r1, r2, imm)
             }
+            "wqcm" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::WQCM(r1, r2, r3, imm)
+            }
+            "wqop" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::WQOP(r1, r2, r3, imm)
+            }
+            "wqml" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::WQML(r1, r2, r3, imm)
+            }
+            "wqdv" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::WQDV(r1, r2, r3, imm)
+            }
+            "wqmd" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::WQMD(r1, r2, r3, r4)
+            }
+            "wqam" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::WQAM(r1, r2, r3, r4)
+            }
+            "wqmm" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::WQMM(r1, r2, r3, r4)
+            }
             "xor" => {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::XOR(r1, r2, r3)
@@ -1148,8 +1176,10 @@ impl fmt::Display for VirtualOp {
             WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
             WQML(a, b, c, d) => write!(fmtr, "wqml {a} {b} {c} {d}"),
             WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
+            WQMD(a, b, c, d) => write!(fmtr, "wqmd {a} {b} {c} {d}"),
             WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
             WQAM(a, b, c, d) => write!(fmtr, "wqam {a} {b} {c} {d}"),
+            WQMM(a, b, c, d) => write!(fmtr, "wqmm {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),

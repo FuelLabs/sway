@@ -1,0 +1,28 @@
+category = "fail"
+
+#check: $()error
+#sameln: $()Assembly instruction is unknown
+#check: $()blobbb r1 r2 r3;
+#nextln: $()"blobbb" is not a known assembly instruction.
+#nextln: $()Did you mean "blob"?
+
+#check: $()Expected an expression
+
+#check: $()error
+#sameln: $()Assembly instruction is unknown
+#check: $()modd r1 r2 r3;
+#nextln: $()"modd" is not a known assembly instruction.
+#nextln: $()Did you mean "mod" or "modi"?
+
+#check: $()Expected an expression
+
+#check: $()error
+#sameln: $()Assembly instruction is unknown
+#check: $()ttllyunknwn r1 r2 r3;
+#nextln: $()"ttllyunknwn" is not a known assembly instruction.
+
+#check: $()Expected an expression
+
+#not: $()Did you mean
+
+#check: $()6 errors.
