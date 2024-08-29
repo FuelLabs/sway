@@ -27,9 +27,9 @@ pub enum IncludeSelf {
     No,
 }
 
-pub enum IncludeNumeric {
-    Yes,
-    No,
+pub enum TreatNumericAs {
+    Abstract,
+    Concrete,
 }
 
 /// A identifier to uniquely refer to our type terms
@@ -61,8 +61,10 @@ impl CollectTypesMetadata for TypeId {
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         fn filter_fn(type_info: &TypeInfo) -> bool {
-            matches!(type_info, TypeInfo::UnknownGeneric { .. })
-                || matches!(type_info, TypeInfo::Placeholder(_))
+            matches!(
+                type_info,
+                TypeInfo::UnknownGeneric { .. } | TypeInfo::Placeholder(_)
+            )
         }
         let engines = ctx.engines;
         let possible = self.extract_any_including_self(engines, &filter_fn, vec![], 0);
@@ -89,9 +91,9 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        let type_engine = engines.te();
-        if let Some(matching_id) = type_mapping.find_match(*self, engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        let type_engine = ctx.engines.te();
+        if let Some(matching_id) = type_mapping.find_match(*self, ctx.engines) {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
                 HasChanges::Yes
@@ -461,27 +463,33 @@ impl TypeId {
         }))
     }
 
-    pub(crate) fn is_concrete(&self, engines: &Engines, include_numeric: IncludeNumeric) -> bool {
+    pub(crate) fn is_concrete(
+        &self,
+        engines: &Engines,
+        numeric_non_concrete: TreatNumericAs,
+    ) -> bool {
         let nested_types = (*self).extract_nested_types(engines);
-        !nested_types.into_iter().any(|x| match include_numeric {
-            IncludeNumeric::Yes => matches!(
-                x,
-                TypeInfo::UnknownGeneric { .. }
-                    | TypeInfo::Custom { .. }
-                    | TypeInfo::Placeholder(..)
-                    | TypeInfo::TraitType { .. }
-                    | TypeInfo::TypeParam(..)
-                    | TypeInfo::Numeric
-            ),
-            IncludeNumeric::No => matches!(
-                x,
-                TypeInfo::UnknownGeneric { .. }
-                    | TypeInfo::Custom { .. }
-                    | TypeInfo::Placeholder(..)
-                    | TypeInfo::TraitType { .. }
-                    | TypeInfo::TypeParam(..)
-            ),
-        })
+        !nested_types
+            .into_iter()
+            .any(|x| match numeric_non_concrete {
+                TreatNumericAs::Abstract => matches!(
+                    x,
+                    TypeInfo::UnknownGeneric { .. }
+                        | TypeInfo::Custom { .. }
+                        | TypeInfo::Placeholder(..)
+                        | TypeInfo::TraitType { .. }
+                        | TypeInfo::TypeParam(..)
+                        | TypeInfo::Numeric
+                ),
+                TreatNumericAs::Concrete => matches!(
+                    x,
+                    TypeInfo::UnknownGeneric { .. }
+                        | TypeInfo::Custom { .. }
+                        | TypeInfo::Placeholder(..)
+                        | TypeInfo::TraitType { .. }
+                        | TypeInfo::TypeParam(..)
+                ),
+            })
     }
 
     /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
@@ -511,6 +519,10 @@ impl TypeId {
         span: &Span,
         type_param: Option<TypeParameter>,
     ) -> Result<(), ErrorEmitted> {
+        if ctx.collecting_unifications() {
+            return Ok(());
+        }
+
         let engines = ctx.engines();
 
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
