@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, Criterion};
+use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
 use std::sync::Arc;
 use sway_core::{Engines, ExperimentalFlags};
 use sway_lsp::core::session;
