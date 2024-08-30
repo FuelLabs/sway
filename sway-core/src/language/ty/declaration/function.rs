@@ -145,6 +145,22 @@ impl Named for TyFunctionDecl {
     }
 }
 
+impl IsConcrete for TyFunctionDecl {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_parameters
+            .iter()
+            .all(|tp| tp.is_concrete(engines))
+            && self
+                .return_type
+                .type_id
+                .is_concrete(engines, TreatNumericAs::Concrete)
+            && self.parameters().iter().all(|t| {
+                t.type_argument
+                    .type_id
+                    .is_concrete(engines, TreatNumericAs::Concrete)
+            })
+    }
+}
 impl declaration::FunctionSignature for TyFunctionDecl {
     fn parameters(&self) -> &Vec<TyFunctionParameter> {
         &self.parameters
@@ -204,13 +220,22 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        has_changes! {
-            self.type_parameters.subst(type_mapping, engines);
-            self.parameters.subst(type_mapping, engines);
-            self.return_type.subst(type_mapping, engines);
-            self.body.subst(type_mapping, engines);
-            self.implementing_for_typeid.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        if ctx.subst_function_body {
+            has_changes! {
+                self.type_parameters.subst(type_mapping, ctx);
+                self.parameters.subst(type_mapping, ctx);
+                self.return_type.subst(type_mapping, ctx);
+                self.body.subst(type_mapping, ctx);
+                self.implementing_for_typeid.subst(type_mapping, ctx);
+            }
+        } else {
+            has_changes! {
+                self.type_parameters.subst(type_mapping, ctx);
+                self.parameters.subst(type_mapping, ctx);
+                self.return_type.subst(type_mapping, ctx);
+                self.implementing_for_typeid.subst(type_mapping, ctx);
+            }
         }
     }
 }
@@ -502,8 +527,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.type_argument.type_id.subst(type_mapping, engines)
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.type_id.subst(type_mapping, ctx)
     }
 }
 
