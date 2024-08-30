@@ -61,10 +61,10 @@ impl DebugWithEngines for TyAstNode {
 }
 
 impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         match self.content {
-            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, engines),
-            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, engines),
+            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, ctx),
+            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, ctx),
             TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => HasChanges::No,
         }
     }

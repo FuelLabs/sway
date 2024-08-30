@@ -2646,6 +2646,31 @@ impl ToDiagnostic for CompileError {
                             format!("{}  E.g., `*ref_to_mutable_value` or `*max_mut(&mut x, &mut y)`.", Indent::Single),
                         ]
                     },
+                    ParseErrorKind::UnrecognizedOpCode { known_op_codes } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Assembly instruction is unknown".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("\"{}\" is not a known assembly instruction.",
+                                error.span.as_str()
+                            )
+                        ),
+                        hints: {
+                            let suggestions = &did_you_mean(error.span.as_str(), known_op_codes.iter(), 2);
+                            if suggestions.is_empty() {
+                                vec![]
+                            } else {
+                                vec![
+                                    Hint::help(
+                                        source_engine,
+                                        error.span.clone(),
+                                        format!("Did you mean {}?", sequence_to_str_or(suggestions, Enclosing::DoubleQuote, 2))
+                                    ),
+                                ]
+                            }
+                        },
+                        help: vec![]
+                    },
                     _ => Diagnostic {
                                 // TODO: Temporary we use self here to achieve backward compatibility.
                                 //       In general, self must not be used and will not be used once we
