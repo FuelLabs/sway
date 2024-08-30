@@ -91,7 +91,7 @@ fn u256_checked_mul(a: u256, b: u256) -> Option<u256> {
     // X.....	indirect1	Is rhs operand ($rC) indirect or not
     // As both operands are indirect, 110000 is used, which is 48 in decimal.
     let res = asm(output: empty_tuple, r1: a, r2: b, r3) {
-        wqml r3 r1 r2 48;
+        wqml r3 r1 r2 i48;
         sw output of i1;
         sw output r3 i0;
         output: (u256, u64)
