@@ -12,8 +12,10 @@ pub enum ParseErrorKind {
     ExpectedAnItemAfterDocComment,
     #[error("Expected a comma or closing parenthesis in function arguments.")]
     ExpectedCommaOrCloseParenInFnArgs,
-    #[error("Unrecognized op code.")]
-    UnrecognizedOpCode,
+    #[error("Unknown assembly instruction.")]
+    UnrecognizedOpCode {
+        known_op_codes: &'static [&'static str],
+    },
     #[error("Unexpected token in statement.")]
     UnexpectedTokenInStatement,
     #[error("This expression cannot be assigned to.")]
