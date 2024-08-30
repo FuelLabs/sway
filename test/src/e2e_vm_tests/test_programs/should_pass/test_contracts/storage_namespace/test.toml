@@ -1,4 +1,4 @@
 category = "compile"
 validate_abi = true
 validate_storage_slots = true
-expected_warnings = 1
+expected_warnings = 1 # TODO-DCA: Set to zero once https://github.com/FuelLabs/sway/issues/5921 is fixed.
