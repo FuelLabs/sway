@@ -54,6 +54,7 @@ urlencoding = "2.1.2"
 
 [dev-dependencies]
 assert-json-diff = "2.0"
+codspeed-criterion-compat = "2.6.0"
 criterion = "0.5"
 dirs = "4.0"
 futures = { version = "0.3", default-features = false, features = [

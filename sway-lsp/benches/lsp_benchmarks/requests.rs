@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, Criterion};
+use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
 use lsp_types::{
     CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
