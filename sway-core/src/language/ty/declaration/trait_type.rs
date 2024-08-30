@@ -37,6 +37,16 @@ impl Named for TyTraitType {
     }
 }
 
+impl IsConcrete for TyTraitType {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        if let Some(ty) = &self.ty {
+            ty.type_id.is_concrete(engines, TreatNumericAs::Concrete)
+        } else {
+            false
+        }
+    }
+}
+
 impl EqWithEngines for TyTraitType {}
 impl PartialEqWithEngines for TyTraitType {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
@@ -64,10 +74,10 @@ impl HashWithEngines for TyTraitType {
 }
 
 impl SubstTypes for TyTraitType {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.ty.subst(type_mapping, engines);
-            self.implementing_type.subst(type_mapping, engines);
+            self.ty.subst(type_mapping, ctx);
+            self.implementing_type.subst(type_mapping, ctx);
         }
     }
 }

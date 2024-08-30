@@ -200,6 +200,13 @@ define_op_codes!(
     (Srli, SrliOpcode, "srli", (ret: reg, lhs: reg, rhs: imm)),
     (Sub, SubOpcode, "sub", (ret: reg, lhs: reg, rhs: reg)),
     (Subi, SubiOpcode, "subi", (ret: reg, lhs: reg, rhs: imm)),
+    (Wqcm, WqcmOpcode, "wqcm", (ret: reg, lhs: reg, rhs: reg, op_mode: imm)),
+    (Wqop, WqopOpcode, "wqop", (ret: reg, lhs: reg, rhs: reg, op_mode: imm)),
+    (Wqml, WqmlOpcode, "wqml", (ret: reg, lhs: reg, rhs: reg, indirect: imm)),
+    (Wqdv, WqdvOpcode, "wqdv", (ret: reg, lhs: reg, rhs: reg, indirect: imm)),
+    (Wqmd, WqmdOpcode, "wqmd", (ret: reg, lhs_a: reg, lhs_b: reg, rhs: reg)),
+    (Wqam, WqamOpcode, "wqam", (ret: reg, lhs_a: reg, lhs_b: reg, rhs: reg)),
+    (Wqmm, WqmmOpcode, "wqmm", (ret: reg, lhs_a: reg, lhs_b: reg, rhs: reg)),
     (Xor, XorOpcode, "xor", (ret: reg, lhs: reg, rhs: reg)),
     (Xori, XoriOpcode, "xori", (ret: reg, lhs: reg, rhs: imm)),
     /* Control Flow Instructions */
