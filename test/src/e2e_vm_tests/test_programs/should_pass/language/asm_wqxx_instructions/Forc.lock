@@ -1,0 +1,13 @@
+[[package]]
+name = "asm_wqxx_instructions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-DEA77F133437397D"
+
+[[package]]
+name = "std"
+source = "path+from-root-DEA77F133437397D"
+dependencies = ["core"]
