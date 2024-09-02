@@ -907,11 +907,11 @@ fn math_u8_overflow_add() {
 
     let d = a + u8::max();
 
-    require(d == 0_u8, d);
+    require(d == u8::max() - 1, d);
 
     let e = a + (u8::max() - 1);
 
-    require(e == u8::max(), e);
+    require(e == u8::max() - 2, e);
 }
 
 #[test]
@@ -929,11 +929,11 @@ fn math_u16_overflow_add() {
 
     let d = a + u16::max();
 
-    require(d == 0_u16, d);
+    require(d == u16::max() - 1, d);
 
     let e = a + (u16::max() - 1);
 
-    require(e == u16::max(), e);
+    require(e == u16::max() - 2, e);
 }
 
 #[test]
@@ -951,11 +951,11 @@ fn math_u32_overflow_add() {
 
     let d = a + u32::max();
 
-    require(d == 0_u32, d);
+    require(d == u32::max() - 1, d);
 
     let e = a + (u32::max() - 1);
 
-    require(e == u32::max(), e);
+    require(e == u32::max() - 2, e);
 }
 
 #[test]
@@ -973,11 +973,11 @@ fn math_u64_overflow_add() {
 
     let d = a + u64::max();
 
-    require(d == 0_u64, d);
+    require(d == u64::max() - 1, d);
 
     let e = a + (u64::max() - 1);
 
-    require(e == u64::max(), e);
+    require(e == u64::max() - 2, e);
 }
 
 #[test]
@@ -995,11 +995,11 @@ fn math_u256_overflow_add() {
 
     let d = a + u256::max();
 
-    require(d == 0, d);
+    require(d == u256::max() - 1, d);
 
     let e = a + (u256::max() - 1);
 
-    require(e == u256::max(), e);
+    require(e == u256::max() - 2, e);
 }
 
 #[test]
