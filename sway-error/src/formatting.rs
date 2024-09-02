@@ -3,7 +3,7 @@
 
 use std::{
     borrow::Cow,
-    cmp,
+    cmp::{self, Ordering},
     fmt::{self, Display},
 };
 
@@ -98,6 +98,42 @@ pub(crate) fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items
 where
     T: Display,
 {
+    sequence_to_str_impl(sequence, enclosing, max_items, "and")
+}
+
+/// Returns reading-friendly textual representation of the `sequence`, with comma-separated
+/// items and each item optionally enclosed in the specified `enclosing`.
+/// If the sequence has more than `max_items` the remaining items are replaced
+/// with the text "or <number> more".
+///
+/// E.g.:
+/// [a] => "a"
+/// [a, b] => "a" or "b"
+/// [a, b, c] => "a", "b" or "c"
+/// [a, b, c, d] => "a", "b", "c" or one more
+/// [a, b, c, d, e] => "a", "b", "c" or two more
+///
+/// Panics if the `sequence` is empty, or `max_items` is zero.
+pub(crate) fn sequence_to_str_or<T>(
+    sequence: &[T],
+    enclosing: Enclosing,
+    max_items: usize,
+) -> String
+where
+    T: Display,
+{
+    sequence_to_str_impl(sequence, enclosing, max_items, "or")
+}
+
+fn sequence_to_str_impl<T>(
+    sequence: &[T],
+    enclosing: Enclosing,
+    max_items: usize,
+    and_or: &str,
+) -> String
+where
+    T: Display,
+{
     assert!(
         !sequence.is_empty(),
         "Sequence to display must not be empty."
@@ -115,12 +151,13 @@ where
 
     if !remaining.is_empty() {
         format!(
-            "{}, and {} more",
+            "{}, {} {} more",
             to_display
                 .iter()
                 .map(fmt_item)
                 .collect::<Vec<_>>()
                 .join(", "),
+            and_or,
             number_to_str(remaining.len())
         )
     } else {
@@ -128,10 +165,15 @@ where
             [] => unreachable!("There must be at least one item in the sequence."),
             [item] => fmt_item(item),
             [first_item, second_item] => {
-                format!("{} and {}", fmt_item(first_item), fmt_item(second_item))
+                format!(
+                    "{} {} {}",
+                    fmt_item(first_item),
+                    and_or,
+                    fmt_item(second_item)
+                )
             }
             _ => format!(
-                "{}, and {}",
+                "{}, {} {}",
                 to_display
                     .split_last()
                     .unwrap()
@@ -140,6 +182,7 @@ where
                     .map(fmt_item)
                     .collect::<Vec::<_>>()
                     .join(", "),
+                and_or,
                 fmt_item(to_display.last().unwrap())
             ),
         }
@@ -289,4 +332,33 @@ pub(crate) fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
         let index_of_new_line = text.find('\n').unwrap();
         Cow::Owned(text[..index_of_new_line].to_string() + if with_ellipses { "..." } else { "" })
     }
+}
+
+/// Finds strings from an iterable of `possible_values` similar to a given value `v`.
+/// Returns a vector of all possible values that exceed a similarity threshold,
+/// sorted by similarity (most similar comes first). The returned vector will have
+/// at most `max_num_of_suggestions` elements.
+///
+/// The implementation is taken and adapted from the [Clap project](https://github.com/clap-rs/clap/blob/50f7646cf72dd7d4e76d9284d76bdcdaceb7c049/clap_builder/src/parser/features/suggestions.rs#L11).
+pub(crate) fn did_you_mean<T, I>(
+    v: &str,
+    possible_values: I,
+    max_num_of_suggestions: usize,
+) -> Vec<String>
+where
+    T: AsRef<str>,
+    I: IntoIterator<Item = T>,
+{
+    let mut candidates: Vec<_> = possible_values
+        .into_iter()
+        .map(|pv| (strsim::jaro(v, pv.as_ref()), pv.as_ref().to_owned()))
+        // Confidence of 0.7 so that bar -> baz is suggested.
+        .filter(|(confidence, _)| *confidence > 0.7)
+        .collect();
+    candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(Ordering::Equal));
+    candidates
+        .into_iter()
+        .take(max_num_of_suggestions)
+        .map(|(_, pv)| pv)
+        .collect()
 }
