@@ -61,6 +61,17 @@ pub(crate) fn instantiate_function_application(
         &function_decl.parameters,
     )?;
 
+    // unify function return type with current ctx.type_annotation().
+    engines.te().unify_with_generic(
+        handler,
+        engines,
+        function_decl.return_type.type_id,
+        ctx.type_annotation(),
+        &call_path_binding.span(),
+        "Function return type does not match up with local type annotation.",
+        None,
+    );
+
     let mut function_return_type_id = function_decl.return_type.type_id;
 
     let function_ident: IdentUnique = function_decl.name.clone().into();
