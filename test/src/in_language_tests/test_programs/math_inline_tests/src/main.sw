@@ -991,11 +991,11 @@ fn math_u256_overflow_add() {
 
     let c = a + 2;
 
-    require(c == 1_u256, c);
+    require(c == 1, c);
 
     let d = a + u256::max();
 
-    require(d == 0_u256, d);
+    require(d == 0, d);
 
     let e = a + (u256::max() - 1);
 
