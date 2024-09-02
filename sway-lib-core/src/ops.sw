@@ -82,6 +82,8 @@ impl Add for u16 {
             if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
                 __mod(res, __add(Self::max(), 1))
             }
         } else {
