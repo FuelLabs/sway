@@ -296,6 +296,8 @@ impl Multiply for u8 {
             if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
                 let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
                 asm(input: res_u64) {
                     input: u8
