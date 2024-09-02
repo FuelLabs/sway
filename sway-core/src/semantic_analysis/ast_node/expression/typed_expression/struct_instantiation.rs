@@ -342,8 +342,7 @@ fn collect_struct_constructors(
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
     namespace.program_id(engines).read(engines, |m| {
-        m.current_items()
-            .get_items_for_type(engines, struct_type_id)
+        m.get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),

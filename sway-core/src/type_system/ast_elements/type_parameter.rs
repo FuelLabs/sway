@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{ty, CallPath},
-    namespace::TryInsertingTraitImplOnFailure,
+    namespace::{TraitMap, TryInsertingTraitImplOnFailure},
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
@@ -416,13 +416,13 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx
-                .namespace()
-                .module(ctx.engines())
-                .current_items()
-                .symbols
-                .get(name_ident)
-                .unwrap();
+            let sy = ctx.namespace().root().resolve_symbol(
+                handler,
+                ctx.engines,
+                ctx.namespace().mod_path(),
+                name_ident,
+                None,
+            )?;
 
             match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -500,19 +500,15 @@ impl TypeParameter {
                 } = type_param;
 
                 // Check to see if the trait constraints are satisfied.
-                match ctx
-                    .namespace_mut()
-                    .module_mut(engines)
-                    .current_items_mut()
-                    .implemented_traits
-                    .check_if_trait_constraints_are_satisfied_for_type(
-                        handler,
-                        *type_id,
-                        trait_constraints,
-                        access_span,
-                        engines,
-                        TryInsertingTraitImplOnFailure::Yes,
-                    ) {
+                match TraitMap::check_if_trait_constraints_are_satisfied_for_type(
+                    ctx.namespace_mut().module_mut(engines),
+                    handler,
+                    *type_id,
+                    trait_constraints,
+                    access_span,
+                    engines,
+                    TryInsertingTraitImplOnFailure::Yes,
+                ) {
                     Ok(res) => res,
                     Err(_) => continue,
                 }

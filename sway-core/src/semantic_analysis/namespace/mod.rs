@@ -17,7 +17,7 @@ pub use root::Root;
 pub(super) use trait_map::IsExtendingExistingImpl;
 pub(super) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
-pub(super) use trait_map::TraitMap;
+pub(crate) use trait_map::TraitMap;
 
 use sway_types::Ident;
 

@@ -1,7 +1,8 @@
 use std::fmt;
 
 use super::{
-    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
+    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, LexicalScope,
+    ResolvedTraitImplItem,
 };
 use crate::{
     decl_engine::{DeclEngine, DeclRef},
@@ -999,25 +1000,53 @@ impl Root {
         }
     }
 
-    fn resolve_symbol_helper(
+    pub fn resolve_symbol_helper(
         &self,
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
         module: &Module,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let mut lexical_scope_opt = Some(module.current_lexical_scope());
+        while let Some(lexical_scope) = lexical_scope_opt {
+            let result =
+                self.resolve_symbol_from_lexical_scope(handler, engines, symbol, lexical_scope)?;
+            if let Some(result) = result {
+                return Ok(result);
+            }
+            if let Some(parent_scope_id) = lexical_scope.parent {
+                lexical_scope_opt = module.get_lexical_scope(parent_scope_id);
+            } else {
+                lexical_scope_opt = None;
+            }
+        }
+
+        // Symbol not found
+        Err(handler.emit_err(CompileError::SymbolNotFound {
+            name: symbol.clone(),
+            span: symbol.span(),
+        }))
+    }
+
+    fn resolve_symbol_from_lexical_scope(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        lexical_scope: &LexicalScope,
+    ) -> Result<Option<ResolvedDeclaration>, ErrorEmitted> {
         // Check locally declared items. Any name clash with imports will have already been reported as an error.
-        if let Some(decl) = module.current_items().symbols.get(symbol) {
-            return Ok(decl.clone());
+        if let Some(decl) = lexical_scope.items.symbols.get(symbol) {
+            return Ok(Some(decl.clone()));
         }
         // Check item imports
-        if let Some((_, _, decl, _)) = module.current_items().use_item_synonyms.get(symbol) {
-            return Ok(decl.clone());
+        if let Some((_, _, decl, _)) = lexical_scope.items.use_item_synonyms.get(symbol) {
+            return Ok(Some(decl.clone()));
         }
         // Check glob imports
-        if let Some(decls) = module.current_items().use_glob_synonyms.get(symbol) {
+        if let Some(decls) = lexical_scope.items.use_glob_synonyms.get(symbol) {
             if decls.len() == 1 {
-                return Ok(decls[0].1.clone());
+                return Ok(Some(decls[0].1.clone()));
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
                     "The name {symbol} was bound in a star import, but no corresponding module paths were found",
@@ -1056,11 +1085,7 @@ impl Root {
                 }));
             }
         }
-        // Symbol not found
-        Err(handler.emit_err(CompileError::SymbolNotFound {
-            name: symbol.clone(),
-            span: symbol.span(),
-        }))
+        Ok(None)
     }
 }
 

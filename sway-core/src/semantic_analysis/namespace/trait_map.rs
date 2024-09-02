@@ -25,7 +25,7 @@ use crate::{
     IncludeSelf, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
 };
 
-use super::TryInsertingTraitImplOnFailure;
+use super::{Module, TryInsertingTraitImplOnFailure};
 
 #[derive(Clone, Debug)]
 struct TraitSuffix {
@@ -1187,12 +1187,53 @@ impl TraitMap {
 
     /// Checks to see if the trait constraints are satisfied for a given type.
     pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
+        module: &mut Module,
+        handler: &Handler,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+        access_span: &Span,
+        engines: &Engines,
+        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
+    ) -> Result<(), ErrorEmitted> {
+        let mut lexical_scope_opt = Some(module.current_lexical_scope_mut());
+        let mut all_impld_traits: BTreeSet<(Ident, TypeId)> = Default::default();
+        while let Some(lexical_scope) = lexical_scope_opt {
+            all_impld_traits.extend(
+                lexical_scope
+                    .items
+                    .implemented_traits
+                    .get_all_implemented_traits(type_id, engines),
+            );
+            if let Some(parent_scope_id) = lexical_scope.parent {
+                lexical_scope_opt = module.get_lexical_scope_mut(parent_scope_id);
+            } else {
+                lexical_scope_opt = None;
+            }
+        }
+
+        module
+            .current_lexical_scope_mut()
+            .items
+            .implemented_traits
+            .check_if_trait_constraints_are_satisfied_for_type_helper(
+                handler,
+                type_id,
+                constraints,
+                access_span,
+                engines,
+                all_impld_traits,
+                try_inserting_trait_impl_on_failure.clone(),
+            )
+    }
+
+    fn check_if_trait_constraints_are_satisfied_for_type_helper(
         &mut self,
         handler: &Handler,
         type_id: TypeId,
         constraints: &[TraitConstraint],
         access_span: &Span,
         engines: &Engines,
+        all_impld_traits: BTreeSet<(Ident, TypeId)>,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
@@ -1223,6 +1264,7 @@ impl TraitMap {
             constraints,
             access_span,
             engines,
+            all_impld_traits,
             try_inserting_trait_impl_on_failure,
         ) {
             Ok(()) => {
@@ -1233,6 +1275,44 @@ impl TraitMap {
         }
     }
 
+    fn get_all_implemented_traits(
+        &mut self,
+        type_id: TypeId,
+        engines: &Engines,
+    ) -> BTreeSet<(Ident, TypeId)> {
+        let type_engine = engines.te();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+
+        let all_impld_traits: BTreeSet<(Ident, TypeId)> = self
+            .trait_impls
+            .iter()
+            .filter_map(|e| {
+                let key = &e.key;
+                let suffix = &key.name.suffix;
+                if unify_check.check(type_id, key.type_id) {
+                    let map_trait_type_id = type_engine.insert(
+                        engines,
+                        TypeInfo::Custom {
+                            qualified_call_path: suffix.name.clone().into(),
+                            type_arguments: if suffix.args.is_empty() {
+                                None
+                            } else {
+                                Some(suffix.args.to_vec())
+                            },
+                            root_type_id: None,
+                        },
+                        suffix.name.span().source_id(),
+                    );
+                    Some((suffix.name.clone(), map_trait_type_id))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        all_impld_traits
+    }
+
     fn check_if_trait_constraints_are_satisfied_for_type_inner(
         &mut self,
         handler: &Handler,
@@ -1240,6 +1320,7 @@ impl TraitMap {
         constraints: &[TraitConstraint],
         access_span: &Span,
         engines: &Engines,
+        all_impld_traits: BTreeSet<(Ident, TypeId)>,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
@@ -1274,33 +1355,6 @@ impl TraitMap {
 
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
-
-        let all_impld_traits: BTreeSet<(Ident, TypeId)> = self
-            .trait_impls
-            .iter()
-            .filter_map(|e| {
-                let key = &e.key;
-                let suffix = &key.name.suffix;
-                if unify_check.check(type_id, key.type_id) {
-                    let map_trait_type_id = type_engine.insert(
-                        engines,
-                        TypeInfo::Custom {
-                            qualified_call_path: suffix.name.clone().into(),
-                            type_arguments: if suffix.args.is_empty() {
-                                None
-                            } else {
-                                Some(suffix.args.to_vec())
-                            },
-                            root_type_id: None,
-                        },
-                        suffix.name.span().source_id(),
-                    );
-                    Some((suffix.name.clone(), map_trait_type_id))
-                } else {
-                    None
-                }
-            })
-            .collect();
 
         let required_traits: BTreeSet<(Ident, TypeId)> = constraints
             .iter()
@@ -1345,12 +1399,13 @@ impl TraitMap {
                     TryInsertingTraitImplOnFailure::Yes
                 ) {
                     self.insert_for_type(engines, type_id);
-                    return self.check_if_trait_constraints_are_satisfied_for_type(
+                    return self.check_if_trait_constraints_are_satisfied_for_type_helper(
                         handler,
                         type_id,
                         constraints,
                         access_span,
                         engines,
+                        all_impld_traits,
                         TryInsertingTraitImplOnFailure::No,
                     );
                 } else {
