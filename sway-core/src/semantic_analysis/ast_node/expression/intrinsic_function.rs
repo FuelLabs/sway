@@ -1897,7 +1897,7 @@ fn type_check_contract_ret(
         }));
     }
 
-    if type_arguments.is_empty() {
+    if !type_arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 0,
