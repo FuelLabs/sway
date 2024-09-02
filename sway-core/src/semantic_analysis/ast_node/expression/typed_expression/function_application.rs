@@ -73,7 +73,7 @@ pub(crate) fn instantiate_function_application(
     {
         cached_fn_ref
     } else {
-        if !ctx.collecting_unifications() {
+        if !ctx.code_block_first_pass() {
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the
             // constraint with new decl ids based on the new type.
@@ -102,7 +102,7 @@ pub(crate) fn instantiate_function_application(
             )
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
-        if !ctx.collecting_unifications()
+        if !ctx.code_block_first_pass()
             && method_sig.is_concrete(engines)
             && function_is_type_check_finalized
             && !function_is_trait_method_dummy
