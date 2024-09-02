@@ -6,8 +6,8 @@ use ::revert::revert;
 use ::option::Option::{self, Some, None};
 use ::flags::{
     disable_panic_on_overflow,
-    F_UNSAFEMATH_DISABLE_MASK,
-    F_WRAPPING_DISABLE_MASK,
+    panic_on_overflow_enabled,
+    panic_on_unsafe_math_enabled,
     set_flags,
 };
 use ::registers::{flags, overflow};
@@ -168,7 +168,7 @@ impl Power for u32 {
 
         if res > Self::max().as_u64() {
             // If panic on wrapping math is enabled, only then revert
-            if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            if panic_on_overflow_enabled() {
                 revert(0);
             } else {
                 // Follow spec of returning 0 for overflow
@@ -191,7 +191,7 @@ impl Power for u16 {
 
         if res > Self::max().as_u64() {
             // If panic on wrapping math is enabled, only then revert
-            if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            if panic_on_overflow_enabled() {
                 revert(0);
             } else {
                 // Follow spec of returning 0 for overflow
@@ -214,7 +214,7 @@ impl Power for u8 {
 
         if res > Self::max().as_u64() {
             // If panic on wrapping math is enabled, only then revert
-            if flags() & F_WRAPPING_DISABLE_MASK == 0 {
+            if panic_on_overflow_enabled() {
                 revert(0);
             } else {
                 // Follow spec of returning 0 for overflow
@@ -308,7 +308,7 @@ impl BinaryLogarithm for u8 {
 impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
         // If panic on unsafe math is enabled, only then revert
-        if flags() & F_UNSAFEMATH_DISABLE_MASK == 0 {
+        if panic_on_unsafe_math_enabled() {
             // Logarithm is undefined for 0
             assert(self != 0);
         }
@@ -334,7 +334,7 @@ impl Logarithm for u256 {
         let flags = disable_panic_on_overflow();
 
         // If panic on unsafe math is enabled, only then revert
-        if flags & F_UNSAFEMATH_DISABLE_MASK == 0 {
+        if panic_on_unsafe_math_enabled() {
             // Logarithm is undefined for bases less than 2
             assert(base >= 2);
             // Logarithm is undefined for 0

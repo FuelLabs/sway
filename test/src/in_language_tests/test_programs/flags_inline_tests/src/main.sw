@@ -6,6 +6,8 @@ use std::{
         disable_panic_on_unsafe_math,
         enable_panic_on_overflow,
         enable_panic_on_unsafe_math,
+        panic_on_overflow_enabled,
+        panic_on_unsafe_math_enabled,
         set_flags,
     },
     registers::error,
@@ -64,4 +66,28 @@ fn flags_disable_panic_on_unsafe_math_preserving() {
     assert(error() == 1);
 
     enable_panic_on_unsafe_math();
+}
+
+#[test]
+fn test_panic_on_overflow_enabled() {
+    // Enabled by default
+    assert(panic_on_overflow_enabled());
+
+    disable_panic_on_overflow();
+    assert(!panic_on_overflow_enabled());
+
+    enable_panic_on_overflow();
+    assert(panic_on_overflow_enabled());
+}
+
+#[test]
+fn test_panic_on_unsafe_math_enabled() {
+    // Enabled by default
+    assert(panic_on_unsafe_math_enabled());
+
+    disable_panic_on_unsafe_math();
+    assert(!panic_on_unsafe_math_enabled());
+
+    enable_panic_on_unsafe_math();
+    assert(panic_on_unsafe_math_enabled());
 }
