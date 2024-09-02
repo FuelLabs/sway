@@ -2173,18 +2173,17 @@ fn expr_to_expression(
             let kind = expr_func_app_to_expression_kind(context, handler, engines, func, args)?;
             Expression { kind, span }
         }
-        Expr::Index { target, arg } => Expression {
-            kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
-                prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
-                index: Box::new(expr_to_expression(
-                    context,
-                    handler,
-                    engines,
-                    *arg.into_inner(),
-                )?),
-            }),
-            span,
-        },
+        // this index is not "under" ref (&) or mut ref (&mut), so
+        // we need to deref it here
+        Expr::Index { target, arg } => {
+            let target = expr_to_expression(context, handler, engines, *target)?;
+            let arg = expr_to_expression(context, handler, engines, *arg.inner)?;
+            let expr = desugar_into_index_trait(false, arg.span(), span.clone(), target, arg)?;
+            Expression {
+                kind: ExpressionKind::Deref(Box::new(expr)),
+                span,
+            }
+        }
         Expr::MethodCall {
             target,
             path_seg,
@@ -2270,12 +2269,25 @@ fn expr_to_expression(
         },
         Expr::Ref {
             mut_token, expr, ..
-        } => Expression {
-            kind: ExpressionKind::Ref(RefExpression {
-                to_mutable_value: mut_token.is_some(),
-                value: Box::new(expr_to_expression(context, handler, engines, *expr)?),
-            }),
-            span,
+        } => match *expr {
+            Expr::Index { target, arg } => {
+                let target = expr_to_expression(context, handler, engines, *target)?;
+                let arg = expr_to_expression(context, handler, engines, *arg.inner)?;
+                desugar_into_index_trait(
+                    mut_token.is_some(),
+                    arg.span(),
+                    span.clone(),
+                    target,
+                    arg,
+                )?
+            }
+            expr => Expression {
+                kind: ExpressionKind::Ref(RefExpression {
+                    to_mutable_value: mut_token.is_some(),
+                    value: Box::new(expr_to_expression(context, handler, engines, expr)?),
+                }),
+                span,
+            },
         },
         Expr::Deref { expr, .. } => Expression {
             kind: ExpressionKind::Deref(Box::new(expr_to_expression(
@@ -2504,6 +2516,53 @@ fn expr_to_expression(
         },
     };
     Ok(expression)
+}
+
+fn desugar_into_index_trait(
+    mutable: bool,
+    op_span: Span,
+    span: Span,
+    target: Expression,
+    arg: Expression,
+) -> Result<Expression, ErrorEmitted> {
+    let target = Expression {
+        kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
+            name: Ident::new_no_span("__slice".to_string()),
+            kind_binding: TypeBinding {
+                inner: Intrinsic::Slice,
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: Span::dummy(),
+            },
+            arguments: vec![Expression {
+                kind: ExpressionKind::Ref(RefExpression {
+                    to_mutable_value: mutable,
+                    value: Box::new(target),
+                }),
+                span: span.clone(),
+            }],
+        }),
+        span: span.clone(),
+    };
+
+    let name = if mutable { "index_mut" } else { "index" };
+
+    let call_path_binding = TypeBinding {
+        inner: CallPath {
+            prefixes: vec![],
+            suffix: Ident::new_with_override(name.into(), op_span.clone()),
+            is_absolute: true,
+        },
+        type_arguments: TypeArgs::Regular(vec![]),
+        span: op_span,
+    };
+    Ok(Expression {
+        kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+            call_path_binding,
+            resolved_call_path_binding: None,
+            arguments: vec![target, arg],
+        })),
+        span,
+    })
 }
 
 fn op_call(
@@ -4454,24 +4513,34 @@ fn assignable_to_expression(
                 kind: ExpressionKind::Variable(name),
                 span,
             },
-            ElementAccess::Index { target, arg } => Expression {
-                kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
-                    prefix: Box::new(element_access_to_expression(
-                        context,
-                        handler,
-                        engines,
-                        *target,
-                        span.clone(),
-                    )?),
-                    index: Box::new(expr_to_expression(
-                        context,
-                        handler,
-                        engines,
-                        *arg.into_inner(),
-                    )?),
-                }),
-                span,
-            },
+            ElementAccess::Index { target, arg } => {
+                let target =
+                    element_access_to_expression(context, handler, engines, *target, span.clone())?;
+                let arg = expr_to_expression(context, handler, engines, *arg.inner)?;
+                let call = desugar_into_index_trait(true, arg.span(), span.clone(), target, arg)?;
+                Expression {
+                    kind: ExpressionKind::Deref(Box::new(call)),
+                    span,
+                }
+            }
+            // ElementAccess::Index { target, arg } => Expression {
+            //     kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
+            //         prefix: Box::new(element_access_to_expression(
+            //             context,
+            //             handler,
+            //             engines,
+            //             *target,
+            //             span.clone(),
+            //         )?),
+            //         index: Box::new(expr_to_expression(
+            //             context,
+            //             handler,
+            //             engines,
+            //             *arg.into_inner(),
+            //         )?),
+            //     }),
+            //     span,
+            // },
             ElementAccess::FieldProjection { target, name, .. } => {
                 let mut idents = vec![&name];
                 let mut base = &*target;
