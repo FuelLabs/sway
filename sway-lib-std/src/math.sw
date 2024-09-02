@@ -124,8 +124,8 @@ impl Power for u256 {
                 // acc = acc * base;
                 let res = u256_checked_mul(acc, base);
                 acc = match res {
-                    Option::None => return u256::zero(),
-                    Option::Some(val) => val,
+                    Some(val) => val,
+                    None => return u256::zero(),
                 }
             }
             exp = exp >> 1;
