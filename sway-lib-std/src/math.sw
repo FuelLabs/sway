@@ -99,7 +99,7 @@ fn u256_checked_mul(a: u256, b: u256) -> Option<u256> {
         return None;
     }
 
-    Option::Some(res)
+    Some(res)
 }
 
 impl Power for u256 {
