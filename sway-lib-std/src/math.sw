@@ -105,9 +105,13 @@ fn u256_checked_mul(a: u256, b: u256) -> Option<u256> {
 impl Power for u256 {
     /// Raises self to the power of `exponent`, using exponentiation by squaring.
     ///
-    /// # Panics
+    /// # Additional Information
     ///
-    /// Panics if the result overflows the type.
+    /// * If panic on overflow is disabled, and the result overflows, the return value will be 0.
+    ///
+    /// # Reverts
+    ///
+    /// * Reverts if the result overflows the type, if panic on overflow is enabled.
     fn pow(self, exponent: u32) -> Self {
         let one = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
 
