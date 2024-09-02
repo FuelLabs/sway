@@ -96,7 +96,7 @@ fn u256_checked_mul(a: u256, b: u256) -> Option<u256> {
     };
 
     if of != 0 {
-        return Option::None;
+        return None;
     }
 
     Option::Some(res)
