@@ -939,7 +939,7 @@ fn math_u256_overflow_add() {
     let a = u256::max();
     let b = a + 1;
 
-    require(b == 0.as_u256(), b);
+    require(b == u256::zero(), b);
 }
 
 #[test]
