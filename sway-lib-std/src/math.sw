@@ -3,7 +3,7 @@ library;
 
 use ::assert::*;
 use ::revert::revert;
-use ::option::Option::{Self, Some, None};
+use ::option::Option::{self, Some, None};
 use ::flags::{
     disable_panic_on_overflow,
     F_UNSAFEMATH_DISABLE_MASK,
