@@ -1,4 +1,4 @@
-# `forc-client`
+# forc-client
 
 The forc plugin for interacting with a Fuel node.
 
@@ -176,3 +176,7 @@ address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" #
 ```
 
 If an `address` is present, `forc` calls into that contract to update its `target` instead of deploying a new contract. Since a new proxy deployment adds its own `address` into the `Forc.toml` automatically, you can simply enable the proxy once and after the initial deployment, `forc` will keep updating the target accordingly for each new deployment of the same contract.
+
+## Large Contracts
+
+For contracts over 100KB, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.

@@ -1,0 +1,5 @@
+category = "fail"
+
+# check: $()a.push("str");
+# check: $()a.push("str");
+# nextln: $()This parameter was declared as type u8, but argument of type str was provided

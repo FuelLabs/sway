@@ -31,7 +31,7 @@ impl Checker {
     /// of the file.
     /// Example:
     ///
-    /// ```
+    /// ```sway
     /// // ::check-ir::
     /// // ::check-ir-optimized::
     /// // ::check-ir-asm::
@@ -42,7 +42,7 @@ impl Checker {
     /// Optimized IR checker can be configured with `pass: <PASSNAME or o1>`. When
     /// `o1` is chosen, all the configured passes are chosen automatically.
     ///
-    /// ```
+    /// ```sway
     /// // ::check-ir-optimized::
     /// // pass: o1
     /// ```

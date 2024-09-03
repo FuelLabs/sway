@@ -15,7 +15,7 @@ use crate::{
         CallPath, CallPathType, 
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
+    SubstTypes, SubstTypesContext, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
 };
 
 impl ty::TyConfigurableDecl {
@@ -48,7 +48,10 @@ impl ty::TyConfigurableDecl {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.type_subst(), engines);
+        type_ascription.type_id.subst(
+            &ctx.type_subst(),
+            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+        );
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {

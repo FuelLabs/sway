@@ -39,15 +39,8 @@ pub(crate) fn instantiate_function_application(
             }),
         );
     }
-    let arguments = arguments.unwrap_or_default();
 
-    // 'purity' is that of the callee, 'opts.purity' of the caller.
-    if !ctx.purity().can_call(function_decl.purity) {
-        handler.emit_err(CompileError::StorageAccessMismatch {
-            attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path_binding.span(),
-        });
-    }
+    let arguments = arguments.unwrap_or_default();
 
     // check that the number of parameters and the number of the arguments is the same
     check_function_arguments_arity(
@@ -80,18 +73,20 @@ pub(crate) fn instantiate_function_application(
     {
         cached_fn_ref
     } else {
-        // Handle the trait constraints. This includes checking to see if the trait
-        // constraints are satisfied and replacing old decl ids based on the
-        // constraint with new decl ids based on the new type.
-        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-            handler,
-            ctx.by_ref(),
-            &function_decl.type_parameters,
-            function_decl.name.as_str(),
-            &call_path_binding.span(),
-        )?;
+        if !ctx.collecting_unifications() {
+            // Handle the trait constraints. This includes checking to see if the trait
+            // constraints are satisfied and replacing old decl ids based on the
+            // constraint with new decl ids based on the new type.
+            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+                handler,
+                ctx.by_ref(),
+                &function_decl.type_parameters,
+                function_decl.name.as_str(),
+                &call_path_binding.span(),
+            )?;
 
-        function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+        }
 
         let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
 
@@ -107,7 +102,8 @@ pub(crate) fn instantiate_function_application(
             )
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
-        if method_sig.is_concrete(engines)
+        if !ctx.collecting_unifications()
+            && method_sig.is_concrete(engines)
             && function_is_type_check_finalized
             && !function_is_trait_method_dummy
         {

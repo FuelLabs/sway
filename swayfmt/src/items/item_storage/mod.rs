@@ -275,6 +275,12 @@ impl LeafSpans for StorageEntry {
 impl LeafSpans for StorageField {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.name.span())];
+        if let Some(in_token) = &self.in_token {
+            collected_spans.push(ByteSpan::from(in_token.span()));
+        }
+        if let Some(key_expr) = &self.key_expr {
+            collected_spans.push(ByteSpan::from(key_expr.span()));
+        }
         collected_spans.push(ByteSpan::from(self.colon_token.span()));
         collected_spans.append(&mut self.ty.leaf_spans());
         collected_spans.push(ByteSpan::from(self.eq_token.span()));

@@ -8,7 +8,7 @@ use dashmap::{
     DashMap,
 };
 use lsp_types::{Position, Url};
-use std::{thread, time::Duration};
+use std::{path::PathBuf, thread, time::Duration};
 use sway_core::{engine_threading::SpannedWithEngines, language::ty, type_system::TypeId, Engines};
 use sway_types::Ident;
 
@@ -234,6 +234,15 @@ impl<'a> TokenMap {
                 }
                 _ => None,
             })
+    }
+
+    /// Remove all tokens for the given file from the token map.
+    pub fn remove_tokens_for_file(&self, path_to_remove: &PathBuf) {
+        self.0.retain(|key, _value| {
+            key.path
+                .as_ref()
+                .map_or(true, |path| path != path_to_remove)
+        });
     }
 }
 

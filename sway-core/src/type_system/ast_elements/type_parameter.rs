@@ -96,10 +96,10 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.type_id.subst(type_mapping, engines);
-            self.trait_constraints.subst(type_mapping, engines);
+            self.type_id.subst(type_mapping, ctx);
+            self.trait_constraints.subst(type_mapping, ctx);
         }
     }
 }
@@ -107,6 +107,12 @@ impl SubstTypes for TypeParameter {
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()
+    }
+}
+
+impl IsConcrete for TypeParameter {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_id.is_concrete(engines, TreatNumericAs::Concrete)
     }
 }
 
@@ -352,6 +358,7 @@ impl TypeParameter {
 
         // Trait constraints mutate so we replace the previous type id associated TypeInfo.
         type_engine.replace(
+            ctx.engines(),
             type_parameter.type_id,
             TypeSourceInfo {
                 type_info: TypeInfo::UnknownGeneric {
@@ -441,6 +448,7 @@ impl TypeParameter {
                         }
 
                         ctx.engines.te().replace(
+                            ctx.engines(),
                             *type_id,
                             TypeSourceInfo {
                                 type_info: TypeInfo::UnknownGeneric {
@@ -499,23 +507,27 @@ impl TypeParameter {
                     ..
                 } = type_param;
 
-                // Check to see if the trait constraints are satisfied.
-                match ctx
-                    .namespace_mut()
-                    .current_module_mut()
-                    .current_items_mut()
-                    .implemented_traits
-                    .check_if_trait_constraints_are_satisfied_for_type(
-                        handler,
-                        *type_id,
-                        trait_constraints,
-                        access_span,
-                        engines,
-                        TryInsertingTraitImplOnFailure::Yes,
-                    ) {
-                    Ok(res) => res,
-                    Err(_) => continue,
-                }
+                let collecting_unifications = ctx.collecting_unifications();
+                if !collecting_unifications {
+                    // Check to see if the trait constraints are satisfied.
+                    match ctx
+			.namespace_mut()
+			.current_module_mut()
+			.current_items_mut()
+			.implemented_traits
+			.check_if_trait_constraints_are_satisfied_for_type(
+                            handler,
+                            *type_id,
+                            trait_constraints,
+                            access_span,
+                            engines,
+                            TryInsertingTraitImplOnFailure::Yes,
+                            collecting_unifications.into(),
+			) {
+			    Ok(res) => res,
+			    Err(_) => continue,
+			}
+		}
 
                 for trait_constraint in trait_constraints {
                     let TraitConstraint {

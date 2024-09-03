@@ -1,3 +1,8 @@
 [[package]]
 name = "contract_pure_calls_impure"
 source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-35CE415E0DBF1633"

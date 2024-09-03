@@ -11,7 +11,7 @@ use crate::{
         ty::{self, FunctionDecl, TyCodeBlock, TyDecl, TyStorageField},
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, ResolvedDeclaration},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext,
         type_check_context::EnforceTypeArguments, ConstShadowingMode, GenericShadowingMode,
@@ -161,6 +161,30 @@ impl TyDecl {
                         _ => body.return_type,
                     },
                 };
+
+                if !ctx.collecting_unifications() {
+                    let previous_symbol = ctx
+                        .namespace()
+                        .current_module()
+                        .current_items()
+                        .check_symbols_unique_while_collecting_unifications(&var_decl.name.clone())
+                        .ok();
+
+                    if let Some(ResolvedDeclaration::Typed(ty::TyDecl::VariableDecl(
+                        variable_decl,
+                    ))) = previous_symbol
+                    {
+                        type_engine.unify(
+                            handler,
+                            engines,
+                            body.return_type,
+                            variable_decl.body.return_type,
+                            &decl.span(engines),
+                            "",
+                            None,
+                        );
+                    }
+                }
 
                 let typed_var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
                     name: var_decl.name.clone(),
@@ -359,6 +383,7 @@ impl TyDecl {
                     for i in &impl_trait.items {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
+                            let collecting_unifications = ctx.collecting_unifications();
                             let _ = ctx.namespace.current_module_mut().write(engines, |m| {
                                 m.current_items_mut().insert_typed_symbol(
                                     handler,
@@ -370,6 +395,7 @@ impl TyDecl {
                                     TyDecl::FunctionDecl(FunctionDecl { decl_id: *f.id() }),
                                     ConstShadowingMode::ItemStyle,
                                     GenericShadowingMode::Allow,
+                                    collecting_unifications,
                                 )
                             });
                         }
