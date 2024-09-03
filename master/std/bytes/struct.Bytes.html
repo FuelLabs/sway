@@ -328,7 +328,10 @@ fn foo() {
     assert(right.len() == 2);
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.append" class="method trait-impl"><a href="#method.append" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.append">append</a>(<br>    refmut self,<br>    refmut other: self,<br>)</h4></div></summary><div class="docblock"><p>Moves all elements of <code>other</code> into <code>self</code>, leaving <code>other</code> empty.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.append" class="method trait-impl"><a href="#method.append" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.append">append</a>(<br>    refmut self,<br>    refmut other: self,<br>)</h4></div></summary><div class="docblock"><p>Copies all elements of <code>other</code> into <code>self</code></p>
+<h1>Additional Information</h1>
+<p>NOTE: Appending <code>self</code> to itself will duplicate the <code>Bytes</code>. i.e. [0, 1, 2] =&gt; [0, 1, 2, 0, 1, 2]<br />
+This function differs from the rust <code>append</code> function in that it does not clear the <code>other</code> <code>Bytes</code></p>
 <h1>Arguments</h1>
 <ul>
 <li><code>other</code>: [Bytes] - The Bytes to append to self.</li>
