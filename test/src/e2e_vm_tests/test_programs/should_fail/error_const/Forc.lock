@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-219F2D572E020EEE"
+
+[[package]]
+name = "error_const"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-219F2D572E020EEE"
+dependencies = ["core"]

@@ -738,6 +738,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67ba02a97a2bd10f4b59b25c7973101c79642302776489e030cd13cdab09ed15"
 
 [[package]]
+name = "codspeed"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a104ac948e0188b921eb3fcbdd55dcf62e542df4c7ab7e660623f6288302089"
+dependencies = [
+ "colored",
+ "libc",
+ "serde_json",
+]
+
+[[package]]
+name = "codspeed-criterion-compat"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "722c36bdc62d9436d027256ce2627af81ac7a596dfc7d13d849d0d212448d7fe"
+dependencies = [
+ "codspeed",
+ "colored",
+ "criterion",
+]
+
+[[package]]
 name = "coins-bip32"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1744,6 +1766,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "escape8259"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5692dd7b5a1978a5aeb0ce83b7655c58ca8efdcb79d21036ea249da95afec2c6"
+
+[[package]]
 name = "escargot"
 version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1981,7 +2009,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -1992,7 +2020,7 @@ dependencies = [
  "completest-pty",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "forc-util",
  "fs_extra",
  "fuel-asm",
@@ -2017,7 +2045,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2027,7 +2055,7 @@ dependencies = [
  "dialoguer",
  "forc",
  "forc-pkg",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -2059,13 +2087,13 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "async-trait",
  "atty",
  "clap 4.5.16",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
@@ -2085,7 +2113,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "clap 4.5.16",
@@ -2093,7 +2121,7 @@ dependencies = [
  "escargot",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "fuel-core-client",
  "fuel-types",
  "fuel-vm",
@@ -2111,7 +2139,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "clap 4.5.16",
@@ -2119,7 +2147,7 @@ dependencies = [
  "dir_indexer",
  "expect-test",
  "forc-pkg",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "forc-util",
  "horrorshow",
  "include_dir",
@@ -2136,12 +2164,12 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "clap 4.5.16",
  "forc-pkg",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -2153,7 +2181,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "clap 4.5.16",
@@ -2164,13 +2192,13 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "ansi_term",
  "anyhow",
  "byte-unit",
  "cid",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "forc-util",
  "fuel-abi-types",
  "futures",
@@ -2201,7 +2229,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2228,7 +2256,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -2238,7 +2266,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "clap 4.5.16",
@@ -2253,7 +2281,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2261,7 +2289,7 @@ dependencies = [
  "clap 4.5.16",
  "dirs 3.0.2",
  "fd-lock 4.0.2",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "fuel-tx",
  "hex",
  "paste",
@@ -3684,6 +3712,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "indoc"
+version = "2.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b248f5224d1d606005e02c97f5aa4e88eeb230488bcc03bc9ca4d7991399f2b5"
+
+[[package]]
 name = "inotify"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4040,6 +4074,18 @@ dependencies = [
  "openssl-sys",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "libtest-mimic"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc0bda45ed5b3a2904262c1bb91e526127aa70e7ef3758aba2ef93cf896b9b58"
+dependencies = [
+ "clap 4.5.16",
+ "escape8259",
+ "termcolor",
+ "threadpool",
 ]
 
 [[package]]
@@ -4616,6 +4662,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "num_cpus"
+version = "1.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
+dependencies = [
+ "hermit-abi 0.3.9",
+ "libc",
 ]
 
 [[package]]
@@ -6792,7 +6848,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -6804,7 +6860,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "clap 4.5.16",
  "derivative",
@@ -6849,12 +6905,13 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "either",
  "in_definite",
  "num-traits",
  "smallvec",
+ "strsim 0.11.1",
  "sway-types",
  "thiserror",
  "uwuify",
@@ -6862,7 +6919,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -6881,7 +6938,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
@@ -6891,17 +6948,18 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "assert-json-diff",
+ "codspeed-criterion-compat",
  "criterion",
  "crossbeam-channel",
  "dashmap",
  "dirs 4.0.0",
  "fd-lock 4.0.2",
  "forc-pkg",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "forc-util",
  "futures",
  "indexmap 2.4.0",
@@ -6955,7 +7013,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -6973,7 +7031,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -6992,7 +7050,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "serde",
  "walkdir",
@@ -7000,11 +7058,12 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.63.1"
+version = "0.63.3"
 dependencies = [
  "anyhow",
  "difference",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
+ "indoc",
  "paste",
  "prettydiff 0.6.4",
  "ropey",
@@ -7239,6 +7298,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "termcolor"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "terminal_size"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7273,11 +7341,14 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.63.1",
+ "forc-tracing 0.63.3",
  "fuel-vm",
  "futures",
  "gag",
+ "glob",
  "hex",
+ "insta",
+ "libtest-mimic",
  "miden",
  "prettydiff 0.6.4",
  "rand",
@@ -7293,6 +7364,7 @@ dependencies = [
  "tokio",
  "toml 0.7.8",
  "tracing",
+ "vte 0.13.0",
 ]
 
 [[package]]
@@ -7357,6 +7429,15 @@ checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if 1.0.0",
  "once_cell",
+]
+
+[[package]]
+name = "threadpool"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
+dependencies = [
+ "num_cpus",
 ]
 
 [[package]]
@@ -8051,7 +8132,7 @@ dependencies = [
  "itoa",
  "log",
  "unicode-width",
- "vte",
+ "vte 0.11.1",
 ]
 
 [[package]]
@@ -8059,6 +8140,17 @@ name = "vte"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5022b5fbf9407086c180e9557be968742d839e68346af7792b8592489732197"
+dependencies = [
+ "arrayvec 0.7.4",
+ "utf8parse",
+ "vte_generate_state_changes",
+]
+
+[[package]]
+name = "vte"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40eb22ae96f050e0c0d6f7ce43feeae26c348fc4dea56928ca81537cfaa6188b"
 dependencies = [
  "arrayvec 0.7.4",
  "utf8parse",
