@@ -26,6 +26,7 @@ impl u16 {
     ///     let val2 = 256_u16.try_as_u8();
     ///     assert(val == None);
     /// }
+    /// ```
     pub fn try_as_u8(self) -> Option<u8> {
         if self <= u8::max().as_u16() {
             Some(asm(input: self) {

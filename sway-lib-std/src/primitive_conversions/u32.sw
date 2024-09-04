@@ -26,6 +26,7 @@ impl u32 {
     ///     let val2 = 256_u32.try_as_u8();
     ///     assert(val == None);
     /// }
+    /// ```
     pub fn try_as_u8(self) -> Option<u8> {
         if self <= u8::max().as_u32() {
             Some(asm(input: self) {
@@ -57,6 +58,7 @@ impl u32 {
     ///     let val2 = 65_536_u32.try_as_u16();
     ///     assert(val == None);
     /// }
+    /// ```
     pub fn try_as_u16(self) -> Option<u16> {
         if self <= u16::max().as_u32() {
             Some(asm(input: self) {
