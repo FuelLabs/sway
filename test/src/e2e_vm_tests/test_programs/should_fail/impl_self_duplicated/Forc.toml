@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+implicit-std = false
+license = "Apache-2.0"
+name = "impl_self_duplicated"
+
+[dependencies]
+core = { path = "../../../../../../sway-lib-core" }

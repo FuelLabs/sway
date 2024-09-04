@@ -471,7 +471,10 @@ impl<'a> UnifyCheck<'a> {
                             parent: _,
                             is_from_type_parameter: _,
                         },
-                    ) => rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
+                    ) => {
+                        matches!(self.mode, NonGenericConstraintSubset)
+                            || rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines))
+                    }
 
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
