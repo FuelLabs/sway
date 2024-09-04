@@ -459,6 +459,7 @@ impl ty::TyModule {
             }
         }
 
+        #[allow(clippy::arc_with_non_send_sync)]
         let ty_module = Arc::new(Self {
             span: span.clone(),
             submodules,
