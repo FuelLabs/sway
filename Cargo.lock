@@ -6911,6 +6911,7 @@ dependencies = [
  "in_definite",
  "num-traits",
  "smallvec",
+ "strsim 0.11.1",
  "sway-types",
  "thiserror",
  "uwuify",

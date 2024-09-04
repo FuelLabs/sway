@@ -653,7 +653,12 @@ impl Bytes {
         (left_bytes, right_bytes)
     }
 
-    /// Moves all elements of `other` into `self`, leaving `other` empty.
+    /// Copies all elements of `other` into `self`
+    ///
+    /// # Additional Information
+    ///
+    /// NOTE: Appending `self` to itself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
+    /// This function differs from the rust `append` function in that it does not clear the `other` `Bytes`
     ///
     /// # Arguments
     ///
@@ -696,7 +701,6 @@ impl Bytes {
         // optimization for when starting with empty bytes and appending to it
         if self.len == 0 {
             self = other;
-            other.clear();
             return;
         };
 
@@ -717,9 +721,6 @@ impl Bytes {
 
         // set capacity and length
         self.len = both_len;
-
-        // clear `other`
-        other.clear();
     }
 }
 
