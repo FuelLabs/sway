@@ -11,7 +11,6 @@ use ::inputs::{
     input_coin_owner,
     input_count,
     input_message_recipient,
-    input_message_sender,
     input_type,
 };
 use ::revert::revert;
@@ -163,7 +162,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
                 input_coin_owner(iter)
             },
             Some(Input::Message) => {
-                input_message_sender(iter)
+                input_message_recipient(iter)
             },
             _ => {
                 // type != InputCoin or InputMessage, continue looping.
