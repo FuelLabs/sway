@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-7EB1B3610F4F66A3"
+
+[[package]]
+name = "impl_self_duplicated"
+source = "member"
+dependencies = ["core"]
