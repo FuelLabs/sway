@@ -525,7 +525,7 @@ mod tx {
             predicate_coin_amount as usize * subsections.len()
         );
 
-        // Upload each sub section in a seperate transaction and include the predicate with the transaction.
+        // Upload each sub section in a separate transaction and include the predicate with the transaction.
         for subsection in subsections {
             let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
                 subsection,
