@@ -61,7 +61,7 @@ impl Add for u32 {
         let res = __add(self, other);
         // integer overflow
         if __gt(res, Self::max()) {
-            if panic_on_overflow_enabled() {
+            if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -79,7 +79,7 @@ impl Add for u16 {
     fn add(self, other: Self) -> Self {
         let res = __add(self, other);
         if __gt(res, Self::max()) {
-            if panic_on_overflow_enabled() {
+            if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -105,7 +105,7 @@ impl Add for u8 {
             input: u64
         };
         if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_enabled() {
+            if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -250,7 +250,7 @@ impl Multiply for u32 {
         // constants (like Self::max() below) are also automatically promoted to u64
         let res = __mul(self, other);
         if __gt(res, Self::max()) {
-            if panic_on_overflow_enabled() {
+            if panic_on_overflow_is_enabled() {
                 // integer overflow
                 __revert(0)
             } else {
@@ -269,7 +269,7 @@ impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
         let res = __mul(self, other);
         if __gt(res, Self::max()) {
-            if panic_on_overflow_enabled() {
+            if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
                 __mod(res, __add(Self::max(), 1))
@@ -293,7 +293,7 @@ impl Multiply for u8 {
             input: u64
         };
         if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_enabled() {
+            if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -1305,7 +1305,7 @@ fn flags() -> u64 {
     }
 }
 
-fn panic_on_overflow_enabled() -> bool {
+fn panic_on_overflow_is_enabled() -> bool {
     __eq(
         __and(
             flags(),
