@@ -2703,7 +2703,7 @@ fn check_asm_block_validity(
                     &CallPath {
                         prefixes: vec![],
                         suffix: sway_types::BaseIdent::new(span.clone()),
-                        callpath_type: CallPathType::Resolved,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     None,
                 );

@@ -1607,7 +1607,7 @@ fn handle_supertraits(
                     // we allow ABIs as superABIs now
                 }
                 _ => {
-		    //println!("impl_trait");
+//		    println!("impl_trait");
                     handler.emit_err(CompileError::TraitNotFound {
                         name: supertrait.name.to_string(),
                         span: supertrait.name.span(),

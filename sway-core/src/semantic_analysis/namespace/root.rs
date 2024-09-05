@@ -988,7 +988,9 @@ impl Root {
 		    // The root module in that package may have a different name than the name we
 		    // use to refer to the package, so replace it.
 		    let mut new_mod_path = vec!(ext_root.current_package_name().clone());
-		    new_mod_path.clone_from_slice(&mod_path[1..]);
+		    for id in mod_path.iter().skip(1) {
+			new_mod_path.push(id.clone());
+		    }
 		    ext_root.resolve_symbol_and_mod_path_inner(handler, engines, &new_mod_path, symbol, self_type)
 		},
 		None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path)))

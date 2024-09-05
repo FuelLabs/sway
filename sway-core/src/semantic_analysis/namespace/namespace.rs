@@ -306,7 +306,7 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
 	let full_path = call_path.to_fullpath(engines, &self);
-//	let problem = call_path.suffix.as_str() == "AbiEncode";
+//	let problem = true; //call_path.suffix.as_str() == "Ord";
 //	if problem {
 //	    dbg!(call_path);
 //	    dbg!(&full_path);
