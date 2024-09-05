@@ -1,0 +1,13 @@
+[[package]]
+name = "contract_ret_intrinsic"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-793618C6A3B48D0B"
+
+[[package]]
+name = "std"
+source = "path+from-root-793618C6A3B48D0B"
+dependencies = ["core"]

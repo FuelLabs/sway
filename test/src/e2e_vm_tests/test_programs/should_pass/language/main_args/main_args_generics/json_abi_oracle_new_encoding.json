@@ -52,7 +52,7 @@
         }
       ],
       "metadataTypeId": 0,
-      "type": "(struct TwoGenerics<u64,u32>, struct OneGeneric<u8>)"
+      "type": "(_, _)"
     },
     {
       "metadataTypeId": 1,
