@@ -20,9 +20,8 @@ use ::tx::{
 use core::ops::Eq;
 use ::revert::revert;
 
-pub const GTF_INPUT_TYPE = 0x200;
-
 // GTF Opcode const selectors
+pub const GTF_INPUT_TYPE = 0x200;
 // pub const GTF_INPUT_COIN_TX_ID = 0x201;
 // pub const GTF_INPUT_COIN_OUTPUT_INDEX = 0x202;
 pub const GTF_INPUT_COIN_OWNER = 0x203;
