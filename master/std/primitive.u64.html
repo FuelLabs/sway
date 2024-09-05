@@ -53,7 +53,52 @@ fn foo() {
     assert(z == U128::from(18446744073709551615, 1));
 }
 </code></pre>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u64</h3></div></summary><div class="impl-items"><div id="method.try_as_u8" class="method trait-impl"><a href="#method.try_as_u8" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u8">try_as_u8</a>(self) -&gt; Option&lt;u8&gt;</h4></div><div id="method.try_as_u16" class="method trait-impl"><a href="#method.try_as_u16" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u16">try_as_u16</a>(self) -&gt; Option&lt;u16&gt;</h4></div><div id="method.try_as_u32" class="method trait-impl"><a href="#method.try_as_u32" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u32">try_as_u32</a>(self) -&gt; Option&lt;u32&gt;</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u64</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.to_le_bytes" class="method trait-impl"><a href="#method.to_le_bytes" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.to_le_bytes">to_le_bytes</a>(self) -&gt; [u8; 8]</h4></div></summary><div class="docblock"><p>Converts the <code>u64</code> to a sequence of little-endian bytes.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u64</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.try_as_u8" class="method trait-impl"><a href="#method.try_as_u8" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u8">try_as_u8</a>(self) -&gt; Option&lt;u8&gt;</h4></div></summary><div class="docblock"><p>Attempts to convert the u64 value into a u8 value.</p>
+<h1>Additional Information</h1>
+<p>The max value a u8 can represent is 255.</p>
+<h1>Returns</h1>
+<p>[Option<!-- raw HTML omitted -->] - <code>Some(u8)</code> if the u64 is less than or equal to the max u8 value. Else <code>None</code>.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let val = 255_u64.try_as_u8();
+    assert(val == Some(255_u8));
+
+    // Conversion fails as value is above the max a u8 can represent.
+    let val2 = 256_u64.try_as_u8();
+    assert(val == None);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.try_as_u16" class="method trait-impl"><a href="#method.try_as_u16" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u16">try_as_u16</a>(self) -&gt; Option&lt;u16&gt;</h4></div></summary><div class="docblock"><p>Attempts to convert the u64 value into a u16 value.</p>
+<h1>Additional Information</h1>
+<p>The max value a u16 can represent is 65_535.</p>
+<h1>Returns</h1>
+<p>[Option<!-- raw HTML omitted -->] - <code>Some(u16)</code> if the u64 is less than or equal to the max u16 value. Else <code>None</code>.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let val = 65_535_u64.try_as_u16();
+    assert(val == Some(65_535_u16));
+
+    // Conversion fails as value is above the max a u16 can represent.
+    let val2 = 65_536_u64.try_as_u16();
+    assert(val == None);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.try_as_u32" class="method trait-impl"><a href="#method.try_as_u32" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u32">try_as_u32</a>(self) -&gt; Option&lt;u32&gt;</h4></div></summary><div class="docblock"><p>Attempts to convert the u64 value into a u32 value.</p>
+<h1>Additional Information</h1>
+<p>The max value a u32 can represent is 4_294_967_295.</p>
+<h1>Returns</h1>
+<p>[Option<!-- raw HTML omitted -->] - <code>Some(u32)</code> if the u64 is less than or equal to the max u32 value. Else <code>None</code>.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let val = 4_294_967_295_u64.try_as_u32();
+    assert(val == Some(4_294_967_295_u32));
+
+    // Conversion fails as value is above the max a u32 can represent.
+    let val2 = 4_294_967_296_u64.try_as_u32();
+    assert(val == None);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u64</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.to_le_bytes" class="method trait-impl"><a href="#method.to_le_bytes" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.to_le_bytes">to_le_bytes</a>(self) -&gt; [u8; 8]</h4></div></summary><div class="docblock"><p>Converts the <code>u64</code> to a sequence of little-endian bytes.</p>
 <h1>Returns</h1>
 <ul>
 <li>[[u8; 8]] - An array of 8 <code>u8</code> bytes that compose the <code>u64</code>.</li>

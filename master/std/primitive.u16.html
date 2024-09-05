@@ -9,7 +9,22 @@
     assert(zero_u16.is_zero());
 }
 </code></pre>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u16</h3></div></summary><div class="impl-items"><div id="method.try_as_u8" class="method trait-impl"><a href="#method.try_as_u8" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u8">try_as_u8</a>(self) -&gt; Option&lt;u8&gt;</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u16</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.to_le_bytes" class="method trait-impl"><a href="#method.to_le_bytes" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.to_le_bytes">to_le_bytes</a>(self) -&gt; [u8; 2]</h4></div></summary><div class="docblock"><p>Converts the <code>u16</code> to a sequence of little-endian bytes.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u16</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.try_as_u8" class="method trait-impl"><a href="#method.try_as_u8" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.try_as_u8">try_as_u8</a>(self) -&gt; Option&lt;u8&gt;</h4></div></summary><div class="docblock"><p>Attempts to convert the u16 value into a u8 value.</p>
+<h1>Additional Information</h1>
+<p>The max value a u8 can represent is 255.</p>
+<h1>Returns</h1>
+<p>[Option<!-- raw HTML omitted -->] - <code>Some(u8)</code> if the u16 is less than or equal to the max u8 value. Else <code>None</code>.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let val = 255_u16.try_as_u8();
+    assert(val == Some(255_u8));
+
+    // Conversion fails as value is above the max a u8 can represent.
+    let val2 = 256_u16.try_as_u8();
+    assert(val == None);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-r#Self" class="impl has-srclink"><a href="#impl-r#Self" class="anchor"></a><h3 class="code-header in-band">impl u16</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.to_le_bytes" class="method trait-impl"><a href="#method.to_le_bytes" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.to_le_bytes">to_le_bytes</a>(self) -&gt; [u8; 2]</h4></div></summary><div class="docblock"><p>Converts the <code>u16</code> to a sequence of little-endian bytes.</p>
 <h1>Returns</h1>
 <ul>
 <li>[[u8; 2]] - An array of 2 <code>u8</code> bytes that compose the <code>u16</code>.</li>
