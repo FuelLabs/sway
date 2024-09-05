@@ -188,4 +188,4 @@ category = "fail"
 #check: $()error
 #check: $()This path must return a value of type "u64" from function "items_2_trait_function", but it does not.
 
-#check: $()Aborting due to 40 errors.
+#check: $()Aborting due to 42 errors.
