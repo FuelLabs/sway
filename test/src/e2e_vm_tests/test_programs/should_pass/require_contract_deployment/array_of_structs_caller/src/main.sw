@@ -8,8 +8,13 @@ const CONTRACT_ID = 0x14ed3cd06c2947248f69d54bfa681fe40d26267be84df7e19e253622b7
 #[cfg(experimental_new_encoding = true)]
 const CONTRACT_ID = 0xf9f1fec713b977865880637fc24e58cda9e69f6e711ed8e5efe7de9ce51c88ec; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
 
+fn get_address() -> Option<std::address::Address> {
+    Some(CONTRACT_ID.into())
+}
+
 fn main() -> u64 {
-    let addr = abi(TestContract, CONTRACT_ID);
+    // Test address being a complex expression
+    let addr = abi(TestContract, get_address().unwrap().into());
 
     let input = [Wrapper {
         id: Id {
