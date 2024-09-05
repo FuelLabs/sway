@@ -18,6 +18,7 @@ pub const GTF_SCRIPT_SCRIPT_DATA = 0x00A;
 pub const GTF_SCRIPT_INPUT_AT_INDEX = 0x00B;
 pub const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00C;
 pub const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00D;
+
 pub const GTF_TX_LENGTH = 0x00E;
 
 // pub const GTF_CREATE_BYTECODE_WITNESS_INDEX = 0x101;
@@ -46,10 +47,35 @@ pub enum Transaction {
     Script: (),
     /// A contract deployment transaction.
     Create: (),
+    /// The transaction is created by the block producer and is not signed.
+    ///
+    /// # Additional Information
+    ///
+    /// NOTE: This should never be valid in execution but it provided for congruency to the FuelVM specs.
+    Mint: (),
+    /// The Upgrade transaction allows upgrading either consensus parameters or state transition function used by the network to produce future blocks.
+    Upgrade: (),
+    ///The Upload transaction allows the huge bytecode to be divided into subsections and uploaded slowly to the chain.
+    Upload: (),
+    /// The Blob inserts a simple binary blob in the chain. It's raw immutable data that can be cheaply loaded by the VM and used as instructions or just data.
+    Blob: (),
+}
+
+impl core::ops::Eq for Transaction {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Transaction::Script, Transaction::Script) => true,
+            (Transaction::Create, Transaction::Create) => true,
+            (Transaction::Mint, Transaction::Mint) => true,
+            (Transaction::Upgrade, Transaction::Upgrade) => true,
+            (Transaction::Upload, Transaction::Upload) => true,
+            (Transaction::Blob, Transaction::Blob) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Get the type of the current transaction.
-/// Either `Transaction::Script` or `Transaction::Create`.
 ///
 /// # Returns
 ///
@@ -73,6 +99,18 @@ pub enum Transaction {
 ///         Transaction::Create => {
 ///             log("Contract deployment transaction");
 ///         },
+///         Transaction::Mint => {
+///             log("This should never happen");
+///         },
+///         Transaction::Upgrade => {
+///             log("Upgrade transaction");
+///         },
+///         Transaction::Upload => {
+///             log("Upload transaction");
+///         },
+///         Transaction::Blob => {
+///             log("Blob transaction");
+///         },
 ///     }
 /// }
 /// ```
@@ -80,6 +118,9 @@ pub fn tx_type() -> Transaction {
     match __gtf::<u8>(0, GTF_TYPE) {
         0u8 => Transaction::Script,
         1u8 => Transaction::Create,
+        3u8 => Transaction::Upgrade,
+        4u8 => Transaction::Upload,
+        5u8 => Transaction::Blob,
         _ => revert(0),
     }
 }
@@ -233,7 +274,7 @@ pub fn tx_max_fee() -> Option<u64> {
 pub fn tx_script_length() -> Option<u64> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH)),
-        Transaction::Create => None,
+        _ => None,
     }
 }
 
@@ -256,7 +297,7 @@ pub fn tx_script_length() -> Option<u64> {
 pub fn tx_script_data_length() -> Option<u64> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH)),
-        Transaction::Create => None,
+        _ => None,
     }
 }
 
@@ -280,6 +321,7 @@ pub fn tx_witnesses_count() -> u64 {
     match tx_type() {
         Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
         Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
+        _ => revert(0),
     }
 }
 
@@ -311,6 +353,7 @@ fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
         Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
+        _ => None,
     }
 }
 
