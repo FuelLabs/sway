@@ -16,6 +16,10 @@ const TX_OUTPUT_PREDICATE_BYTECODE_PATH: &str =
 const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str = "test_projects/tx_fields/out/release/tx_fields.bin";
 const TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH: &str =
     "test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin";
+const TX_TYPE_PREDICATE_BYTECODE_PATH: &str =
+    "test_artifacts/tx_type_predicate/out/release/tx_type_predicate.bin";
+
+use crate::tx_fields::Transaction as SwayTransaction;
 
 abigen!(
     Contract(
@@ -29,6 +33,10 @@ abigen!(
     Predicate(
         name = "TestOutputPredicate",
         abi = "test_artifacts/tx_output_predicate/out/release/tx_output_predicate-abi.json"
+    ),
+    Predicate(
+        name = "TestTxTypePredicate",
+        abi = "test_artifacts/tx_type_predicate/out/release/tx_type_predicate-abi.json"
     )
 );
 
@@ -455,6 +463,100 @@ mod tx {
 
         assert_eq!(receipts[1].data().unwrap(), byte_array);
     }
+
+    #[tokio::test]
+    async fn can_get_tx_upload() {
+        let mut wallet = WalletUnlocked::new_random(None);
+
+        let num_coins = 100;
+        let coins = setup_single_asset_coins(
+            wallet.address(),
+            AssetId::zeroed(),
+            num_coins,
+            DEFAULT_COIN_AMOUNT,
+        );
+
+        let provider = setup_test_provider(coins, vec![], None, None)
+            .await
+            .unwrap();
+        wallet.set_provider(provider.clone());
+
+        // Get the predicate
+        let predicate_data = TestTxTypePredicateEncoder::default()
+            .encode_data(SwayTransaction::Upload)
+            .unwrap();
+        let predicate: Predicate = Predicate::load_from(TX_TYPE_PREDICATE_BYTECODE_PATH)
+            .unwrap()
+            .with_provider(provider.clone())
+            .with_data(predicate_data);
+        let predicate_coin_amount = 100;
+
+        // Predicate has no funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(predicate_balance, 0);
+
+        let bytecode = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
+        let subsection_size = 65536;
+        let subsections = UploadSubsection::split_bytecode(&bytecode, subsection_size).unwrap();
+
+        for _ in subsections.clone() {
+            // Transfer enough funds to predicate for each subsection
+            wallet
+                .transfer(
+                    predicate.address(),
+                    predicate_coin_amount,
+                    *provider.base_asset_id(),
+                    TxPolicies::default(),
+                )
+                .await
+                .unwrap();
+        }
+
+        // Predicate has funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(
+            predicate_balance as usize,
+            predicate_coin_amount as usize * subsections.len()
+        );
+
+        for subsection in subsections {
+            let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
+                subsection,
+                TxPolicies::default(),
+            );
+
+            // Inputs
+            let predicate_input = predicate
+                .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                .await
+                .unwrap();
+
+            // Outputs
+            let predicate_output = wallet.get_asset_outputs_for_amount(
+                &wallet.address(),
+                *provider.base_asset_id(),
+                1,
+            );
+
+            builder.inputs.push(predicate_input.get(0).unwrap().clone());
+            builder
+                .outputs
+                .push(predicate_output.get(0).unwrap().clone());
+
+            wallet.add_witnesses(&mut builder).unwrap();
+            wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+
+            let tx = builder.build(&provider).await.unwrap();
+
+            provider.send_transaction(tx).await.unwrap();
+        }
+    }
 }
 
 mod inputs {
@@ -720,7 +822,7 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-            
+
                 assert_eq!(none_result.value, None);
             }
 
@@ -743,7 +845,7 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-            
+
                 assert_eq!(none_result.value, None);
             }
 
@@ -779,7 +881,10 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data(), Some(&[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3][..]));
+                assert_eq!(
+                    receipts[1].data(),
+                    Some(&[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3][..])
+                );
 
                 // Assert none returned when transaction type is not a message
                 let none_result = contract_instance
@@ -788,7 +893,7 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-                        
+
                 assert_eq!(none_result.value, None);
             }
 
@@ -825,7 +930,10 @@ mod inputs {
                     .unwrap();
 
                 let len = predicate_bytecode.len() as u64;
-                assert_eq!(receipts[1].data().unwrap()[8..16], *len.to_be_bytes().as_slice());
+                assert_eq!(
+                    receipts[1].data().unwrap()[8..16],
+                    *len.to_be_bytes().as_slice()
+                );
 
                 // Assert none returned when index is invalid
                 let none_result = contract_instance
@@ -834,7 +942,7 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-                                    
+
                 assert_eq!(none_result.value, None);
             }
 
@@ -869,7 +977,10 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data().unwrap()[8..16], *0u64.to_le_bytes().as_slice());
+                assert_eq!(
+                    receipts[1].data().unwrap()[8..16],
+                    *0u64.to_le_bytes().as_slice()
+                );
 
                 // Assert none returned when transaction type is not a message
                 let none_result = contract_instance
@@ -878,7 +989,7 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-                                                
+
                 assert_eq!(none_result.value, None);
             }
 
@@ -924,7 +1035,7 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-                                    
+
                 assert_eq!(none_result.value, false);
             }
 
@@ -972,7 +1083,11 @@ mod inputs {
 
                 let mut builder = contract_instance
                     .methods()
-                    .get_input_message_data(3, (MESSAGE_DATA.len() + 1) as u64, Bytes(MESSAGE_DATA.into()))
+                    .get_input_message_data(
+                        3,
+                        (MESSAGE_DATA.len() + 1) as u64,
+                        Bytes(MESSAGE_DATA.into()),
+                    )
                     .transaction_builder()
                     .await
                     .unwrap();
@@ -1039,7 +1154,7 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-                                    
+
                 assert_eq!(none_result.value, false);
             }
         }
