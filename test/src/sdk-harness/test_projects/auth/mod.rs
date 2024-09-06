@@ -135,6 +135,119 @@ async fn input_message_msg_sender_from_contract() {
     assert!(response.value);
 }
 
+#[tokio::test]
+async fn caller_addresses_from_contract() {
+    let wallets = launch_custom_provider_and_get_wallets(WalletsConfig::new(Some(4), None, None), None, None).await.unwrap();
+
+    let wallet0 = wallets[0].clone();
+    let wallet1 = wallets[1].clone();
+    let wallet2 = wallets[2].clone();
+    let wallet3 = wallets[3].clone();
+
+    let id_1 = Contract::load_from(
+        "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
+        LoadConfiguration::default(),
+    )
+    .unwrap()
+    .deploy(&wallet0, TxPolicies::default())
+    .await
+    .unwrap();
+
+    let auth_instance = AuthContract::new(id_1.clone(), wallet0.clone());
+
+    let result = auth_instance
+        .methods()
+        .returns_caller_addresses()
+        .call()
+        .await
+        .unwrap();
+
+    assert!(result.value == vec![Address::from(*wallet0.address().hash())]);
+
+    // Start building transactions
+    let call_handler = auth_instance
+        .methods()
+        .returns_caller_addresses();
+    let mut tb = call_handler.transaction_builder().await.unwrap();
+
+    // Inputs
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &Bech32Address {
+                    hrp: "1".to_string(),
+                    hash: Default::default(),
+                },
+                wallet0.address(),
+                DEFAULT_COIN_AMOUNT,
+                10.into(),
+                vec![],
+            )
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &Bech32Address {
+                    hrp: "2".to_string(),
+                    hash: Default::default(),
+                },
+                wallet1.address(),
+                DEFAULT_COIN_AMOUNT,
+                10.into(),
+                vec![],
+            )
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &Bech32Address {
+                    hrp: "3".to_string(),
+                    hash: Default::default(),
+                },
+                wallet2.address(),
+                DEFAULT_COIN_AMOUNT,
+                10.into(),
+                vec![],
+            )
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &Bech32Address {
+                    hrp: "4".to_string(),
+                    hash: Default::default(),
+                },
+                wallet3.address(),
+                DEFAULT_COIN_AMOUNT,
+                10.into(),
+                vec![],
+            )
+        ),
+    });
+
+    // Build transaction
+    tb.add_signer(wallet0.clone()).unwrap();
+    tb.add_signer(wallet1.clone()).unwrap();
+    tb.add_signer(wallet2.clone()).unwrap();
+    tb.add_signer(wallet3.clone()).unwrap();
+    
+    let provider = wallet0.provider().unwrap();
+    let tx = tb.build(provider.clone()).await.unwrap();
+
+    // Send and verify
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let result = call_handler.get_response_from(tx_status).unwrap();
+
+    assert!(result.value.contains(&Address::from(*wallet0.address().hash())));
+    assert!(result.value.contains(&Address::from(*wallet1.address().hash())));
+    assert!(result.value.contains(&Address::from(*wallet2.address().hash())));
+    assert!(result.value.contains(&Address::from(*wallet3.address().hash())));
+}
+
 async fn get_contracts() -> (
     AuthContract<WalletUnlocked>,
     ContractId,
@@ -196,7 +309,7 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0x188fb1615bacd24d52b1339fcfeed1ecf555d0afde44a087eebf98381c64db1b";
+        "0x07308f98873ef84e4edad21939ca6a4de142764e24aba6b7ebf24c21a1b05dbf";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -322,7 +435,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0x188fb1615bacd24d52b1339fcfeed1ecf555d0afde44a087eebf98381c64db1b";
+        "0x07308f98873ef84e4edad21939ca6a4de142764e24aba6b7ebf24c21a1b05dbf";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);

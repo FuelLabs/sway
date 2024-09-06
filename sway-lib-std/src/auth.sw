@@ -15,6 +15,7 @@ use ::inputs::{
     input_type,
 };
 use ::revert::revert;
+use ::vec::Vec;
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
@@ -197,6 +198,60 @@ pub fn caller_address() -> Result<Address, AuthError> {
         Some(address) => Ok(address),
         None => Err(AuthError::CallerIsInternal),
     }
+}
+
+/// Get the owners of the inputs (of type `Input::Coin` or `Input::Message`) to a
+/// `TransactionScript`.
+///
+/// # Additional Information
+///
+/// The list is not deduplicated, so there may be repeated addresses in the returned vector.
+///
+/// # Returns
+///
+/// * [Vec<Address>] - The addresses of the owners of the inputs.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::auth::caller_addresses;
+///
+/// fn foo(some_address: Address) {
+///     let addresses = caller_addresses();
+///     
+///     assert(addresses.get(0).unwrap() == some_address);
+/// }
+/// ```
+pub fn caller_addresses() -> Vec<Address> {
+    let inputs = input_count().as_u64();
+    let mut addresses = Vec::new();
+    let mut iter = 0;
+
+    while iter < inputs {
+        let type_of_input = input_type(iter);
+        match type_of_input {
+            Some(Input::Coin) | Some(Input::Message) => {
+                // If input type is Coin or Message, get the owner address.
+                let owner_of_input = match type_of_input {
+                    Some(Input::Coin) => input_coin_owner(iter),
+                    Some(Input::Message) => input_message_sender(iter),
+                    _ => None,  // Shouldn't reach this case due to outer match.
+                };
+
+                // If we successfully retrieved an owner address, add it to the vector.
+                if let Some(address) = owner_of_input {
+                    addresses.push(address);
+                }
+            },
+            _ => {
+                // Input type is neither Coin nor Message, continue looping.
+            }
+        }
+
+        iter += 1;
+    }
+
+    addresses  // Return the collected addresses.
 }
 
 /// Get the current predicate's address when called in an internal context.
