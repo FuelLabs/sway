@@ -5,9 +5,4 @@ source = "path+from-root-D73E65B1F4E48513"
 [[package]]
 name = "function_return_type_unification"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-D73E65B1F4E48513"
 dependencies = ["core"]

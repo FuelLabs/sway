@@ -95,7 +95,13 @@ pub struct TypeCheckContext<'a> {
     /// Indicates when semantic analysis is type checking storage declaration.
     storage_declaration: bool,
 
+    // Indicates when we are collecting unifications.
     collecting_unifications: bool,
+
+    // Indicates when we are doing the first pass of the code block type checking.
+    // In some nested places of the first pass we want to disable the first pass optimizations
+    // To disable those optimizations we can set this to false.
+    code_block_first_pass: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -122,6 +128,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: false,
             experimental,
             collecting_unifications: false,
+            code_block_first_pass: false,
         }
     }
 
@@ -162,6 +169,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: false,
             experimental,
             collecting_unifications: false,
+            code_block_first_pass: false,
         }
     }
 
@@ -191,6 +199,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
+            code_block_first_pass: self.code_block_first_pass,
         }
     }
 
@@ -217,6 +226,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
+            code_block_first_pass: self.code_block_first_pass,
         };
         with_scoped_ctx(ctx)
     }
@@ -244,6 +254,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
+            code_block_first_pass: self.code_block_first_pass,
         };
         Ok((with_scoped_ctx(ctx)?, namespace))
     }
@@ -362,6 +373,13 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
+    pub(crate) fn with_code_block_first_pass(self, value: bool) -> Self {
+        Self {
+            code_block_first_pass: value,
+            ..self
+        }
+    }
+
     /// Map this `TypeCheckContext` instance to a new one with
     /// `disallow_functions` set to `true`.
     pub(crate) fn disallow_functions(self) -> Self {
@@ -435,6 +453,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn collecting_unifications(&self) -> bool {
         self.collecting_unifications
+    }
+
+    pub(crate) fn code_block_first_pass(&self) -> bool {
+        self.code_block_first_pass
     }
 
     // Provide some convenience functions around the inner context.
@@ -1439,11 +1461,7 @@ impl<'a> TypeCheckContext<'a> {
             src_mod
                 .current_items()
                 .implemented_traits
-                .filter_by_type_item_import(
-                    type_id,
-                    engines,
-                    self.collecting_unifications().into(),
-                ),
+                .filter_by_type_item_import(type_id, engines, self.code_block_first_pass().into()),
             engines,
         );
 
@@ -1739,12 +1757,12 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
-        let collecting_unifications = self.collecting_unifications();
+        let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
             .implemented_traits
-            .insert_for_type(engines, type_id, collecting_unifications.into());
+            .insert_for_type(engines, type_id, code_block_first_pass.into());
     }
 
     pub fn check_type_impls_traits(
@@ -1754,7 +1772,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
         let engines = self.engines;
-        let collecting_unifications = self.collecting_unifications();
+        let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
@@ -1766,7 +1784,7 @@ impl<'a> TypeCheckContext<'a> {
                 &Span::dummy(),
                 engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
-                collecting_unifications.into(),
+                code_block_first_pass.into(),
             )
             .is_ok()
     }

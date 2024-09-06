@@ -1,8 +1,8 @@
 [project]
-name = "function_return_type_unification"
 authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "main.sw"
 license = "Apache-2.0"
+name = "match_expressions_unreachable_or"
+entry = "main.sw"
 
 [dependencies]
 core = { path = "../../../../../../../sway-lib-core" }

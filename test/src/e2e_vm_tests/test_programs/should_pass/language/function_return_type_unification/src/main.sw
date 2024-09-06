@@ -22,8 +22,7 @@ where T: Build,
     T::build()
 }
 
-fn main() -> bool {
-    let _:u32 = produce();
-
-    true
+fn main() -> u32 {
+    let x: u32 = produce();
+    x
 }
