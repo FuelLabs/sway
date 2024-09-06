@@ -1643,10 +1643,14 @@ impl ty::TyExpression {
         // type check the address and make sure it is
         let err_span = address.span().clone();
         let address_expr = {
+            // We want to type check the address expression as we do in the second pass, otherwise we get
+            // mismatched types while comparing TypeInfo::ContractCaller which is the return type of
+            // TyExpressionVariant::AbiCast.
             let ctx = ctx
                 .by_ref()
                 .with_help_text("An address that is being ABI cast must be of type b256")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None));
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None))
+                .with_code_block_first_pass(false);
             ty::TyExpression::type_check(handler, ctx, address)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, err_span, engines))
         };
