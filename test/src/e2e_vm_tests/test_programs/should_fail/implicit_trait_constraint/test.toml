@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()bar()
+# nextln: $()Trait "T1" is not implemented for type "T".
