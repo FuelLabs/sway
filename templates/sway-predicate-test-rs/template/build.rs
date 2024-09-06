@@ -1,4 +1,4 @@
-//! This build script is used to compile the sway project using the `forc` prior to running tests.
+//! This build script is used to compile the sway project using `forc` prior to running tests.
 
 use std::process::Command;
 
