@@ -672,14 +672,14 @@ pub(crate) fn type_check_method_application(
                         );
                         method.subst(
                             &type_subst,
-                            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
                         );
                     }
                 }
             }
         }
 
-        if !ctx.collecting_unifications() {
+        if !ctx.code_block_first_pass() {
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the
             // constraint with new decl ids based on the new type.
@@ -702,7 +702,7 @@ pub(crate) fn type_check_method_application(
         method_return_type_id = method.return_type.type_id;
         decl_engine.replace(*fn_ref.id(), method.clone());
 
-        if !ctx.collecting_unifications()
+        if !ctx.code_block_first_pass()
             && method_sig.is_concrete(engines)
             && method.is_type_check_finalized
             && !method.is_trait_method_dummy
