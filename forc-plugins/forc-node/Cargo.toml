@@ -1,0 +1,19 @@
+[package]
+name = "forc-node"
+version = "0.63.1"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies] 
+anyhow = "1"
+clap = { version = "4.5.4", features = ["derive", "env"] }
+forc-util = { version = "0.63.1", path = "../../forc-util" }
+forc-tracing = { version = "0.63.1", path = "../../forc-tracing" }
+fuel-core-bin = { version = "0.34", features = ["p2p", "relayer", "rocksdb"] }
+humantime = "2.1.0"
+include_dir = "0.7.4"
+tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
+dialoguer = "0.11.0"
