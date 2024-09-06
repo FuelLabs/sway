@@ -1,0 +1,4 @@
+category = "run"
+expected_result = { action = "return_data", value = "0700000000000000 000000000000001f 000000000000003f" }
+expected_result_new_encoding = { action = "return_data", value = "07 0000001f 000000000000003f" }
+validate_abi = false
