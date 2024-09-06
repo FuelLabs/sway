@@ -1,5 +1,5 @@
 [project]
-name = "function_return_type_unification"
+name = "type_inference_propagation_of_type_constraints"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"

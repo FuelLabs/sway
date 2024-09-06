@@ -108,7 +108,7 @@ async fn input_message_msg_sender_from_contract() {
     // Start building transactions
     let call_handler = instance
         .methods()
-        .returns_msg_sender_address(Address::from(*msg.sender.hash()));
+        .returns_msg_sender_address(Address::from(*msg.recipient.hash()));
     let mut tb = call_handler.transaction_builder().await.unwrap();
 
     // Inputs
