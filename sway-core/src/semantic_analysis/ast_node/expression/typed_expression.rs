@@ -1873,9 +1873,9 @@ impl ty::TyExpression {
         // if the element type is still unknown, and all elements are Never,
         // fallback to unit
         let initial_type = if matches!(initial_type, TypeInfo::Unknown) {
-            let is_all_elements_never = typed_contents.iter().all(|expr| {
-                matches!(&*engines.te().get(expr.return_type), TypeInfo::Never) 
-            });
+            let is_all_elements_never = typed_contents
+                .iter()
+                .all(|expr| matches!(&*engines.te().get(expr.return_type), TypeInfo::Never));
             if is_all_elements_never {
                 TypeInfo::Tuple(vec![])
             } else {
@@ -1910,7 +1910,7 @@ impl ty::TyExpression {
 
         // type_check_analyze unification will give the final error
         let handler = Handler::default();
-        expr.as_array_unify_elements(&handler, &ctx.engines);
+        expr.as_array_unify_elements(&handler, ctx.engines);
 
         Ok(expr)
     }

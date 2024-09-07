@@ -124,7 +124,7 @@ impl TypeCheckAnalysis for TyExpression {
                 }
             }
             TyExpressionVariant::Array { .. } => {
-                self.as_array_unify_elements(&handler, &ctx.engines);
+                self.as_array_unify_elements(handler, ctx.engines);
             }
             _ => {}
         }
@@ -502,7 +502,7 @@ impl TyExpression {
 
                 let h = Handler::default();
                 unify.unify(&h, element.return_type, *elem_type, &element.span, true);
-                
+
                 // unification error points to type that failed
                 // we want to report the element type instead
                 if h.has_errors() {
