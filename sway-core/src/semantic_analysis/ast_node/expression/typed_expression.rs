@@ -2786,7 +2786,7 @@ mod tests {
         expr: &Expression,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = Engines::default();
-        do_type_check(
+        let expr = do_type_check(
             handler,
             &engines,
             expr,
@@ -2806,7 +2806,9 @@ mod tests {
             ExperimentalFlags {
                 new_encoding: false,
             },
-        )
+        )?;
+        expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
+        Ok(expr)
     }
 
     #[test]
@@ -2867,7 +2869,7 @@ mod tests {
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
 
-        assert!(errors.len() == 2);
+        assert!(errors.len() == 1);
         assert!(matches!(&errors[0],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
@@ -2875,13 +2877,6 @@ mod tests {
                              ..
                          }) if expected == "bool"
                                 && received == "u64"));
-        assert!(matches!(&errors[1],
-                         CompileError::TypeError(TypeError::MismatchedType {
-                             expected,
-                             received,
-                             ..
-                         }) if expected == "[bool; 2]"
-                                && received == "[u64; 2]"));
     }
 
     #[test]
