@@ -507,8 +507,8 @@ impl TypeParameter {
                     ..
                 } = type_param;
 
-                let collecting_unifications = ctx.collecting_unifications();
-                if !collecting_unifications {
+                let code_block_first_pass = ctx.code_block_first_pass();
+                if !code_block_first_pass {
                     // Check to see if the trait constraints are satisfied.
                     match ctx
                         .namespace_mut()
@@ -522,7 +522,7 @@ impl TypeParameter {
                             access_span,
                             engines,
                             TryInsertingTraitImplOnFailure::Yes,
-                            collecting_unifications.into(),
+                            code_block_first_pass.into(),
                         ) {
                         Ok(res) => res,
                         Err(_) => continue,

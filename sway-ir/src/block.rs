@@ -369,14 +369,21 @@ impl Block {
         }
     }
 
-    /// Return whether this block is already terminated specifically by a Ret instruction.
-    pub fn is_terminated_by_ret_or_revert(&self, context: &Context) -> bool {
+    /// Return whether this block is already terminated by non-branching instructions,
+    /// means with instructions that cause either revert, or local or context returns.
+    /// Those instructions are: [InstOp::Ret], [FuelVmInstruction::Retd],
+    /// [FuelVmInstruction::JmpMem], and [FuelVmInstruction::Revert]).
+    pub fn is_terminated_by_return_or_revert(&self, context: &Context) -> bool {
         self.get_terminator(context).map_or(false, |i| {
             matches!(
                 i,
                 Instruction {
                     op: InstOp::Ret(..)
-                        | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem),
+                        | InstOp::FuelVm(
+                            FuelVmInstruction::Revert(..)
+                                | FuelVmInstruction::JmpMem
+                                | FuelVmInstruction::Retd { .. }
+                        ),
                     ..
                 }
             )

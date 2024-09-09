@@ -213,9 +213,14 @@ impl DomTree {
         false
     }
 
-    /// Get an iterator over the childre nodes
+    /// Get an iterator over the children nodes
     pub fn children(&self, node: Block) -> impl Iterator<Item = Block> + '_ {
         self.0[&node].children.iter().cloned()
+    }
+
+    /// Get i'th child of a given node
+    pub fn child(&self, node: Block, i: usize) -> Option<Block> {
+        self.0[&node].children.get(i).cloned()
     }
 }
 

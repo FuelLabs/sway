@@ -4,4 +4,10 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: u32
 # nextln: $()found:    str.
+# nextln: $()help: Function return type does not match up with local type annotation.
+
+# check: let _g: u32 = three_generics(true, "foo", 10);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u32
+# nextln: $()found:    str.
 # nextln: $()help: Variable declaration's type annotation does not match up with the assigned expression's type.

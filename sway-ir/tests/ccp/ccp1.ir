@@ -1,0 +1,29 @@
+// regex: ID=[[:alpha:]_0-9]+
+
+script {
+    // check: fn $ID($(param=$ID): u64) -> u64
+    fn test1(p: u64) -> u64 {
+        entry(p: u64):
+        // check: $(c=$ID) = const u64 100
+        v0 = const u64 100
+        // check: cmp eq $c $param
+        v2 = cmp eq v0 p
+        // check: $ID, $(true_block=$ID)(), $(false_block=$ID)()
+        cbr v2, get_0_block0(), get_0_block1()
+
+        // check: $true_block():
+        get_0_block0():
+        // check: $(one=$ID) = const u64 1
+        v5 = const u64 1
+        // check: add $one, $c
+        v6 = add v5, p
+        ret u64 v6
+
+        // check: $false_block():
+        get_0_block1():
+        v7 = const u64 111
+        // check: add $ID, $param
+        v8 = add v7, p
+        ret u64 v8
+    }
+}

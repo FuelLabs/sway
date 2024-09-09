@@ -162,7 +162,7 @@ impl TyDecl {
                     },
                 };
 
-                if !ctx.collecting_unifications() {
+                if !ctx.code_block_first_pass() {
                     let previous_symbol = ctx
                         .namespace()
                         .module(engines)

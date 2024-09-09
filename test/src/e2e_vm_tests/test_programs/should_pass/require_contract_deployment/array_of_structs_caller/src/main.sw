@@ -6,10 +6,15 @@ use std::hash::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x14ed3cd06c2947248f69d54bfa681fe40d26267be84df7e19e253622b7921bbe;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x81b89cefe7c81dcf74a1723930b6ab76e484a59eda14c937eb3dcc3853ddebe1; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
+const CONTRACT_ID = 0xbbda20fb25bdb4b18451501418b06324376c61cb984e75fcbc983fc0a047f85b; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
+
+fn get_address() -> Option<std::address::Address> {
+    Some(CONTRACT_ID.into())
+}
 
 fn main() -> u64 {
-    let addr = abi(TestContract, CONTRACT_ID);
+    // Test address being a complex expression
+    let addr = abi(TestContract, get_address().unwrap().into());
 
     let input = [Wrapper {
         id: Id {

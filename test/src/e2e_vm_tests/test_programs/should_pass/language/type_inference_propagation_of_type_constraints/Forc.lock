@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-9D1294DAC07670CA"
+
+[[package]]
+name = "type_inference_propagation_of_type_constraints"
+source = "member"
+dependencies = ["core"]

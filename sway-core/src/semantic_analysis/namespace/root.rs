@@ -378,7 +378,7 @@ impl Root {
                         .filter_by_type_item_import(
                             type_id,
                             engines,
-                            super::CollectingUnification::No,
+                            super::CodeBlockFirstPass::No,
                         ),
                     engines,
                 );
