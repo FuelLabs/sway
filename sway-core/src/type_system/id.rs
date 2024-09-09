@@ -519,7 +519,7 @@ impl TypeId {
         span: &Span,
         type_param: Option<TypeParameter>,
     ) -> Result<(), ErrorEmitted> {
-        if ctx.collecting_unifications() {
+        if ctx.code_block_first_pass() {
             return Ok(());
         }
 
