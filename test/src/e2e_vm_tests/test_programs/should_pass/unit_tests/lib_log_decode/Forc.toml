@@ -1,8 +1,8 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"] 
-entry = "main.sw"
+entry = "lib.sw"
 license = "Apache-2.0"
-name = "log_decode"
+name = "lib_log_decode"
 
 [dependencies]
 std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }
