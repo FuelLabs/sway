@@ -7,7 +7,10 @@ use crate::{
 };
 use lsp_types::{self, Range, Url};
 use std::sync::Arc;
-use sway_core::{language::ty::{TyDecl, TyExpressionVariant}, type_system::TypeInfo};
+use sway_core::{
+    language::ty::{TyDecl, TyExpressionVariant},
+    type_system::TypeInfo,
+};
 use sway_types::Spanned;
 
 // Future PR's will add more kinds
@@ -40,7 +43,6 @@ pub fn inlay_hints(
         return None;
     }
 
-
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
@@ -58,22 +60,40 @@ pub fn inlay_hints(
                 _ => None,
             })
         })
-        .map(|var| {
-            let mut hints = vec![];
-            if let TyExpressionVariant::FunctionApplication{ arguments, .. } = &var.body.expression {
-                for (name, exp) in arguments {
-                    if let TyExpressionVariant::Literal(_) = &exp.expression {
-                        let range = get_range_from_span(&exp.span);
-                        let kind = InlayKind::Parameter;
-                        let label = name.as_str().to_string();
-                        let inlay_hint = InlayHint { range, kind, label };
-                        hints.push(self::inlay_hint(config.render_colons, inlay_hint));
-                    }
-                }
+        .flat_map(|var| {
+            if let TyExpressionVariant::FunctionApplication { arguments, .. } = &var.body.expression
+            {
+                arguments
+                    .iter()
+                    .filter_map(|(name, exp)| {
+                        let (should_create_hint, span) = match &exp.expression {
+                            TyExpressionVariant::Literal(_)
+                            | TyExpressionVariant::ConstantExpression { .. }
+                            | TyExpressionVariant::Tuple { .. }
+                            | TyExpressionVariant::Array { .. }
+                            | TyExpressionVariant::ArrayIndex { .. }
+                            | TyExpressionVariant::StructFieldAccess { .. }
+                            | TyExpressionVariant::TupleElemAccess { .. } => (true, &exp.span),
+                            TyExpressionVariant::EnumInstantiation {
+                                call_path_binding, ..
+                            } => (true, &call_path_binding.span),
+                            _ => (false, &exp.span),
+                        };
+                        if should_create_hint {
+                            let range = get_range_from_span(span);
+                            let kind = InlayKind::Parameter;
+                            let label = name.as_str().to_string();
+                            let inlay_hint = InlayHint { range, kind, label };
+                            Some(self::inlay_hint(config.render_colons, inlay_hint))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new()
             }
-            hints
         })
-        .flatten()
         .collect();
 
     // let hints: Vec<lsp_types::InlayHint> = session

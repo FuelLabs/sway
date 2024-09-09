@@ -233,15 +233,12 @@ pub(crate) async fn metrics_request(
     res
 }
 
-
 pub(crate) async fn inlay_hints_request<'a>(
     server: &ServerState,
     uri: &Url,
 ) -> Option<Vec<InlayHint>> {
     let params = InlayHintParams {
-        text_document: TextDocumentIdentifier {
-            uri: uri.clone(),
-        },
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
         range: Range {
             start: Position {
                 line: 0,
@@ -254,9 +251,7 @@ pub(crate) async fn inlay_hints_request<'a>(
         },
         work_done_progress_params: Default::default(),
     };
-    let res = request::handle_inlay_hints(server, params)
-        .await
-        .unwrap();
+    let res = request::handle_inlay_hints(server, params).await.unwrap();
 
     eprintln!("INLAY HINTS RESULTS");
     eprintln!("{:#?}", res);
@@ -673,8 +668,6 @@ pub(crate) async fn rename_request<'a>(
     let worspace_edit = request::handle_rename(server, params).await.unwrap();
     worspace_edit.unwrap()
 }
-
-
 
 pub fn create_did_change_params(
     uri: &Url,
