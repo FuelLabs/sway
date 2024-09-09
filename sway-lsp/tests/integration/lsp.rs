@@ -321,6 +321,56 @@ pub(crate) async fn highlight_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
+pub(crate) async fn references_request(server: &ServerState, uri: &Url) {
+    let params = ReferenceParams {
+        text_document_position: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier { uri: uri.clone() },
+            position: Position {
+                line: 15,
+                character: 22,
+            },
+        },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+        context: ReferenceContext {
+            include_declaration: false,
+        },
+    };
+
+    let create_location = |line: u32, start_char: u32, end_char: u32| -> Location {
+        Location {
+            uri: uri.clone(),
+            range: Range {
+                start: Position {
+                    line,
+                    character: start_char,
+                },
+                end: Position {
+                    line,
+                    character: end_char,
+                },
+            },
+        }
+    };
+
+    let mut response = request::handle_references(server, params)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let mut expected = vec![
+        create_location(12, 7, 11),
+        create_location(15, 21, 25),
+        create_location(15, 14, 18),
+        create_location(13, 13, 17),
+        create_location(3, 5, 9),
+        create_location(14, 8, 12),
+    ];
+    response.sort_by(|a, b| a.range.start.cmp(&b.range.start));
+    expected.sort_by(|a, b| a.range.start.cmp(&b.range.start));
+    assert_eq!(expected, response);
+}
+
 pub(crate) async fn code_lens_empty_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
