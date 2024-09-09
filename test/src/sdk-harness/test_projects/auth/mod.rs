@@ -140,11 +140,12 @@ async fn caller_addresses_from_contract() {
     let mut wallet1 = WalletUnlocked::new_random(None);
     let mut wallet2 = WalletUnlocked::new_random(None);
     let mut wallet3 = WalletUnlocked::new_random(None);
+    let mut wallet4 = WalletUnlocked::new_random(None);
 
     // Setup message
     let message_amount = 10;
     let message1 = Message {
-        sender: Bech32Address::default(),
+        sender: wallet1.address().clone(),
         recipient: wallet1.address().clone(),
         nonce: 0.into(),
         amount: message_amount,
@@ -153,7 +154,7 @@ async fn caller_addresses_from_contract() {
         status: MessageStatus::Unspent,
     };
     let message2 = Message {
-        sender: Bech32Address::default(),
+        sender: wallet2.address().clone(),
         recipient: wallet2.address().clone(),
         nonce: 1.into(),
         amount: message_amount,
@@ -162,7 +163,7 @@ async fn caller_addresses_from_contract() {
         status: MessageStatus::Unspent,
     };
     let message3 = Message {
-        sender: Bech32Address::default(),
+        sender: wallet3.address().clone(),
         recipient: wallet3.address().clone(),
         nonce: 2.into(),
         amount: message_amount,
@@ -178,7 +179,7 @@ async fn caller_addresses_from_contract() {
     // Setup Coin
     let coin_amount = 10;
     let coin = Coin {
-        owner: wallet1.address().clone(),
+        owner: wallet4.address().clone(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
         amount: coin_amount,
         asset_id: AssetId::default(),
@@ -196,25 +197,29 @@ async fn caller_addresses_from_contract() {
     wallet2.set_provider(provider.clone());
     wallet3.set_provider(provider.clone());
 
+    wallet4.set_provider(provider.clone());
+
     let id_1 = Contract::load_from(
         "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet1, TxPolicies::default())
+    .deploy(&wallet4, TxPolicies::default())
     .await
     .unwrap();
-
-    let auth_instance = AuthContract::new(id_1.clone(), wallet1.clone());
-
+    
+    let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
+    
     let result = auth_instance
         .methods()
         .returns_caller_addresses()
         .call()
         .await
         .unwrap();
-
-    assert_eq!(result.value, vec![Address::from(*wallet1.address().hash())]);
+    
+    dbg!(&result.value);
+    
+    assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
 
     // Start building transactions
     let call_handler = auth_instance
@@ -226,7 +231,7 @@ async fn caller_addresses_from_contract() {
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Message(
             setup_single_message(
-                &Bech32Address::default(),
+                &wallet1.address().clone(),
                 &wallet1.address().clone(),
                 message_amount,
                 0.into(),
@@ -237,7 +242,7 @@ async fn caller_addresses_from_contract() {
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Message(
             setup_single_message(
-                &Bech32Address::default(),
+                &wallet2.address().clone(),
                 &wallet2.address().clone(),
                 message_amount,
                 1.into(),
@@ -248,7 +253,7 @@ async fn caller_addresses_from_contract() {
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Message(
             setup_single_message(
-                &Bech32Address::default(),
+                &wallet3.address().clone(),
                 &wallet3.address().clone(),
                 message_amount,
                 2.into(),
@@ -269,6 +274,8 @@ async fn caller_addresses_from_contract() {
     let tx_id = provider.send_transaction(tx).await.unwrap();
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
+
+    dbg!(&result.value);
 
     assert!(result.value.contains(&Address::from(wallet1.address().clone())));
     assert!(result.value.contains(&Address::from(wallet2.address().clone())));
