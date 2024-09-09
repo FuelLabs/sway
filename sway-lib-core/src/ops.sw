@@ -59,9 +59,15 @@ impl Add for u32 {
         // any non-64-bit value is compiled to a u64 value under-the-hood
         // constants (like Self::max() below) are also automatically promoted to u64
         let res = __add(self, other);
+        // integer overflow
         if __gt(res, Self::max()) {
-            // integer overflow
-            __revert(0)
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
             // no overflow
             res
@@ -73,7 +79,13 @@ impl Add for u16 {
     fn add(self, other: Self) -> Self {
         let res = __add(self, other);
         if __gt(res, Self::max()) {
-            __revert(0)
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
             res
         }
@@ -93,7 +105,16 @@ impl Add for u8 {
             input: u64
         };
         if __gt(res_u64, max_u8_u64) {
-            __revert(0)
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
+                asm(input: res_u64) {
+                    input: u8
+                }
+            }
         } else {
             asm(input: res_u64) {
                 input: u8
@@ -229,8 +250,14 @@ impl Multiply for u32 {
         // constants (like Self::max() below) are also automatically promoted to u64
         let res = __mul(self, other);
         if __gt(res, Self::max()) {
-            // integer overflow
-            __revert(0)
+            if panic_on_overflow_is_enabled() {
+                // integer overflow
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
             // no overflow
             res
@@ -242,7 +269,11 @@ impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
         let res = __mul(self, other);
         if __gt(res, Self::max()) {
-            __revert(0)
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                __mod(res, __add(Self::max(), 1))
+            }
         } else {
             res
         }
@@ -262,7 +293,16 @@ impl Multiply for u8 {
             input: u64
         };
         if __gt(res_u64, max_u8_u64) {
-            __revert(0)
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
+                asm(input: res_u64) {
+                    input: u8
+                }
+            }
         } else {
             asm(input: res_u64) {
                 input: u8
@@ -1257,4 +1297,20 @@ pub fn ok_str_eq() {
     assert("a" != "");
     assert("" != "a");
     assert("a" != "b");
+}
+
+fn flags() -> u64 {
+    asm() {
+        flag
+    }
+}
+
+fn panic_on_overflow_is_enabled() -> bool {
+    __eq(
+        __and(
+            flags(),
+            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010,
+        ),
+        0,
+    )
 }

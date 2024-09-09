@@ -2011,6 +2011,11 @@ lsp_capability_test!(
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
+    references,
+    lsp::references_request,
+    test_fixtures_dir().join("tokens/structs/src/main.sw")
+);
+lsp_capability_test!(
     code_action_abi,
     code_actions::code_action_abi_request,
     doc_comments_dir().join("src/main.sw")
