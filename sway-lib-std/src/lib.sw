@@ -25,6 +25,7 @@ pub mod asset_id;
 pub mod contract_id;
 pub mod execution;
 pub mod call_frames;
+pub mod cmp;
 pub mod context;
 pub mod external;
 pub mod tx;
