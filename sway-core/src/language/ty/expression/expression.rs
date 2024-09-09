@@ -422,6 +422,7 @@ impl TyExpression {
         handler: &Handler,
         allow_deprecated: &mut AllowDeprecatedState,
     ) {
+        dbg!();
         fn emit_warning_if_deprecated(
             attributes: &AttributesMap,
             span: &Span,
@@ -455,14 +456,16 @@ impl TyExpression {
                 })
             }
         }
-
+        dbg!();
         match &self.expression {
             TyExpressionVariant::StructExpression {
                 struct_id,
                 instantiation_span,
                 ..
             } => {
+                dbg!();
                 let struct_decl = engines.de().get(struct_id);
+                dbg!();
                 emit_warning_if_deprecated(
                     &struct_decl.attributes,
                     instantiation_span,
@@ -474,12 +477,17 @@ impl TyExpression {
             TyExpressionVariant::FunctionApplication {
                 call_path, fn_ref, ..
             } => {
+                dbg!();
                 if let Some(TyDecl::ImplSelfOrTrait(t)) =
                     &engines.de().get(fn_ref).implementing_type
                 {
+                    dbg!();
                     let t = &engines.de().get(&t.decl_id).implementing_for;
+                    dbg!();
                     if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
+                        dbg!();
                         let s = engines.de().get(struct_id);
+                        dbg!();
                         emit_warning_if_deprecated(
                             &s.attributes,
                             &call_path.span(),
@@ -488,6 +496,7 @@ impl TyExpression {
                             allow_deprecated,
                         );
                     }
+                    dbg!();
                 }
             }
             _ => {}

@@ -145,12 +145,13 @@ impl TyModule {
         handler: &Handler,
         allow_deprecated: &mut AllowDeprecatedState,
     ) {
+        dbg!();
         for (_, submodule) in self.submodules.iter() {
             submodule
                 .module
                 .check_deprecated(engines, handler, allow_deprecated);
         }
-
+        dbg!();
         for node in self.all_nodes.iter() {
             node.check_deprecated(engines, handler, allow_deprecated);
         }

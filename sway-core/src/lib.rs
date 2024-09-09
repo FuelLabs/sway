@@ -564,7 +564,7 @@ pub fn parsed_to_ast(
             new_encoding: false,
         });
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
-
+    dbg!();
     // Build the dependency graph for the submodules.
     build_module_dep_graph(handler, &mut parse_program.root)?;
 
@@ -572,7 +572,7 @@ pub fn parsed_to_ast(
     // Collect the program symbols.
     let _collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
-
+        dbg!();
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -583,7 +583,7 @@ pub fn parsed_to_ast(
         build_config,
     );
     check_should_abort(handler, retrigger_compilation.clone())?;
-
+    dbg!();
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.
@@ -597,7 +597,7 @@ pub fn parsed_to_ast(
     };
 
     typed_program.check_deprecated(engines, handler);
-
+    dbg!();
     match typed_program.check_recursive(engines, handler) {
         Ok(()) => {}
         Err(e) => {
@@ -658,7 +658,7 @@ pub fn parsed_to_ast(
     } else {
         vec![]
     };
-
+    dbg!();
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(
         engines.se(),
@@ -684,7 +684,7 @@ pub fn parsed_to_ast(
     for warn in cei_analysis_warnings {
         handler.emit_warn(warn);
     }
-
+    dbg!();
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
         handler,
@@ -713,7 +713,7 @@ pub fn parsed_to_ast(
     }) {
         handler.emit_err(err);
     }
-
+    dbg!();
     // Check if a non-test function calls `#[test]` function.
 
     handler.dedup();
@@ -730,7 +730,7 @@ pub fn compile_to_ast(
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
     check_should_abort(handler, retrigger_compilation.clone())?;
-
+    dbg!();
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
     if let Some(config) = build_config {
@@ -747,7 +747,7 @@ pub fn compile_to_ast(
             return Ok(entry.programs);
         };
     }
-
+    dbg!();
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
@@ -766,7 +766,7 @@ pub fn compile_to_ast(
             return Err(e);
         }
     };
-
+    dbg!();
     // If tests are not enabled, exclude them from `parsed_program`.
     if build_config.map_or(true, |config| !config.include_tests) {
         parsed_program.exclude_tests(engines);
@@ -788,7 +788,7 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
-
+    dbg!();
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
@@ -804,7 +804,7 @@ pub fn compile_to_ast(
         };
         query_engine.insert_programs_cache_entry(cache_entry);
     }
-
+    dbg!();
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     Ok(programs)

@@ -429,6 +429,7 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
 
+    dbg!();
     let results = compile(
         &build_plan,
         engines,
@@ -436,14 +437,14 @@ pub fn parse_project(
         lsp_mode.as_ref(),
         experimental,
     )?;
-
+    dbg!();
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
     // If we don't return an error here, then we will likely crash when trying to access the Engines
     // during traversal or when creating runnables.
     if results.last().map_or(true, |(value, _)| value.is_none()) {
         return Err(LanguageServerError::ProgramsIsNone);
     }
-
+    dbg!();
     let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
@@ -454,11 +455,13 @@ pub fn parse_project(
             }
         }
     }
-
+    dbg!();
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
+        dbg!();
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
     }
+    dbg!();
     Ok(())
 }
 

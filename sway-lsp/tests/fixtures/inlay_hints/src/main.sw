@@ -58,4 +58,3 @@ fn main() {
 
     let _function_call = identity(my_function(1, bar, 3));
 }
-

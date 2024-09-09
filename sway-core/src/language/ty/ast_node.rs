@@ -209,11 +209,14 @@ impl TyAstNode {
         handler: &Handler,
         allow_deprecated: &mut AllowDeprecatedState,
     ) {
+        dbg!();
         match &self.content {
             TyAstNodeContent::Declaration(node) => match node {
                 TyDecl::VariableDecl(decl) => {
+                    dbg!();
                     decl.body
                         .check_deprecated(engines, handler, allow_deprecated);
+                    dbg!();
                 }
                 TyDecl::ConstantDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
@@ -273,6 +276,7 @@ impl TyAstNode {
             }
             TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
         }
+        dbg!();
     }
 
     pub(crate) fn check_recursive(

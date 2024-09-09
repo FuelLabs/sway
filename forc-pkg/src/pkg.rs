@@ -2519,6 +2519,7 @@ pub fn check(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     experimental: sway_core::ExperimentalFlags,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
+    dbg!();
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2541,6 +2542,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
+        dbg!();
         let mut dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
@@ -2568,6 +2570,7 @@ pub fn check(
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
+        dbg!();
         let programs_res = sway_core::compile_to_ast(
             &handler,
             engines,
@@ -2577,7 +2580,7 @@ pub fn check(
             &pkg.name,
             retrigger_compilation.clone(),
         );
-
+        dbg!();
         if retrigger_compilation
             .as_ref()
             .is_some_and(|b| b.load(std::sync::atomic::Ordering::SeqCst))
