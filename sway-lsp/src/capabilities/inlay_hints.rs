@@ -70,7 +70,7 @@ pub fn inlay_hints(
             // Function parameter hints
             if let TyExpressionVariant::FunctionApplication { arguments, .. } = &var.body.expression
             {
-                hints.extend(function_parameters_hints(arguments, config.render_colons));
+                hints.extend(handle_function_parameters(arguments, config.render_colons));
             }
 
             // Variable declaration hints
@@ -94,7 +94,7 @@ pub fn inlay_hints(
     Some(hints)
 }
 
-fn function_parameters_hints(
+fn handle_function_parameters(
     arguments: &[(Ident, TyExpression)],
     render_colons: bool,
 ) -> Vec<lsp_types::InlayHint> {
@@ -129,7 +129,7 @@ fn function_parameters_hints(
                 ..
             } = &exp.expression
             {
-                hints.extend(function_parameters_hints(nested_args, render_colons));
+                hints.extend(handle_function_parameters(nested_args, render_colons));
             }
             hints
         })

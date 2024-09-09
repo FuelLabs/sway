@@ -40,7 +40,6 @@ fn main() {
     let _b: u32 = identity(10u32);
     let _c: u64 = identity(42);
     let _e: str = identity("foo");
-
     let _f: u64 = two_generics(true, 10);
     let _g: str = three_generics(true, "foo", 10);
     let _const = identity(CONSTANT);
@@ -51,7 +50,7 @@ fn main() {
     let s = MyStruct { a: 1 };
     let _struct_field_access = identity(s.a);
 
-    let t = (0, 1, 2);
+    let t = (0, 1, 9);
     let _tuple_elem_access = identity(t.2);
 
     let a = [1, 2, 3];
@@ -59,3 +58,4 @@ fn main() {
 
     let _function_call = identity(my_function(1, bar, 3));
 }
+
