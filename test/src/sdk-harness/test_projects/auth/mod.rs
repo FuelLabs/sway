@@ -228,7 +228,7 @@ async fn caller_addresses_from_contract() {
             setup_single_message(
                 &Bech32Address::default(),
                 &wallet1.address().clone(),
-                DEFAULT_COIN_AMOUNT,
+                message_amount,
                 0.into(),
                 vec![],
             )
@@ -239,7 +239,7 @@ async fn caller_addresses_from_contract() {
             setup_single_message(
                 &Bech32Address::default(),
                 &wallet2.address().clone(),
-                DEFAULT_COIN_AMOUNT,
+                message_amount,
                 1.into(),
                 vec![],
             )
@@ -250,7 +250,7 @@ async fn caller_addresses_from_contract() {
             setup_single_message(
                 &Bech32Address::default(),
                 &wallet3.address().clone(),
-                DEFAULT_COIN_AMOUNT,
+                message_amount,
                 2.into(),
                 vec![],
             )
@@ -270,9 +270,9 @@ async fn caller_addresses_from_contract() {
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
 
-    assert!(result.value.contains(&Address::from(*wallet1.address().hash())));
-    assert!(result.value.contains(&Address::from(*wallet2.address().hash())));
-    assert!(result.value.contains(&Address::from(*wallet3.address().hash())));
+    assert!(result.value.contains(&Address::from(wallet1.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet2.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet3.address().clone())));
 }
 
 async fn get_contracts() -> (
