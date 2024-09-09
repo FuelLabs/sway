@@ -13,7 +13,6 @@ use sway_core::{
 };
 use sway_types::{Ident, Spanned};
 
-// Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
     TypeHint,
@@ -27,22 +26,27 @@ pub struct InlayHint {
     pub label: String,
 }
 
+/// Generates inlay hints for the provided range.
 pub fn inlay_hints(
     session: Arc<Session>,
     uri: &Url,
     range: &Range,
     config: &InlayHintsConfig,
 ) -> Option<Vec<lsp_types::InlayHint>> {
-    let _p = tracing::trace_span!("inlay_hints").entered();
-    // 1. Loop through all our tokens and filter out all tokens that aren't TypedVariableDeclaration tokens
-    // 2. Also filter out all tokens that have a span that fall outside of the provided range
-    // 3. Filter out all variable tokens that have a type_ascription
-    // 4. Look up the type id for the remaining tokens
-    // 5. Convert the type into a string
+    let _span = tracing::trace_span!("inlay_hints").entered();
+
     if !config.type_hints {
         return None;
     }
 
+    // 1. Iterate through all tokens in the file
+    // 2. Filter for TypedVariableDeclaration tokens within the provided range
+    // 3. For each variable declaration:
+    //    a. If it's a function application, generate parameter hints
+    //    b. If it doesn't have a type ascription and its type is known:
+    //       - Look up the type information
+    //       - Generate a type hint
+    // 4. Collect all generated hints into a single vector
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
@@ -61,50 +65,31 @@ pub fn inlay_hints(
             })
         })
         .flat_map(|var| {
+            let mut hints = Vec::new();
+
+            // Function parameter hints
             if let TyExpressionVariant::FunctionApplication { arguments, .. } = &var.body.expression
             {
-                function_parameters_hints(arguments, config.render_colons)
-            } else {
-                Vec::new()
+                hints.extend(function_parameters_hints(arguments, config.render_colons));
             }
+
+            // Variable declaration hints
+            if var.type_ascription.call_path_tree.is_none() {
+                let type_info = session.engines.read().te().get(var.type_ascription.type_id);
+                if !matches!(
+                    *type_info,
+                    TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. }
+                ) {
+                    let range = get_range_from_span(&var.name.span());
+                    let kind = InlayKind::TypeHint;
+                    let label = format!("{}", session.engines.read().help_out(var.type_ascription));
+                    let inlay_hint = InlayHint { range, kind, label };
+                    hints.push(self::inlay_hint(config.render_colons, inlay_hint));
+                }
+            }
+            hints
         })
         .collect();
-    // let hints: Vec<lsp_types::InlayHint> = session
-    //     .token_map()
-    //     .tokens_for_file(uri)
-    //     .filter_map(|item| {
-    //         let token = item.value();
-    //         token.typed.as_ref().and_then(|t| match t {
-    //             TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
-    //                 if var_decl.type_ascription.call_path_tree.is_some() {
-    //                     None
-    //                 } else {
-    //                     let var_range = get_range_from_span(&var_decl.name.span());
-    //                     if var_range.start >= range.start && var_range.end <= range.end {
-    //                         Some(var_decl.clone())
-    //                     } else {
-    //                         None
-    //                     }
-    //                 }
-    //             }
-    //             _ => None,
-    //         })
-    //     })
-    //     .filter_map(|var| {
-    //         let type_info = session.engines.read().te().get(var.type_ascription.type_id);
-    //         match &*type_info {
-    //             TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
-    //             _ => Some(var),
-    //         }
-    //     })
-    //     .map(|var| {
-    //         let range = get_range_from_span(&var.name.span());
-    //         let kind = InlayKind::TypeHint;
-    //         let label = format!("{}", session.engines.read().help_out(var.type_ascription));
-    //         let inlay_hint = InlayHint { range, kind, label };
-    //         self::inlay_hint(config.render_colons, inlay_hint)
-    //     })
-    //     .collect();
 
     Some(hints)
 }
