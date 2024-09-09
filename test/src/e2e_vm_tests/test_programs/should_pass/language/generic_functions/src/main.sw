@@ -14,14 +14,13 @@ fn three_generics<A, B, C>(a: A, b: B, _c: C) -> B {
 }
 
 fn main() -> bool {
-  let a: bool   = identity(true);
-  let _b: u32    = identity(10u32);
-  let _c: u64    = identity(42);
+  let a: bool = identity(true);
+  let _b: u32 = identity(10u32);
+  let _c: u64 = identity(42);
   let _e: str = identity("foo");
 
   let _f: u64 = two_generics(true, 10);
   let _g: str = three_generics(true, "foo", 10);
 
   a
-
 }

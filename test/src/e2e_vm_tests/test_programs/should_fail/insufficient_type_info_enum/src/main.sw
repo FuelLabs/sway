@@ -1,6 +1,11 @@
 script;
 
+enum MyOption<T> {
+    Some: T,
+    None: (),
+}
+
 fn main() -> bool {
-    let _o = Option::None;
+    let _ = MyOption::None;
     true
 }

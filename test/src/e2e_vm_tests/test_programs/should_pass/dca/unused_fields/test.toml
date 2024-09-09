@@ -1,8 +1,6 @@
 category = "compile"
+expected_warnings = 1
 
 # check: $()struct Bar {
-# check: $()This struct field is never accessed.
-
-# not: $()value: u64
-# not: $()This struct field is never accessed.
-expected_warnings = 1
+# nextln: $()value: u64
+# nextln: $()This struct field is never accessed.

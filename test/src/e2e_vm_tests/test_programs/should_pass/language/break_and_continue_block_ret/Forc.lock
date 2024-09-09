@@ -1,3 +1,8 @@
 [[package]]
-name = 'break_and_continue_block_ret'
-source = 'member'
+name = "break_and_continue_block_ret"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-3052B79D5F74B184"

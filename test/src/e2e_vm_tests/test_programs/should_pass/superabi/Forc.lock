@@ -1,3 +1,8 @@
 [[package]]
-name = 'superabi'
-source = 'member'
+name = "core"
+source = "path+from-root-7293F2DA9B0C5621"
+
+[[package]]
+name = "superabi"
+source = "member"
+dependencies = ["core"]

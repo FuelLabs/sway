@@ -78,7 +78,7 @@ fn main() {
 
 A common attack vector for smart contracts is [re-entrancy](https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy). Similar to the EVM, the FuelVM allows for re-entrancy.
 
-A _stateless_ re-entrancy guard is included in the [`sway-libs`](https://github.com/FuelLabs/sway-libs) library. The guard will panic (revert) at run time if re-entrancy is detected.
+A _stateless_ re-entrancy guard is included in the [`sway-libs`](https://fuellabs.github.io/sway-libs/book/reentrancy/index.html) library. The guard will panic (revert) at run time if re-entrancy is detected.
 
 ```sway
 contract;
@@ -163,3 +163,47 @@ While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, 
 1. [**Native assets**](./native_assets.md): FuelVM calls can forward any native asset not just base asset.
 
 2. **No data serialization**: Contract calls in the FuelVM do not need to serialize data to pass it between contracts; instead they simply pass a pointer to the data. This is because the FuelVM has a shared global memory which all call frames can read from.
+
+## Fallback
+
+When a contract is compiled, a special section called "contract selection" is also generated. This section checks if the contract call method matches any of the available ABI methods. If this fails, one of two possible actions will happen:
+
+1 - if no fallback function was specified, the contract will revert;
+2 - otherwise, the fallback function will be called.
+
+For all intents and purposes the fallback function is considered a contract method, which means that it has all the limitations that other contract methods have. As the fallback function signature, the function cannot have arguments, but they can return anything.
+
+If for some reason the fallback function needs to returns different types, the intrinsic `__contract_ret` can be used.
+
+```sway
+contract;
+
+abi MyContract {
+    fn some_method();
+}
+
+impl ContractB for Contract {
+    fn some_method() {
+    }
+}
+
+#[fallback]
+fn fallback() {
+}
+```
+
+You may still access the method selector and arguments to the call in the fallback.
+For instance, let's assume a function `fn foobar(bool, u64) {}` gets called on a contract that doesn't have it with arguments `true` and `42`.
+It can execute the following fallback:
+
+```sway
+#[fallback]
+fn fallback() {
+    // the method selector is the first four bytes of sha256("foobar(bool,u64)")
+    // per https://fuellabs.github.io/fuel-specs/master/protocol/abi#function-selector-encoding
+    let method_selector = std::call_frames::first_param::<u64>();
+
+    // the arguments tuple is (true, 42)
+    let arguments = std::call_frames::second_param::<(bool, u64)>();
+}
+```

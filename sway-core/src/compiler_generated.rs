@@ -2,8 +2,6 @@
 //! e.g., unique names of variables in desugared code and similar.
 //! It also provides functions for inspecting such generated elements.
 
-use std::usize;
-
 /// The prefix for the compiler generated names of tuples.
 const TUPLE_VAR_NAME_PREFIX: &str = "__tuple_";
 

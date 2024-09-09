@@ -1,3 +1,17 @@
+# Writing end-to-end VM tests
+
+In order to minimize compilation time of individual tests, strive to reduce dependencies in tests.
+
+To achieve that, follow these guidelines:
+
+- Use `implicit-std = false` if dependency on `core` is not needed. This is often possible when testing `should_pass/language` features.
+- If the dependency on `core` is not needed, instead of using the project type `script`, that will, because of the encoding, depend on `core`, try using `library` instead.
+- Do not use `std` just to conveniently get an arbitrary type or trait. E.g., if a test requires an arbitrary type or trait, go with `struct Dummy {}` or `trait Trait {}` instead of importing `Option` or `Hash`.
+- If `std` functionality is needed, import the minimal [reduced `std` library](reduced_std_libs/README.md) that provides the functionality.
+- Import the full `std` only if the provided [reduced `std` libraries](reduced_std_libs/README.md) do not provide required types.
+
+Additionally, try to meaningfully group tests with high cohesion, rather then splitting them into several tests. Having only one test project reduces compilation time. E.g., instead of having two tests `test_some_feature_for_option_a` and `test_some_feature_for_option_b`, try having just `test_some_feature` and the two cases tested in, e.g., modules in that one test. Makes sure, though, that such test groupings are meaningful. We don't want to end up having artificially combined tests.
+
 # Running end-to-end VM tests
 
 This document assumes you have `fuel-core` running on the default port.
@@ -74,3 +88,17 @@ SWAY_TEST_VERBOSE=true cargo run [pattern]
 ```
 
 from the `sway/test` directory.
+
+# Snapshot tests
+
+When an "e2e" test has a file named `snapshot.toml` it will run as `cargo insta` snapshot tests.
+These tests can be run as normal: `cargo r -p test`, and in two new ways:
+
+```
+> cargo t -p test
+> cargo insta test
+```
+
+Snapshots can be reviewed using normal "cargo insta" workflow (see [insta.rs](https://insta.rs/)).
+
+For the moment, there is no configuration for `snapshot.toml`, so they are just empty files.

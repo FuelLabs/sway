@@ -94,7 +94,7 @@ impl<'a, T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'a, T> {
                 self.engines,
                 Some(param.name.to_string()),
                 param.type_argument.type_id,
-            ))
+            ));
         });
         lines
     }

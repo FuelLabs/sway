@@ -97,7 +97,7 @@ impl PatStack {
         match self.pats.get_mut(n) {
             Some(elem) => Ok(elem),
             None => Err(handler.emit_err(CompileError::Internal(
-                "cant retrieve mutable reference to element",
+                "can't retrieve mutable reference to element",
                 span.clone(),
             ))),
         }

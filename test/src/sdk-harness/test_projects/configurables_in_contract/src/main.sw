@@ -20,14 +20,16 @@ configurable {
         field_2: 16,
     },
     ENUM: EnumWithGeneric<bool> = EnumWithGeneric::VariantOne(true),
+    ADDRESS: Address = Address::zero(),
+    MY_CONTRACT_ID: ContractId = ContractId::zero(),
 }
 
 abi TestContract {
-    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>);
+    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>, Address, ContractId);
 }
 
 impl TestContract for Contract {
-    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>) {
-        (U8, BOOL, ARRAY, STR_4, STRUCT, ENUM)
+    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>, Address, ContractId) {
+        (U8, BOOL, ARRAY, STR_4, STRUCT, ENUM, ADDRESS, MY_CONTRACT_ID)
     }
 }

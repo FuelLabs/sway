@@ -1,6 +1,6 @@
 use anyhow::Result;
 use ropey::{str_utils::byte_to_char_idx, Rope};
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, fmt::Display, path::PathBuf, sync::Arc};
 use sway_ast::Module;
 use sway_types::SourceEngine;
 
@@ -18,11 +18,15 @@ struct NewlineSequence {
     sequence_length: usize,
 }
 
-impl ToString for NewlineSequence {
-    fn to_string(&self) -> String {
-        (0..self.sequence_length - 1)
-            .map(|_| NEW_LINE)
-            .collect::<String>()
+impl Display for NewlineSequence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            (0..self.sequence_length - 1)
+                .map(|_| NEW_LINE)
+                .collect::<String>()
+        )
     }
 }
 
@@ -176,7 +180,7 @@ fn add_newlines(
     // Since we are adding newline sequences into the formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of newline sequences we added in previous iterations.
     let mut offset = 0;
-    // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
+    // We will definitely have a span in the collected span since for a source code to be parsed there should be some tokens present.
     let mut previous_unformatted_newline_span = unformatted_newline_spans
         .first()
         .ok_or(FormatterError::NewlineSequenceError)?;

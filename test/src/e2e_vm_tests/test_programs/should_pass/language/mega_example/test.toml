@@ -1,0 +1,3 @@
+category = "compile"
+validate_abi = false
+expected_warnings = 4

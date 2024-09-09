@@ -5,9 +5,11 @@ use forc_client::{
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage};
+use forc_pkg::{
+    manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage, PrintOpts,
+};
 use fuel_tx::TransactionBuilder;
-use fuel_vm::fuel_tx;
+use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use fuel_vm::{checked_transaction::builder::TransactionBuilderExt, interpreter::NotSupportedEcal};
@@ -31,15 +33,19 @@ where
     let mut output = String::new();
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
-    let mut buf_stdout = gag::BufferRedirect::stdout().unwrap();
-    let mut buf_stderr = gag::BufferRedirect::stderr().unwrap();
-
+    let buf_stdout = gag::BufferRedirect::stdout();
+    let buf_stderr = gag::BufferRedirect::stderr();
     let result = func().await;
 
-    buf_stdout.read_to_string(&mut output).unwrap();
-    buf_stderr.read_to_string(&mut output).unwrap();
-    drop(buf_stdout);
-    drop(buf_stderr);
+    if let Ok(mut buf_stdout) = buf_stdout {
+        buf_stdout.read_to_string(&mut output).unwrap();
+        drop(buf_stdout);
+    }
+
+    if let Ok(mut buf_stderr) = buf_stderr {
+        buf_stderr.read_to_string(&mut output).unwrap();
+        drop(buf_stderr);
+    }
 
     if cfg!(windows) {
         // In windows output error and warning path files start with \\?\
@@ -76,6 +82,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
+        no_encoding_v1: !run_config.experimental.new_encoding,
         ..Default::default()
     })
     .await
@@ -118,14 +125,14 @@ pub(crate) async fn runs_on_node(
             },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+            no_encoding_v1: !run_config.experimental.new_encoding,
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {
             ran_scripts
                 .into_iter()
-                .next()
-                .map(|ran_script| ran_script.receipts)
-                .unwrap()
+                .flat_map(|ran_script| ran_script.receipts)
+                .collect::<Vec<_>>()
         })
     })
     .await
@@ -151,15 +158,17 @@ pub(crate) fn runs_in_vm(
             let maturity = 1.into();
             let script_data = script_data.unwrap_or_default();
             let block_height = (u32::MAX >> 1).into();
-            let params = ConsensusParameters {
-                // The default max length is 1MB which isn't enough for the bigger tests.
-                script_params: ScriptParameters {
-                    max_script_length: 64 * 1024 * 1024,
-                    ..Default::default()
-                },
+            // The default max length is 1MB which isn't enough for the bigger tests.
+            let max_size = 64 * 1024 * 1024;
+            let script_params = ScriptParameters::DEFAULT
+                .with_max_script_length(max_size)
+                .with_max_script_data_length(max_size);
+            let tx_params = TxParameters::DEFAULT.with_max_size(max_size);
+            let params = ConsensusParameters::V1(ConsensusParametersV1 {
+                script_params,
+                tx_params,
                 ..Default::default()
-            };
-
+            });
             let mut tb = TransactionBuilder::script(script.bytecode.bytes, script_data);
 
             tb.with_params(params)
@@ -169,7 +178,6 @@ pub(crate) fn runs_in_vm(
                     1,
                     Default::default(),
                     rng.gen(),
-                    0u32.into(),
                 )
                 .maturity(maturity);
 
@@ -178,20 +186,26 @@ pub(crate) fn runs_in_vm(
                     tb.add_witness(witness.into());
                 }
             }
+            let gas_price = 0;
             let consensus_params = tb.get_params().clone();
 
+            let params = ConsensusParameters::default();
             // Temporarily finalize to calculate `script_gas_limit`
             let tmp_tx = tb.clone().finalize();
             // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
             let max_gas =
                 tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
             // Increase `script_gas_limit` to the maximum allowed value.
-            tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+            tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
 
-            let tx = tb.finalize_checked(block_height);
+            let tx = tb
+                .finalize_checked(block_height)
+                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
-            let mut i: Interpreter<_, _, NotSupportedEcal> =
-                Interpreter::with_storage(storage, Default::default());
+            let mem_instance = MemoryInstance::new();
+            let mut i: Interpreter<_, _, _, NotSupportedEcal> =
+                Interpreter::with_storage(mem_instance, storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 
             Ok(VMExecutionResult::Fuel(
@@ -258,13 +272,22 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         build_target: run_config.build_target,
         build_profile: BuildProfile::DEBUG.into(),
         release: run_config.release,
+        print: PrintOpts {
+            ast: false,
+            dca_graph: None,
+            dca_graph_url_format: None,
+            asm: run_config.print_asm,
+            bytecode: run_config.print_bytecode,
+            bytecode_spans: run_config.print_bytecode,
+            ir: run_config.print_ir.clone(),
+            reverse_order: false,
+        },
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
             )),
             locked: run_config.locked,
             terse: false,
-            json_abi_with_callpaths: true,
             ..Default::default()
         },
         experimental: ExperimentalFlags {
@@ -272,7 +295,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         },
         ..Default::default()
     };
-    match std::panic::catch_unwind(|| forc_pkg::build_with_options(build_opts)) {
+    match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
         Ok(result) => {
             // Print the result of the compilation (i.e., any errors Forc produces).
             if let Err(ref e) = result {
@@ -303,6 +326,7 @@ pub(crate) async fn compile_and_run_unit_tests(
         ]
         .iter()
         .collect();
+
         match std::panic::catch_unwind(|| {
             forc_test::build(forc_test::TestOpts {
                 pkg: forc_pkg::PkgOpts {
@@ -310,6 +334,9 @@ pub(crate) async fn compile_and_run_unit_tests(
                     locked: run_config.locked,
                     terse: !(capture_output || run_config.verbose),
                     ..Default::default()
+                },
+                experimental: ExperimentalFlags {
+                    new_encoding: run_config.experimental.new_encoding,
                 },
                 ..Default::default()
             })
@@ -329,17 +356,36 @@ pub(crate) async fn compile_and_run_unit_tests(
     .await
 }
 
-pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+pub(crate) fn test_json_abi(
+    file_name: &str,
+    built_package: &BuiltPackage,
+    experimental_new_encoding: bool,
+    update_output_files: bool,
+) -> Result<()> {
     emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let oracle_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_oracle.json"
-    );
+    let oracle_path = if experimental_new_encoding {
+        format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
+        )
+    } else {
+        format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_oracle.json"
+        )
+    };
+
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_abi_output.json"
     );
+
+    // Update the oracle failing silently
+    if update_output_files {
+        let _ = std::fs::copy(&output_path, &oracle_path);
+    }
+
     if fs::metadata(oracle_path.clone()).is_err() {
         bail!("JSON ABI oracle file does not exist for this test.");
     }
@@ -347,11 +393,11 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
         bail!("JSON ABI output file does not exist for this test.");
     }
     let oracle_contents =
-        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
+        fs::read_to_string(&oracle_path).expect("Something went wrong reading the file.");
     let output_contents =
-        fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+        fs::read_to_string(&output_path).expect("Something went wrong reading the file.");
     if oracle_contents != output_contents {
-        println!("Mismatched ABI JSON output.");
+        println!("Mismatched ABI JSON output [{oracle_path}] versus [{output_path}]",);
         println!(
             "{}",
             prettydiff::diff_lines(&oracle_contents, &output_contents)

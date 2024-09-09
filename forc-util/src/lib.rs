@@ -1,12 +1,10 @@
 //! Utility items shared between forc crates.
-
 use annotate_snippets::{
     renderer::{AnsiColor, Style},
     Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
-use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
-use forc_tracing::{println_red_err, println_yellow_err};
+use forc_tracing::{println_action_green, println_error, println_red_err, println_yellow_err};
 use std::{
     collections::{hash_map, HashSet},
     fmt::Display,
@@ -22,10 +20,10 @@ use sway_error::{
     error::CompileError,
     warning::CompileWarning,
 };
-use sway_types::{LineCol, SourceEngine, Span};
+use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
-use tracing::error;
 
+pub mod fs_locking;
 pub mod restricted;
 
 #[macro_use]
@@ -117,7 +115,7 @@ impl<T> Termination for ForcCliResult<T> {
         match self.result {
             Ok(_) => DEFAULT_SUCCESS_EXIT_CODE.into(),
             Err(e) => {
-                error!("Error: {}", e);
+                println_error(&format!("{}", e));
                 e.exit_code.into()
             }
         }
@@ -156,7 +154,8 @@ pub mod tx_utils {
     pub struct Salt {
         /// Added salt used to derive the contract ID.
         ///
-        /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+        /// By default, this is
+        /// `0x0000000000000000000000000000000000000000000000000000000000000000`.
         #[clap(long = "salt")]
         pub salt: Option<fuel_tx::Salt>,
     }
@@ -214,6 +213,11 @@ pub fn lock_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join(constants::LOCK_FILE_NAME)
 }
 
+pub fn validate_project_name(name: &str) -> Result<()> {
+    restricted::is_valid_project_name_format(name)?;
+    validate_name(name, "project name")
+}
+
 // Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
 // https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
 
@@ -222,17 +226,17 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
     restricted::contains_invalid_char(name, use_case)?;
 
     if restricted::is_keyword(name) {
-        bail!("the name `{name}` cannot be used as a package name, it is a Sway keyword");
+        bail!("the name `{name}` cannot be used as a {use_case}, it is a Sway keyword");
     }
     if restricted::is_conflicting_artifact_name(name) {
         bail!(
-            "the name `{name}` cannot be used as a package name, \
+            "the name `{name}` cannot be used as a {use_case}, \
             it conflicts with Forc's build directory names"
         );
     }
     if name.to_lowercase() == "test" {
         bail!(
-            "the name `test` cannot be used as a project name, \
+            "the name `test` cannot be used as a {use_case}, \
             it conflicts with Sway's built-in test library"
         );
     }
@@ -288,7 +292,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 ///
 /// Note: This has nothing to do with `Forc.lock` files, rather this is about fd locks for
 /// coordinating access to particular paths (e.g. git checkout directories).
-fn fd_lock_path(path: &Path) -> PathBuf {
+fn fd_lock_path<X: AsRef<Path>>(path: X) -> PathBuf {
     const LOCKS_DIR_NAME: &str = ".locks";
     const LOCK_EXT: &str = "forc-lock";
     let file_name = hash_path(path);
@@ -298,22 +302,10 @@ fn fd_lock_path(path: &Path) -> PathBuf {
         .with_extension(LOCK_EXT)
 }
 
-/// Constructs the path for the "dirty" flag file corresponding to the specified file.
-///
-/// This function uses a hashed representation of the original path for uniqueness.
-pub fn is_dirty_path(path: &Path) -> PathBuf {
-    const LOCKS_DIR_NAME: &str = ".lsp-locks";
-    const LOCK_EXT: &str = "dirty";
-    let file_name = hash_path(path);
-    user_forc_directory()
-        .join(LOCKS_DIR_NAME)
-        .join(file_name)
-        .with_extension(LOCK_EXT)
-}
-
 /// Hash the path to produce a file-system friendly file name.
 /// Append the file stem for improved readability.
-fn hash_path(path: &Path) -> String {
+fn hash_path<X: AsRef<Path>>(path: X) -> String {
+    let path = path.as_ref();
     let mut hasher = hash_map::DefaultHasher::default();
     path.hash(&mut hasher);
     let hash = hasher.finish();
@@ -327,7 +319,7 @@ fn hash_path(path: &Path) -> String {
 /// Create an advisory lock over the given path.
 ///
 /// See [fd_lock_path] for details.
-pub fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
+pub fn path_lock<X: AsRef<Path>>(path: X) -> Result<fd_lock::RwLock<File>> {
     let lock_path = fd_lock_path(path);
     let lock_dir = lock_path
         .parent()
@@ -353,10 +345,9 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
         Some(ty) => format!("{} ", program_type_str(ty)),
         None => "".to_string(),
     };
-    tracing::debug!(
-        " {} {ty}{} ({src})",
-        Colour::Green.bold().paint("Compiling"),
-        ansi_term::Style::new().bold().paint(name)
+    println_action_green(
+        "Compiling",
+        &format!("{ty}{} ({src})", ansi_term::Style::new().bold().paint(name)),
     );
 }
 
@@ -531,7 +522,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             let input = span.input();
             let mut start_pos = span.start();
             let mut end_pos = span.end();
-            let (mut start, end) = span.line_col();
+            let LineColRange { mut start, end } = span.line_col();
             let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
 
             let slice = Slice {
@@ -661,7 +652,7 @@ fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, u
     // how many lines to prepend or append to the highlighted region in the window
     const NUM_LINES_BUFFER: usize = 2;
 
-    let (start, end) = span.line_col();
+    let LineColRange { start, end } = span.line_col();
 
     let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
     debug_assert!(end.line >= start.line);

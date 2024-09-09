@@ -29,6 +29,7 @@ pub fn inlay_hints(
     range: &Range,
     config: &InlayHintsConfig,
 ) -> Option<Vec<lsp_types::InlayHint>> {
+    let _p = tracing::trace_span!("inlay_hints").entered();
     // 1. Loop through all our tokens and filter out all tokens that aren't TypedVariableDeclaration tokens
     // 2. Also filter out all tokens that have a span that fall outside of the provided range
     // 3. Filter out all variable tokens that have a type_ascription
@@ -45,15 +46,14 @@ pub fn inlay_hints(
             let token = item.value();
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
-                    match var_decl.type_ascription.call_path_tree {
-                        Some(_) => None,
-                        None => {
-                            let var_range = get_range_from_span(&var_decl.name.span());
-                            if var_range.start >= range.start && var_range.end <= range.end {
-                                Some(var_decl.clone())
-                            } else {
-                                None
-                            }
+                    if var_decl.type_ascription.call_path_tree.is_some() {
+                        None
+                    } else {
+                        let var_range = get_range_from_span(&var_decl.name.span());
+                        if var_range.start >= range.start && var_range.end <= range.end {
+                            Some(var_decl.clone())
+                        } else {
+                            None
                         }
                     }
                 }
@@ -87,7 +87,7 @@ fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHin
         },
         label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
             InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            _ => inlay_hint.label,
+            InlayKind::TypeHint => inlay_hint.label,
         }),
         kind: match inlay_hint.kind {
             InlayKind::TypeHint => Some(lsp_types::InlayHintKind::TYPE),

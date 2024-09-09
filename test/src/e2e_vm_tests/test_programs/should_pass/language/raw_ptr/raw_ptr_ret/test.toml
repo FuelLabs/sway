@@ -1,2 +1,3 @@
-category = "run"
-expected_result = { action = "return", value = 67108856 }
+category = "fail"
+
+# check: "pointer"

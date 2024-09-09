@@ -168,7 +168,5 @@ async fn maps_in_struct_access() {
 async fn clears_storage_key() {
     let methods = test_storage_access_instance().await.methods();
 
-    assert!(
-        methods.clears_storage_key().call().await.unwrap().value
-    );
+    assert!(methods.clears_storage_key().call().await.unwrap().value);
 }

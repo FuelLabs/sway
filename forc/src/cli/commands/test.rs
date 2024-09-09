@@ -2,9 +2,11 @@ use crate::cli;
 use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
+use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
+use forc_tracing::println_action_green;
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
 use pkg::manifest::build_profile::ExperimentalFlags;
+use sway_core::fuel_prelude::fuel_tx::Receipt;
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -50,9 +52,9 @@ pub struct Command {
     /// threads available in your system.
     pub test_threads: Option<usize>,
 
+    /// Disable the "new encoding" feature
     #[clap(long)]
-    /// Experimental flag for the "new encoding" feature
-    pub experimental_new_encoding: bool,
+    pub no_encoding_v1: bool,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -60,11 +62,15 @@ pub struct Command {
 #[clap(after_help = help())]
 pub struct TestPrintOpts {
     #[clap(long = "pretty-print", short = 'r')]
-    /// Pretty-print the logs emiited from tests.
+    /// Pretty-print the logs emitted from tests.
     pub pretty_print: bool,
     /// Print `Log` and `LogData` receipts for tests.
     #[clap(long = "logs", short = 'l')]
     pub print_logs: bool,
+    /// Decode logs and show decoded log information in human readable format alongside the raw
+    /// logs.
+    #[clap(long = "decode", short = 'd')]
+    pub decode_logs: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
@@ -85,12 +91,15 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     let test_count = built_tests.test_count(test_filter.as_ref());
     let num_tests_running = test_count.total - test_count.ignored;
     let num_tests_ignored = test_count.ignored;
-    info!(
-        "   Running {} {}, filtered {} {}",
-        num_tests_running,
-        formatted_test_count_string(&num_tests_running),
-        num_tests_ignored,
-        formatted_test_count_string(&num_tests_ignored)
+    println_action_green(
+        "Running",
+        &format!(
+            "{} {}, filtered {} {}",
+            num_tests_running,
+            formatted_test_count_string(&num_tests_running),
+            num_tests_ignored,
+            formatted_test_count_string(&num_tests_ignored)
+        ),
     );
     let tested = built_tests.run(test_runner_count, test_filter)?;
     let duration = start.elapsed();
@@ -100,10 +109,11 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
         forc_test::Tested::Workspace(pkgs) => {
             for pkg in &pkgs {
                 let built = &pkg.built.descriptor.name;
-                info!("\n   tested -- {built}\n");
+                info!("\ntested -- {built}\n");
                 print_tested_pkg(pkg, &test_print_opts)?;
             }
-            info!("\n   Finished in {:?}", duration);
+            info!("");
+            println_action_green("Finished", &format!("in {:?}", duration));
             pkgs.iter().all(|pkg| pkg.tests_passed())
         }
         forc_test::Tested::Package(pkg) => {
@@ -142,6 +152,22 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
         // If logs are enabled, print them.
         if test_print_opts.print_logs {
             let logs = &test.logs;
+            if test_print_opts.decode_logs {
+                for log in logs {
+                    if let Receipt::LogData {
+                        rb,
+                        data: Some(data),
+                        ..
+                    } = log
+                    {
+                        let decoded_log_data =
+                            decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?;
+                        let var_value = decoded_log_data.value;
+                        info!("Decoded log value: {}, log rb: {}", var_value, rb);
+                    }
+                }
+                info!("Raw logs:");
+            }
             let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
             info!("{}", formatted_logs);
         }
@@ -189,7 +215,7 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
         .map(|test_result| test_result.duration)
         .sum();
     info!(
-        "   Result: {}. {} passed. {} failed. Finished in {:?}.",
+        "\ntest result: {}. {} passed; {} failed; finished in {:?}",
         color.paint(state),
         succeeded,
         failed,
@@ -207,16 +233,16 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
-            json_abi_with_callpaths: cmd.build.pkg.json_abi_with_callpaths,
             ipfs_node: cmd.build.pkg.ipfs_node.unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
-            dca_graph: cmd.build.print.dca_graph,
-            dca_graph_url_format: cmd.build.print.dca_graph_url_format,
-            finalized_asm: cmd.build.print.finalized_asm,
-            intermediate_asm: cmd.build.print.intermediate_asm,
-            ir: cmd.build.print.ir,
+            dca_graph: cmd.build.print.dca_graph.clone(),
+            dca_graph_url_format: cmd.build.print.dca_graph_url_format.clone(),
+            asm: cmd.build.print.asm(),
+            bytecode: cmd.build.print.bytecode,
+            bytecode_spans: false,
+            ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
         time_phases: cmd.build.print.time_phases,
@@ -232,7 +258,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

@@ -14,7 +14,7 @@ use sway_types::{Ident, Spanned};
 
 impl Peek for DocComment {
     fn peek(peeker: Peeker<'_>) -> Option<DocComment> {
-        peeker.peek_doc_comment().ok().map(Clone::clone)
+        peeker.peek_doc_comment().ok().cloned()
     }
 }
 

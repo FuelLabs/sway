@@ -2,7 +2,6 @@ script;
 
 mod container;
 
-use std::vec::*;
 use ::container::*;
 
 impl<T> Container for Vec<T> {

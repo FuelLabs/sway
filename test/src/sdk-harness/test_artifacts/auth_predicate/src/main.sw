@@ -1,8 +1,11 @@
 predicate;
 
-use std::auth::predicate_id;
+use std::auth::predicate_address;
 
-fn main(predicate_address: Address) -> bool {
-    predicate_address == predicate_id()
+fn main(address: Address) -> bool {
+    let result = match predicate_address() {
+        Some(address) => address,
+        None => return false,
+    };
+    address == result
 }
-

@@ -29,13 +29,13 @@ pub(crate) fn qualify_code_action(
         .map(|call_path| {
             let text_edit = TextEdit {
                 range,
-                new_text: format!("{}", call_path),
+                new_text: format!("{call_path}"),
             };
 
             let changes = HashMap::from([(ctx.uri.clone(), vec![text_edit])]);
 
             CodeActionOrCommand::CodeAction(LspCodeAction {
-                title: format!("{} `{}`", CODE_ACTION_QUALIFY_TITLE, call_path),
+                title: format!("{CODE_ACTION_QUALIFY_TITLE} `{call_path}`"),
                 kind: Some(CodeActionKind::QUICKFIX),
                 edit: Some(WorkspaceEdit {
                     changes: Some(changes),

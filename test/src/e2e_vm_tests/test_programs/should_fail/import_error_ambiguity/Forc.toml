@@ -6,4 +6,4 @@ name = "import_error_ambiguity"
 
 [dependencies]
 core = { path = "../../../../../../sway-lib-core" }
-std = { path = "../../../../../../sway-lib-std" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }

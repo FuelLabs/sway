@@ -18,6 +18,7 @@ use crate::{
     fuel_prelude::fuel_asm::{self, op},
 };
 use either::Either;
+use fuel_vm::fuel_asm::{op::ADDI, Imm12};
 use std::fmt::{self, Write};
 use sway_types::span::Span;
 
@@ -109,6 +110,12 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         VirtualImmediate06,
     ),
+    WQMD(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     WQCM(
         AllocatedRegister,
         AllocatedRegister,
@@ -121,8 +128,14 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         AllocatedRegister,
     ),
+    WQMM(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
 
-    /* Conrol Flow Instructions */
+    /* Control Flow Instructions */
     JMP(AllocatedRegister),
     JI(VirtualImmediate24),
     JNE(AllocatedRegister, AllocatedRegister, AllocatedRegister),
@@ -179,7 +192,19 @@ pub(crate) enum AllocatedOpcode {
     ),
     CROO(AllocatedRegister, AllocatedRegister),
     CSIZ(AllocatedRegister, AllocatedRegister),
-    LDC(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    BSIZ(AllocatedRegister, AllocatedRegister),
+    LDC(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    BLDD(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     LOG(
         AllocatedRegister,
         AllocatedRegister,
@@ -228,7 +253,12 @@ pub(crate) enum AllocatedOpcode {
     /* Cryptographic Instructions */
     ECK1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     ECR1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
-    ED19(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    ED19(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     K256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
@@ -240,8 +270,8 @@ pub(crate) enum AllocatedOpcode {
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
     DataSectionOffsetPlaceholder,
-    DataSectionRegisterLoadPlaceholder,
     LoadDataId(AllocatedRegister, DataId),
+    AddrDataId(AllocatedRegister, DataId),
     Undefined,
 }
 
@@ -285,8 +315,10 @@ impl AllocatedOpcode {
             WQOP(_, _, _, _) => vec![],
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
+            WQMD(_, _, _, _) => vec![],
             WQCM(r1, _, _, _) => vec![r1],
             WQAM(_, _, _, _) => vec![],
+            WQMM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -329,7 +361,9 @@ impl AllocatedOpcode {
             CCP(_r1, _r2, _r3, _r4) => vec![],
             CROO(_r1, _r2) => vec![],
             CSIZ(r1, _r2) => vec![r1],
-            LDC(_r1, _r2, _r3) => vec![],
+            BSIZ(r1, _r2) => vec![r1],
+            LDC(_r1, _r2, _r3, _i0) => vec![],
+            BLDD(_r1, _r2, _r3, _r4) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1, _r2) => vec![],
@@ -348,7 +382,7 @@ impl AllocatedOpcode {
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
             ECR1(_r1, _r2, _r3) => vec![],
-            ED19(_r1, _r2, _r3) => vec![],
+            ED19(_r1, _r2, _r3, _r4) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -360,10 +394,8 @@ impl AllocatedOpcode {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![&AllocatedRegister::Constant(
-                ConstantRegister::DataSectionStart,
-            )],
             LoadDataId(r1, _i) => vec![r1],
+            AddrDataId(r1, _i) => vec![r1],
             Undefined => vec![],
         })
         .into_iter()
@@ -410,8 +442,10 @@ impl fmt::Display for AllocatedOpcode {
             WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
             WQML(a, b, c, d) => write!(fmtr, "wqml {a} {b} {c} {d}"),
             WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
+            WQMD(a, b, c, d) => write!(fmtr, "wqmd {a} {b} {c} {d}"),
             WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
             WQAM(a, b, c, d) => write!(fmtr, "wqam {a} {b} {c} {d}"),
+            WQMM(a, b, c, d) => write!(fmtr, "wqmm {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),
@@ -455,7 +489,9 @@ impl fmt::Display for AllocatedOpcode {
             CCP(a, b, c, d) => write!(fmtr, "ccp  {a} {b} {c} {d}"),
             CROO(a, b) => write!(fmtr, "croo {a} {b}"),
             CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
-            LDC(a, b, c) => write!(fmtr, "ldc  {a} {b} {c}"),
+            BSIZ(a, b) => write!(fmtr, "bsiz {a} {b}"),
+            LDC(a, b, c, d) => write!(fmtr, "ldc  {a} {b} {c} {d}"),
+            BLDD(a, b, c, d) => write!(fmtr, "bldd {a} {b} {c} {d}"),
             LOG(a, b, c, d) => write!(fmtr, "log  {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
             MINT(a, b) => write!(fmtr, "mint {a} {b}"),
@@ -474,7 +510,7 @@ impl fmt::Display for AllocatedOpcode {
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1  {a} {b} {c}"),
             ECR1(a, b, c) => write!(fmtr, "ecr1  {a} {b} {c}"),
-            ED19(a, b, c) => write!(fmtr, "ed19  {a} {b} {c}"),
+            ED19(a, b, c, d) => write!(fmtr, "ed19  {a} {b} {c} {d}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
@@ -491,8 +527,8 @@ impl fmt::Display for AllocatedOpcode {
                     "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]"
                 )
             }
-            DataSectionRegisterLoadPlaceholder => write!(fmtr, "lw   $ds $is 1"),
             LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
+            AddrDataId(a, b) => write!(fmtr, "addr {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
     }
@@ -528,6 +564,7 @@ impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,
+        offset_from_instr_start: u64,
         data_section: &mut DataSection,
     ) -> Either<Vec<fuel_asm::Instruction>, DoubleWideData> {
         use AllocatedOpcode::*;
@@ -573,11 +610,17 @@ impl AllocatedOp {
             WQDV(a, b, c, d) => {
                 op::WQDV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
             }
+            WQMD(a, b, c, d) => {
+                op::WQMD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             WQCM(a, b, c, d) => {
                 op::WQCM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
             }
             WQAM(a, b, c, d) => {
                 op::WQAM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            WQMM(a, b, c, d) => {
+                op::WQMM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
 
             /* Control Flow Instructions */
@@ -630,7 +673,13 @@ impl AllocatedOp {
             }
             CROO(a, b) => op::CROO::new(a.to_reg_id(), b.to_reg_id()).into(),
             CSIZ(a, b) => op::CSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
-            LDC(a, b, c) => op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            BSIZ(a, b) => op::BSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
+            LDC(a, b, c, d) => {
+                op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            BLDD(a, b, c, d) => {
+                op::BLDD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             LOG(a, b, c, d) => {
                 op::LOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -661,7 +710,9 @@ impl AllocatedOp {
             /* Cryptographic Instructions */
             ECK1(a, b, c) => op::ECK1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             ECR1(a, b, c) => op::ECR1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ED19(a, b, c) => op::ED19::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ED19(a, b, c, d) => {
+                op::ED19::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             K256(a, b, c) => op::K256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             S256(a, b, c) => op::S256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
 
@@ -681,18 +732,33 @@ impl AllocatedOp {
             DataSectionOffsetPlaceholder => {
                 return Either::Right(offset_to_data_section.to_be_bytes())
             }
-            DataSectionRegisterLoadPlaceholder => op::LW::new(
-                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-                ConstantRegister::InstructionStart.to_reg_id(),
-                1.into(),
-            )
-            .into(),
             LoadDataId(a, b) => {
-                return Either::Left(realize_load(a, b, data_section, offset_to_data_section))
+                return Either::Left(realize_load(
+                    a,
+                    b,
+                    data_section,
+                    offset_to_data_section,
+                    offset_from_instr_start,
+                ))
             }
+            AddrDataId(a, b) => return Either::Left(addr_of(a, b, data_section)),
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
     }
+}
+
+/// Address of a data section item
+fn addr_of(
+    dest: &AllocatedRegister,
+    data_id: &DataId,
+    data_section: &mut DataSection,
+) -> Vec<fuel_asm::Instruction> {
+    let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
+    vec![fuel_asm::Instruction::ADDI(ADDI::new(
+        dest.to_reg_id(),
+        fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+        Imm12::new(offset_bytes as u16),
+    ))]
 }
 
 /// Converts a virtual load word instruction which uses data labels into one which uses
@@ -704,6 +770,7 @@ fn realize_load(
     data_id: &DataId,
     data_section: &mut DataSection,
     offset_to_data_section: u64,
+    offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
     // if this data is larger than a word, instead of loading the data directly
     // into the register, we want to load a pointer to the data into the register
@@ -729,18 +796,23 @@ fn realize_load(
         Span::new(" ".into(), 0, 0, None).unwrap(),
     );
     let offset = match imm {
-            Ok(value) => value,
-            Err(_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
+        Ok(value) => value,
+        Err(_) => panic!(
+            "Unable to offset into the data section more than 2^12 bits. \
+                                Unsupported data section length: {} words.",
+            offset_words
+        ),
     };
 
     if !has_copy_type {
-        // load the pointer itself into the register
-        // `offset_to_data_section` is in bytes. We want a byte
-        // address here
-        let pointer_offset_from_instruction_start = offset_to_data_section + offset_bytes;
+        // load the pointer itself into the register. `offset_to_data_section` is in bytes.
+        // The -4 is because $pc is added in the *next* instruction.
+        let pointer_offset_from_current_instr =
+            offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
+
         // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer =
-            data_section.append_pointer(pointer_offset_from_instruction_start);
+        let data_id_for_pointer = data_section.append_pointer(pointer_offset_from_current_instr);
+
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);
         buf.append(&mut realize_load(
@@ -748,13 +820,14 @@ fn realize_load(
             &data_id_for_pointer,
             data_section,
             offset_to_data_section,
+            offset_from_instr_start,
         ));
-        // add $is to the pointer since it is relative to the data section
+        // add $pc to the pointer since it is relative to the current instruction.
         buf.push(
             fuel_asm::op::ADD::new(
                 dest.to_reg_id(),
                 dest.to_reg_id(),
-                ConstantRegister::InstructionStart.to_reg_id(),
+                ConstantRegister::ProgramCounter.to_reg_id(),
             )
             .into(),
         );

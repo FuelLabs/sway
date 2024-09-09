@@ -22,11 +22,17 @@ abi MyContract {
     fn u64_test(input: Result<u64, SomeError>) -> Result<u64, SomeError>;
     fn b256_test(input: Result<b256, SomeError>) -> Result<b256, SomeError>;
     fn struct_test(input: Result<MyStruct, SomeError>) -> Result<MyStruct, SomeError>;
-    fn tuple_test(input: Result<(Result<Address, SomeError>, u64), SomeError>) -> Result<(Result<Address, SomeError>, u64), SomeError>;
+    fn tuple_test(
+        input: Result<(Result<Address, SomeError>, u64), SomeError>,
+    ) -> Result<(Result<Address, SomeError>, u64), SomeError>;
     fn enum_test(input: Result<MyEnum, SomeError>) -> Result<MyEnum, SomeError>;
-    fn array_test(input: Result<[Result<Address, SomeError>; 3], SomeError>) -> Result<[Result<Address, SomeError>; 3], SomeError>;
+    fn array_test(
+        input: Result<[Result<Address, SomeError>; 3], SomeError>,
+    ) -> Result<[Result<Address, SomeError>; 3], SomeError>;
     fn string_test(input: Result<str[4], SomeError>) -> Result<str[4], SomeError>;
-    fn option_in_result_test(input: Result<Option<str[4]>, SomeError>) -> Result<Option<str[4]>, SomeError>;
+    fn option_in_result_test(
+        input: Result<Option<str[4]>, SomeError>,
+    ) -> Result<Option<str[4]>, SomeError>;
 }
 
 impl MyContract for Contract {

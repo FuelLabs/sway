@@ -3,9 +3,10 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    get_symbols, pointee_size, AnalysisResults, Constant, ConstantValue, Context, Function, InstOp,
-    IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    combine_indices, compute_escaped_symbols, get_gep_referred_symbols, get_loaded_ptr_values,
+    get_stored_ptr_values, pointee_size, AnalysisResults, Constant, ConstantValue, Context,
+    EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
+    Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -13,7 +14,7 @@ pub const SROA_NAME: &str = "sroa";
 pub fn create_sroa_pass() -> Pass {
     Pass {
         name: SROA_NAME,
-        descr: "Scalar replacement of aggregates.",
+        descr: "Scalar replacement of aggregates",
         deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(sroa)),
     }
@@ -131,8 +132,8 @@ pub fn sroa(
                 src_val_ptr,
             } = inst.get_instruction(context).unwrap().op
             {
-                let src_syms = get_symbols(context, src_val_ptr);
-                let dst_syms = get_symbols(context, dst_val_ptr);
+                let src_syms = get_gep_referred_symbols(context, src_val_ptr);
+                let dst_syms = get_gep_referred_symbols(context, dst_val_ptr);
 
                 // If neither source nor dest needs rewriting, we skip.
                 let src_sym = src_syms
@@ -268,7 +269,7 @@ pub fn sroa(
                 }
                 if let Some(dst_sym) = dst_sym {
                     // The dst symbol is a candidate. So it has been split into scalars.
-                    // Store to each of these from the SSA variable we crated above.
+                    // Store to each of these from the SSA variable we created above.
                     let base_offset = combine_indices(context, dst_val_ptr)
                         .and_then(|indices| {
                             dst_sym
@@ -353,7 +354,7 @@ pub fn sroa(
             let stored_pointers = get_stored_ptr_values(context, inst);
 
             for ptr in loaded_pointers.iter().chain(stored_pointers.iter()) {
-                let syms = get_symbols(context, *ptr);
+                let syms = get_gep_referred_symbols(context, *ptr);
                 if let Some(sym) = syms
                     .iter()
                     .next()
@@ -403,6 +404,7 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
                 fields.iter().all(|ty| check_sub_types(context, *ty))
             }
             crate::TypeContent::Slice => false,
+            crate::TypeContent::TypedSlice(..) => false,
             crate::TypeContent::Pointer(_) => true,
             crate::TypeContent::StringSlice => false,
             crate::TypeContent::StringArray(_) => false,
@@ -424,8 +426,8 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
         } = inst.get_instruction(context).unwrap().op
         {
             if pointee_size(context, dst_val_ptr) > 200 {
-                for sym in
-                    get_symbols(context, dst_val_ptr).union(&get_symbols(context, src_val_ptr))
+                for sym in get_gep_referred_symbols(context, dst_val_ptr)
+                    .union(&get_gep_referred_symbols(context, src_val_ptr))
                 {
                     candidates.remove(sym);
                 }
@@ -442,7 +444,11 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
 /// 3. Never accessed via non-const indexing.
 /// 4. Not aliased via a pointer that may point to more than one symbol.
 fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol> {
-    let escaped_symbols = compute_escaped_symbols(context, &function);
+    let escaped_symbols = match compute_escaped_symbols(context, &function) {
+        EscapedSymbols::Complete(syms) => syms,
+        EscapedSymbols::Incomplete(_) => return FxHashSet::<_>::default(),
+    };
+
     let mut candidates: FxHashSet<Symbol> = function
         .locals_iter(context)
         .filter_map(|(_, l)| {
@@ -466,7 +472,7 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
 
         let inst = inst.get_instruction(context).unwrap();
         for ptr in loaded_pointers.iter().chain(stored_pointers.iter()) {
-            let syms = get_symbols(context, *ptr);
+            let syms = get_gep_referred_symbols(context, *ptr);
             if syms.len() != 1 {
                 for sym in &syms {
                     candidates.remove(sym);

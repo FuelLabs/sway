@@ -12,10 +12,10 @@ storage {
 abi WriteAndReadStructWithPrivateFields {
     #[storage(read)]
     fn read_initial_can_init_via_storage() -> CanInitStruct;
-    
+
     #[storage(read, write)]
     fn write_and_read_can_init_via_storage(input: CanInitStruct) -> CanInitStruct;
-    
+
     #[storage(read, write)]
     fn write_and_read_cannot_init_via_api(input: CannotInitStruct) -> CannotInitStruct;
 }

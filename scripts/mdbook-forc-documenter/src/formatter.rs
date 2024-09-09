@@ -110,7 +110,7 @@ fn format_option_line(option_line: &str) -> String {
                     a
                 })
                 .trim()
-                .to_owned();
+                .to_string();
             break;
         }
     }
@@ -138,13 +138,12 @@ fn format_arg(arg: &str) -> String {
 }
 
 fn format_option(option: &str) -> String {
-    match option.ends_with(',') {
-        true => {
-            let mut s = option.to_string();
-            s.pop();
-            "`".to_owned() + &s + "`, "
-        }
-        false => "`".to_owned() + option + "` ",
+    if option.ends_with(',') {
+        let mut s = option.to_string();
+        s.pop();
+        "`".to_owned() + &s + "`, "
+    } else {
+        "`".to_owned() + option + "` "
     }
 }
 

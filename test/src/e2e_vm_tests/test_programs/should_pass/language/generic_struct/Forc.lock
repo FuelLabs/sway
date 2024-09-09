@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-B83AF983C6574F96'
+name = "core"
+source = "path+from-root-B83AF983C6574F96"
 
 [[package]]
-name = 'generic_struct'
-source = 'member'
-dependencies = ['core']
+name = "generic_struct"
+source = "member"
+dependencies = ["core"]

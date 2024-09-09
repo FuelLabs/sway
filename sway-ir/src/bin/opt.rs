@@ -6,7 +6,7 @@ use std::{
 use anyhow::anyhow;
 use sway_ir::{
     insert_after_each, register_known_passes, ExperimentalFlags, PassGroup, PassManager,
-    MODULEPRINTER_NAME, MODULEVERIFIER_NAME,
+    MODULE_PRINTER_NAME, MODULE_VERIFIER_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -26,7 +26,13 @@ fn main() -> Result<(), anyhow::Error> {
     let source_engine = SourceEngine::default();
 
     // Parse it. XXX Improve this error message too.
-    let mut ir = sway_ir::parser::parse(&input_str, &source_engine, ExperimentalFlags::default())?;
+    let mut ir = sway_ir::parser::parse(
+        &input_str,
+        &source_engine,
+        ExperimentalFlags {
+            new_encoding: false,
+        },
+    )?;
 
     // Perform optimisation passes in order.
     let mut passes = PassGroup::default();
@@ -34,10 +40,10 @@ fn main() -> Result<(), anyhow::Error> {
         passes.append_pass(pass);
     }
     if config.print_after_each {
-        passes = insert_after_each(passes, MODULEPRINTER_NAME);
+        passes = insert_after_each(passes, MODULE_PRINTER_NAME);
     }
     if config.verify_after_each {
-        passes = insert_after_each(passes, MODULEVERIFIER_NAME);
+        passes = insert_after_each(passes, MODULE_VERIFIER_NAME);
     }
     pass_mgr.run(&mut ir, &passes)?;
 

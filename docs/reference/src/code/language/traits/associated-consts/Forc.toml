@@ -3,6 +3,6 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "lib.sw"
 license = "Apache-2.0"
 name = "associated-consts"
-implicit-std = false
 
 [dependencies]
+std = { path = "../../../../../../../sway-lib-std" }

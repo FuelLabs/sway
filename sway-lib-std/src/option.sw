@@ -74,6 +74,7 @@
 //! `ok_or`  : `Option::ok_or`
 library;
 
+use ::logging::log;
 use ::result::Result;
 use ::revert::revert;
 
@@ -259,6 +260,61 @@ impl<T> Option<T> {
         match self {
             Self::Some(v) => Result::Ok(v),
             Self::None => Result::Err(err),
+        }
+    }
+
+    /// Returns the contained `Some` value, consuming the `self` value.
+    /// If the `Option` is the `None` variant, logs the provided message.
+    ///
+    /// # Additional Information
+    ///
+    /// Because this function may revert, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the `None`
+    /// case explicitly.
+    ///
+    /// # Arguments
+    ///
+    /// * `msg`: [M] - The message to be logged if the `Option` is the `None` variant.
+    ///
+    /// # Returns
+    ///
+    /// * [T] - The value contained by the option.
+    ///
+    /// # Reverts
+    ///
+    /// * Reverts if the `Option` is the `None` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// fn foo() {
+    ///     let x: Option<u64> = Some(42);
+    ///     assert(x.expect("X is known to be 42") == 42);
+    ///
+    ///     let y: Option<u64> = None;
+    ///     let val = y.expect("Testing expect"); // reverts with `("Testing Expect")`
+    /// }
+    /// ```
+    ///
+    /// # Recommended Message Style
+    ///
+    /// We recommend that `expect` messages are used to describe the reason you *expect* the `Option` should be `Some`.
+    ///
+    /// ```sway
+    /// let x: Option<u64> = bar(1);
+    /// let value = x.expect("bar() should never return None with 1 as an argument");
+    /// ```
+    pub fn expect<M>(self, msg: M) -> T
+    where
+        M: AbiEncode,
+    {
+        match self {
+            Self::Some(v) => v,
+            Self::None => {
+                log(msg);
+                revert(0);
+            },
         }
     }
 }

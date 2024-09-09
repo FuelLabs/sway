@@ -4,7 +4,12 @@ category = "fail"
 # check: $()b[0] = true;
 # nextln: $()This expression has type "bool", which is not an indexable type.
 
-# check: $()Assignment to immutable variable. Variable my_array is not declared as mutable.
+# check: $()Immutable variables cannot be assigned to
+# check: $()let my_array: [u64; 1] = [1];
+# nextln: $()"my_array" is declared here as immutable.
+# check: $()my_array[0] = 0;
+# nextln: $()This expression cannot be assigned to, because "my_array" is an immutable variable.
+# check: $()Consider declaring "my_array" as mutable.
 
 # check: $()Cannot pass immutable argument to mutable parameter.
 

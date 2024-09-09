@@ -70,7 +70,7 @@ impl u16 {
     /// ```
     pub fn from_le_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 2);
-        let ptr = bytes.buf.ptr();
+        let ptr = bytes.ptr();
         let a = ptr.read_byte();
         let b = (ptr.add_uint_offset(1)).read_byte();
         let i = 0x8;
@@ -147,7 +147,7 @@ impl u16 {
     /// ```
     pub fn from_be_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 2);
-        let ptr = bytes.buf.ptr();
+        let ptr = bytes.ptr();
         let a = ptr.read_byte();
         let b = (ptr.add_uint_offset(1)).read_byte();
 
@@ -157,42 +157,4 @@ impl u16 {
             r1: u16
         }
     }
-}
-
-#[test]
-fn test_u16_to_le_bytes() {
-    let x: u16 = 513;
-    let result = x.to_le_bytes();
-
-    assert(result.get(0).unwrap() == 1_u8);
-    assert(result.get(1).unwrap() == 2_u8);
-}
-
-#[test]
-fn test_u16_from_le_bytes() {
-    let mut bytes = Bytes::new();
-    bytes.push(1_u8);
-    bytes.push(2_u8);
-    let result = u16::from_le_bytes(bytes);
-
-    assert(result == 513_u16);
-}
-
-#[test]
-fn test_u16_to_be_bytes() {
-    let x: u16 = 513;
-    let result = x.to_be_bytes();
-
-    assert(result.get(0).unwrap() == 2_u8);
-    assert(result.get(1).unwrap() == 1_u8);
-}
-
-#[test]
-fn test_u16_from_be_bytes() {
-    let mut bytes = Bytes::new();
-    bytes.push(2_u8);
-    bytes.push(1_u8);
-    let result = u16::from_be_bytes(bytes);
-
-    assert(result == 513_u16);
 }

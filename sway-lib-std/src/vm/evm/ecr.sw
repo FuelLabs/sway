@@ -2,7 +2,6 @@
 library;
 
 use ::b512::B512;
-use ::registers::error;
 use ::ecr::{ec_recover, EcRecoverError};
 use ::hash::*;
 use ::result::Result::{self, *};
@@ -47,7 +46,7 @@ pub fn ec_recover_evm_address(
         _ => {
             let pub_key = pub_key_result.unwrap();
             // Note that EVM addresses are derived from the Keccak256 hash of the pubkey (not sha256)
-            let pubkey_hash = keccak256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
+            let pubkey_hash = keccak256(((pub_key.bits())[0], (pub_key.bits())[1]));
             Ok(EvmAddress::from(pubkey_hash))
         }
     }

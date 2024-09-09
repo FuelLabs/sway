@@ -1,11 +1,11 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use either::Either;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     asm_generation::fuel::compiler_constants,
-    asm_lang::{ControlFlowOp, VirtualImmediate12, VirtualOp, VirtualRegister},
+    asm_lang::{ControlFlowOp, Label, VirtualImmediate12, VirtualOp, VirtualRegister},
 };
 
 use super::{
@@ -20,13 +20,14 @@ impl AbstractInstructionSet {
     // computations left untouched, to be later removed by a DCE pass.
     pub(crate) fn const_indexing_aggregates_function(mut self, data_section: &DataSection) -> Self {
         // Poor man's SSA (local ... per block).
-        #[derive(PartialEq, Eq, Hash, Clone)]
+        #[derive(PartialEq, Eq, Hash, Clone, Debug)]
         struct VRegDef {
             reg: VirtualRegister,
             ver: u32,
         }
 
         // What does a register contain?
+        #[derive(Debug)]
         enum RegContents {
             Constant(u64),
             BaseOffset(VRegDef, u64),
@@ -57,6 +58,9 @@ impl AbstractInstructionSet {
         }
 
         for op in &mut self.ops {
+            // Uncomment to debug what this optimization is doing
+            // let op_before = op.clone();
+
             fn process_add(
                 reg_contents: &mut FxHashMap<VirtualRegister, RegContents>,
                 latest_version: &mut FxHashMap<VirtualRegister, u32>,
@@ -65,12 +69,13 @@ impl AbstractInstructionSet {
                 c2: u64,
             ) {
                 match reg_contents.get(opd1) {
-                    Some(RegContents::Constant(c1)) => {
+                    Some(RegContents::Constant(c1)) if c1.checked_add(c2).is_some() => {
                         reg_contents.insert(dest.clone(), RegContents::Constant(c1 + c2));
                         record_new_def(latest_version, dest);
                     }
                     Some(RegContents::BaseOffset(base_reg, offset))
-                        if get_def_version(latest_version, &base_reg.reg) == base_reg.ver =>
+                        if get_def_version(latest_version, &base_reg.reg) == base_reg.ver
+                            && offset.checked_add(c2).is_some() =>
                     {
                         reg_contents.insert(
                             dest.clone(),
@@ -134,16 +139,20 @@ impl AbstractInstructionSet {
                                 && ((offset / 8) + imm.value as u64)
                                     < compiler_constants::TWELVE_BITS =>
                         {
-                            let new_imm = VirtualImmediate12::new_unchecked(
-                                (offset / 8) + imm.value as u64,
-                                "Immediate offset too big for LW",
-                            );
-                            let new_lw = VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
-                            // The register defined is no more useful for us. Forget anything from its past.
-                            reg_contents.remove(dest);
-                            record_new_def(&mut latest_version, dest);
-                            // Replace the LW with a new one in-place.
-                            *op = new_lw;
+                            // bail if LW cannot read where this memory is
+                            if offset % 8 == 0 {
+                                let new_imm = VirtualImmediate12::new_unchecked(
+                                    (offset / 8) + imm.value as u64,
+                                    "Immediate offset too big for LW",
+                                );
+                                let new_lw =
+                                    VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
+                                // The register defined is no more useful for us. Forget anything from its past.
+                                reg_contents.remove(dest);
+                                record_new_def(&mut latest_version, dest);
+                                // Replace the LW with a new one in-place.
+                                *op = new_lw;
+                            }
                         }
                         _ => {
                             reg_contents.remove(dest);
@@ -181,6 +190,20 @@ impl AbstractInstructionSet {
                     reg_contents.clear();
                 }
             }
+
+            // Uncomment to debug what this optimization is doing
+            // let before = op_before.opcode.to_string();
+            // let after = op.opcode.to_string();
+
+            // println!("{}", before);
+            // if before != after {
+            //     println!("    optimized to");
+            //     println!("    {}", after);
+            //     println!("    using");
+            //     for (k, v) in reg_contents.iter() {
+            //         println!("    - {:?} -> {:?}", k, v);
+            //     }
+            // }
         }
 
         self
@@ -203,7 +226,7 @@ impl AbstractInstructionSet {
                 op.opcode
             {
                 // Block boundary. Start afresh.
-                cur_live = liveness.get(ix).expect("Incorrect liveness info").clone();
+                cur_live.clone_from(liveness.get(ix).expect("Incorrect liveness info"));
                 // Add use(op) to cur_live.
                 for u in op_use {
                     cur_live.insert(u.clone());
@@ -243,6 +266,46 @@ impl AbstractInstructionSet {
             })
             .collect();
         std::mem::swap(&mut self.ops, &mut new_ops);
+
+        self
+    }
+
+    // Remove unreachable instructions.
+    pub(crate) fn simplify_cfg(mut self) -> AbstractInstructionSet {
+        let ops = &self.ops;
+
+        if ops.is_empty() {
+            return self;
+        }
+
+        // Keep track of a map between jump labels and op indices. Useful to compute op successors.
+        let mut label_to_index: HashMap<Label, usize> = HashMap::default();
+        for (idx, op) in ops.iter().enumerate() {
+            if let Either::Right(ControlFlowOp::Label(op_label)) = op.opcode {
+                label_to_index.insert(op_label, idx);
+            }
+        }
+
+        let mut reachables = vec![false; ops.len()];
+        let mut worklist = vec![0];
+        while let Some(op_idx) = worklist.pop() {
+            assert!(!reachables[op_idx]);
+            reachables[op_idx] = true;
+            let op = &ops[op_idx];
+            for s in &op.successors(op_idx, ops, &label_to_index) {
+                if !reachables[*s] {
+                    worklist.push(*s);
+                }
+            }
+        }
+
+        let reachable_ops = self
+            .ops
+            .into_iter()
+            .enumerate()
+            .filter_map(|(idx, op)| if reachables[idx] { Some(op) } else { None })
+            .collect();
+        self.ops = reachable_ops;
 
         self
     }

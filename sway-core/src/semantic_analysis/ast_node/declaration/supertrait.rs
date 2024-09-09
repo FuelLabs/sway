@@ -33,18 +33,29 @@ pub(crate) fn insert_supertraits_into_namespace(
             // using a callpath directly, so we check to see if the user has done
             // this and we disallow it.
             if !supertrait.name.prefixes.is_empty() {
-                handler.emit_err(CompileError::UnimplementedWithHelp(
-                    "Using module paths to define supertraits is not supported yet.",
-                    "try importing the trait with a \"use\" statement instead",
-                    supertrait.span(),
-                ));
+                handler.emit_err(CompileError::Unimplemented {
+                    feature: "Using module paths to define supertraits".to_string(),
+                    help: vec![
+                        // Note that eventual leading `::` will not be shown. It'a fine for now, we anyhow want to implement using module paths.
+                        format!(
+                            "Import the supertrait by using: `use {};`.",
+                            supertrait.name
+                        ),
+                        format!(
+                            "Then, in the list of supertraits, just use the trait name \"{}\".",
+                            supertrait.name.suffix
+                        ),
+                    ],
+                    span: supertrait.span(),
+                });
+
                 continue;
             }
 
             let decl = ctx
                 .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-                .resolve_call_path(
+                .resolve_call_path_typed(
                     &Handler::default(),
                     engines,
                     &supertrait.name,
@@ -60,10 +71,12 @@ pub(crate) fn insert_supertraits_into_namespace(
                     // Right now we don't parse type arguments for supertraits, so
                     // we should give this error message to users.
                     if !trait_decl.type_parameters.is_empty() {
-                        handler.emit_err(CompileError::Unimplemented(
-                            "Using generic traits as supertraits is not supported yet.",
-                            supertrait.name.span(),
-                        ));
+                        handler.emit_err(CompileError::Unimplemented {
+                            feature: "Using generic traits as supertraits".to_string(),
+                            help: vec![],
+                            span: supertrait.span(),
+                        });
+
                         continue;
                     }
 

@@ -1,7 +1,7 @@
 //! A simple `forc` plugin for starting the sway language server.
 //!
 //! Once installed and available via `PATH`, can be executed via `forc lsp`.
-
+#![recursion_limit = "256"]
 // Use Jemalloc for main binary
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
@@ -11,7 +11,7 @@ use clap::Parser;
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-lsp",
-    about = "Forc plugin for the Sway LSP (Language Server Protocol) implementation.",
+    about = "Forc plugin for the Sway LSP (Language Server Protocol) implementation",
     version
 )]
 struct App {}

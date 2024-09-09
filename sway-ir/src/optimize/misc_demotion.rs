@@ -10,7 +10,7 @@ use std::ops::Not;
 /// - Fuel ASM block arguments: These are assumed to be pointers for 'by-reference' values.
 /// - Fuel ASM block return values: These are also assumed to be pointers for 'by-reference'
 ///   values.
-/// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
+/// - Fuel Wide binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
     InstOp, InstructionInserter, IrError, Pass, PassMutability, Predicate, ScopedPass, Type,
@@ -19,12 +19,12 @@ use crate::{
 
 use rustc_hash::FxHashMap;
 
-pub const MISCDEMOTION_NAME: &str = "miscdemotion";
+pub const MISC_DEMOTION_NAME: &str = "misc-demotion";
 
 pub fn create_misc_demotion_pass() -> Pass {
     Pass {
-        name: MISCDEMOTION_NAME,
-        descr: "By-value miscellaneous demotion to by-reference.",
+        name: MISC_DEMOTION_NAME,
+        descr: "Miscellaneous by-value demotions to by-reference",
         deps: Vec::new(),
         runner: ScopedPass::FunctionPass(PassMutability::Transform(misc_demotion)),
     }
@@ -287,9 +287,21 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
         return Ok(false);
     }
 
-    // Take the ptr_to_int value, store it in a temporary local, and replace it with its pointer in
-    // the ptr_to_int instruction.
     for (block, ptr_to_int_instr_val, ptr_val, ptr_ty) in candidates {
+        // If the ptr_val is a load from a memory location, we can just refer to that.
+        if let Some(instr) = ptr_val.get_instruction(context) {
+            if let Some(loaded_val) = match instr.op {
+                InstOp::Load(loaded_val) => Some(loaded_val),
+                _ => None,
+            } {
+                ptr_to_int_instr_val.replace_instruction_value(context, ptr_val, loaded_val);
+                continue;
+            }
+        }
+
+        // Take the ptr_to_int value, store it in a temporary local, and replace it with its pointer in
+        // the ptr_to_int instruction.
+
         // Create a variable for the arg, a get_local for it and a store.
         let loc_var = function.new_unique_local_var(
             context,

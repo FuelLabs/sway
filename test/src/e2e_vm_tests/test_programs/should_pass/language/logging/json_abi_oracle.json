@@ -1,5 +1,6 @@
 {
   "configurables": [],
+  "encoding": "1",
   "functions": [
     {
       "attributes": null,
@@ -7,36 +8,36 @@
       "name": "main",
       "output": {
         "name": "",
-        "type": 14,
+        "type": 13,
         "typeArguments": null
       }
     }
   ],
   "loggedTypes": [
     {
-      "logId": 0,
+      "logId": "4579537983717831593",
       "loggedType": {
         "name": "",
-        "type": 7,
+        "type": 6,
         "typeArguments": []
       }
     },
     {
-      "logId": 1,
+      "logId": "16566583104751091389",
       "loggedType": {
         "name": "",
-        "type": 8,
+        "type": 7,
         "typeArguments": [
           {
             "name": "",
-            "type": 14,
+            "type": 13,
             "typeArguments": null
           }
         ]
       }
     },
     {
-      "logId": 2,
+      "logId": "5087777005172090899",
       "loggedType": {
         "name": "",
         "type": 1,
@@ -44,34 +45,10 @@
       }
     },
     {
-      "logId": 3,
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": []
-      }
-    },
-    {
-      "logId": 4,
+      "logId": "5555909392781521367",
       "loggedType": {
         "name": "",
         "type": 5,
-        "typeArguments": []
-      }
-    },
-    {
-      "logId": 5,
-      "loggedType": {
-        "name": "",
-        "type": 6,
-        "typeArguments": []
-      }
-    },
-    {
-      "logId": 6,
-      "loggedType": {
-        "name": "",
-        "type": 6,
         "typeArguments": []
       }
     }
@@ -88,11 +65,11 @@
       "components": [
         {
           "name": "A",
-          "type": 8,
+          "type": 7,
           "typeArguments": [
             {
               "name": "",
-              "type": 14,
+              "type": 13,
               "typeArguments": null
             }
           ]
@@ -134,44 +111,32 @@
     {
       "components": [
         {
-          "name": "p",
-          "type": 3,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct NotAutoEncodable",
-      "typeId": 6,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
           "name": "a",
-          "type": 14,
-          "typeArguments": null
-        },
-        {
-          "name": "b",
           "type": 13,
           "typeArguments": null
         },
         {
+          "name": "b",
+          "type": 12,
+          "typeArguments": null
+        },
+        {
           "name": "c",
-          "type": 11,
+          "type": 10,
           "typeArguments": null
         },
         {
           "name": "d",
-          "type": 15,
+          "type": 14,
           "typeArguments": null
         },
         {
           "name": "e",
-          "type": 10,
+          "type": 9,
           "typeArguments": [
             {
               "name": "",
-              "type": 14,
+              "type": 13,
               "typeArguments": null
             }
           ]
@@ -183,12 +148,12 @@
         },
         {
           "name": "g",
-          "type": 12,
+          "type": 11,
           "typeArguments": null
         }
       ],
       "type": "struct S",
-      "typeId": 7,
+      "typeId": 6,
       "typeParameters": null
     },
     {
@@ -200,7 +165,7 @@
         }
       ],
       "type": "struct SS",
-      "typeId": 8,
+      "typeId": 7,
       "typeParameters": [
         2
       ]
@@ -214,12 +179,12 @@
         },
         {
           "name": "cap",
-          "type": 14,
+          "type": 13,
           "typeArguments": null
         }
       ],
       "type": "struct std::vec::RawVec",
-      "typeId": 9,
+      "typeId": 8,
       "typeParameters": [
         2
       ]
@@ -228,7 +193,7 @@
       "components": [
         {
           "name": "buf",
-          "type": 9,
+          "type": 8,
           "typeArguments": [
             {
               "name": "",
@@ -239,12 +204,12 @@
         },
         {
           "name": "len",
-          "type": 14,
+          "type": 13,
           "typeArguments": null
         }
       ],
       "type": "struct std::vec::Vec",
-      "typeId": 10,
+      "typeId": 9,
       "typeParameters": [
         2
       ]
@@ -252,31 +217,31 @@
     {
       "components": null,
       "type": "u16",
-      "typeId": 11,
+      "typeId": 10,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u256",
-      "typeId": 12,
+      "typeId": 11,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u32",
-      "typeId": 13,
+      "typeId": 12,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u64",
-      "typeId": 14,
+      "typeId": 13,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "u8",
-      "typeId": 15,
+      "typeId": 14,
       "typeParameters": null
     }
   ]

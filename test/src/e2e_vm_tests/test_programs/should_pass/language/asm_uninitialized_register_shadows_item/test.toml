@@ -1,0 +1,98 @@
+category = "compile"
+expected_warnings = 8
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a variable
+#check: $()let x = 0;
+#nextln: $()Variable "x" is declared here.
+#check: $()let _ = asm(x) { // Not used.
+#nextln: $()Uninitialized register "x" is shadowing a variable of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the variable?
+#nextln: $()In that case, you must do it explicitly: `x: x`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed variable, consider renaming the register "x".
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a variable
+#check: $()let x = 0;
+#nextln: $()Variable "x" is declared here.
+#check: $()let _ = asm(x) { // Used.
+#nextln: $()Uninitialized register "x" is shadowing a variable of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the variable?
+#nextln: $()In that case, you must do it explicitly: `x: x`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed variable, consider renaming the register "x".
+
+#not: let _ = asm(x: 0)
+#not: let _ = asm(x: x)
+#not: let _ = asm(x: y)
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a configurable
+#check: $()CONFIG: u64 = 0,
+#nextln: $()Configurable "CONFIG" is declared here.
+#check: $()let _ = asm(CONFIG) { // Not used.
+#nextln: $()Uninitialized register "CONFIG" is shadowing a configurable of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the configurable?
+#nextln: $()In that case, you must do it explicitly: `CONFIG: CONFIG`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed configurable, consider renaming the register "CONFIG".
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a configurable
+#check: $()CONFIG: u64 = 0,
+#nextln: $()Configurable "CONFIG" is declared here.
+#check: $()let _ = asm(CONFIG) { // Used.
+#nextln: $()Uninitialized register "CONFIG" is shadowing a configurable of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the configurable?
+#nextln: $()In that case, you must do it explicitly: `CONFIG: CONFIG`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed configurable, consider renaming the register "CONFIG".
+
+#not: let _ = asm(CONFIG: 0)
+#not: let _ = asm(CONFIG: CONFIG)
+#not: let _ = asm(CONFIG: y)
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a constant
+#check: $()let _ = asm(G_CONST) { // Not used.
+#nextln: $()Uninitialized register "G_CONST" is shadowing a constant of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the constant?
+#nextln: $()In that case, you must do it explicitly: `G_CONST: G_CONST`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed constant, consider renaming the register "G_CONST".
+#check: $()const G_CONST: u64 = 0;
+#nextln: $()Constant "G_CONST" is declared here.
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a constant
+#check: $()let _ = asm(G_CONST) { // Used.
+#nextln: $()Uninitialized register "G_CONST" is shadowing a constant of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the constant?
+#nextln: $()In that case, you must do it explicitly: `G_CONST: G_CONST`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed constant, consider renaming the register "G_CONST".
+#check: $()const G_CONST: u64 = 0;
+#nextln: $()Constant "G_CONST" is declared here.
+
+#not: let _ = asm(G_CONST: 0)
+#not: let _ = asm(G_CONST: G_CONST)
+#not: let _ = asm(G_CONST: y)
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a constant
+#check: $()const L_CONST: u64 = 0;
+#nextln: $()Constant "L_CONST" is declared here.
+#check: $()let _ = asm(L_CONST) { // Not used.
+#nextln: $()Uninitialized register "L_CONST" is shadowing a constant of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the constant?
+#nextln: $()In that case, you must do it explicitly: `L_CONST: L_CONST`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed constant, consider renaming the register "L_CONST".
+
+#check: $()warning
+#sameln: $()Uninitialized ASM register is shadowing a constant
+#check: $()const L_CONST: u64 = 0;
+#nextln: $()Constant "L_CONST" is declared here.
+#check: $()let _ = asm(L_CONST) { // Used.
+#nextln: $()Uninitialized register "L_CONST" is shadowing a constant of the same name.
+#nextln: $()Are you trying to initialize the register to the value of the constant?
+#nextln: $()In that case, you must do it explicitly: `L_CONST: L_CONST`.
+#nextln: $()Otherwise, to avoid the confusion with the shadowed constant, consider renaming the register "L_CONST".
+
+#not: let _ = asm(L_CONST: 0)
+#not: let _ = asm(L_CONST: L_CONST)
+#not: let _ = asm(L_CONST: y)

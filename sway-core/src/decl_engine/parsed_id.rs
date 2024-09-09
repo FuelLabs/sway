@@ -1,5 +1,10 @@
+use std::hash::{DefaultHasher, Hasher};
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
+
+use crate::engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext};
+
+use super::DeclUniqueId;
 
 pub type ParsedDeclIdIndexType = usize;
 
@@ -16,6 +21,17 @@ impl<T> ParsedDeclId<T> {
     pub(crate) fn inner(&self) -> ParsedDeclIdIndexType {
         self.0
     }
+
+    pub fn unique_id(&self) -> DeclUniqueId
+    where
+        T: 'static,
+    {
+        let mut hasher = DefaultHasher::default();
+        std::any::TypeId::of::<T>().hash(&mut hasher);
+        self.0.hash(&mut hasher);
+
+        DeclUniqueId(hasher.finish())
+    }
 }
 
 impl<T> Copy for ParsedDeclId<T> {}
@@ -26,16 +42,25 @@ impl<T> Clone for ParsedDeclId<T> {
 }
 
 impl<T> Eq for ParsedDeclId<T> {}
-impl<T> Hash for ParsedDeclId<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state)
-    }
-}
 impl<T> PartialEq for ParsedDeclId<T> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
 }
+
+impl<T> EqWithEngines for ParsedDeclId<T> {}
+impl<T> PartialEqWithEngines for ParsedDeclId<T> {
+    fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<T> Hash for ParsedDeclId<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state)
+    }
+}
+
 impl<T> PartialOrd for ParsedDeclId<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))

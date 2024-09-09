@@ -1,5 +1,5 @@
 //! This module handles the process of iterating through the typed AST and doing an analysis.
-//! At the moment we compute an dependency graph between typed nodes.
+//! At the moment, we compute a dependency graph between typed nodes.
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
@@ -9,6 +9,7 @@ use petgraph::stable_graph::NodeIndex;
 use petgraph::Graph;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Named;
 
 use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclUniqueId};
 use crate::engine_threading::DebugWithEngines;
@@ -37,7 +38,7 @@ impl Display for TyNodeDepGraphEdge {
 
 #[derive(Clone, Debug)]
 pub enum TyNodeDepGraphNode {
-    ImplTrait { node: ty::ImplTrait },
+    ImplTrait { node: ty::ImplSelfOrTrait },
     ImplTraitItem { node: ty::TyTraitItem },
     Fn { node: DeclId<TyFunctionDecl> },
 }
@@ -86,7 +87,7 @@ impl TypeCheckAnalysisContext<'_> {
     /// This functions either gets an existing node in the graph, or creates a new
     /// node corresponding to the passed function declaration node.
     /// The function will try to find a non-monomorphized declaration node id so that
-    /// future acesses always normalize to the same node id.
+    /// future accesses always normalize to the same node id.
     #[allow(clippy::map_entry)]
     pub fn get_or_create_node_for_fn_decl(
         &mut self,
@@ -124,7 +125,7 @@ impl TypeCheckAnalysisContext<'_> {
     #[allow(clippy::map_entry)]
     pub(crate) fn push_nodes_for_impl_trait(
         &mut self,
-        impl_trait: &ty::ImplTrait,
+        impl_trait: &ty::ImplSelfOrTrait,
     ) -> TyNodeDepGraphNodeId {
         if self.nodes.contains_key(&impl_trait.decl_id.unique_id()) {
             *self.nodes.get(&impl_trait.decl_id.unique_id()).unwrap()
@@ -135,7 +136,7 @@ impl TypeCheckAnalysisContext<'_> {
             self.nodes.insert(impl_trait.decl_id.unique_id(), node);
 
             let decl_engine = self.engines.de();
-            let impl_trait = decl_engine.get_impl_trait(&impl_trait.decl_id);
+            let impl_trait = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
 
             for item in impl_trait.items.iter() {
                 let item_node = self.get_or_create_node_for_impl_item(item);
@@ -247,7 +248,7 @@ impl TypeCheckAnalysisContext<'_> {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing type check analysis graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting type check analysis graph to path {graph_path:?}\n{error}"
                     );
                 }
             }
@@ -371,7 +372,8 @@ impl DebugWithEngines for TyNodeDepGraphNode {
                 format!("{:?}", str)
             }
             TyNodeDepGraphNode::ImplTrait { node } => {
-                format!("{:?}", node.name.as_str())
+                let decl = engines.de().get_impl_self_or_trait(&node.decl_id);
+                format!("{:?}", decl.name().as_str())
             }
             TyNodeDepGraphNode::Fn { node } => {
                 let fn_decl = engines.de().get_function(node);

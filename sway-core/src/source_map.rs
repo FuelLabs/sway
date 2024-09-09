@@ -1,7 +1,9 @@
 use dirs::home_dir;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use sway_types::SourceEngine;
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
+use sway_types::{LineCol, SourceEngine};
 
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +23,7 @@ pub struct SourceMap {
     pub paths: Vec<PathBuf>,
     /// Mapping from opcode index to source location
     // count of instructions, multiply the opcode by 4 to get the byte offset
-    pub map: HashMap<usize, SourceMapSpan>,
+    pub map: BTreeMap<usize, SourceMapSpan>,
 }
 impl SourceMap {
     pub fn new() -> Self {
@@ -55,8 +57,8 @@ impl SourceMap {
                 SourceMapSpan {
                     path: PathIndex(path_index),
                     range: LocationRange {
-                        start: span.start(),
-                        end: span.end(),
+                        start: span.start_pos().line_col(),
+                        end: span.end_pos().line_col(),
                     },
                 },
             );
@@ -65,22 +67,9 @@ impl SourceMap {
 
     /// Inverse source mapping
     pub fn addr_to_span(&self, pc: usize) -> Option<(PathBuf, LocationRange)> {
-        self.map.get(&pc).map(|sms| {
-            let p = &self.paths[sms.path.0];
-            for dep in &self.dependency_paths {
-                if p.starts_with(dep.file_name().unwrap()) {
-                    let mut path = home_dir().expect("Could not get homedir").join(".forc");
-
-                    if let Some(dp) = dep.parent() {
-                        path = path.join(dp);
-                    }
-
-                    return (path.join(p), sms.range);
-                }
-            }
-
-            (p.to_owned(), sms.range)
-        })
+        self.map
+            .get(&pc)
+            .map(|sms| sms.to_span(&self.paths, &self.dependency_paths))
     }
 }
 
@@ -90,8 +79,31 @@ pub struct SourceMapSpan {
     pub range: LocationRange,
 }
 
+impl SourceMapSpan {
+    pub fn to_span(
+        &self,
+        paths: &[PathBuf],
+        dependency_paths: &[PathBuf],
+    ) -> (PathBuf, LocationRange) {
+        let p = &paths[self.path.0];
+        for dep in dependency_paths {
+            if p.starts_with(dep.file_name().unwrap()) {
+                let mut path = home_dir().expect("Could not get homedir").join(".forc");
+
+                if let Some(dp) = dep.parent() {
+                    path = path.join(dp);
+                }
+
+                return (path.join(p), self.range);
+            }
+        }
+
+        (p.to_owned(), self.range)
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct LocationRange {
-    pub start: usize,
-    pub end: usize,
+    pub start: LineCol,
+    pub end: LineCol,
 }

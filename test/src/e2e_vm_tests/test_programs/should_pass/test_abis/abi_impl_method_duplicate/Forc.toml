@@ -3,6 +3,4 @@ name = "abi_impl_method_duplicate"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-
-[dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+implicit-std = false

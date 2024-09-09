@@ -18,36 +18,6 @@ const FIRST_PARAMETER_OFFSET: u64 = 73;
 /// Where 74 (73 + 1) is the current offset in words from the start of the call frame.
 const SECOND_PARAMETER_OFFSET: u64 = 74;
 
-//  Accessing the current call frame
-//
-/// Get the current contract's id when called in an internal context.
-///
-/// # Additional Information
-///
-/// **_Note:_** If called in an external context, this will **not** return a contract ID.
-/// If called externally, will actually return a pointer to the transaction ID.
-///
-/// # Returns
-///
-/// * [ContractId] - The contract id of this contract.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::{call_frames::contract_id, constants::ZERO_B256, asset::mint};
-///
-/// fn foo() {
-///     let this_contract = contract_id();
-///     mint(ZERO_B256, 50);
-///     Address::from(ZERO_B256).transfer(AssetId::default(this_contract), 50);
-/// }
-/// ```
-pub fn contract_id() -> ContractId {
-    ContractId::from(asm() {
-        fp: b256
-    })
-}
-
 /// Get the `asset_id` of coins being sent from the current call frame.
 ///
 /// # Returns
@@ -57,20 +27,18 @@ pub fn contract_id() -> ContractId {
 /// # Examples
 ///
 /// ```sway
-/// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
+/// use std::call_frames::msg_asset_id;
 ///
 /// fn foo() {
 ///     let asset = msg_asset_id();
-///     assert(asset == BASE_ASSET_ID);
+///     assert(asset == AssetId::base());
 /// }
 /// ```
 pub fn msg_asset_id() -> AssetId {
-    AssetId {
-        value: { asm(asset_id) {
-                addi asset_id fp i32;
-                asset_id: b256
-            }         },
-    }
+    AssetId::from(asm(asset_id) {
+        addi asset_id fp i32;
+        asset_id: b256
+    })
 }
 
 /// Get the code size in bytes (padded to word alignment) from the current call frame.
@@ -78,7 +46,7 @@ pub fn msg_asset_id() -> AssetId {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -95,10 +63,11 @@ pub fn msg_asset_id() -> AssetId {
 /// }
 /// ```
 pub fn code_size() -> u64 {
-    asm(size, ptr, offset: 576) {
+    let ptr = asm(size, ptr, offset: 576) {
         add size fp offset;
-        size: u64
-    }
+        size: raw_ptr
+    };
+    ptr.read::<u64>()
 }
 
 /// Get the first parameter from the current call frame.
@@ -106,7 +75,7 @@ pub fn code_size() -> u64 {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -131,7 +100,7 @@ pub fn first_param() -> u64 {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -147,19 +116,23 @@ pub fn first_param() -> u64 {
 ///     assert(param != 0);
 /// }
 /// ```
-pub fn second_param<T>() -> T {
-    if __size_of::<T>() == 1 {
-        let v = frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<u64>();
-        return asm(v: v) {
-            v: T
-        };
-    }
+pub fn second_param() -> u64 {
+    frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read()
+}
 
-    if !is_reference_type::<T>() {
-        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<T>()
-    } else {
-        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<raw_ptr>().read::<T>()
-    }
+/// Get the called method name from the current call frame.
+pub fn called_method() -> str {
+    use core::codec::decode_first_param;
+    decode_first_param::<str>()
+}
+
+/// Get the called arguments from the current call frame.
+pub fn called_args<T>() -> T
+where
+    T: AbiDecode,
+{
+    use core::codec::decode_second_param;
+    decode_second_param::<T>()
 }
 
 //  Accessing arbitrary call frames by pointer
@@ -169,7 +142,7 @@ pub fn second_param<T>() -> T {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Arguments
 ///

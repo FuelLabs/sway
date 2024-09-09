@@ -25,8 +25,8 @@ impl Default for TyCodeBlock {
 
 impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.contents.eq(&other.contents, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.contents.eq(&other.contents, ctx)
     }
 }
 
@@ -38,10 +38,8 @@ impl HashWithEngines for TyCodeBlock {
 }
 
 impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        self.contents.subst(type_mapping, ctx)
     }
 }
 
@@ -51,18 +49,15 @@ impl ReplaceDecls for TyCodeBlock {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         handler.scope(|handler| {
-            for x in self.contents.iter_mut() {
-                match x.replace_decls(decl_mapping, handler, ctx) {
-                    Ok(res) => res,
-                    Err(_) => {
-                        continue;
-                    }
-                };
+            let mut has_changes = false;
+            for node in self.contents.iter_mut() {
+                if let Ok(r) = node.replace_decls(decl_mapping, handler, ctx) {
+                    has_changes |= r;
+                }
             }
-
-            Ok(())
+            Ok(has_changes)
         })
     }
 }

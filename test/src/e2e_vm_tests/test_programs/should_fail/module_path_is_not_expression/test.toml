@@ -1,0 +1,39 @@
+category = "fail"
+
+#check: $()error
+#check: $()let _ = lib::;
+#nextln: $()Expected an identifier.
+
+#check: $()error
+#check: $()f(lib::);
+#nextln: $()Expected an identifier.
+
+#check: $()error
+#check: $()lib:: = 0;
+#nextln: $()Expected an identifier.
+
+#check: $()Module path is not an expression
+#check: $()let _ = lib::submodule;
+#nextln: $()This is a module path, and not an expression.
+#nextln: $()An expression is expected at this location, but a module path is found.
+#check: $()E.g., `lib::submodule::SOME_CONSTANT` or `lib::submodule::some_function()`.
+
+#check: $()Module path is not an expression
+#check: $()let _ = lib::
+#check: $()submodule;
+#nextln: $()This is a module path, and not an expression.
+#nextln: $()An expression is expected at this location, but a module path is found.
+#check: $()E.g., `lib::submodule::SOME_CONSTANT` or `lib::submodule::some_function()`.
+
+#check: $()Module path is not an expression
+#check: $()f(lib::submodule);
+#nextln: $()This is a module path, and not an expression.
+#nextln: $()An expression is expected at this location, but a module path is found.
+#check: $()E.g., `lib::submodule::SOME_CONSTANT` or `lib::submodule::some_function()`.
+
+#check: $()Module path is not an expression
+#check: $()f(lib::
+#check: $()submodule);
+#nextln: $()This is a module path, and not an expression.
+#nextln: $()An expression is expected at this location, but a module path is found.
+#check: $()E.g., `lib::submodule::SOME_CONSTANT` or `lib::submodule::some_function()`.

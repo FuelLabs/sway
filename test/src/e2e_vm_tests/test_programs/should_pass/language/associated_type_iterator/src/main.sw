@@ -1,7 +1,5 @@
 script;
 
-use std::vec::*;
-
 trait Iterable {
     type Iter;
     fn iter(self) -> Self::Iter;

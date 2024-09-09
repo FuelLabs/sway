@@ -1,3 +1,8 @@
 [[package]]
+name = "core"
+source = "path+from-root-B0BC8B33FB511559"
+
+[[package]]
 name = "double_underscore_trait_fn"
 source = "member"
+dependencies = ["core"]

@@ -1,21 +1,21 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-B01F6E0C439A4B28'
+name = "core"
+source = "path+from-root-B01F6E0C439A4B28"
 
 [[package]]
-name = 'nested_struct_args_abi'
-source = 'path+from-root-B01F6E0C439A4B28'
-dependencies = ['core']
+name = "nested_struct_args_abi"
+source = "path+from-root-B01F6E0C439A4B28"
+dependencies = ["core"]
 
 [[package]]
-name = 'nested_struct_args_caller'
-source = 'member'
+name = "nested_struct_args_caller"
+source = "member"
 dependencies = [
-    'nested_struct_args_abi',
-    'std',
+    "nested_struct_args_abi",
+    "std",
 ]
 
 [[package]]
-name = 'std'
-source = 'path+from-root-B01F6E0C439A4B28'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-B01F6E0C439A4B28"
+dependencies = ["core"]

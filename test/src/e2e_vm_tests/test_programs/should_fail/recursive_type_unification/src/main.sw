@@ -1,11 +1,15 @@
 script;
 
-fn foo<T>(value: T) -> Option<T> {
-    Some(value)
+enum MyOption<T> {
+    Some: T,
 }
 
-fn bar<V>(value: V) -> Option<V> {
-    Some::<V>(foo::<V>(value))
+fn foo<T>(value: T) -> MyOption<T> {
+    MyOption::Some(value)
+}
+
+fn bar<V>(value: V) -> MyOption<V> {
+    MyOption::Some::<V>(foo::<V>(value))
 }
 
 fn main() {

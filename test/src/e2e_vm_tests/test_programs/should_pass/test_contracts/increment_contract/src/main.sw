@@ -14,8 +14,28 @@ impl Incrementor for Contract {
         new_val
     }
 
+    #[storage(read, write)]
+    fn increment_or_not(initial_value: Option<u64>) -> u64 {
+        let current_val = storage.value.read();
+        match initial_value {
+            Some(increment_by) => {
+                let new_val = current_val + increment_by;
+                storage.value.write(new_val);
+                new_val
+            }
+            None => {
+                current_val
+            }
+        }
+    }
+
     #[storage(read)]
     fn get() -> u64 {
         storage.value.read()
     }
+}
+
+#[fallback]
+fn fallback() -> u64 {
+    444444444
 }

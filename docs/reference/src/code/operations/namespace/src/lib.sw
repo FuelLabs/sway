@@ -1,13 +1,14 @@
 library;
 
+/* External declarations
 // ANCHOR: address
 pub struct Address {
-    value: b256,
+    bits: b256,
 }
 // ANCHOR_END: address
 // ANCHOR: contract_id
 pub struct ContractId {
-    value: b256,
+    bits: b256,
 }
 // ANCHOR_END: contract_id
 // ANCHOR: identity
@@ -16,6 +17,8 @@ pub enum Identity {
     ContractId: ContractId,
 }
 // ANCHOR_END: identity
+*/
+
 fn address_cast() {
     // ANCHOR: address_cast
     let variable1 = 0x000000000000000000000000000000000000000000000000000000000000002A;

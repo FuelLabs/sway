@@ -5,7 +5,7 @@ license = "Apache-2.0"
 name = "contract_multi_test"
 
 [dependencies]
-std = { path = "../../../../../../../../sway-lib-std" }
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-assert" }
 
 [contract-dependencies]
 contract2 = { path = "../contract2/" }

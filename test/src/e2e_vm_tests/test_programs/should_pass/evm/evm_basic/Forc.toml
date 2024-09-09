@@ -5,3 +5,5 @@ implicit-std = false
 license = "Apache-2.0"
 name = "evm_basic"
 
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

@@ -1,3 +1,8 @@
 [[package]]
-name = 'configurables_in_lib'
-source = 'member'
+name = "configurables_in_lib"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-D4FAD531EAB9796D"

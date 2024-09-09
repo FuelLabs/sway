@@ -2,13 +2,14 @@
 library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
-use ::assert::assert;
+use ::assert::{assert, assert_eq};
 use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
+use ::clone::Clone;
 
 struct RawBytes {
-    pub ptr: raw_ptr,
+    ptr: raw_ptr,
     cap: u64,
 }
 
@@ -50,12 +51,44 @@ impl RawBytes {
     }
 }
 
-/// A type used to represent raw bytes.
+impl From<raw_slice> for RawBytes {
+    /// Creates a `RawBytes` from a `raw_slice`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::RawBytes;
+    ///
+    /// let mut vec = Vec::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    ///
+    /// vec.push(a);
+    /// vec.push(b);
+    /// vec.push(c);
+    ///
+    /// let vec_as_raw_slice = vec.as_raw_slice();
+    /// let raw_bytes = RawBytes::from(vec_as_raw_slice);
+    ///
+    /// assert(raw_bytes.capacity == 3);
+    /// ```
+    fn from(slice: raw_slice) -> Self {
+        let cap = slice.number_of_bytes();
+        let ptr = alloc_bytes(cap);
+        if cap > 0 {
+            slice.ptr().copy_to::<u8>(ptr, cap);
+        }
+        Self { ptr, cap }
+    }
+}
+
+/// A type used to represent raw bytes. It has ownership over its buffer.
 pub struct Bytes {
     /// A barebones struct for the bytes.
-    pub buf: RawBytes,
+    buf: RawBytes,
     /// The number of bytes being stored.
-    pub len: u64,
+    len: u64,
 }
 
 impl Bytes {
@@ -111,7 +144,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::with_capacity(2);
+    ///     let mut bytes = Bytes::with_capacity(2);
     ///     // does not allocate
     ///     bytes.push(5);
     ///     // does not re-allocate
@@ -175,7 +208,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///
     ///     let res = bytes.pop();
     ///     assert(res.is_none());
@@ -214,7 +247,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     bytes.push(5u8);
     ///     bytes.push(10u8);
     ///     bytes.push(15u8);
@@ -252,7 +285,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 5u8;
     ///     let b = 7u8;
     ///     let c = 9u8;
@@ -296,7 +329,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 11u8;
     ///     let b = 11u8;
     ///     let c = 11u8;
@@ -316,7 +349,7 @@ impl Bytes {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.cap {
+        if self.len == self.buf.capacity() {
             self.buf.grow();
         }
 
@@ -362,7 +395,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Byte::new();
+    ///     let mut bytes = Byte::new();
     ///     bytes.push(5);
     ///     bytes.push(10);
     ///     bytes.push(15);
@@ -384,7 +417,7 @@ impl Bytes {
 
         // Shift everything down to fill in that spot.
         let mut i = index;
-        while i < self.len {
+        while i < self.len - 1 {
             let idx_ptr = start.add_uint_offset(i);
             let next = idx_ptr.add_uint_offset(1);
             next.copy_bytes_to(idx_ptr, 1);
@@ -413,7 +446,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 5u8;
     ///     let b = 7u8;
     ///     let c = 9u8;
@@ -464,7 +497,7 @@ impl Bytes {
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
-        self.buf.cap
+        self.buf.capacity()
     }
 
     /// Gets the length of the `Bytes`.
@@ -479,7 +512,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     assert(bytes.len() == 0);
     ///     bytes.push(5);
     ///     assert(bytes.len() == 1);
@@ -491,27 +524,21 @@ impl Bytes {
 
     /// Clears the `Bytes`, removing all values.
     ///
-    /// # Additional Information
-    ///
-    /// Note that this method has no effect on the allocated capacity
-    /// of the Bytes.
-    ///
     /// # Examples
     ///
     /// ```sway
     /// use std:bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     bytes.push(5);
     ///     bytes.clear()
     ///     assert(bytes.is_empty());
     /// }
     /// ```
     pub fn clear(ref mut self) {
-        self.buf.ptr = alloc_bytes(0);
+        self.buf = RawBytes::new();
         self.len = 0;
-        self.buf.cap = 0;
     }
 
     /// Returns `true` if the type contains no elements.
@@ -526,7 +553,7 @@ impl Bytes {
     /// use std:bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     assert(bytes.is_empty());
     ///     bytes.push(5);
     ///     assert(!bytes.is_empty());
@@ -536,6 +563,26 @@ impl Bytes {
     /// ```
     pub fn is_empty(self) -> bool {
         self.len == 0
+    }
+
+    /// Gets the pointer of the allocation.
+    ///
+    /// # Returns
+    ///
+    /// [raw_ptr] - The location in memory that the allocated bytes live.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     assert(!bytes.ptr().is_null());
+    /// }
+    /// ```
+    pub fn ptr(self) -> raw_ptr {
+        self.buf.ptr()
     }
 }
 
@@ -592,13 +639,13 @@ impl Bytes {
         };
 
         if mid > 0 {
-            self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
+            self.buf.ptr().copy_bytes_to(left_bytes.ptr(), left_len);
         };
         if mid != self.len {
             self.buf
                 .ptr()
                 .add_uint_offset(mid)
-                .copy_bytes_to(right_bytes.buf.ptr(), right_len);
+                .copy_bytes_to(right_bytes.ptr(), right_len);
         };
 
         left_bytes.len = left_len;
@@ -606,7 +653,12 @@ impl Bytes {
         (left_bytes, right_bytes)
     }
 
-    /// Moves all elements of `other` into `self`, leaving `other` empty.
+    /// Copies all elements of `other` into `self`
+    ///
+    /// # Additional Information
+    ///
+    /// NOTE: Appending `self` to itself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
+    /// This function differs from the rust `append` function in that it does not clear the `other` `Bytes`
     ///
     /// # Arguments
     ///
@@ -641,38 +693,34 @@ impl Bytes {
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {
-        if other.len == 0 {
+        let other_len = other.len();
+        if other_len == 0 {
             return
         };
 
         // optimization for when starting with empty bytes and appending to it
         if self.len == 0 {
             self = other;
-            other.clear();
             return;
         };
 
-        let both_len = self.len + other.len;
+        let both_len = self.len + other_len;
         let other_start = self.len;
 
         // reallocate with combined capacity, write `other`, set buffer capacity
-        self.buf.ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len);
-
-        let mut i = 0;
-        while i < other.len {
-            let new_ptr = self.buf.ptr().add_uint_offset(other_start);
-            new_ptr
-                .add_uint_offset(i)
-                .write_byte(other.buf.ptr.add_uint_offset(i).read_byte());
-            i += 1;
+        if self.buf.capacity() < both_len {
+            let new_slice = raw_slice::from_parts::<u8>(
+                realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len),
+                both_len,
+            );
+            self.buf = RawBytes::from(new_slice);
         }
 
-        // set capacity and length
-        self.buf.cap = both_len;
-        self.len = both_len;
+        let new_ptr = self.buf.ptr().add_uint_offset(other_start);
+        other.ptr().copy_bytes_to(new_ptr, other_len);
 
-        // clear `other`
-        other.clear();
+        // set capacity and length
+        self.len = both_len;
     }
 }
 
@@ -692,7 +740,7 @@ impl core::ops::Eq for Bytes {
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) {
+        asm(ptr: (self.buf.ptr, self.len)) {
             ptr: raw_slice
         }
     }
@@ -751,13 +799,9 @@ impl From<raw_slice> for Bytes {
     /// assert(bytes.get(2).unwrap() == c);
     /// ```
     fn from(slice: raw_slice) -> Self {
-        let number_of_bytes = slice.number_of_bytes();
         Self {
-            buf: RawBytes {
-                ptr: slice.ptr(),
-                cap: number_of_bytes,
-            },
-            len: number_of_bytes,
+            buf: RawBytes::from(slice),
+            len: slice.number_of_bytes(),
         }
     }
 }
@@ -785,9 +829,7 @@ impl From<Bytes> for raw_slice {
     /// assert(slice.number_of_bytes() == 3);
     /// ```
     fn from(bytes: Bytes) -> raw_slice {
-        asm(ptr: (bytes.buf.ptr(), bytes.len)) {
-            ptr: raw_slice
-        }
+        bytes.as_raw_slice()
     }
 }
 
@@ -862,452 +904,49 @@ impl From<Bytes> for Vec<u8> {
     }
 }
 
-impl AbiEncode for Bytes {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self.len);
-
-        let mut i = 0;
-        while i < self.len {
-            let item = self.get(i).unwrap();
-            item.abi_encode(buffer);
-            i += 1;
+impl Clone for Bytes {
+    fn clone(self) -> Self {
+        let len = self.len();
+        let buf = RawBytes::with_capacity(len);
+        if len > 0 {
+            self.ptr().copy_bytes_to(buf.ptr(), len);
         }
+        Bytes { buf, len }
     }
 }
 
-// Tests
-//
-fn setup() -> (Bytes, u8, u8, u8) {
-    let mut bytes = Bytes::new();
-    let a = 5u8;
-    let b = 7u8;
-    let c = 9u8;
-    bytes.push(a);
-    bytes.push(b);
-    bytes.push(c);
-    (bytes, a, b, c)
+impl AbiEncode for Bytes {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        self.as_raw_slice().abi_encode(buffer)
+    }
 }
 
-#[test()]
-fn test_new_bytes() {
-    let bytes = Bytes::new();
-    assert(bytes.len() == 0);
-}
-#[test()]
-fn test_push() {
-    let (_, a, b, c) = setup();
-    let mut bytes = Bytes::new();
-    bytes.push(a);
-    assert(bytes.len() == 1);
-    bytes.push(b);
-    assert(bytes.len() == 2);
-    bytes.push(c);
-    assert(bytes.len() == 3);
-}
-#[test()]
-fn test_pop() {
-    let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-    bytes.push(42u8);
-    bytes.push(11u8);
-    bytes.push(69u8);
-    bytes.push(100u8);
-    bytes.push(200u8);
-    bytes.push(255u8);
-    bytes.push(180u8);
-    bytes.push(17u8);
-    bytes.push(19u8);
-    assert(bytes.len() == 12);
-
-    let first = bytes.pop();
-    assert(first.unwrap() == 19u8);
-    assert(bytes.len() == 11);
-
-    let second = bytes.pop();
-    assert(second.unwrap() == 17u8);
-    assert(bytes.len() == 10);
-
-    let third = bytes.pop();
-    assert(third.unwrap() == 180u8);
-    assert(bytes.len() == 9);
-    let _ = bytes.pop();
-    let _ = bytes.pop();
-    let _ = bytes.pop();
-    let _ = bytes.pop();
-    let _ = bytes.pop();
-    let _ = bytes.pop();
-    assert(bytes.len() == 3);
-    assert(bytes.pop().unwrap() == c);
-    assert(bytes.pop().unwrap() == b);
-    assert(bytes.pop().unwrap() == a);
-    assert(bytes.pop().is_none() == true);
-    assert(bytes.len() == 0);
-}
-#[test()]
-fn test_len() {
-    let (mut bytes, _, _, _) = setup();
-    assert(bytes.len() == 3);
-}
-#[test()]
-fn test_clear() {
-    let (mut bytes, _, _, _) = setup();
-    assert(bytes.len() == 3);
-
-    bytes.clear();
-
-    assert(bytes.len() == 0);
-}
-#[test()]
-fn test_packing() {
-    let mut bytes = Bytes::new();
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    bytes.push(5u8);
-    assert(bytes.len() == 11);
-    assert(bytes.capacity() == 16);
-    assert(size_of_val(bytes.buf) == 16);
-}
-
-#[test()]
-fn test_capacity() {
-    let mut bytes = Bytes::new();
-    assert(bytes.capacity() == 0);
-    bytes.push(5u8);
-    assert(bytes.capacity() == 1);
-    bytes.push(7u8);
-    assert(bytes.capacity() == 2);
-    bytes.push(9u8);
-    assert(bytes.capacity() == 4);
-    bytes.push(11u8);
-    assert(bytes.capacity() == 4);
-    assert(bytes.len() == 4);
-    bytes.push(3u8);
-    assert(bytes.capacity() == 8);
-    assert(bytes.len() == 5);
-}
-
-#[test()]
-fn test_get() {
-    let (bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
-    // get is non-modifying
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
-    assert(bytes.len() == 3);
-}
-
-#[test()]
-fn test_remove() {
-    let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-
-    let item = bytes.remove(1);
-
-    assert(bytes.len() == 2);
-    assert(item == b);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == c);
-    assert(bytes.get(2).is_none());
-}
-
-#[test()]
-fn test_insert() {
-    let (mut bytes, a, b, c) = setup();
-    let d = 11u8;
-    assert(bytes.len() == 3);
-
-    bytes.insert(1, d);
-
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == d);
-    assert(bytes.get(2).unwrap() == b);
-    assert(bytes.get(3).unwrap() == c);
-    assert(bytes.len() == 4);
-}
-
-#[test()]
-fn test_swap() {
-    let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-
-    bytes.swap(0, 1);
-
-    assert(bytes.len() == 3);
-    assert(bytes.get(0).unwrap() == b);
-    assert(bytes.get(1).unwrap() == a);
-    assert(bytes.get(2).unwrap() == c);
-}
-
-#[test()]
-fn test_set() {
-    let (mut bytes, a, _b, c) = setup();
-    assert(bytes.len() == 3);
-    let d = 11u8;
-
-    bytes.set(1, d);
-
-    assert(bytes.len() == 3);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == d);
-    assert(bytes.get(2).unwrap() == c);
-}
-
-#[test()]
-fn test_from_vec_u8() {
-    let mut vec = Vec::new();
-    let (_, a, b, c) = setup();
-    vec.push(a);
-    vec.push(b);
-    vec.push(c);
-
-    let bytes = Bytes::from(vec);
-
-    assert(bytes.len == 3);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
-}
-
-#[test()]
-fn test_into_vec_u8() {
-    let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-
-    let vec: Vec<u8> = bytes.into();
-
-    assert(vec.len() == 3);
-    assert(vec.get(0).unwrap() == a);
-    assert(vec.get(1).unwrap() == b);
-    assert(vec.get(2).unwrap() == c);
-}
-
-#[test()]
-fn test_bytes_limits() {
-    let mut bytes = Bytes::new();
-    let max = 255u8;
-    let min = 0u8;
-    bytes.push(max);
-    bytes.push(min);
-    bytes.push(max);
-    bytes.push(min);
-    bytes.push(max);
-    bytes.push(min);
-
-    assert(bytes.len() == 6);
-    assert(bytes.capacity() == 8);
-    assert(bytes.get(0).unwrap() == max);
-    assert(bytes.get(1).unwrap() == min);
-    assert(bytes.get(2).unwrap() == max);
-    assert(bytes.get(3).unwrap() == min);
-    assert(bytes.get(4).unwrap() == max);
-    assert(bytes.get(5).unwrap() == min);
-}
-
-#[test()]
-fn test_split_at() {
-    let (mut original, _a, _b, _c) = setup();
-    assert(original.len() == 3);
-    let index = 1;
-    let (left, right) = original.split_at(index);
-    assert(original.capacity() == 4);
-    assert(right.capacity() == 2);
-    assert(left.len() == 1);
-    assert(right.len() == 2);
-}
-
-#[test()]
-fn test_split_at_0() {
-    let (mut original, _a, _b, _c) = setup();
-    assert(original.len() == 3);
-    let index = 0;
-    let (left, right) = original.split_at(index);
-    assert(original.capacity() == 4);
-    assert(right.capacity() == 3);
-    assert(left.len() == 0);
-    assert(right.len() == 3);
-}
-
-#[test()]
-fn test_split_at_len() {
-    let (mut original, _a, _b, _c) = setup();
-    assert(original.len() == 3);
-    let index = 3;
-    let (left, right) = original.split_at(index);
-    assert(original.capacity() == 4);
-    assert(right.capacity() == 0);
-    assert(left.len() == 3);
-    assert(right.len() == 0);
-}
-
-#[test()]
-fn test_append() {
-    let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
-
-    let mut bytes2 = Bytes::new();
-    let d = 5u8;
-    let e = 7u8;
-    let f = 9u8;
-    bytes2.push(d);
-    bytes2.push(e);
-    bytes2.push(f);
-    assert(bytes2.len() == 3);
-    assert(bytes2.get(0).unwrap() == d);
-    assert(bytes2.get(1).unwrap() == e);
-    assert(bytes2.get(2).unwrap() == f);
-
-    let first_length = bytes.len();
-    let second_length = bytes2.len();
-    let _first_cap = bytes.capacity();
-    let _second_cap = bytes2.capacity();
-    bytes.append(bytes2);
-    assert(bytes.len() == first_length + second_length);
-    assert(bytes.capacity() == first_length + first_length);
-    let values = [a, b, c, d, e, f];
-    let mut i = 0;
-    while i < 6 {
-        assert(bytes.get(i).unwrap() == values[i]);
-        i += 1;
-    };
-}
-
-#[test()]
-fn test_append_empty_bytes() {
-    // nothing is appended or modified when appending an empty bytes.
-    let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
-
-    let mut bytes2 = Bytes::new();
-    assert(bytes2.len() == 0);
-    let first_length = bytes.len();
-    let first_cap = bytes.capacity();
-    bytes.append(bytes2);
-    assert(bytes.len() == first_length);
-    assert(bytes.capacity() == first_cap);
-}
-
-#[test()]
-fn test_append_to_empty_bytes() {
-    let mut bytes = Bytes::new();
-    assert(bytes.len() == 0);
-    let (mut bytes2, a, b, c) = setup();
-    assert(bytes2.len() == 3);
-
-    let _first_length = bytes.len();
-    let _first_cap = bytes.capacity();
-    let second_length = bytes2.len();
-    let second_cap = bytes2.capacity();
-    bytes.append(bytes2);
-    assert(bytes.len() == second_length);
-    assert(bytes.capacity() == second_cap);
-    let values = [a, b, c];
-    let mut i = 0;
-    while i < 3 {
-        assert(bytes.get(i).unwrap() == values[i]);
-        i += 1;
-    };
-
-    assert(bytes2.len() == 0);
-    assert(bytes2.capacity() == 0);
-}
-
-#[test()]
-fn test_eq() {
-    let (mut bytes, _a, _b, _c) = setup();
-    let (mut bytes2, _a, _b, _c) = setup();
-    assert(bytes == bytes2);
-
-    let d = 5u8;
-    let e = 7u8;
-    let f = 9u8;
-    let mut other = Bytes::new();
-    other.push(d);
-    other.push(e);
-    other.push(f);
-    assert(bytes == other);
-
-    other.push(42u8);
-    assert(bytes != other);
-
-    bytes.push(42u8);
-    assert(bytes == other);
-
-    other.swap(0, 1);
-    assert(bytes != other);
-}
-
-#[test()]
-fn test_as_raw_slice() {
-    let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice_1 = asm(ptr: (__addr_of(val), 32)) {
-        ptr: raw_slice
-    };
-    let mut bytes = Bytes::from(slice_1);
-    let slice_2 = bytes.as_raw_slice();
-    assert(slice_1.ptr() == slice_2.ptr());
-    assert(slice_1.number_of_bytes() == slice_2.number_of_bytes());
-}
-
-// This test will need to be updated once https://github.com/FuelLabs/sway/pull/3882 is resolved
-#[test()]
-fn test_from_raw_slice() {
-    let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice_1 = asm(ptr: (__addr_of(val), 32)) {
-        ptr: raw_slice
-    };
-    let mut bytes = Bytes::from(slice_1);
-    let slice_2 = bytes.as_raw_slice();
-    assert(slice_1.ptr() == slice_2.ptr());
-    assert(slice_1.number_of_bytes() == slice_2.number_of_bytes());
+impl AbiDecode for Bytes {
+    fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
+        raw_slice::abi_decode(buffer).into()
+    }
 }
 
 #[test]
-fn test_from_b256() {
-    let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
-    let b: Bytes = Bytes::from(initial);
-    let mut control_bytes = Bytes::with_capacity(32);
+fn ok_bytes_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
 
-    let mut i = 0;
-    while i < 32 {
-        // 0x33 is 51 in decimal
-        control_bytes.push(51u8);
-        i += 1;
-    }
+    // Check Bytes duplicates the original slice
+    let mut bytes = Bytes::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
 
-    assert(b == control_bytes);
-}
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
 
-#[test]
-fn test_into_b256() {
-    let mut initial_bytes = Bytes::with_capacity(32);
+    // `Bytes` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
 
-    let mut i = 0;
-    while i < 32 {
-        // 0x33 is 51 in decimal
-        initial_bytes.push(51u8);
-        i += 1;
-    }
-
-    let value: b256 = initial_bytes.into();
-    let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
-
-    assert(value == expected);
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
 }

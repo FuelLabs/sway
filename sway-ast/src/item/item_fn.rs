@@ -8,6 +8,6 @@ pub struct ItemFn {
 
 impl Spanned for ItemFn {
     fn span(&self) -> Span {
-        Span::join(self.fn_signature.span(), self.body.span())
+        Span::join(self.fn_signature.span(), &self.body.span())
     }
 }

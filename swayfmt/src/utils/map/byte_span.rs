@@ -233,7 +233,7 @@ mod tests {
         let second_span = ByteSpan { start: 2, end: 4 };
         let third_span = ByteSpan { start: 4, end: 7 };
 
-        let mut vec = vec![second_span.clone(), third_span.clone(), first_span.clone()];
+        let mut vec = [second_span.clone(), third_span.clone(), first_span.clone()];
         vec.sort();
 
         assert_eq!(vec[0], first_span);

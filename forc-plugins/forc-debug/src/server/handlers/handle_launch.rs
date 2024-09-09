@@ -5,8 +5,8 @@ use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
 use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;
-use std::{collections::HashMap, fs, sync::Arc};
-use sway_types::span::Position;
+use std::{collections::HashMap, sync::Arc};
+use sway_types::LineCol;
 
 impl DapServer {
     /// Handles a `launch` request. Returns true if the server should continue running.
@@ -30,13 +30,14 @@ impl DapServer {
                     return None;
                 }
 
-                Some(TestExecutor::new(
+                TestExecutor::build(
                     &pkg_to_debug.bytecode.bytes,
                     offset,
                     test_setup.clone(),
                     test_entry,
                     name.clone(),
-                ))
+                )
+                .ok()
             })
             .collect();
         self.state.init_executors(executors);
@@ -52,6 +53,10 @@ impl DapServer {
                 return Ok((pkg.clone(), setup.clone()));
             }
         }
+
+        let experimental = sway_core::ExperimentalFlags {
+            new_encoding: false,
+        };
 
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
@@ -81,7 +86,7 @@ impl DapServer {
             &member_manifests,
             false,
             false,
-            Default::default(),
+            &Default::default(),
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build plan: {:?}", err),
@@ -105,6 +110,7 @@ impl DapServer {
                 ..Default::default()
             },
             &outputs,
+            experimental,
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build packages: {:?}", err),
@@ -119,50 +125,27 @@ impl DapServer {
             let source_map = &built_pkg.source_map;
 
             let paths = &source_map.paths;
-            // Cache the source code for every path in the map, since we'll need it later.
-            let source_code = paths
-                .iter()
-                .filter_map(|path_buf| {
-                    if let Ok(source) = fs::read_to_string(path_buf) {
-                        Some((path_buf, source))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<HashMap<_, _>>();
-
             source_map.map.iter().for_each(|(instruction, sm_span)| {
                 if let Some(path_buf) = paths.get(sm_span.path.0) {
-                    if let Some(source_code) = source_code.get(path_buf) {
-                        if let Some(start_pos) = Position::new(source_code, sm_span.range.start) {
-                            let (line, _) = start_pos.line_col();
-                            let (line, instruction) = (line as i64, *instruction as Instruction);
+                    let LineCol { line, .. } = sm_span.range.start;
+                    let (line, instruction) = (line as i64, *instruction as Instruction);
 
-                            self.state
-                                .source_map
-                                .entry(path_buf.clone())
-                                .and_modify(|new_map| {
-                                    new_map
-                                        .entry(line)
-                                        .and_modify(|val| {
-                                            // Store the instructions in ascending order
-                                            match val.binary_search(&instruction) {
-                                                Ok(_) => {} // Ignore duplicates
-                                                Err(pos) => val.insert(pos, instruction),
-                                            }
-                                        })
-                                        .or_insert(vec![instruction]);
+                    self.state
+                        .source_map
+                        .entry(path_buf.clone())
+                        .and_modify(|new_map| {
+                            new_map
+                                .entry(line)
+                                .and_modify(|val| {
+                                    // Store the instructions in ascending order
+                                    match val.binary_search(&instruction) {
+                                        Ok(_) => {} // Ignore duplicates
+                                        Err(pos) => val.insert(pos, instruction),
+                                    }
                                 })
-                                .or_insert(HashMap::from([(line, vec![instruction])]));
-                        } else {
-                            self.error(format!(
-                                "Couldn't get position: {:?} in file: {:?}",
-                                sm_span.range.start, path_buf
-                            ));
-                        }
-                    } else {
-                        self.error(format!("Couldn't read file: {:?}", path_buf));
-                    }
+                                .or_insert(vec![instruction]);
+                        })
+                        .or_insert(HashMap::from([(line, vec![instruction])]));
                 } else {
                     self.error(format!(
                         "Path missing from source map: {:?}",

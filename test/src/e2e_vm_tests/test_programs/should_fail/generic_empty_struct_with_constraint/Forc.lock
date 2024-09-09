@@ -1,13 +1,3 @@
 [[package]]
-name = "core"
-source = "path+from-root-1137881413C24890"
-
-[[package]]
 name = "generic_empty_struct_with_constraint"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-1137881413C24890"
-dependencies = ["core"]

@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-AE9ADFE237B0A38F'
+name = "core"
+source = "path+from-root-AE9ADFE237B0A38F"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-AE9ADFE237B0A38F'
-dependencies = ['core']
-
-[[package]]
-name = 'u8_add_const_eval_overflow'
-source = 'member'
-dependencies = ['std']
+name = "u8_add_const_eval_overflow"
+source = "member"
+dependencies = ["core"]

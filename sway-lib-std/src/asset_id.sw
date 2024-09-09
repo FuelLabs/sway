@@ -1,3 +1,4 @@
+//! The `AssetId` type used for interacting with an asset on the fuel network.
 library;
 
 use ::alias::SubId;
@@ -12,23 +13,23 @@ use ::hash::{Hash, Hasher};
 /// It is calculated by taking the sha256 hash of the originating ContractId and a SubId.
 /// i.e. sha256((contract_id, sub_id)).
 ///
-/// An exception is the Base Asset, which is just the ZERO_B256 AssetId.
+/// An exception is the Base Asset.
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
-    pub value: b256,
+    bits: b256,
 }
 
 impl Hash for AssetId {
     fn hash(self, ref mut state: Hasher) {
-        let Self { value } = self;
-        value.hash(state);
+        let Self { bits } = self;
+        bits.hash(state);
     }
 }
 
 impl core::ops::Eq for AssetId {
     fn eq(self, other: Self) -> bool {
-        self.value == other.value
+        self.bits == other.bits
     }
 }
 
@@ -46,37 +47,12 @@ impl From<b256> for AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let asset_id = AssetId::from(ZERO_B256);
+    ///    let asset_id = AssetId::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
-        Self { value: bits }
-    }
-}
-
-impl From<AssetId> for b256 {
-    /// Casts an `AssetId` to raw `b256` data.
-    ///
-    /// # Returns
-    ///
-    /// * [b256] - The underlying raw `b256` data of the `AssetId`.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
-    /// fn foo() {
-    ///     let asset_id = AssetId::from(ZERO_B256);
-    ///     let b256_data = asset_id.into();
-    ///     assert(b256_data == ZERO_B256);
-    /// }
-    /// ```
-    fn from(id: AssetId) -> b256 {
-        id.value
+        Self { bits }
     }
 }
 
@@ -95,11 +71,11 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{callframes::contract_id, constants::ZERO_B256};
+    /// use std::callframes::contract_id;
     ///
     /// fn foo() {
     ///     let contract_id = contract_id();
-    ///     let sub_id = ZERO_B256;
+    ///     let sub_id = b256::zero();
     ///
     ///     let asset_id = AssetId::new(contract_id, sub_id);
     /// }
@@ -115,11 +91,16 @@ impl AssetId {
         };
 
         Self {
-            value: result_buffer,
+            bits: result_buffer,
         }
     }
 
     /// Creates a new AssetId with the default SubId for the current contract.
+    ///
+    /// # Additional Information
+    ///
+    /// **WARNING** If called in an external context, this will **not** return a correct AssetId.
+    /// If called externally, will actually use the Transaction Id as a the ContractId.
     ///
     /// # Returns
     ///
@@ -152,15 +133,15 @@ impl AssetId {
         };
 
         Self {
-            value: result_buffer,
+            bits: result_buffer,
         }
     }
 
-    /// The base_asset_id represents the base asset of a chain.
+    /// The base asset of a chain.
     ///
     /// # Additional Information
     ///
-    /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 AssetId.
+    /// On the Fuel network, the base asset is Ether.
     ///
     /// # Returns
     ///
@@ -169,50 +150,98 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, asset::transfer};
+    /// use std::asset::transfer;
     ///
     /// fn foo() {
-    ///     let asset_id = AssetId::base_asset_id();
+    ///     let asset_id = AssetId::base();
     ///     let amount = 100;
-    ///     let recipient = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     let recipient = Identity::ContractId(ContractId::zero());
     ///
     ///     transfer(recipient, asset_id, amount);
     /// ```
-    pub fn base_asset_id() -> Self {
+    pub fn base() -> Self {
         Self {
-            value: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            bits: asm(r1) {
+                gm r1 i6;
+                r1: b256
+            },
         }
+    }
+
+    /// Returns the underlying raw `b256` data of the asset id.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The raw data of the asset id.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() -> {
+    ///     let my_asset = AssetId::from(b256::zero());
+    ///     assert(my_asset.bits() == b256::zero());
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.bits
+    }
+
+    /// Returns the zero value for the `AssetId` type.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] -> The zero value for the `AssetId` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id == AssetId::from(b256::zero()));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: b256::zero(),
+        }
+    }
+
+    /// Returns whether an `AssetId` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `AssetId` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }
 
-#[test()]
-fn test_hasher_sha256_asset_id() {
-    use ::assert::assert;
-    let mut hasher = Hasher::new();
-    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000000)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
-
-    let mut hasher = Hasher::new();
-    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
-}
-
-#[test()]
-fn test_hasher_sha256_contract_id() {
-    use ::assert::assert;
-    let mut hasher = Hasher::new();
-    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
-
-    let mut hasher = Hasher::new();
-    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
+impl From<AssetId> for b256 {
+    /// Casts an `AssetId` to raw `b256` data.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The underlying raw `b256` data of the `AssetId`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let asset_id = AssetId::b256::zero();
+    ///     let b256_data: b256 = asset_id.into();
+    ///     assert(b256_data == b256::zero());
+    /// }
+    /// ```
+    fn from(id: AssetId) -> Self {
+        id.bits()
+    }
 }

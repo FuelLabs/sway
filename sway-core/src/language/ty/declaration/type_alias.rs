@@ -4,10 +4,12 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{CallPath, Visibility},
+    language::{parsed::TypeAliasDeclaration, CallPath, Visibility},
     transform,
     type_system::*,
 };
+
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyTypeAliasDecl {
@@ -19,6 +21,10 @@ pub struct TyTypeAliasDecl {
     pub span: Span,
 }
 
+impl TyDeclParsedType for TyTypeAliasDecl {
+    type ParsedType = TypeAliasDeclaration;
+}
+
 impl Named for TyTypeAliasDecl {
     fn name(&self) -> &Ident {
         &self.name
@@ -27,10 +33,8 @@ impl Named for TyTypeAliasDecl {
 
 impl EqWithEngines for TyTypeAliasDecl {}
 impl PartialEqWithEngines for TyTypeAliasDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name
-            && self.ty.eq(&other.ty, engines)
-            && self.visibility == other.visibility
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.ty.eq(&other.ty, ctx) && self.visibility == other.visibility
     }
 }
 
@@ -53,8 +57,8 @@ impl HashWithEngines for TyTypeAliasDecl {
 }
 
 impl SubstTypes for TyTypeAliasDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.ty.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        self.ty.subst(type_mapping, ctx)
     }
 }
 

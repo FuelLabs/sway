@@ -19,13 +19,20 @@ use crate::{
     instruction::{FuelVmInstruction, InstOp},
     value::{Value, ValueDatum},
     BranchToWithArgs, DebugWithContext, Instruction, InstructionInserter, InstructionIterator,
-    Type,
+    Module, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Block(pub slotmap::DefaultKey);
+
+impl Block {
+    pub fn get_module<'a>(&self, context: &'a Context) -> &'a Module {
+        let f = context.blocks[self.0].function;
+        &context.functions[f.0].module
+    }
+}
 
 #[doc(hidden)]
 pub struct BlockContent {
@@ -51,7 +58,7 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    /// Get the actual parameter passed to this block argument from `from_block`
+    /// Get the actual parameter passed to this block argument from `from_block`.
     pub fn get_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
         for BranchToWithArgs {
             block: succ_block,
@@ -113,7 +120,7 @@ impl Block {
         context.blocks[self.0].label = unique_label;
     }
 
-    /// Get the number of instructions in this block
+    /// Get the number of instructions in this block.
     pub fn num_instructions(&self, context: &Context) -> usize {
         context.blocks[self.0].instructions.len()
     }
@@ -336,7 +343,7 @@ impl Block {
                     if old_succ == *true_block {
                         modified = true;
                         *true_block = new_succ;
-                        *true_opds = new_params.clone();
+                        true_opds.clone_from(&new_params);
                     }
                     if old_succ == *false_block {
                         modified = true;
@@ -362,15 +369,20 @@ impl Block {
         }
     }
 
-    /// Return whether this block is already terminated specifically by a Ret instruction.
-    pub fn is_terminated_by_ret_or_revert(&self, context: &Context) -> bool {
+    /// Return whether this block is already terminated by non-branching instructions,
+    /// means with instructions that cause either revert, or local or context returns.
+    /// Those instructions are: [InstOp::Ret], [FuelVmInstruction::Retd],
+    /// [FuelVmInstruction::JmpMem], and [FuelVmInstruction::Revert]).
+    pub fn is_terminated_by_return_or_revert(&self, context: &Context) -> bool {
         self.get_terminator(context).map_or(false, |i| {
             matches!(
                 i,
                 Instruction {
                     op: InstOp::Ret(..)
                         | InstOp::FuelVm(
-                            FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..)
+                            FuelVmInstruction::Revert(..)
+                                | FuelVmInstruction::JmpMem
+                                | FuelVmInstruction::Retd { .. }
                         ),
                     ..
                 }

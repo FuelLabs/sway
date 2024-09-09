@@ -21,13 +21,12 @@ fn match_option(o: Option<Enum>) -> u64 {
             | Enum::B((111, 111, 111))
             | Enum::B((222, 222, 222))
         ) => 111111222222,
-        // TODO: Add this case once the issue with type inference in tuples is solved.
-        //Some(
-        //    Enum::A((x, 11, 11))
-        //    | Enum::A((22, x, 22))
-        //    | Enum::B((111, 111, x))
-        //    | Enum::B((x, 222, 222))
-        //) => x,
+        Some(
+           Enum::A((x, 11, 11))
+           | Enum::A((22, x, 22))
+           | Enum::B((111, 111, x))
+           | Enum::B((x, 222, 222))
+        ) => x,
         None => 5555,
         _ => 9999,
     }
@@ -64,18 +63,17 @@ pub fn test() -> u64 {
     let x = match_option(Some(Enum::B((222, 222, 222))));
     assert(x == 111111222222);
 
-    // TODO: Add this case once the issue with type inference in tuples is solved.
-    //let x = match_option(Some(Enum::A((42, 11, 11))));
-    //assert(x == 42);
+    let x = match_option(Some(Enum::A((42, 11, 11))));
+    assert(x == 42);
 
-    //let x = match_option(Some(Enum::A((22, 42, 22))));
-    //assert(x == 42);
+    let x = match_option(Some(Enum::A((22, 42, 22))));
+    assert(x == 42);
 
-    //let x = match_option(Some(Enum::B((111, 111, 42))));
-    //assert(x == 42);
+    let x = match_option(Some(Enum::B((111, 111, 42))));
+    assert(x == 42);
 
-    //let x = match_option(Some(Enum::B((42, 222, 222))));
-    //assert(x == 42);
+    let x = match_option(Some(Enum::B((42, 222, 222))));
+    assert(x == 42);
 
     let x = match_option(None);
     assert(x == 5555);

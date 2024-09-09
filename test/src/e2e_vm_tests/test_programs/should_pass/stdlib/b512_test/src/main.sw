@@ -4,7 +4,7 @@ use std::b512::*;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_contiguous(big_value: B512) -> bool {
-    asm(r1: (big_value.bytes)[0], r2: (big_value.bytes)[1], r3, r4, r5, r6) {
+    asm(r1: (big_value.bits())[0], r2: (big_value.bits())[1], r3, r4, r5, r6) {
         move r3 sp; // Save a copy of SP in R3.
         cfei i64; // Reserve 512 bits of stack space.  SP is now R3+64.
         mcpi r3 r1 i64; // Copy 64 bytes *starting at* big_value.hi (includes big_value.lo)
@@ -24,23 +24,14 @@ fn main() -> bool {
 
     // it allows creation of new empty type:
     let mut a = B512::new();
-    assert(((a.bytes)[0] == zero) && ((a.bytes)[1] == zero));
-
-    // it allows reassignment of fields:
-    a.bytes = [hi_bits, lo_bits];
-    assert(((a.bytes)[0] == hi_bits) && ((a.bytes)[1] == lo_bits));
+    assert(((a.bits())[0] == zero) && ((a.bits())[1] == zero));
 
     // it allows building from 2 b256's:
     let mut b = B512::from((hi_bits, lo_bits));
-    assert(((b.bytes)[0] == hi_bits) && ((b.bytes)[1] == lo_bits));
-
-    // it allows reassignment of fields:
-    b.bytes = [modified, modified];
-    assert(((b.bytes)[0] == modified) && ((b.bytes)[1] == modified));
+    assert(((b.bits())[0] == hi_bits) && ((b.bits())[1] == lo_bits));
 
     // it guarantees memory contiguity:
-    let mut c = B512::new();
-    c.bytes = [hi_bits, lo_bits];
+    let mut c = B512::from((hi_bits, lo_bits));
     assert(are_fields_contiguous(c));
 
     // it allows direct comparison of equality:

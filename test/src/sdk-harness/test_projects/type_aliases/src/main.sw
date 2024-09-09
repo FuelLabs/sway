@@ -15,7 +15,14 @@ struct Generic<T> {
 }
 
 abi MyContract {
-    fn foo(x: SubId, y: [IdentityAlias; 2], z: IdentityAliasWrapperAlias, w: Generic<IdentityAliasWrapperAlias>, u: (SubId, SubId), s: StringTy) -> (SubId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (SubId, SubId), StringTy);
+    fn foo(
+        x: SubId,
+        y: [IdentityAlias; 2],
+        z: IdentityAliasWrapperAlias,
+        w: Generic<IdentityAliasWrapperAlias>,
+        u: (SubId, SubId),
+        s: StringTy,
+    ) -> (SubId, [IdentityAlias; 2], IdentityAliasWrapperAlias, Generic<IdentityAliasWrapperAlias>, (SubId, SubId), StringTy);
 }
 
 impl MyContract for Contract {

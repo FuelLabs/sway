@@ -133,7 +133,32 @@ impl MyMath for u32 {}
 impl MyMath for u64 {}
 
 impl<T> MyPoint<T> {
-    fn do_math3(self, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
+    fn do_math3(self, b: MyPoint<T>) -> MyPoint<T> where T: MyMath{
+        MyPoint {
+            x: self.x.my_double().my_mul(b.x.my_double()),
+            y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
+        }
+    }
+
+    fn do_math31<M>(self, b: MyPoint<T>, c: MyPoint<M>) -> MyPoint<T> where T: MyMath, M:MyMath{
+        MyPoint {
+            x: self.x.my_double().my_mul(b.x.my_double()),
+            y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
+        }
+    }
+}
+
+impl<T> MyPoint<T> where T: MyMath {
+    fn do_math4(self, b: MyPoint<T>) -> MyPoint<T> {
+        MyPoint {
+            x: self.x.my_double().my_mul(b.x.my_double()),
+            y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
+        }
+    }
+}
+
+impl<T> MyPoint<T> where T: MyMath {
+    fn do_math5(self, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
         MyPoint {
             x: self.x.my_double().my_mul(b.x.my_double()),
             y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
@@ -196,10 +221,21 @@ fn main() -> u64 {
     assert(l.x == 18u16);
     assert(l.y == 144u16);
 
-    // TODO: Enable this once https://github.com/FuelLabs/sway/issues/5639 is solved.
-    // let m = a.do_math3(b);
-    // assert(m.x == 12u64);
-    // assert(m.y == 20u64);
+    let m = a.do_math3(b);
+    assert(m.x == 12u64);
+    assert(m.y == 20u64);
+
+    let m1 = a.do_math31(b, b);
+    assert(m1.x == 12u64);
+    assert(m1.y == 20u64);
+
+    let n = a.do_math4(b);
+    assert(n.x == 12u64);
+    assert(n.y == 20u64);
+
+    let l = a.do_math5(b);
+    assert(l.x == 12u64);
+    assert(l.y == 20u64);
 
     42
 }

@@ -1,4 +1,4 @@
 category = "fail"
 
-# check: let _empty_no_hash: GenericEmptyStruct<NoHashStruct> = GenericEmptyStruct {};
-# nextln: $()Trait "Hash" is not implemented for type "NoHashStruct".
+# check: let _: GenericEmptyStruct<NoTraitStruct> = GenericEmptyStruct {};
+# nextln: $()Trait "Trait" is not implemented for type "NoTraitStruct".

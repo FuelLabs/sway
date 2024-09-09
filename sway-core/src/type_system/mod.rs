@@ -1,10 +1,10 @@
-mod ast_elements;
+pub(crate) mod ast_elements;
 mod engine;
 mod id;
 mod info;
 mod priv_prelude;
 mod substitute;
-mod unify;
+pub(crate) mod unify;
 
 #[allow(unused)]
 use std::ops::Deref;
@@ -44,6 +44,8 @@ fn generic_enum_resolution() {
         TypeInfo::UnknownGeneric {
             name: generic_name.clone(),
             trait_constraints: VecSet(Vec::new()),
+            parent: None,
+            is_from_type_parameter: false,
         },
         None,
     );
@@ -82,17 +84,20 @@ fn generic_enum_resolution() {
 
     let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
     call_path.is_absolute = true;
-    let decl_ref_1 = engines.de().insert(TyEnumDecl {
-        call_path,
-        type_parameters: vec![placeholder_type_param],
-        variants: variant_types,
-        span: sp.clone(),
-        visibility: crate::language::Visibility::Public,
-        attributes: AttributesMap::default(),
-    });
+    let decl_ref_1 = engines.de().insert(
+        TyEnumDecl {
+            call_path,
+            type_parameters: vec![placeholder_type_param],
+            variants: variant_types,
+            span: sp.clone(),
+            visibility: crate::language::Visibility::Public,
+            attributes: AttributesMap::default(),
+        },
+        None,
+    );
     let ty_1 = engines
         .te()
-        .insert(&engines, TypeInfo::Enum(decl_ref_1), None);
+        .insert(&engines, TypeInfo::Enum(*decl_ref_1.id()), None);
 
     /*
     Result<bool> {
@@ -123,17 +128,20 @@ fn generic_enum_resolution() {
 
     let mut call_path: CallPath<BaseIdent> = result_name.into();
     call_path.is_absolute = true;
-    let decl_ref_2 = engines.de().insert(TyEnumDecl {
-        call_path,
-        type_parameters: vec![type_param],
-        variants: variant_types.clone(),
-        span: sp.clone(),
-        visibility: crate::language::Visibility::Public,
-        attributes: AttributesMap::default(),
-    });
+    let decl_ref_2 = engines.de().insert(
+        TyEnumDecl {
+            call_path,
+            type_parameters: vec![type_param],
+            variants: variant_types.clone(),
+            span: sp.clone(),
+            visibility: crate::language::Visibility::Public,
+            attributes: AttributesMap::default(),
+        },
+        None,
+    );
     let ty_2 = engines
         .te()
-        .insert(&engines, TypeInfo::Enum(decl_ref_2), None);
+        .insert(&engines, TypeInfo::Enum(*decl_ref_2.id()), None);
 
     // Unify them together...
     let h = Handler::default();

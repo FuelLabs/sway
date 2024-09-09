@@ -5,4 +5,5 @@ license = "Apache-2.0"
 name = "associated_type_container_in_library"
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-vec" }

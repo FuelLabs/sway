@@ -39,7 +39,6 @@ impl Hash for Person {
     }
 }
 
-
 abi MyContract {
     fn sha256_u8(value: u8) -> b256;
     fn sha256_u16(value: u16) -> b256;
@@ -123,11 +122,13 @@ impl MyContract for Contract {
     }
 
     fn sha256_enum(location: bool) -> b256 {
-        sha256(if location {
-            Location::Earth
-        } else {
-            Location::Mars
-        })
+        sha256(
+            if location {
+                Location::Earth
+            } else {
+                Location::Mars
+            },
+        )
     }
 
     fn sha256_struct(location: bool) -> b256 {
@@ -185,11 +186,13 @@ impl MyContract for Contract {
     }
 
     fn keccak256_enum(location: bool) -> b256 {
-        keccak256(if location {
-            Location::Earth
-        } else {
-            Location::Mars
-        })
+        keccak256(
+            if location {
+                Location::Earth
+            } else {
+                Location::Mars
+            },
+        )
     }
 
     fn keccak256_struct(location: bool) -> b256 {

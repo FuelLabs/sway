@@ -17,7 +17,7 @@ type DestinationDecl = AssociatedItemDeclId;
 /// and a [DestinationDecl] (RHS).
 #[derive(Clone)]
 pub struct DeclMapping {
-    mapping: Vec<(SourceDecl, DestinationDecl)>,
+    pub mapping: Vec<(SourceDecl, DestinationDecl)>,
 }
 
 impl fmt::Display for DeclMapping {
@@ -61,27 +61,24 @@ impl fmt::Debug for DeclMapping {
 
 impl DebugWithEngines for DeclMapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(
-            f,
-            "DeclMapping {{ {} }}",
-            self.mapping
-                .iter()
-                .map(|(source_type, dest_type)| {
-                    format!(
-                        "{} -> {}",
-                        engines.help_out(source_type.0.clone()),
-                        engines.help_out(dest_type)
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
+        f.write_str("DeclMapping ").unwrap();
+        let mut map = f.debug_map();
+        for (source_type, dest_type) in self.mapping.iter() {
+            let key = engines.help_out(source_type.0.clone());
+            let value = engines.help_out(dest_type);
+            map.entry(&key, &value);
+        }
+        map.finish()
     }
 }
 
 impl DeclMapping {
     pub(crate) fn is_empty(&self) -> bool {
         self.mapping.is_empty()
+    }
+
+    pub(crate) fn extend(&mut self, other: &DeclMapping) {
+        self.mapping.extend(other.mapping.clone());
     }
 
     pub(crate) fn from_interface_and_item_and_impld_decl_refs(

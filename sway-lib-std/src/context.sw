@@ -2,7 +2,6 @@
 library;
 
 use ::asset_id::AssetId;
-use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::registers::balance;
 
@@ -28,7 +27,7 @@ use ::registers::balance;
 /// }
 /// ```
 pub fn this_balance(asset_id: AssetId) -> u64 {
-    balance_of(contract_id(), asset_id)
+    balance_of(ContractId::this(), asset_id)
 }
 
 /// Get the balance of coin `asset_id` for the contract at 'target'.
@@ -54,7 +53,7 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// }
 /// ```
 pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
-    asm(balance, asset: asset_id.value, id: target.value) {
+    asm(balance, asset: asset_id.bits(), id: target.bits()) {
         bal balance asset id;
         balance: u64
     }

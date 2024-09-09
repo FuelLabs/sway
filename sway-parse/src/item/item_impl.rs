@@ -88,12 +88,28 @@ mod tests {
 
     #[test]
     fn parse_impl_slice() {
-        let item = parse::<ItemImpl>(
-            r#"
-            impl __slice[T] {}
-            "#,
+        // deprecated syntax
+        let item = parse::<ItemImpl>("impl __slice[T] {}");
+        assert_matches!(
+            item.ty,
+            Ty::Slice {
+                slice_token: Some(..),
+                ty: _
+            }
         );
-        assert_matches!(item.ty, Ty::Slice { .. });
+
+        // "new" syntax
+        let item = parse::<ItemImpl>("impl [T] {}");
+        assert_matches!(
+            item.ty,
+            Ty::Slice {
+                slice_token: None,
+                ty: _
+            }
+        );
+
+        let item = parse::<ItemImpl>("impl &[T] {}");
+        assert_matches!(item.ty, Ty::Ref { ty, .. } if matches!(&*ty, Ty::Slice { .. }));
     }
 
     #[test]
@@ -113,7 +129,13 @@ mod tests {
             impl &T {}
             "#,
         );
-        assert_matches!(item.ty, Ty::Ref { .. });
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: None,
+                ..
+            }
+        );
     }
 
     #[test]
@@ -123,6 +145,44 @@ mod tests {
             impl Foo for &T {}
             "#,
         );
-        assert_matches!(item.ty, Ty::Ref { .. });
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: None,
+                ..
+            }
+        );
+    }
+
+    #[test]
+    fn parse_impl_mut_ref() {
+        let item = parse::<ItemImpl>(
+            r#"
+            impl &mut T {}
+            "#,
+        );
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: Some(_),
+                ..
+            }
+        );
+    }
+
+    #[test]
+    fn parse_impl_for_mut_ref() {
+        let item = parse::<ItemImpl>(
+            r#"
+            impl Foo for &mut T {}
+            "#,
+        );
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: Some(_),
+                ..
+            }
+        );
     }
 }

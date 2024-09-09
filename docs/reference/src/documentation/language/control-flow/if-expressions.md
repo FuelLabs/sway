@@ -16,7 +16,7 @@ If the condition evaluates to the [Boolean](../built-ins/boolean.md) value of `t
 
 On the other hand if the condition evaluates to `false` then we check the next condition, in this case if the `number` is divisible by `4`. We can have as many `else if` checks as we like as long as they evaluate to a Boolean.
 
-At the end there is a special case which is known as a `catch all` case i.e. the `else`. What this means is that we have gone through all of our conditional checks above and none of them have been met. In this scenario we may want to have some special logic to handle a generic case which encompases all the other conditions which we do not care about or can be treated in the same way.
+At the end there is a special case which is known as a `catch all` case i.e. the `else`. What this means is that we have gone through all of our conditional checks above and none of them have been met. In this scenario we may want to have some special logic to handle a generic case which encompasses all the other conditions which we do not care about or can be treated in the same way.
 
 ## Using if & let together
 

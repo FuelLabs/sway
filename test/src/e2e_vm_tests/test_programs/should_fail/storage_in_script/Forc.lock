@@ -1,3 +1,8 @@
 [[package]]
-name = 'storage_in_script'
-source = 'member'
+name = "core"
+source = "path+from-root-BCD049287ABD70F1"
+
+[[package]]
+name = "storage_in_script"
+source = "member"
+dependencies = ["core"]

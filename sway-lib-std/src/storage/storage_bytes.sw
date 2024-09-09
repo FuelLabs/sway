@@ -39,7 +39,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read, write)]
     fn write_slice(self, bytes: Bytes) {
-        write_slice(self.field_id, bytes.as_raw_slice());
+        write_slice(self.field_id(), bytes.as_raw_slice());
     }
 
     /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
@@ -67,15 +67,15 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     assert(storage.stored_bytes.read_slice(key).is_none());
+    ///     assert(storage.stored_bytes.read_slice().is_none());
     ///     storage.stored_bytes.write_slice(bytes);
-    ///     let retrieved_bytes = storage.stored_bytes.read_slice(key).unwrap();
+    ///     let retrieved_bytes = storage.stored_bytes.read_slice().unwrap();
     ///     assert(bytes == retrieved_bytes);
     /// }
     /// ```
     #[storage(read)]
     fn read_slice(self) -> Option<Bytes> {
-        match read_slice(self.field_id) {
+        match read_slice(self.field_id()) {
             Some(slice) => {
                 Some(Bytes::from(slice))
             },
@@ -110,16 +110,16 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(9_u8);
     ///     storage.stored_bytes.write_slice(bytes);
     ///
-    ///     assert(storage.stored_bytes.read_slice(key).is_some());
+    ///     assert(storage.stored_bytes.read_slice().is_some());
     ///     let cleared = storage.stored_bytes.clear();
     ///     assert(cleared);
-    ///     let retrieved_bytes = storage.stored_bytes.read_slice(key);
+    ///     let retrieved_bytes = storage.stored_bytes.read_slice();
     ///     assert(retrieved_bytes.is_none());
     /// }
     /// ```
     #[storage(read, write)]
     fn clear(self) -> bool {
-        clear_slice(self.field_id)
+        clear_slice(self.field_id())
     }
 
     /// Returns the length of tightly packed bytes in storage.
@@ -154,6 +154,6 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read)]
     fn len(self) -> u64 {
-        read::<u64>(self.field_id, 0).unwrap_or(0)
+        read::<u64>(self.field_id(), 0).unwrap_or(0)
     }
 }

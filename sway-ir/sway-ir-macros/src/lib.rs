@@ -200,21 +200,18 @@ fn pass_through_context(field_name: &Ident, attrs: &[Attribute]) -> proc_macro2:
 
 fn try_parse_context_field_from_attr(attr: &Attribute) -> Option<Ident> {
     let meta = attr.parse_meta().ok()?;
-    let meta_list = match meta {
-        Meta::List(meta_list) => meta_list,
-        _ => return None,
+    let Meta::List(meta_list) = meta else {
+        return None;
     };
     if meta_list.nested.len() != 1 {
         return None;
     }
     let nested_meta = meta_list.nested.first()?;
-    let inner_meta = match nested_meta {
-        NestedMeta::Meta(inner_meta) => inner_meta,
-        _ => return None,
+    let NestedMeta::Meta(inner_meta) = nested_meta else {
+        return None;
     };
-    let path = match inner_meta {
-        Meta::Path(path) => path,
-        _ => return None,
+    let Meta::Path(path) = inner_meta else {
+        return None;
     };
     let context_field_name = path.get_ident()?.clone();
     Some(context_field_name)

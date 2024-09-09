@@ -1,11 +1,11 @@
 contract;
 
-use std::{call_frames::{contract_id, msg_asset_id}, context::{balance_of, msg_amount, this_balance}, registers::{global_gas, context_gas}};
+use std::{call_frames::msg_asset_id, context::{balance_of, msg_amount, this_balance}, registers::{global_gas, context_gas}};
 use context_testing_abi::*;
 
 impl ContextTesting for Contract {
     fn get_id() -> ContractId {
-        contract_id()
+        ContractId::this()
     }
 
     fn get_this_balance(asset_id: AssetId) -> u64 {

@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-FF708CA3420F9A17'
+name = "core"
+source = "path+from-root-FF708CA3420F9A17"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-FF708CA3420F9A17'
-dependencies = ['core']
-
-[[package]]
-name = 'u16_sub_const_eval_underflow'
-source = 'member'
-dependencies = ['std']
+name = "u16_sub_const_eval_underflow"
+source = "member"
+dependencies = ["core"]

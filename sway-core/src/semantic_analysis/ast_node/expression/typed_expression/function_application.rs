@@ -1,11 +1,16 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
-    language::{ty, *},
+    decl_engine::{
+        engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+    },
+    language::{
+        ty::{self, TyFunctionSig},
+        *,
+    },
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use indexmap::IndexMap;
 use sway_error::error::CompileError;
-use sway_types::Spanned;
+use sway_types::{IdentUnique, Spanned};
 
 const UNIFY_ARGS_HELP_TEXT: &str =
     "The argument that has been provided to this function's type does \
@@ -18,10 +23,11 @@ pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
     function_decl_ref: DeclRefFunction,
     call_path_binding: TypeBinding<CallPath>,
-    arguments: Option<Vec<Expression>>,
+    arguments: Option<&[Expression]>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
-    let decl_engine = ctx.engines.de();
+    let engines = ctx.engines();
+    let decl_engine = engines.de();
 
     let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
 
@@ -33,15 +39,8 @@ pub(crate) fn instantiate_function_application(
             }),
         );
     }
-    let arguments = arguments.unwrap_or_default();
 
-    // 'purity' is that of the callee, 'opts.purity' of the caller.
-    if !ctx.purity().can_call(function_decl.purity) {
-        handler.emit_err(CompileError::StorageAccessMismatch {
-            attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path_binding.span(),
-        });
-    }
+    let arguments = arguments.unwrap_or_default();
 
     // check that the number of parameters and the number of the arguments is the same
     check_function_arguments_arity(
@@ -62,34 +61,86 @@ pub(crate) fn instantiate_function_application(
         &function_decl.parameters,
     )?;
 
-    // Handle the trait constraints. This includes checking to see if the trait
-    // constraints are satisfied and replacing old decl ids based on the
-    // constraint with new decl ids based on the new type.
-    let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+    // unify function return type with current ctx.type_annotation().
+    engines.te().unify_with_generic(
         handler,
-        ctx.by_ref(),
-        &function_decl.type_parameters,
-        function_decl.name.as_str(),
+        engines,
+        function_decl.return_type.type_id,
+        ctx.type_annotation(),
         &call_path_binding.span(),
-    )?;
-    function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
-    let return_type = function_decl.return_type.clone();
-    let new_decl_ref = decl_engine
-        .insert(function_decl)
-        .with_parent(decl_engine, (*function_decl_ref.id()).into());
+        "Function return type does not match up with local type annotation.",
+        None,
+    );
+
+    let mut function_return_type_id = function_decl.return_type.type_id;
+
+    let function_ident: IdentUnique = function_decl.name.clone().into();
+    let function_sig = TyFunctionSig::from_fn_decl(&function_decl);
+
+    let new_decl_ref = if let Some(cached_fn_ref) =
+        ctx.engines()
+            .qe()
+            .get_function(engines, function_ident.clone(), function_sig.clone())
+    {
+        cached_fn_ref
+    } else {
+        if !ctx.code_block_first_pass() {
+            // Handle the trait constraints. This includes checking to see if the trait
+            // constraints are satisfied and replacing old decl ids based on the
+            // constraint with new decl ids based on the new type.
+            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+                handler,
+                ctx.by_ref(),
+                &function_decl.type_parameters,
+                function_decl.name.as_str(),
+                &call_path_binding.span(),
+            )?;
+
+            function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+        }
+
+        let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
+
+        function_return_type_id = function_decl.return_type.type_id;
+        let function_is_type_check_finalized = function_decl.is_type_check_finalized;
+        let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
+        let new_decl_ref = decl_engine
+            .insert(
+                function_decl,
+                decl_engine
+                    .get_parsed_decl_id(function_decl_ref.id())
+                    .as_ref(),
+            )
+            .with_parent(decl_engine, (*function_decl_ref.id()).into());
+
+        if !ctx.code_block_first_pass()
+            && method_sig.is_concrete(engines)
+            && function_is_type_check_finalized
+            && !function_is_trait_method_dummy
+        {
+            ctx.engines().qe().insert_function(
+                engines,
+                function_ident,
+                method_sig,
+                new_decl_ref.clone(),
+            );
+        }
+
+        new_decl_ref
+    };
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
-            contract_call_params: IndexMap::new(),
             arguments: typed_arguments_with_names,
             fn_ref: new_decl_ref,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
-            deferred_monomorphization: false,
+            contract_call_params: IndexMap::new(),
+            contract_caller: None,
         },
-        return_type: return_type.type_id,
+        return_type: function_return_type_id,
         span,
     };
 
@@ -100,7 +151,7 @@ pub(crate) fn instantiate_function_application(
 fn type_check_arguments(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    arguments: Vec<parsed::Expression>,
+    arguments: &[parsed::Expression],
     parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<ty::TyExpression>, ErrorEmitted> {
     let engines = ctx.engines();
@@ -115,14 +166,14 @@ fn type_check_arguments(
 
     handler.scope(|handler| {
         let typed_arguments = arguments
-            .into_iter()
+            .iter()
             .zip(parameters)
             .map(|(arg, param)| {
                 let ctx = ctx
                     .by_ref()
                     .with_help_text(UNIFY_ARGS_HELP_TEXT)
                     .with_type_annotation(param.type_argument.type_id);
-                ty::TyExpression::type_check(handler, ctx, arg.clone())
+                ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
             .collect();

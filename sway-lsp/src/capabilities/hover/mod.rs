@@ -1,5 +1,7 @@
 pub(crate) mod hover_link_contents;
 
+use self::hover_link_contents::HoverLinkContents;
+use crate::config::LspClient;
 use crate::{
     core::{
         session::Session,
@@ -9,25 +11,23 @@ use crate::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
     },
 };
+use lsp_types::{self, Position, Url};
 use std::sync::Arc;
 use sway_core::{
     language::{ty, Visibility},
     Engines, TypeId,
 };
-
-use lsp_types::{self, Position, Url};
 use sway_types::{Span, Spanned};
-
-use self::hover_link_contents::HoverLinkContents;
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
     session: Arc<Session>,
     keyword_docs: &KeywordDocs,
-    url: Url,
+    url: &Url,
     position: Position,
+    client_config: LspClient,
 ) -> Option<lsp_types::Hover> {
-    let t = session.token_map().token_at_position(&url, position)?;
+    let t = session.token_map().token_at_position(url, position)?;
     let (ident, token) = t.pair();
     let range = ident.range;
 
@@ -44,7 +44,7 @@ pub fn hover_data(
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
         let content = Markup::new().text(&formatted_doc);
-        let contents = lsp_types::HoverContents::Markup(markup_content(content));
+        let contents = lsp_types::HoverContents::Markup(markup_content(&content));
         return Some(lsp_types::Hover {
             contents,
             range: Some(range),
@@ -60,11 +60,18 @@ pub fn hover_data(
                 &session.engines.read(),
                 decl_token,
                 &decl_ident.name,
+                client_config.clone(),
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => hover_format(session.clone(), &session.engines.read(), token, &ident.name),
+        None => hover_format(
+            session.clone(),
+            &session.engines.read(),
+            token,
+            &ident.name,
+            client_config.clone(),
+        ),
     };
 
     Some(lsp_types::Hover {
@@ -73,7 +80,7 @@ pub fn hover_data(
     })
 }
 
-fn visibility_as_str(visibility: &Visibility) -> &'static str {
+fn visibility_as_str(visibility: Visibility) -> &'static str {
     match visibility {
         Visibility::Private => "",
         Visibility::Public => "pub ",
@@ -83,13 +90,13 @@ fn visibility_as_str(visibility: &Visibility) -> &'static str {
 /// Expects a span from either a `FunctionDeclaration` or a `TypedFunctionDeclaration`.
 fn extract_fn_signature(span: &Span) -> String {
     let value = span.as_str();
-    value.split('{').take(1).map(|v| v.trim()).collect()
+    value.split('{').take(1).map(str::trim).collect()
 }
 
 fn format_doc_attributes(engines: &Engines, token: &Token) -> String {
     let mut doc_comment = String::new();
     doc_comment_attributes(engines, token, |attributes| {
-        doc_comment = attributes.iter().fold("".to_string(), |output, attribute| {
+        doc_comment = attributes.iter().fold(String::new(), |output, attribute| {
             let comment = attribute.args.first().unwrap().name.as_str();
             format!("{output}{comment}\n")
         });
@@ -100,21 +107,18 @@ fn format_doc_attributes(engines: &Engines, token: &Token) -> String {
 fn format_visibility_hover(visibility: Visibility, decl_name: &str, token_name: &str) -> String {
     format!(
         "{}{} {}",
-        visibility_as_str(&visibility),
+        visibility_as_str(visibility),
         decl_name,
         token_name
     )
 }
 
 fn format_variable_hover(is_mutable: bool, type_name: &str, token_name: &str) -> String {
-    let mutability = match is_mutable {
-        false => "",
-        true => " mut",
-    };
+    let mutability = if is_mutable { " mut" } else { "" };
     format!("let{mutability} {token_name}: {type_name}")
 }
 
-fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
+fn markup_content(markup: &Markup) -> lsp_types::MarkupContent {
     let kind = lsp_types::MarkupKind::Markdown;
     let value = markdown::format_docs(markup.as_str());
     lsp_types::MarkupContent { kind, value }
@@ -125,6 +129,7 @@ fn hover_format(
     engines: &Engines,
     token: &Token,
     ident_name: &str,
+    client_config: LspClient,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(engines, token);
@@ -199,7 +204,7 @@ fn hover_format(
             TypedAstToken::TypedStructField(field) => {
                 hover_link_contents.add_implementations_for_type(
                     &field.type_argument.span(),
-                    &field.type_argument.type_id,
+                    field.type_argument.type_id,
                 );
                 Some(format_name_with_type(
                     field.name.as_str(),
@@ -220,9 +225,10 @@ fn hover_format(
         .text(&doc_comment)
         .maybe_add_links(
             engines.se(),
-            hover_link_contents.related_types,
-            hover_link_contents.implementations,
+            &hover_link_contents.related_types,
+            &hover_link_contents.implementations,
+            client_config,
         );
 
-    lsp_types::HoverContents::Markup(markup_content(content))
+    lsp_types::HoverContents::Markup(markup_content(&content))
 }

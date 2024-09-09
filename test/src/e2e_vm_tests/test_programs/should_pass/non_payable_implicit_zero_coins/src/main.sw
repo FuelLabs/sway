@@ -2,7 +2,6 @@ script;
 
 mod wallet_abi;
 
-use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 fn main() {
@@ -14,6 +13,6 @@ fn main() {
     // even that `send_funds` is not payable
     caller.send_funds {
         gas: 10000,
-        asset_id: ZERO_B256,
+        asset_id: b256::zero(),
     }(amount_to_send, recipient_address);
 }

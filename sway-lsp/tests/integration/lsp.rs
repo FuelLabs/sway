@@ -92,29 +92,24 @@ pub(crate) async fn did_change_request(
     service: &mut LspService<ServerState>,
     uri: &Url,
     version: i32,
+    params: Option<DidChangeTextDocumentParams>,
 ) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-            "version": version,
-        },
-        "contentChanges": [
-            {
-                "range": {
-                    "start": {
-                        "line": 1,
-                        "character": 0
-                    },
-                    "end": {
-                        "line": 1,
-                        "character": 0
-                    }
-                },
-                "rangeLength": 0,
-                "text": "\n",
-            }
-        ]
+    let params = params.unwrap_or_else(|| {
+        create_did_change_params(
+            uri,
+            version,
+            Position {
+                line: 1,
+                character: 0,
+            },
+            Position {
+                line: 1,
+                character: 0,
+            },
+            0,
+        )
     });
+    let params: serde_json::value::Value = serde_json::to_value(params).unwrap();
     let did_change = Request::build("textDocument/didChange")
         .params(params)
         .finish();
@@ -126,6 +121,51 @@ pub(crate) async fn did_change_request(
         .store(true, std::sync::atomic::Ordering::SeqCst);
     assert_eq!(response, Ok(None));
     did_change
+}
+
+/// Simulates a keypress at the current cursor position
+/// 66% chance of enter keypress
+/// 33% chance of backspace keypress
+pub fn simulate_keypress(
+    uri: &Url,
+    version: i32,
+    cursor_line: &mut u32,
+) -> DidChangeTextDocumentParams {
+    if rand::random::<u64>() % 3 < 2 {
+        // enter keypress at current cursor line
+        *cursor_line += 1;
+        create_did_change_params(
+            uri,
+            version,
+            Position {
+                line: *cursor_line - 1,
+                character: 0,
+            },
+            Position {
+                line: *cursor_line - 1,
+                character: 0,
+            },
+            0,
+        )
+    } else {
+        // backspace keypress at current cursor line
+        if *cursor_line > 1 {
+            *cursor_line -= 1;
+        }
+        create_did_change_params(
+            uri,
+            version,
+            Position {
+                line: *cursor_line,
+                character: 0,
+            },
+            Position {
+                line: *cursor_line + 1,
+                character: 0,
+            },
+            1,
+        )
+    }
 }
 
 pub(crate) async fn show_ast_request(
@@ -279,6 +319,56 @@ pub(crate) async fn highlight_request(server: &ServerState, uri: &Url) {
         },
     ];
     assert_eq!(expected, response.unwrap());
+}
+
+pub(crate) async fn references_request(server: &ServerState, uri: &Url) {
+    let params = ReferenceParams {
+        text_document_position: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier { uri: uri.clone() },
+            position: Position {
+                line: 15,
+                character: 22,
+            },
+        },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+        context: ReferenceContext {
+            include_declaration: false,
+        },
+    };
+
+    let create_location = |line: u32, start_char: u32, end_char: u32| -> Location {
+        Location {
+            uri: uri.clone(),
+            range: Range {
+                start: Position {
+                    line,
+                    character: start_char,
+                },
+                end: Position {
+                    line,
+                    character: end_char,
+                },
+            },
+        }
+    };
+
+    let mut response = request::handle_references(server, params)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let mut expected = vec![
+        create_location(12, 7, 11),
+        create_location(15, 21, 25),
+        create_location(15, 14, 18),
+        create_location(13, 13, 17),
+        create_location(3, 5, 9),
+        create_location(14, 8, 12),
+    ];
+    response.sort_by(|a, b| a.range.start.cmp(&b.range.start));
+    expected.sort_by(|a, b| a.range.start.cmp(&b.range.start));
+    assert_eq!(expected, response);
 }
 
 pub(crate) async fn code_lens_empty_request(server: &ServerState, uri: &Url) {
@@ -552,4 +642,24 @@ pub(crate) async fn rename_request<'a>(
     };
     let worspace_edit = request::handle_rename(server, params).await.unwrap();
     worspace_edit.unwrap()
+}
+
+pub fn create_did_change_params(
+    uri: &Url,
+    version: i32,
+    start: Position,
+    end: Position,
+    range_length: u32,
+) -> DidChangeTextDocumentParams {
+    DidChangeTextDocumentParams {
+        text_document: VersionedTextDocumentIdentifier {
+            uri: uri.clone(),
+            version,
+        },
+        content_changes: vec![TextDocumentContentChangeEvent {
+            range: Some(Range { start, end }),
+            range_length: Some(range_length),
+            text: "\n".into(),
+        }],
+    }
 }

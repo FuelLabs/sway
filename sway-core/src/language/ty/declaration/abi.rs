@@ -1,9 +1,14 @@
-use crate::{engine_threading::*, language::parsed, transform, type_system::*};
+use crate::{
+    engine_threading::*,
+    language::parsed::{self, AbiDeclaration},
+    transform,
+    type_system::*,
+};
 use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyTraitInterfaceItem, TyTraitItem};
+use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.
@@ -19,9 +24,13 @@ pub struct TyAbiDecl {
     pub attributes: transform::AttributesMap,
 }
 
+impl TyDeclParsedType for TyAbiDecl {
+    type ParsedType = AbiDeclaration;
+}
+
 impl EqWithEngines for TyAbiDecl {}
 impl PartialEqWithEngines for TyAbiDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let TyAbiDecl {
             name: ln,
             interface_surface: lis,
@@ -42,7 +51,7 @@ impl PartialEqWithEngines for TyAbiDecl {
             attributes: _,
             span: _,
         } = other;
-        ln == rn && lis.eq(ris, engines) && li.eq(ri, engines) && ls.eq(rs, engines)
+        ln == rn && lis.eq(ris, ctx) && li.eq(ri, ctx) && ls.eq(rs, ctx)
     }
 }
 

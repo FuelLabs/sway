@@ -12,7 +12,6 @@ abi Wallet {
 // ANCHOR: implementation
 use std::{
     call_frames::msg_asset_id,
-    constants::BASE_ASSET_ID,
     context::msg_amount,
     asset::transfer,
 };
@@ -26,7 +25,7 @@ const OWNER = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1
 impl Wallet for Contract {
     #[storage(read, write)]
     fn receive() {
-        assert(msg_asset_id() == BASE_ASSET_ID);
+        assert(msg_asset_id() == AssetId::base());
         storage.balance.write(storage.balance.read() + msg_amount());
     }
 
@@ -34,7 +33,7 @@ impl Wallet for Contract {
     fn send(amount: u64, recipient: Identity) {
         assert(msg_sender().unwrap() == Identity::Address(OWNER));
         storage.balance.write(storage.balance.read() - amount);
-        transfer(recipient, BASE_ASSET_ID, amount);
+        transfer(recipient, AssetId::base(), amount);
     }
 }
 // ANCHOR: implementation

@@ -44,6 +44,10 @@ pub struct Command {
     /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
+
+    /// Disable the "new encoding" feature
+    #[clap(long)]
+    pub no_encoding_v1: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

@@ -2,14 +2,14 @@ use crate::{
     concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     language::parsed::{
-        AbiDeclaration, ConstantDeclaration, EnumDeclaration, FunctionDeclaration, ImplSelf,
-        ImplTrait, StorageDeclaration, StructDeclaration, TraitDeclaration, TraitFn,
-        TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
+        AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration, EnumVariant,
+        FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration, StructDeclaration,
+        TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
     },
 };
 
 use std::sync::Arc;
-use sway_types::{ModuleId, Spanned};
+use sway_types::{ProgramId, SourceId, Spanned};
 
 use super::parsed_id::ParsedDeclId;
 
@@ -21,13 +21,14 @@ pub struct ParsedDeclEngine {
     trait_slab: ConcurrentSlab<TraitDeclaration>,
     trait_fn_slab: ConcurrentSlab<TraitFn>,
     trait_type_slab: ConcurrentSlab<TraitTypeDeclaration>,
-    impl_trait_slab: ConcurrentSlab<ImplTrait>,
-    impl_self_slab: ConcurrentSlab<ImplSelf>,
+    impl_self_or_trait_slab: ConcurrentSlab<ImplSelfOrTrait>,
     struct_slab: ConcurrentSlab<StructDeclaration>,
     storage_slab: ConcurrentSlab<StorageDeclaration>,
     abi_slab: ConcurrentSlab<AbiDeclaration>,
     constant_slab: ConcurrentSlab<ConstantDeclaration>,
+    configurable_slab: ConcurrentSlab<ConfigurableDeclaration>,
     enum_slab: ConcurrentSlab<EnumDeclaration>,
+    enum_variant_slab: ConcurrentSlab<EnumVariant>,
     type_alias_slab: ConcurrentSlab<TypeAliasDeclaration>,
 }
 
@@ -39,14 +40,12 @@ pub trait ParsedDeclEngineInsert<T> {
     fn insert(&self, decl: T) -> ParsedDeclId<T>;
 }
 
-pub trait ParsedDeclEngineInsertArc<T> {
-    fn insert_arc(&self, decl: Arc<T>) -> ParsedDeclId<T>;
-}
-
+#[allow(unused)]
 pub trait ParsedDeclEngineReplace<T> {
     fn replace(&self, index: ParsedDeclId<T>, decl: T);
 }
 
+#[allow(unused)]
 pub trait ParsedDeclEngineIndex<T>:
     ParsedDeclEngineGet<DeclId<T>, T> + ParsedDeclEngineInsert<T> + ParsedDeclEngineReplace<T>
 {
@@ -66,13 +65,14 @@ decl_engine_get!(function_slab, FunctionDeclaration);
 decl_engine_get!(trait_slab, TraitDeclaration);
 decl_engine_get!(trait_fn_slab, TraitFn);
 decl_engine_get!(trait_type_slab, TraitTypeDeclaration);
-decl_engine_get!(impl_trait_slab, ImplTrait);
-decl_engine_get!(impl_self_slab, ImplSelf);
+decl_engine_get!(impl_self_or_trait_slab, ImplSelfOrTrait);
 decl_engine_get!(struct_slab, StructDeclaration);
 decl_engine_get!(storage_slab, StorageDeclaration);
 decl_engine_get!(abi_slab, AbiDeclaration);
 decl_engine_get!(constant_slab, ConstantDeclaration);
+decl_engine_get!(configurable_slab, ConfigurableDeclaration);
 decl_engine_get!(enum_slab, EnumDeclaration);
+decl_engine_get!(enum_variant_slab, EnumVariant);
 decl_engine_get!(type_alias_slab, TypeAliasDeclaration);
 
 macro_rules! decl_engine_insert {
@@ -80,11 +80,6 @@ macro_rules! decl_engine_insert {
         impl ParsedDeclEngineInsert<$decl> for ParsedDeclEngine {
             fn insert(&self, decl: $decl) -> ParsedDeclId<$decl> {
                 ParsedDeclId::new(self.$slab.insert(decl))
-            }
-        }
-        impl ParsedDeclEngineInsertArc<$decl> for ParsedDeclEngine {
-            fn insert_arc(&self, decl: Arc<$decl>) -> ParsedDeclId<$decl> {
-                ParsedDeclId::new(self.$slab.insert_arc(decl))
             }
         }
     };
@@ -95,14 +90,39 @@ decl_engine_insert!(function_slab, FunctionDeclaration);
 decl_engine_insert!(trait_slab, TraitDeclaration);
 decl_engine_insert!(trait_fn_slab, TraitFn);
 decl_engine_insert!(trait_type_slab, TraitTypeDeclaration);
-decl_engine_insert!(impl_trait_slab, ImplTrait);
-decl_engine_insert!(impl_self_slab, ImplSelf);
+decl_engine_insert!(impl_self_or_trait_slab, ImplSelfOrTrait);
 decl_engine_insert!(struct_slab, StructDeclaration);
 decl_engine_insert!(storage_slab, StorageDeclaration);
 decl_engine_insert!(abi_slab, AbiDeclaration);
 decl_engine_insert!(constant_slab, ConstantDeclaration);
+decl_engine_insert!(configurable_slab, ConfigurableDeclaration);
 decl_engine_insert!(enum_slab, EnumDeclaration);
+decl_engine_insert!(enum_variant_slab, EnumVariant);
 decl_engine_insert!(type_alias_slab, TypeAliasDeclaration);
+
+macro_rules! decl_engine_replace {
+    ($slab:ident, $decl:ty) => {
+        impl ParsedDeclEngineReplace<$decl> for ParsedDeclEngine {
+            fn replace(&self, index: ParsedDeclId<$decl>, decl: $decl) {
+                self.$slab.replace(index.inner(), decl);
+            }
+        }
+    };
+}
+
+decl_engine_replace!(variable_slab, VariableDeclaration);
+decl_engine_replace!(function_slab, FunctionDeclaration);
+decl_engine_replace!(trait_slab, TraitDeclaration);
+decl_engine_replace!(trait_fn_slab, TraitFn);
+decl_engine_replace!(trait_type_slab, TraitTypeDeclaration);
+decl_engine_replace!(impl_self_or_trait_slab, ImplSelfOrTrait);
+decl_engine_replace!(struct_slab, StructDeclaration);
+decl_engine_replace!(storage_slab, StorageDeclaration);
+decl_engine_replace!(abi_slab, AbiDeclaration);
+decl_engine_replace!(configurable_slab, ConfigurableDeclaration);
+decl_engine_replace!(constant_slab, ConstantDeclaration);
+decl_engine_replace!(enum_slab, EnumDeclaration);
+decl_engine_replace!(type_alias_slab, TypeAliasDeclaration);
 
 macro_rules! decl_engine_clear {
     ($($slab:ident, $decl:ty);* $(;)?) => {
@@ -122,8 +142,7 @@ decl_engine_clear!(
     trait_slab, TraitDeclaration;
     trait_fn_slab, TraitFn;
     trait_type_slab, TraitTypeDeclaration;
-    impl_trait_slab, ImplTrait;
-    impl_self_slab, ImplSelf;
+    impl_self_or_trait_slab, ImplTrait;
     struct_slab, StructDeclaration;
     storage_slab, StorageDeclaration;
     abi_slab, AbiDeclaration;
@@ -132,17 +151,57 @@ decl_engine_clear!(
     type_alias_slab, TypeAliasDeclaration;
 );
 
-macro_rules! decl_engine_clear_module {
+macro_rules! decl_engine_clear_program {
     ($(($slab:ident, $getter:expr)),* $(,)?) => {
         impl ParsedDeclEngine {
-            pub fn clear_module(&mut self, module_id: &ModuleId) {
+            pub fn clear_program(&mut self, program_id: &ProgramId) {
                 $(
                     self.$slab.retain(|_k, item| {
                         #[allow(clippy::redundant_closure_call)]
                         let span = $getter(item);
                         match span.source_id() {
-                            Some(source_id) => &source_id.module_id() != module_id,
-                            None => false,
+                            Some(source_id) => &source_id.program_id() != program_id,
+                            None => true,
+                        }
+                    });
+                )*
+            }
+        }
+    };
+}
+
+decl_engine_clear_program!(
+    (variable_slab, |item: &VariableDeclaration| item.name.span()),
+    (function_slab, |item: &FunctionDeclaration| item.name.span()),
+    (trait_slab, |item: &TraitDeclaration| item.name.span()),
+    (trait_fn_slab, |item: &TraitFn| item.name.span()),
+    (trait_type_slab, |item: &TraitTypeDeclaration| item
+        .name
+        .span()),
+    (impl_self_or_trait_slab, |item: &ImplSelfOrTrait| item
+        .block_span
+        .clone()),
+    (struct_slab, |item: &StructDeclaration| item.name.span()),
+    (storage_slab, |item: &StorageDeclaration| item.span.clone()),
+    (abi_slab, |item: &AbiDeclaration| item.name.span()),
+    (constant_slab, |item: &ConstantDeclaration| item.name.span()),
+    (enum_slab, |item: &EnumDeclaration| item.name.span()),
+    (type_alias_slab, |item: &TypeAliasDeclaration| item
+        .name
+        .span()),
+);
+
+macro_rules! decl_engine_clear_module {
+    ($(($slab:ident, $getter:expr)),* $(,)?) => {
+        impl ParsedDeclEngine {
+            pub fn clear_module(&mut self, program_id: &SourceId) {
+                $(
+                    self.$slab.retain(|_k, item| {
+                        #[allow(clippy::redundant_closure_call)]
+                        let span = $getter(item);
+                        match span.source_id() {
+                            Some(src_id) => src_id != program_id,
+                            None => true,
                         }
                     });
                 )*
@@ -159,8 +218,9 @@ decl_engine_clear_module!(
     (trait_type_slab, |item: &TraitTypeDeclaration| item
         .name
         .span()),
-    (impl_trait_slab, |item: &ImplTrait| item.block_span.clone()),
-    (impl_self_slab, |item: &ImplSelf| item.block_span.clone()),
+    (impl_self_or_trait_slab, |item: &ImplSelfOrTrait| item
+        .block_span
+        .clone()),
     (struct_slab, |item: &StructDeclaration| item.name.span()),
     (storage_slab, |item: &StorageDeclaration| item.span.clone()),
     (abi_slab, |item: &AbiDeclaration| item.name.span()),
@@ -213,21 +273,9 @@ impl ParsedDeclEngine {
     ///
     /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_impl_trait<I>(&self, index: &I) -> Arc<ImplTrait>
+    pub fn get_impl_self_or_trait<I>(&self, index: &I) -> Arc<ImplSelfOrTrait>
     where
-        ParsedDeclEngine: ParsedDeclEngineGet<I, ImplTrait>,
-    {
-        self.get(index)
-    }
-
-    /// Friendly helper method for calling the `get` method from the
-    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
-    ///
-    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
-    /// this method adds additional syntax that some users may find helpful.
-    pub fn get_impl_self<I>(&self, index: &I) -> Arc<ImplSelf>
-    where
-        ParsedDeclEngine: ParsedDeclEngineGet<I, ImplSelf>,
+        ParsedDeclEngine: ParsedDeclEngineGet<I, ImplSelfOrTrait>,
     {
         self.get(index)
     }
@@ -285,6 +333,18 @@ impl ParsedDeclEngine {
     ///
     /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
+    pub fn get_configurable<I>(&self, index: &I) -> Arc<ConfigurableDeclaration>
+    where
+        ParsedDeclEngine: ParsedDeclEngineGet<I, ConfigurableDeclaration>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
+    ///
+    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
     pub fn get_trait_type<I>(&self, index: &I) -> Arc<TraitTypeDeclaration>
     where
         ParsedDeclEngine: ParsedDeclEngineGet<I, TraitTypeDeclaration>,
@@ -300,6 +360,18 @@ impl ParsedDeclEngine {
     pub fn get_enum<I>(&self, index: &I) -> Arc<EnumDeclaration>
     where
         ParsedDeclEngine: ParsedDeclEngineGet<I, EnumDeclaration>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
+    ///
+    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_enum_variant<I>(&self, index: &I) -> Arc<EnumVariant>
+    where
+        ParsedDeclEngine: ParsedDeclEngineGet<I, EnumVariant>,
     {
         self.get(index)
     }
@@ -326,5 +398,23 @@ impl ParsedDeclEngine {
         ParsedDeclEngine: ParsedDeclEngineGet<I, VariableDeclaration>,
     {
         self.get(index)
+    }
+
+    pub fn pretty_print(&self) -> String {
+        use std::fmt::Write;
+        let mut s = String::new();
+        let _ = write!(
+            &mut s,
+            "Function Count: {}",
+            self.function_slab.values().len()
+        );
+        for f in self.function_slab.values() {
+            let _ = write!(&mut s, "Function: {}", f.name);
+            for node in f.body.contents.iter() {
+                let _ = write!(&mut s, "    Node: {:#?}", node);
+            }
+        }
+
+        s
     }
 }

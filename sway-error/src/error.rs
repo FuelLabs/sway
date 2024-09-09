@@ -2,15 +2,17 @@ use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::formatting::*;
 use crate::lex_error::LexError;
-use crate::parser_error::ParseError;
+use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::fmt::Formatter;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
 
+use self::ShadowingSource::*;
 use self::StructFieldUsageContext::*;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
@@ -66,14 +68,19 @@ pub enum CompileError {
         what_it_is: &'static str,
         span: Span,
     },
-    #[error("Unimplemented feature: {0}")]
-    Unimplemented(&'static str, Span),
-    #[error(
-        "Unimplemented feature: {0}\n\
-         help: {1}.\n\
-         "
-    )]
-    UnimplementedWithHelp(&'static str, &'static str, Span),
+    #[error("{feature} is currently not implemented.")]
+    Unimplemented {
+        /// The description of the unimplemented feature,
+        /// formulated in a way that fits into common ending
+        /// "is currently not implemented."
+        /// E.g., "Using something".
+        feature: String,
+        /// Help lines. Empty if there is no additional help.
+        /// To get an empty line between the help lines,
+        /// insert a [String] containing only a space: `" ".to_string()`.
+        help: Vec<String>,
+        span: Span,
+    },
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -96,6 +103,8 @@ pub enum CompileError {
     PredicateMainDoesNotReturnBool(Span),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
+    #[error("Fallback function already defined in scope.")]
+    MultipleDefinitionsOfFallbackFunction { name: Ident, span: Span },
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
@@ -113,8 +122,67 @@ pub enum CompileError {
         duplicate: Span,
         duplicate_is_struct_field: bool,
     },
-    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
-    AssignmentToNonMutable { name: Ident, span: Span },
+    #[error(
+        "Assignment to an immutable variable. Variable \"{decl_name} is not declared as mutable."
+    )]
+    AssignmentToNonMutableVariable {
+        /// Variable name pointing to the name in the variable declaration.
+        decl_name: Ident,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
+        "Assignment to a {}. {} cannot be assigned to.",
+        if *is_configurable {
+            "configurable"
+        } else {
+            "constant"
+        },
+        if *is_configurable {
+            "Configurables"
+        } else {
+            "Constants"
+        }
+    )]
+    AssignmentToConstantOrConfigurable {
+        /// Constant or configurable name pointing to the name in the constant declaration.
+        decl_name: Ident,
+        is_configurable: bool,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
+        "This assignment target cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+        if let Some(decl_name) = decl_name {
+            format!("\"{decl_name}\"")
+        } else {
+            "this".to_string()
+        },
+        a_or_an(decl_friendly_type_name)
+    )]
+    DeclAssignmentTargetCannotBeAssignedTo {
+        /// Name of the declared variant, pointing to the name in the declaration.
+        decl_name: Option<Ident>,
+        /// Friendly name of the type of the declaration. E.g., "function", or "struct".
+        decl_friendly_type_name: &'static str,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error("This reference is not a reference to a mutable value (`&mut`).")]
+    AssignmentViaNonMutableReference {
+        /// Name of the reference, if the left-hand side of the assignment is a reference variable,
+        /// pointing to the name in the reference variable declaration.
+        ///
+        /// `None` if the assignment LHS is an arbitrary expression and not a variable.
+        decl_reference_name: Option<Ident>,
+        /// [Span] of the right-hand side of the reference variable definition,
+        /// if the left-hand side of the assignment is a reference variable.
+        decl_reference_rhs: Option<Span>,
+        /// The type of the reference, if the left-hand side of the assignment is a reference variable,
+        /// expected to start with `&`.
+        decl_reference_type: String,
+        span: Span,
+    },
     #[error(
         "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
             \"{variable_name}\" is not declared as mutable."
@@ -132,6 +200,21 @@ pub enum CompileError {
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
     RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
+    #[error("Reference to a mutable value cannot reference a constant.")]
+    RefMutCannotReferenceConstant {
+        /// Constant, as accessed in code. E.g.:
+        ///  - `MY_CONST`
+        ///  - `LIB_CONST_ALIAS`
+        ///  - `::lib::module::SOME_CONST`
+        constant: String,
+        span: Span,
+    },
+    #[error("Reference to a mutable value cannot reference an immutable variable.")]
+    RefMutCannotReferenceImmutableVariable {
+        /// Variable name pointing to the name in the variable declaration.
+        decl_name: Ident,
+        span: Span,
+    },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -285,6 +368,8 @@ pub enum CompileError {
         struct_is_empty: bool,
         usage_context: StructFieldUsageContext,
     },
+    #[error("Field \"{field_name}\" has multiple definitions.")]
+    StructFieldDuplicated { field_name: Ident, duplicate: Ident },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         method_name: Ident,
@@ -344,6 +429,12 @@ pub enum CompileError {
     DeclIsNotATypeAlias { actually: String, span: Span },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
+    #[error("Found multiple bindings for \"{name}\" in this scope.")]
+    SymbolWithMultipleBindings {
+        name: Ident,
+        paths: Vec<String>,
+        span: Span,
+    },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
     #[error("Module \"{name}\" is private.")]
@@ -406,6 +497,7 @@ pub enum CompileError {
     UnconstrainedGenericParameter { ty: String, span: Span },
     #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
     TraitConstraintNotSatisfied {
+        type_id: usize, // Used to filter errors in method application type check.
         ty: String,
         trait_name: String,
         span: Span,
@@ -438,6 +530,8 @@ pub enum CompileError {
     UnnecessaryImmediate { span: Span },
     #[error("This reference is ambiguous, and could refer to a module, enum, or function of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span },
+    #[error("This is a module path, and not an expression.")]
+    ModulePathIsNotAnExpression { module_path: String, span: Span },
     #[error("Unknown type name.")]
     UnknownType { span: Span },
     #[error("Unknown type name \"{name}\".")]
@@ -470,6 +564,10 @@ pub enum CompileError {
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
     CannotBeEvaluatedToConst { span: Span },
+    #[error(
+        "This code cannot be evaluated to a configurable because its size is not always limited."
+    )]
+    CannotBeEvaluatedToConfigurableSizeUnknown { span: Span },
     #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
         if *dot_syntax_used { "Method" } else { "Function" },
         if *expected == 1usize { "argument" } else {"arguments"},
@@ -507,6 +605,7 @@ pub enum CompileError {
     ConflictingImplsForTraitAndType {
         trait_name: String,
         type_implementing_for: String,
+        existing_impl_span: Span,
         second_impl_span: Span,
     },
     #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
@@ -558,8 +657,12 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("The {opcode} opcode cannot be used in a predicate.")]
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
-    #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
+    #[error("Index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
+    #[error(
+        "Invalid range; the range end at index {end} is smaller than its start at index {start}"
+    )]
+    InvalidRangeEndGreaterThanStart { start: u64, end: u64, span: Span },
     #[error("Tuple index {index} is out of bounds. The tuple has {count} element{}.", plural_s(*count))]
     TupleIndexOutOfBounds {
         index: usize,
@@ -568,20 +671,58 @@ pub enum CompileError {
         span: Span,
         prefix_span: Span,
     },
-    #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
+    #[error("Constants cannot be shadowed. {shadowing_source} \"{name}\" shadows constant of the same name.")]
     ConstantsCannotBeShadowed {
-        variable_or_constant: String,
+        /// Defines what shadows the constant.
+        ///
+        /// Although being ready in the diagnostic, the `PatternMatchingStructFieldVar` option
+        /// is currently not used. Getting the information about imports and aliases while
+        /// type checking match branches is too much effort at the moment, compared to gained
+        /// additional clarity of the error message. We might add support for this option in
+        /// the future.
+        shadowing_source: ShadowingSource,
         name: IdentUnique,
         constant_span: Span,
-        constant_decl: Span,
+        constant_decl_span: Span,
         is_alias: bool,
     },
-    #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
+    #[error("Configurables cannot be shadowed. {shadowing_source} \"{name}\" shadows configurable of the same name.")]
+    ConfigurablesCannotBeShadowed {
+        /// Defines what shadows the configurable.
+        ///
+        /// Using configurable in pattern matching, expecting to behave same as a constant,
+        /// will result in [CompileError::ConfigurablesCannotBeMatchedAgainst].
+        /// Otherwise, we would end up with a very confusing error message that
+        /// a configurable cannot be shadowed by a variable.
+        /// In the, unlikely but equally confusing, case of a struct field pattern variable
+        /// named same as the configurable we also want to provide a better explanation
+        /// and `shadowing_source` helps us distinguish that case as well.
+        shadowing_source: ShadowingSource,
+        name: IdentUnique,
+        configurable_span: Span,
+    },
+    #[error("Configurables cannot be matched against. Configurable \"{name}\" cannot be used in pattern matching.")]
+    ConfigurablesCannotBeMatchedAgainst {
+        name: IdentUnique,
+        configurable_span: Span,
+    },
+    #[error(
+        "Constants cannot shadow variables. Constant \"{name}\" shadows variable of the same name."
+    )]
     ConstantShadowsVariable {
         name: IdentUnique,
         variable_span: Span,
     },
-    #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
+    #[error("{existing_constant_or_configurable} of the name \"{name}\" already exists.")]
+    ConstantDuplicatesConstantOrConfigurable {
+        /// Text "Constant" or "Configurable". Denotes already declared constant or configurable.
+        existing_constant_or_configurable: &'static str,
+        /// Text "Constant" or "Configurable". Denotes constant or configurable attempted to be declared.
+        new_constant_or_configurable: &'static str,
+        name: IdentUnique,
+        existing_span: Span,
+    },
+    #[error("Imported symbol \"{name}\" shadows another symbol of the same name.")]
     ShadowsOtherSymbol { name: IdentUnique },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: IdentUnique },
@@ -633,11 +774,13 @@ pub enum CompileError {
         expected: String,
         received: String,
     },
-    #[error(
-        "Storage attribute access mismatch. Try giving the surrounding function more access by \
-        adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
-    )]
-    StorageAccessMismatch { attrs: String, span: Span },
+    #[error("This cannot be matched.")]
+    MatchedValueIsNotValid {
+        /// Common message describing which Sway types
+        /// are currently supported in match expressions.
+        supported_types_message: Vec<&'static str>,
+        span: Span,
+    },
     #[error(
         "The function \"{fn_name}\" in {interface_name} is pure, but this \
         implementation is not.  The \"{STORAGE_PURITY_ATTRIBUTE_NAME}\" annotation must be \
@@ -663,13 +806,17 @@ pub enum CompileError {
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span },
     #[error(
-        "This function performs a storage {storage_op} but does not have the required \
-        attribute(s).  Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function \
+        "This function performs storage access but does not have the required storage \
+        attribute(s). Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]\" to the function \
         declaration."
     )]
-    ImpureInPureContext {
-        storage_op: &'static str,
-        attrs: String,
+    StorageAccessMismatched {
+        /// True if the function with mismatched access is pure.
+        is_pure: bool,
+        storage_access_violations: Vec<(Span, StorageAccess)>,
+        suggested_attributes: String,
+        /// Span pointing to the name of the function in the function declaration,
+        /// whose storage attributes mismatch the storage access patterns.
         span: Span,
     },
     #[error(
@@ -705,7 +852,7 @@ pub enum CompileError {
     #[error("Storage field \"{field_name}\" does not exist.")]
     StorageFieldDoesNotExist {
         field_name: IdentUnique,
-        available_fields: Vec<Ident>,
+        available_fields: Vec<(Vec<Ident>, Ident)>,
         storage_decl_span: Span,
     },
     #[error("No storage has been declared")]
@@ -825,7 +972,7 @@ pub enum CompileError {
     NonStrGenericType { span: Span },
     #[error("A contract method cannot call methods belonging to the same ABI")]
     ContractCallsItsOwnMethod { span: Span },
-    #[error("ABI cannot define a method with the same name as its super-ABI \"{superabi}\"")]
+    #[error("ABI cannot define a method of the same name as its super-ABI \"{superabi}\"")]
     AbiShadowsSuperAbiMethod { span: Span, superabi: Ident },
     #[error("ABI cannot inherit samely named method (\"{method_name}\") from several super-ABIs: \"{superabi1}\" and \"{superabi2}\"")]
     ConflictingSuperAbiMethods {
@@ -838,12 +985,40 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
-    #[error("\"Self\" is not valid in the self type of an impl block")]
-    SelfIsNotValidAsImplementingFor { span: Span },
+    #[error("{invalid_type} is not a valid type in the self type of an impl block.")]
+    TypeIsNotValidAsImplementingFor {
+        invalid_type: InvalidImplementingForType,
+        /// Name of the trait if the impl implements a trait, `None` otherwise.
+        trait_name: Option<String>,
+        span: Span,
+    },
     #[error("Uninitialized register is being read before being written")]
     UninitRegisterInAsmBlockBeingRead { span: Span },
     #[error("Expression of type \"{expression_type}\" cannot be dereferenced.")]
     ExpressionCannotBeDereferenced { expression_type: String, span: Span },
+    #[error("Fallback functions can only exist in contracts")]
+    FallbackFnsAreContractOnly { span: Span },
+    #[error("Fallback functions cannot have parameters")]
+    FallbackFnsCannotHaveParameters { span: Span },
+    #[error("Could not generate the entry method. See errors above for more details.")]
+    CouldNotGenerateEntry { span: Span },
+    #[error("Missing `core` in dependencies.")]
+    CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
+    CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
+    EncodingUnsupportedType { span: Span },
+    #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
+    ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Collision detected between two different types.\n  Shared hash:{hash}\n  First type:{first_type}\n  Second type:{second_type}")]
+    ABIHashCollision {
+        span: Span,
+        hash: String,
+        first_type: String,
+        second_type: String,
+    },
+    #[error("Type must be known at this point")]
+    TypeMustBeKnownAtThisPoint { span: Span, internal: String },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -860,8 +1035,7 @@ impl Spanned for CompileError {
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
             NotAVariable { span, .. } => span.clone(),
-            Unimplemented(_, span) => span.clone(),
-            UnimplementedWithHelp(_, _, span) => span.clone(),
+            Unimplemented { span, .. } => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
@@ -874,10 +1048,16 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
-            AssignmentToNonMutable { span, .. } => span.clone(),
+            MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
+            AssignmentToNonMutableVariable { lhs_span, .. } => lhs_span.clone(),
+            AssignmentToConstantOrConfigurable { lhs_span, .. } => lhs_span.clone(),
+            DeclAssignmentTargetCannotBeAssignedTo { lhs_span, .. } => lhs_span.clone(),
+            AssignmentViaNonMutableReference { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
+            RefMutCannotReferenceConstant { span, .. } => span.clone(),
+            RefMutCannotReferenceImmutableVariable { span, .. } => span.clone(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -899,6 +1079,7 @@ impl Spanned for CompileError {
             StructCannotBeInstantiated { span, .. } => span.clone(),
             StructFieldIsPrivate { field_name, .. } => field_name.span(),
             StructFieldDoesNotExist { field_name, .. } => field_name.span(),
+            StructFieldDuplicated { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             TupleElementAccessOnNonTuple { span, .. } => span.clone(),
@@ -906,6 +1087,7 @@ impl Spanned for CompileError {
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
+            SymbolWithMultipleBindings { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
@@ -928,7 +1110,8 @@ impl Spanned for CompileError {
             Immediate24TooLarge { span, .. } => span.clone(),
             IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
             UnnecessaryImmediate { span, .. } => span.clone(),
-            AmbiguousPath { span, .. } => span.clone(),
+            AmbiguousPath { span } => span.clone(),
+            ModulePathIsNotAnExpression { span, .. } => span.clone(),
             UnknownType { span, .. } => span.clone(),
             UnknownTypeName { span, .. } => span.clone(),
             FileCouldNotBeRead { span, .. } => span.clone(),
@@ -965,7 +1148,10 @@ impl Spanned for CompileError {
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
             ConstantsCannotBeShadowed { name, .. } => name.span(),
+            ConfigurablesCannotBeShadowed { name, .. } => name.span(),
+            ConfigurablesCannotBeMatchedAgainst { name, .. } => name.span(),
             ConstantShadowsVariable { name, .. } => name.span(),
+            ConstantDuplicatesConstantOrConfigurable { name, .. } => name.span(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
@@ -973,8 +1159,8 @@ impl Spanned for CompileError {
             MatchStructPatternMustIgnorePrivateFields { span, .. } => span.clone(),
             MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
+            MatchedValueIsNotValid { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
-            StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
             TraitImplPurityMismatch { span, .. } => span.clone(),
             DeclIsNotAnEnum { span, .. } => span.clone(),
@@ -989,7 +1175,7 @@ impl Spanned for CompileError {
             DeclIsNotAConstant { span, .. } => span.clone(),
             DeclIsNotATypeAlias { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
-            ImpureInPureContext { span, .. } => span.clone(),
+            StorageAccessMismatched { span, .. } => span.clone(),
             ParameterRefMutabilityMismatch { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
@@ -1010,7 +1196,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
@@ -1037,9 +1223,20 @@ impl Spanned for CompileError {
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
-            SelfIsNotValidAsImplementingFor { span } => span.clone(),
+            TypeIsNotValidAsImplementingFor { span, .. } => span.clone(),
             UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
             ExpressionCannotBeDereferenced { span, .. } => span.clone(),
+            FallbackFnsAreContractOnly { span } => span.clone(),
+            FallbackFnsCannotHaveParameters { span } => span.clone(),
+            CouldNotGenerateEntry { span } => span.clone(),
+            CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
+            CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
+            EncodingUnsupportedType { span } => span.clone(),
+            ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            ABIHashCollision { span, .. } => span.clone(),
+            InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
+            TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
         }
     }
 }
@@ -1048,28 +1245,31 @@ impl Spanned for CompileError {
 // - Guide-level explanation: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#guide-level-explanation
 // - Wording guidelines: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#wording-guidelines
 // For concrete examples, look at the existing diagnostics.
+//
+// The issue and the hints are not displayed if set to `Span::dummy()`.
+//
+// NOTE: Issue level should actually be the part of the reason. But it would complicate handling of labels in the transitional
+//       period when we still have "old-style" diagnostics.
+//       Let's leave it like this. Refactoring currently doesn't pay off.
+//       And our #[error] macro will anyhow encapsulate it and ensure consistency.
 impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         let code = Code::semantic_analysis;
         use CompileError::*;
         match self {
-            ConstantsCannotBeShadowed { variable_or_constant, name, constant_span, constant_decl, is_alias } => Diagnostic {
+            ConstantsCannotBeShadowed { shadowing_source, name, constant_span, constant_decl_span, is_alias } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Constants cannot be shadowed".to_string())),
-                // NOTE: Issue level should actually be the part of the reason. But it would complicate handling of labels in the transitional
-                //       period when we still have "old-style" diagnostics.
-                //       Let's leave it like this, refactoring at the moment does not pay of.
-                //       And our #[error] macro will anyhow encapsulate it and ensure consistency.
                 issue: Issue::error(
                     source_engine,
                     name.span(),
                     format!(
-                        // Variable "x" shadows constant with the same name
+                        // Variable "x" shadows constant with of same name.
                         //  or
-                        // Constant "x" shadows imported constant with the same name
+                        // Constant "x" shadows imported constant of the same name.
                         //  or
                         // ...
-                        "{variable_or_constant} \"{name}\" shadows {}constant of the same name.",
-                        if constant_decl.clone() != Span::dummy() { "imported " } else { "" }
+                        "{shadowing_source} \"{name}\" shadows {}constant of the same name.",
+                        if constant_decl_span.clone() != Span::dummy() { "imported " } else { "" }
                     )
                 ),
                 hints: vec![
@@ -1077,32 +1277,132 @@ impl ToDiagnostic for CompileError {
                         source_engine,
                         constant_span.clone(),
                         format!(
-                            // Constant "x" is declared here.
+                            // Shadowed constant "x" is declared here.
                             //  or
-                            // Constant "x" gets imported here.
+                            // Shadowed constant "x" gets imported here.
+                            //  or
+                            // ...
                             "Shadowed constant \"{name}\" {} here{}.",
-                            if constant_decl.clone() != Span::dummy() { "gets imported" } else { "is declared" },
+                            if constant_decl_span.clone() != Span::dummy() { "gets imported" } else { "is declared" },
                             if *is_alias { " as alias" } else { "" }
                         )
                     ),
-                    Hint::info( // Ignored if the constant_decl is Span::dummy().
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        Hint::help(
+                            source_engine,
+                            name.span(),
+                            format!("\"{name}\" is a struct field that defines a pattern variable of the same name.")
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::info( // Ignored if the `constant_decl_span` is `Span::dummy()`.
                         source_engine,
-                        constant_decl.clone(),
+                        constant_decl_span.clone(),
                         format!("This is the original declaration of the imported constant \"{name}\".")
                     ),
                 ],
                 help: vec![
-                    format!("Unlike variables, constants cannot be shadowed by other constants or variables."),
-                    match (variable_or_constant.as_str(), constant_decl.clone() != Span::dummy()) {
-                        ("Variable", false) => format!("Consider renaming either the variable \"{name}\" or the constant \"{name}\"."),
-                        ("Constant", false) => "Consider renaming one of the constants.".to_string(),
-                        (variable_or_constant, true) => format!(
+                    "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
+                    match (shadowing_source, *constant_decl_span != Span::dummy()) {
+                        (LetVar | PatternMatchingStructFieldVar, false) => format!("Consider renaming either the {} \"{name}\" or the constant \"{name}\".", 
+                            format!("{shadowing_source}").to_lowercase(),
+                        ),
+                        (Const, false) => "Consider renaming one of the constants.".to_string(),
+                        (shadowing_source, true) => format!(
                             "Consider renaming the {} \"{name}\" or using {} for the imported constant.",
-                            variable_or_constant.to_lowercase(),
+                            format!("{shadowing_source}").to_lowercase(),
                             if *is_alias { "a different alias" } else { "an alias" }
                         ),
-                        _ => unreachable!("We can have only the listed combinations: variable/constant shadows a non imported/imported constant.")
+                    },
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        format!("To rename the pattern variable use the `:`. E.g.: `{name}: some_other_name`.")
+                    } else {
+                        Diagnostic::help_none()
                     }
+                ],
+            },
+            ConfigurablesCannotBeShadowed { shadowing_source, name, configurable_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Configurables cannot be shadowed".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("{shadowing_source} \"{name}\" shadows configurable of the same name.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        configurable_span.clone(),
+                        format!("Shadowed configurable \"{name}\" is declared here.")
+                    ),
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        Hint::help(
+                            source_engine,
+                            name.span(),
+                            format!("\"{name}\" is a struct field that defines a pattern variable of the same name.")
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                ],
+                help: vec![
+                    "Unlike variables, configurables cannot be shadowed by constants or variables.".to_string(),
+                    format!(
+                        "Consider renaming either the {} \"{name}\" or the configurable \"{name}\".",
+                        format!("{shadowing_source}").to_lowercase()
+                    ),
+                    if matches!(shadowing_source, PatternMatchingStructFieldVar) {
+                        format!("To rename the pattern variable use the `:`. E.g.: `{name}: some_other_name`.")
+                    } else {
+                        Diagnostic::help_none()
+                    }
+                ],
+            },
+            ConfigurablesCannotBeMatchedAgainst { name, configurable_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Configurables cannot be matched against".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("\"{name}\" is a configurable and configurables cannot be matched against.")
+                ),
+                hints: {
+                    let mut hints = vec![
+                        Hint::info(
+                            source_engine,
+                            configurable_span.clone(),
+                            format!("Configurable \"{name}\" is declared here.")
+                        ),
+                    ];
+
+                    hints.append(&mut Hint::multi_help(source_engine, &name.span(), vec![
+                        format!("Are you trying to define a pattern variable named \"{name}\"?"),
+                        format!("In that case, use some other name for the pattern variable,"),
+                        format!("or consider renaming the configurable \"{name}\"."),
+                    ]));
+
+                    hints
+                },
+                help: vec![
+                    "Unlike constants, configurables cannot be matched against in pattern matching.".to_string(),
+                    "That's not possible, because patterns to match against must be compile-time constants.".to_string(),
+                    "Configurables are run-time constants. Their values are defined during the deployment.".to_string(),
+                    Diagnostic::help_empty_line(),
+                    "To test against a configurable, consider:".to_string(),
+                    format!("{}- replacing the `match` expression with `if-else`s altogether.", Indent::Single),
+                    format!("{}- matching against a variable and comparing that variable afterwards with the configurable.", Indent::Single),
+                    format!("{}  E.g., instead of:", Indent::Single),
+                    Diagnostic::help_empty_line(),
+                    format!("{}  SomeStruct {{ x: A_CONFIGURABLE, y: 42 }} => {{", Indent::Double),
+                    format!("{}      do_something();", Indent::Double),
+                    format!("{}  }}", Indent::Double),
+                    Diagnostic::help_empty_line(),
+                    format!("{}  to have:", Indent::Single),
+                    Diagnostic::help_empty_line(),
+                    format!("{}  SomeStruct {{ x, y: 42 }} => {{", Indent::Double),
+                    format!("{}      if x == A_CONFIGURABLE {{", Indent::Double),
+                    format!("{}          do_something();", Indent::Double),
+                    format!("{}      }}", Indent::Double),
+                    format!("{}  }}", Indent::Double),
                 ],
             },
             ConstantShadowsVariable { name , variable_span } => Diagnostic {
@@ -1122,6 +1422,41 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     format!("Variables can shadow other variables, but constants cannot."),
                     format!("Consider renaming either the variable or the constant."),
+                ],
+            },
+            ConstantDuplicatesConstantOrConfigurable { existing_constant_or_configurable, new_constant_or_configurable, name, existing_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), match (*existing_constant_or_configurable, *new_constant_or_configurable) {
+                    ("Constant", "Constant") => "Constant of the same name already exists".to_string(),
+                    ("Constant", "Configurable") => "Constant of the same name as configurable already exists".to_string(),
+                    ("Configurable", "Constant") => "Configurable of the same name as constant already exists".to_string(),
+                    _ => unreachable!("We can have only the listed combinations. Configurable duplicating configurable is not a valid combination.")
+                })),
+                issue: Issue::error(
+                    source_engine,
+                    name.span(),
+                    format!("{new_constant_or_configurable} \"{name}\" has the same name as an already declared {}.",
+                        existing_constant_or_configurable.to_lowercase()
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        existing_span.clone(),
+                        format!("{existing_constant_or_configurable} \"{name}\" is {}declared here.",
+                            // If a constant clashes with an already declared constant.
+                            if existing_constant_or_configurable == new_constant_or_configurable {
+                                "already "
+                            } else {
+                                ""
+                            }
+                        )
+                    ),
+                ],
+                help: vec![
+                    match (*existing_constant_or_configurable, *new_constant_or_configurable) {
+                        ("Constant", "Constant") => "Consider renaming one of the constants, or in case of imported constants, using an alias.".to_string(),
+                        _ => "Consider renaming either the configurable or the constant, or in case of an imported constant, using an alias.".to_string(),
+                    },
                 ],
             },
             MultipleDefinitionsOfMatchArmVariable { match_value, match_type, first_definition, first_definition_is_struct_field, duplicate, duplicate_is_struct_field } => Diagnostic {
@@ -1735,6 +2070,24 @@ impl ToDiagnostic for CompileError {
                 },
                 help: vec![],
             },
+            StructFieldDuplicated { field_name, duplicate } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct field has multiple definitions".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" has multiple definitions.")
+                ),
+                hints: {
+                    vec![
+                        Hint::info(
+                            source_engine,
+                            duplicate.span(),
+                            "Field definition duplicated here.".into(),
+                        )
+                   ]
+                },
+                help: vec![],
+            },
             NotIndexable { actually, span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Type is not indexable".to_string())),
                 issue: Issue::error(
@@ -1787,6 +2140,16 @@ impl ToDiagnostic for CompileError {
                     ]
                 }
             },
+	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
+		issue: Issue::error(
+		    source_engine,
+		    span.clone(),
+		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
+		),
+		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
+		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
+	    },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
                 issue: Issue::error(
@@ -1799,9 +2162,17 @@ impl ToDiagnostic for CompileError {
                         ("The storage is empty. It doesn't have any fields.".to_string(), false)
                     } else {
                         const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
-                        match &available_fields[..] {
+                        let display_fields = available_fields.iter().map(|(path, field_name)| {
+                            let path = path.iter().map(ToString::to_string).collect::<Vec<_>>().join("::");
+                            if path.is_empty() {
+                                format!("storage.{field_name}")
+                            } else {
+                                format!("storage::{path}.{field_name}")
+                            }
+                        }).collect::<Vec<_>>();
+                        match &display_fields[..] {
                             [field] => (format!("Only available storage field is \"{field}\"."), false),
-                            _ => (format!("Available storage fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
+                            _ => (format!("Available storage fields are {}.", sequence_to_str(&display_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
                                     available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
                                 ),
                         }
@@ -1861,6 +2232,522 @@ impl ToDiagnostic for CompileError {
                     format!("{}- references, direct or indirect, to tuples. E.g., `(&my_tuple).1` or `(&&&my_tuple).1`.", Indent::Single),
                 ],
             },
+            RefMutCannotReferenceConstant { constant, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "References to mutable values cannot reference constants".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{constant}\" is a constant. `&mut` cannot reference constants.")
+                ),
+                hints: vec![],
+                help: vec![
+                    "Consider:".to_string(),
+                    format!("{}- taking a reference without `mut`: `&{constant}`.", Indent::Single),
+                    format!("{}- referencing a mutable copy of the constant, by returning it from a block: `&mut {{ {constant} }}`.", Indent::Single)
+                ],
+            },
+            RefMutCannotReferenceImmutableVariable { decl_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "References to mutable values cannot reference immutable variables".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{decl_name}\" is an immutable variable. `&mut` cannot reference immutable variables.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
+                    ),
+                ],
+                help: vec![
+                    "Consider:".to_string(),
+                    // TODO-IG: Once desugaring information becomes available, do not show the first suggestion if declaring variable as mutable is not possible.
+                    format!("{}- declaring \"{decl_name}\" as mutable.", Indent::Single),
+                    format!("{}- taking a reference without `mut`: `&{decl_name}`.", Indent::Single),
+                    format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
+                ],
+            },
+            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, existing_impl_span, second_impl_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Trait is already implemented for type".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    second_impl_span.clone(),
+                    format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        existing_impl_span.clone(),
+                        format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
+                            call_path_suffix_with_args(trait_name)
+                        )
+                    ),
+                ],
+                help: vec![
+                    "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
+                    "This property is called \"trait coherence\".".to_string(),
+                ],
+            },
+            AssignmentToNonMutableVariable { lhs_span, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Immutable variables cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is an immutable variable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is an immutable variable.
+                    format!("{} cannot be assigned to, because {} is an immutable variable.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just a single variable in the expression.
+                            format!("\"{decl_name}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{decl_name}\"")
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
+                    ),
+                ],
+                help: vec![
+                    // TODO-IG: Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
+                    format!("Consider declaring \"{decl_name}\" as mutable."),
+                ],
+            },
+            AssignmentToConstantOrConfigurable { lhs_span, is_configurable, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("{} cannot be assigned to",
+                    if *is_configurable {
+                        "Configurables"
+                    } else {
+                        "Constants"
+                    }
+                ))),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a constant/configurable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is a constant/configurable.
+                    format!("{} cannot be assigned to, because {} is a {}.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just the constant in the expression.
+                            format!("\"{decl_name}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{decl_name}\"")
+                        },
+                        if *is_configurable {
+                            "configurable"
+                        } else {
+                            "constant"
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("{} \"{decl_name}\" is declared here.",
+                            if *is_configurable {
+                                "Configurable"
+                            } else {
+                                "Constant"
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            DeclAssignmentTargetCannotBeAssignedTo { decl_name, decl_friendly_type_name, lhs_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Assignment target cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a trait/function/ etc and not a mutable variable.
+                    //  or
+                    // This cannot be assigned to, because "x" is a trait/function/ etc and not a mutable variable.
+                    format!("{} cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() => // We have just the decl name in the expression.
+                                format!("\"{decl_name}\""),
+                            _ => "This".to_string(),
+                        },
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() =>
+                                "it".to_string(),
+                            Some(decl_name) => format!("\"{}\"", decl_name.as_str()),
+                            _ => "it".to_string(),
+                        },
+                        a_or_an(decl_friendly_type_name)
+                    )
+                ),
+                hints: vec![
+                    match decl_name {
+                        Some(decl_name) => Hint::info(
+                            source_engine,
+                            decl_name.span(),
+                            format!("{} \"{decl_name}\" is declared here.", ascii_sentence_case(&decl_friendly_type_name.to_string()))
+                        ),
+                        _ => Hint::none(),
+                    }
+                ],
+                help: vec![],
+            },
+            AssignmentViaNonMutableReference { decl_reference_name, decl_reference_rhs, decl_reference_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Reference is not a reference to a mutable value (`&mut`)".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    // This reference expression is not a reference to a mutable value (`&mut`).
+                    //  or
+                    // Reference "ref_xyz" is not a reference to a mutable value (`&mut`).
+                    format!("{} is not a reference to a mutable value (`&mut`).",
+                        match decl_reference_name {
+                            Some(decl_reference_name) => format!("Reference \"{decl_reference_name}\""),
+                            _ => "This reference expression".to_string(),
+                        }
+                    )
+                ),
+                hints: vec![
+                    match decl_reference_name {
+                        Some(decl_reference_name) => Hint::info(
+                            source_engine,
+                            decl_reference_name.span(),
+                            format!("Reference \"{decl_reference_name}\" is declared here as a reference to immutable value.")
+                        ),
+                        _ => Hint::none(),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) => Hint::info(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("This expression has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                        _ => Hint::info(
+                            source_engine,
+                            span.clone(),
+                            format!("It has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) if decl_reference_rhs.as_str().starts_with('&') => Hint::help(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("Consider taking here a reference to a mutable value: `&mut {}`.",
+                                first_line(decl_reference_rhs.as_str()[1..].trim(), true)
+                            )
+                        ),
+                        _ => Hint::none(),
+                    },
+                ],
+                help: vec![
+                    format!("{} dereferenced in assignment targets must {} references to mutable values (`&mut`).",
+                        if decl_reference_name.is_some() {
+                            "References"
+                        } else {
+                            "Reference expressions"
+                        },
+                        if decl_reference_name.is_some() {
+                            "be"
+                        } else {
+                            "result in"
+                        }
+                    ),
+                ],
+            },
+            Unimplemented { feature, help, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Used feature is currently not implemented".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{feature} is currently not implemented.")
+                ),
+                hints: vec![],
+                help: help.clone(),
+            },
+            MatchedValueIsNotValid { supported_types_message, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Matched value is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This cannot be matched.".to_string()
+                ),
+                hints: vec![],
+                help: {
+                    let mut help = vec![];
+
+                    help.push("Matched value must be an expression whose result is of one of the types supported in pattern matching.".to_string());
+                    help.push(Diagnostic::help_empty_line());
+                    for msg in supported_types_message {
+                        help.push(msg.to_string());
+                    }
+
+                    help
+                }
+            },
+            TypeIsNotValidAsImplementingFor { invalid_type, trait_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Self type of an impl block is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{invalid_type} is not a valid type in the self type of {} impl block.",
+                        match trait_name {
+                            Some(_) => "a trait",
+                            None => "an",
+                        }
+                    )
+                ),
+                hints: vec![
+                    if matches!(invalid_type, InvalidImplementingForType::SelfType) {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("Replace {invalid_type} with the actual type that you want to implement for.")
+                        )
+                    } else {
+                        Hint::none()
+                    }
+                ],
+                help: {
+                    if matches!(invalid_type, InvalidImplementingForType::Placeholder) {
+                        vec![
+                            format!("Are you trying to implement {} for any type?",
+                                match trait_name {
+                                    Some(trait_name) => format!("trait \"{trait_name}\""),
+                                    None => "functionality".to_string(),
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "If so, use generic type parameters instead.".to_string(),
+                            "E.g., instead of:".to_string(),
+                            // The trait `trait_name` could represent an arbitrary complex trait.
+                            // E.g., `with generic arguments, etc. So we don't want to deal
+                            // with the complexity of representing it properly
+                            // but rather use a simplified but clearly instructive
+                            // sample trait name here, `SomeTrait`.
+                            // impl _
+                            //   or
+                            // impl SomeTrait for _
+                            format!("{}impl {}_",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                            "use:".to_string(),
+                            format!("{}impl<T> {}T",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+            },
+            ModulePathIsNotAnExpression { module_path, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Module path is not an expression".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This is a module path, and not an expression.".to_string()
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "An expression is expected at this location, but a module path is found.".to_string()
+                    ),
+                ],
+                help: vec![
+                    "In expressions, module paths can only be used to fully qualify names with a path.".to_string(),
+                    format!("E.g., `{module_path}::SOME_CONSTANT` or `{module_path}::some_function()`."),
+                ]
+            },
+            Parse { error } => {
+                match &error.kind {
+                    ParseErrorKind::UnassignableExpression { erroneous_expression_kind, erroneous_expression_span } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Expression cannot be assigned to".to_string())),
+                        // A bit of a special handling for parentheses, because they are the only
+                        // expression kind whose friendly name is in plural. Having it in singular
+                        // or without this simple special handling gives very odd sounding sentences.
+                        // Therefore, just a bit of a special handling.
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("This expression cannot be assigned to, because it {} {}{}.",
+                                if &error.span == erroneous_expression_span { // If the whole expression is erroneous.
+                                    "is"
+                                } else {
+                                    "contains"
+                                },
+                                if *erroneous_expression_kind == "parentheses" {
+                                    ""
+                                } else {
+                                    a_or_an(erroneous_expression_kind)
+                                },
+                                erroneous_expression_kind
+                            )
+                        ),
+                        hints: vec![
+                            if &error.span != erroneous_expression_span {
+                                Hint::info(
+                                    source_engine,
+                                    erroneous_expression_span.clone(),
+                                    format!("{} the contained {erroneous_expression_kind}.",
+                                        if *erroneous_expression_kind == "parentheses" {
+                                            "These are"
+                                        } else {
+                                            "This is"
+                                        }
+                                    )
+                                )
+                            } else {
+                                Hint::none()
+                            },
+                        ],
+                        help: vec![
+                            format!("{} cannot be {}an assignment target.",
+                                ascii_sentence_case(&erroneous_expression_kind.to_string()),
+                                if &error.span == erroneous_expression_span {
+                                    ""
+                                } else {
+                                    "a part of "
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "In Sway, assignment targets must be one of the following:".to_string(),
+                            format!("{}- Expressions starting with a mutable variable, optionally having", Indent::Single),
+                            format!("{}  array or tuple element accesses, struct field accesses,", Indent::Single),
+                            format!("{}  or arbitrary combinations of those.", Indent::Single),
+                            format!("{}  E.g., `mut_var` or `mut_struct.field` or `mut_array[x + y].field.1`.", Indent::Single),
+                            Diagnostic::help_empty_line(),
+                            format!("{}- Dereferencing of an arbitrary expression that results", Indent::Single),
+                            format!("{}  in a reference to a mutable value.", Indent::Single),
+                            format!("{}  E.g., `*ref_to_mutable_value` or `*max_mut(&mut x, &mut y)`.", Indent::Single),
+                        ]
+                    },
+                    ParseErrorKind::UnrecognizedOpCode { known_op_codes } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Assembly instruction is unknown".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("\"{}\" is not a known assembly instruction.",
+                                error.span.as_str()
+                            )
+                        ),
+                        hints: {
+                            let suggestions = &did_you_mean(error.span.as_str(), known_op_codes.iter(), 2);
+                            if suggestions.is_empty() {
+                                vec![]
+                            } else {
+                                vec![
+                                    Hint::help(
+                                        source_engine,
+                                        error.span.clone(),
+                                        format!("Did you mean {}?", sequence_to_str_or(suggestions, Enclosing::DoubleQuote, 2))
+                                    ),
+                                ]
+                            }
+                        },
+                        help: vec![]
+                    },
+                    _ => Diagnostic {
+                                // TODO: Temporary we use self here to achieve backward compatibility.
+                                //       In general, self must not be used and will not be used once we
+                                //       switch to our own #[error] macro. All the values for the formatting
+                                //       of a diagnostic must come from the enum variant parameters.
+                                issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                                ..Default::default()
+                        },
+                }
+            },
+            ConfigurableMissingAbiDecodeInPlace { span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Configurables need a function named \"abi_decode_in_place\" to be in scope".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![],
+                help: vec![
+                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"core::codec\".".into(),
+                    "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
+                ],
+            },
+            StorageAccessMismatched { span, is_pure, suggested_attributes, storage_access_violations } => Diagnostic {
+                // Pure function cannot access storage
+                //   or
+                // Storage read-only function cannot write to storage
+                reason: Some(Reason::new(code(1), format!("{} function cannot {} storage",
+                    if *is_pure {
+                        "Pure"
+                    } else {
+                        "Storage read-only"
+                    },
+                    if *is_pure {
+                        "access"
+                    } else {
+                        "write to"
+                    }
+                ))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Function \"{}\" is {} and cannot {} storage.",
+                        span.as_str(),
+                        if *is_pure {
+                            "pure"
+                        } else {
+                            "declared as `#[storage(read)]`"
+                        },
+                        if *is_pure {
+                            "access"
+                        } else {
+                            "write to"
+                        },
+                    )
+                ),
+                hints: storage_access_violations
+                    .iter()
+                    .map(|(span, storage_access)| Hint::info(
+                        source_engine,
+                        span.clone(),
+                        format!("{storage_access}")
+                    ))
+                    .collect(),
+                help: vec![
+                    format!("Consider declaring the function \"{}\" as `#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]`,",
+                        span.as_str()
+                    ),
+                    format!("or removing the {} from the function body.",
+                        if *is_pure {
+                            "storage access code".to_string()
+                        } else {
+                            format!("storage write{}", plural_s(storage_access_violations.len()))
+                        }
+                    ),
+                ],
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1895,6 +2782,9 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+
+    #[error("slices or types containing slices on `const` are not allowed.")]
+    SliceInConst,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1908,4 +2798,93 @@ pub enum StructFieldUsageContext {
     //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
     //       and provide specific suggestions for these two cases.
     //       (Destructing desugars to plain struct field access.)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InvalidImplementingForType {
+    SelfType,
+    Placeholder,
+    Other,
+}
+
+impl fmt::Display for InvalidImplementingForType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SelfType => f.write_str("\"Self\""),
+            Self::Placeholder => f.write_str("Placeholder `_`"),
+            Self::Other => f.write_str("This"),
+        }
+    }
+}
+
+/// Defines what shadows a constant or a configurable.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ShadowingSource {
+    /// A constant or a configurable is shadowed by a constant.
+    Const,
+    /// A constant or a configurable is shadowed by a local variable declared with the `let` keyword.
+    LetVar,
+    /// A constant or a configurable is shadowed by a variable declared in pattern matching,
+    /// being a struct field. E.g., `S { some_field }`.
+    PatternMatchingStructFieldVar,
+}
+
+impl fmt::Display for ShadowingSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Const => f.write_str("Constant"),
+            Self::LetVar => f.write_str("Variable"),
+            Self::PatternMatchingStructFieldVar => f.write_str("Pattern variable"),
+        }
+    }
+}
+
+/// Defines how a storage gets accessed within a function body.
+/// E.g., calling `__state_clear` intrinsic or using `scwq` ASM instruction
+/// represent a [StorageAccess::Clear] access.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StorageAccess {
+    Clear,
+    ReadWord,
+    ReadSlots,
+    WriteWord,
+    WriteSlots,
+    /// Storage access happens via call to an impure function.
+    /// The parameters are the call path span and if the called function
+    /// reads from and writes to the storage: (call_path, reads, writes).
+    ImpureFunctionCall(Span, bool, bool),
+}
+
+impl StorageAccess {
+    pub fn is_write(&self) -> bool {
+        matches!(
+            self,
+            Self::Clear | Self::WriteWord | Self::WriteSlots | Self::ImpureFunctionCall(_, _, true)
+        )
+    }
+}
+
+impl fmt::Display for StorageAccess {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Clear => f.write_str("Clearing the storage happens here."),
+            Self::ReadWord => f.write_str("Reading a word from the storage happens here."),
+            Self::ReadSlots => f.write_str("Reading storage slots happens here."),
+            Self::WriteWord => f.write_str("Writing a word to the storage happens here."),
+            Self::WriteSlots => f.write_str("Writing to storage slots happens here."),
+            Self::ImpureFunctionCall(call_path, reads, writes) => f.write_fmt(format_args!(
+                "Function \"{}\" {} the storage.",
+                call_path_suffix_with_args(&call_path.as_str().to_string()),
+                match (reads, writes) {
+                    (true, true) => "reads from and writes to",
+                    (true, false) => "reads from",
+                    (false, true) => "writes to",
+                    (false, false) => unreachable!(
+                        "Function \"{}\" is impure, so it must read from or write to the storage.",
+                        call_path.as_str()
+                    ),
+                }
+            )),
+        }
+    }
 }

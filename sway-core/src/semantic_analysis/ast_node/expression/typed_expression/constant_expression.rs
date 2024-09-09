@@ -17,9 +17,13 @@ pub(crate) fn instantiate_constant_expression(
         return_type: const_decl.return_type,
         span: call_path_binding.span(),
         expression: ty::TyExpressionVariant::ConstantExpression {
-            const_decl: Box::new(const_decl),
+            decl: Box::new(const_decl),
             span: call_path_binding.inner.suffix.span(),
-            call_path: Some(call_path_binding.inner.to_fullpath(ctx.namespace())),
+            call_path: Some(
+                call_path_binding
+                    .inner
+                    .to_fullpath(ctx.engines(), ctx.namespace()),
+            ),
         },
     }
 }

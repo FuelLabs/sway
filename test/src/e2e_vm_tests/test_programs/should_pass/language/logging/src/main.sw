@@ -31,8 +31,8 @@ struct CustomAbiEncode {
 }
 
 impl AbiEncode for CustomAbiEncode {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(77);
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        77u64.abi_encode(buffer)
     }
 }
 
@@ -63,17 +63,6 @@ fn main() -> u64 {
     }));
     __log(E::B);
     __log(CustomAbiEncode {});
-
-    // These must compile when experimental-new-encoding is not set
-    // and fail when it is set
-    let not_encodable = NotAutoEncodable{
-        p: asm(size: 1) {
-            aloc size;
-            hp: raw_ptr
-        }
-    };
-    log(not_encodable);
-    require(true, not_encodable);
 
     1
 }

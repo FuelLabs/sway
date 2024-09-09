@@ -1,3 +1,8 @@
 [[package]]
-name = 'supertraits_for_abis_diamond'
-source = 'member'
+name = "core"
+source = "path+from-root-590170BFBB9E193A"
+
+[[package]]
+name = "supertraits_for_abis_diamond"
+source = "member"
+dependencies = ["core"]

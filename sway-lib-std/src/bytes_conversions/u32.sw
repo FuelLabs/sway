@@ -94,7 +94,7 @@ impl u32 {
     /// ```
     pub fn from_le_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 4);
-        let ptr = bytes.buf.ptr();
+        let ptr = bytes.ptr();
         let a = ptr.read_byte();
         let b = (ptr.add_uint_offset(1)).read_byte();
         let c = (ptr.add_uint_offset(2)).read_byte();
@@ -199,7 +199,7 @@ impl u32 {
     /// ```
     pub fn from_be_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 4);
-        let ptr = bytes.buf.ptr();
+        let ptr = bytes.ptr();
         let a = ptr.read_byte();
         let b = (ptr.add_uint_offset(1)).read_byte();
         let c = (ptr.add_uint_offset(2)).read_byte();
@@ -215,50 +215,4 @@ impl u32 {
             r1: u32
         }
     }
-}
-
-#[test]
-fn test_u32_to_le_bytes() {
-    let x: u32 = 67305985;
-    let result = x.to_le_bytes();
-
-    assert(result.get(0).unwrap() == 1_u8);
-    assert(result.get(1).unwrap() == 2_u8);
-    assert(result.get(2).unwrap() == 3_u8);
-    assert(result.get(3).unwrap() == 4_u8);
-}
-
-#[test]
-fn test_u32_from_le_bytes() {
-    let mut bytes = Bytes::new();
-    bytes.push(1_u8);
-    bytes.push(2_u8);
-    bytes.push(3_u8);
-    bytes.push(4_u8);
-    let result = u32::from_le_bytes(bytes);
-
-    assert(result == 67305985_u32);
-}
-
-#[test]
-fn test_u32_to_be_bytes() {
-    let x: u32 = 67305985;
-    let result = x.to_be_bytes();
-
-    assert(result.get(0).unwrap() == 4_u8);
-    assert(result.get(1).unwrap() == 3_u8);
-    assert(result.get(2).unwrap() == 2_u8);
-    assert(result.get(3).unwrap() == 1_u8);
-}
-
-#[test]
-fn test_u32_from_be_bytes() {
-    let mut bytes = Bytes::new();
-    bytes.push(4_u8);
-    bytes.push(3_u8);
-    bytes.push(2_u8);
-    bytes.push(1_u8);
-    let result = u32::from_be_bytes(bytes);
-
-    assert(result == 67305985_u32);
 }

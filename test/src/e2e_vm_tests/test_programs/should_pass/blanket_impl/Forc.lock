@@ -1,3 +1,8 @@
 [[package]]
-name = 'blanket_impl'
-source = 'member'
+name = "blanket_impl"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-B8C6CB79AADBE071"

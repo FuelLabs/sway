@@ -1,3 +1,8 @@
 [[package]]
-name = 'associated_type_and_associated_const'
-source = 'member'
+name = "associated_type_and_associated_const"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-8914ED25EB35D7AC"

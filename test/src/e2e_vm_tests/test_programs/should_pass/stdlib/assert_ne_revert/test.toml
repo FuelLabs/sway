@@ -1,3 +1,4 @@
 category = "run"
-expected_result = { action = "revert", value =  -65531} # 0xffffffffffff0005 as i64
+expected_result = { action = "revert", value = -65531 }              # 0xffffffffffff0005 as i64
+expected_result_new_encoding = { action = "revert", value = -65531 } # 0xffffffffffff0005 as i64
 validate_abi = true

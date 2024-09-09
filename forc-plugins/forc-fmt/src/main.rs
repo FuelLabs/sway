@@ -6,6 +6,8 @@ use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     WorkspaceManifestFile,
 };
+use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
+use forc_util::fs_locking::PidFileLocking;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -13,13 +15,11 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use taplo::formatter as taplo_fmt;
-use tracing::{debug, error, info};
-
-use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
+use taplo::formatter as taplo_fmt;
+use tracing::{debug, info};
 
 forc_util::cli_examples! {
     crate::App {
@@ -35,7 +35,7 @@ forc_util::cli_examples! {
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-fmt",
-    about = "Forc plugin for running the Sway code formatter.",
+    about = "Forc plugin for running the Sway code formatter",
     after_help = help(),
     version
 )]
@@ -51,7 +51,8 @@ pub struct App {
     pub path: Option<String>,
     #[clap(short, long)]
     /// Formats a single .sw file with the default settings.
-    /// If not specified, current working directory will be formatted using a Forc.toml configuration.
+    /// If not specified, current working directory will be formatted using a Forc.toml
+    /// configuration.
     pub file: Option<String>,
 }
 
@@ -109,9 +110,8 @@ fn run() -> Result<()> {
 /// with unsaved changes.
 ///
 /// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
-fn is_file_dirty(path: &Path) -> bool {
-    let dirty_file_path = forc_util::is_dirty_path(path);
-    dirty_file_path.exists()
+fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
+    PidFileLocking::lsp(path.as_ref()).is_locked()
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.
@@ -267,10 +267,10 @@ fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
             write_file_formatted(&manifest_file, &formatted_content)?;
         } else if formatted_content != manifest_content {
             edited = true;
-            error!(
+            println_error(&format!(
                 "Improperly formatted manifest file: {}",
                 manifest_file.display()
-            );
+            ));
             display_file_diff(&manifest_content, &formatted_content)?;
         } else {
             info!(

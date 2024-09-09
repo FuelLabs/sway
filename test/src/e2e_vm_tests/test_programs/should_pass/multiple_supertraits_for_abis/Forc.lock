@@ -1,3 +1,8 @@
 [[package]]
-name = 'multiple_supertraits_for_abis'
-source = 'member'
+name = "core"
+source = "path+from-root-D5F7976BD3472A32"
+
+[[package]]
+name = "multiple_supertraits_for_abis"
+source = "member"
+dependencies = ["core"]

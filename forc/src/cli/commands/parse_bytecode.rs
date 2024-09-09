@@ -62,7 +62,10 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
             Ok(_) | Err(fuel_asm::InvalidOpcode) => "".into(),
         };
         table.add_row(Row::new(vec![
-            TableCell::new_with_alignment(word_ix, 1, Alignment::Right),
+            TableCell::builder(word_ix)
+                .col_span(1)
+                .alignment(Alignment::Right)
+                .build(),
             TableCell::new(word_ix * 4),
             TableCell::new(match result {
                 Ok(inst) => format!("{inst:?}"),

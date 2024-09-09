@@ -1,1 +1,2 @@
 category = "unit_tests_pass"
+unsupported_profiles = ["debug"]

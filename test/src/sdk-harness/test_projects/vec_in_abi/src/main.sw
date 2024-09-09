@@ -26,88 +26,53 @@ abi MyContract {
     fn array_test(input: Vec<[Address; 2]>) -> [[Address; 2]; 3];
     fn string_test(input: Vec<str[4]>) -> [str[4]; 3];
     fn vec_in_vec_test(input: Vec<Vec<u64>>) -> [u64; 9];
+
+    fn echo_u8(input: Vec<u8>) -> Vec<u8>;
+    fn echo_u16(input: Vec<u16>) -> Vec<u16>;
+    fn echo_u32(input: Vec<u32>) -> Vec<u32>;
+    fn echo_u32_vec_in_vec(input: Vec<Vec<u32>>) -> Vec<Vec<u32>>;
 }
 
 impl MyContract for Contract {
     fn bool_test(input: Vec<bool>) -> [bool; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u8_test(input: Vec<u8>) -> [u8; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u16_test(input: Vec<u16>) -> [u16; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u32_test(input: Vec<u32>) -> [u32; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u64_test(input: Vec<u64>) -> [u64; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn b256_test(input: Vec<b256>) -> [b256; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn struct_test(input: Vec<MyStruct>) -> [MyStruct; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn enum_test(input: Vec<MyEnum>) -> [MyEnum; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn array_test(input: Vec<[Address; 2]>) -> [[Address; 2]; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn string_test(input: Vec<str[4]>) -> [str[4]; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn vec_in_vec_test(input: Vec<Vec<u64>>) -> [u64; 9] {
         assert(input.len() >= 3);
@@ -121,5 +86,21 @@ impl MyContract for Contract {
         assert(v2.len() >= 3);
         let (v20, v21, v22) = (v2.get(0).unwrap(), v2.get(1).unwrap(), v2.get(2).unwrap());
         [v00, v01, v02, v10, v11, v12, v20, v21, v22]
+    }
+
+    fn echo_u8(input: Vec<u8>) -> Vec<u8> {
+        input
+    }
+
+    fn echo_u16(input: Vec<u16>) -> Vec<u16> {
+        input
+    }
+
+    fn echo_u32(input: Vec<u32>) -> Vec<u32> {
+        input
+    }
+
+    fn echo_u32_vec_in_vec(input: Vec<Vec<u32>>) -> Vec<Vec<u32>> {
+        input
     }
 }

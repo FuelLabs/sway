@@ -5,5 +5,5 @@ pub struct SomeStruct<T> {
 }
 
 pub enum SomeEnum<T> {
-    a: T,
+    A: T,
 }

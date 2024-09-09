@@ -1,14 +1,35 @@
 script;
 
 use increment_abi::Incrementor;
+use dynamic_contract_call::*;
+
+#[cfg(experimental_new_encoding = false)]
+const CONTRACT_ID = 0xd1b4047af7ef111c023ab71069e01dc2abfde487c0a0ce1268e4f447e6c6e4c2;
+#[cfg(experimental_new_encoding = true)]
+const CONTRACT_ID = 0x5229470a8bb907a909aba79325a347bd8849a8aceb9c8116e3d1c73ea4977b6d; // AUTO-CONTRACT-ID ../../test_contracts/increment_contract --release
 
 fn main() -> bool {
-    let the_abi = abi(Incrementor, 0xa1aa9555466ef3c61914e5426973e2257cb4dcd8311ffbbe0e8850a9742f312d);
-    let _ = the_abi.increment(5);
-    let _ = the_abi.increment(5);
+    let the_abi = abi(Incrementor, CONTRACT_ID);
+
+    let initial = the_abi.get();
+
+    let result = the_abi.increment(5);
+    assert(result == initial + 5);
+
+    let result = the_abi.increment_or_not(None);
+    assert(result == initial + 5);
+
+    let result = the_abi.increment(5);
+    assert(result == initial + 10);
+
     let result = the_abi.get();
-    assert(result == 10);
+    assert(result == initial + 10);
+
     log(result);
+
+    // Call the fallback fn
+    let result = dynamic_contract_call(CONTRACT_ID);
+    assert(result == 444444444);
 
     true
 }

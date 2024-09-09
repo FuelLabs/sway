@@ -6,3 +6,4 @@ license = "Apache-2.0"
 name = "binary_and_hex_literals"
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

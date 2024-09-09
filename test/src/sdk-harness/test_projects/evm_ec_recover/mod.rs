@@ -5,8 +5,7 @@ use fuel_vm::{
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    tx::Bytes32,
-    types::{Bits256, EvmAddress},
+    types::{Bits256, Bytes32, EvmAddress},
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use sha3::{Digest, Keccak256};

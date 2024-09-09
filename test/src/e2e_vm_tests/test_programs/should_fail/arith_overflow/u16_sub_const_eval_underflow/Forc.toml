@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "u16_sub_const_eval_underflow"
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+core = { path = "../../../../../../../sway-lib-core" }

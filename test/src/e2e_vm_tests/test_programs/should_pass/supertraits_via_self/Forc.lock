@@ -1,3 +1,8 @@
 [[package]]
-name = 'supertraits_via_self'
-source = 'member'
+name = "core"
+source = "path+from-root-E0E933587F352172"
+
+[[package]]
+name = "supertraits_via_self"
+source = "member"
+dependencies = ["core"]

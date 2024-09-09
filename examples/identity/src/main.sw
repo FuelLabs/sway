@@ -6,19 +6,10 @@ mod errors;
 use abi::IdentityExample;
 use errors::MyError;
 
-use std::{
-    asset::{
-        force_transfer_to_contract,
-        transfer_to_address,
-    },
-    constants::{
-        BASE_ASSET_ID,
-        ZERO_B256,
-    },
-};
+use std::asset::transfer;
 
 storage {
-    owner: Identity = Identity::ContractId(ContractId::from(ZERO_B256)),
+    owner: Identity = Identity::ContractId(ContractId::zero()),
 }
 
 impl IdentityExample for Contract {
@@ -39,13 +30,10 @@ impl IdentityExample for Contract {
     }
 
     fn different_executions(my_identity: Identity) {
-        let amount = 1;
-        let asset_id = BASE_ASSET_ID;
-
         // ANCHOR: different_executions
         match my_identity {
-            Identity::Address(address) => transfer_to_address(address, asset_id, amount),
-            Identity::ContractId(contract_id) => force_transfer_to_contract(contract_id, asset_id, amount),
+            Identity::Address(address) => takes_address(address),
+            Identity::ContractId(contract_id) => takes_contract_id(contract_id),
         };
         // ANCHOR_END: different_executions
     }
@@ -63,3 +51,7 @@ impl IdentityExample for Contract {
         // ANCHOR_END: access_control_with_identity
     }
 }
+
+fn takes_address(address: Address) {}
+
+fn takes_contract_id(contract_id: ContractId) {}

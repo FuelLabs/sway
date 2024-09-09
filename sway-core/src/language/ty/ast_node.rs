@@ -9,7 +9,7 @@ use sway_types::{Ident, Span};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{parsed::TreeType, ty::*, Visibility},
+    language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self) -> Option<Ident>;
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;
 }
 
 #[derive(Clone, Debug)]
@@ -31,8 +31,8 @@ pub struct TyAstNode {
 
 impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.content.eq(&other.content, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.content.eq(&other.content, ctx)
     }
 }
 
@@ -61,12 +61,11 @@ impl DebugWithEngines for TyAstNode {
 }
 
 impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         match self.content {
-            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, engines),
-            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, engines),
-            TyAstNodeContent::SideEffect(_) => (),
-            TyAstNodeContent::Error(_, _) => (),
+            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, ctx),
+            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, ctx),
+            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => HasChanges::No,
         }
     }
 }
@@ -77,17 +76,17 @@ impl ReplaceDecls for TyAstNode {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         match self.content {
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
                 decl.body.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::Declaration(_) => Ok(()),
+            TyAstNodeContent::Declaration(_) => Ok(false),
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::SideEffect(_) => Ok(()),
-            TyAstNodeContent::Error(_, _) => Ok(()),
+            TyAstNodeContent::SideEffect(_) => Ok(false),
+            TyAstNodeContent::Error(_, _) => Ok(false),
         }
     }
 }
@@ -136,8 +135,8 @@ impl CollectTypesMetadata for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self) -> Option<Ident> {
-        self.content.get_decl_ident()
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident> {
+        self.content.get_decl_ident(engines)
     }
 }
 
@@ -192,90 +191,6 @@ impl TyAstNode {
         }
     }
 
-    pub(crate) fn is_entry_point(&self, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
-        match tree_type {
-            TreeType::Predicate | TreeType::Script => {
-                // Predicates and scripts have main and test functions as entry points.
-                match self {
-                    TyAstNode {
-                        span: _,
-                        content:
-                            TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                                decl_id,
-                                ..
-                            })),
-                        ..
-                    } => {
-                        let decl = decl_engine.get_function(decl_id);
-                        decl.is_entry()
-                    }
-                    _ => false,
-                }
-            }
-            TreeType::Contract | TreeType::Library { .. } => match self {
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_function(decl_id);
-                    decl.visibility == Visibility::Public || decl.is_test()
-                }
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => decl_engine.get_trait(decl_id).visibility.is_public(),
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl {
-                            decl_id, ..
-                        })),
-                    ..
-                } => {
-                    let struct_decl = decl_engine.get_struct(decl_id);
-                    struct_decl.visibility == Visibility::Public
-                }
-                TyAstNode {
-                    content: TyAstNodeContent::Declaration(TyDecl::ImplTrait { .. }),
-                    ..
-                } => true,
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_constant(decl_id);
-                    decl.visibility.is_public()
-                }
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
-                            decl_id,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_type_alias(decl_id);
-                    decl.visibility.is_public()
-                }
-                _ => false,
-            },
-        }
-    }
-
     pub(crate) fn type_info(&self, type_engine: &TypeEngine) -> TypeInfo {
         // return statement should be ()
         match &self.content {
@@ -306,6 +221,12 @@ impl TyAstNode {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
+                TyDecl::ConfigurableDecl(decl) => {
+                    let decl = engines.de().get(&decl.decl_id);
+                    if let Some(value) = &decl.value {
+                        value.check_deprecated(engines, handler, allow_deprecated);
+                    }
+                }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
@@ -315,7 +236,7 @@ impl TyAstNode {
                     }
                     allow_deprecated.exit(token);
                 }
-                TyDecl::ImplTrait(decl) => {
+                TyDecl::ImplSelfOrTrait(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
                     for item in decl.items.iter() {
                         match item {
@@ -364,6 +285,7 @@ impl TyAstNode {
                 TyAstNodeContent::Declaration(node) => match node {
                     TyDecl::VariableDecl(_decl) => {}
                     TyDecl::ConstantDecl(_decl) => {}
+                    TyDecl::ConfigurableDecl(_decl) => {}
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {
                         let fn_decl_id = decl.decl_id;
@@ -371,7 +293,7 @@ impl TyAstNode {
                         let _ = fn_decl_id.type_check_analyze(handler, &mut ctx);
                         let _ = ctx.check_recursive_calls(handler);
                     }
-                    TyDecl::ImplTrait(decl) => {
+                    TyDecl::ImplSelfOrTrait(decl) => {
                         let decl = engines.de().get(&decl.decl_id);
                         for item in decl.items.iter() {
                             let mut ctx = TypeCheckAnalysisContext::new(engines);
@@ -395,6 +317,40 @@ impl TyAstNode {
             Ok(())
         })
     }
+
+    pub fn contract_supertrait_fns(&self, engines: &Engines) -> Vec<DeclId<TyFunctionDecl>> {
+        let mut fns = vec![];
+
+        if let TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(decl)) = &self.content {
+            let decl = engines.de().get(&decl.decl_id);
+            if decl.is_impl_contract(engines.te()) {
+                for item in &decl.supertrait_items {
+                    if let TyTraitItem::Fn(f) = item {
+                        fns.push(*f.id());
+                    }
+                }
+            }
+        }
+
+        fns
+    }
+
+    pub fn contract_fns(&self, engines: &Engines) -> Vec<DeclId<TyFunctionDecl>> {
+        let mut fns = vec![];
+
+        if let TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(decl)) = &self.content {
+            let decl = engines.de().get(&decl.decl_id);
+            if decl.is_impl_contract(engines.te()) {
+                for item in &decl.items {
+                    if let TyTraitItem::Fn(f) = item {
+                        fns.push(*f.id());
+                    }
+                }
+            }
+        }
+
+        fns
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -408,10 +364,10 @@ pub enum TyAstNodeContent {
 
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
-            (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
+            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, ctx),
+            (Self::Expression(x), Self::Expression(y)) => x.eq(y, ctx),
             (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
         }
@@ -486,9 +442,9 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self) -> Option<Ident> {
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident> {
         match self {
-            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(engines),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect(_) => None,
             TyAstNodeContent::Error(_, _) => None,

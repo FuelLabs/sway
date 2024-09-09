@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-17020687432C56B1'
+name = "core"
+source = "path+from-root-17020687432C56B1"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-17020687432C56B1'
-dependencies = ['core']
-
-[[package]]
-name = 'u32_add_overflow'
-source = 'member'
-dependencies = ['std']
+name = "u32_add_overflow"
+source = "member"
+dependencies = ["core"]

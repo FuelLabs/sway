@@ -1,5 +1,6 @@
 {
   "configurables": [],
+  "encoding": "1",
   "functions": [
     {
       "attributes": null,
@@ -18,7 +19,16 @@
       }
     }
   ],
-  "loggedTypes": [],
+  "loggedTypes": [
+    {
+      "logId": "3647243719605075626",
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
   "messagesTypes": [],
   "types": [
     {

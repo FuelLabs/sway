@@ -2,7 +2,8 @@
 //! diagnostic messages.
 
 use std::{
-    cmp,
+    borrow::Cow,
+    cmp::{self, Ordering},
     fmt::{self, Display},
 };
 
@@ -97,6 +98,42 @@ pub(crate) fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items
 where
     T: Display,
 {
+    sequence_to_str_impl(sequence, enclosing, max_items, "and")
+}
+
+/// Returns reading-friendly textual representation of the `sequence`, with comma-separated
+/// items and each item optionally enclosed in the specified `enclosing`.
+/// If the sequence has more than `max_items` the remaining items are replaced
+/// with the text "or <number> more".
+///
+/// E.g.:
+/// [a] => "a"
+/// [a, b] => "a" or "b"
+/// [a, b, c] => "a", "b" or "c"
+/// [a, b, c, d] => "a", "b", "c" or one more
+/// [a, b, c, d, e] => "a", "b", "c" or two more
+///
+/// Panics if the `sequence` is empty, or `max_items` is zero.
+pub(crate) fn sequence_to_str_or<T>(
+    sequence: &[T],
+    enclosing: Enclosing,
+    max_items: usize,
+) -> String
+where
+    T: Display,
+{
+    sequence_to_str_impl(sequence, enclosing, max_items, "or")
+}
+
+fn sequence_to_str_impl<T>(
+    sequence: &[T],
+    enclosing: Enclosing,
+    max_items: usize,
+    and_or: &str,
+) -> String
+where
+    T: Display,
+{
     assert!(
         !sequence.is_empty(),
         "Sequence to display must not be empty."
@@ -114,12 +151,13 @@ where
 
     if !remaining.is_empty() {
         format!(
-            "{}, and {} more",
+            "{}, {} {} more",
             to_display
                 .iter()
                 .map(fmt_item)
                 .collect::<Vec<_>>()
                 .join(", "),
+            and_or,
             number_to_str(remaining.len())
         )
     } else {
@@ -127,10 +165,15 @@ where
             [] => unreachable!("There must be at least one item in the sequence."),
             [item] => fmt_item(item),
             [first_item, second_item] => {
-                format!("{} and {}", fmt_item(first_item), fmt_item(second_item))
+                format!(
+                    "{} {} {}",
+                    fmt_item(first_item),
+                    and_or,
+                    fmt_item(second_item)
+                )
             }
             _ => format!(
-                "{}, and {}",
+                "{}, {} {}",
                 to_display
                     .split_last()
                     .unwrap()
@@ -139,6 +182,7 @@ where
                     .map(fmt_item)
                     .collect::<Vec::<_>>()
                     .join(", "),
+                and_or,
                 fmt_item(to_display.last().unwrap())
             ),
         }
@@ -151,15 +195,15 @@ where
 /// with the text "and <number> more".
 ///
 /// E.g.:
-/// [a] =>
-///   - a
-/// [a, b] =>
-///   - a
-///   - b
-/// [a, b, c, d, e] =>
-///   - a
-///   - b
-///   - and three more
+/// * [a] =>
+///     - a
+/// * [a, b] =>
+///     - a
+///     - b
+/// * [a, b, c, d, e] =>
+///     - a
+///     - b
+///     - and three more
 ///
 /// Panics if the `sequence` is empty, or `max_items` is zero.
 pub(crate) fn sequence_to_list<T>(sequence: &[T], indent: Indent, max_items: usize) -> Vec<String>
@@ -218,4 +262,103 @@ pub(crate) fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a s
     } else {
         plural
     }
+}
+
+/// Returns the suffix of the `call_path` together with any type arguments if they
+/// exist.
+/// Convenient for subsequent showing of only the short name of a full name that was
+/// already shown.
+///
+/// E.g.:
+/// SomeName -> SomeName
+/// SomeName<T> -> SomeName<T>
+/// std::ops::Eq -> Eq
+/// some_lib::Struct<A, B> -> Struct<A, B>
+pub(crate) fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
+    match call_path.rfind(':') {
+        Some(index) if index < call_path.len() - 1 => {
+            Cow::Owned(call_path.split_at(index + 1).1.to_string())
+        }
+        _ => Cow::Borrowed(call_path),
+    }
+}
+
+/// Returns indefinite article "a" or "an" that corresponds to the `word`,
+/// or an empty string if the indefinite article do not fit to the word.
+///
+/// Note that the function does not recognize plurals and assumes that the
+/// `word` is in singular.
+///
+/// If an article is returned, it is followed by a space, e.g. "a ".
+pub(crate) fn a_or_an(word: &'static str) -> &'static str {
+    let is_a = in_definite::is_an(word);
+    match is_a {
+        in_definite::Is::An => "an ",
+        in_definite::Is::A => "a ",
+        in_definite::Is::None => "",
+    }
+}
+
+/// Returns `text` with the first character turned into ASCII uppercase.
+pub(crate) fn ascii_sentence_case(text: &String) -> Cow<String> {
+    if text.is_empty() || text.chars().next().unwrap().is_uppercase() {
+        Cow::Borrowed(text)
+    } else {
+        let mut result = text.clone();
+        result[0..1].make_ascii_uppercase();
+        Cow::Owned(result.to_owned())
+    }
+}
+
+/// Returns the first line in `text`, up to the first `\n` if the `text` contains
+/// multiple lines, and optionally adds ellipses "..." to the end of the line
+/// if `with_ellipses` is true.
+///
+/// If the `text` is a single-line string, returns the original `text`.
+///
+/// Suitable for showing just the first line of a piece of code.
+/// E.g., if `text` is:
+///   if x {
+///     0
+///   } else {
+///     1
+///   }
+///  the returned value, with ellipses, will be:
+///   if x {...
+pub(crate) fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
+    if !text.contains('\n') {
+        Cow::Borrowed(text)
+    } else {
+        let index_of_new_line = text.find('\n').unwrap();
+        Cow::Owned(text[..index_of_new_line].to_string() + if with_ellipses { "..." } else { "" })
+    }
+}
+
+/// Finds strings from an iterable of `possible_values` similar to a given value `v`.
+/// Returns a vector of all possible values that exceed a similarity threshold,
+/// sorted by similarity (most similar comes first). The returned vector will have
+/// at most `max_num_of_suggestions` elements.
+///
+/// The implementation is taken and adapted from the [Clap project](https://github.com/clap-rs/clap/blob/50f7646cf72dd7d4e76d9284d76bdcdaceb7c049/clap_builder/src/parser/features/suggestions.rs#L11).
+pub(crate) fn did_you_mean<T, I>(
+    v: &str,
+    possible_values: I,
+    max_num_of_suggestions: usize,
+) -> Vec<String>
+where
+    T: AsRef<str>,
+    I: IntoIterator<Item = T>,
+{
+    let mut candidates: Vec<_> = possible_values
+        .into_iter()
+        .map(|pv| (strsim::jaro(v, pv.as_ref()), pv.as_ref().to_owned()))
+        // Confidence of 0.7 so that bar -> baz is suggested.
+        .filter(|(confidence, _)| *confidence > 0.7)
+        .collect();
+    candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(Ordering::Equal));
+    candidates
+        .into_iter()
+        .take(max_num_of_suggestions)
+        .map(|(_, pv)| pv)
+        .collect()
 }

@@ -1,8 +1,3 @@
 [[package]]
-name = 'basic_predicate'
-source = 'member'
-dependencies = ['core']
-
-[[package]]
-name = 'core'
-source = 'path+from-root-FF1DD40DF1571ED3'
+name = "basic_predicate"
+source = "member"

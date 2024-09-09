@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};
 use std::path::{Path, PathBuf};
+use sway_types::LineCol;
 use tracing::info;
 
 use annotate_snippets::{AnnotationType, Slice, Snippet, SourceAnnotation};
@@ -82,11 +83,29 @@ struct ReadRange {
     length: usize,
 }
 
+fn line_col_to_pos<P: AsRef<Path>>(&LineCol { line, col }: &LineCol, path: P) -> io::Result<usize> {
+    let file = File::open(&path)?;
+    let mut reader = BufReader::new(file);
+
+    let mut pos = 0usize;
+    let mut buffer = String::new();
+    for _line_count in 1..line {
+        buffer.clear();
+        pos += reader.read_line(&mut buffer)?;
+    }
+    Ok(pos + col)
+}
+
 fn read_range<P: AsRef<Path>>(
     path: P,
     range: LocationRange,
     context_lines: usize,
 ) -> io::Result<ReadRange> {
+    // Converting LineCol to Pos, twice, is inefficient.
+    // TODO: Rewrite the algorithm in terms of LineCol.
+    let range_start = line_col_to_pos(&range.start, &path)?;
+    let range_end = line_col_to_pos(&range.end, &path)?;
+
     let file = File::open(&path)?;
     let mut reader = BufReader::new(file);
     let mut context_buffer = VecDeque::new();
@@ -98,9 +117,9 @@ fn read_range<P: AsRef<Path>>(
         let n = reader.read_line(&mut buffer)?;
         context_buffer.push_back(buffer);
         if start_pos.is_none() {
-            if position + n > range.start {
+            if position + n > range_start {
                 let cbl: usize = context_buffer.iter().map(|c| c.len()).sum();
-                start_pos = Some((line_num, position, range.start - (position + n - cbl)));
+                start_pos = Some((line_num, position, range_start - (position + n - cbl)));
             } else if context_buffer.len() > context_lines {
                 let _ = context_buffer.pop_front();
             }
@@ -112,7 +131,7 @@ fn read_range<P: AsRef<Path>>(
     }
 
     let source = context_buffer.make_contiguous().join("");
-    let length = range.end - range.start;
+    let length = range_end - range_start;
 
     let (source_start_line, _source_start_byte, offset) = start_pos.ok_or_else(|| {
         io::Error::new(

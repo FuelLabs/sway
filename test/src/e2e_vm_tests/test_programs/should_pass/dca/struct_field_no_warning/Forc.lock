@@ -1,3 +1,8 @@
 [[package]]
-name = 'struct_field_no_warning'
-source = 'member'
+name = "core"
+source = "path+from-root-A03F942644F6C476"
+
+[[package]]
+name = "struct_field_no_warning"
+source = "member"
+dependencies = ["core"]

@@ -6,3 +6,4 @@ name = "name_resolution_inside_intrinsics"
 implicit-std = false
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

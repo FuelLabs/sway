@@ -1,9 +1,8 @@
 use crate::{
     config::OnEnterConfig,
-    core::{document::TextDocument, session::Session},
+    core::document::{Documents, TextDocument},
     lsp_ext::OnEnterParams,
 };
-use std::sync::Arc;
 use tower_lsp::lsp_types::{
     DocumentChanges, OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range,
     TextDocumentEdit, TextEdit, Url, WorkspaceEdit,
@@ -17,7 +16,7 @@ const DOC_COMMENT_START: &str = "///";
 /// with the appropriate comment start pattern (// or ///).
 pub fn on_enter(
     config: &OnEnterConfig,
-    session: &Arc<Session>,
+    documents: &Documents,
     temp_uri: &Url,
     params: &OnEnterParams,
 ) -> Option<WorkspaceEdit> {
@@ -26,7 +25,7 @@ pub fn on_enter(
     }
 
     let mut workspace_edit = None;
-    let text_document = session
+    let text_document = documents
         .get_text_document(temp_uri)
         .expect("could not get text document");
 

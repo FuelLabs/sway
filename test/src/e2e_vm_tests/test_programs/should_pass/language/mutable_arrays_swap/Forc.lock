@@ -1,3 +1,8 @@
 [[package]]
-name = 'mutable_arrays_swap'
-source = 'member'
+name = "core"
+source = "path+from-root-866C2113DADA5C5A"
+
+[[package]]
+name = "mutable_arrays_swap"
+source = "member"
+dependencies = ["core"]

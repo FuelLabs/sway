@@ -11,18 +11,16 @@ pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
 
     while let Some(next_dir) = dir_entries.pop() {
         if let Ok(read_dir) = fs::read_dir(next_dir) {
-            for entry in read_dir.filter_map(|res| res.ok()) {
+            for entry in read_dir.filter_map(std::result::Result::ok) {
                 let path = entry.path();
-
                 if path.is_dir() {
                     dir_entries.push(path);
                 } else if is_sway_file(&path) {
-                    files.push(path)
+                    files.push(path);
                 }
             }
         }
     }
-
     files
 }
 
@@ -91,10 +89,9 @@ pub fn find_parent_dir_with_file<P: AsRef<Path>>(
         if path.exists() {
             path.pop();
             return Some(path);
-        } else {
-            path.pop();
-            path.pop();
         }
+        path.pop();
+        path.pop();
     }
     None
 }
@@ -113,7 +110,7 @@ where
     F: Fn(&Path) -> bool,
 {
     find_parent_manifest_dir(starter_path).and_then(|manifest_dir| {
-        // If given check satisifies return current dir otherwise start searching from the parent.
+        // If given check satisfies return current dir otherwise start searching from the parent.
         if f(&manifest_dir) {
             Some(manifest_dir)
         } else if let Some(parent_dir) = manifest_dir.parent() {

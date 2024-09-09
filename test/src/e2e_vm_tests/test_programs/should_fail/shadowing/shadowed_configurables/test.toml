@@ -1,0 +1,84 @@
+category = "fail"
+
+#check: $()error
+#sameln: $()Constant of the same name as configurable already exists
+#check: $()const CONST_A: u8 = 1;
+#nextln: $()Constant "CONST_A" is declared here.
+#check: $()CONST_A: u8 = 15,
+#nextln: $()Configurable "CONST_A" has the same name as an already declared constant.
+
+#check: $()error
+#sameln: $()Constant of the same name as configurable already exists
+#check: $()use lib::LIB_X;
+#nextln: $()Constant "LIB_X" is declared here.
+#check: $()LIB_X: u8 = 17,
+#nextln: $()Configurable "LIB_X" has the same name as an already declared constant.
+
+#check: $()error
+#sameln: $()Constant of the same name as configurable already exists
+#check: $()LIB_Y: u8 = 18,
+#nextln: $()Configurable "LIB_Y" has the same name as an already declared constant.
+#check: $()use lib::LIB_Y;
+#nextln: $()Constant "LIB_Y" is declared here.
+
+#check: $()error
+#sameln: $()Constant of the same name as configurable already exists
+#check: $()LIB_Z_ALIAS: u8 = 19,
+#nextln: $()Configurable "LIB_Z_ALIAS" has the same name as an already declared constant.
+#check: $()use lib::LIB_Z as LIB_Z_ALIAS;
+#nextln: $()Constant "LIB_Z_ALIAS" is declared here.
+
+#check: $()error
+#sameln: $()Configurable of the same name as constant already exists
+#check: $()CONST_B: u8 = 16,
+#nextln: $()Configurable "CONST_B" is declared here.
+#check: $()const CONST_B: u8 = 2;
+#nextln: $()Constant "CONST_B" has the same name as an already declared configurable.
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()X: u8 = 10,
+#nextln: $()Shadowed configurable "X" is declared here.
+#check: $()let X = 101u8;
+#nextln: $()Variable "X" shadows configurable of the same name.
+#check: $()Consider renaming either the variable "X" or the configurable "X".
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()Y: u8 = 11,
+#nextln: $()Shadowed configurable "Y" is declared here.
+#check: $()const Y: u8 = 102;
+#nextln: $()Constant "Y" shadows configurable of the same name.
+#check: $()Consider renaming either the constant "Y" or the configurable "Y".
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()A: u8 = 13,
+#nextln: $()Shadowed configurable "A" is declared here.
+#check: $()let A = 103u8;
+#nextln: $()Variable "A" shadows configurable of the same name.
+#check: $()Consider renaming either the variable "A" or the configurable "A".
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()B: u8 = 14,
+#nextln: $()Shadowed configurable "B" is declared here.
+#check: $()const B: u8 = 104;
+#nextln: $()Constant "B" shadows configurable of the same name.
+#check: $()Consider renaming either the constant "B" or the configurable "B".
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()LET_A: u8 = 20,
+#nextln: $()Shadowed configurable "LET_A" is declared here.
+#check: $()let S { x: LET_A } = S { x: 105 };
+#nextln: $()Variable "LET_A" shadows configurable of the same name.
+#check: $()Consider renaming either the variable "LET_A" or the configurable "LET_A".
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()LET_B: u8 = 21,
+#nextln: $()Shadowed configurable "LET_B" is declared here.
+#check: $()let (_, LET_B) = (106u8, 107u8);
+#nextln: $()Variable "LET_B" shadows configurable of the same name.
+#check: $()Consider renaming either the variable "LET_B" or the configurable "LET_B".

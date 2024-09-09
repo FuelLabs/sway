@@ -5,10 +5,7 @@ source = "path+from-root-5C15EEA63C6F47D5"
 [[package]]
 name = "largeint_sroa"
 source = "member"
-dependencies = [
-    "core",
-    "std",
-]
+dependencies = ["std"]
 
 [[package]]
 name = "std"

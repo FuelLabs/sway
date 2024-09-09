@@ -4,7 +4,7 @@ use forc_pkg as pkg;
 use forc_pkg::manifest::GenericManifestFile;
 use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
-use sway_core::{language::ty, Engines};
+use sway_core::{language::ty, Engines, ExperimentalFlags};
 use sway_error::handler::Handler;
 
 pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyProgram>, Handler)> {
@@ -16,6 +16,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         locked,
         disable_tests,
         ipfs_node,
+        no_encoding_v1,
     } = command;
 
     let this_dir = if let Some(ref path) = path {
@@ -31,7 +32,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         &member_manifests,
         locked,
         offline,
-        ipfs_node.unwrap_or_default(),
+        &ipfs_node.unwrap_or_default(),
     )?;
     let tests_enabled = !disable_tests;
 
@@ -43,6 +44,9 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         tests_enabled,
         engines,
         None,
+        ExperimentalFlags {
+            new_encoding: !no_encoding_v1,
+        },
     )?;
     let (res, handler) = v
         .pop()

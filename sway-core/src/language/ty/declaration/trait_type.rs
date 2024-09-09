@@ -5,7 +5,12 @@ use std::{
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, transform, type_system::*};
+use crate::{
+    engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration, transform,
+    type_system::*,
+};
+
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyTraitType {
@@ -14,6 +19,10 @@ pub struct TyTraitType {
     pub ty: Option<TypeArgument>,
     pub implementing_type: TypeId,
     pub span: Span,
+}
+
+impl TyDeclParsedType for TyTraitType {
+    type ParsedType = TraitTypeDeclaration;
 }
 
 impl DebugWithEngines for TyTraitType {
@@ -28,11 +37,21 @@ impl Named for TyTraitType {
     }
 }
 
+impl IsConcrete for TyTraitType {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        if let Some(ty) = &self.ty {
+            ty.type_id.is_concrete(engines, TreatNumericAs::Concrete)
+        } else {
+            false
+        }
+    }
+}
+
 impl EqWithEngines for TyTraitType {}
 impl PartialEqWithEngines for TyTraitType {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.ty.eq(&other.ty, engines)
+            && self.ty.eq(&other.ty, ctx)
             && self.implementing_type.eq(&other.implementing_type)
     }
 }
@@ -55,11 +74,11 @@ impl HashWithEngines for TyTraitType {
 }
 
 impl SubstTypes for TyTraitType {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        if let Some(ref mut ty) = self.ty {
-            ty.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        has_changes! {
+            self.ty.subst(type_mapping, ctx);
+            self.implementing_type.subst(type_mapping, ctx);
         }
-        self.implementing_type.subst(type_mapping, engines);
     }
 }
 

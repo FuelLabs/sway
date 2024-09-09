@@ -1,0 +1,59 @@
+script {
+
+    // check: fn main
+    entry fn main() -> u64 {
+        entry():
+            v0 = call foo()
+            v1 = call bar()
+            v3 = call foo_dup()
+            v2 = add v0, v1
+            v3 = add v2, v3
+            ret u64 v2
+    }
+
+    // check: fn foo
+    fn foo() -> u64 {
+        entry():
+            v0 = const u64 0
+            v1 = int_to_ptr v0 to ptr b256
+
+            v2 = const u64 0
+            v3 = int_to_ptr v0 to ptr b256
+
+            v4 = const u64 1
+
+            v5 = state_load_quad_word v1, key v3, v4
+            ret u64 v4
+    }
+
+    // not: fn foo_dup
+    fn foo_dup() -> u64 {
+        entry():
+            v0 = const u64 0
+            v1 = int_to_ptr v0 to ptr b256
+
+            v2 = const u64 0
+            v3 = int_to_ptr v0 to ptr b256
+
+            v4 = const u64 1
+
+            v5 = state_load_quad_word v1, key v3, v4
+            ret u64 v4
+    }
+
+    // check: fn bar
+    fn bar() -> u64 {
+        entry():
+            v0 = const u64 0
+            v1 = int_to_ptr v0 to ptr b256
+
+            v2 = const u64 0
+            v3 = int_to_ptr v0 to ptr b256
+
+            v4 = const u64 1
+
+            v5 = state_store_quad_word v1, key v3, v4
+            ret u64 v4
+
+    }
+}

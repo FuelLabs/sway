@@ -1,16 +1,16 @@
 script;
 
-use std::hash::*;
+trait Trait {}
 
-// Does NOT have a Hash trait implementation
-pub struct NoHashStruct {
+// Does NOT have a Trait trait implementation
+pub struct NoTraitStruct {
     val: u64
 }
 
 // Where clause on empty struct
-pub struct GenericEmptyStruct<T> where T: Hash {}
+pub struct GenericEmptyStruct<T> where T: Trait {}
 
 fn main() {
     // Does not compile as expected
-    let _empty_no_hash: GenericEmptyStruct<NoHashStruct> = GenericEmptyStruct {};
+    let _: GenericEmptyStruct<NoTraitStruct> = GenericEmptyStruct {};
 }

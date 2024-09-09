@@ -6,14 +6,20 @@ struct S {
 
 #[inline(always)]
 fn pass_references_to_asm_blocks() {
-    let x = 123u8;
+    let mut x = 123u8;
 
     let r_x = &x;
+    let r_mut_x = &mut x;
 
     let r_x_ptr_1 = asm(r: &x) { r: raw_ptr };
     let r_x_ptr_2 = asm(r: r_x) { r: raw_ptr };
 
     assert(r_x_ptr_1 == r_x_ptr_2);
+
+    let r_mut_x_ptr_1 = asm(r: &mut x) { r: raw_ptr };
+    let r_mut_x_ptr_2 = asm(r: r_mut_x) { r: raw_ptr };
+
+    assert(r_mut_x_ptr_1 == r_mut_x_ptr_2);
 
     let r_x_ptr_1_val = r_x_ptr_1.read::<u8>();
     let r_x_ptr_2_val = r_x_ptr_2.read::<u8>();
@@ -21,9 +27,32 @@ fn pass_references_to_asm_blocks() {
     assert(r_x_ptr_1_val == 123u8);
     assert(r_x_ptr_2_val == 123u8);
 
+    let r_mut_x_ptr_1_val = r_mut_x_ptr_1.read::<u8>();
+    let r_mut_x_ptr_2_val = r_mut_x_ptr_2.read::<u8>();
+
+    assert(r_mut_x_ptr_1_val == 123u8);
+    assert(r_mut_x_ptr_2_val == 123u8);
+
     let r_val_ptr_1 = asm(r: &123u8) { r: raw_ptr };
     let r_val_ptr_2 = asm(r: &(100u8 + 23u8)) { r: raw_ptr };
     let r_val_ptr_3 = asm(r: &return_123u8()) { r: raw_ptr };
+
+    assert(r_x_ptr_1 != r_val_ptr_1);
+    assert(r_val_ptr_1 != r_val_ptr_2);
+    assert(r_val_ptr_2 != r_val_ptr_3);
+    assert(r_val_ptr_3 != r_x_ptr_1);
+
+    let r_val_ptr_1_val = r_val_ptr_1.read::<u8>();
+    let r_val_ptr_2_val = r_val_ptr_2.read::<u8>();
+    let r_val_ptr_3_val = r_val_ptr_3.read::<u8>();
+    
+    assert(r_val_ptr_1_val == 123u8);
+    assert(r_val_ptr_2_val == 123u8);
+    assert(r_val_ptr_3_val == 123u8);
+
+    let r_val_ptr_1 = asm(r: &mut 123u8) { r: raw_ptr };
+    let r_val_ptr_2 = asm(r: &mut (100u8 + 23u8)) { r: raw_ptr };
+    let r_val_ptr_3 = asm(r: &mut return_123u8()) { r: raw_ptr };
 
     assert(r_x_ptr_1 != r_val_ptr_1);
     assert(r_val_ptr_1 != r_val_ptr_2);
@@ -58,6 +87,18 @@ fn return_references_from_asm_blocks() {
 
     let r_x_ref_1 = asm(r: &x) { r: &u8 };
     let r_x_ref_2 = asm(r: r_x) { r: &u8 };
+
+    let r_x_ref_1_ptr = asm(r: r_x_ref_1) { r: raw_ptr };
+    let r_x_ref_2_ptr = asm(r: r_x_ref_2) { r: raw_ptr };
+
+    assert(r_x_ptr == r_x_ref_1_ptr);
+    assert(r_x_ptr == r_x_ref_2_ptr);
+
+    // Note that using asm we can circumvent mutability
+    // checks and obtain a reference to mutable value that
+    // refer to a non mutable variable.
+    let r_x_ref_1: &mut u8 = asm(r: &x) { r: &mut u8 };
+    let r_x_ref_2: &mut u8 = asm(r: r_x) { r: &mut u8 };
 
     let r_x_ref_1_ptr = asm(r: r_x_ref_1) { r: raw_ptr };
     let r_x_ref_2_ptr = asm(r: r_x_ref_2) { r: raw_ptr };

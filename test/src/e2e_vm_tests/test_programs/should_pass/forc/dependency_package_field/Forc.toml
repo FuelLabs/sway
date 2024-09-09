@@ -6,4 +6,4 @@ name = "dependency_package_field"
 
 [dependencies]
 # Use `std` package as `std_alt` to test `package` field.
-std-alt = { path = "../../../../../../../sway-lib-std", package = "std" }
+std-alt = { path = "../../../../reduced_std_libs/sway-lib-std-assert", package = "std" }

@@ -6,16 +6,17 @@
 # - `cargo run --locked --release --bin test -- --locked`
 #
 # You can install `fuel-core` node by:
-# `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.19.1 --locked`
+# `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.24.3 --locked`
 #
 # And run it with:
-# `fuel-core run --db-type in-memory`
+# `fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode`
 
 # Requires installed:
 # `cargo install cargo-sort`
 # `cargo install cargo-generate`
 # `cargo install cargo-udeps`
 
+./.github/workflows/scripts/check-sdk-harness-version.sh
 cargo clippy --all-features --all-targets -- -D warnings &&
 cargo sort -w --check &&
 cargo sort -w --check templates/sway-test-rs/template &&

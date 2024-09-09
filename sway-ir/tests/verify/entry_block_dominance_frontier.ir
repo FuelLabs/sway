@@ -1,0 +1,16 @@
+// This test proves that https://github.com/FuelLabs/sway/issues/6148 is fixed.
+
+// error: Entry block of the function "main" has predecessors. The predecessors are "block0", "block1".
+
+script {
+ fn main() -> () {
+    entry():
+    br block0()
+
+    block0():
+    br entry()
+
+    block1():
+    br entry()
+  }
+}

@@ -4,12 +4,12 @@ use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{ty::*, Visibility},
-    transform::{self, AttributeKind},
+    language::{parsed::StorageDeclaration, ty::*, Visibility},
+    transform::{self},
     type_system::*,
     Namespace,
 };
@@ -22,6 +22,10 @@ pub struct TyStorageDecl {
     pub storage_keyword: Ident,
 }
 
+impl TyDeclParsedType for TyStorageDecl {
+    type ParsedType = StorageDeclaration;
+}
+
 impl Named for TyStorageDecl {
     fn name(&self) -> &Ident {
         &self.storage_keyword
@@ -30,8 +34,8 @@ impl Named for TyStorageDecl {
 
 impl EqWithEngines for TyStorageDecl {}
 impl PartialEqWithEngines for TyStorageDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.fields.eq(&other.fields, ctx) && self.attributes == other.attributes
     }
 }
 
@@ -56,14 +60,6 @@ impl Spanned for TyStorageDecl {
 }
 
 impl TyStorageDecl {
-    pub(crate) fn storage_namespace(&self) -> Option<Ident> {
-        self.attributes
-            .get(&AttributeKind::Namespace)
-            .and_then(|attrs| attrs.first())
-            .and_then(|attr| attr.args.first())
-            .map(|arg| arg.name.clone())
-    }
-
     /// Given a path that consists of `fields`, where the first field is one of the storage fields,
     /// find the type information of all the elements in the path and return it as a [TyStorageAccess].
     ///
@@ -73,12 +69,14 @@ impl TyStorageDecl {
     ///
     /// An error is returned if the above constraints are violated or if the access to the struct fields
     /// fails. E.g, if the struct field does not exists or is an inaccessible private field.
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_storage_load(
         &self,
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
-        fields: Vec<Ident>,
+        namespace_names: &[Ident],
+        fields: &[Ident],
         storage_fields: &[TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(TyStorageAccess, TypeId), ErrorEmitted> {
@@ -95,22 +93,33 @@ impl TyStorageDecl {
             "Having at least one element in the storage load is guaranteed by the grammar.",
         );
 
-        let (ix, initial_field_type) = match storage_fields
-            .iter()
-            .enumerate()
-            .find(|(_, sf)| &sf.name == first_field)
-        {
-            Some((ix, TyStorageField { type_argument, .. })) => {
-                (StateIndex::new(ix), type_argument.type_id)
-            }
-            None => {
-                return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
-                    field_name: first_field.into(),
-                    available_fields: storage_fields.iter().map(|sf| sf.name.clone()).collect(),
-                    storage_decl_span: self.span(),
-                }));
-            }
-        };
+        let (initial_field_type, initial_field_key, initial_field_name) =
+            match storage_fields.iter().find(|sf| {
+                &sf.name == first_field
+                    && sf.namespace_names.len() == namespace_names.len()
+                    && sf
+                        .namespace_names
+                        .iter()
+                        .zip(namespace_names.iter())
+                        .all(|(n1, n2)| n1 == n2)
+            }) {
+                Some(TyStorageField {
+                    type_argument,
+                    key_expression,
+                    name,
+                    ..
+                }) => (type_argument.type_id, key_expression, name),
+                None => {
+                    return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
+                        field_name: first_field.into(),
+                        available_fields: storage_fields
+                            .iter()
+                            .map(|sf| (sf.namespace_names.clone(), sf.name.clone()))
+                            .collect(),
+                        storage_decl_span: self.span(),
+                    }));
+                }
+            };
 
         access_descriptors.push(TyStorageAccessDescriptor {
             name: first_field.clone(),
@@ -133,11 +142,13 @@ impl TyStorageDecl {
             _ => None,
         };
 
+        let mut struct_field_names = vec![];
+
         for field in remaining_fields {
             match get_struct_decl(previous_field_type_id) {
                 Some(struct_decl) => {
                     let (struct_can_be_changed, is_public_struct_access) =
-                        StructAccessInfo::get_info(&struct_decl, namespace).into();
+                        StructAccessInfo::get_info(engines, &struct_decl, namespace).into();
 
                     match struct_decl.find_field(field) {
                         Some(struct_field) => {
@@ -160,6 +171,8 @@ impl TyStorageDecl {
                                 type_id: current_field_type_id,
                                 span: field.span(),
                             });
+
+                            struct_field_names.push(field.as_str().to_string());
 
                             previous_field = field;
                             previous_field_type_id = current_field_type_id;
@@ -208,8 +221,13 @@ impl TyStorageDecl {
         Ok((
             TyStorageAccess {
                 fields: access_descriptors,
-                ix,
-                namespace: self.storage_namespace(),
+                key_expression: initial_field_key.clone().map(Box::new),
+                storage_field_names: namespace_names
+                    .iter()
+                    .map(|n| n.as_str().to_string())
+                    .chain(vec![initial_field_name.as_str().to_string()])
+                    .collect(),
+                struct_field_names,
                 storage_keyword_span,
             },
             return_type,
@@ -247,6 +265,8 @@ impl Spanned for TyStorageField {
 #[derive(Clone, Debug)]
 pub struct TyStorageField {
     pub name: Ident,
+    pub namespace_names: Vec<Ident>,
+    pub key_expression: Option<TyExpression>,
     pub type_argument: TypeArgument,
     pub initializer: TyExpression,
     pub(crate) span: Span,
@@ -255,10 +275,11 @@ pub struct TyStorageField {
 
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
-            && self.initializer.eq(&other.initializer, engines)
+            && self.namespace_names.eq(&other.namespace_names)
+            && self.type_argument.eq(&other.type_argument, ctx)
+            && self.initializer.eq(&other.initializer, ctx)
     }
 }
 
@@ -266,6 +287,8 @@ impl HashWithEngines for TyStorageField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageField {
             name,
+            namespace_names,
+            key_expression,
             type_argument,
             initializer,
             // these fields are not hashed because they aren't relevant/a
@@ -274,6 +297,8 @@ impl HashWithEngines for TyStorageField {
             attributes: _,
         } = self;
         name.hash(state);
+        namespace_names.hash(state);
+        key_expression.hash(state, engines);
         type_argument.hash(state, engines);
         initializer.hash(state, engines);
     }

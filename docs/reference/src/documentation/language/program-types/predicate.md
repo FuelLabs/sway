@@ -4,7 +4,7 @@ A predicate is an executable that represents a UTXO spending condition, such as 
 
 It does not need to be deployed to a blockchain because it only exists during a transaction. That being said, the predicate root is on chain as the owner of one or more UTXOs.
 
-Predicates can neither read from nor write to any contract state. Moreover, they cannot use any [contract instructions](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#contract-instructions).
+Predicates can neither read from nor write to any contract state. Moreover, they cannot use any [contract instructions](https://docs.fuel.network/docs/specs/fuel-vm/instruction-set/#contract-instructions).
 
 ## Transfer Coins to a Predicate
 

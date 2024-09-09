@@ -1,0 +1,114 @@
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
+
+use crate::{
+    decl_engine::{DeclId, DeclMapping, DeclRef, ReplaceDecls},
+    engine_threading::*,
+    has_changes,
+    language::{parsed::ConfigurableDeclaration, ty::*, CallPath, Visibility},
+    semantic_analysis::TypeCheckContext,
+    transform,
+    type_system::*,
+};
+
+#[derive(Clone, Debug)]
+pub struct TyConfigurableDecl {
+    pub call_path: CallPath,
+    pub value: Option<TyExpression>,
+    pub visibility: Visibility,
+    pub attributes: transform::AttributesMap,
+    pub return_type: TypeId,
+    pub type_ascription: TypeArgument,
+    pub span: Span,
+    // Only encoding v1 has a decode_fn
+    pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
+}
+
+impl TyDeclParsedType for TyConfigurableDecl {
+    type ParsedType = ConfigurableDeclaration;
+}
+
+impl DebugWithEngines for TyConfigurableDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
+        write!(f, "{}", self.call_path)
+    }
+}
+
+impl EqWithEngines for TyConfigurableDecl {}
+impl PartialEqWithEngines for TyConfigurableDecl {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
+        self.call_path == other.call_path
+            && self.value.eq(&other.value, ctx)
+            && self.visibility == other.visibility
+            && self.type_ascription.eq(&other.type_ascription, ctx)
+            && type_engine
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), ctx)
+    }
+}
+
+impl HashWithEngines for TyConfigurableDecl {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let type_engine = engines.te();
+        let TyConfigurableDecl {
+            call_path,
+            value,
+            visibility,
+            return_type,
+            type_ascription,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            attributes: _,
+            span: _,
+            decode_fn: _, // this is defined entirely by the type ascription
+        } = self;
+        call_path.hash(state);
+        value.hash(state, engines);
+        visibility.hash(state);
+        type_engine.get(*return_type).hash(state, engines);
+        type_ascription.hash(state, engines);
+    }
+}
+
+impl Named for TyConfigurableDecl {
+    fn name(&self) -> &Ident {
+        &self.call_path.suffix
+    }
+}
+
+impl Spanned for TyConfigurableDecl {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+impl SubstTypes for TyConfigurableDecl {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        has_changes! {
+            self.return_type.subst(type_mapping, ctx);
+            self.type_ascription.subst(type_mapping, ctx);
+            self.value.subst(type_mapping, ctx);
+        }
+    }
+}
+
+impl ReplaceDecls for TyConfigurableDecl {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<bool, ErrorEmitted> {
+        if let Some(expr) = &mut self.value {
+            expr.replace_decls(decl_mapping, handler, ctx)
+        } else {
+            Ok(false)
+        }
+    }
+}

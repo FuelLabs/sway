@@ -48,7 +48,7 @@ fn in_length_2_array_first() -> u64 {
 fn in_length_2_array_second() -> u64 {
     let _ = [0, return];
     
-    145 // TODO: Missing unreachable warning
+    145
 }
 
 fn in_tuple() -> u64 {

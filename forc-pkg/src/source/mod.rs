@@ -298,7 +298,7 @@ impl Pinned {
 
     /// If the source is associated with a specific semver version, emit it.
     ///
-    /// Used soley for the package lock file.
+    /// Used solely for the package lock file.
     pub fn semver(&self) -> Option<semver::Version> {
         match self {
             Self::Registry(reg) => Some(reg.source.version.clone()),

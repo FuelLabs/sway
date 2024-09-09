@@ -1,6 +1,9 @@
 use fuels::{prelude::*, types::SizedAsciiString};
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
+// https://github.com/FuelLabs/sway/issues/5727
 #[tokio::test]
+#[ignore]
 async fn script_uses_default_configurables() -> Result<()> {
     abigen!(Script(
         name = "MyScript",
@@ -30,7 +33,10 @@ async fn script_uses_default_configurables() -> Result<()> {
     Ok(())
 }
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
+// https://github.com/FuelLabs/sway/issues/5727
 #[tokio::test]
+#[ignore]
 async fn script_configurables() -> Result<()> {
     abigen!(Script(
         name = "MyScript",
@@ -48,10 +54,10 @@ async fn script_configurables() -> Result<()> {
     };
     let new_enum = EnumWithGeneric::VariantTwo;
 
-    let configurables = MyScriptConfigurables::new()
-        .with_STR_4(new_str.clone())
-        .with_STRUCT(new_struct.clone())
-        .with_ENUM(new_enum.clone());
+    let configurables = MyScriptConfigurables::default()
+        .with_STR_4(new_str.clone())?
+        .with_STRUCT(new_struct.clone())?
+        .with_ENUM(new_enum.clone())?;
 
     let response = instance
         .with_configurables(configurables)

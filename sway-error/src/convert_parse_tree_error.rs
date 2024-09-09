@@ -3,8 +3,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConvertParseTreeError {
-    #[error("pub use imports are not supported")]
-    PubUseNotSupported { span: Span },
+    #[error("Imports without items are not supported")]
+    ImportsWithoutItemsNotSupported { span: Span },
     #[error("functions used in applications may not be arbitrary expressions")]
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
@@ -124,7 +124,7 @@ pub enum ConvertParseTreeError {
 impl Spanned for ConvertParseTreeError {
     fn span(&self) -> Span {
         match self {
-            ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
+            ConvertParseTreeError::ImportsWithoutItemsNotSupported { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::MultipleGenericsNotSupported { span } => span.clone(),

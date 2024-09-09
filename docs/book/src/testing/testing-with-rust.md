@@ -51,6 +51,9 @@ placeholder in the template. Otherwise, `cargo-generate` automatically converts 
 With `--force`, this means that both `my_fuel_project` and `my-fuel-project` are valid project names,
 depending on your needs.
 
+> _**Note**: `templates/sway-test-rs` can be replaced with `templates/sway-script-test-rs` or `templates/sway-predicate-test-rs` to generate a test
+> harness for scripts and predicates respectively.
+
 If all goes well, the output should look as follows:
 
 ```console
@@ -71,18 +74,21 @@ Let's have a look at the result:
 $ tree .
 ├── Cargo.toml
 ├── Forc.toml
+├── build.rs
 ├── src
 │   └── main.sw
 └── tests
     └── harness.rs
 ```
 
-We have two new files!
+We have three new files!
 
 - The `Cargo.toml` is the manifest for our new test harness and specifies the
   required dependencies including `fuels` the Fuel Rust SDK.
 - The `tests/harness.rs` contains some boilerplate test code to get us started,
   though doesn't call any contract methods just yet.
+- The `build.rs` is a build script that compiles the Sway project with `forc build`
+  whenever `cargo test` is run.
 
 ### 4. Build the forc project
 
@@ -108,6 +114,7 @@ $ tree
 ├── Cargo.toml
 ├── Forc.lock
 ├── Forc.toml
+├── build.rs
 ├── out
 │   └── debug
 │       ├── my-fuel-project-abi.json

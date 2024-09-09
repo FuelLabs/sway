@@ -1,7 +1,27 @@
 category = "fail"
 
-# check: $()This returns a value of type u64, which is not assigned to anything and is ignored.
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn bar()
+#nextln: $()Function "bar" is pure and cannot access storage.
+#check: $()let _ = baz();
+#nextln: $()Function "baz" reads from the storage.
+#check: $()Consider declaring the function "bar" as `#[storage(read)]`
 
-# check: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read)]" to the function declaration.
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn foo()
+#nextln: $()Function "foo" is pure and cannot access storage.
+#check: $()bar();
+#nextln: $()Function "bar" reads from the storage.
+#check: $()let _ = baz();
+#nextln: $()Function "baz" reads from the storage.
+#check: $()Consider declaring the function "foo" as `#[storage(read)]`
 
-# check: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(read)]" to the function declaration.
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn test()
+#nextln: $()Function "test" is pure and cannot access storage.
+#check: $()foo();
+#nextln: $()Function "foo" reads from the storage.
+#check: $()Consider declaring the function "test" as `#[storage(read)]`

@@ -37,8 +37,7 @@ impl ty::TyStructDecl {
                 new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
             }
 
-            let mut path: CallPath = name.into();
-            path = path.to_fullpath(ctx.namespace());
+            let path = CallPath::ident_to_fullpath(name, ctx.namespace());
 
             // create the struct decl
             let decl = ty::TyStructDecl {

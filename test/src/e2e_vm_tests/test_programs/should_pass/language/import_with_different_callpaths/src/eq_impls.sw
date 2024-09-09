@@ -5,14 +5,10 @@ use core::ops::Eq;
 
 impl Eq for SomeEnum<u32> {
     fn eq(self, other: Self) -> bool {
-        match self {
-            SomeEnum::a(val) => {
-                match other {
-                    SomeEnum::a(other_val) => {
-                        val == other_val
-                    }
-                }
-            }
+        match (self, other) {
+            (SomeEnum::A(val), SomeEnum::A(other_val)) => {
+                val == other_val
+            },
         }
     }
 }

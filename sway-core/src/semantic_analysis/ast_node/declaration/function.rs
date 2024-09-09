@@ -56,6 +56,7 @@ impl ty::TyFunctionDecl {
             visibility,
             purity,
             where_clause,
+            kind,
             ..
         } = fn_decl;
         let mut return_type = fn_decl.return_type.clone();
@@ -65,10 +66,11 @@ impl ty::TyFunctionDecl {
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
-            return Err(handler.emit_err(CompileError::Unimplemented(
-                "Nested function definitions are not allowed at this time.",
-                span.clone(),
-            )));
+            return Err(handler.emit_err(CompileError::Unimplemented {
+                feature: "Declaring nested functions".to_string(),
+                help: vec![],
+                span: span.clone(),
+            }));
         }
 
         // Warn against non-snake case function names.
@@ -81,7 +83,6 @@ impl ty::TyFunctionDecl {
 
         // create a namespace for the function
         ctx.by_ref()
-            .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
             .scoped(|mut ctx| {
@@ -139,7 +140,8 @@ impl ty::TyFunctionDecl {
                     )
                 };
 
-                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace());
+                let call_path =
+                    CallPath::from(name.clone()).to_fullpath(ctx.engines(), ctx.namespace());
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
@@ -157,6 +159,13 @@ impl ty::TyFunctionDecl {
                     purity: *purity,
                     where_clause: where_clause.clone(),
                     is_trait_method_dummy: false,
+                    is_type_check_finalized: false,
+                    kind: match kind {
+                        FunctionDeclarationKind::Default => ty::TyFunctionDeclKind::Default,
+                        FunctionDeclarationKind::Entry => ty::TyFunctionDeclKind::Entry,
+                        FunctionDeclarationKind::Test => ty::TyFunctionDeclKind::Test,
+                        FunctionDeclarationKind::Main => ty::TyFunctionDeclKind::Main,
+                    },
                 };
 
                 Ok(function_decl)
@@ -171,7 +180,6 @@ impl ty::TyFunctionDecl {
     ) -> Result<Self, ErrorEmitted> {
         // create a namespace for the function
         ctx.by_ref()
-            .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
             .scoped(|mut ctx| {
@@ -179,7 +187,6 @@ impl ty::TyFunctionDecl {
 
                 let ty::TyFunctionDecl {
                     parameters,
-                    purity,
                     return_type,
                     type_parameters,
                     ..
@@ -202,17 +209,17 @@ impl ty::TyFunctionDecl {
 
                 let mut ctx = ctx
                     .by_ref()
-                    .with_purity(*purity)
                     .with_help_text(
                         "Function body's return type does not match up with its return type annotation.",
                     )
                     .with_type_annotation(return_type.type_id)
                     .with_function_type_annotation(return_type.type_id);
 
-                let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)
+                let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
                 ty_fn_decl.body = body;
+                ty_fn_decl.is_type_check_finalized = true;
 
                 return_type.type_id.check_type_parameter_bounds(
                     handler,
@@ -315,6 +322,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        is_type_check_finalized: true,
+        kind: ty::TyFunctionDeclKind::Default,
     };
 
     let selector_text = decl
@@ -374,6 +383,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        is_type_check_finalized: true,
+        kind: ty::TyFunctionDeclKind::Default,
     };
 
     let selector_text = decl

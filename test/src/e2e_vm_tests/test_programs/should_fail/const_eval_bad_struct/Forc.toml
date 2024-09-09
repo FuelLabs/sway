@@ -6,3 +6,4 @@ name = "const_eval_bad_struct"
 implicit-std = false
 
 [dependencies]
+core = { path = "../../../../../../sway-lib-core" }

@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     fs,
+    sync::Arc,
 };
 
 use graph_cycles::Cycles;
@@ -9,21 +10,26 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Named};
+use sway_types::{BaseIdent, Named, SourceId};
 
 use crate::{
-    decl_engine::DeclEngineGet,
-    engine_threading::DebugWithEngines,
+    decl_engine::{DeclEngineGet, DeclId},
+    engine_threading::{DebugWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    is_ty_module_cache_up_to_date,
     language::{
         parsed::*,
         ty::{self, TyAstNodeContent, TyDecl},
         CallPath, ModName,
     },
+    query_engine::{ModuleCacheKey, TypedModuleInfo},
     semantic_analysis::*,
-    Engines, TypeInfo,
+    BuildConfig, Engines, TypeInfo,
 };
 
-use super::declaration::auto_impl::AutoImplAbiEncodeContext;
+use super::{
+    declaration::auto_impl::{self, EncodingAutoImplContext},
+    symbol_collection_context::SymbolCollectionContext,
+};
 
 #[derive(Clone, Debug)]
 pub struct ModuleDepGraphEdge();
@@ -64,8 +70,6 @@ pub struct ModuleDepGraph {
     root: ModuleDepGraphNodeId,
     node_name_map: HashMap<String, ModuleDepGraphNodeId>,
 }
-
-pub type ModuleEvaluationOrder = Vec<ModName>;
 
 impl ModuleDepGraph {
     pub(crate) fn new() -> Self {
@@ -130,7 +134,7 @@ impl ModuleDepGraph {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing module dep analysis graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting module dep analysis graph to path {graph_path:?}\n{error}"
                     );
                 }
             }
@@ -188,7 +192,7 @@ impl ModuleDepGraph {
 
 impl ty::TyModule {
     /// Analyzes the given parsed module to produce a dependency graph.
-    pub fn analyze(
+    pub fn build_dep_graph(
         handler: &Handler,
         parsed: &ParseModule,
     ) -> Result<ModuleDepGraph, ErrorEmitted> {
@@ -208,10 +212,85 @@ impl ty::TyModule {
 
         // Analyze submodules first in order of declaration.
         submodules.iter().for_each(|(name, submodule)| {
-            let _ = ty::TySubmodule::analyze(handler, &mut dep_graph, name.clone(), submodule);
+            let _ =
+                ty::TySubmodule::build_dep_graph(handler, &mut dep_graph, name.clone(), submodule);
         });
 
         Ok(dep_graph)
+    }
+
+    /// Collects the given parsed module to produce a module symbol map.
+    ///
+    /// Recursively collects submodules first.
+    pub fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        parsed: &ParseModule,
+    ) -> Result<(), ErrorEmitted> {
+        let ParseModule {
+            submodules,
+            tree,
+            module_eval_order,
+            attributes: _,
+            span: _,
+            hash: _,
+            ..
+        } = parsed;
+
+        // Analyze submodules first in order of evaluation previously computed by the dependency graph.
+        module_eval_order.iter().for_each(|eval_mod_name| {
+            let (name, submodule) = submodules
+                .iter()
+                .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
+                .unwrap();
+            let _ = ty::TySubmodule::collect(handler, engines, ctx, name.clone(), submodule);
+        });
+
+        let _ = tree
+            .root_nodes
+            .iter()
+            .map(|node| ty::TyAstNode::collect(handler, engines, ctx, node))
+            .filter_map(|res| res.ok())
+            .collect::<Vec<_>>();
+
+        Ok(())
+    }
+
+    /// Retrieves a cached typed module if it's up to date.
+    ///
+    /// This function checks the cache for a typed module corresponding to the given source ID.
+    /// If found and up to date, it returns the cached module. Otherwise, it returns None.
+    fn get_cached_ty_module_if_up_to_date(
+        source_id: Option<&SourceId>,
+        engines: &Engines,
+        build_config: Option<&BuildConfig>,
+    ) -> Option<Arc<ty::TyModule>> {
+        let source_id = source_id?;
+
+        // Create a cache key and get the module cache
+        let path = engines.se().get_path(source_id);
+        let include_tests = build_config.map_or(false, |x| x.include_tests);
+        let key = ModuleCacheKey::new(path.clone().into(), include_tests);
+        let cache = engines.qe().module_cache.read();
+        cache.get(&key).and_then(|entry| {
+            entry.typed.as_ref().and_then(|typed| {
+                // Check if the cached module is up to date
+                let is_up_to_date = is_ty_module_cache_up_to_date(
+                    engines,
+                    &path.into(),
+                    include_tests,
+                    build_config,
+                );
+
+                // Return the cached module if it's up to date, otherwise None
+                if is_up_to_date {
+                    Some(typed.module.clone())
+                } else {
+                    None
+                }
+            })
+        })
     }
 
     /// Type-check the given parsed module to produce a typed module.
@@ -220,17 +299,28 @@ impl ty::TyModule {
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
+        engines: &Engines,
+        kind: TreeType,
         parsed: &ParseModule,
-        module_eval_order: ModuleEvaluationOrder,
-    ) -> Result<Self, ErrorEmitted> {
+        build_config: Option<&BuildConfig>,
+    ) -> Result<Arc<Self>, ErrorEmitted> {
         let ParseModule {
             submodules,
             tree,
             attributes,
             span,
-            hash: _,
+            module_eval_order,
             ..
         } = parsed;
+
+        // Try to get the cached root module if it's up to date
+        if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
+            parsed.span.source_id(),
+            engines,
+            build_config,
+        ) {
+            return Ok(module);
+        }
 
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
@@ -238,41 +328,173 @@ impl ty::TyModule {
             .map(|eval_mod_name| {
                 let (name, submodule) = submodules
                     .iter()
-                    .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
+                    .find(|(submod_name, _)| eval_mod_name == submod_name)
                     .unwrap();
-                Ok((
-                    name.clone(),
-                    ty::TySubmodule::type_check(handler, ctx.by_ref(), name.clone(), submodule)?,
-                ))
+
+                // Try to get the cached submodule
+                if let Some(cached_module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
+                    submodule.module.span.source_id(),
+                    engines,
+                    build_config,
+                ) {
+                    // If cached, create TySubmodule from cached module
+                    Ok::<(BaseIdent, ty::TySubmodule), ErrorEmitted>((
+                        name.clone(),
+                        ty::TySubmodule {
+                            module: cached_module,
+                            mod_name_span: submodule.mod_name_span.clone(),
+                        },
+                    ))
+                } else {
+                    // If not cached, type-check the submodule
+                    let type_checked_submodule = ty::TySubmodule::type_check(
+                        handler,
+                        ctx.by_ref(),
+                        engines,
+                        name.clone(),
+                        kind,
+                        submodule,
+                        build_config,
+                    )?;
+                    Ok((name.clone(), type_checked_submodule))
+                }
             })
             .collect::<Result<Vec<_>, _>>();
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
-        let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(
+        let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
             handler,
             ctx.engines(),
             tree.root_nodes.clone(),
-        );
+        )?;
 
-        let typed_nodes_res = ordered_nodes_res
-            .and_then(|ordered_nodes| Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes));
+        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), &ordered_nodes)?;
+        let submodules = submodules_res?;
 
-        submodules_res.and_then(|submodules| {
-            typed_nodes_res.map(|all_nodes| Self {
-                span: span.clone(),
-                submodules,
-                namespace: ctx.namespace().clone(),
-                all_nodes,
-                attributes: attributes.clone(),
-            })
-        })
+        let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;
+        match (&kind, &fallback_fn) {
+            (TreeType::Contract, _) | (_, None) => {}
+            (_, Some(fallback_fn)) => {
+                let fallback_fn = engines.de().get(fallback_fn);
+                return Err(handler.emit_err(CompileError::FallbackFnsAreContractOnly {
+                    span: fallback_fn.span.clone(),
+                }));
+            }
+        }
+
+        if ctx.experimental.new_encoding {
+            let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
+                    let fn_decl = engines.de().get_function(&decl.decl_id);
+                    (fn_decl.name.as_str() == "main").then_some(fn_decl)
+                }
+                _ => None,
+            });
+
+            match (&kind, main_decl.is_some()) {
+                (TreeType::Predicate, true) => {
+                    let mut fn_generator =
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    if let Ok(node) = fn_generator.generate_predicate_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    ) {
+                        all_nodes.push(node)
+                    }
+                }
+                (TreeType::Script, true) => {
+                    let mut fn_generator =
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    if let Ok(node) = fn_generator.generate_script_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    ) {
+                        all_nodes.push(node)
+                    }
+                }
+                (TreeType::Contract, _) => {
+                    // collect all supertrait methods
+                    let contract_supertrait_fns = submodules
+                        .iter()
+                        .flat_map(|x| x.1.module.submodules_recursive())
+                        .flat_map(|x| x.1.module.contract_supertrait_fns(engines))
+                        .chain(
+                            all_nodes
+                                .iter()
+                                .flat_map(|x| x.contract_supertrait_fns(engines)),
+                        )
+                        .collect::<Vec<_>>();
+
+                    // collect all contract methods
+                    let mut contract_fns = submodules
+                        .iter()
+                        .flat_map(|x| x.1.module.submodules_recursive())
+                        .flat_map(|x| x.1.module.contract_fns(engines))
+                        .chain(all_nodes.iter().flat_map(|x| x.contract_fns(engines)))
+                        .collect::<Vec<_>>();
+
+                    // exclude all contract methods that are supertrait methods
+                    let partialeq_ctx = PartialEqWithEnginesContext::new(engines);
+                    contract_fns.retain(|method| {
+                        contract_supertrait_fns
+                            .iter()
+                            .all(|si| !PartialEqWithEngines::eq(method, si, &partialeq_ctx))
+                    });
+
+                    let mut fn_generator =
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    if let Ok(node) = fn_generator.generate_contract_entry(
+                        engines,
+                        parsed.span.source_id().map(|x| x.program_id()),
+                        &contract_fns,
+                        fallback_fn,
+                        handler,
+                    ) {
+                        all_nodes.push(node)
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        #[allow(clippy::arc_with_non_send_sync)]
+        let ty_module = Arc::new(Self {
+            span: span.clone(),
+            submodules,
+            namespace: ctx.namespace.clone(),
+            all_nodes,
+            attributes: attributes.clone(),
+        });
+
+        // Cache the ty module
+        if let Some(source_id) = span.source_id() {
+            let path = engines.se().get_path(source_id);
+            let version = build_config
+                .and_then(|config| config.lsp_mode.as_ref())
+                .and_then(|lsp| lsp.file_versions.get(&path).copied())
+                .flatten();
+
+            let include_tests = build_config.map_or(false, |x| x.include_tests);
+            let key = ModuleCacheKey::new(path.clone().into(), include_tests);
+            engines.qe().update_typed_module_cache_entry(
+                &key,
+                TypedModuleInfo {
+                    module: ty_module.clone(),
+                    version,
+                },
+            );
+        }
+
+        Ok(ty_module)
     }
 
     // Filter and gather impl items
     fn get_all_impls(
         ctx: TypeCheckContext<'_>,
         nodes: &[AstNode],
-        predicate: fn(&ImplTrait) -> bool,
+        predicate: fn(&ImplSelfOrTrait) -> bool,
     ) -> HashMap<BaseIdent, HashSet<CallPath>> {
         let engines = ctx.engines();
         // Check which structs and enums needs to have auto impl for AbiEncode
@@ -281,14 +503,16 @@ impl ty::TyModule {
         let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();
 
         for node in nodes.iter() {
-            if let AstNodeContent::Declaration(Declaration::ImplTrait(decl_id)) = &node.content {
-                let decl = &*engines.pe().get_impl_trait(decl_id);
+            if let AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(decl_id)) =
+                &node.content
+            {
+                let decl = &*engines.pe().get_impl_self_or_trait(decl_id);
                 let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
                 let implementing_for = match &*implementing_for {
-                    TypeInfo::Struct(decl) => {
-                        Some(ctx.engines().de().get(decl.id()).name().clone())
+                    TypeInfo::Struct(decl_id) => {
+                        Some(ctx.engines().de().get(decl_id).name().clone())
                     }
-                    TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl.id()).name().clone()),
+                    TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl).name().clone()),
                     TypeInfo::Custom {
                         qualified_call_path,
                         ..
@@ -313,23 +537,23 @@ impl ty::TyModule {
     fn type_check_nodes(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        nodes: Vec<AstNode>,
+        nodes: &[AstNode],
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let engines = ctx.engines();
-        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
+        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
 
         let mut typed_nodes = vec![];
         for node in nodes {
-            let auto_impl_abiencode = match &node.content {
+            let auto_impl_encoding_traits = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_struct(decl_id);
-                    all_abiencode_impls.get(&decl.name).is_none()
+                    !all_abiencode_impls.contains_key(&decl.name)
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_enum(decl_id);
-                    all_abiencode_impls.get(&decl.name).is_none()
+                    !all_abiencode_impls.contains_key(&decl.name)
                 }
                 _ => false,
             };
@@ -338,26 +562,83 @@ impl ty::TyModule {
                 continue;
             };
 
-            match (auto_impl_abiencode, AutoImplAbiEncodeContext::new(&mut ctx)) {
-                (true, Some(mut ctx)) => match &node.content {
-                    TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
-                    | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
-                        ctx.auto_impl_abi_encode(engines, decl)
+            if ctx.experimental.new_encoding {
+                let mut generated = vec![];
+                if let (true, Some(mut ctx)) = (
+                    auto_impl_encoding_traits,
+                    EncodingAutoImplContext::new(&mut ctx),
+                ) {
+                    match &node.content {
+                        TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
+                        | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
+                            let (a, b) = ctx.generate(engines, decl);
+                            generated.extend(a);
+                            generated.extend(b);
+                        }
+                        _ => {}
                     }
-                    _ => None,
-                },
-                _ => None,
-            };
+                };
 
-            typed_nodes.push(node);
+                typed_nodes.push(node);
+                typed_nodes.extend(generated);
+            } else {
+                typed_nodes.push(node);
+            }
         }
 
         Ok(typed_nodes)
     }
 }
 
+fn collect_fallback_fn(
+    all_nodes: &[ty::TyAstNode],
+    engines: &Engines,
+    handler: &Handler,
+) -> Result<Option<DeclId<ty::TyFunctionDecl>>, ErrorEmitted> {
+    let mut fallback_fns = all_nodes
+        .iter()
+        .filter_map(|x| match &x.content {
+            ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
+                let d = engines.de().get(&decl.decl_id);
+                d.is_fallback().then_some(decl.decl_id)
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    let mut last_error = None;
+    for f in fallback_fns.iter().skip(1) {
+        let decl = engines.de().get(f);
+        last_error = Some(
+            handler.emit_err(CompileError::MultipleDefinitionsOfFallbackFunction {
+                name: decl.name.clone(),
+                span: decl.span.clone(),
+            }),
+        );
+    }
+
+    if let Some(last_error) = last_error {
+        return Err(last_error);
+    }
+
+    if let Some(fallback_fn) = fallback_fns.pop() {
+        let f = engines.de().get(&fallback_fn);
+        if !f.parameters.is_empty() {
+            Err(
+                handler.emit_err(CompileError::FallbackFnsCannotHaveParameters {
+                    span: f.span.clone(),
+                }),
+            )
+        } else {
+            Ok(Some(fallback_fn))
+        }
+    } else {
+        Ok(None)
+    }
+}
+
 impl ty::TySubmodule {
-    pub fn analyze(
+    pub fn build_dep_graph(
         _handler: &Handler,
         module_dep_graph: &mut ModuleDepGraph,
         mod_name: ModName,
@@ -393,22 +674,44 @@ impl ty::TySubmodule {
         Ok(())
     }
 
+    pub fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        parent_ctx: &mut SymbolCollectionContext,
+        mod_name: ModName,
+        submodule: &ParseSubmodule,
+    ) -> Result<(), ErrorEmitted> {
+        let ParseSubmodule {
+            module,
+            mod_name_span: _,
+            visibility,
+        } = submodule;
+        parent_ctx.enter_submodule(
+            engines,
+            mod_name,
+            *visibility,
+            module.span.clone(),
+            |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
+        )
+    }
+
     pub fn type_check(
         handler: &Handler,
         parent_ctx: TypeCheckContext,
+        engines: &Engines,
         mod_name: ModName,
+        kind: TreeType,
         submodule: &ParseSubmodule,
+        build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
         let ParseSubmodule {
             module,
             mod_name_span,
             visibility,
         } = submodule;
-        let modules_dep_graph = ty::TyModule::analyze(handler, module)?;
-        let module_eval_order = modules_dep_graph.compute_order(handler)?;
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
             let module_res =
-                ty::TyModule::type_check(handler, submod_ctx, module, module_eval_order);
+                ty::TyModule::type_check(handler, submod_ctx, engines, kind, module, build_config);
             module_res.map(|module| ty::TySubmodule {
                 module,
                 mod_name_span: mod_name_span.clone(),

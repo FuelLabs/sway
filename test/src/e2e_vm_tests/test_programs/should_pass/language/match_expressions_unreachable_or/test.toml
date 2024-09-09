@@ -1,0 +1,16 @@
+category = "compile"
+expected_warnings = 2
+
+#check: $()warning
+#sameln: $()Match arm is unreachable
+#check: $()1 => (),
+#nextln: $()Preceding match arms already match all the values that `1 | 1` can match.
+#check: $()1 | 1 => (),
+#nextln: $()Match arm `1 | 1` is unreachable.
+
+#check: $()warning
+#sameln: $()Match arm is unreachable
+#check: $()2 => (),
+#nextln: $()Preceding match arms already match all the values that `1 | 2` can match.
+#check: $()1 | 2 => (),
+#nextln: $()Match arm `1 | 2` is unreachable.

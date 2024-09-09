@@ -6,3 +6,4 @@ name = "regalloc_spill"
 implicit-std = false
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

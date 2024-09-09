@@ -37,7 +37,7 @@ pub struct Network {
     ///
     /// When `true`, await commitment and output the transaction status.
     /// When `false`, do not await confirmation and simply output the transaction ID.
-    #[clap(long = "await", default_value_t = true)]
+    #[clap(long = "await", default_value = "true", action(clap::ArgAction::Set))]
     #[devault("true")]
     pub await_: bool,
 }
@@ -46,6 +46,10 @@ pub struct Network {
 #[derive(Debug, Default, clap::Args)]
 pub struct TxStatus {
     /// Output the resulting transaction status as JSON rather than the default output.
-    #[clap(long = "tx-status-json", default_value_t = false)]
+    #[clap(
+        long = "tx-status-json",
+        default_value = "false",
+        action(clap::ArgAction::Set)
+    )]
     pub json: bool,
 }

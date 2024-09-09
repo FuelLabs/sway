@@ -20,7 +20,7 @@ use super::{
 /// http://moscova.inria.fr/%7Emaranget/papers/warn/warn004.html
 ///
 /// Implemented in Rust here:
-/// https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
+/// https://doc.rust-lang.org/1.75.0/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
 ///
 /// ---
 ///
@@ -129,7 +129,7 @@ use super::{
 /// `2`, any cases that the pattern `2` covers would previously be caught by the
 /// catchall pattern.
 ///
-/// Usefulness used in the exhaustivity algorithm.
+/// Usefulness is used in the exhaustivity algorithm.
 ///
 /// # Witnesses
 ///
@@ -148,11 +148,11 @@ use super::{
 /// }
 /// ```
 ///
-/// the witness for pattern `1` would be the pattern "1" as the pattern `1`
+/// the witness for pattern `1` would be the value "1" as the pattern `1`
 /// would catch the concrete hypothetical matched value "1" and no other
 /// previous cases would have caught it. The witness for pattern `_` is an
 /// or-pattern of all of the remaining integers they wouldn't be caught by `0`
-/// and `1`, so "3 | .. | MAX".
+/// and `1`, so "2 | .. | MAX".
 ///
 /// Given:
 ///
@@ -166,7 +166,7 @@ use super::{
 /// }
 /// ```
 ///
-/// the pattern `1` (noted with an arrow) would not have any witnesses as there
+/// the pattern `1` (noted with an arrow) would not have any witnesses
 /// that it catches that are not caught by previous patterns.
 ///
 /// # Putting it all together
@@ -183,7 +183,7 @@ use super::{
 ///
 /// # Details
 ///
-/// This algorithm checks is a match expression is exhaustive and if its match
+/// This algorithm checks if a match expression is exhaustive and if its match
 /// arms are reachable by applying the above definitions of usefulness and
 /// witnesses. This algorithm sequentially creates a [WitnessReport] for every
 /// match arm by calling *U(P, q)*, where *P* is the [Matrix] of patterns seen
@@ -205,7 +205,7 @@ pub(crate) fn check_match_expression_usefulness(
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
 
-    // If the provided type does has no valid constructor and there are no
+    // If the provided type does not have a valid constructor and there are no
     // branches in the match expression (i.e. no scrutinees to check), then
     // every scrutinee (i.e. 0 scrutinees) are useful! We return early in this
     // case.
@@ -489,7 +489,7 @@ fn is_useful_or(
 ) -> Result<WitnessReport, ErrorEmitted> {
     let (_, q_rest) = q.split_first(handler, span)?;
     let mut p = p.clone();
-    let mut witness_report = WitnessReport::Witnesses(PatStack::empty());
+    let mut witness_report = WitnessReport::NoWitnesses;
     for pat in pats.into_iter() {
         // 1. For each *k* 0..*a* compute *q'* as \[*rₖ q₂ ... qₙ*\].
         let mut v = PatStack::from_pattern(pat);

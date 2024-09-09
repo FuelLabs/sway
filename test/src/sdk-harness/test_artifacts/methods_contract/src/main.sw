@@ -24,11 +24,13 @@ storage {
 impl MethodsContract for Contract {
     #[storage(read, write)]
     fn test_function() -> bool {
-        let identity = bogus();
-        let identity2 = bogus2();
-        storage.stored_struct.write(MyStruct {
-            int_option: Some(99u64),
-        });
+        let _ = bogus();
+        let _ = bogus2();
+        storage
+            .stored_struct
+            .write(MyStruct {
+                int_option: Some(99u64),
+            });
         let stored_struct = storage.stored_struct.read();
         let stored_option_in_struct = stored_struct.int_option;
         require(stored_option_in_struct.is_some(), "Error");

@@ -9,18 +9,32 @@ fn dereference_array<T>()
     where T: TestInstance + Eq
 {
     let mut array = [T::new(), T::different()];
+
     let r_array = &array;
     let r_r_array = &r_array;
     let r_r_r_array = &r_r_array;
 
+    let mut r_mut_array = &mut array;
+    let mut r_mut_r_mut_array = &mut r_mut_array;
+    let r_mut_r_mut_r_mut_array = &mut r_mut_r_mut_array;
+
     assert(r_array[0] == array[0]);
     assert(r_array[1] == array[1]);
+
+    assert(r_mut_array[0] == array[0]);
+    assert(r_mut_array[1] == array[1]);
 
     assert(r_r_array[0] == array[0]);
     assert(r_r_array[1] == array[1]);
 
+    assert(r_mut_r_mut_array[0] == array[0]);
+    assert(r_mut_r_mut_array[1] == array[1]);
+
     assert(r_r_r_array[0] == array[0]);
     assert(r_r_r_array[1] == array[1]);
+
+    assert(r_mut_r_mut_r_mut_array[0] == array[0]);
+    assert(r_mut_r_mut_r_mut_array[1] == array[1]);
 
     array[0] = T::different();
     array[1] = T::new();
@@ -28,11 +42,20 @@ fn dereference_array<T>()
     assert(r_array[0] == array[0]);
     assert(r_array[1] == array[1]);
 
+    assert(r_mut_array[0] == array[0]);
+    assert(r_mut_array[1] == array[1]);
+
     assert(r_r_array[0] == array[0]);
     assert(r_r_array[1] == array[1]);
 
+    assert(r_mut_r_mut_array[0] == array[0]);
+    assert(r_mut_r_mut_array[1] == array[1]);
+
     assert(r_r_r_array[0] == array[0]);
     assert(r_r_r_array[1] == array[1]);
+
+    assert(r_mut_r_mut_r_mut_array[0] == array[0]);
+    assert(r_mut_r_mut_r_mut_array[1] == array[1]);
 }
 
 #[inline(never)]
@@ -87,6 +110,18 @@ fn dereference_array_of_refs<T>()
     assert(r_r_r_array_of_refs[1][1] == array[1]);
 
     let r = & & & & &[& & &array, & & &array, & & &array];
+
+    let mut j = 0;
+    let mut k = 0;
+    while j < 3 {
+        while k < 2 {
+            assert(r[j][k] == array[k]);
+            k += 1;
+        }
+        j += 1;
+    } 
+
+    let r = & & & & &[&mut &mut &mut array, &mut &mut &mut array, &mut &mut &mut array];
 
     let mut j = 0;
     let mut k = 0;

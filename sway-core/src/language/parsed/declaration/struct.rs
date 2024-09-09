@@ -1,5 +1,11 @@
-use crate::{language::Visibility, transform, type_system::TypeParameter, TypeArgument};
-use sway_types::{ident::Ident, span::Span};
+use crate::{
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::Visibility,
+    transform,
+    type_system::TypeParameter,
+    TypeArgument,
+};
+use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration {
@@ -11,6 +17,31 @@ pub struct StructDeclaration {
     pub(crate) span: Span,
 }
 
+impl EqWithEngines for StructDeclaration {}
+impl PartialEqWithEngines for StructDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name
+            && self.type_parameters.eq(&other.type_parameters, ctx)
+            && self.attributes == other.attributes
+            && self.fields.eq(&other.fields, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
+            && self.visibility == other.visibility
+            && self.span == other.span
+    }
+}
+
+impl Named for StructDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for StructDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StructField {
     pub visibility: Visibility,
@@ -18,4 +49,15 @@ pub struct StructField {
     pub attributes: transform::AttributesMap,
     pub(crate) span: Span,
     pub type_argument: TypeArgument,
+}
+
+impl EqWithEngines for StructField {}
+impl PartialEqWithEngines for StructField {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.visibility == other.visibility
+            && self.name == other.name
+            && self.attributes == other.attributes
+            && self.span == other.span
+            && self.type_argument.eq(&other.type_argument, ctx)
+    }
 }

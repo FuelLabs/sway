@@ -4,3 +4,6 @@ entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
 name = "multi_impl_self"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

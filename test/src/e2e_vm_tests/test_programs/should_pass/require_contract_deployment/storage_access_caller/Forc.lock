@@ -1,21 +1,22 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-323E392CC41F43FA'
+name = "core"
+source = "path+from-root-323E392CC41F43FA"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-323E392CC41F43FA'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-323E392CC41F43FA"
+dependencies = ["core"]
 
 [[package]]
-name = 'storage_access_abi'
-source = 'path+from-root-323E392CC41F43FA'
-dependencies = ['core']
+name = "storage_access_abi"
+source = "path+from-root-323E392CC41F43FA"
+dependencies = ["core"]
 
 [[package]]
-name = 'storage_access_caller'
-source = 'member'
+name = "storage_access_caller"
+source = "member"
 dependencies = [
-    'std',
-    'storage_access_abi',
+    "core",
+    "std",
+    "storage_access_abi",
 ]

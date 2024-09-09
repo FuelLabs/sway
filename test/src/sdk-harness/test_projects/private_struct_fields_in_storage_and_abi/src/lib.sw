@@ -7,10 +7,7 @@ pub struct CanInitStruct {
 
 impl CanInitStruct {
     pub fn init(x: u64, y: u64) -> Self {
-        Self {
-            x,
-            y,
-        }
+        Self { x, y }
     }
 }
 
@@ -28,10 +25,7 @@ pub struct CannotInitStruct {
 impl CannotInitStruct {
     pub fn init(x: u64, y: u64) -> Self {
         // Cannot evaluate to constant because of `return`.
-        return Self {
-            x,
-            y,
-        };
+        return Self { x, y };
     }
 }
 

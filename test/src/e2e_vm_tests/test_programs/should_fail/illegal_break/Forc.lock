@@ -1,3 +1,8 @@
 [[package]]
-name = 'illegal_break'
-source = 'member'
+name = "core"
+source = "path+from-root-44425D2022F2E5F2"
+
+[[package]]
+name = "illegal_break"
+source = "member"
+dependencies = ["core"]

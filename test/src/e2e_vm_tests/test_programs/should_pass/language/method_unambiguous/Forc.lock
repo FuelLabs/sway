@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-13393DAFAC4DB2CA"
+
+[[package]]
+name = "method_unambiguous"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-13393DAFAC4DB2CA"
+dependencies = ["core"]

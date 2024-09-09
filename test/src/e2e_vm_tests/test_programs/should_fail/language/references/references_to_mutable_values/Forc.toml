@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "references_to_mutable_values"
+
+[dependencies]
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-assert" }

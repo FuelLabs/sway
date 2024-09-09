@@ -19,6 +19,7 @@ pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
     full_span: Span,
     handler: &'e Handler,
+    pub check_double_underscore: bool,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
@@ -27,6 +28,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
             handler,
+            check_double_underscore: true,
         }
     }
 
@@ -79,7 +81,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// This function will fork the current parse, and call the parsing function.
     /// If it succeeds it will sync the original parser with the forked one;
     ///
-    /// If it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    /// If it fails it will return a `Recoverer` together with the `ErrorEmitted`.
     ///
     /// This recoverer can be used to put the forked parsed back in track and then
     /// sync the original parser to allow the parsing to continue.
@@ -96,6 +98,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match parsing_function(&mut fork) {
@@ -124,7 +127,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// This function will fork the current parse, and try to parse
     /// T using the fork. If it succeeds it will sync the original parser with the forked one;
     ///
-    /// If it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    /// If it fails it will return a `Recoverer` together with the `ErrorEmitted`.
     ///
     /// This recoverer can be used to put the forked parsed back in track and then
     /// sync the original parser to allow the parsing to continue.
@@ -139,7 +142,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// 2 - it forks the current parser and tries to parse
     /// T using this fork. If it succeeds it syncs the original
     /// parser with the forked one;
-    /// 3 - if it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    /// 3 - if it fails it will return a `Recoverer` together with the `ErrorEmitted`.
     ///
     /// This recoverer can be used to put the forked parsed back in track and then
     /// sync the original parser to allow the parsing to continue.
@@ -155,6 +158,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match fork.parse() {
@@ -188,6 +192,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
         let r = match T::parse(&mut fork) {
             Ok(result) => {
@@ -200,6 +205,18 @@ impl<'a, 'e> Parser<'a, 'e> {
             self.handler.append(handler);
         }
         r
+    }
+
+    /// This method is useful if `T` does not impl `ParseToEnd`
+    pub fn try_parse_and_check_empty<T: Parse>(
+        mut self,
+        append_diagnostics: bool,
+    ) -> ParseResult<Option<(T, ParserConsumed<'a>)>> {
+        let value = self.try_parse(append_diagnostics)?;
+        match self.check_empty() {
+            Some(consumed) => Ok(Some((value, consumed))),
+            None => Ok(None),
+        }
     }
 
     /// Parses a `T` in its canonical way.
@@ -218,13 +235,23 @@ impl<'a, 'e> Parser<'a, 'e> {
         T::parse_to_end(self)
     }
 
-    pub fn try_parse_to_end<T: Parse>(mut self) -> ParseResult<Option<(T, ParserConsumed<'a>)>> {
-        let value = self.parse()?;
-        let consumed = match self.check_empty() {
-            Some(consumed) => consumed,
-            None => return Ok(None),
+    /// Do not advance the parser on failure
+    pub fn try_parse_to_end<T: ParseToEnd>(
+        &mut self,
+        append_diagnostics: bool,
+    ) -> ParseResult<(T, ParserConsumed<'a>)> {
+        let handler = Handler::default();
+        let fork = Parser {
+            token_trees: self.token_trees,
+            full_span: self.full_span.clone(),
+            handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
-        Ok(Some((value, consumed)))
+        let r = T::parse_to_end(fork);
+        if append_diagnostics {
+            self.handler.append(handler);
+        }
+        r
     }
 
     pub fn enter_delimited(
@@ -244,6 +271,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     token_trees: token_stream.token_trees(),
                     full_span: token_stream.span(),
                     handler: self.handler,
+                    check_double_underscore: self.check_double_underscore,
                 };
                 Some((parser, span.clone()))
             }
@@ -293,7 +321,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             };
 
             let current_span = current_token.span();
-            let current_span_line = current_span.start_pos().line_col().0;
+            let current_span_line = current_span.start_pos().line_col().line;
 
             if current_span_line != line {
                 break;
@@ -393,7 +421,7 @@ impl<'a> Peeker<'a> {
             TokenTree::Punct(Punct { span, .. }) => span,
             _ => unreachable!(),
         };
-        let span = Span::join(span_start.clone(), span_end.clone());
+        let span = Span::join(span_start.clone(), span_end);
         *self.num_tokens = punct_kinds.len();
         Ok(span)
     }
@@ -445,7 +473,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             self.last_consumed_token()
                 .map(|x| x.span())
                 .or_else(|| self.fork_token_trees.first().map(|x| x.span()))
-                .map(|x| x.start_pos().line_col().0)
+                .map(|x| x.start_pos().line_col().line)
         };
 
         self.start(|p| {
@@ -458,7 +486,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         })
     }
 
-    /// Starts the parser recovery proces calling the callback with the forked parser.
+    /// Starts the parser recovery process calling the callback with the forked parser.
     /// All the changes to this forked parser will be imposed into the original parser,
     /// including diagnostics.
     pub fn start<'this>(
@@ -469,6 +497,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             token_trees: self.fork_token_trees,
             full_span: self.fork_full_span.clone(),
             handler: &self.handler,
+            check_double_underscore: self.original.borrow().check_double_underscore,
         };
         f(&mut p);
         self.finish(p)
@@ -499,7 +528,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
     /// This return a span encopassing all tokens that were consumed by the `p` since the start
     /// of the tentative parsing
     ///
-    /// Thsi is useful to show one single error for all the consumed tokens.
+    /// This is useful to show one single error for all the consumed tokens.
     pub fn diff_span<'this>(&self, p: &Parser<'a, 'this>) -> Span {
         let original = self.original.borrow_mut();
 

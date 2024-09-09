@@ -1,4 +1,0 @@
-category = "fail"
-
-#check: $()C1: u64 = 5,
-#nextln: $()This is a constant, not a variable.

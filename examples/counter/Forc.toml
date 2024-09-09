@@ -5,4 +5,5 @@ license = "Apache-2.0"
 name = "counter"
 
 [dependencies]
+core = { path = "../../sway-lib-core" }
 std = { path = "../../sway-lib-std" }

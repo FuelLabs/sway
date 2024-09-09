@@ -1,0 +1,9 @@
+category = "fail"
+
+#check: $()Used feature is currently not implemented
+#check: $()let _ = match array {
+#nextln: $()Matched value has type "[u64; 3]". Matching on this type is currently not implemented.
+
+#check: $()Used feature is currently not implemented
+#check: $()let _ = match array_alias {
+#nextln: $()Matched value has type "[u64; 3]". Matching on this type is currently not implemented.

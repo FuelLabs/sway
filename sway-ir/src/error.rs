@@ -21,6 +21,7 @@ pub enum IrError {
     VerifyBinaryOpIncorrectArgType,
     VerifyBitcastBetweenInvalidTypes(String, String),
     VerifyBitcastUnknownSourceType,
+    VerifyEntryBlockHasPredecessors(String, Vec<String>),
     VerifyBlockArgMalformed,
     VerifyBranchParamsMismatch,
     VerifyBranchToMissingBlock(String),
@@ -32,8 +33,8 @@ pub enum IrError {
     VerifyConditionExprNotABool,
     VerifyContractCallBadTypes(String),
     VerifyGepElementTypeNonPointer,
-    VerifyGepFromNonPointer(String),
-    VerifyGepInconsistentTypes,
+    VerifyGepFromNonPointer(String, Option<Value>),
+    VerifyGepInconsistentTypes(String, Option<crate::Value>),
     VerifyGepOnNonAggregate,
     VerifyGetNonExistentPointer,
     VerifyInsertElementOfIncorrectType,
@@ -63,14 +64,27 @@ pub enum IrError {
     VerifyStateDestBadType(String),
     VerifyStateKeyBadType,
     VerifyStateKeyNonPointer(String),
-    VerifyStoreMismatchedTypes,
+    VerifyStoreMismatchedTypes(Option<Value>),
     VerifyStoreToNonPointer(String),
     VerifyUntypedValuePassedToFunction,
+}
+impl IrError {
+    pub(crate) fn get_problematic_value(&self) -> Option<&Value> {
+        match self {
+            Self::VerifyGepFromNonPointer(_, v) => v.as_ref(),
+            Self::VerifyGepInconsistentTypes(_, v) => v.as_ref(),
+            Self::VerifyStoreMismatchedTypes(v) => v.as_ref(),
+            _ => None,
+        }
+    }
 }
 
 impl std::error::Error for IrError {}
 
 use std::fmt;
+
+use crate::Value;
+use itertools::Itertools;
 
 impl fmt::Display for IrError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -191,10 +205,14 @@ impl fmt::Display for IrError {
             IrError::VerifyGepElementTypeNonPointer => {
                 write!(f, "Verification failed: GEP on a non-pointer.")
             }
-            IrError::VerifyGepInconsistentTypes => {
-                write!(f, "Verification failed: Struct field type mismatch.")
+            IrError::VerifyGepInconsistentTypes(error, _) => {
+                write!(
+                    f,
+                    "Verification failed: Struct field type mismatch: ({}).",
+                    error
+                )
             }
-            IrError::VerifyGepFromNonPointer(ty) => {
+            IrError::VerifyGepFromNonPointer(ty, _) => {
                 write!(
                     f,
                     "Verification failed: Struct access must be to a pointer value, not a {ty}."
@@ -261,6 +279,27 @@ impl fmt::Display for IrError {
                 "Verification failed: \
                 Function {fn_str} return type must match its RET instructions."
             ),
+            IrError::VerifyEntryBlockHasPredecessors(function_name, predecessors) => {
+                let plural_s = if predecessors.len() == 1 { "" } else { "s" };
+                write!(
+                    f,
+                    "Verification failed: Entry block of the function \"{function_name}\" has {}predecessor{}. \
+                     The predecessor{} {} {}.",
+                    if predecessors.len() == 1 {
+                        "a "
+                    } else {
+                        ""
+                    },
+                    plural_s,
+                    plural_s,
+                    if predecessors.len() == 1 {
+                        "is"
+                    } else {
+                        "are"
+                    },
+                    predecessors.iter().map(|block_label| format!("\"{block_label}\"")).collect_vec().join(", ")
+                )
+            }
             IrError::VerifyBlockArgMalformed => {
                 write!(f, "Verification failed: Block argument is malformed")
             }
@@ -313,7 +352,7 @@ impl fmt::Display for IrError {
                     "Verification failed: State access operation must be to a {ty} pointer."
                 )
             }
-            IrError::VerifyStoreMismatchedTypes => {
+            IrError::VerifyStoreMismatchedTypes(_) => {
                 write!(
                     f,
                     "Verification failed: Store value and pointer type mismatch."

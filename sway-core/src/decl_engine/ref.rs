@@ -29,8 +29,8 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
-        TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+        self, TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl,
+        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -40,7 +40,7 @@ pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
 pub type DeclRefTrait = DeclRef<DeclId<TyTraitDecl>>;
 pub type DeclRefTraitFn = DeclRef<DeclId<TyTraitFn>>;
 pub type DeclRefTraitType = DeclRef<DeclId<TyTraitType>>;
-pub type DeclRefImplTrait = DeclRef<DeclId<TyImplTrait>>;
+pub type DeclRefImplTrait = DeclRef<DeclId<TyImplSelfOrTrait>>;
 pub type DeclRefStruct = DeclRef<DeclId<TyStructDecl>>;
 pub type DeclRefStorage = DeclRef<DeclId<TyStorageDecl>>;
 pub type DeclRefAbi = DeclRef<DeclId<TyAbiDecl>>;
@@ -62,10 +62,6 @@ pub struct DeclRef<I> {
     /// The index into the [DeclEngine].
     id: I,
 
-    /// The type substitution list to apply to the `id` field for type
-    /// monomorphization.
-    subst_list: SubstList,
-
     /// The [Span] of the entire declaration.
     decl_span: Span,
 }
@@ -75,7 +71,6 @@ impl<I> DeclRef<I> {
         DeclRef {
             name,
             id,
-            subst_list: SubstList::new(),
             decl_span,
         }
     }
@@ -86,10 +81,6 @@ impl<I> DeclRef<I> {
 
     pub fn id(&self) -> &I {
         &self.id
-    }
-
-    pub(crate) fn subst_list(&self) -> &SubstList {
-        &self.subst_list
     }
 
     pub fn decl_span(&self) -> &Span {
@@ -105,18 +96,27 @@ impl<T> DeclRef<DeclId<T>> {
 
 impl<T> DeclRef<DeclId<T>>
 where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
+    DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
+    T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,
         type_mapping: &TypeSubstMap,
-        engines: &Engines,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.insert(decl)
+        ctx: &SubstTypesContext,
+    ) -> Option<Self> {
+        let decl_engine = ctx.engines.de();
+        if type_mapping.source_ids_contains_concrete_type(ctx.engines)
+            || !decl_engine.get(&self.id).is_concrete(ctx.engines)
+        {
+            let mut decl = (*decl_engine.get(&self.id)).clone();
+            if decl.subst(type_mapping, ctx).has_changes() {
+                Some(decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref()))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -138,41 +138,31 @@ where
 impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
+    DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
+    T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
         type_mapping: &TypeSubstMap,
-        engines: &Engines,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone,
-{
-    pub(crate) fn replace_decls_and_insert_new_with_parent(
-        &self,
-        decl_mapping: &DeclMapping,
-        handler: &Handler,
-        ctx: &mut TypeCheckContext,
-    ) -> Result<Self, ErrorEmitted> {
-        let decl_engine = ctx.engines().de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.replace_decls(decl_mapping, handler, ctx)?;
-        Ok(decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into()))
+        ctx: &SubstTypesContext,
+    ) -> Option<Self> {
+        let decl_engine = ctx.engines.de();
+        if type_mapping.source_ids_contains_concrete_type(ctx.engines)
+            || !decl_engine.get(&self.id).is_concrete(ctx.engines)
+        {
+            let mut decl = (*decl_engine.get(&self.id)).clone();
+            if decl.subst(type_mapping, ctx).has_changes() {
+                Some(
+                    decl_engine
+                        .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
+                        .with_parent(decl_engine, self.id.into()),
+                )
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -182,13 +172,14 @@ where
     T: Named + Spanned + PartialEqWithEngines + EqWithEngines,
 {
 }
+
 impl<T> PartialEqWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + PartialEqWithEngines,
 {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let decl_engine = engines.de();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let decl_engine = ctx.engines().de();
         let DeclRef {
             name: ln,
             id: lid,
@@ -196,7 +187,6 @@ where
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
             // temporarily omitted
-            subst_list: _,
         } = self;
         let DeclRef {
             name: rn,
@@ -205,9 +195,8 @@ where
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
             // temporarily omitted
-            subst_list: _,
         } = other;
-        ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines)
+        ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
     }
 }
 
@@ -224,8 +213,6 @@ where
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             decl_span: _,
-            // temporarily omitted
-            subst_list: _,
         } = self;
         name.hash(state);
         decl_engine.get(id).hash(state, engines);
@@ -234,18 +221,18 @@ where
 
 impl EqWithEngines for DeclRefMixedInterface {}
 impl PartialEqWithEngines for DeclRefMixedInterface {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let decl_engine = engines.de();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let decl_engine = ctx.engines().de();
         match (&self.id, &other.id) {
             (InterfaceDeclId::Abi(self_id), InterfaceDeclId::Abi(other_id)) => {
                 let left = decl_engine.get(self_id);
                 let right = decl_engine.get(other_id);
-                self.name == other.name && left.eq(&right, engines)
+                self.name == other.name && left.eq(&right, ctx)
             }
             (InterfaceDeclId::Trait(self_id), InterfaceDeclId::Trait(other_id)) => {
                 let left = decl_engine.get(self_id);
                 let right = decl_engine.get(other_id);
-                self.name == other.name && left.eq(&right, engines)
+                self.name == other.name && left.eq(&right, ctx)
             }
             _ => false,
         }
@@ -282,11 +269,15 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        let decl_engine = engines.de();
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+        let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(self.id, decl);
+        if decl.subst(type_mapping, ctx).has_changes() {
+            decl_engine.replace(self.id, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 
@@ -296,7 +287,7 @@ impl ReplaceDecls for DeclRefFunction {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
 
@@ -309,10 +300,14 @@ impl ReplaceDecls for DeclRefFunction {
             func.implementing_for_typeid,
             ctx.self_type(),
         )? {
-            if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
-                self.id = new_decl_ref;
-            }
-            return Ok(());
+            return Ok(
+                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                    self.id = new_decl_ref;
+                    true
+                } else {
+                    false
+                },
+            );
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
@@ -323,13 +318,17 @@ impl ReplaceDecls for DeclRefFunction {
                 func.implementing_for_typeid,
                 ctx.self_type(),
             )? {
-                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
-                    self.id = new_decl_ref;
-                }
-                return Ok(());
+                return Ok(
+                    if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                        self.id = new_decl_ref;
+                        true
+                    } else {
+                        false
+                    },
+                );
             }
         }
-        Ok(())
+        Ok(false)
     }
 }
 

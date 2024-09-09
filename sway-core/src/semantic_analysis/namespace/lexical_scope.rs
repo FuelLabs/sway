@@ -1,36 +1,57 @@
 use crate::{
-    decl_engine::*,
-    engine_threading::Engines,
+    decl_engine::{parsed_engine::ParsedDeclEngineGet, parsed_id::ParsedDeclId, *},
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
+        parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
-        CallPath,
+        CallPath, Visibility,
     },
     namespace::*,
     semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
     type_system::*,
 };
 
-use super::TraitMap;
+use super::{root::ResolvedDeclaration, TraitMap};
 
+use parking_lot::RwLock;
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext},
+    error::{CompileError, ShadowingSource, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, IdentUnique, Spanned};
 
 use std::sync::Arc;
 
-/// Is this a glob (`use foo::*;`) import?
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum GlobImport {
-    Yes,
-    No,
+pub enum ResolvedFunctionDecl {
+    Parsed(ParsedDeclId<FunctionDeclaration>),
+    Typed(DeclRefFunction),
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
-// The final `bool` field of `UseSynonyms` is true if the `Vec<Ident>` path is absolute.
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl, bool)>;
-pub(super) type UseAliases = im::HashMap<String, Ident>;
+impl ResolvedFunctionDecl {
+    pub fn expect_typed(self) -> DeclRefFunction {
+        match self {
+            ResolvedFunctionDecl::Parsed(_) => panic!(),
+            ResolvedFunctionDecl::Typed(fn_ref) => fn_ref,
+        }
+    }
+}
+
+pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
+pub(super) type SymbolUniqueMap = im::OrdMap<IdentUnique, ResolvedDeclaration>;
+
+type SourceIdent = Ident;
+
+pub(super) type GlobSynonyms =
+    im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
+pub(super) type ItemSynonyms = im::HashMap<
+    Ident,
+    (
+        Option<SourceIdent>,
+        ModulePathBuf,
+        ResolvedDeclaration,
+        Visibility,
+    ),
+>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -55,19 +76,28 @@ pub struct LexicalScope {
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Items {
-    /// An ordered map from `Ident`s to their associated typed declarations.
+    /// An ordered map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
+
+    /// An ordered map from `IdentUnique`s to their associated declarations.
+    /// This uses an Arc<RwLock<SymbolUniqueMap>> so it is shared between all
+    /// Items clones. This is intended so we can keep the symbols of previous
+    /// lexical scopes while collecting_unifications scopes.
+    pub(crate) symbols_unique_while_collecting_unifications: Arc<RwLock<SymbolUniqueMap>>,
+
     pub(crate) implemented_traits: TraitMap,
-    /// Represents the absolute path from which a symbol was imported.
+    /// Contains symbols imported using star imports (`use foo::*`.).
     ///
-    /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
-    /// path `foo::bar::Baz`.
-    pub(crate) use_synonyms: UseSynonyms,
-    /// Represents an alternative name for an imported symbol.
+    /// When star importing from multiple modules the same name may be imported more than once. This
+    /// is not an error, but it is an error to use the name without a module path. To represent
+    /// this, use_glob_synonyms maps identifiers to a vector of (module path, type declaration)
+    /// tuples.
+    pub(crate) use_glob_synonyms: GlobSynonyms,
+    /// Contains symbols imported using item imports (`use foo::bar`).
     ///
-    /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
-    /// alias for `bar`.
-    pub(crate) use_aliases: UseAliases,
+    /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
+    /// as the optional source identifier for error reporting purposes.
+    pub(crate) use_item_synonyms: ItemSynonyms,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
 }
@@ -78,12 +108,14 @@ impl Items {
         &self.symbols
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_storage_load(
         &self,
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
-        fields: Vec<Ident>,
+        namespace_names: &[Ident],
+        fields: &[Ident],
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
@@ -94,6 +126,7 @@ impl Items {
                     handler,
                     engines,
                     namespace,
+                    namespace_names,
                     fields,
                     storage_fields,
                     storage_keyword_span,
@@ -123,15 +156,251 @@ impl Items {
         self.symbols().keys()
     }
 
-    pub(crate) fn insert_symbol(
+    pub(crate) fn insert_parsed_symbol(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
+        name: Ident,
+        item: Declaration,
+        const_shadowing_mode: ConstShadowingMode,
+        generic_shadowing_mode: GenericShadowingMode,
+    ) -> Result<(), ErrorEmitted> {
+        self.insert_symbol(
+            handler,
+            engines,
+            name,
+            ResolvedDeclaration::Parsed(item),
+            const_shadowing_mode,
+            generic_shadowing_mode,
+            false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn insert_typed_symbol(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
+        collecting_unifications: bool,
     ) -> Result<(), ErrorEmitted> {
-        let append_shadowing_error =
+        self.insert_symbol(
+            handler,
+            engines,
+            name,
+            ResolvedDeclaration::Typed(item),
+            const_shadowing_mode,
+            generic_shadowing_mode,
+            collecting_unifications,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn insert_symbol(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        name: Ident,
+        item: ResolvedDeclaration,
+        const_shadowing_mode: ConstShadowingMode,
+        generic_shadowing_mode: GenericShadowingMode,
+        collecting_unifications: bool,
+    ) -> Result<(), ErrorEmitted> {
+        let parsed_decl_engine = engines.pe();
+        let decl_engine = engines.de();
+
+        #[allow(unused)]
+        let append_shadowing_error_parsed =
+            |ident: &Ident,
+             decl: &Declaration,
+             is_use: bool,
+             is_alias: bool,
+             item: &Declaration,
+             const_shadowing_mode: ConstShadowingMode| {
+                use Declaration::*;
+                match (
+                    ident,
+                    decl,
+                    is_use,
+                    is_alias,
+                    &item,
+                    const_shadowing_mode,
+                    generic_shadowing_mode,
+                ) {
+                    // A general remark for using the `ShadowingSource::LetVar`.
+                    // If the shadowing is detected at this stage, the variable is for
+                    // sure a local variable, because in the case of pattern matching
+                    // struct field variables, the error is already reported and
+                    // the compilation do not proceed to the point of inserting
+                    // the pattern variable into the items.
+
+                    // variable shadowing a constant
+                    (
+                        constant_ident,
+                        ConstantDeclaration(decl_id),
+                        is_imported_constant,
+                        is_alias,
+                        VariableDeclaration { .. },
+                        _,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantsCannotBeShadowed {
+                            shadowing_source: ShadowingSource::LetVar,
+                            name: (&name).into(),
+                            constant_span: constant_ident.span(),
+                            constant_decl_span: if is_imported_constant {
+                                parsed_decl_engine.get(decl_id).span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
+                        });
+                    }
+                    // variable shadowing a configurable
+                    (
+                        configurable_ident,
+                        ConfigurableDeclaration(_),
+                        _,
+                        _,
+                        VariableDeclaration { .. },
+                        _,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::LetVar,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
+                        });
+                    }
+                    // constant shadowing a constant sequentially
+                    (
+                        constant_ident,
+                        ConstantDeclaration(decl_id),
+                        is_imported_constant,
+                        is_alias,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::Sequential,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantsCannotBeShadowed {
+                            shadowing_source: ShadowingSource::Const,
+                            name: (&name).into(),
+                            constant_span: constant_ident.span(),
+                            constant_decl_span: if is_imported_constant {
+                                parsed_decl_engine.get(decl_id).span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
+                        });
+                    }
+                    // constant shadowing a configurable sequentially
+                    (
+                        configurable_ident,
+                        ConfigurableDeclaration(_),
+                        _,
+                        _,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::Sequential,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::Const,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
+                        });
+                    }
+                    // constant shadowing a variable
+                    (_, VariableDeclaration(decl_id), _, _, ConstantDeclaration { .. }, _, _) => {
+                        handler.emit_err(CompileError::ConstantShadowsVariable {
+                            name: (&name).into(),
+                            variable_span: parsed_decl_engine.get(decl_id).name.span(),
+                        });
+                    }
+                    // constant shadowing a constant item-style (outside of a function body)
+                    (
+                        constant_ident,
+                        ConstantDeclaration { .. },
+                        _,
+                        _,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
+                        });
+                    }
+                    // constant shadowing a configurable item-style (outside of a function body)
+                    (
+                        configurable_ident,
+                        ConfigurableDeclaration { .. },
+                        _,
+                        _,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Configurable",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: configurable_ident.span(),
+                        });
+                    }
+                    // configurable shadowing a constant item-style (outside of a function body)
+                    (
+                        constant_ident,
+                        ConstantDeclaration { .. },
+                        _,
+                        _,
+                        ConfigurableDeclaration { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Configurable",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
+                        });
+                    }
+                    // type or type alias shadowing another type or type alias
+                    // trait/abi shadowing another trait/abi
+                    // type or type alias shadowing a trait/abi, or vice versa
+                    (
+                        _,
+                        StructDeclaration { .. }
+                        | EnumDeclaration { .. }
+                        | TypeAliasDeclaration { .. }
+                        | TraitDeclaration { .. }
+                        | AbiDeclaration { .. },
+                        _,
+                        _,
+                        StructDeclaration { .. }
+                        | EnumDeclaration { .. }
+                        | TypeAliasDeclaration { .. }
+                        | TraitDeclaration { .. }
+                        | AbiDeclaration { .. },
+                        _,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::MultipleDefinitionsOfName {
+                            name: name.clone(),
+                            span: name.span(),
+                        });
+                    }
+                    _ => {}
+                }
+            };
+
+        let append_shadowing_error_typed =
             |ident: &Ident,
              decl: &ty::TyDecl,
              is_use: bool,
@@ -148,6 +417,13 @@ impl Items {
                     const_shadowing_mode,
                     generic_shadowing_mode,
                 ) {
+                    // A general remark for using the `ShadowingSource::LetVar`.
+                    // If the shadowing is detected at this stage, the variable is for
+                    // sure a local variable, because in the case of pattern matching
+                    // struct field variables, the error is already reported and
+                    // the compilation do not proceed to the point of inserting
+                    // the pattern variable into the items.
+
                     // variable shadowing a constant
                     (
                         constant_ident,
@@ -159,15 +435,23 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
-                            variable_or_constant: "Variable".to_string(),
+                            shadowing_source: ShadowingSource::LetVar,
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                            constant_decl_span: if is_imported_constant {
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
                             is_alias,
+                        });
+                    }
+                    // variable shadowing a configurable
+                    (configurable_ident, ConfigurableDecl(_), _, _, VariableDecl { .. }, _, _) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::LetVar,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
                         });
                     }
                     // constant shadowing a constant sequentially
@@ -181,15 +465,31 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
-                            variable_or_constant: "Constant".to_string(),
+                            shadowing_source: ShadowingSource::Const,
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                            constant_decl_span: if is_imported_constant {
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
                             is_alias,
+                        });
+                    }
+                    // constant shadowing a configurable sequentially
+                    (
+                        configurable_ident,
+                        ConfigurableDecl(_),
+                        _,
+                        _,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::Sequential,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::Const,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
                         });
                     }
                     // constant shadowing a variable
@@ -201,7 +501,7 @@ impl Items {
                     }
                     // constant shadowing a constant item-style (outside of a function body)
                     (
-                        _,
+                        constant_ident,
                         ConstantDecl { .. },
                         _,
                         _,
@@ -209,9 +509,45 @@ impl Items {
                         ConstShadowingMode::ItemStyle,
                         _,
                     ) => {
-                        handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
-                            name: name.clone(),
-                            span: name.span(),
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
+                        });
+                    }
+                    // constant shadowing a configurable item-style (outside of a function body)
+                    (
+                        configurable_ident,
+                        ConfigurableDecl { .. },
+                        _,
+                        _,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Configurable",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: configurable_ident.span(),
+                        });
+                    }
+                    // configurable shadowing a constant item-style (outside of a function body)
+                    (
+                        constant_ident,
+                        ConstantDecl { .. },
+                        _,
+                        _,
+                        ConfigurableDecl { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Configurable",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
                         });
                     }
                     // type or type alias shadowing another type or type alias
@@ -257,37 +593,142 @@ impl Items {
                 }
             };
 
+        let append_shadowing_error =
+            |ident: &Ident,
+             decl: &ResolvedDeclaration,
+             is_use: bool,
+             is_alias: bool,
+             item: &ResolvedDeclaration,
+             const_shadowing_mode: ConstShadowingMode| {
+                match (decl, item) {
+                    // TODO: Do not handle any shadowing errors while handling parsed declarations yet,
+                    // or else we will emit errors in a different order from the source code order.
+                    // Update this once the full AST resolving pass is in.
+                    (ResolvedDeclaration::Typed(_decl), ResolvedDeclaration::Parsed(_item)) => {}
+                    (ResolvedDeclaration::Parsed(_decl), ResolvedDeclaration::Parsed(_item)) => {}
+                    (ResolvedDeclaration::Typed(decl), ResolvedDeclaration::Typed(item)) => {
+                        append_shadowing_error_typed(
+                            ident,
+                            decl,
+                            is_use,
+                            is_alias,
+                            item,
+                            const_shadowing_mode,
+                        )
+                    }
+                    _ => unreachable!(),
+                }
+            };
+
         if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
-            append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
+            append_shadowing_error(
+                ident,
+                decl,
+                false,
+                false,
+                &item.clone(),
+                const_shadowing_mode,
+            );
         }
 
-        if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name)
+        if let Some((ident, (imported_ident, _, decl, _))) =
+            self.use_item_synonyms.get_key_value(&name)
         {
             append_shadowing_error(
                 ident,
                 decl,
                 true,
-                self.use_aliases.get(&name.to_string()).is_some(),
+                imported_ident.is_some(),
                 &item,
                 const_shadowing_mode,
             );
         }
 
+        if collecting_unifications {
+            self.symbols_unique_while_collecting_unifications
+                .write()
+                .insert(name.clone().into(), item.clone());
+        }
         self.symbols.insert(name, item);
 
         Ok(())
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
+    // Add a new binding into use_glob_synonyms. The symbol may already be bound by an earlier
+    // insertion, in which case the new binding is added as well so that multiple bindings exist.
+    //
+    // There are a few edge cases were a new binding will replace an old binding. These edge cases
+    // are a consequence of the prelude reexports not being implemented properly. See comments in
+    // the code for details.
+    pub(crate) fn insert_glob_use_symbol(
+        &mut self,
+        engines: &Engines,
+        symbol: Ident,
+        src_path: ModulePathBuf,
+        decl: &ResolvedDeclaration,
+        visibility: Visibility,
+    ) {
+        if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
+            // Name already bound. Check if the decl is already imported
+            let ctx = PartialEqWithEnginesContext::new(engines);
+            match cur_decls
+                .iter()
+                .position(|(_cur_path, cur_decl, _cur_visibility)| cur_decl.eq(decl, &ctx))
+            {
+                Some(index) if matches!(visibility, Visibility::Public) => {
+                    // The name is already bound to this decl. If the new symbol is more visible
+                    // than the old one, then replace the old one.
+                    cur_decls[index] = (src_path.to_vec(), decl.clone(), visibility);
+                }
+                Some(_) => {
+                    // Same binding as the existing one. Do nothing.
+                }
+                None => {
+                    // New decl for this name. Add it to the end
+                    cur_decls.push((src_path.to_vec(), decl.clone(), visibility));
+                }
+            }
+        } else {
+            let new_vec = vec![(src_path.to_vec(), decl.clone(), visibility)];
+            self.use_glob_synonyms.insert(symbol, new_vec);
+        }
+    }
+
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {
         self.symbols
             .get(name)
+            .cloned()
             .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
             })
     }
 
-    pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
+    pub(crate) fn check_symbols_unique_while_collecting_unifications(
+        &self,
+        name: &Ident,
+    ) -> Result<ResolvedDeclaration, CompileError> {
+        self.symbols_unique_while_collecting_unifications
+            .read()
+            .get(&name.into())
+            .cloned()
+            .ok_or_else(|| CompileError::SymbolNotFound {
+                name: name.clone(),
+                span: name.span(),
+            })
+    }
+
+    pub(crate) fn clear_symbols_unique_while_collecting_unifications(&self) {
+        self.symbols_unique_while_collecting_unifications
+            .write()
+            .clear();
+    }
+
+    pub fn get_items_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedTraitImplItem> {
         self.implemented_traits.get_items_for_type(engines, type_id)
     }
 
@@ -312,13 +753,20 @@ impl Items {
             .get_impl_spans_for_trait_name(trait_name)
     }
 
-    pub fn get_methods_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<DeclRefFunction> {
+    pub fn get_methods_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedFunctionDecl> {
         self.get_items_for_type(engines, type_id)
             .into_iter()
             .filter_map(|item| match item {
-                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
-                ty::TyTraitItem::Constant(_decl_ref) => None,
-                ty::TyTraitItem::Type(_decl_ref) => None,
+                ResolvedTraitImplItem::Parsed(_) => todo!(),
+                ResolvedTraitImplItem::Typed(item) => match item {
+                    ty::TyTraitItem::Fn(decl_ref) => Some(ResolvedFunctionDecl::Typed(decl_ref)),
+                    ty::TyTraitItem::Constant(_decl_ref) => None,
+                    ty::TyTraitItem::Type(_decl_ref) => None,
+                },
             })
             .collect::<Vec<_>>()
     }
@@ -370,7 +818,10 @@ impl Items {
                 }));
             }
         };
-        let mut symbol = symbol.return_type(handler, engines)?;
+        let mut symbol = match symbol {
+            ResolvedDeclaration::Parsed(_) => unreachable!(),
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl.return_type(handler, engines)?,
+        };
         let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
         let mut full_span_for_error = base_name.span();
@@ -388,7 +839,7 @@ impl Items {
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
                     let (struct_can_be_changed, is_public_struct_access) =
-                        StructAccessInfo::get_info(&struct_decl, namespace).into();
+                        StructAccessInfo::get_info(engines, &struct_decl, namespace).into();
 
                     let field_type_id = match struct_decl.find_field(field_name) {
                         Some(struct_field) => {
@@ -420,8 +871,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = field_type_id;
                     symbol_span = field_name.span().clone();
-                    full_span_for_error =
-                        Span::join(full_span_for_error, field_name.span().clone());
+                    full_span_for_error = Span::join(full_span_for_error, &field_name.span());
                 }
                 (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
@@ -444,7 +894,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = *field_type;
                     symbol_span = index_span.clone();
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (
                     TypeInfo::Array(elem_ty, _),
@@ -460,7 +910,7 @@ impl Items {
                     // we would need to bring the full span of the index all the way from
                     // the parsing stage. An effort that doesn't pay off at the moment.
                     // TODO: Include the closing square bracket into the error span.
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {

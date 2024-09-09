@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-086E35205BD410DF'
+name = "core"
+source = "path+from-root-086E35205BD410DF"
 
 [[package]]
-name = 'zero_field_types'
-source = 'member'
-dependencies = ['core']
+name = "zero_field_types"
+source = "member"
+dependencies = ["core"]

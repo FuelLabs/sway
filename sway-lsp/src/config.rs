@@ -5,6 +5,8 @@ use tracing::metadata::LevelFilter;
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default)]
+    pub client: LspClient,
+    #[serde(default)]
     pub debug: DebugConfig,
     #[serde(default)]
     pub logging: LoggingConfig,
@@ -16,6 +18,17 @@ pub struct Config {
     pub on_enter: OnEnterConfig,
     #[serde(default, skip_serializing)]
     trace: TraceConfig,
+    #[serde(default)]
+    pub garbage_collection: GarbageCollectionConfig,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LspClient {
+    VsCode,
+    #[serde(other)]
+    #[default]
+    Other,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
@@ -53,7 +66,26 @@ impl Default for DiagnosticConfig {
     }
 }
 
-// Options for confguring server logging.
+// Options for configuring garbage collection.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GarbageCollectionConfig {
+    pub gc_enabled: bool,
+    pub gc_frequency: i32,
+}
+
+impl Default for GarbageCollectionConfig {
+    fn default() -> Self {
+        Self {
+            gc_enabled: true,
+            // Garbage collection is fairly expsensive so we default to only clear on every 3rd keystroke.
+            // Waiting too long to clear can cause a stack overflow to occur.
+            gc_frequency: 3,
+        }
+    }
+}
+
+// Options for configuring server logging.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LoggingConfig {
     #[serde(with = "LevelFilterDef")]

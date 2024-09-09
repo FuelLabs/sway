@@ -1,3 +1,8 @@
 [[package]]
-name = 'impl_self_alias'
-source = 'member'
+name = "core"
+source = "path+from-root-1808B72A2D6C3EC2"
+
+[[package]]
+name = "impl_self_alias"
+source = "member"
+dependencies = ["core"]

@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "u8_mul_const_eval_overflow"
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+core = { path = "../../../../../../../sway-lib-core" }

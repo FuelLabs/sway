@@ -1,7 +1,7 @@
 library;
 
 fn tuple() {
-    // You can declare the types youself
+    // You can declare the types yourself
     let tuple1: (u8, bool, u64) = (100, false, 10000);
 
     // Or have the types be inferred

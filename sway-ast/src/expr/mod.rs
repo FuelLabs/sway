@@ -1,6 +1,6 @@
 use sway_error::handler::ErrorEmitted;
 
-use crate::{priv_prelude::*, PathExprSegment};
+use crate::{assignable::ElementAccess, priv_prelude::*, PathExprSegment};
 
 pub mod asm;
 pub mod op_code;
@@ -198,11 +198,15 @@ pub enum Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Expr::Error(spans, _) => spans.iter().cloned().reduce(Span::join).unwrap(),
+            Expr::Error(spans, _) => spans
+                .iter()
+                .cloned()
+                .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
+                .unwrap(),
             Expr::Path(path_expr) => path_expr.span(),
             Expr::Literal(literal) => literal.span(),
-            Expr::AbiCast { abi_token, args } => Span::join(abi_token.span(), args.span()),
-            Expr::Struct { path, fields } => Span::join(path.span(), fields.span()),
+            Expr::AbiCast { abi_token, args } => Span::join(abi_token.span(), &args.span()),
+            Expr::Struct { path, fields } => Span::join(path.span(), &fields.span()),
             Expr::Tuple(tuple_expr) => tuple_expr.span(),
             Expr::Parens(parens) => parens.span(),
             Expr::Block(block_expr) => block_expr.span(),
@@ -217,56 +221,56 @@ impl Spanned for Expr {
                     Some(expr) => expr.span(),
                     None => return_token.span(),
                 };
-                Span::join(start, end)
+                Span::join(start, &end)
             }
             Expr::If(if_expr) => if_expr.span(),
             Expr::Match {
                 match_token,
                 branches,
                 ..
-            } => Span::join(match_token.span(), branches.span()),
+            } => Span::join(match_token.span(), &branches.span()),
             Expr::While {
                 while_token, block, ..
-            } => Span::join(while_token.span(), block.span()),
+            } => Span::join(while_token.span(), &block.span()),
             Expr::For {
                 for_token, block, ..
-            } => Span::join(for_token.span(), block.span()),
-            Expr::FuncApp { func, args } => Span::join(func.span(), args.span()),
-            Expr::Index { target, arg } => Span::join(target.span(), arg.span()),
-            Expr::MethodCall { target, args, .. } => Span::join(target.span(), args.span()),
-            Expr::FieldProjection { target, name, .. } => Span::join(target.span(), name.span()),
+            } => Span::join(for_token.span(), &block.span()),
+            Expr::FuncApp { func, args } => Span::join(func.span(), &args.span()),
+            Expr::Index { target, arg } => Span::join(target.span(), &arg.span()),
+            Expr::MethodCall { target, args, .. } => Span::join(target.span(), &args.span()),
+            Expr::FieldProjection { target, name, .. } => Span::join(target.span(), &name.span()),
             Expr::TupleFieldProjection {
                 target, field_span, ..
-            } => Span::join(target.span(), field_span.clone()),
+            } => Span::join(target.span(), field_span),
             Expr::Ref {
                 ampersand_token,
                 expr,
                 ..
-            } => Span::join(ampersand_token.span(), expr.span()),
-            Expr::Deref { star_token, expr } => Span::join(star_token.span(), expr.span()),
-            Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
-            Expr::Pow { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Div { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Modulo { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Add { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Sub { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Shl { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Shr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::BitAnd { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::BitXor { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::BitOr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::Equal { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::NotEqual { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LessThan { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::GreaterThan { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LessThanEq { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::GreaterThanEq { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LogicalAnd { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
-            Expr::LogicalOr { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
+            } => Span::join(ampersand_token.span(), &expr.span()),
+            Expr::Deref { star_token, expr } => Span::join(star_token.span(), &expr.span()),
+            Expr::Not { bang_token, expr } => Span::join(bang_token.span(), &expr.span()),
+            Expr::Pow { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Div { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Modulo { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Add { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Sub { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Shl { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Shr { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::BitAnd { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::BitXor { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::BitOr { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::Equal { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::NotEqual { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::LessThan { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::GreaterThan { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::LessThanEq { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::GreaterThanEq { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::LogicalAnd { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
+            Expr::LogicalOr { lhs, rhs, .. } => Span::join(lhs.span(), &rhs.span()),
             Expr::Reassignment {
                 assignable, expr, ..
-            } => Span::join(assignable.span(), expr.span()),
+            } => Span::join(assignable.span(), &expr.span()),
             Expr::Break { break_token } => break_token.span(),
             Expr::Continue { continue_token } => continue_token.span(),
         }
@@ -350,7 +354,7 @@ impl Spanned for IfExpr {
             },
             None => self.then_block.span(),
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -383,7 +387,7 @@ pub struct MatchBranch {
 
 impl Spanned for MatchBranch {
     fn span(&self) -> Span {
-        Span::join(self.pattern.span(), self.kind.span())
+        Span::join(self.pattern.span(), &self.kind.span())
     }
 }
 
@@ -407,11 +411,11 @@ impl Spanned for MatchBranchKind {
                 block,
                 comma_token_opt,
             } => match comma_token_opt {
-                Some(comma_token) => Span::join(block.span(), comma_token.span()),
+                Some(comma_token) => Span::join(block.span(), &comma_token.span()),
                 None => block.span(),
             },
             MatchBranchKind::Expr { expr, comma_token } => {
-                Span::join(expr.span(), comma_token.span())
+                Span::join(expr.span(), &comma_token.span())
             }
         }
     }
@@ -440,62 +444,65 @@ impl Spanned for ExprStructField {
     fn span(&self) -> Span {
         match &self.expr_opt {
             None => self.field_name.span(),
-            Some((_colon_token, expr)) => Span::join(self.field_name.span(), expr.span()),
+            Some((_colon_token, expr)) => Span::join(self.field_name.span(), &expr.span()),
         }
     }
 }
 
 impl Expr {
+    /// Returns the resulting [Assignable] if the `self` is a
+    /// valid [Assignable], or an error containing the [Expr]
+    /// which causes the `self` to be an invalid [Assignable].
+    ///
+    /// In case of an error, the returned [Expr] can be `self`
+    /// or any subexpression of `self` that is not allowed
+    /// in assignment targets.
     pub fn try_into_assignable(self) -> Result<Assignable, Expr> {
+        if let Expr::Deref { star_token, expr } = self {
+            Ok(Assignable::Deref { star_token, expr })
+        } else {
+            Ok(Assignable::ElementAccess(self.try_into_element_access()?))
+        }
+    }
+
+    fn try_into_element_access(self) -> Result<ElementAccess, Expr> {
         match self {
             Expr::Path(path_expr) => match path_expr.try_into_ident() {
-                Ok(name) => Ok(Assignable::Var(name)),
+                Ok(name) => Ok(ElementAccess::Var(name)),
                 Err(path_expr) => Err(Expr::Path(path_expr)),
             },
-            Expr::Index { target, arg } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::Index {
+            Expr::Index { target, arg } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::Index {
                     target: Box::new(target),
                     arg,
                 }),
-                Err(target) => Err(Expr::Index {
-                    target: Box::new(target),
-                    arg,
-                }),
+                error => error,
             },
             Expr::FieldProjection {
                 target,
                 dot_token,
                 name,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::FieldProjection {
+            } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::FieldProjection {
                     target: Box::new(target),
                     dot_token,
                     name,
                 }),
-                Err(target) => Err(Expr::FieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    name,
-                }),
+                error => error,
             },
             Expr::TupleFieldProjection {
                 target,
                 dot_token,
                 field,
                 field_span,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::TupleFieldProjection {
+            } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::TupleFieldProjection {
                     target: Box::new(target),
                     dot_token,
                     field,
                     field_span,
                 }),
-                Err(target) => Err(Expr::TupleFieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    field,
-                    field_span,
-                }),
+                error => error,
             },
             expr => Err(expr),
         }
@@ -548,6 +555,57 @@ impl Expr {
             | Expr::Reassignment { .. }
             | Expr::Break { .. }
             | Expr::Continue { .. } => false,
+        }
+    }
+
+    /// Friendly [Expr] name string used for error reporting,
+    pub fn friendly_name(&self) -> &'static str {
+        match self {
+            Expr::Error(_, _) => "error",
+            Expr::Path(_) => "path",
+            Expr::Literal(_) => "literal",
+            Expr::AbiCast { .. } => "ABI cast",
+            Expr::Struct { .. } => "struct instantiation",
+            Expr::Tuple(_) => "tuple",
+            Expr::Parens(_) => "parentheses", // Note the plural!
+            Expr::Block(_) => "block",
+            Expr::Array(_) => "array",
+            Expr::Asm(_) => "assembly block",
+            Expr::Return { .. } => "return",
+            Expr::If(_) => "if expression",
+            Expr::Match { .. } => "match expression",
+            Expr::While { .. } => "while loop",
+            Expr::For { .. } => "for loop",
+            Expr::FuncApp { .. } => "function call",
+            Expr::Index { .. } => "array element access",
+            Expr::MethodCall { .. } => "method call",
+            Expr::FieldProjection { .. } => "struct field access",
+            Expr::TupleFieldProjection { .. } => "tuple element access",
+            Expr::Ref { .. } => "referencing",
+            Expr::Deref { .. } => "dereferencing",
+            Expr::Not { .. } => "negation",
+            Expr::Mul { .. } => "multiplication",
+            Expr::Div { .. } => "division",
+            Expr::Pow { .. } => "power operation",
+            Expr::Modulo { .. } => "modulo operation",
+            Expr::Add { .. } => "addition",
+            Expr::Sub { .. } => "subtraction",
+            Expr::Shl { .. } => "left shift",
+            Expr::Shr { .. } => "right shift",
+            Expr::BitAnd { .. } => "bitwise and",
+            Expr::BitXor { .. } => "bitwise xor",
+            Expr::BitOr { .. } => "bitwise or",
+            Expr::Equal { .. } => "equality",
+            Expr::NotEqual { .. } => "non equality",
+            Expr::LessThan { .. } => "less than operation",
+            Expr::GreaterThan { .. } => "greater than operation",
+            Expr::LessThanEq { .. } => "less than or equal operation",
+            Expr::GreaterThanEq { .. } => "greater than or equal operation",
+            Expr::LogicalAnd { .. } => "logical and",
+            Expr::LogicalOr { .. } => "logical or",
+            Expr::Reassignment { .. } => "reassignment",
+            Expr::Break { .. } => "break",
+            Expr::Continue { .. } => "continue",
         }
     }
 }

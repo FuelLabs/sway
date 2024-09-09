@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-D434508E66F5B3EA'
+name = "core"
+source = "path+from-root-D434508E66F5B3EA"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-D434508E66F5B3EA'
-dependencies = ['core']
-
-[[package]]
-name = 'u64_sub_underflow'
-source = 'member'
-dependencies = ['std']
+name = "u64_sub_underflow"
+source = "member"
+dependencies = ["core"]

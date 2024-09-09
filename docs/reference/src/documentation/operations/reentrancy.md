@@ -9,7 +9,7 @@ To mitigate security concerns there are two approaches that are commonly used:
 
 ## Re-entrancy Guard
 
-Sway provides a stateless [re-entrancy](https://github.com/FuelLabs/sway-libs/blob/master/libs/reentrancy/src/lib.sw) guard, which reverts at run-time when re-entrancy is detected.
+Sway provides a stateless [re-entrancy](https://fuellabs.github.io/sway-libs/book/reentrancy/index.html) guard, which reverts at run-time when re-entrancy is detected.
 
 To use the guard we must import it.
 
