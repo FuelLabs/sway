@@ -203,7 +203,12 @@ async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
 
     let id = Contract::load_from(
         "./out/debug/my-fuel-project.bin",
-        LoadConfiguration::default(),
+        LoadConfiguration::default().set_storage_configuration(
+            StorageConfiguration::load_from(
+                "./out/debug/my-fuel-project-storage_slots.json",
+            )
+            .unwrap(),
+        ),
     )
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
