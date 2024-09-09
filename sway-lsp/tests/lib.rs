@@ -2091,7 +2091,6 @@ lsp_capability_test!(
     test_fixtures_dir().join("inlay_hints/src/main.sw")
 );
 
-
 // This method iterates over all of the examples in the e2e language should_pass dir
 // and saves the lexed, parsed, and typed ASTs to the users home directory.
 // This makes it easy to grep for certain compiler types to inspect their use cases,
