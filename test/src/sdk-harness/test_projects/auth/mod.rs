@@ -214,7 +214,7 @@ async fn caller_addresses_from_contract() {
         .await
         .unwrap();
 
-    assert!(result.value == vec![Address::from(*wallet1.address().hash())]);
+    assert_eq!(result.value, vec![Address::from(*wallet1.address().hash())]);
 
     // Start building transactions
     let call_handler = auth_instance
