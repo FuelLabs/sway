@@ -74,18 +74,21 @@ Let's have a look at the result:
 $ tree .
 ├── Cargo.toml
 ├── Forc.toml
+├── build.rs
 ├── src
 │   └── main.sw
 └── tests
     └── harness.rs
 ```
 
-We have two new files!
+We have three new files!
 
 - The `Cargo.toml` is the manifest for our new test harness and specifies the
   required dependencies including `fuels` the Fuel Rust SDK.
 - The `tests/harness.rs` contains some boilerplate test code to get us started,
   though doesn't call any contract methods just yet.
+- The `build.rs` is a build script that compiles the Sway project with `forc build`
+  whenever `cargo test` is run.
 
 ### 4. Build the forc project
 
@@ -111,6 +114,7 @@ $ tree
 ├── Cargo.toml
 ├── Forc.lock
 ├── Forc.toml
+├── build.rs
 ├── out
 │   └── debug
 │       ├── my-fuel-project-abi.json
