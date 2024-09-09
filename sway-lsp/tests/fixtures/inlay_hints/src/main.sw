@@ -4,7 +4,6 @@ const CONSTANT: u64 = 42;
 
 enum MyEnum {
     A: u64,
-    B: u64,
 }
 
 struct MyStruct {
@@ -57,4 +56,6 @@ fn main() {
 
     let a = [1, 2, 3];
     let _array_index = identity(a[1]);
+
+    let _function_call = identity(my_function(1, bar, 3));
 }
