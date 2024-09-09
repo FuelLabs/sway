@@ -6,7 +6,14 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
-use ::inputs::{Input, input_coin_owner, input_message_sender, input_count, input_message_recipient, input_type};
+use ::inputs::{
+    Input,
+    input_coin_owner,
+    input_count,
+    input_message_recipient,
+    input_message_sender,
+    input_type,
+};
 use ::revert::revert;
 use ::vec::Vec;
 
@@ -211,7 +218,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 ///
 /// fn foo(some_address: Address) {
 ///     let addresses = caller_addresses();
-///     
+///
 ///     assert(addresses.get(0).unwrap() == some_address);
 /// }
 /// ```
@@ -228,7 +235,7 @@ pub fn caller_addresses() -> Vec<Address> {
                 let owner_of_input = match type_of_input {
                     Some(Input::Coin) => input_coin_owner(iter),
                     Some(Input::Message) => input_message_sender(iter),
-                    _ => None,  // Shouldn't reach this case due to outer match.
+                    _ => None, // Shouldn't reach this case due to outer match.
                 };
 
                 // If we successfully retrieved an owner address, add it to the vector.
@@ -237,14 +244,14 @@ pub fn caller_addresses() -> Vec<Address> {
                 }
             },
             _ => {
-                // Input type is neither Coin nor Message, continue looping.
-            }
+            // Input type is neither Coin nor Message, continue looping.
+}
         }
 
         iter += 1;
     }
 
-    addresses  // Return the collected addresses.
+    addresses // Return the collected addresses.
 }
 
 /// Get the current predicate's address when called in an internal context.
