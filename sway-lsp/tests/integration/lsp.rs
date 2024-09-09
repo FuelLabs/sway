@@ -233,6 +233,36 @@ pub(crate) async fn metrics_request(
     res
 }
 
+
+pub(crate) async fn inlay_hints_request<'a>(
+    server: &ServerState,
+    uri: &Url,
+) -> Option<Vec<InlayHint>> {
+    let params = InlayHintParams {
+        text_document: TextDocumentIdentifier {
+            uri: uri.clone(),
+        },
+        range: Range {
+            start: Position {
+                line: 0,
+                character: 0,
+            },
+            end: Position {
+                line: 14,
+                character: 1,
+            },
+        },
+        work_done_progress_params: Default::default(),
+    };
+    let res = request::handle_inlay_hints(server, params)
+        .await
+        .unwrap();
+
+    eprintln!("INLAY HINTS RESULTS");
+    eprintln!("{:#?}", res);
+    res
+}
+
 pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
     let params = SemanticTokensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -594,23 +624,6 @@ pub(crate) async fn rename_request<'a>(
     worspace_edit.unwrap()
 }
 
-pub(crate) async fn inlay_hints_request<'a>(
-    server: &ServerState,
-    rename: &'a Rename<'a>,
-) -> Option<PrepareRenameResponse> {
-    let params = TextDocumentPositionParams {
-        text_document: TextDocumentIdentifier {
-            uri: rename.req_uri.clone(),
-        },
-        position: Position {
-            line: rename.req_line,
-            character: rename.req_char,
-        },
-    };
-    request::handle_prepare_rename(server, params)
-        .await
-        .unwrap()
-}
 
 
 pub fn create_did_change_params(
