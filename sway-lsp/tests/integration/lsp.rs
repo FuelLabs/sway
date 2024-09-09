@@ -644,6 +644,25 @@ pub(crate) async fn rename_request<'a>(
     worspace_edit.unwrap()
 }
 
+pub(crate) async fn inlay_hints_request<'a>(
+    server: &ServerState,
+    rename: &'a Rename<'a>,
+) -> Option<PrepareRenameResponse> {
+    let params = TextDocumentPositionParams {
+        text_document: TextDocumentIdentifier {
+            uri: rename.req_uri.clone(),
+        },
+        position: Position {
+            line: rename.req_line,
+            character: rename.req_char,
+        },
+    };
+    request::handle_prepare_rename(server, params)
+        .await
+        .unwrap()
+}
+
+
 pub fn create_did_change_params(
     uri: &Url,
     version: i32,
