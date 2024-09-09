@@ -6,7 +6,7 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
-use ::inputs::{Input, input_coin_owner, input_count, input_message_recipient, input_type,};
+use ::inputs::{Input, input_coin_owner, input_message_sender, input_count, input_message_recipient, input_type};
 use ::revert::revert;
 use ::vec::Vec;
 
