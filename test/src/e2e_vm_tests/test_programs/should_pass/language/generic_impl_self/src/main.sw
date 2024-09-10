@@ -1,6 +1,7 @@
 script;
 
 use std::u128::*;
+use std::vec::*;
 
 struct Data<T> {
     value: T,
@@ -212,9 +213,21 @@ fn generic_impl_self_test() {
     assert(u.first.value + u.second.value == 7u8);
 }
 
+impl<T> Vec<T> {
+    pub fn with(self, with_value: T) -> Self {
+        let mut inside_vec = self;
+        inside_vec.push(with_value);
+        inside_vec
+    }
+}
+
 fn main() -> u32 {
     generic_impl_self_test();
     result_impl_test();
+
+    // data must be Vec<u256>
+    let data = Vec::new().with(0x333u256).with(0x222u256);
+    assert(data.len() == 2);
 
     10u32
 }
