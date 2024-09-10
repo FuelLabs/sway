@@ -1,7 +1,6 @@
 script;
 
 use std::u128::*;
-use std::vec::*;
 
 struct Data<T> {
     value: T,
@@ -212,6 +211,8 @@ fn generic_impl_self_test() {
     let u = DoubleIdentity::<Data<u8>, Data<u8>>::new(Data::<u8>::new(3u8), Data::<u8>::new(4u8));
     assert(u.first.value + u.second.value == 7u8);
 }
+
+use std::vec::*;
 
 impl<T> Vec<T> {
     pub fn with(self, with_value: T) -> Self {

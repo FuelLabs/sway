@@ -316,6 +316,7 @@ pub(crate) async fn code_action_struct_request(server: &ServerState, uri: &Url) 
 }
 
 pub(crate) async fn code_action_struct_type_params_request(server: &ServerState, uri: &Url) {
+    dbg!(uri);
     let params = create_code_action_params(
         uri.clone(),
         Range {
@@ -400,7 +401,7 @@ pub(crate) async fn code_action_struct_type_params_request(server: &ServerState,
     ));
 
     let actual = send_request(server, &params).await;
-    assert_eq!(expected, actual);
+    pretty_assertions::assert_eq!(expected, actual);
 }
 
 pub(crate) async fn code_action_struct_existing_impl_request(server: &ServerState, uri: &Url) {
