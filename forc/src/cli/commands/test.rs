@@ -61,16 +61,15 @@ pub struct Command {
 #[derive(Parser, Debug, Clone)]
 #[clap(after_help = help())]
 pub struct TestPrintOpts {
-    #[clap(long = "pretty-print", short = 'r')]
+    #[clap(long = "pretty")]
     /// Pretty-print the logs emitted from tests.
     pub pretty_print: bool,
     /// Print `Log` and `LogData` receipts for tests.
     #[clap(long = "logs", short = 'l')]
     pub print_logs: bool,
-    /// Decode logs and show decoded log information in human readable format alongside the raw
-    /// logs.
-    #[clap(long = "decode", short = 'd')]
-    pub decode_logs: bool,
+    /// Print the raw logs for tests.
+    #[clap(long)]
+    pub raw_logs: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
@@ -152,24 +151,24 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
         // If logs are enabled, print them.
         if test_print_opts.print_logs {
             let logs = &test.logs;
-            if test_print_opts.decode_logs {
-                for log in logs {
-                    if let Receipt::LogData {
-                        rb,
-                        data: Some(data),
-                        ..
-                    } = log
-                    {
-                        let decoded_log_data =
-                            decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?;
-                        let var_value = decoded_log_data.value;
-                        info!("Decoded log value: {}, log rb: {}", var_value, rb);
-                    }
+            for log in logs {
+                if let Receipt::LogData {
+                    rb,
+                    data: Some(data),
+                    ..
+                } = log
+                {
+                    let decoded_log_data =
+                        decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?;
+                    let var_value = decoded_log_data.value;
+                    info!("Decoded log value: {}, log rb: {}", var_value, rb);
                 }
-                info!("Raw logs:");
             }
-            let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
-            info!("{}", formatted_logs);
+            if test_print_opts.raw_logs {
+                info!("Raw logs:");
+                let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
+                info!("{}", formatted_logs);
+            }
         }
 
         // If the test is failing, save the test result for printing the details later on.
