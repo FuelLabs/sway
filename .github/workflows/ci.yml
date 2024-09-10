@@ -549,8 +549,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: Install cargo-nextest
-        run: cargo install cargo-nextest
+      - name: Setup cargo-nextest
+        uses: taiki-e/install-action@nextest
       - name: Run sway-lsp tests sequentially
         env:
           RUST_BACKTRACE: full
