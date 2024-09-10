@@ -17,7 +17,6 @@ use crate::{
     },
     fuel_prelude::fuel_asm::{self, op},
 };
-use either::Either;
 use fuel_vm::fuel_asm::{op::ADDI, Imm12};
 use std::fmt::{self, Write};
 use sway_types::span::Span;
@@ -269,6 +268,7 @@ pub(crate) enum AllocatedOpcode {
 
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
+    Metadata,
     DataSectionOffsetPlaceholder,
     LoadDataId(AllocatedRegister, DataId),
     AddrDataId(AllocatedRegister, DataId),
@@ -393,6 +393,7 @@ impl AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
+            Metadata => vec![],
             DataSectionOffsetPlaceholder => vec![],
             LoadDataId(r1, _i) => vec![r1],
             AddrDataId(r1, _i) => vec![r1],
@@ -521,6 +522,7 @@ impl fmt::Display for AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
+            Metadata => write!(fmtr, "Metadata"),
             DataSectionOffsetPlaceholder => {
                 write!(
                     fmtr,
@@ -558,7 +560,11 @@ impl fmt::Display for AllocatedOp {
     }
 }
 
-type DoubleWideData = [u8; 8];
+pub(crate) enum FuelAsmData {
+    Metadata([u8; 32]),
+    DatasectionOffset([u8; 8]),
+    Instructions(Vec<fuel_asm::Instruction>),
+}
 
 impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
@@ -566,9 +572,9 @@ impl AllocatedOp {
         offset_to_data_section: u64,
         offset_from_instr_start: u64,
         data_section: &mut DataSection,
-    ) -> Either<Vec<fuel_asm::Instruction>, DoubleWideData> {
+    ) -> FuelAsmData {
         use AllocatedOpcode::*;
-        Either::Left(vec![match &self.opcode {
+        FuelAsmData::Instructions(vec![match &self.opcode {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => op::ADD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
@@ -637,9 +643,9 @@ impl AllocatedOp {
 
             /* Memory Instructions */
             ALOC(a) => op::ALOC::new(a.to_reg_id()).into(),
-            CFEI(a) if a.value == 0 => return Either::Left(vec![]),
+            CFEI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
             CFEI(a) => op::CFEI::new(a.value.into()).into(),
-            CFSI(a) if a.value == 0 => return Either::Left(vec![]),
+            CFSI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
             CFSI(a) => op::CFSI::new(a.value.into()).into(),
             CFE(a) => op::CFE::new(a.to_reg_id()).into(),
             CFS(a) => op::CFS::new(a.to_reg_id()).into(),
@@ -723,17 +729,23 @@ impl AllocatedOp {
 
             /* Non-VM Instructions */
             BLOB(a) => {
-                return Either::Left(
+                return FuelAsmData::Instructions(
                     std::iter::repeat(op::NOOP::new().into())
                         .take(a.value as usize)
                         .collect(),
                 )
             }
+            Metadata => {
+                return FuelAsmData::Metadata([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0,
+                ])
+            }
             DataSectionOffsetPlaceholder => {
-                return Either::Right(offset_to_data_section.to_be_bytes())
+                return FuelAsmData::DatasectionOffset(offset_to_data_section.to_be_bytes())
             }
             LoadDataId(a, b) => {
-                return Either::Left(realize_load(
+                return FuelAsmData::Instructions(realize_load(
                     a,
                     b,
                     data_section,
@@ -741,7 +753,7 @@ impl AllocatedOp {
                     offset_from_instr_start,
                 ))
             }
-            AddrDataId(a, b) => return Either::Left(addr_of(a, b, data_section)),
+            AddrDataId(a, b) => return FuelAsmData::Instructions(addr_of(a, b, data_section)),
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
     }

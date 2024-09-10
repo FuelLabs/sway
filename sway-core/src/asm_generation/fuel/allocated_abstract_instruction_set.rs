@@ -324,6 +324,13 @@ impl AllocatedAbstractInstructionSet {
                             comment: String::new(),
                         });
                     }
+                    ControlFlowOp::Metadata => {
+                        realized_ops.push(RealizedOp {
+                            opcode: AllocatedOpcode::Metadata,
+                            owning_span: None,
+                            comment: String::new(),
+                        });
+                    }
                     ControlFlowOp::LoadLabel(r1, ref lab) => {
                         // LoadLabel ops are inserted by `rewrite_far_jumps`.
                         // So the next instruction must be a relative jump.
@@ -448,6 +455,8 @@ impl AllocatedAbstractInstructionSet {
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
+
+            Either::Right(Metadata) => 8,
 
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
                 "fix me, pushall and popall don't really belong in control flow ops \

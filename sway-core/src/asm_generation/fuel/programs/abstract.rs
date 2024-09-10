@@ -160,12 +160,20 @@ impl AbstractProgram {
     ///
     /// WORD OP
     /// 1    MOV $scratch $pc
-    /// -    JMPF $zero i2
+    /// -    JMPF $zero i4
     /// 2    DATA_START (0-32) (in bytes, offset from $is)
     /// -    DATA_START (32-64)
-    /// 3    LW $ds $scratch 1
+    /// 3    METADATA (0-32)
+    /// -    METADATA (32-64)
+    /// 4    METADATA (64-96)
+    /// -    METADATA (96-128)
+    /// 5    METADATA (128-160)
+    /// -    METADATA (160-192)
+    /// 6    METADATA (192-224)
+    /// -    METADATA (224-256)
+    /// 7    LW $ds $scratch 1
     /// -    ADD $ds $ds $scratch
-    /// 4    .program_start:
+    /// 8    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {
@@ -190,12 +198,18 @@ impl AbstractProgram {
                     comment: "data section offset".into(),
                     owning_span: None,
                 },
+                // word 3 -- 32 bytes placeholder
+                AllocatedAbstractOp {
+                    opcode: Either::Right(ControlFlowOp::Metadata),
+                    comment: "metadata".into(),
+                    owning_span: None,
+                },
                 AllocatedAbstractOp {
                     opcode: Either::Right(ControlFlowOp::Label(label)),
                     comment: "end of metadata".into(),
                     owning_span: None,
                 },
-                // word 3 -- load the data offset into $ds
+                // word 7 -- load the data offset into $ds
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::LW(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
@@ -205,7 +219,7 @@ impl AbstractProgram {
                     comment: "".into(),
                     owning_span: None,
                 },
-                // word 3.5 -- add $ds $ds $is
+                // word 7.5 -- add $ds $ds $is
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),

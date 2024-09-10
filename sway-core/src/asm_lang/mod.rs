@@ -1277,6 +1277,8 @@ pub(crate) enum ControlFlowOp<Reg> {
     Call(Label),
     // Save a return label address in a register.
     SaveRetAddr(Reg, Label),
+    // Placeholder for Metadata
+    Metadata,
     // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
     // Placeholder for loading an address from the data section.
@@ -1304,6 +1306,11 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
+                Metadata => "METADATA[0..32]\nMETADATA[32..64]\n\
+                     METADATA[64..96]\nMETADATA[96..128]\n\
+                     METADATA[128..160]\nMETADATA[160..192]\n\
+                     METADATA[192..224]\nMETADATA[224..256]"
+                    .into(),
                 LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),
@@ -1321,6 +1328,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Jump(_)
             | Call(_)
             | DataSectionOffsetPlaceholder
+            | Metadata
             | PushAll(_)
             | PopAll(_) => vec![],
 
@@ -1339,6 +1347,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Call(_)
             | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
+            | Metadata
             | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => vec![],
@@ -1360,6 +1369,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | JumpIfNotZero(..)
             | Call(_)
             | DataSectionOffsetPlaceholder
+            | Metadata
             | PushAll(_)
             | PopAll(_) => vec![],
         })
@@ -1381,6 +1391,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Jump(_)
             | Call(_)
             | DataSectionOffsetPlaceholder
+            | Metadata
             | PushAll(_)
             | PopAll(_) => self.clone(),
 
@@ -1410,6 +1421,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Call(_)
             | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
+            | Metadata
             | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => (),
@@ -1466,6 +1478,7 @@ impl ControlFlowOp<VirtualRegister> {
             Jump(label) => Jump(*label),
             Call(label) => Call(*label),
             DataSectionOffsetPlaceholder => DataSectionOffsetPlaceholder,
+            Metadata => Metadata,
             PushAll(label) => PushAll(*label),
             PopAll(label) => PopAll(*label),
 
