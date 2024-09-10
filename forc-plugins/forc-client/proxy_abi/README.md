@@ -2,7 +2,7 @@
 
 This folder contains pre-built version of the owned proxy contract, its abi and `storage-slots.json` file.
 
-*contract url*: [sway-standard-implementation/src-14/owned_proxy](https://github.com/FuelLabs/sway-standard-implementations/tree/61fd4ad8f69d21cec0d5cd8135bdc4495e0c125c).
-*commit hash*: `61fd4ad8f69d21cec0d5cd8135bdc4495e0c125c`
-*forc version*: `v0.63.3`
+*contract url*: [sway-standard-implementation/src-14/owned_proxy](https://github.com/FuelLabs/sway-standard-implementations/tree/174f5ed9c79c23a6aaf5db906fe27ecdb29c22eb).
+*commit hash*: `174f5ed9c79c23a6aaf5db906fe27ecdb29c22eb`
+*forc version*: `v0.63.5`
 *build command*: `forc build --release`
