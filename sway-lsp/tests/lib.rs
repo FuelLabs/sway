@@ -973,7 +973,6 @@ fn go_to_definition_for_paths() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 11).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 23).await;
 
-        // // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
         let mut go_to = GotoDefinition {
             req_uri: &uri,
             req_line: 22,

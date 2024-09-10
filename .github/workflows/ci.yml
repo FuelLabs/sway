@@ -549,10 +549,12 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest
       - name: Run sway-lsp tests sequentially
         env:
           RUST_BACKTRACE: full
-        run: cargo test --locked --release -p sway-lsp -- --nocapture --test-threads=1
+        run: cargo nextest run --locked --release -p sway-lsp --no-capture
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
