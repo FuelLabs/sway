@@ -17,7 +17,6 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 use sway_types::SourceEngine;
 
-use either::Either;
 use std::{collections::BTreeMap, fmt};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
