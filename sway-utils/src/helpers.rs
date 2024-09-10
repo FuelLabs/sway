@@ -60,8 +60,7 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     };
     WalkDir::new(starter_path).into_iter().find_map(|e| {
         let entry = e.ok()?;
-        if entry.path() != starter_dir.join(file_name)
-            && entry.file_name() == OsStr::new(file_name)
+        if entry.path() != starter_dir.join(file_name) && entry.file_name() == OsStr::new(file_name)
         {
             let mut entry = entry.path().to_path_buf();
             entry.pop();
@@ -112,7 +111,9 @@ where
         if check(&manifest_dir) {
             Some(manifest_dir)
         } else {
-            manifest_dir.parent().and_then(|parent_dir| find_parent_manifest_dir_with_check(parent_dir, check))
+            manifest_dir
+                .parent()
+                .and_then(|parent_dir| find_parent_manifest_dir_with_check(parent_dir, check))
         }
     })
 }
