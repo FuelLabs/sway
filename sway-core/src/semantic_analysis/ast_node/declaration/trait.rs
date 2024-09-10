@@ -355,7 +355,13 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = (*decl_engine.get_function(&decl_ref)).clone();
                     let name = method.name.clone();
-                    let r = if method.subst(&type_mapping, engines).has_changes() {
+                    let r = if method
+                        .subst(
+                            &type_mapping,
+                            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+                        )
+                        .has_changes()
+                    {
                         let new_ref = decl_engine
                             .insert(
                                 method,
@@ -371,7 +377,13 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = (*decl_engine.get_constant(&decl_ref)).clone();
                     let name = const_decl.call_path.suffix.clone();
-                    let r = if const_decl.subst(&type_mapping, engines).has_changes() {
+                    let r = if const_decl
+                        .subst(
+                            &type_mapping,
+                            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+                        )
+                        .has_changes()
+                    {
                         decl_engine.insert(
                             const_decl,
                             decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
@@ -384,7 +396,13 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut t = (*decl_engine.get_type(&decl_ref)).clone();
                     let name = t.name.clone();
-                    let r = if t.subst(&type_mapping, engines).has_changes() {
+                    let r = if t
+                        .subst(
+                            &type_mapping,
+                            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+                        )
+                        .has_changes()
+                    {
                         decl_engine
                             .insert(t, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
                     } else {
@@ -436,7 +454,10 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let mut method = (*decl_engine.get_trait_fn(decl_ref)).clone();
-                    method.subst(&type_mapping, engines);
+                    method.subst(
+                        &type_mapping,
+                        &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+                    );
                     all_items.push(TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(AbiMode::NonAbi, Some(type_id)), None)
@@ -464,7 +485,10 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = (*decl_engine.get_function(decl_ref)).clone();
-                    method.subst(&type_mapping, engines);
+                    method.subst(
+                        &type_mapping,
+                        &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+                    );
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
@@ -477,7 +501,10 @@ impl TyTraitDecl {
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
-                    const_decl.subst(&type_mapping, engines);
+                    const_decl.subst(
+                        &type_mapping,
+                        &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+                    );
                     all_items.push(TyImplItem::Constant(decl_engine.insert(
                         const_decl,
                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
@@ -485,7 +512,10 @@ impl TyTraitDecl {
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
-                    type_decl.subst(&type_mapping, engines);
+                    type_decl.subst(
+                        &type_mapping,
+                        &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+                    );
                     all_items.push(TyImplItem::Type(decl_engine.insert(
                         type_decl,
                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),

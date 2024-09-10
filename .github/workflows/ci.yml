@@ -405,6 +405,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: buildjet/cache@v3
         with:
           path: |
@@ -477,14 +478,11 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-deps
-        run: cargo install cargo-deps
-
       # We require this check to avoid cyclic dependencies between 'fuels' and 'forc-pkg'.
       # Detailed explanation is found in the echo below.
       - name: Check 'forc-pkg' dependencies for 'fuels' crates
         run: |
-          deps=$(cargo deps --manifest-path forc-pkg/Cargo.toml)
+          deps=$(cargo tree --manifest-path forc-pkg/Cargo.toml)
 
           case "$deps" in
             *fuels*)

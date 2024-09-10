@@ -11,7 +11,7 @@ use crate::{
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    Engines, SubstTypes, TypeInfo,
+    Engines, SubstTypes, SubstTypesContext, TypeInfo,
 };
 
 impl ty::TyConstantDecl {
@@ -43,7 +43,10 @@ impl ty::TyConstantDecl {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.type_subst(), engines);
+        type_ascription.type_id.subst(
+            &ctx.type_subst(),
+            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
+        );
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {

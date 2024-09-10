@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, Criterion};
+use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
 use lsp_types::{
     CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
@@ -52,6 +52,10 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("highlight", |b| {
         b.iter(|| capabilities::highlight::get_highlights(session.clone(), &uri, position))
+    });
+
+    c.bench_function("find_all_references", |b| {
+        b.iter(|| session.token_references(&uri, position))
     });
 
     c.bench_function("goto_definition", |b| {

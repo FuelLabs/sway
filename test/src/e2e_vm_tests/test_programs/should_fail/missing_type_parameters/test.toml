@@ -6,3 +6,30 @@ category = "fail"
 # check: $()Unknown type name "B"
 # check: $()Could not find symbol "C" in this scope.
 # check: $()Unknown type name "C"
+
+# check: $()two_generics::<u64>();
+# nextln: $()Expected 2 type arguments for "two_generics", but instead found 1.
+
+# check: $()S{}.two_generics::<u64>();
+# nextln: $()Expected 2 type arguments for "two_generics", but instead found 1.
+
+# check: $()one_generic()
+# nextln: $()Cannot infer type for type parameter "T". Insufficient type information provided. Try annotating its type.
+
+# check: $()two_generics();
+# nextln: $()Cannot infer type for type parameter "A". Insufficient type information provided. Try annotating its type.
+
+# check: $()two_generics();
+# nextln: $()Cannot infer type for type parameter "B". Insufficient type information provided. Try annotating its type.
+
+# check: $()S{}.one_generic()
+# nextln: $()Cannot infer type for type parameter "T". Insufficient type information provided. Try annotating its type.
+
+# check: $()S{}.two_generics();
+# nextln: $()Cannot infer type for type parameter "A". Insufficient type information provided. Try annotating its type.
+
+# check: $()S{}.two_generics();
+# nextln: $()Cannot infer type for type parameter "B". Insufficient type information provided. Try annotating its type.
+
+# check: $()one_generic::<W>();
+# nextln: $()Cannot infer type for type parameter "A". Insufficient type information provided. Try annotating its type.

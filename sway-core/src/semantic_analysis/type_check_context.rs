@@ -18,7 +18,7 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    CreateTypeId, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck,
+    CreateTypeId, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -94,6 +94,14 @@ pub struct TypeCheckContext<'a> {
 
     /// Indicates when semantic analysis is type checking storage declaration.
     storage_declaration: bool,
+
+    // Indicates when we are collecting unifications.
+    collecting_unifications: bool,
+
+    // Indicates when we are doing the first pass of the code block type checking.
+    // In some nested places of the first pass we want to disable the first pass optimizations
+    // To disable those optimizations we can set this to false.
+    code_block_first_pass: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -119,6 +127,8 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: false,
             storage_declaration: false,
             experimental,
+            collecting_unifications: false,
+            code_block_first_pass: false,
         }
     }
 
@@ -158,6 +168,8 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: false,
             storage_declaration: false,
             experimental,
+            collecting_unifications: false,
+            code_block_first_pass: false,
         }
     }
 
@@ -186,6 +198,8 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
+            code_block_first_pass: self.code_block_first_pass,
         }
     }
 
@@ -211,6 +225,8 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
+            code_block_first_pass: self.code_block_first_pass,
         };
         with_scoped_ctx(ctx)
     }
@@ -237,6 +253,8 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: self.disallow_functions,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
+            collecting_unifications: self.collecting_unifications,
+            code_block_first_pass: self.code_block_first_pass,
         };
         Ok((with_scoped_ctx(ctx)?, namespace))
     }
@@ -348,6 +366,20 @@ impl<'a> TypeCheckContext<'a> {
         Self { self_type, ..self }
     }
 
+    pub(crate) fn with_collecting_unifications(self) -> Self {
+        Self {
+            collecting_unifications: true,
+            ..self
+        }
+    }
+
+    pub(crate) fn with_code_block_first_pass(self, value: bool) -> Self {
+        Self {
+            code_block_first_pass: value,
+            ..self
+        }
+    }
+
     /// Map this `TypeCheckContext` instance to a new one with
     /// `disallow_functions` set to `true`.
     pub(crate) fn disallow_functions(self) -> Self {
@@ -419,6 +451,14 @@ impl<'a> TypeCheckContext<'a> {
         self.storage_declaration
     }
 
+    pub(crate) fn collecting_unifications(&self) -> bool {
+        self.collecting_unifications
+    }
+
+    pub(crate) fn code_block_first_pass(&self) -> bool {
+        self.code_block_first_pass
+    }
+
     // Provide some convenience functions around the inner context.
 
     /// Short-hand for calling the `monomorphize` function in the type engine
@@ -480,6 +520,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
+        let collecting_unifications = self.collecting_unifications;
         let engines = self.engines();
         self.namespace_mut()
             .module_mut(engines)
@@ -491,6 +532,7 @@ impl<'a> TypeCheckContext<'a> {
                 ResolvedDeclaration::Typed(item),
                 const_shadowing_mode,
                 generic_shadowing_mode,
+                collecting_unifications,
             )
     }
 
@@ -680,7 +722,10 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         let mut type_id = type_id;
-        type_id.subst(&self.type_subst(), self.engines());
+        type_id.subst(
+            &self.type_subst(),
+            &SubstTypesContext::new(engines, !self.collecting_unifications()),
+        );
 
         Ok(type_id)
     }
@@ -1111,6 +1156,14 @@ impl<'a> TypeCheckContext<'a> {
 
         // default numeric types to u64
         if type_engine.contains_numeric(decl_engine, type_id) {
+            // While collecting unification we don't decay numeric and will ignore this error.
+            if self.collecting_unifications {
+                return Err(handler.emit_err(CompileError::MethodNotFound {
+                    method_name: method_name.clone(),
+                    type_name: self.engines.help_out(type_id).to_string(),
+                    span: method_name.span(),
+                }));
+            }
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
         }
 
@@ -1408,7 +1461,7 @@ impl<'a> TypeCheckContext<'a> {
             src_mod
                 .current_items()
                 .implemented_traits
-                .filter_by_type_item_import(type_id, engines),
+                .filter_by_type_item_import(type_id, engines, self.code_block_first_pass().into()),
             engines,
         );
 
@@ -1580,7 +1633,7 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             mod_path,
         )?;
-        value.subst(&type_mapping, self.engines);
+        value.subst(&type_mapping, &SubstTypesContext::new(self.engines, true));
         Ok(())
     }
 
@@ -1704,11 +1757,12 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
+        let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
             .implemented_traits
-            .insert_for_type(engines, type_id);
+            .insert_for_type(engines, type_id, code_block_first_pass.into());
     }
 
     pub fn check_type_impls_traits(
@@ -1718,7 +1772,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
         let engines = self.engines;
-
+        let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
@@ -1730,6 +1784,7 @@ impl<'a> TypeCheckContext<'a> {
                 &Span::dummy(),
                 engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
+                code_block_first_pass.into(),
             )
             .is_ok()
     }

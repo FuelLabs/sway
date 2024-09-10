@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};
@@ -2007,6 +2009,11 @@ lsp_capability_test!(
     highlight,
     lsp::highlight_request,
     doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    references,
+    lsp::references_request,
+    test_fixtures_dir().join("tokens/structs/src/main.sw")
 );
 lsp_capability_test!(
     code_action_abi,

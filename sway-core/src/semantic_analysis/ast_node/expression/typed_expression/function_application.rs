@@ -61,6 +61,17 @@ pub(crate) fn instantiate_function_application(
         &function_decl.parameters,
     )?;
 
+    // unify function return type with current ctx.type_annotation().
+    engines.te().unify_with_generic(
+        handler,
+        engines,
+        function_decl.return_type.type_id,
+        ctx.type_annotation(),
+        &call_path_binding.span(),
+        "Function return type does not match up with local type annotation.",
+        None,
+    );
+
     let mut function_return_type_id = function_decl.return_type.type_id;
 
     let function_ident: IdentUnique = function_decl.name.clone().into();
@@ -73,18 +84,20 @@ pub(crate) fn instantiate_function_application(
     {
         cached_fn_ref
     } else {
-        // Handle the trait constraints. This includes checking to see if the trait
-        // constraints are satisfied and replacing old decl ids based on the
-        // constraint with new decl ids based on the new type.
-        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-            handler,
-            ctx.by_ref(),
-            &function_decl.type_parameters,
-            function_decl.name.as_str(),
-            &call_path_binding.span(),
-        )?;
+        if !ctx.code_block_first_pass() {
+            // Handle the trait constraints. This includes checking to see if the trait
+            // constraints are satisfied and replacing old decl ids based on the
+            // constraint with new decl ids based on the new type.
+            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+                handler,
+                ctx.by_ref(),
+                &function_decl.type_parameters,
+                function_decl.name.as_str(),
+                &call_path_binding.span(),
+            )?;
 
-        function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+        }
 
         let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
 
@@ -100,7 +113,8 @@ pub(crate) fn instantiate_function_application(
             )
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
-        if method_sig.is_concrete(engines)
+        if !ctx.code_block_first_pass()
+            && method_sig.is_concrete(engines)
             && function_is_type_check_finalized
             && !function_is_trait_method_dummy
         {

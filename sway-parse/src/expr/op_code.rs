@@ -6,6 +6,10 @@ use sway_types::{Ident, Spanned};
 
 macro_rules! define_op_codes (
     ( $(($op_name:ident, $ty_name:ident, $s:literal, ($($arg_name:ident),*)),)* ) => {
+        pub const OP_CODES: &'static [&'static str] = &[
+            $($s),*
+        ];
+
         pub fn parse_instruction(ident: Ident, parser: &mut Parser) -> ParseResult<Instruction> {
             match ident.as_str() {
                 $($s => {
@@ -16,7 +20,9 @@ macro_rules! define_op_codes (
                 },)*
                 _ => {
                     let span = ident.span().clone();
-                    Err(parser.emit_error_with_span(ParseErrorKind::UnrecognizedOpCode, span))
+                    Err(parser.emit_error_with_span(ParseErrorKind::UnrecognizedOpCode {
+                        known_op_codes: OP_CODES,
+                    }, span))
                 },
             }
         }
@@ -54,6 +60,13 @@ define_op_codes!(
     (Srli, SrliOpcode, "srli", (ret, lhs, rhs)),
     (Sub, SubOpcode, "sub", (ret, lhs, rhs)),
     (Subi, SubiOpcode, "subi", (ret, lhs, rhs)),
+    (Wqcm, WqcmOpcode, "wqcm", (ret, lhs, rhs, op_mode)),
+    (Wqop, WqopOpcode, "wqop", (ret, lhs, rhs, op_mode)),
+    (Wqml, WqmlOpcode, "wqml", (ret, lhs, rhs, indirect)),
+    (Wqdv, WqdvOpcode, "wqdv", (ret, lhs, rhs, indirect)),
+    (Wqmd, WqmdOpcode, "wqmd", (ret, lhs_a, lhs_b, rhs)),
+    (Wqam, WqamOpcode, "wqam", (ret, lhs_a, lhs_b, rhs)),
+    (Wqmm, WqmmOpcode, "wqmm", (ret, lhs_a, lhs_b, rhs)),
     (Xor, XorOpcode, "xor", (ret, lhs, rhs)),
     (Xori, XoriOpcode, "xori", (ret, lhs, rhs)),
     /* Control Flow Instructions */
