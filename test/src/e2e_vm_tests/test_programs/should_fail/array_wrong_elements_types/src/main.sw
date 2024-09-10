@@ -29,8 +29,9 @@ fn main() {
 
     // unexpected str
     let _ = [1, "", 1u16];
-    let a = [1, 2, "hello"];
+    let _ = [1, 2, "hello"];
     let _ = [1, return, "", 1u16];
+    let _ = [1, "", return, 1u16];
 
     // unexpected Vec<u16>
     let _ = [Vec::new(), vec::<u8>(), vec::<u16>()];
@@ -42,4 +43,7 @@ fn main() {
     // unexpected u8
     let a = [8, 256u16, 8u8];
     let b: u32 = a[2];
+
+    // Should not warn or error
+    let _ : [u8 ; 0] = [];
 }
