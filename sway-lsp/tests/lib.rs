@@ -185,7 +185,7 @@ fn did_cache_test() {
 }
 
 #[allow(dead_code)]
-// #[test]
+#[test]
 fn did_change_stress_test() {
     run_async!({
         let (mut service, _) = LspService::build(ServerState::new)
@@ -267,9 +267,9 @@ fn garbage_collection_runner(path: PathBuf) {
             .config
             .write()
             .garbage_collection
-            .gc_frequency = 1;
+            .gc_frequency = 3;
         let uri = init_and_open(&mut service, path).await;
-        let times = 60;
+        let times = 6000;
 
         // Initialize cursor position
         let mut cursor_line = 20;
@@ -299,6 +299,12 @@ fn garbage_collection_storage() {
 #[test]
 fn garbage_collection_paths() {
     let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
+fn garbage_collection_benchmark() {
+    let p = test_fixtures_dir().join("benchmark/src/main.sw");
     garbage_collection_runner(p);
 }
 
