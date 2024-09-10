@@ -463,6 +463,7 @@ macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_module(&mut self, source_id: &SourceId) {
+                eprintln!("decl_engine_clear_module");
                 self.parents.write().retain(|key, _| {
                     match key {
                         AssociatedItemDeclId::TraitFn(decl_id) => {
@@ -479,31 +480,32 @@ macro_rules! decl_engine_clear_module {
                         },
                     }
                 });
-
+                eprintln!("decl_engine_ lets retain");
                 $(
                     self.$slab.retain(|_k, ty| match ty.span().source_id() {
                         Some(src_id) => src_id != source_id,
                         None => true,
                     });
                 )*
+                eprintln!("decl_engine_clear_module done");
             }
         }
     };
 }
 
 decl_engine_clear_module!(
-    function_slab, ty::TyFunctionDecl;
-    trait_slab, ty::TyTraitDecl;
-    trait_fn_slab, ty::TyTraitFn;
-    trait_type_slab, ty::TyTraitType;
-    impl_self_or_trait_slab, ty::TyImplTrait;
-    struct_slab, ty::TyStructDecl;
+    // function_slab, ty::TyFunctionDecl;
+    // trait_slab, ty::TyTraitDecl;
+    // trait_fn_slab, ty::TyTraitFn;
+    // trait_type_slab, ty::TyTraitType;
+    // impl_self_or_trait_slab, ty::TyImplTrait;
+    //struct_slab, ty::TyStructDecl;
     storage_slab, ty::TyStorageDecl;
     abi_slab, ty::TyAbiDecl;
     constant_slab, ty::TyConstantDecl;
-    configurable_slab, ty::TyConfigurableDecl;
+    // configurable_slab, ty::TyConfigurableDecl;
     enum_slab, ty::TyEnumDecl;
-    type_alias_slab, ty::TyTypeAliasDecl;
+    // type_alias_slab, ty::TyTypeAliasDecl;
 );
 
 impl DeclEngine {

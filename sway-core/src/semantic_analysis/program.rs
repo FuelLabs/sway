@@ -55,11 +55,13 @@ impl TyProgram {
                     new_encoding: false,
                 });
 
+        dbg!();
         let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
             .with_kind(parsed.kind);
 
         let ParseProgram { root, kind } = parsed;
 
+        dbg!();
         let root = ty::TyModule::type_check(
             handler,
             ctx.by_ref(),
@@ -68,7 +70,7 @@ impl TyProgram {
             root,
             build_config,
         )?;
-
+        dbg!();
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
             engines,
@@ -77,7 +79,7 @@ impl TyProgram {
             package_name,
             ctx.experimental,
         )?;
-
+        dbg!();
         let program = TyProgram {
             kind,
             root: (*root).clone(),
@@ -87,7 +89,7 @@ impl TyProgram {
             logged_types: vec![],
             messages_types: vec![],
         };
-
+        dbg!();
         Ok(program)
     }
 

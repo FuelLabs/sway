@@ -313,6 +313,7 @@ impl ty::TyModule {
             ..
         } = parsed;
 
+        dbg!();
         // Try to get the cached root module if it's up to date
         if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
             parsed.span.source_id(),
@@ -321,7 +322,7 @@ impl ty::TyModule {
         ) {
             return Ok(module);
         }
-
+        dbg!();
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
             .iter()
@@ -360,17 +361,17 @@ impl ty::TyModule {
                 }
             })
             .collect::<Result<Vec<_>, _>>();
-
+        dbg!();
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
             handler,
             ctx.engines(),
             tree.root_nodes.clone(),
         )?;
-
+        dbg!();
         let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), &ordered_nodes)?;
         let submodules = submodules_res?;
-
+        dbg!();
         let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;
         match (&kind, &fallback_fn) {
             (TreeType::Contract, _) | (_, None) => {}
@@ -381,7 +382,7 @@ impl ty::TyModule {
                 }));
             }
         }
-
+        dbg!();
         if ctx.experimental.new_encoding {
             let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
@@ -458,7 +459,7 @@ impl ty::TyModule {
                 _ => {}
             }
         }
-
+        dbg!();
         #[allow(clippy::arc_with_non_send_sync)]
         let ty_module = Arc::new(Self {
             span: span.clone(),
@@ -467,7 +468,7 @@ impl ty::TyModule {
             all_nodes,
             attributes: attributes.clone(),
         });
-
+        dbg!();
         // Cache the ty module
         if let Some(source_id) = span.source_id() {
             let path = engines.se().get_path(source_id);
@@ -486,7 +487,7 @@ impl ty::TyModule {
                 },
             );
         }
-
+        dbg!();
         Ok(ty_module)
     }
 
@@ -540,24 +541,28 @@ impl ty::TyModule {
         nodes: &[AstNode],
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let engines = ctx.engines();
+        dbg!();
         let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
-
+        dbg!();
         let mut typed_nodes = vec![];
         for node in nodes {
+            dbg!();
             let auto_impl_encoding_traits = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
+                    dbg!();
                     let decl = ctx.engines().pe().get_struct(decl_id);
                     !all_abiencode_impls.contains_key(&decl.name)
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
+                    dbg!();
                     let decl = ctx.engines().pe().get_enum(decl_id);
                     !all_abiencode_impls.contains_key(&decl.name)
                 }
                 _ => false,
             };
-
+            dbg!(node.span.as_str());
             let Ok(node) = ty::TyAstNode::type_check(handler, ctx.by_ref(), node) else {
                 continue;
             };
@@ -585,7 +590,7 @@ impl ty::TyModule {
                 typed_nodes.push(node);
             }
         }
-
+        dbg!();
         Ok(typed_nodes)
     }
 }
