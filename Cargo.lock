@@ -2072,6 +2072,7 @@ dependencies = [
  "hex",
  "portpicker",
  "rand",
+ "regex",
  "rexpect 0.5.0",
  "rpassword",
  "serde",
