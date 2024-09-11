@@ -228,30 +228,22 @@ pub fn caller_addresses() -> Vec<Address> {
     let mut iter = 0;
 
     while iter < inputs {
-        let type_of_input = input_type(iter);
-        match type_of_input {
-            Some(Input::Coin) | Some(Input::Message) => {
-                // If input type is Coin or Message, get the owner address.
-                let owner_of_input = match type_of_input {
-                    Some(Input::Coin) => input_coin_owner(iter),
-                    Some(Input::Message) => input_message_sender(iter),
-                    _ => None, // Shouldn't reach this case due to outer match.
-                };
+        // Call the corressponding function based on the input type.
+        let input_owner = match input_type(iter) {
+            Some(Input::Coin) => input_coin_owner(iter),
+            Some(Input::Message) => input_message_sender(iter),
+            _ => None, // If not Coin or Message, loop continues.
+        };
 
-                // If we successfully retrieved an owner address, add it to the vector.
-                if let Some(address) = owner_of_input {
-                    addresses.push(address);
-                }
-            },
-            _ => {
-            // Input type is neither Coin nor Message, continue looping.
-}
+        // If we successfully retrieved an owner address, add it to the vector.
+        if let Some(address) = input_owner {
+            addresses.push(address);
         }
 
         iter += 1;
     }
 
-    addresses // Return the collected addresses.
+    addresses
 }
 
 /// Get the current predicate's address when called in an internal context.

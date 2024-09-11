@@ -217,8 +217,6 @@ async fn caller_addresses_from_messages() {
         .await
         .unwrap();
     
-    dbg!(&result.value);
-    
     assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
 
     // Start building transactions
@@ -274,8 +272,6 @@ async fn caller_addresses_from_messages() {
     let tx_id = provider.send_transaction(tx).await.unwrap();
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
-
-    dbg!(&result.value);
 
     assert!(result.value.contains(&Address::from(wallet1.address().clone())));
     assert!(result.value.contains(&Address::from(wallet2.address().clone())));
@@ -360,8 +356,6 @@ async fn caller_addresses_from_coins() {
         .await
         .unwrap();
     
-    dbg!(&result.value);
-    
     assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
 
     // Start building transactions
@@ -420,8 +414,6 @@ async fn caller_addresses_from_coins() {
     let tx_id = provider.send_transaction(tx).await.unwrap();
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
-
-    dbg!(&result.value);
 
     assert!(result.value.contains(&Address::from(wallet1.address().clone())));
     assert!(result.value.contains(&Address::from(wallet2.address().clone())));
@@ -508,8 +500,6 @@ async fn caller_addresses_from_coins_and_messages() {
         .await
         .unwrap();
     
-    dbg!(&result.value);
-    
     assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
 
     // Start building transactions
@@ -567,8 +557,6 @@ async fn caller_addresses_from_coins_and_messages() {
     let tx_id = provider.send_transaction(tx).await.unwrap();
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
-
-    dbg!(&result.value);
 
     assert!(result.value.contains(&Address::from(wallet1.address().clone())));
     assert!(result.value.contains(&Address::from(wallet2.address().clone())));
