@@ -181,17 +181,24 @@ pub fn generate_program_abi(
                 configurables: Some(configurables),
             }
         }
-        TyProgramKind::Library { .. } => program_abi::ProgramABI {
-            program_type: "library".to_string(),
-            spec_version,
-            encoding_version,
-            metadata_types: vec![],
-            concrete_types: vec![],
-            functions: vec![],
-            logged_types: None,
-            messages_types: None,
-            configurables: None,
-        },
+        TyProgramKind::Library { .. } => {
+            let logged_types =
+                generate_logged_types(handler, ctx, engines, metadata_types, concrete_types)?;
+            let messages_types =
+                generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
+
+            program_abi::ProgramABI {
+                program_type: "library".to_string(),
+                spec_version,
+                encoding_version,
+                metadata_types: metadata_types.to_vec(),
+                concrete_types: concrete_types.to_vec(),
+                functions: vec![],
+                logged_types: Some(logged_types),
+                messages_types: Some(messages_types),
+                configurables: None,
+            }
+        }
     };
 
     standardize_json_abi_types(&mut program_abi);
