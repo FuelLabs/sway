@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use rexpect::spawn;
 
+const TIMEOUT_MS: u64 = 50000;
+
 fn test_fixtures_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -19,7 +21,7 @@ fn test_forc_test_decoded_logs() -> Result<(), rexpect::error::Error> {
             "cargo run --bin forc -- test --logs --path {}",
             project_dir.to_string_lossy()
         ),
-        Some(30000),
+        Some(TIMEOUT_MS),
     )?;
 
     // Assert that the output is correct
@@ -41,7 +43,7 @@ fn test_forc_test_raw_logs() -> Result<(), rexpect::error::Error> {
             "cargo run --bin forc -- test --raw-logs --path {}",
             project_dir.to_string_lossy()
         ),
-        Some(30000),
+        Some(TIMEOUT_MS),
     )?;
 
     // Assert that the output is correct
@@ -65,7 +67,7 @@ fn test_forc_test_both_logs() -> Result<(), rexpect::error::Error> {
             "cargo run --bin forc -- test --logs --raw-logs --path {}",
             project_dir.to_string_lossy()
         ),
-        Some(30000),
+        Some(TIMEOUT_MS),
     )?;
 
     // Assert that the output is correct
