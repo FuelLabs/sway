@@ -9,7 +9,7 @@ use fuel_vm::{
     self as vm,
     checked_transaction::builder::TransactionBuilderExt,
     interpreter::{Interpreter, NotSupportedEcal},
-    prelude::{Instruction, SecretKey},
+    prelude::SecretKey,
     storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
@@ -263,9 +263,10 @@ impl TestExecutor {
 /// [14] <first-entry-point>           ; This is where we want to jump from to our test code!
 /// ```
 fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
-    // TODO: Standardize this or add metadata to bytecode.
-    const PROGRAM_START_INST_OFFSET: u32 = 14;
-    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Instruction::SIZE;
+    // Each instruction is 4 bytes,
+    // so we divide the totaly byte-size by 4 to get the instruction offset.
+    const PROGRAM_START_INST_OFFSET: u32 = (sway_core::PRELUDE_SIZE_IN_BYTES / 4) as u32;
+    const PROGRAM_START_BYTE_OFFSET: usize = sway_core::PRELUDE_SIZE_IN_BYTES;
 
     // If our desired entry point is the program start, no need to jump.
     if test_offset == PROGRAM_START_INST_OFFSET {

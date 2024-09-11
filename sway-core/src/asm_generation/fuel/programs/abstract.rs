@@ -175,6 +175,18 @@ impl AbstractProgram {
     /// -    ADD $ds $ds $scratch
     /// 8    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
+        const _: () = assert!(
+            crate::PRELUDE_METADATA_OFFSET_IN_BYTES == 16,
+            "Inconsitency in the assumption of prelude organisation"
+        );
+        const _: () = assert!(
+            crate::PRELUDE_METADATA_SIZE_IN_BYTES == 32,
+            "Inconsitency in the assumption of prelude organisation"
+        );
+        const _: () = assert!(
+            crate::PRELUDE_SIZE_IN_BYTES == 56,
+            "Inconsitency in the assumption of prelude organisation"
+        );
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {
             ops: [

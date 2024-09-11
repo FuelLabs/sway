@@ -993,6 +993,28 @@ pub fn compile_to_bytecode(
     asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
 }
 
+/// Size of the prelude's METADATA section, in bytes.
+pub const PRELUDE_METADATA_SIZE_IN_BYTES: usize = 32;
+/// Offset (in bytes) of the METADATA section in the prelude.
+pub const PRELUDE_METADATA_OFFSET_IN_BYTES: usize = 16;
+/// Total size of the prelude in bytes. Instructions start right after.
+pub const PRELUDE_SIZE_IN_BYTES: usize = 56;
+
+/// Given bytecode, overwrite the existing Metadata in the prelude with the given one.
+pub fn set_bytecode_metadata(
+    compiled_bytecode: &mut CompiledBytecode,
+    md: &[u8; PRELUDE_METADATA_SIZE_IN_BYTES],
+) {
+    assert!(
+        compiled_bytecode.bytecode.len()
+            >= PRELUDE_METADATA_OFFSET_IN_BYTES + PRELUDE_METADATA_SIZE_IN_BYTES
+    );
+    let code = &mut compiled_bytecode.bytecode;
+    for (index, byte) in md.iter().enumerate() {
+        code[index + PRELUDE_METADATA_OFFSET_IN_BYTES] = *byte;
+    }
+}
+
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,

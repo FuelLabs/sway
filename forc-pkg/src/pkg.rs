@@ -49,7 +49,7 @@ use sway_core::{
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{PrintAsm, PrintIr};
+use sway_core::{set_bytecode_metadata, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
@@ -1914,7 +1914,7 @@ pub fn compile(
 
     let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
-    let compiled = match bc_res {
+    let mut compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };
@@ -1934,13 +1934,20 @@ pub fn compile(
                     .contains_key(&c.name)
             });
             // Set the actual offsets in the JSON object
-            for (config, offset) in compiled.named_data_section_entries_offsets {
-                if let Some(idx) = configurables.iter().position(|c| c.name == config) {
-                    configurables[idx].offset = offset;
+            for (config, offset) in &compiled.named_data_section_entries_offsets {
+                if let Some(idx) = configurables.iter().position(|c| &c.name == config) {
+                    configurables[idx].offset = *offset;
                 }
             }
         }
     }
+
+    // TODO: Compute metadata as a 256bit hash from program_abi.
+    let md = [
+        0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ];
+    set_bytecode_metadata(&mut compiled, &md);
 
     metrics.bytecode_size = compiled.bytecode.len();
     let bytecode = BuiltPackageBytecode {
