@@ -160,7 +160,7 @@ impl AbstractProgram {
     ///
     /// WORD OP
     /// 1    MOV $scratch $pc
-    /// -    JMPF $zero i4
+    /// -    JMPF $zero i10
     /// 2    DATA_START (0-32) (in bytes, offset from $is)
     /// -    DATA_START (32-64)
     /// 3    METADATA (0-32)

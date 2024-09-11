@@ -246,17 +246,25 @@ impl TestExecutor {
 /// The following is how the beginning of the bytecode is laid out:
 ///
 /// ```ignore
-/// [0] ji   i4                       ; Jumps to the data section setup.
-/// [1] noop
-/// [2] DATA_SECTION_OFFSET[0..32]
-/// [3] DATA_SECTION_OFFSET[32..64]
-/// [4] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
-/// [5] add  $$ds $$ds $is
-/// [6] <first-entry-point>           ; This is where we want to jump from to our test code!
+/// [ 0] ji   i4                       ; Jumps to the data section setup.
+/// [ 1] noop
+/// [ 2] DATA_SECTION_OFFSET[0..32]
+/// [ 3] DATA_SECTION_OFFSET[32..64]
+/// [ 4] METADATA (0-32)
+/// [ 5] METADATA (32-64)
+/// [ 6] METADATA (64-96)
+/// [ 7] METADATA (96-128)
+/// [ 8] METADATA (128-160)
+/// [ 9] METADATA (160-192)
+/// [10] METADATA (192-224)
+/// [11] METADATA (224-256)
+/// [12] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
+/// [13] add  $$ds $$ds $is
+/// [14] <first-entry-point>           ; This is where we want to jump from to our test code!
 /// ```
 fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
     // TODO: Standardize this or add metadata to bytecode.
-    const PROGRAM_START_INST_OFFSET: u32 = 6;
+    const PROGRAM_START_INST_OFFSET: u32 = 14;
     const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Instruction::SIZE;
 
     // If our desired entry point is the program start, no need to jump.
