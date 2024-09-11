@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-2988E4B52C5E1B31"
+
+[[package]]
+name = "script_log_decode"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-2988E4B52C5E1B31"
+dependencies = ["core"]
