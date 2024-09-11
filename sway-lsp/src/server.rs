@@ -12,10 +12,10 @@ use lsp_types::{
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
     DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams,
     DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
-    InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
-    PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams, Location,
+    PrepareRenameResponse, ReferenceParams, RenameParams, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult,
+    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
 use sway_utils::PerformanceData;
 use tower_lsp::{jsonrpc::Result, LanguageServer};
@@ -136,6 +136,10 @@ impl LanguageServer for ServerState {
 
     async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
         request::handle_inlay_hints(self, params).await
+    }
+
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        request::handle_references(self, params).await
     }
 }
 
