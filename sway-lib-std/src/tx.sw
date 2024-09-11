@@ -433,7 +433,7 @@ pub fn tx_witness_data<T>(index: u64) -> Option<T> {
     let witness_data_ptr = __gtf::<raw_ptr>(index, GTF_WITNESS_DATA);
     let new_ptr = alloc_bytes(length);
     witness_data_ptr.copy_bytes_to(new_ptr, length);
-    
+
     Some(asm(ptr: new_ptr) {
         ptr: T
     })
