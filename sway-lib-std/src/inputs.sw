@@ -113,6 +113,10 @@ pub fn input_type(index: u64) -> Option<Input> {
 ///
 /// * [u16] - The number of inputs in the transaction.
 ///
+/// # Reverts
+///
+/// * When the input type is unrecognized. This should never happen.
+///
 /// # Examples
 ///
 /// ```sway
@@ -127,6 +131,9 @@ pub fn input_count() -> u16 {
     match tx_type() {
         Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
         Transaction::Create => __gtf::<u16>(0, GTF_CREATE_INPUTS_COUNT),
+        Transaction::Upgrade => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
+        Transaction::Upload => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
+        Transaction::Blob => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
         _ => revert(0),
     }
 }
@@ -159,6 +166,9 @@ fn input_pointer(index: u64) -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
         Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_INPUT_AT_INDEX)),
+        Transaction::Upgrade => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
+        Transaction::Upload => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
+        Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
         _ => None,
     }
 }

@@ -3,6 +3,7 @@ library;
 
 use ::revert::revert;
 use ::option::Option::{self, *};
+use ::alloc::alloc_bytes;
 
 // GTF Opcode const selectors
 //
@@ -307,6 +308,10 @@ pub fn tx_script_data_length() -> Option<u64> {
 ///
 /// * [u64] - The witnesses count for the transaction.
 ///
+/// # Reverts
+///
+/// * When the transaction type is unrecognized. This should never happen.
+///
 /// # Examples
 ///
 /// ```sway
@@ -321,6 +326,9 @@ pub fn tx_witnesses_count() -> u64 {
     match tx_type() {
         Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
         Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
+        Transaction::Upgrade => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
+        Transaction::Upload => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
+        Transaction::Blob => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
         _ => revert(0),
     }
 }
@@ -344,7 +352,6 @@ pub fn tx_witnesses_count() -> u64 {
 ///     let witness_pointer = tx_witness_pointer(0).unwrap();
 /// }
 /// ```
-#[allow(dead_code)]
 fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     if index >= tx_witnesses_count() {
         return None
@@ -353,6 +360,9 @@ fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
         Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
+        Transaction::Upgrade => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
+        Transaction::Upload => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
+        Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
         _ => None,
     }
 }
@@ -387,6 +397,11 @@ pub fn tx_witness_data_length(index: u64) -> Option<u64> {
 
 /// Get the witness data at `index`.
 ///
+/// # Additional Information
+///
+/// **Unsafe. Assumes the type is correct.**
+/// This function does not support ownership types(Vec, Bytes, String, etc).
+///
 /// # Arguments
 ///
 /// * `index` - The index of the witness to get the data for.
@@ -410,11 +425,18 @@ pub fn tx_witness_data<T>(index: u64) -> Option<T> {
         return None
     }
 
-    if __size_of::<T>() == 1 {
-        Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).add::<u8>(7).read::<T>())
-    } else {
-        Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>())
-    }
+    let length = match tx_witness_data_length(index) {
+        Some(len) => len,
+        None => return None,
+    };
+
+    let witness_data_ptr = __gtf::<raw_ptr>(index, GTF_WITNESS_DATA);
+    let new_ptr = alloc_bytes(length);
+    witness_data_ptr.copy_bytes_to(new_ptr, length);
+    
+    Some(asm(ptr: new_ptr) {
+        ptr: T
+    })
 }
 
 /// Get the transaction script start pointer.
@@ -467,8 +489,8 @@ fn tx_script_data_start_pointer() -> Option<raw_ptr> {
 ///
 /// # Additional Information
 ///
-/// **Unsafe.**
-/// **Assumes the type is correct.**
+/// **Unsafe. Assumes the type is correct.**
+/// This function does not support ownership types(Vec, Bytes, String, etc).
 ///
 /// # Returns
 ///
@@ -523,7 +545,6 @@ pub fn tx_script_bytecode<T>() -> Option<T> {
 }
 
 /// Get the hash of the script bytecode.
-/// Reverts if not a transaction-script.
 ///
 /// # Returns
 ///
