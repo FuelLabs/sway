@@ -205,8 +205,7 @@ async fn deploy_new_proxy(
 ) -> Result<ContractId> {
     fuels::macros::abigen!(Contract(
         name = "ProxyContract",
-        abi = r#"
-{
+        abi = r#"{
   "programType": "contract",
   "specVersion": "1",
   "encodingVersion": "1",
@@ -921,12 +920,12 @@ async fn deploy_new_proxy(
     {
       "name": "INITIAL_TARGET",
       "concreteTypeId": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
-      "offset": 13616
+      "offset": 13368
     },
     {
       "name": "INITIAL_OWNER",
       "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
-      "offset": 13568
+      "offset": 13320
     }
   ]
 }"#,
