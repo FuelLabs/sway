@@ -352,6 +352,7 @@ pub fn tx_witnesses_count() -> u64 {
 ///     let witness_pointer = tx_witness_pointer(0).unwrap();
 /// }
 /// ```
+#[allow(dead_code)]
 fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     if index >= tx_witnesses_count() {
         return None
@@ -430,13 +431,21 @@ pub fn tx_witness_data<T>(index: u64) -> Option<T> {
         None => return None,
     };
 
-    let witness_data_ptr = __gtf::<raw_ptr>(index, GTF_WITNESS_DATA);
-    let new_ptr = alloc_bytes(length);
-    witness_data_ptr.copy_bytes_to(new_ptr, length);
+    if __is_reference_type::<T>() {
+        let witness_data_ptr = __gtf::<raw_ptr>(index, GTF_WITNESS_DATA);
+        let new_ptr = alloc_bytes(length);
+        witness_data_ptr.copy_bytes_to(new_ptr, length);
 
-    Some(asm(ptr: new_ptr) {
-        ptr: T
-    })
+        Some(asm(ptr: new_ptr) {
+            ptr: T
+        })
+    } else {
+        Some(
+            __gtf::<raw_ptr>(index, GTF_WITNESS_DATA)
+                .add::<u8>(8 - __size_of::<T>())
+                .read::<T>(),
+        )
+    }
 }
 
 /// Get the transaction script start pointer.
