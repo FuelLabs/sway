@@ -27,9 +27,9 @@ use crate::{
 };
 
 /// Used inside of type inference to store declarations.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DeclEngine {
-    function_slab: ConcurrentSlab<TyFunctionDecl>,
+    pub function_slab: ConcurrentSlab<TyFunctionDecl>,
     trait_slab: ConcurrentSlab<TyTraitDecl>,
     trait_fn_slab: ConcurrentSlab<TyTraitFn>,
     trait_type_slab: ConcurrentSlab<TyTraitType>,
@@ -64,6 +64,41 @@ pub struct DeclEngine {
         RwLock<HashMap<DeclId<TyTypeAliasDecl>, ParsedDeclId<TypeAliasDeclaration>>>,
 
     parents: RwLock<HashMap<AssociatedItemDeclId, Vec<AssociatedItemDeclId>>>,
+}
+
+// lets impl Default ourselves while we debug
+impl Default for DeclEngine {
+    fn default() -> Self {
+        Self {
+            function_slab: ConcurrentSlab::new("DeclEngine Function Slab"),
+            trait_slab: ConcurrentSlab::new("DeclEngine Trait Slab"),
+            trait_fn_slab: ConcurrentSlab::new("DeclEngine TraitFn Slab"),
+            trait_type_slab: ConcurrentSlab::new("DeclEngine TraitType Slab"),
+            impl_self_or_trait_slab: ConcurrentSlab::new("DeclEngine ImplSelfOrTrait Slab"),
+            struct_slab: ConcurrentSlab::new("DeclEngine Struct Slab"),
+            storage_slab: ConcurrentSlab::new("DeclEngine Storage Slab"),
+            abi_slab: ConcurrentSlab::new("DeclEngine Abi Slab"),
+            constant_slab: ConcurrentSlab::new("DeclEngine Constant Slab"),
+            configurable_slab: ConcurrentSlab::new("DeclEngine Configurable Slab"),
+            enum_slab: ConcurrentSlab::new("DeclEngine Enum Slab"),
+            type_alias_slab: ConcurrentSlab::new("DeclEngine TypeAlias Slab"),
+
+            function_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            trait_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            trait_fn_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            trait_type_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            impl_self_or_trait_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            struct_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            storage_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            abi_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            constant_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            configurable_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            enum_parsed_decl_id_map: RwLock::new(HashMap::new()),
+            type_alias_parsed_decl_id_map: RwLock::new(HashMap::new()),
+
+            parents: RwLock::new(HashMap::new()),
+        }
+    }
 }
 
 impl Clone for DeclEngine {

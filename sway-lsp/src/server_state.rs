@@ -138,6 +138,7 @@ impl ServerState {
                         let mut engines_clone = session.engines.read().clone();
 
                         if let Some(version) = ctx.version {
+                            eprintln!("new compilation event | version: {version}");
                             // Perform garbage collection at configured intervals if enabled to manage memory usage.
                             if ctx.gc_options.gc_enabled
                                 && version % ctx.gc_options.gc_frequency == 0

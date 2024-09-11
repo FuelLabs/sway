@@ -17,8 +17,9 @@ impl<T> Default for Inner<T> {
 }
 
 #[derive(Debug)]
-pub(crate) struct ConcurrentSlab<T> {
+pub struct ConcurrentSlab<T> {
     pub inner: RwLock<Inner<T>>,
+    pub context: String,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -29,14 +30,27 @@ where
         let inner = self.inner.read();
         Self {
             inner: RwLock::new(inner.clone()),
+            context: self.context.clone(),
         }
     }
 }
 
-impl<T> Default for ConcurrentSlab<T> {
-    fn default() -> Self {
+// impl<T> Default for ConcurrentSlab<T> {
+//     fn default() -> Self {
+//         Self {
+//             inner: Default::default(),
+//         }
+//     }
+// }
+
+impl<T> ConcurrentSlab<T>
+where
+    T: Clone,
+{
+    pub fn new(context: &str) -> Self {
         Self {
             inner: Default::default(),
+            context: context.to_string(),
         }
     }
 }
@@ -102,10 +116,21 @@ where
 
     pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read();
-        inner.items[index]
-            .as_ref()
-            .expect("invalid slab index for ConcurrentSlab::get")
-            .clone()
+        // inner.items[index]
+        //     .as_ref()
+        //     .expect("invalid slab index for ConcurrentSlab::get")
+        //     .clone()
+
+        match inner.items.get(index) {
+            Some(item) => item
+                .as_ref()
+                .expect(&format!("item is None for ConcurrentSlab::get | context {} | index = {}", self.context, index)) 
+                .clone(),
+            None => {
+                eprintln!("Error: Index {} is out of bounds", index);
+                panic!("Index out of bounds in ConcurrentSlab::get");
+            }
+        }
     }
 
     pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {

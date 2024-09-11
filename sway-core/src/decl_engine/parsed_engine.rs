@@ -14,7 +14,7 @@ use sway_types::{ProgramId, SourceId, Spanned};
 use super::parsed_id::ParsedDeclId;
 
 /// Used inside of type inference to store declarations.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct ParsedDeclEngine {
     variable_slab: ConcurrentSlab<VariableDeclaration>,
     function_slab: ConcurrentSlab<FunctionDeclaration>,
@@ -30,6 +30,28 @@ pub struct ParsedDeclEngine {
     enum_slab: ConcurrentSlab<EnumDeclaration>,
     enum_variant_slab: ConcurrentSlab<EnumVariant>,
     type_alias_slab: ConcurrentSlab<TypeAliasDeclaration>,
+}
+
+// lets impl Default ourselves while we debug
+impl Default for ParsedDeclEngine {
+    fn default() -> Self {
+        Self {
+            variable_slab: ConcurrentSlab::new("ParsedDeclEngine Variable Slab"),
+            function_slab: ConcurrentSlab::new("ParsedDeclEngine Function Slab"),
+            trait_slab: ConcurrentSlab::new("ParsedDeclEngine Trait Slab"),
+            trait_fn_slab: ConcurrentSlab::new("ParsedDeclEngine TraitFn Slab"),
+            trait_type_slab: ConcurrentSlab::new("ParsedDeclEngine TraitType Slab"),
+            impl_self_or_trait_slab: ConcurrentSlab::new("ParsedDeclEngine ImplSelfOrTrait Slab"),
+            struct_slab: ConcurrentSlab::new("ParsedDeclEngine Struct Slab"),
+            storage_slab: ConcurrentSlab::new("ParsedDeclEngine Storage Slab"),
+            abi_slab: ConcurrentSlab::new("ParsedDeclEngine Abi Slab"),
+            constant_slab: ConcurrentSlab::new("ParsedDeclEngine Constant Slab"),
+            configurable_slab: ConcurrentSlab::new("ParsedDeclEngine Configurable Slab"),
+            enum_slab: ConcurrentSlab::new("ParsedDeclEngine Enum Slab"),
+            enum_variant_slab: ConcurrentSlab::new("ParsedDeclEngine EnumVariant Slab"),
+            type_alias_slab: ConcurrentSlab::new("ParsedDeclEngine TypeAlias Slab"),
+        }
+    }
 }
 
 pub trait ParsedDeclEngineGet<I, U> {

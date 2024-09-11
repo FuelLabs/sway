@@ -145,9 +145,21 @@ impl Session {
         engines: &mut Engines,
         uri: &Url,
     ) -> Result<(), LanguageServerError> {
+        //engines.te().print_id_map("GC Id Map | before");
+        //engines.te().print_slab("GC Slab | before");
+        eprintln!("GC Function Slab Length | Before {:?}", engines.de().function_slab.len());
+        eprintln!("GC Function Slab Contents | Before {:#?}", engines.de().function_slab.values()[4]);
+        
         let path = uri.to_file_path().unwrap();
+        eprintln!("garbage_collect_module | path: {path:?}");
         let source_id = { engines.se().get_source_id(&path) };
         engines.clear_module(&source_id);
+
+        //engines.te().print_id_map("GC Id Map | after");
+        //engines.te().print_slab("GC Slab | after");
+        eprintln!("GC Function Slab Length | After {:?}", engines.de().function_slab.len());
+        eprintln!("GC Function Slab Contents | After {:#?}", engines.de().function_slab.inner.read().items[4]);
+        
         Ok(())
     }
 
@@ -449,6 +461,7 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
 
+    eprintln!("compiling");
     let results = compile(
         &build_plan,
         engines,
@@ -464,6 +477,7 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
+    eprintln!("traversing");
     let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
@@ -475,10 +489,12 @@ pub fn parse_project(
         }
     }
 
+    eprintln!("create_runnables");
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
     }
+    eprintln!("parse project complete");
     Ok(())
 }
 

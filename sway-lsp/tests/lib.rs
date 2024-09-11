@@ -185,6 +185,22 @@ fn did_cache_test() {
 }
 
 #[allow(dead_code)]
+#[test]
+fn garbage_collection_minimal() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let bench_dir = sway_workspace_dir().join("sway-lsp/tests/fixtures/garbage_collection/minimal");
+        let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
+        let times = 10;
+        for version in 0..times {
+            let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
+            service.inner().wait_for_parsing().await;
+        }
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[allow(dead_code)]
 // #[test]
 fn did_change_stress_test() {
     run_async!({

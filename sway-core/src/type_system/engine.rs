@@ -25,6 +25,15 @@ pub struct TypeEngine {
     last_replace: RwLock<Instant>,
 }
 
+impl TypeEngine {
+    pub fn print_id_map(&self, context: &str) {
+        eprintln!("{} | {:#?}", context, self.id_map.read());
+    }
+    pub fn print_slab(&self, context: &str) {
+        eprintln!("{} | {:?}", context, self.slab.values());
+    }
+}
+
 pub trait IsConcrete {
     fn is_concrete(&self, engines: &Engines) -> bool;
 }
@@ -41,9 +50,9 @@ pub(crate) struct Unification {
 impl Default for TypeEngine {
     fn default() -> Self {
         TypeEngine {
-            slab: Default::default(),
+            slab: ConcurrentSlab::new("TypeEngine Slab"),
             id_map: Default::default(),
-            unifications: Default::default(),
+            unifications: ConcurrentSlab::new("TypeEngine Unifications"),
             last_replace: RwLock::new(Instant::now()),
         }
     }
