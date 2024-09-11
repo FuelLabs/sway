@@ -554,7 +554,7 @@ jobs:
       - name: Run sway-lsp tests sequentially
         env:
           RUST_BACKTRACE: full
-        run: cargo nextest run --locked --release -p sway-lsp --no-capture
+        run: cargo nextest run --locked --release -p sway-lsp --no-capture --profile ci --config-file sway-lsp/tests/nextest.toml
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:

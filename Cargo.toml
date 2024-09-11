@@ -61,13 +61,3 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-
-[workspace.metadata.nextest]
-default-profile = "ci"
-
-[workspace.metadata.nextest.profile.ci]
-retries = 0 # Set default retries to 0
-
-[[workspace.metadata.nextest.profile.ci.overrides]]
-filter = 'test(go_to_definition_for_paths)'
-retries = 2 
