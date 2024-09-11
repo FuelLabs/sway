@@ -544,13 +544,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
+      - name: Setup Rust and cargo-nextest
+        uses: moonrepo/setup-rust@v0
         with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-      - name: Setup cargo-nextest
-        uses: taiki-e/install-action@nextest
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
       - name: Run sway-lsp tests sequentially
         env:
           RUST_BACKTRACE: full
