@@ -440,11 +440,12 @@ pub fn tx_witness_data<T>(index: u64) -> Option<T> {
             ptr: T
         })
     } else {
-        Some(
-            __gtf::<raw_ptr>(index, GTF_WITNESS_DATA)
-                .add::<u8>(8 - __size_of::<T>())
-                .read::<T>(),
-        )
+        // u8 is the only value type that is less than 8 bytes and should be handled separately
+        if __size_of::<T>() == 1 {
+            Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).add::<u8>(7).read::<T>())
+        } else {
+            Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>())
+        }
     }
 }
 
