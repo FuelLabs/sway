@@ -1,0 +1,6 @@
+[profile.ci]
+retries = 0
+
+[[profile.ci.overrides]]
+filter = 'test(go_to_definition_for_paths)'
+retries = 2
