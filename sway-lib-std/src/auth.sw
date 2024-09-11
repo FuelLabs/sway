@@ -228,7 +228,7 @@ pub fn caller_addresses() -> Vec<Address> {
     let mut iter = 0;
 
     while iter < inputs {
-        // Call the corressponding function based on the input type.
+        // Call the corresponding function based on the input type.
         let input_owner = match input_type(iter) {
             Some(Input::Coin) => input_coin_owner(iter),
             Some(Input::Message) => input_message_sender(iter),
