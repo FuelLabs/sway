@@ -474,6 +474,11 @@ impl TyExpression {
             TyExpressionVariant::FunctionApplication {
                 call_path, fn_ref, ..
             } => {
+                dbg!("right before we crash | fn_ref: {:#?}", fn_ref);
+
+                eprintln!("\n Function Slab Length | JUST BEFORE CRASH {:?}", engines.de().function_slab.len());
+                eprintln!("GC Function Slab Contents | JUST BEFORE CRASH {:#?}", engines.de().function_slab.inner.read().items[4]);
+
                 if let Some(TyDecl::ImplSelfOrTrait(t)) =
                     &engines.de().get(fn_ref).implementing_type
                 {

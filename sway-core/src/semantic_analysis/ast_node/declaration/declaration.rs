@@ -274,7 +274,9 @@ impl TyDecl {
                 };
 
                 let name = fn_decl.name.clone();
+                eprintln!("inserting function decl | name: {:?} | decl_id: {:?}", name.to_string(), decl_id);
                 let decl: ty::TyDecl = decl_engine.insert(fn_decl, Some(&decl_id)).into();
+                eprintln!("inserted function decl : {:?}", decl);
                 let _ = ctx.insert_symbol(handler, name, decl.clone());
                 decl
             }
