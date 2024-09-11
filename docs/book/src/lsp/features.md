@@ -12,17 +12,13 @@ _Source:_ [completion.rs](https://github.com/FuelLabs/sway/blob/master/sway-lsp/
 
 Suggests code to follow partially written statements for functions and variables.
 
-## Diagnostics
+## Go to Definition
 
-_Source:_ [diagnostic.rs](https://github.com/FuelLabs/sway/blob/master/sway-lsp/src/capabilities/diagnostic.rs)
+Jumps to the definition of a symbol from its usage.
 
-Displays compiler warnings and errors inline.
+## Find All References
 
-## Syntax Highlighting
-
-_Source:_ [highlight.rs](https://github.com/FuelLabs/sway/blob/master/sway-lsp/src/capabilities/highlight.rs)
-
-Highlights code based on type and context.
+Locates all occurrences of a symbol throughout the project.
 
 ## Hover
 
@@ -41,6 +37,18 @@ Displays the implied type of a variable next to the variable name. Configurable 
 _Source:_ [rename.rs](https://github.com/FuelLabs/sway/blob/master/sway-lsp/src/capabilities/rename.rs)
 
 Renames a symbol everywhere in the workspace.
+
+## Diagnostics
+
+_Source:_ [diagnostic.rs](https://github.com/FuelLabs/sway/blob/master/sway-lsp/src/capabilities/diagnostic.rs)
+
+Displays compiler warnings and errors inline.
+
+## Syntax Highlighting
+
+_Source:_ [highlight.rs](https://github.com/FuelLabs/sway/blob/master/sway-lsp/src/capabilities/highlight.rs)
+
+Highlights code based on type and context.
 
 ## Run
 
