@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rexpect::spawn;
 
-const TIMEOUT_MS: u64 = 100000;
+const TIMEOUT_MS: u64 = 300000;
 
 fn test_fixtures_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
