@@ -6,7 +6,7 @@ use context_testing_abi::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x6054c11cda000f5990373a4d61929396165be4dfdd61d5b7bd26da60ab0d8577;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x7821bf368390972d4892e1f382fd954fea5b567e533eed6fac0f173800647945; // AUTO-CONTRACT-ID ../../test_contracts/context_testing_contract --release
+const CONTRACT_ID = 0x48b28240a8aca8a9e903fa3a28b835947112e701ba566ce99a97d7df35495965; // AUTO-CONTRACT-ID ../../test_contracts/context_testing_contract --release
 
 fn main() -> bool {
     let gas: u64 = u64::max();
