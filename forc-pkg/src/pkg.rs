@@ -1952,6 +1952,7 @@ pub fn compile(
         let mut hasher = std::hash::DefaultHasher::new();
         abi_json.hash(&mut hasher);
         let hash: [u8; 8] = hasher.finish().to_be_bytes();
+        let hash = [hash, hash, hash, hash].concat();
         for (index, byte) in md.iter_mut().enumerate() {
             *byte = hash[index];
         }
