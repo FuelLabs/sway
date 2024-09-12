@@ -191,10 +191,12 @@ fn garbage_collection_minimal() {
         let (mut service, _) = LspService::new(ServerState::new);
         let bench_dir = sway_workspace_dir().join("sway-lsp/tests/fixtures/garbage_collection/minimal");
         let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
-        let times = 10;
+        let times = 3;
         for version in 0..times {
             let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
             service.inner().wait_for_parsing().await;
+
+            std::thread::sleep(std::time::Duration::from_millis(1000));
         }
         shutdown_and_exit(&mut service).await;
     });

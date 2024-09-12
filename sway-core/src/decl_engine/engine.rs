@@ -201,6 +201,7 @@ macro_rules! decl_engine_get {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineGet<DeclId<$decl>, $decl> for DeclEngine {
             fn get(&self, index: &DeclId<$decl>) -> Arc<$decl> {
+                //eprintln!("decl_engine_get | index: {:?}", index);
                 self.$slab.get(index.inner())
             }
         }

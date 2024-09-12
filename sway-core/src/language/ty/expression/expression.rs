@@ -477,21 +477,28 @@ impl TyExpression {
                 dbg!("right before we crash | fn_ref: {:#?}", fn_ref);
 
                 eprintln!("\n Function Slab Length | JUST BEFORE CRASH {:?}", engines.de().function_slab.len());
-                eprintln!("GC Function Slab Contents | JUST BEFORE CRASH {:#?}", engines.de().function_slab.inner.read().items[4]);
+                //eprintln!("GC Function Slab Contents | JUST BEFORE CRASH {:#?}", engines.de().function_slab.inner.read().items[4]);
 
-                if let Some(TyDecl::ImplSelfOrTrait(t)) =
-                    &engines.de().get(fn_ref).implementing_type
-                {
-                    let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
-                        let s = engines.de().get(struct_id);
-                        emit_warning_if_deprecated(
-                            &s.attributes,
-                            &call_path.span(),
-                            handler,
-                            "deprecated struct",
-                            allow_deprecated,
-                        );
+                match &engines.de().get(fn_ref).implementing_type {
+                    Some(TyDecl::ImplSelfOrTrait(t)) => {
+                        eprintln!("we got passed the if let Some");
+                        let t = &engines.de().get(&t.decl_id).implementing_for;
+                        if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
+                            let s = engines.de().get(struct_id);
+                            emit_warning_if_deprecated(
+                                &s.attributes,
+                                &call_path.span(),
+                                handler,
+                                "deprecated struct",
+                                allow_deprecated,
+                            );
+                        }
+                    }
+                    None => {
+                        eprintln!("Decl Engine Get Returned None");
+                    }
+                    _ => {
+                        eprintln!("Decl Engine Get Returned Some but it was a different type");
                     }
                 }
             }

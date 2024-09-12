@@ -148,7 +148,7 @@ impl Session {
         //engines.te().print_id_map("GC Id Map | before");
         //engines.te().print_slab("GC Slab | before");
         eprintln!("GC Function Slab Length | Before {:?}", engines.de().function_slab.len());
-        eprintln!("GC Function Slab Contents | Before {:#?}", engines.de().function_slab.values()[4]);
+        //eprintln!("GC Function Slab Contents | Before {:#?}", engines.de().function_slab.values()[4]);
         
         let path = uri.to_file_path().unwrap();
         eprintln!("garbage_collect_module | path: {path:?}");
@@ -158,7 +158,7 @@ impl Session {
         //engines.te().print_id_map("GC Id Map | after");
         //engines.te().print_slab("GC Slab | after");
         eprintln!("GC Function Slab Length | After {:?}", engines.de().function_slab.len());
-        eprintln!("GC Function Slab Contents | After {:#?}", engines.de().function_slab.inner.read().items[4]);
+        //eprintln!("GC Function Slab Contents | After {:#?}", engines.de().function_slab.inner.read().items[4]);
         
         Ok(())
     }
