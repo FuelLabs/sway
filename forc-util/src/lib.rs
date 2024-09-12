@@ -716,32 +716,27 @@ fn construct_window<'a>(
     let total_lines_of_highlight = end.line - start.line;
     debug_assert!(total_lines_in_input >= total_lines_of_highlight);
 
-    // these two are 0-based
-    let mut current_line = 0;
-    let mut lines_to_start_of_snippet = 0;
+    // start and end are 1-based indices
+    let mut current_line = 1;
+    let mut lines_to_start_of_snippet = 1;
 
     let mut calculated_start_ix = None;
     let mut calculated_end_ix = None;
     let mut pos = 0;
-
-    // start and end are 1-based
-    let start_line = start.line - 1;
-    let end_line = end.line - 1;
-
     for character in input.chars() {
         if character == '\n' {
             current_line += 1
         }
         pos += character.len_utf8();
 
-        if current_line + NUM_LINES_BUFFER >= start_line && calculated_start_ix.is_none() {
+        if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
             calculated_start_ix = Some(pos);
             lines_to_start_of_snippet = current_line;
         }
 
         // plus one here otherwise we would stop
         // at the first char of the last line
-        if current_line >= (end_line + NUM_LINES_BUFFER + 1) && calculated_end_ix.is_none() {
+        if current_line >= (end.line + NUM_LINES_BUFFER + 1) && calculated_end_ix.is_none() {
             calculated_end_ix = Some(pos);
         }
 
@@ -749,7 +744,6 @@ fn construct_window<'a>(
             break;
         }
     }
-
     let calculated_start_ix = calculated_start_ix.unwrap_or(0);
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
@@ -763,7 +757,6 @@ fn construct_window<'a>(
         .chars()
         .count();
 
-    // start and end are 1-based
-    start.line = lines_to_start_of_snippet + 1;
+    start.line = lines_to_start_of_snippet;
     &input[calculated_start_ix..calculated_end_ix]
 }
