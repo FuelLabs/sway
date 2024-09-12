@@ -10,6 +10,7 @@ use crate::{
     type_system::*,
     Engines,
 };
+use im::hashset::HashSet;
 use petgraph::prelude::NodeIndex;
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, IdentUnique};
@@ -81,31 +82,46 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         return_ty: &TypeInfo,
     ) -> Vec<CompileError> {
         let mut rovers = vec![entry_point];
-        let mut visited = vec![];
         let mut errors = vec![];
+
+        let mut visited = HashSet::<NodeIndex>::new();
+        // We don't need to visit the exit point, so for efficiency assume it has already been visited.
+        visited.insert(exit_point);
+
         while !rovers.is_empty() {
-            rovers.retain(|idx| *idx != exit_point);
             let mut next_rovers = vec![];
-            let mut last_discovered_span;
             for rover in rovers {
-                visited.push(rover);
-                last_discovered_span = match &self.graph[rover] {
-                    ControlFlowGraphNode::ProgramNode { node, .. } => Some(node.span.clone()),
-                    ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(span.clone()),
-                    _ => None,
-                };
+                // Ignore this node if it has been visited before
+                if visited.contains(&rover) {
+                    continue;
+                }
+                // Ignore this node if it represents an inner method/function declaration - these
+                // have already been analyzed earlier, and do not represent legal control flow for
+                // the current method/function.
+                if rover != entry_point
+                    && matches!(
+                        self.graph[rover],
+                        ControlFlowGraphNode::MethodDeclaration { .. }
+                    )
+                {
+                    continue;
+                }
+
+                visited.insert(rover);
 
                 let mut neighbors = self
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
+
                 if neighbors.is_empty() && !return_ty.is_unit() {
-                    let span = match last_discovered_span {
-                        Some(ref o) => o.clone(),
-                        None => {
+                    let span = match &self.graph[rover] {
+                        ControlFlowGraphNode::ProgramNode { node, .. } => node.span.clone(),
+                        ControlFlowGraphNode::MethodDeclaration { span, .. } => span.clone(),
+                        _ => {
                             errors.push(CompileError::Internal(
                                 "Attempted to construct return path error \
-                                    but no source span was found.",
+                                 but no source span was found.",
                                 Span::dummy(),
                             ));
                             return errors;
@@ -120,15 +136,9 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         ty: engines.help_out(return_ty).to_string(),
                     });
                 }
+
                 next_rovers.append(&mut neighbors);
             }
-            next_rovers.retain(|idx| {
-                !visited.contains(idx)
-                    && !matches!(
-                        self.graph[*idx],
-                        ControlFlowGraphNode::MethodDeclaration { .. }
-                    )
-            });
             rovers = next_rovers;
         }
 
