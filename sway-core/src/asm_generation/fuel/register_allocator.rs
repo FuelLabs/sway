@@ -106,6 +106,7 @@ impl RegisterPool {
     }
 }
 
+#[allow(clippy::doc_lazy_continuation)]
 /// Given a list of instructions `ops` and a `live_out` table computed using the method
 /// `liveness_analysis()`, create an interference graph (aka a "conflict" graph):
 /// * Nodes = virtual registers
@@ -191,8 +192,8 @@ pub(crate) fn create_interference_graph(
 /// * When two registers are coalesced, a new node with a new virtual register (generated using the
 ///   register sequencer) is created in the interference graph.
 /// * When a MOVE instruction is removed, the offset of each subsequent instruction has to be
-/// updated, as well as the immediate values for some or all jump instructions (`ji`, `jnei`, and
-/// `jnzi for now).
+///   updated, as well as the immediate values for some or all jump instructions (`ji`, `jnei`, and
+///   `jnzi for now).
 ///
 pub(crate) fn coalesce_registers(
     ops: &[Op],
@@ -373,6 +374,7 @@ fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>,
     res
 }
 
+#[allow(clippy::doc_lazy_continuation)]
 /// Given an interference graph and a integer k, figure out if the graph k-colorable. Graph
 /// coloring is an NP-complete problem, but the algorithm below is a simple stack based
 /// approximation that relies on the fact that any node n in the graph that has fewer than k

@@ -858,7 +858,8 @@ impl ty::TyExpression {
         /// Returns the position of the first match arm that is an "interior" arm, meaning:
         ///  - arm is a catch-all arm
         ///  - arm is not the last match arm
-        /// or `None` if such arm does not exist.
+        ///  - or `None` if such arm does not exist.
+        ///
         /// Note that the arm can be the first arm.
         fn interior_catch_all_arm_position(arms_reachability: &[ReachableReport]) -> Option<usize> {
             arms_reachability

@@ -158,14 +158,12 @@ impl AbstractProgram {
     /// Builds the asm preamble, which includes metadata and a jump past the metadata.
     /// Right now, it looks like this:
     ///
-    /// WORD OP
-    /// 1    MOV $scratch $pc
-    /// -    JMPF $zero i2
-    /// 2    DATA_START (0-32) (in bytes, offset from $is)
-    /// -    DATA_START (32-64)
-    /// 3    LW $ds $scratch 1
-    /// -    ADD $ds $ds $scratch
-    /// 4    .program_start:
+    /// | WORD | OP                                                                      |
+    /// |------|-------------------------------------------------------------------------|
+    /// | 1    | MOV $scratch $pc <br /> JMPF $zero i2                                   |
+    /// | 2    | DATA_START (0-32) (in bytes, offset from $is) <br /> DATA_START (32-64) |
+    /// | 3    | LW $ds $scratch 1 <br /> ADD $ds $ds $scratch                           |
+    /// | 4    | .program_start:                                                         |
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {

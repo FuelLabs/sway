@@ -31,6 +31,7 @@ impl<'a> OccursCheck<'a> {
     /// case the occurs check would return `false`, as this is a valid
     /// unification.
     pub(super) fn check(&self, generic: TypeId, other: TypeId) -> bool {
+        #[allow(clippy::mutable_key_type)]
         let other_generics = other.extract_nested_generics(self.engines);
         other_generics.contains(
             &self

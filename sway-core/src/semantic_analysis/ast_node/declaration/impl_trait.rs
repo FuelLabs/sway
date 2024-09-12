@@ -1476,6 +1476,7 @@ fn check_for_unconstrained_type_parameters(
 ) -> Result<(), ErrorEmitted> {
     // Create a list of defined generics, with the generic and a span.
     // Purposefully exclude the "self" type parameters.
+    #[allow(clippy::mutable_key_type)]
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
@@ -1484,6 +1485,7 @@ fn check_for_unconstrained_type_parameters(
     );
 
     // create a list of the generics in use in the impl signature
+    #[allow(clippy::mutable_key_type)]
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
         generics_in_use.extend(type_arg.type_id.extract_nested_generics(engines));

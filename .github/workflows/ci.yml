@@ -560,7 +560,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: Run forc tests separately 
+      - name: Run forc tests separately
         env:
           RUST_BACKTRACE: full
         run: cargo test --locked --release -p forc -- --nocapture

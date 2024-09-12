@@ -1201,6 +1201,7 @@ impl<'a> TypeCheckContext<'a> {
             }
 
             if !maybe_method_decl_refs.is_empty() {
+                #[allow(clippy::mutable_key_type)]
                 let mut trait_methods =
                     HashMap::<(CallPath, Vec<WithEngines<TypeArgument>>), DeclRefFunction>::new();
                 let mut impl_self_method = None;

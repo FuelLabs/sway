@@ -452,6 +452,7 @@ impl TypeId {
         inner_types
     }
 
+    #[allow(clippy::mutable_key_type)]
     pub(crate) fn extract_nested_generics(
         self,
         engines: &Engines,
