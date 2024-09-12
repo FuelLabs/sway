@@ -140,7 +140,7 @@ pub(crate) async fn runs_on_node(
 
 pub(crate) enum VMExecutionResult {
     Fuel(ProgramState, Vec<Receipt>),
-    Evm(revm::ExecutionResult),
+    Evm(revm::primitives::result::ExecutionResult),
     MidenVM(miden::ExecutionTrace),
 }
 
@@ -214,31 +214,41 @@ pub(crate) fn runs_in_vm(
             ))
         }
         BuildTarget::EVM => {
-            let mut evm = revm::new();
-            evm.database(revm::InMemoryDB::default());
-            evm.env = revm::Env::default();
+            let mut evm = revm::EvmBuilder::default()
+                .with_db(revm::InMemoryDB::default())
+                .with_clear_env()
+                .build();
 
             // Transaction to create the smart contract
-            evm.env.tx.transact_to = revm::TransactTo::create();
-            evm.env.tx.data = bytes::Bytes::from(script.bytecode.bytes.into_boxed_slice());
-            let result = evm.transact_commit();
+            evm.tx_mut().transact_to = revm::interpreter::primitives::TransactTo::Create;
+            evm.tx_mut().data = script.clone().bytecode.bytes.into();
 
-            match result.out {
-                revm::TransactOut::None => Err(anyhow!("Could not create smart contract")),
-                revm::TransactOut::Call(_) => todo!(),
-                revm::TransactOut::Create(ref _bytes, account_opt) => {
-                    match account_opt {
-                        Some(account) => {
-                            evm.env.tx.transact_to = revm::TransactTo::Call(account);
+            let result = evm
+                .transact_commit()
+                .map_err(|e| anyhow::anyhow!("Could not create smart contract on EVM: {e:?}"))?;
 
-                            // Now issue a call.
-                            //evm.env.tx. = bytes::Bytes::from(script.bytecode.into_boxed_slice());
-                            let result = evm.transact_commit();
-                            Ok(VMExecutionResult::Evm(result))
+            match result {
+                revm::primitives::ExecutionResult::Revert { .. }
+                | revm::primitives::ExecutionResult::Halt { .. } => todo!(),
+                revm::primitives::ExecutionResult::Success { ref output, .. } => match output {
+                    revm::primitives::result::Output::Call(_) => todo!(),
+                    revm::primitives::result::Output::Create(_bytes, address_opt) => {
+                        match address_opt {
+                            None => todo!(),
+                            Some(address) => {
+                                evm.tx_mut().data = script.bytecode.bytes.into();
+                                evm.tx_mut().transact_to =
+                                    revm::interpreter::primitives::TransactTo::Call(*address);
+
+                                let result = evm
+                                    .transact_commit()
+                                    .map_err(|e| anyhow::anyhow!("Failed call on EVM: {e:?}"))?;
+
+                                Ok(VMExecutionResult::Evm(result))
+                            }
                         }
-                        None => todo!(),
                     }
-                }
+                },
             }
         }
         BuildTarget::MidenVM => {

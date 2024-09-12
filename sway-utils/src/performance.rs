@@ -29,9 +29,9 @@ macro_rules! time_expr {
                 if cfg.metrics_outfile.is_some() {
                     #[cfg(not(target_os = "macos"))]
                     let memory_usage = {
-                        use sysinfo::{System, SystemExt};
+                        use sysinfo::{MemoryRefreshKind, System};
                         let mut sys = System::new();
-                        sys.refresh_system();
+                        sys.refresh_memory_specifics(MemoryRefreshKind::new().with_ram());
                         Some(sys.used_memory())
                     };
                     #[cfg(target_os = "macos")]

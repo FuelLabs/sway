@@ -7,8 +7,7 @@ use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use indexmap::IndexMap;
 use lsp_types::Url;
-use notify::RecursiveMode;
-use notify_debouncer_mini::new_debouncer;
+use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 use parking_lot::RwLock;
 use std::{
     fs::{self, File},
@@ -193,14 +192,13 @@ impl SyncWorkspace {
 
                     let handle = tokio::spawn(async move {
                         let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-                        // Setup debouncer. No specific tickrate, max debounce time 2 seconds
-                        let mut debouncer =
-                            new_debouncer(Duration::from_secs(1), None, move |event| {
-                                if let Ok(e) = event {
-                                    let _ = tx.blocking_send(e);
-                                }
-                            })
-                            .unwrap();
+                        // Setup debouncer, max debounce time 2 seconds
+                        let mut debouncer = new_debouncer(Duration::from_secs(1), move |event| {
+                            if let Ok(e) = event {
+                                let _ = tx.blocking_send(e);
+                            }
+                        })
+                        .unwrap();
 
                         debouncer
                             .watcher()
@@ -286,7 +284,7 @@ pub(crate) fn edit_manifest_dependency_paths(
         if let Ok(mut file) = File::open(manifest.path()) {
             let mut toml = String::new();
             let _ = file.read_to_string(&mut toml);
-            if let Ok(mut manifest_toml) = toml.parse::<toml_edit::Document>() {
+            if let Ok(mut manifest_toml) = toml.parse::<toml_edit::DocumentMut>() {
                 for (name, abs_path) in dependency_map {
                     manifest_toml["dependencies"][&name]["path"] =
                         toml_edit::value(abs_path.display().to_string());

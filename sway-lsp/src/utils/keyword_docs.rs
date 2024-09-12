@@ -802,7 +802,7 @@ impl KeywordDocs {
             let name = ident.trim_end_matches("_keyword").to_owned();
             let mut documentation = String::new();
             keyword.attrs.iter().for_each(|attr| {
-                let tokens = attr.tokens.to_token_stream();
+                let tokens = attr.to_token_stream();
                 let lit = extract_lit(tokens);
                 writeln!(documentation, "{lit}").unwrap();
             });
