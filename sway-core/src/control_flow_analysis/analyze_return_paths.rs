@@ -83,7 +83,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         let mut rovers = vec![entry_point];
         let mut visited = vec![];
         let mut errors = vec![];
-        while !rovers.is_empty() && rovers[0] != exit_point {
+        while !rovers.is_empty() {
             rovers.retain(|idx| *idx != exit_point);
             let mut next_rovers = vec![];
             let mut last_discovered_span;
@@ -122,7 +122,13 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 }
                 next_rovers.append(&mut neighbors);
             }
-            next_rovers.retain(|idx| !visited.contains(idx));
+            next_rovers.retain(|idx| {
+                !visited.contains(idx)
+                    && !matches!(
+                        self.graph[*idx],
+                        ControlFlowGraphNode::MethodDeclaration { .. }
+                    )
+            });
             rovers = next_rovers;
         }
 
