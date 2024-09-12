@@ -18,11 +18,10 @@ use ::tx::{
     tx_type,
 };
 use core::ops::Eq;
-
-const GTF_INPUT_TYPE = 0x200;
+use ::revert::revert;
 
 // GTF Opcode const selectors
-//
+pub const GTF_INPUT_TYPE = 0x200;
 // pub const GTF_INPUT_COIN_TX_ID = 0x201;
 // pub const GTF_INPUT_COIN_OUTPUT_INDEX = 0x202;
 pub const GTF_INPUT_COIN_OWNER = 0x203;
@@ -33,7 +32,7 @@ pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x209;
 pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
 pub const GTF_INPUT_COIN_PREDICATE = 0x20B;
 pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x20C;
-
+// pub const GTF_INPUT_COIN_PREDICATE_GAS_USED = 0x20D;
 // pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x225;
 pub const GTF_INPUT_MESSAGE_SENDER = 0x240;
 pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x241;
@@ -46,6 +45,7 @@ pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x247;
 pub const GTF_INPUT_MESSAGE_DATA = 0x248;
 pub const GTF_INPUT_MESSAGE_PREDICATE = 0x249;
 pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x24A;
+// pub const GTF_INPUT_MESSAGE_PREDICATE_GAS_USED = 0x24B;
 
 /// The input type for a transaction.
 pub enum Input {
@@ -113,6 +113,10 @@ pub fn input_type(index: u64) -> Option<Input> {
 ///
 /// * [u16] - The number of inputs in the transaction.
 ///
+/// # Reverts
+///
+/// * When the input type is unrecognized. This should never happen.
+///
 /// # Examples
 ///
 /// ```sway
@@ -127,6 +131,10 @@ pub fn input_count() -> u16 {
     match tx_type() {
         Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
         Transaction::Create => __gtf::<u16>(0, GTF_CREATE_INPUTS_COUNT),
+        Transaction::Upgrade => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
+        Transaction::Upload => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
+        Transaction::Blob => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
+        _ => revert(0),
     }
 }
 
@@ -158,6 +166,10 @@ fn input_pointer(index: u64) -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
         Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_INPUT_AT_INDEX)),
+        Transaction::Upgrade => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
+        Transaction::Upload => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
+        Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_INPUT_AT_INDEX)),
+        _ => None,
     }
 }
 
