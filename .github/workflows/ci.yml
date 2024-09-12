@@ -563,7 +563,7 @@ jobs:
       - name: Run forc tests separately 
         env:
           RUST_BACKTRACE: full
-        run: cargo test --locked --release -p forc -- --nocapture --test-threads=1
+        run: cargo test --locked --release -p forc -- --nocapture
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
