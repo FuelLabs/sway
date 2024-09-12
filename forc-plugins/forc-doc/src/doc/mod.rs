@@ -15,7 +15,7 @@ use std::{
 };
 use sway_core::{
     decl_engine::DeclEngine,
-    language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
+    language::ty::{TyAstNodeContent, TyDecl, TyImplSelfOrTrait, TyModule, TyProgram, TySubmodule},
     Engines,
 };
 use sway_types::BaseIdent;
@@ -36,7 +36,7 @@ impl Documentation {
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
         let mut docs = Documentation::default();
-        let mut impl_traits: Vec<(TyImplTrait, ModuleInfo)> = Vec::new();
+        let mut impl_traits: Vec<(TyImplSelfOrTrait, ModuleInfo)> = Vec::new();
         let module_info = ModuleInfo::from_ty_module(vec![project_name.to_owned()], None);
         Documentation::from_ty_module(
             engines.de(),
@@ -144,14 +144,14 @@ impl Documentation {
         module_info: &ModuleInfo,
         ty_module: &TyModule,
         docs: &mut Documentation,
-        impl_traits: &mut Vec<(TyImplTrait, ModuleInfo)>,
+        impl_traits: &mut Vec<(TyImplSelfOrTrait, ModuleInfo)>,
         document_private_items: bool,
     ) -> Result<()> {
         for ast_node in &ty_module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                if let TyDecl::ImplTrait(impl_trait) = decl {
+                if let TyDecl::ImplSelfOrTrait(impl_trait) = decl {
                     impl_traits.push((
-                        (*decl_engine.get_impl_trait(&impl_trait.decl_id)).clone(),
+                        (*decl_engine.get_impl_self_or_trait(&impl_trait.decl_id)).clone(),
                         module_info.clone(),
                     ));
                 } else {
@@ -175,7 +175,7 @@ impl Documentation {
         decl_engine: &DeclEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
-        impl_traits: &mut Vec<(TyImplTrait, ModuleInfo)>,
+        impl_traits: &mut Vec<(TyImplSelfOrTrait, ModuleInfo)>,
         module_info: &ModuleInfo,
         document_private_items: bool,
     ) -> Result<()> {

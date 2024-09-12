@@ -52,9 +52,6 @@ pub struct Command {
     pub unsigned: bool,
     /// Set the key to be used for signing.
     pub signing_key: Option<SecretKey>,
-    /// Sign the deployment transaction manually.
-    #[clap(long)]
-    pub manual_signing: bool,
     /// Arguments to pass into main function with forc run.
     #[clap(long)]
     pub args: Option<Vec<String>>,

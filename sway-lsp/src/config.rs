@@ -5,6 +5,8 @@ use tracing::metadata::LevelFilter;
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default)]
+    pub client: LspClient,
+    #[serde(default)]
     pub debug: DebugConfig,
     #[serde(default)]
     pub logging: LoggingConfig,
@@ -18,6 +20,15 @@ pub struct Config {
     trace: TraceConfig,
     #[serde(default)]
     pub garbage_collection: GarbageCollectionConfig,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LspClient {
+    VsCode,
+    #[serde(other)]
+    #[default]
+    Other,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]

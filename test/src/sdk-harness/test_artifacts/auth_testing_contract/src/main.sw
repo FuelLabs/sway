@@ -26,7 +26,7 @@ impl AuthTesting for Contract {
         ret
     }
 
-    fn returns_msg_sender_address(_expected_id: Address) -> bool {
+    fn returns_msg_sender_address(expected_id: Address) -> bool {
         let result: Result<Identity, AuthError> = msg_sender();
         let mut ret = false;
         if result.is_err() {
@@ -34,8 +34,8 @@ impl AuthTesting for Contract {
         }
         let unwrapped = result.unwrap();
         match unwrapped {
-            Identity::Address(_) => {
-                ret = true
+            Identity::Address(address) => {
+                ret = expected_id == address
             },
             _ => {
                 ret = false

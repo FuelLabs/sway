@@ -1,11 +1,12 @@
 mod encode;
 use crate::{
     cmd,
+    constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
+        tx::{prompt_forc_wallet_password, TransactionBuilderExt, WalletSelectionMode},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -49,6 +50,12 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     };
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs_with_manifest = built_pkgs(&curr_dir, &build_opts)?;
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        WalletSelectionMode::Manual
+    } else {
+        let password = prompt_forc_wallet_password()?;
+        WalletSelectionMode::ForcWallet(password)
+    };
     for built in built_pkgs_with_manifest {
         if built
             .descriptor
@@ -56,7 +63,13 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
             .check_program_type(&[TreeType::Script])
             .is_ok()
         {
-            let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
+            let pkg_receipts = run_pkg(
+                &command,
+                &built.descriptor.manifest_file,
+                &built,
+                &wallet_mode,
+            )
+            .await?;
             receipts.push(pkg_receipts);
         }
     }
@@ -68,6 +81,7 @@ pub async fn run_pkg(
     command: &cmd::Run,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
+    wallet_mode: &WalletSelectionMode,
 ) -> Result<RanScript> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
 
@@ -101,11 +115,6 @@ pub async fn run_pkg(
                 .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
         })
         .collect::<Result<Vec<ContractId>>>()?;
-    let wallet_mode = if command.manual_signing {
-        WalletSelectionMode::Manual
-    } else {
-        WalletSelectionMode::ForcWallet
-    };
 
     let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
     tb.maturity(command.maturity.maturity.into())
@@ -212,7 +221,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
-            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
             ipfs_node: cmd.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
@@ -221,6 +229,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             asm: cmd.print.asm(),
             bytecode: cmd.print.bytecode,
+            bytecode_spans: false,
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },

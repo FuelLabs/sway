@@ -14,9 +14,9 @@ use std::storage::storage_vec::*;
 use std::storage::storage_bytes::*;
 // ANCHOR: storage_bytes_import
 
-// ANCHOR: storage_bytes_import
+// ANCHOR: storage_string_import
 use std::storage::storage_string::*;
-// ANCHOR: storage_bytes_import
+// ANCHOR: storage_string_import
 
 // ANCHOR: advanced_storage_declaration
 storage {

@@ -12,7 +12,7 @@ use crate::{
     block::BlockArgument,
     constant::Constant,
     context::Context,
-    instruction::{FuelVmInstruction, InstOp},
+    instruction::InstOp,
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
@@ -102,13 +102,7 @@ impl Value {
     /// and is either a branch or return.
     pub fn is_terminator(&self, context: &Context) -> bool {
         match &context.values[self.0].value {
-            ValueDatum::Instruction(Instruction { op, .. }) => matches!(
-                op,
-                InstOp::Branch(_)
-                    | InstOp::ConditionalBranch { .. }
-                    | InstOp::Ret(_, _)
-                    | InstOp::FuelVm(FuelVmInstruction::Revert(_) | FuelVmInstruction::JmpMem)
-            ),
+            ValueDatum::Instruction(Instruction { op, .. }) => op.is_terminator(),
             ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
         }
     }
@@ -170,6 +164,15 @@ impl Value {
     /// Get a reference to this value as an argument, iff it is one.
     pub fn get_argument<'a>(&self, context: &'a Context) -> Option<&'a BlockArgument> {
         if let ValueDatum::Argument(arg) = &context.values[self.0].value {
+            Some(arg)
+        } else {
+            None
+        }
+    }
+
+    /// Get a mutable reference to this value as an argument, iff it is one.
+    pub fn get_argument_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut BlockArgument> {
+        if let ValueDatum::Argument(arg) = &mut context.values[self.0].value {
             Some(arg)
         } else {
             None

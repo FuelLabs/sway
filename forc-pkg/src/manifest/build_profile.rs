@@ -24,6 +24,8 @@ pub struct BuildProfile {
     #[serde(default)]
     pub print_bytecode: bool,
     #[serde(default)]
+    pub print_bytecode_spans: bool,
+    #[serde(default)]
     pub terse: bool,
     #[serde(default)]
     pub time_phases: bool,
@@ -31,8 +33,6 @@ pub struct BuildProfile {
     pub metrics_outfile: Option<String>,
     #[serde(default)]
     pub include_tests: bool,
-    #[serde(default)]
-    pub json_abi_with_callpaths: bool,
     #[serde(default)]
     pub error_on_warnings: bool,
     #[serde(default)]
@@ -57,11 +57,11 @@ impl BuildProfile {
             print_ir: PrintIr::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
+            print_bytecode_spans: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
             include_tests: false,
-            json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt0,
@@ -80,11 +80,11 @@ impl BuildProfile {
             print_ir: PrintIr::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
+            print_bytecode_spans: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
             include_tests: false,
-            json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt1,
@@ -152,11 +152,11 @@ mod tests {
             print_ir: PrintIr::r#final(),
             print_asm: PrintAsm::all(),
             print_bytecode: true,
+            print_bytecode_spans: false,
             terse: true,
             time_phases: true,
             metrics_outfile: Some("metrics_outfile".into()),
             include_tests: true,
-            json_abi_with_callpaths: true,
             error_on_warnings: true,
             reverse_results: true,
             optimization_level: OptLevel::Opt0,

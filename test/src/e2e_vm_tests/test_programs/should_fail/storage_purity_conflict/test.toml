@@ -1,0 +1,131 @@
+category = "fail"
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn read_storage_word() -> u64
+#nextln: $()Function "read_storage_word" is pure and cannot access storage.
+#check: $()srw res is_set key;
+#nextln: $()Reading a word from the storage happens here.
+#check: $()Consider declaring the function "read_storage_word" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_more_impure_stuff_a() -> S
+#nextln: $()Function "do_more_impure_stuff_a" is pure and cannot access storage.
+#check: $()let a = read_storage_word();
+#nextln: $()Function "read_storage_word" reads from the storage.
+#check: $()Consider declaring the function "do_more_impure_stuff_a" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_impure_stuff_a(choice: bool) -> bool
+#nextln: $()Function "do_impure_stuff_a" is pure and cannot access storage.
+#check: $()let _ = do_more_impure_stuff_a();
+#nextln: $()Function "do_more_impure_stuff_a" reads from the storage.
+#check: $()Consider declaring the function "do_impure_stuff_a" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn test_function_a() -> bool
+#nextln: $()Function "test_function_a" is pure and cannot access storage.
+#check: $()do_impure_stuff_a(true)
+#nextln: $()Function "do_impure_stuff_a" reads from the storage.
+#check: $()Consider declaring the function "test_function_a" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn read_storage_b256() -> b256
+#nextln: $()Function "read_storage_b256" is pure and cannot access storage.
+#check: $()srwq buf is_set key count;
+#nextln: $()Reading storage slots happens here.
+#check: $()Consider declaring the function "read_storage_b256" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_more_impure_stuff_b() -> bool
+#nextln: $()Function "do_more_impure_stuff_b" is pure and cannot access storage.
+#check: $()let _ = read_storage_b256();
+#nextln: $()Function "read_storage_b256" reads from the storage.
+#check: $()Consider declaring the function "do_more_impure_stuff_b" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_impure_stuff_b() -> bool
+#nextln: $()Function "do_impure_stuff_b" is pure and cannot access storage.
+#check: $()do_more_impure_stuff_b()
+#nextln: $()Function "do_more_impure_stuff_b" reads from the storage.
+#check: $()Consider declaring the function "do_impure_stuff_b" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn test_function_b() -> bool
+#nextln: $()Function "test_function_b" is pure and cannot access storage.
+#check: $()do_impure_stuff_b()
+#nextln: $()Function "do_impure_stuff_b" reads from the storage.
+#check: $()Consider declaring the function "test_function_b" as `#[storage(read)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn write_storage_word()
+#nextln: $()Function "write_storage_word" is pure and cannot access storage.
+#check: $()sww key is_set val;
+#nextln: $()Writing a word to the storage happens here.
+#check: $()Consider declaring the function "write_storage_word" as `#[storage(write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_more_impure_stuff_c()
+#nextln: $()Function "do_more_impure_stuff_c" is pure and cannot access storage.
+#check: $()write_storage_word();
+#nextln: $()Function "write_storage_word" writes to the storage.
+#check: $()Consider declaring the function "do_more_impure_stuff_c" as `#[storage(write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_impure_stuff_c() -> bool
+#nextln: $()Function "do_impure_stuff_c" is pure and cannot access storage.
+#check: $()do_more_impure_stuff_c();
+#nextln: $()Function "do_more_impure_stuff_c" writes to the storage.
+#check: $()Consider declaring the function "do_impure_stuff_c" as `#[storage(write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn test_function_c() -> bool
+#nextln: $()Function "test_function_c" is pure and cannot access storage.
+#check: $()do_impure_stuff_c()
+#nextln: $()Function "do_impure_stuff_c" writes to the storage.
+#check: $()Consider declaring the function "test_function_c" as `#[storage(write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn write_storage_b256()
+#nextln: $()Function "write_storage_b256" is pure and cannot access storage.
+#check: $()swwq key is_set val count;
+#nextln: $()Writing to storage slots happens here.
+#check: $()Consider declaring the function "write_storage_b256" as `#[storage(write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_more_impure_stuff_d() -> bool
+#nextln: $()Function "do_more_impure_stuff_d" is pure and cannot access storage.
+#check: $()write_storage_b256();
+#nextln: $()Function "write_storage_b256" writes to the storage.
+#check: $()Consider declaring the function "do_more_impure_stuff_d" as `#[storage(write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn do_impure_stuff_d() -> bool
+#nextln: $()Function "do_impure_stuff_d" is pure and cannot access storage.
+#check: $()let _ = E::b(do_more_impure_stuff_d());
+#nextln: $()Function "do_more_impure_stuff_d" writes to the storage.
+#check: $()Consider declaring the function "do_impure_stuff_d" as `#[storage(write)]`
+
+#check: $()error
+#sameln: $()Pure function cannot access storage
+#check: $()fn test_function_d() -> bool
+#nextln: $()Function "test_function_d" is pure and cannot access storage.
+#check: $()do_impure_stuff_d()
+#nextln: $()Function "do_impure_stuff_d" writes to the storage.
+#check: $()Consider declaring the function "test_function_d" as `#[storage(write)]`
+
+#check: $()16 errors.

@@ -35,7 +35,7 @@ impl PidFileLocking {
     }
 
     /// Checks if the given pid is active
-    #[cfg(not(target = "windows"))]
+    #[cfg(not(target_os = "windows"))]
     fn is_pid_active(pid: usize) -> bool {
         // Not using sysinfo here because it has compatibility issues with fuel.nix
         // https://github.com/FuelLabs/fuel.nix/issues/64
@@ -50,7 +50,7 @@ impl PidFileLocking {
         output_str.contains(&format!("{} ", pid))
     }
 
-    #[cfg(target = "windows")]
+    #[cfg(target_os = "windows")]
     fn is_pid_active(pid: usize) -> bool {
         // Not using sysinfo here because it has compatibility issues with fuel.nix
         // https://github.com/FuelLabs/fuel.nix/issues/64

@@ -14,8 +14,8 @@ pub mod registers;
 pub mod iterator;
 pub mod vec;
 pub mod bytes;
-pub mod math;
 pub mod flags;
+pub mod math;
 pub mod u128;
 pub mod b512;
 pub mod primitive_conversions;
@@ -45,5 +45,3 @@ pub mod low_level_call;
 pub mod array_conversions;
 pub mod bytes_conversions;
 pub mod clone;
-
-use core::*;

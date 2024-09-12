@@ -10,7 +10,7 @@ use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
     has_changes,
-    language::{ty::*, CallPath, Visibility},
+    language::{parsed::ConstantDeclaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
@@ -25,6 +25,10 @@ pub struct TyConstantDecl {
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
+}
+
+impl TyDeclParsedType for TyConstantDecl {
+    type ParsedType = ConstantDeclaration;
 }
 
 impl DebugWithEngines for TyConstantDecl {
@@ -81,12 +85,19 @@ impl Spanned for TyConstantDecl {
     }
 }
 
+impl IsConcrete for TyConstantDecl {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.return_type
+            .is_concrete(engines, TreatNumericAs::Concrete)
+    }
+}
+
 impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, engines);
-            self.type_ascription.subst(type_mapping, engines);
-            self.value.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, ctx);
+            self.type_ascription.subst(type_mapping, ctx);
+            self.value.subst(type_mapping, ctx);
         }
     }
 }

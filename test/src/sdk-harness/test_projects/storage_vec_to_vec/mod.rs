@@ -269,3 +269,70 @@ async fn test_pop_struct() {
     assert_eq!(returned_vec.len(), 3);
     assert_eq!(returned_vec, expected_vec);
 }
+
+#[tokio::test]
+async fn test_conversion_u8() {
+    let instance = test_storage_vec_to_vec_instance().await;
+
+    let test_vec = vec![5u8, 7u8, 9u8, 11u8];
+
+    let _ = instance
+        .methods()
+        .store_vec_u8(test_vec.clone())
+        .call()
+        .await;
+
+    let returned_vec = instance.methods().read_vec_u8().call().await.unwrap().value;
+
+    assert_eq!(returned_vec.len(), 4);
+    assert_eq!(returned_vec, test_vec);
+}
+
+#[tokio::test]
+async fn test_push_u8() {
+    let instance = test_storage_vec_to_vec_instance().await;
+
+    let test_vec = vec![5u8, 7u8, 9u8, 11u8];
+
+    let _ = instance
+        .methods()
+        .store_vec_u8(test_vec.clone())
+        .call()
+        .await;
+
+    let _ = instance.methods().push_vec_u8(13u8).call().await;
+
+    let returned_vec = instance.methods().read_vec_u8().call().await.unwrap().value;
+
+    let mut expected_vec = test_vec;
+    expected_vec.push(13u8);
+
+    assert_eq!(returned_vec.len(), 5);
+    assert_eq!(returned_vec, expected_vec);
+}
+
+#[tokio::test]
+async fn test_pop_u8() {
+    let instance = test_storage_vec_to_vec_instance().await;
+
+    let test_vec = vec![5u8, 7u8, 9u8, 11u8];
+
+    let _ = instance
+        .methods()
+        .store_vec_u8(test_vec.clone())
+        .call()
+        .await;
+
+    assert_eq!(
+        11u8,
+        instance.methods().pop_vec_u8().call().await.unwrap().value
+    );
+
+    let returned_vec = instance.methods().read_vec_u8().call().await.unwrap().value;
+
+    let mut expected_vec = test_vec;
+    expected_vec.pop();
+
+    assert_eq!(returned_vec.len(), 3);
+    assert_eq!(returned_vec, expected_vec);
+}

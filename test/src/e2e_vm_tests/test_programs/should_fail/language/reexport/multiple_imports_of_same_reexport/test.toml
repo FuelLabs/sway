@@ -1,0 +1,31 @@
+category = "fail"
+
+#check: $()error
+#check: $()use ::lib_1_2::Items1_Struct;
+#nextln: $()Imported symbol "Items1_Struct" shadows another symbol of the same name.
+
+#check: $()error
+#check: $()use ::lib_1_2::Items1_Enum;
+#nextln: $()Imported symbol "Items1_Enum" shadows another symbol of the same name.
+
+#check: $()error
+#check: $()use ::lib_1_2::Items1_Variants::X;
+#nextln: $()Imported symbol "X" shadows another symbol of the same name.
+
+#check: $()error
+#check: $()use ::lib_1_2::Items1_Variants::Y;
+#nextln: $()Imported symbol "Y" shadows another symbol of the same name.
+
+#check: $()error
+#check: $()use ::lib_1_2::ITEMS_1_FUNCTION_RES;
+#nextln: $()Imported symbol "ITEMS_1_FUNCTION_RES" shadows another symbol of the same name.
+
+#check: $()error	 
+#check: $()use ::lib_1_2::items_1_function;
+#nextln: $()Imported symbol "items_1_function" shadows another symbol of the same name.
+
+#check: $()error
+#check: $()use ::lib_1_2::Items1Trait;
+#nextln: $()Imported symbol "Items1Trait" shadows another symbol of the same name.
+
+#check: $()Aborting due to 7 errors.

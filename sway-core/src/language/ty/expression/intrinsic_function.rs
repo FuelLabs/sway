@@ -73,10 +73,10 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.arguments.subst(type_mapping, engines);
-            self.type_arguments.subst(type_mapping, engines);
+            self.arguments.subst(type_mapping, ctx);
+            self.type_arguments.subst(type_mapping, ctx);
         }
     }
 }
@@ -118,9 +118,10 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(logged_type.get_abi_type_str(
                         &AbiStrContext {
-                            program_name: Some(ctx.program_name.clone()),
+                            program_name: ctx.program_name.clone(),
                             abi_with_callpaths: true,
                             abi_with_fully_specified_types: true,
+                            abi_root_type_without_generic_type_parameters: false,
                         },
                         ctx.engines,
                         logged_type,

@@ -137,6 +137,9 @@ impl Entry {
             ConstantValue::Reference(_) => {
                 todo!("Constant references are currently not supported.")
             }
+            ConstantValue::Slice(_) => {
+                todo!("Constant slices are currently not supported.")
+            }
         }
     }
 

@@ -74,14 +74,16 @@ impl From<raw_slice> for RawBytes {
     /// assert(raw_bytes.capacity == 3);
     /// ```
     fn from(slice: raw_slice) -> Self {
-        Self {
-            ptr: slice.ptr(),
-            cap: slice.number_of_bytes(),
+        let cap = slice.number_of_bytes();
+        let ptr = alloc_bytes(cap);
+        if cap > 0 {
+            slice.ptr().copy_to::<u8>(ptr, cap);
         }
+        Self { ptr, cap }
     }
 }
 
-/// A type used to represent raw bytes.
+/// A type used to represent raw bytes. It has ownership over its buffer.
 pub struct Bytes {
     /// A barebones struct for the bytes.
     buf: RawBytes,
@@ -415,7 +417,7 @@ impl Bytes {
 
         // Shift everything down to fill in that spot.
         let mut i = index;
-        while i < self.len {
+        while i < self.len - 1 {
             let idx_ptr = start.add_uint_offset(i);
             let next = idx_ptr.add_uint_offset(1);
             next.copy_bytes_to(idx_ptr, 1);
@@ -651,7 +653,12 @@ impl Bytes {
         (left_bytes, right_bytes)
     }
 
-    /// Moves all elements of `other` into `self`, leaving `other` empty.
+    /// Copies all elements of `other` into `self`
+    ///
+    /// # Additional Information
+    ///
+    /// NOTE: Appending `self` to itself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
+    /// This function differs from the rust `append` function in that it does not clear the `other` `Bytes`
     ///
     /// # Arguments
     ///
@@ -694,7 +701,6 @@ impl Bytes {
         // optimization for when starting with empty bytes and appending to it
         if self.len == 0 {
             self = other;
-            other.clear();
             return;
         };
 
@@ -715,19 +721,16 @@ impl Bytes {
 
         // set capacity and length
         self.len = both_len;
-
-        // clear `other`
-        other.clear();
     }
 }
 
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
-        if self.len != other.len() {
+        if self.len != other.len {
             return false;
         }
 
-        asm(result, r2: self.buf.ptr(), r3: other.ptr(), r4: self.len) {
+        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
             meq result r2 r3 r4;
             result: bool
         }
@@ -737,7 +740,7 @@ impl core::ops::Eq for Bytes {
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) {
+        asm(ptr: (self.buf.ptr, self.len)) {
             ptr: raw_slice
         }
     }
@@ -750,7 +753,7 @@ impl From<b256> for Bytes {
         let mut bytes = Self::with_capacity(32);
         bytes.len = 32;
         // Copy bytes from contract_id into the buffer of the target bytes
-        __addr_of(b).copy_bytes_to(bytes.buf.ptr(), 32);
+        __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
 
         bytes
     }
@@ -826,9 +829,7 @@ impl From<Bytes> for raw_slice {
     /// assert(slice.number_of_bytes() == 3);
     /// ```
     fn from(bytes: Bytes) -> raw_slice {
-        asm(ptr: (bytes.buf.ptr(), bytes.len)) {
-            ptr: raw_slice
-        }
+        bytes.as_raw_slice()
     }
 }
 
@@ -906,38 +907,46 @@ impl From<Bytes> for Vec<u8> {
 impl Clone for Bytes {
     fn clone(self) -> Self {
         let len = self.len();
-        let mut c = Self::with_capacity(len);
-        c.len = len;
-        self.ptr().copy_bytes_to(c.ptr(), len);
-        c
+        let buf = RawBytes::with_capacity(len);
+        if len > 0 {
+            self.ptr().copy_bytes_to(buf.ptr(), len);
+        }
+        Bytes { buf, len }
     }
 }
 
 impl AbiEncode for Bytes {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let mut buffer = self.len.abi_encode(buffer);
-
-        let mut i = 0;
-        while i < self.len {
-            let item = self.get(i).unwrap();
-            buffer = item.abi_encode(buffer);
-            i += 1;
-        }
-
-        buffer
+        self.as_raw_slice().abi_encode(buffer)
     }
 }
 
 impl AbiDecode for Bytes {
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
-        let len = u64::abi_decode(buffer);
-        let data = buffer.read_bytes(len);
-        Bytes {
-            buf: RawBytes {
-                ptr: data.ptr(),
-                cap: len,
-            },
-            len,
-        }
+        raw_slice::abi_decode(buffer).into()
     }
+}
+
+#[test]
+fn ok_bytes_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+
+    // Check Bytes duplicates the original slice
+    let mut bytes = Bytes::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
+
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
+
+    // `Bytes` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
+
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
 }

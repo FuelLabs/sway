@@ -55,7 +55,6 @@ fn string_clear_empty() {
 #[test]
 fn string_from_ascii() {
     let mut bytes = Bytes::new();
-
     bytes.push(0u8);
     bytes.push(1u8);
     bytes.push(2u8);
@@ -63,11 +62,15 @@ fn string_from_ascii() {
     bytes.push(4u8);
 
     let mut string_from_ascii = String::from_ascii(bytes);
-    assert(bytes.capacity() == string_from_ascii.capacity());
+    assert(bytes.len() == string_from_ascii.capacity());
+
     let bytes = string_from_ascii.as_bytes();
     assert(bytes.get(0).unwrap() == 0u8);
     assert(bytes.get(1).unwrap() == 1u8);
     assert(bytes.get(2).unwrap() == 2u8);
+    assert(bytes.get(3).unwrap() == 3u8);
+    assert(bytes.get(4).unwrap() == 4u8);
+    assert(bytes.get(5) == None);
 }
 
 #[test]
@@ -147,7 +150,7 @@ fn string_ptr() {
 
     let mut string_from_ascii = String::from_ascii(bytes);
     assert(!string_from_ascii.ptr().is_null());
-    assert(string_from_ascii.ptr() == bytes.ptr());
+    assert(string_from_ascii.ptr() != bytes.ptr());
 }
 
 #[test]

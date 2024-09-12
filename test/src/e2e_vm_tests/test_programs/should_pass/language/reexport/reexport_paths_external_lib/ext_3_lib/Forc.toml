@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "ext_3_lib"
+implicit-std = false
+
+[dependencies]
+ext_3_items = { path = "../ext_3_items/" }

@@ -16,14 +16,14 @@ use rand::{Rng, SeedableRng};
 
 use tx::Receipt;
 
-use vm::interpreter::InterpreterParams;
+use vm::interpreter::{InterpreterParams, MemoryInstance};
 use vm::state::DebugEval;
 use vm::state::ProgramState;
 
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug, Clone)]
 pub struct TestExecutor {
-    pub interpreter: Interpreter<MemoryStorage, tx::Script, NotSupportedEcal>,
+    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, NotSupportedEcal>,
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
@@ -118,9 +118,11 @@ impl TestExecutor {
             .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
         let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
+        let memory_instance = MemoryInstance::new();
+        let interpreter = Interpreter::with_storage(memory_instance, storage, interpreter_params);
 
         Ok(TestExecutor {
-            interpreter: Interpreter::with_storage(storage, interpreter_params),
+            interpreter,
             tx,
             test_entry: test_entry.clone(),
             name,

@@ -150,9 +150,6 @@ pub struct Pkg {
     /// If the lock file is missing, or it needs to be updated, Forc will exit with an error.
     #[clap(long)]
     pub locked: bool,
-    /// Outputs JSON ABI with callpaths instead of only names for structs and enums.
-    #[clap(long)]
-    pub json_abi_with_callpaths: bool,
     /// The IPFS node to use for fetching IPFS sources.
     ///
     /// [possible values: PUBLIC, LOCAL, <GATEWAY_URL>]

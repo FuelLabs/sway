@@ -203,8 +203,9 @@ pub(crate) fn runs_in_vm(
                 .into_ready(gas_price, params.gas_costs(), params.fee_params())
                 .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
-            let mut i: Interpreter<_, _, NotSupportedEcal> =
-                Interpreter::with_storage(storage, Default::default());
+            let mem_instance = MemoryInstance::new();
+            let mut i: Interpreter<_, _, _, NotSupportedEcal> =
+                Interpreter::with_storage(mem_instance, storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 
             Ok(VMExecutionResult::Fuel(
@@ -277,6 +278,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             dca_graph_url_format: None,
             asm: run_config.print_asm,
             bytecode: run_config.print_bytecode,
+            bytecode_spans: run_config.print_bytecode,
             ir: run_config.print_ir.clone(),
             reverse_order: false,
         },
@@ -286,7 +288,6 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             )),
             locked: run_config.locked,
             terse: false,
-            json_abi_with_callpaths: true,
             ..Default::default()
         },
         experimental: ExperimentalFlags {

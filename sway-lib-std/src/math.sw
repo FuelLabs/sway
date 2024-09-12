@@ -1,6 +1,17 @@
 //! Utilities for common math operations.
 library;
 
+use ::assert::*;
+use ::revert::revert;
+use ::option::Option::{self, None, Some};
+use ::flags::{
+    disable_panic_on_overflow,
+    panic_on_overflow_enabled,
+    panic_on_unsafe_math_enabled,
+    set_flags,
+};
+use ::registers::{flags, overflow};
+
 /// Calculates the square root.
 pub trait Root {
     fn sqrt(self) -> Self;
@@ -69,12 +80,38 @@ pub trait Power {
     fn pow(self, exponent: u32) -> Self;
 }
 
+fn u256_checked_mul(a: u256, b: u256) -> Option<u256> {
+    let res = u256::zero();
+
+    // The six-bit immediate value is used to select operating mode, as follows:
+
+    // Bits	Short name	Description
+    // ..XXXX	reserved	Reserved and must be zero
+    // .X....	indirect0	Is lhs operand ($rB) indirect or not
+    // X.....	indirect1	Is rhs operand ($rC) indirect or not
+    // As both operands are indirect, 110000 is used, which is 48 in decimal.
+    let of = asm(res: res, a: a, b: b) {
+        wqml res a b i48;
+        of: u64
+    };
+
+    if of != 0 {
+        return None;
+    }
+
+    Some(res)
+}
+
 impl Power for u256 {
     /// Raises self to the power of `exponent`, using exponentiation by squaring.
     ///
-    /// # Panics
+    /// # Additional Information
     ///
-    /// Panics if the result overflows the type.
+    /// * If panic on overflow is disabled, and the result overflows, the return value will be 0.
+    ///
+    /// # Reverts
+    ///
+    /// * Reverts if the result overflows the type, if panic on overflow is enabled.
     fn pow(self, exponent: u32) -> Self {
         let one = 0x0000000000000000000000000000000000000000000000000000000000000001u256;
 
@@ -88,13 +125,28 @@ impl Power for u256 {
 
         while exp > 1 {
             if (exp & 1) == 1 {
-                acc = acc * base;
+                // acc = acc * base;
+                let res = u256_checked_mul(acc, base);
+                acc = match res {
+                    Some(val) => val,
+                    None => return u256::zero(),
+                }
             }
             exp = exp >> 1;
-            base = base * base;
+            // base = base * base;
+            let res = u256_checked_mul(base, base);
+            base = match res {
+                Some(val) => val,
+                None => return u256::zero(),
+            }
         }
 
-        acc * base
+        // acc * base
+        let res = u256_checked_mul(acc, base);
+        match res {
+            Some(val) => val,
+            None => u256::zero(),
+        }
     }
 }
 
@@ -109,27 +161,69 @@ impl Power for u64 {
 
 impl Power for u32 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let mut res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+
+        if res > Self::max().as_u64() {
+            // If panic on wrapping math is enabled, only then revert
+            if panic_on_overflow_enabled() {
+                revert(0);
+            } else {
+                // Follow spec of returning 0 for overflow
+                res = 0;
+            }
+        }
+
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
 
 impl Power for u16 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let mut res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+
+        if res > Self::max().as_u64() {
+            // If panic on wrapping math is enabled, only then revert
+            if panic_on_overflow_enabled() {
+                revert(0);
+            } else {
+                // Follow spec of returning 0 for overflow
+                res = 0;
+            }
+        }
+
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
 
 impl Power for u8 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let mut res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+
+        if res > Self::max().as_u64() {
+            // If panic on wrapping math is enabled, only then revert
+            if panic_on_overflow_enabled() {
+                revert(0);
+            } else {
+                // Follow spec of returning 0 for overflow
+                res = 0;
+            }
+        }
+
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
@@ -213,8 +307,12 @@ impl BinaryLogarithm for u8 {
 
 impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
-        use ::assert::*;
-        assert(self != 0);
+        // If panic on unsafe math is enabled, only then revert
+        if panic_on_unsafe_math_enabled() {
+            // Logarithm is undefined for 0
+            assert(self != 0);
+        }
+
         let (a, b, c, d) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
@@ -233,9 +331,58 @@ impl BinaryLogarithm for u256 {
 
 impl Logarithm for u256 {
     fn log(self, base: Self) -> Self {
+        let flags = disable_panic_on_overflow();
+
+        // If panic on unsafe math is enabled, only then revert
+        if panic_on_unsafe_math_enabled() {
+            // Logarithm is undefined for bases less than 2
+            assert(base >= 2);
+            // Logarithm is undefined for 0
+            assert(self != 0);
+        }
+
+        // Decimals rounded to 0
+        if self < base {
+            return 0x00u256;
+        }
+
+        // Estimating the result using change of base formula. Only an estimate because we are doing uint calculations.
         let self_log2 = self.log2();
         let base_log2 = base.log2();
-        self_log2 / base_log2
+        let mut result = (self_log2 / base_log2);
+
+        // Converting u256 to u32, this cannot fail as the result will be atmost ~256
+        let parts = asm(r1: result) {
+            r1: (u64, u64, u64, u64)
+        };
+        let res_u32 = asm(r1: parts.3) {
+            r1: u32
+        };
+
+        // Raising the base to the power of the result
+        let mut pow_res = base.pow(res_u32);
+        let mut of = overflow();
+
+        // Adjusting the result until the power is less than or equal to self
+        // If pow_res is > than self, then there is an overestimation. If there is an overflow then there is definitely an overestimation.
+        while (pow_res > self) || (of > 0) {
+            result -= 1;
+
+            // Converting u256 to u32, this cannot fail as the result will be atmost ~256
+            let parts = asm(r1: result) {
+                r1: (u64, u64, u64, u64)
+            };
+            let res_u32 = asm(r1: parts.3) {
+                r1: u32
+            };
+
+            pow_res = base.pow(res_u32);
+            of = overflow();
+        };
+
+        set_flags(flags);
+
+        result
     }
 }
 

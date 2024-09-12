@@ -7,7 +7,7 @@ use crate::{
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -17,10 +17,36 @@ use sway_types::{integer_bits::IntegerBits, span::Span, ProgramId, SourceId};
 
 use super::unify::unifier::UnifyKind;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TypeEngine {
     slab: ConcurrentSlab<TypeSourceInfo>,
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
+    unifications: ConcurrentSlab<Unification>,
+    last_replace: RwLock<Instant>,
+}
+
+pub trait IsConcrete {
+    fn is_concrete(&self, engines: &Engines) -> bool;
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Unification {
+    pub received: TypeId,
+    pub expected: TypeId,
+    pub span: Span,
+    pub help_text: String,
+    pub unify_kind: UnifyKind,
+}
+
+impl Default for TypeEngine {
+    fn default() -> Self {
+        TypeEngine {
+            slab: Default::default(),
+            id_map: Default::default(),
+            unifications: Default::default(),
+            last_replace: RwLock::new(Instant::now()),
+        }
+    }
 }
 
 impl Clone for TypeEngine {
@@ -28,6 +54,8 @@ impl Clone for TypeEngine {
         TypeEngine {
             slab: self.slab.clone(),
             id_map: RwLock::new(self.id_map.read().clone()),
+            unifications: self.unifications.clone(),
+            last_replace: RwLock::new(*self.last_replace.read()),
         }
     }
 }
@@ -67,19 +95,32 @@ impl TypeEngine {
         }
     }
 
-    /// Removes all data associated with `program_id` from the type engine.
-    pub fn clear_program(&mut self, program_id: &ProgramId) {
-        self.slab.retain(|_, tsi| match tsi.source_id {
-            Some(source_id) => &source_id.program_id() != program_id,
-            None => true,
-        });
-        self.id_map.write().retain(|tsi, _| match tsi.source_id {
-            Some(source_id) => &source_id.program_id() != program_id,
-            None => true,
-        });
+    fn clear_items<F>(&mut self, keep: F)
+    where
+        F: Fn(&SourceId) -> bool,
+    {
+        self.slab
+            .retain(|_, tsi| tsi.source_id.as_ref().map_or(true, &keep));
+        self.id_map
+            .write()
+            .retain(|tsi, _| tsi.source_id.as_ref().map_or(true, &keep));
     }
 
-    pub fn replace(&self, id: TypeId, new_value: TypeSourceInfo) {
+    /// Removes all data associated with `program_id` from the type engine.
+    pub fn clear_program(&mut self, program_id: &ProgramId) {
+        self.clear_items(|id| id.program_id() != *program_id);
+    }
+
+    /// Removes all data associated with `source_id` from the type engine.
+    pub fn clear_module(&mut self, source_id: &SourceId) {
+        self.clear_items(|id| id != source_id);
+    }
+
+    pub fn replace(&self, engines: &Engines, id: TypeId, new_value: TypeSourceInfo) {
+        if !(*self.slab.get(id.index())).eq(&new_value, &PartialEqWithEnginesContext::new(engines))
+        {
+            self.touch_last_replace();
+        }
         self.slab.replace(id.index(), new_value);
     }
 
@@ -137,6 +178,7 @@ impl TypeEngine {
             help_text,
             err_override,
             UnifyKind::Default,
+            true,
         );
     }
 
@@ -167,6 +209,7 @@ impl TypeEngine {
             help_text,
             err_override,
             UnifyKind::WithSelf,
+            true,
         );
     }
 
@@ -197,7 +240,13 @@ impl TypeEngine {
             help_text,
             err_override,
             UnifyKind::WithGeneric,
+            true,
         );
+    }
+
+    fn touch_last_replace(&self) {
+        let mut write_last_change = self.last_replace.write();
+        *write_last_change = Instant::now();
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -210,6 +259,7 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
         unify_kind: UnifyKind,
+        push_unification: bool,
     ) {
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
@@ -224,11 +274,6 @@ impl TypeEngine {
                         received: engines.help_out(received).to_string(),
                         help_text: help_text.to_string(),
                         span: span.clone(),
-                        internal: format!(
-                            "expected:[{:?}]; received:[{:?}]",
-                            engines.help_out(expected),
-                            engines.help_out(received),
-                        ),
                     }));
                 }
             }
@@ -237,7 +282,7 @@ impl TypeEngine {
 
         let h = Handler::default();
         let unifier = Unifier::new(engines, help_text, unify_kind);
-        unifier.unify(handler, received, expected, span);
+        unifier.unify(handler, received, expected, span, push_unification);
 
         match err_override {
             Some(err_override) if h.has_errors() => {
@@ -246,6 +291,34 @@ impl TypeEngine {
             _ => {
                 handler.append(h);
             }
+        }
+    }
+
+    pub(crate) fn push_unification(&self, unification: Unification) {
+        self.unifications.insert(unification);
+    }
+
+    pub(crate) fn clear_unifications(&self) {
+        self.unifications.clear();
+    }
+
+    pub(crate) fn reapply_unifications(&self, engines: &Engines) {
+        let current_last_replace = *self.last_replace.read();
+        for unification in self.unifications.values() {
+            Self::unify_helper(
+                &Handler::default(),
+                engines,
+                unification.received,
+                unification.expected,
+                &unification.span,
+                &unification.help_text,
+                None,
+                unification.unify_kind.clone(),
+                false,
+            )
+        }
+        if *self.last_replace.read() > current_last_replace {
+            self.reapply_unifications(engines);
         }
     }
 

@@ -1,0 +1,8 @@
+[[package]]
+name = "const_instead_of_let"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-9DAB4ED88942C556"

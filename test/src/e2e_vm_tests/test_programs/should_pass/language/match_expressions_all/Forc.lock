@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-0B4C76FF57814684"
+
+[[package]]
+name = "match_expressions_all"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-0B4C76FF57814684"
+dependencies = ["core"]

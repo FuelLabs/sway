@@ -9,12 +9,14 @@ use crate::{FilterConfig, RunConfig};
 use anyhow::{anyhow, bail, Result};
 use colored::*;
 use core::fmt;
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
 use forc_test::decode_log_data;
 use fuel_vm::fuel_tx;
+use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
 use regex::Regex;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::io::stdout;
 use std::io::Write;
 use std::str::FromStr;
@@ -113,6 +115,8 @@ struct TestContext {
 }
 
 fn print_receipts(output: &mut String, receipts: &[Receipt]) {
+    let mut text_log = String::new();
+
     use std::fmt::Write;
     let _ = writeln!(output, "  {}", "Receipts".green().bold());
     for (i, receipt) in receipts.iter().enumerate() {
@@ -129,6 +133,28 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
                 is,
                 data,
             } => {
+                // Small hack to allow log from tests.
+                if *ra == u64::MAX {
+                    match rb {
+                        0 => {
+                            let mut data = data.as_deref().unwrap();
+                            data.skip(8).unwrap();
+                            let s = std::str::from_utf8(data).unwrap();
+
+                            text_log.push_str(s);
+                        }
+                        1 => {
+                            let data = data.as_deref().unwrap();
+                            let s = u64::from_be_bytes(data.try_into().unwrap());
+
+                            text_log.push_str(&format!("{}", s));
+                        }
+                        2 => {
+                            text_log.push('\n');
+                        }
+                        _ => {}
+                    }
+                }
                 let _ = write!(output, " LogData\n      ID: {id:?}\n      RA: {ra:?}\n      RB: {rb:?}\n      Ptr: {ptr:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Data: {data:?}\n");
             }
             Receipt::ReturnData {
@@ -238,6 +264,14 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
             }
         }
     }
+
+    if !text_log.is_empty() {
+        let _ = writeln!(output, "  {}", "Text Logs".green().bold());
+
+        for l in text_log.lines() {
+            let _ = writeln!(output, "{l}");
+        }
+    }
 }
 
 impl TestContext {
@@ -301,6 +335,41 @@ impl TestContext {
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
+
+                if let Ok(result) = result.as_ref() {
+                    let packages = match result {
+                        forc_pkg::Built::Package(p) => [p.clone()].to_vec(),
+                        forc_pkg::Built::Workspace(p) => p.clone(),
+                    };
+
+                    for p in packages {
+                        let bytecode_len = p.bytecode.bytes.len();
+
+                        let configurables = match &p.program_abi {
+                            sway_core::asm_generation::ProgramABI::Fuel(abi) => {
+                                abi.configurables.as_ref().cloned().unwrap_or_default()
+                            }
+                            sway_core::asm_generation::ProgramABI::Evm(_)
+                            | sway_core::asm_generation::ProgramABI::MidenVM(_) => vec![],
+                        }
+                        .into_iter()
+                        .map(|x| (x.offset, x.name))
+                        .collect::<BTreeMap<u64, String>>();
+
+                        let mut items = configurables.iter().peekable();
+                        while let Some(current) = items.next() {
+                            let next_offset = match items.peek() {
+                                Some(next) => *next.0,
+                                None => bytecode_len as u64,
+                            };
+                            let size = next_offset - current.0;
+                            output.push_str(&format!(
+                                "Configurable Encoded Bytes Buffer Size: {} {}\n",
+                                current.1, size
+                            ));
+                        }
+                    }
+                }
 
                 check_file_checker(checker, &name, output)?;
 
@@ -425,8 +494,8 @@ impl TestContext {
                             )
                         })
                         .await;
-                        result?;
                         output.push_str(&out);
+                        result?;
                     }
                 }
 
@@ -653,6 +722,13 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         .as_ref()
         .map(|exclude| tests.retained(|t| !exclude.is_match(&t.name)))
         .unwrap_or_default();
+
+    if filter_config.exclude_core {
+        tests.retain(|t| exclude_tests_dependency(t, "core"));
+    }
+    if filter_config.exclude_std {
+        tests.retain(|t| exclude_tests_dependency(t, "std"));
+    }
     if filter_config.abi_only {
         tests.retain(|t| t.validate_abi);
     }
@@ -661,36 +737,6 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     }
     if filter_config.first_only && !tests.is_empty() {
         tests = vec![tests.remove(0)];
-    }
-
-    // Expand tests that need to run with multiple configurations.
-    // Be mindful that this can explode exponentially the number of tests
-    // that run because one expansion expands on top of another
-    let mut tests = tests;
-    let expansions: [&str; 0] = [];
-    for expansion in expansions {
-        tests = tests
-            .into_iter()
-            .flat_map(|t| {
-                let has_script_data_new_encoding = t.script_data_new_encoding.is_some();
-                let has_contracts = !t.contract_paths.is_empty();
-                let has_expected_return = t.expected_result_new_encoding.is_some();
-                if expansion == "new_encoding"
-                    && (has_script_data_new_encoding || has_contracts || has_expected_return)
-                {
-                    let mut with_new_encoding = t.clone();
-                    with_new_encoding.suffix = Some("New Encoding".into());
-
-                    let mut run_config_with_new_encoding = run_config.clone();
-                    run_config_with_new_encoding.experimental.new_encoding = true;
-                    with_new_encoding.run_config = run_config_with_new_encoding;
-
-                    vec![t, with_new_encoding]
-                } else {
-                    vec![t]
-                }
-            })
-            .collect();
     }
 
     // Run tests
@@ -822,6 +868,25 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     }
 }
 
+fn exclude_tests_dependency(t: &TestDescription, dep: &str) -> bool {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let tests_root_dir = format!("{manifest_dir}/src/e2e_vm_tests/test_programs");
+    let file_name = &t.name;
+    let manifest_path = format!("{tests_root_dir}/{file_name}");
+    match ManifestFile::from_dir(manifest_path) {
+        Ok(manifest_file) => {
+            let member_manifests = manifest_file.member_manifests().unwrap();
+            !member_manifests.iter().any(|(_name, manifest)| {
+                manifest
+                    .dependencies
+                    .as_ref()
+                    .is_some_and(|map| map.contains_key(dep))
+            })
+        }
+        Err(_) => true,
+    }
+}
+
 fn discover_test_configs(run_config: &RunConfig) -> Result<Vec<TestDescription>> {
     fn recursive_search(
         path: &Path,
@@ -873,7 +938,7 @@ fn check_file_checker(checker: filecheck::Checker, name: &String, output: &str) 
 fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescription> {
     let toml_content_str = std::fs::read_to_string(path)?;
 
-    let file_check = FileCheck(toml_content_str.clone());
+    let mut file_check = FileCheck(toml_content_str.clone());
     let checker = file_check.build()?;
 
     let toml_content = toml_content_str.parse::<toml::Value>()?;
@@ -882,8 +947,17 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         bail!("Malformed test description.");
     }
 
-    let category = toml_content
-        .get("category")
+    // if new encoding is on, allow a "category_new_encoding"
+    // for tests that should have different categories
+    let category = if run_config.experimental.new_encoding {
+        toml_content
+            .get("category_new_encoding")
+            .or_else(|| toml_content.get("category"))
+    } else {
+        toml_content.get("category")
+    };
+
+    let category = category
         .ok_or_else(|| anyhow!("Missing mandatory 'category' entry."))
         .and_then(|category_val| match category_val.as_str() {
             Some("run") => Ok(TestCategory::Runs),
@@ -914,6 +988,18 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     // Abort early if we find a FailsToCompile test without any Checker directives.
     if category == TestCategory::FailsToCompile && checker.is_empty() {
         bail!("'fail' tests must contain some FileCheck verification directives.");
+    }
+
+    // We have some tests on old and new encoding that return different warnings.
+    // There is no easy way to write `test.toml` to support both, and the effort
+    // for such support is also questionable since we do not want to support
+    // the old encoding anymore, and currently we do not have any other configurations.
+    // Currently, we will simply ignore the `FileCheck` directives if the test category
+    // is not "fails" and the "category_new_encoding" is explicitly specified.
+    if toml_content.get("category_new_encoding").is_some()
+        && category != TestCategory::FailsToCompile
+    {
+        file_check = FileCheck("".into());
     }
 
     let (script_data, script_data_new_encoding) = match &category {
@@ -984,7 +1070,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
-            Some(get_expected_result("expected_result", &toml_content)?)
+            get_expected_result("expected_result", &toml_content)
         }
         TestCategory::Compiles
         | TestCategory::FailsToCompile
@@ -996,7 +1082,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         &category,
         get_expected_result("expected_result_new_encoding", &toml_content),
     ) {
-        (TestCategory::Runs | TestCategory::RunsWithContract, Ok(value)) => Some(value),
+        (TestCategory::Runs | TestCategory::RunsWithContract, Some(value)) => Some(value),
         _ => None,
     };
 
@@ -1077,7 +1163,11 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     Ok(TestDescription {
         name,
-        suffix: None,
+        suffix: if run_config.experimental.new_encoding {
+            None
+        } else {
+            Some("encoding v0".into())
+        },
         category,
         script_data,
         script_data_new_encoding,
@@ -1117,7 +1207,7 @@ fn get_build_profile_from_value(value: &toml::Value) -> Result<&'static str> {
     }
 }
 
-fn get_expected_result(key: &str, toml_content: &toml::Value) -> Result<TestResult> {
+fn get_expected_result(key: &str, toml_content: &toml::Value) -> Option<TestResult> {
     fn get_action_value(action: &toml::Value, expected_value: &toml::Value) -> Result<TestResult> {
         match (action.as_str(), expected_value) {
             // A simple integer value.
@@ -1138,22 +1228,8 @@ fn get_expected_result(key: &str, toml_content: &toml::Value) -> Result<TestResu
         }
     }
 
-    toml_content
-        .get(key)
-        .ok_or_else(|| anyhow!( "Could not find mandatory 'expected_result' entry."))
-        .and_then(|expected_result_table| {
-            expected_result_table
-                .get("action")
-                .ok_or_else(|| {
-                    anyhow!("Could not find mandatory 'action' field in 'expected_result' entry.")
-                })
-                .and_then(|action| {
-                    expected_result_table
-                        .get("value")
-                        .ok_or_else(|| {
-                            anyhow!("Could not find mandatory 'value' field in 'expected_result' entry.")
-                        })
-                        .and_then(|expected_value| get_action_value(action, expected_value))
-                })
-        })
+    let expected_result_table = toml_content.get(key)?;
+    let action = expected_result_table.get("action")?;
+    let value = expected_result_table.get("value")?;
+    get_action_value(action, value).ok()
 }

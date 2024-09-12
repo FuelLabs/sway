@@ -10,9 +10,7 @@ use std::constants::{self, ZERO_B256};
 pub fn fun() {
     let _ = std::option::Option::None;
     let _ = Option::None;
-    let _ = std::vm::evm::evm_address::EvmAddress {
-        value: b256::min(),
-    };
+    let _ = std::vm::evm::evm_address::EvmAddress::zero();
 
     test_mod::test_fun();
     deep_mod::deeper_mod::deep_fun();

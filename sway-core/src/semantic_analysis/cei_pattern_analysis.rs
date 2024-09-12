@@ -11,7 +11,7 @@
 use crate::{
     decl_engine::*,
     language::{
-        ty::{self, TyFunctionDecl, TyImplTrait},
+        ty::{self, TyFunctionDecl, TyImplSelfOrTrait},
         AsmOp,
     },
     Engines,
@@ -30,6 +30,8 @@ enum Effect {
     BalanceTreeRead,      // balance tree read operation
     BalanceTreeReadWrite, // balance tree read and write operation
     OutputMessage,        // operation creates a new `Output::Message`
+    MintAsset,            // mint operation
+    BurnAsset,            // burn operation
 }
 
 impl fmt::Display for Effect {
@@ -42,6 +44,8 @@ impl fmt::Display for Effect {
             BalanceTreeRead => write!(f, "Balance tree read"),
             BalanceTreeReadWrite => write!(f, "Balance tree update"),
             OutputMessage => write!(f, "Output message sent"),
+            MintAsset => write!(f, "Asset minted"),
+            BurnAsset => write!(f, "Asset burned"),
         }
     }
 }
@@ -56,6 +60,8 @@ impl Effect {
             BalanceTreeRead => "making all balance tree reads",
             BalanceTreeReadWrite => "making all balance tree updates",
             OutputMessage => "sending all output messages",
+            MintAsset => "minting assets",
+            BurnAsset => "burning assets",
         })
     }
 }
@@ -105,7 +111,7 @@ fn contract_entry_points(
             Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. })) => {
                 decl_id_to_fn_decls(decl_engine, decl_id)
             }
-            Declaration(ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. })) => {
+            Declaration(ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. })) => {
                 impl_trait_methods(decl_engine, decl_id)
             }
             _ => vec![],
@@ -122,9 +128,9 @@ fn decl_id_to_fn_decls(
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
-    impl_trait_decl_id: &DeclId<TyImplTrait>,
+    impl_trait_decl_id: &DeclId<TyImplSelfOrTrait>,
 ) -> Vec<Arc<ty::TyFunctionDecl>> {
-    let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
+    let impl_trait = decl_engine.get_impl_self_or_trait(impl_trait_decl_id);
     impl_trait
         .items
         .iter()
@@ -641,7 +647,9 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         | Not
         | EncodeBufferEmpty
         | EncodeBufferAppend
-        | EncodeBufferAsRawSlice => HashSet::new(),
+        | EncodeBufferAsRawSlice
+        | Slice
+        | ElemAt => HashSet::new(),
     }
 }
 
@@ -653,6 +661,8 @@ fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
         "bal" => HashSet::from([Effect::BalanceTreeRead]),
         "smo" => HashSet::from([Effect::OutputMessage]),
         "call" => HashSet::from([Effect::Interaction]),
+        "mint" => HashSet::from([Effect::MintAsset]),
+        "burn" => HashSet::from([Effect::BurnAsset]),
         // the rest of the assembly instructions are considered to not have effects
         _ => HashSet::new(),
     }

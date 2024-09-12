@@ -1,7 +1,9 @@
 use std::{fmt, hash::Hasher};
 
 use sway_error::{
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
 use sway_types::{Span, Spanned};
@@ -54,10 +56,10 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, engines);
-            self.expression.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, ctx);
+            self.expression.subst(type_mapping, ctx);
         }
     }
 }
@@ -108,6 +110,51 @@ impl TypeCheckAnalysis for TyExpression {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
+        match &self.expression {
+            // Check literal "fits" into assigned typed.
+            TyExpressionVariant::Literal(Literal::Numeric(literal_value)) => {
+                let t = ctx.engines.te().get(self.return_type);
+                if let TypeInfo::UnsignedInteger(bits) = &*t {
+                    if bits.would_overflow(*literal_value) {
+                        handler.emit_err(CompileError::TypeError(TypeError::LiteralOverflow {
+                            expected: format!("{:?}", ctx.engines.help_out(t)),
+                            span: self.span.clone(),
+                        }));
+                    }
+                }
+            }
+            // Check all array items are the same
+            TyExpressionVariant::Array {
+                elem_type,
+                contents,
+            } => {
+                let array_elem_type = ctx.engines.te().get(*elem_type);
+                if !matches!(&*array_elem_type, TypeInfo::Never) {
+                    let unify = crate::type_system::unify::unifier::Unifier::new(
+                        ctx.engines,
+                        "",
+                        unify::unifier::UnifyKind::Default,
+                    );
+                    for element in contents {
+                        let element_type = ctx.engines.te().get(element.return_type);
+
+                        // If the element is never, we do not need to check
+                        if matches!(&*element_type, TypeInfo::Never) {
+                            continue;
+                        }
+
+                        unify.unify(
+                            handler,
+                            element.return_type,
+                            *elem_type,
+                            &element.span,
+                            true,
+                        )
+                    }
+                }
+            }
+            _ => {}
+        }
         self.expression.type_check_analyze(handler, ctx)
     }
 }
@@ -141,6 +188,7 @@ impl CollectTypesMetadata for TyExpression {
                 arguments,
                 fn_ref,
                 call_path,
+                type_binding,
                 ..
             } => {
                 for arg in arguments.iter() {
@@ -149,8 +197,30 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for type_parameter in &function_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span())
+                for (idx, type_parameter) in function_decl.type_parameters.iter().enumerate() {
+                    ctx.call_site_insert(type_parameter.type_id, call_path.span());
+
+                    // Verify type arguments are concrete
+                    res.extend(
+                        type_parameter
+                            .type_id
+                            .collect_types_metadata(handler, ctx)?
+                            .into_iter()
+                            // try to use the caller span for better error messages
+                            .map(|x| match x {
+                                TypeMetadata::UnresolvedType(ident, original_span) => {
+                                    let span = type_binding
+                                        .as_ref()
+                                        .and_then(|type_binding| {
+                                            type_binding.type_arguments.as_slice().get(idx)
+                                        })
+                                        .map(|type_argument| Some(type_argument.span.clone()))
+                                        .unwrap_or(original_span);
+                                    TypeMetadata::UnresolvedType(ident, span)
+                                }
+                                x => x,
+                            }),
+                    );
                 }
 
                 for content in function_decl.body.contents.iter() {
@@ -173,10 +243,10 @@ impl CollectTypesMetadata for TyExpression {
             StructExpression {
                 fields,
                 instantiation_span,
-                struct_ref,
+                struct_id,
                 ..
             } => {
-                let struct_decl = decl_engine.get_struct(struct_ref);
+                let struct_decl = decl_engine.get_struct(struct_id);
                 for type_parameter in &struct_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                 }
@@ -388,13 +458,13 @@ impl TyExpression {
 
         match &self.expression {
             TyExpressionVariant::StructExpression {
-                struct_ref,
+                struct_id,
                 instantiation_span,
                 ..
             } => {
-                let s = engines.de().get(struct_ref.id());
+                let struct_decl = engines.de().get(struct_id);
                 emit_warning_if_deprecated(
-                    &s.attributes,
+                    &struct_decl.attributes,
                     instantiation_span,
                     handler,
                     "deprecated struct",
@@ -404,10 +474,12 @@ impl TyExpression {
             TyExpressionVariant::FunctionApplication {
                 call_path, fn_ref, ..
             } => {
-                if let Some(TyDecl::ImplTrait(t)) = &engines.de().get(fn_ref).implementing_type {
+                if let Some(TyDecl::ImplSelfOrTrait(t)) =
+                    &engines.de().get(fn_ref).implementing_type
+                {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_ref) = &*engines.te().get(t.type_id) {
-                        let s = engines.de().get(struct_ref.id());
+                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
+                        let s = engines.de().get(struct_id);
                         emit_warning_if_deprecated(
                             &s.attributes,
                             &call_path.span(),
@@ -419,6 +491,13 @@ impl TyExpression {
                 }
             }
             _ => {}
+        }
+    }
+
+    pub fn as_intrinsic(&self) -> Option<&TyIntrinsicFunctionKind> {
+        match &self.expression {
+            TyExpressionVariant::IntrinsicFunction(v) => Some(v),
+            _ => None,
         }
     }
 }

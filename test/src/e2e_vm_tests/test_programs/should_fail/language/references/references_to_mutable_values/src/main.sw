@@ -15,6 +15,10 @@ impl S {
     const X = 0;
 }
 
+struct S2 {
+    s: S,
+}
+
 fn function(f_x: u8) {
     let _ = &mut f_x;
 }
@@ -73,5 +77,18 @@ fn main() {
     }
 
     function(0);
+
+    // aggregates checking
+
+    let _ = &mut s.x;
+
+    let s2 = S2 { s: S { x: 0 } };
+
+    let _ = &mut s2.s.x;
+
+    let t : (u32, u32) = (0, 0);
+    let _ : &mut u32 = &mut t.0;
+
+    let _ = &mut { t }; // No error here.
 }
 

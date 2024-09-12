@@ -250,14 +250,14 @@ async fn can_mint_and_send_to_address() {
     fuelcontract_instance
         .methods()
         .mint_and_send_to_address(amount, recipient, Bits256(*sub_id))
-        .append_variable_outputs(1)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
         .call()
         .await
         .unwrap();
 
     assert_eq!(
         wallet
-            .get_spendable_resources(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1, None)
             .await
             .unwrap()[0]
             .amount(),
@@ -278,14 +278,14 @@ async fn can_perform_generic_mint_to_with_address() {
     fuelcontract_instance
         .methods()
         .generic_mint_to(amount, Identity::Address(address.into()), Bits256(*sub_id))
-        .append_variable_outputs(1)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
         .call()
         .await
         .unwrap();
 
     assert_eq!(
         wallet
-            .get_spendable_resources(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1, None)
             .await
             .unwrap()[0]
             .amount(),
@@ -357,14 +357,14 @@ async fn can_perform_generic_transfer_to_address() {
             Bits256(*asset_id),
             Identity::Address(address.into()),
         )
-        .append_variable_outputs(1)
+        .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
         .call()
         .await
         .unwrap();
 
     assert_eq!(
         wallet
-            .get_spendable_resources(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1, None)
             .await
             .unwrap()[0]
             .amount(),

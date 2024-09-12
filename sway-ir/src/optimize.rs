@@ -19,6 +19,8 @@ pub mod const_demotion;
 pub use const_demotion::*;
 pub mod constants;
 pub use constants::*;
+pub mod conditional_constprop;
+pub use conditional_constprop::*;
 pub mod dce;
 pub use dce::*;
 pub mod inline;
@@ -128,7 +130,7 @@ pub mod tests {
 
         for (actual, expected) in actual.iter().zip(expected) {
             if !actual.contains(expected) {
-                panic!("error: {actual:?} {expected:?}");
+                panic!("Actual: {actual:?} does not contains expected: {expected:?}. (Run with --nocapture to see a diff)");
             } else {
                 expected_matches -= 1;
             }
