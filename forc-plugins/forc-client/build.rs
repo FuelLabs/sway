@@ -37,7 +37,7 @@ fn main() {
     let source_file_path = PathBuf::from("src/util/tx.rs");
     // Read the contents of the JSON file
     let json_content =
-        fs::read_to_string(&json_path).expect("Unable to read proxy_contract-abi.json");
+        fs::read_to_string(json_path).expect("Unable to read proxy_contract-abi.json");
 
     // Minify the JSON content
     let minified_json = minify_json(&json_content);
