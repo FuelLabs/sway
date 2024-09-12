@@ -111,6 +111,10 @@ fn output_pointer(index: u64) -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
         Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_OUTPUT_AT_INDEX)),
+        Transaction::Upgrade => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        Transaction::Upload => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        _ => None,
     }
 }
 
@@ -139,6 +143,10 @@ pub fn output_count() -> u16 {
     match tx_type() {
         Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
         Transaction::Create => __gtf::<u16>(0, GTF_CREATE_OUTPUTS_COUNT),
+        Transaction::Upgrade => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
+        Transaction::Upload => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
+        Transaction::Blob => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
+        _ => revert(0),
     }
 }
 
