@@ -43,4 +43,8 @@ impl AuthTesting for Contract {
         }
         ret
     }
+
+    fn returns_caller_addresses() -> Vec<Address> {
+        caller_addresses()
+    }
 }
