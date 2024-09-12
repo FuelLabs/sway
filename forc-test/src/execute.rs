@@ -264,7 +264,7 @@ impl TestExecutor {
 /// ```
 fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
     // Each instruction is 4 bytes,
-    // so we divide the totaly byte-size by 4 to get the instruction offset.
+    // so we divide the total byte-size by 4 to get the instruction offset.
     const PROGRAM_START_INST_OFFSET: u32 = (sway_core::PRELUDE_SIZE_IN_BYTES / 4) as u32;
     const PROGRAM_START_BYTE_OFFSET: usize = sway_core::PRELUDE_SIZE_IN_BYTES;
 
