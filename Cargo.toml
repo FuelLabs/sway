@@ -32,10 +32,63 @@ exclude = [
     "forc-test/test_data"
 ]
 
+[workspace.package]
+edition = "2021"
+version = "0.63.5"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+
 [workspace.dependencies]
+#
+# Internal dependencies in order to propagate `workspace.version`
+#
+
+forc = { path = "forc/" }
+forc-pkg = { path = "forc-pkg/" }
+forc-test = { path = "forc-test/" }
+forc-tracing = { path = "forc-tracing/" }
+forc-util = { path = "forc-util/" }
+
+# Forc plugins
+forc-plugins = { path = "forc-plugins/" }
+forc-client = { path = "forc-plugins/forc-client/" }
+forc-crypto = { path = "forc-plugins/forc-crypto/" }
+forc-debug = { path = "forc-plugins/forc-debug/" }
+forc-doc = { path = "forc-plugins/forc-doc/" }
+forc-fmt = { path = "forc-plugins/forc-fmt/" }
+forc-lsp = { path = "forc-plugins/forc-lsp/" }
+forc-tx = { path = "forc-plugins/forc-tx/" }
+
+sway-ast = { path = "sway-ast/" }
+sway-core = { path = "sway-core/" }
+sway-error = { path = "sway-error/" }
+sway-lsp = { path = "sway-lsp/" }
+sway-parse = { path = "sway-parse/" }
+sway-types = { path = "sway-types/" }
+sway-utils = { path = "sway-utils/" }
+swayfmt = { path = "swayfmt/" }
+
+# Sway IR
+sway-ir = { path = "sway-ir/" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros" }
+
+#
+# External Fuel dependencies
+#
+
+# Dependencies from the `fuel-abi-types` repository:
+fuel-abi-types = "0.7.0"
+
 # Dependencies from the `fuel-core` repository:
 fuel-core-client = { version = "0.35.0", default-features = false }
 fuel-core-types = { version = "0.35.0", default-features = false }
+
+# Dependencies from the `fuels-rs` repository:
+fuels = "0.66.4"
+fuels-core = "0.66.4"
+fuels-accounts = "0.66.4"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.56.0"
@@ -44,20 +97,137 @@ fuel-types = "0.56.0"
 fuel-tx = "0.56.0"
 fuel-vm = "0.56.0"
 
-# Dependencies from the `fuels-rs` repository:
-fuels-core = "0.66.4"
-fuels-accounts = "0.66.4"
-fuels = "0.66.4"
-
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.9.0"
 
-# Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.7.0"
+#
+# External dependencies
+#
 
-[workspace.package]
-edition = "2021"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-homepage = "https://fuel.network/"
-license = "Apache-2.0"
-repository = "https://github.com/FuelLabs/sway"
+annotate-snippets = "0.10.1"
+ansi_term = "0.12"
+anyhow = "1.0.75"
+assert_matches = "1.5.0"
+assert-json-diff = "2.0"
+async-trait = "0.1.58"
+atty = "0.2.14"
+byte-unit = "5.1.4"
+bytecount = "0.6"
+bytes = "1.3.0"
+chrono = { version = "0.4", default-features = false }
+cid = "0.11"
+clap = "4.5.4"
+clap_complete = "4.5.2"
+clap_complete_fig = "4.5.0"
+colored = "2.0.0"
+comrak = "0.28.0"
+crossbeam-channel = "0.5"
+dap = "0.4.1-alpha1"
+dashmap = "6.1.0"
+derivative = "2.2.0"
+devault = "0.2.0"
+dialoguer = "0.11"
+dirs = "5.0.1"
+downcast-rs = "1.2.0"
+either = "1.9.0"
+ethabi = { package = "fuel-ethabi", version = "18.0.0" }
+etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev" }
+etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
+extension-trait = "1.0.1"
+fd-lock = "4.0"
+filecheck = "0.5"
+fs_extra = "1.2"
+futures = { version = "0.3.24", default-features = false }
+gag = "1.0"
+gimli = "0.31.0"
+git2 = "0.19"
+gix-url = "0.27"
+glob = "0.3.1"
+graph-cycles = "0.1.0"
+hashbrown = "0.14.5"
+hex = "0.4.3"
+horrorshow = "0.8.4"
+im = "15.0"
+in_definite = "1.0.0"
+include_dir = "0.7.3"
+indexmap = "2.0.0"
+indoc = "2.0"
+insta = "1.39.0"
+ipfs-api-backend-hyper = "0.6"
+itertools = "0.13.0"
+lazy_static = "1.4"
+libp2p-identity = "0.2.4"
+libtest-mimic = "0.7.3"
+lsp-types = "0.94"
+mdbook = { version = "0.4", default-features = false }
+miden = "0.3.0"
+miden-core = "0.10.5"
+minifier = "0.3.0"
+notify = "6.1.1"
+notify-debouncer-mini = "0.4.1"
+num-bigint = "0.4.3"
+num-traits = "0.2.16"
+object = "0.36.4"
+once_cell = "1.18.0"
+opener = "0.7.2"
+parking_lot = "0.12.1"
+paste = "1.0.14"
+peg = "0.8.4"
+pest = "2.1.3"
+pest_derive = "2.1"
+petgraph = "0.6"
+phf = "0.11.2"
+pretty_assertions = "1.4.0"
+prettydiff = "0.7.0"
+proc-macro2 = "1.0.5"
+quote = "1.0.21"
+rand = "0.8"
+rayon = "1.7.0"
+rayon-cond = "0.3"
+regex = "1.10.2"
+reqwest = "0.12"
+revm = "14.0.1"
+ropey = "1.5"
+rpassword = "7.2"
+rustc-hash = "2.0.0"
+semver = "1.0"
+serde = "1.0"
+serde_ignored = "0.1.9"
+serde_json = "1.0.91"
+serde_with = "3.3.0"
+serde_yaml = "0.9.27"
+serial_test = "3.0.0"
+sha2 = "0.10"
+sha3 = "0.10.8"
+shellfish = "0.9.0"
+slotmap = "1.0.7"
+smallvec = "1.7"
+strsim = "0.11.1"
+strum = "0.26.3"
+syn = "2.0.77"
+tai64 = "4.0"
+taplo = "0.13.2"
+tar = "0.4.38"
+tempfile = "3"
+term-table = "1.3"
+termion = "4.0.2"
+textwrap = "0.16.0"
+thiserror = "1.0.30"
+tikv-jemallocator = "0.6.0"
+tokio = "1.12"
+toml = "0.8"
+toml_edit = "0.22.20"
+tower = { version = "0.5.1", default-features = false }
+tower-lsp = "0.20"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uint = "0.9"
+unicode-bidi = "0.3.13"
+unicode-xid = "0.2.2"
+url = "2.2"
+urlencoding = "2.1.2"
+uwuify = "^0.2"
+vec1 = "1.8.0"
+vte = "0.13.0"
+walkdir = "2.3.3"
+whoami = "1.1"
