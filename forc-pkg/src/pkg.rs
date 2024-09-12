@@ -25,7 +25,7 @@ use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
     fs::{self, File},
-    hash::{Hash, Hasher as StdHasher},
+    hash::{Hash, Hasher},
     io::Write,
     path::{Path, PathBuf},
     str::FromStr,
