@@ -319,8 +319,11 @@ impl TyImplSelfOrTrait {
                     } => call_path.call_path.suffix.clone(),
                     _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
                 };
+//		let problem = suffix.as_str() == "Bytes";
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
-
+//		if problem {
+//		    dbg!(&trait_name);
+//		}
                 // Type check the type parameters.
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -389,6 +392,7 @@ impl TyImplSelfOrTrait {
                         match item {
                             ImplItem::Fn(fn_decl_id) => {
                                 let fn_decl = engines.pe().get_function(fn_decl_id);
+//				if problem { dbg!(&fn_decl); };
                                 let fn_decl = match ty::TyFunctionDecl::type_check_signature(
                                     handler,
                                     ctx.by_ref(),

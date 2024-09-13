@@ -1061,6 +1061,10 @@ impl<'a> TypeCheckContext<'a> {
         let type_engine = self.engines.te();
         let _decl_engine = self.engines.de();
 
+        let type_name = self.engines.help_out(type_id).to_string();
+//	let problem = type_name == "Bytes" && item_name.as_str() == "len";
+//	if problem { dbg!(&item_prefix); };
+
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
         // message.
@@ -1078,6 +1082,8 @@ impl<'a> TypeCheckContext<'a> {
         let local_items = local_module
             .current_items()
             .get_items_for_type(self.engines, type_id);
+
+//	if problem { dbg!(&local_items); };
 
         // resolve the type
         let type_id = self
@@ -1104,6 +1110,8 @@ impl<'a> TypeCheckContext<'a> {
             .current_items()
             .get_items_for_type(self.engines, type_id);
 
+//	if problem { dbg!(&type_items); };
+	
         let mut items = local_items;
         items.append(&mut type_items);
 
@@ -1157,11 +1165,18 @@ impl<'a> TypeCheckContext<'a> {
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
 
+        let type_name = self.engines.help_out(type_id).to_string();
+//	let problem = type_name == "Bytes" && method_name.as_str() == "len";
+//	if problem {
+//	    dbg!(&method_prefix);
+//	}
+	
         let eq_check = UnifyCheck::non_dynamic_equality(self.engines);
         let coercion_check = UnifyCheck::coercion(self.engines);
 
         // default numeric types to u64
         if type_engine.contains_numeric(decl_engine, type_id) {
+//	    if problem { dbg!("contains numeric"); };
             // While collecting unification we don't decay numeric and will ignore this error.
             if self.collecting_unifications {
                 return Err(handler.emit_err(CompileError::MethodNotFound {
@@ -1176,6 +1191,8 @@ impl<'a> TypeCheckContext<'a> {
         let matching_item_decl_refs =
             self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
 
+//	if problem { dbg!(&matching_item_decl_refs); }
+
         let matching_method_decl_refs = matching_item_decl_refs
             .into_iter()
             .flat_map(|item| match item {
@@ -1184,6 +1201,8 @@ impl<'a> TypeCheckContext<'a> {
                 ty::TyTraitItem::Type(_) => None,
             })
             .collect::<Vec<_>>();
+
+//	if problem { dbg!(&matching_method_decl_refs); }
 
         let mut qualified_call_path = None;
         let matching_method_decl_ref = {
@@ -1205,6 +1224,8 @@ impl<'a> TypeCheckContext<'a> {
                     maybe_method_decl_refs.push(decl_ref);
                 }
             }
+
+//	    if problem { dbg!(&maybe_method_decl_refs); }
 
             if !maybe_method_decl_refs.is_empty() {
                 let mut trait_methods =
@@ -1387,6 +1408,8 @@ impl<'a> TypeCheckContext<'a> {
             } else {
                 self.engines.help_out(type_id).to_string()
             };
+	    //	    dbg!("end");
+//	    if problem { panic!(); };
             Err(handler.emit_err(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
                 type_name,

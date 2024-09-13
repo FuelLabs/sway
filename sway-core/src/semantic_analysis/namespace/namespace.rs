@@ -345,14 +345,15 @@ impl Namespace {
             )?
         } else {
             // Import core::prelude::* and std::prelude::*
-            assert!(self.root.exists_as_external(&core_string));
-            self.root.star_import(
-                handler,
-                engines,
-                &[core_ident, prelude_ident.clone()],
-                &self.current_mod_path,
-                Visibility::Private,
-            )?;
+            if self.root.exists_as_external(&core_string) {
+		self.root.star_import(
+                    handler,
+                    engines,
+                    &[core_ident, prelude_ident.clone()],
+                    &self.current_mod_path,
+                    Visibility::Private,
+		)?;
+	    }
 
             let std_string = STD.to_string();
             // Only import std::prelude::* if std exists as a dependency

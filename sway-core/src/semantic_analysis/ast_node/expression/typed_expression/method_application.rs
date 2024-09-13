@@ -777,6 +777,7 @@ pub(crate) fn resolve_method_name(
             call_path_binding,
             method_name,
         } => {
+//	    dbg!("FromType");
             // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
@@ -805,6 +806,7 @@ pub(crate) fn resolve_method_name(
             (decl_ref, type_id)
         }
         MethodName::FromTrait { call_path } => {
+//	    dbg!("FromTrait");
             // find the module that the symbol is in
             let module_path =
 		match call_path.callpath_type {
@@ -846,8 +848,10 @@ pub(crate) fn resolve_method_name(
             (decl_ref, type_id)
         }
         MethodName::FromModule { method_name } => {
+//	    dbg!("FromModule");
             // find the module that the symbol is in
-            let module_path = ctx.namespace().prepend_module_path(vec![]);
+            let module_path = ctx.namespace().current_mod_path().clone();
+//	    dbg!(&module_path);
 
             // find the type of the first argument
             let type_id = arguments_types
@@ -874,6 +878,7 @@ pub(crate) fn resolve_method_name(
             as_trait,
             method_name,
         } => {
+//	    dbg!("FromQualifiedPathRoot");
             // type check the call path
             let type_id = ty.type_id;
 
