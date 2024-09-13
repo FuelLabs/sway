@@ -54,6 +54,10 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| capabilities::highlight::get_highlights(session.clone(), &uri, position))
     });
 
+    c.bench_function("find_all_references", |b| {
+        b.iter(|| session.token_references(&uri, position))
+    });
+
     c.bench_function("goto_definition", |b| {
         b.iter(|| session.token_definition_response(&uri, position))
     });

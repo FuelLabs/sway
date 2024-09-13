@@ -50,7 +50,7 @@ impl ty::TyConfigurableDecl {
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         type_ascription.type_id.subst(
             &ctx.type_subst(),
-            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
         );
 
         if !is_screaming_snake_case(name.as_str()) {

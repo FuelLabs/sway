@@ -28,10 +28,12 @@ impl TypeId {
                 &*type_engine.get(resolved_type_id),
             ) {
                 (TypeInfo::Custom { .. }, TypeInfo::Struct { .. })
-                | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. })
-                | (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => type_engine
+                | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
                     .abi_str(ctx, engines, true),
+                (_, TypeInfo::Alias { ty, .. }) => {
+                    ty.type_id.get_abi_type_str(ctx, engines, ty.type_id)
+                }
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = resolved_fields

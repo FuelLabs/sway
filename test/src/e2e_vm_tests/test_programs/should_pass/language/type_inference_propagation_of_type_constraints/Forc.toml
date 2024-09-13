@@ -1,0 +1,8 @@
+[project]
+name = "type_inference_propagation_of_type_constraints"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

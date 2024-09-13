@@ -147,19 +147,13 @@ where
         ctx: &SubstTypesContext,
     ) -> Option<Self> {
         let decl_engine = ctx.engines.de();
-        if type_mapping.source_ids_contains_concrete_type(ctx.engines)
-            || !decl_engine.get(&self.id).is_concrete(ctx.engines)
-        {
-            let mut decl = (*decl_engine.get(&self.id)).clone();
-            if decl.subst(type_mapping, ctx).has_changes() {
-                Some(
-                    decl_engine
-                        .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
-                        .with_parent(decl_engine, self.id.into()),
-                )
-            } else {
-                None
-            }
+        let mut decl = (*decl_engine.get(&self.id)).clone();
+        if decl.subst(type_mapping, ctx).has_changes() {
+            Some(
+                decl_engine
+                    .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
+                    .with_parent(decl_engine, self.id.into()),
+            )
         } else {
             None
         }

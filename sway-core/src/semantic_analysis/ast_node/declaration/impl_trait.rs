@@ -647,7 +647,7 @@ fn type_check_trait_implementation(
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
-    let collecting_unifications = ctx.collecting_unifications();
+    let code_block_first_pass = ctx.code_block_first_pass();
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
@@ -666,7 +666,7 @@ fn type_check_trait_implementation(
                     block_span,
                     engines,
                     TryInsertingTraitImplOnFailure::Yes,
-                    collecting_unifications.into(),
+                    code_block_first_pass.into(),
                 )
         })?;
 
@@ -808,7 +808,7 @@ fn type_check_trait_implementation(
 
                 type_decl.subst(
                     &trait_type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                    &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
                 );
 
                 // Remove this type from the checklist.
@@ -882,7 +882,7 @@ fn type_check_trait_implementation(
 
                 impl_method.subst(
                     &trait_type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                    &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
                 );
 
                 // Remove this method from the checklist.
@@ -908,7 +908,7 @@ fn type_check_trait_implementation(
 
                 const_decl.subst(
                     &trait_type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                    &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
                 );
 
                 // Remove this constant from the checklist.
@@ -981,7 +981,7 @@ fn type_check_trait_implementation(
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(
                     &type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                    &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
                 );
                 all_items_refs.push(TyImplItem::Fn(
                     decl_engine
@@ -997,7 +997,7 @@ fn type_check_trait_implementation(
                 const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 const_decl.subst(
                     &type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                    &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
                 );
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(
                     const_decl,
@@ -1008,7 +1008,7 @@ fn type_check_trait_implementation(
                 let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
                 type_decl.subst(
                     &type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                    &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
                 );
                 all_items_refs.push(TyImplItem::Type(decl_engine.insert(
                     type_decl.clone(),
@@ -1154,14 +1154,14 @@ fn type_check_impl_method(
             let mut impl_method_param_type_id = impl_method_param.type_argument.type_id;
             impl_method_param_type_id.subst(
                 &ctx.type_subst(),
-                &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
             );
 
             let mut impl_method_signature_param_type_id =
                 impl_method_signature_param.type_argument.type_id;
             impl_method_signature_param_type_id.subst(
                 &ctx.type_subst(),
-                &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+                &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
             );
 
             if !UnifyCheck::non_dynamic_equality(engines).check(
@@ -1234,14 +1234,14 @@ fn type_check_impl_method(
         let mut impl_method_return_type_id = impl_method.return_type.type_id;
         impl_method_return_type_id.subst(
             &ctx.type_subst(),
-            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
         );
 
         let mut impl_method_signature_return_type_type_id =
             impl_method_signature.return_type.type_id;
         impl_method_signature_return_type_type_id.subst(
             &ctx.type_subst(),
-            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
         );
 
         if !UnifyCheck::non_dynamic_equality(engines).check(
@@ -1350,13 +1350,13 @@ fn type_check_const_decl(
     let mut const_decl_type_id = const_decl.type_ascription.type_id;
     const_decl_type_id.subst(
         &ctx.type_subst(),
-        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+        &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
     );
 
     let mut const_decl_signature_type_id = const_decl_signature.type_ascription.type_id;
     const_decl_signature_type_id.subst(
         &ctx.type_subst(),
-        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+        &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
     );
 
     // unify the types from the constant with the constant signature

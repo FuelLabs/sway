@@ -56,6 +56,7 @@ impl ty::TyCodeBlock {
         // This is required to fix the test case numeric_type_propagation and issue #6371
         ctx.by_ref()
             .with_collecting_unifications()
+            .with_code_block_first_pass(true)
             .scoped(|mut ctx| {
                 code_block.contents.iter().for_each(|node| {
                     ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();

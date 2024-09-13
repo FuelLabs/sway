@@ -1007,7 +1007,9 @@ impl TypeCheckAnalysis for TyExpressionVariant {
     ) -> Result<(), ErrorEmitted> {
         match self {
             TyExpressionVariant::Literal(_) => {}
-            TyExpressionVariant::FunctionApplication { fn_ref, .. } => {
+            TyExpressionVariant::FunctionApplication {
+                fn_ref, arguments, ..
+            } => {
                 let fn_decl_id = ctx.get_normalized_fn_node_id(fn_ref.id());
 
                 let fn_node = ctx.get_node_for_fn_decl(&fn_decl_id);
@@ -1020,6 +1022,22 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                     if !ctx.node_stack.contains(&fn_node) {
                         let _ = fn_decl_id.type_check_analyze(handler, ctx);
                     }
+                }
+
+                // Unify arguments that are still not concrete
+                let decl = ctx.engines.de().get(fn_ref.id());
+
+                use crate::type_system::unify::unifier::*;
+                let unifier = Unifier::new(ctx.engines, "", UnifyKind::Default);
+
+                for (decl_param, arg) in decl.parameters.iter().zip(arguments.iter()) {
+                    unifier.unify(
+                        handler,
+                        arg.1.return_type,
+                        decl_param.type_argument.type_id,
+                        &Span::dummy(),
+                        false,
+                    );
                 }
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
