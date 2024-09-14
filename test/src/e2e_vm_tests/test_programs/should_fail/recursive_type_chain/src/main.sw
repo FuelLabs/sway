@@ -1,4 +1,4 @@
-script;
+library;
 
 enum E {
     Eins: F,
@@ -38,8 +38,4 @@ enum Y {
 
 struct Z {
     five: X,
-}
-
-fn main() {
-
 }
