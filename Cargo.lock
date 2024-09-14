@@ -2025,6 +2025,7 @@ dependencies = [
  "fs_extra",
  "fuel-asm",
  "hex",
+ "rexpect 0.5.0",
  "serde",
  "serde_json",
  "sway-core",

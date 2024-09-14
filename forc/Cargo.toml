@@ -55,3 +55,4 @@ uwu = ["uwuify"]
 
 [dev-dependencies]
 completest-pty = "0.5.0"
+rexpect = "0.5"
