@@ -551,6 +551,19 @@ jobs:
         env:
           RUST_BACKTRACE: full
         run: cargo nextest run --locked --release -p sway-lsp --no-capture --profile ci --config-file sway-lsp/tests/nextest.toml
+  cargo-test-forc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Run forc tests separately 
+        env:
+          RUST_BACKTRACE: full
+        run: cargo test --locked --release -p forc -- --nocapture
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -561,7 +574,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client --exclude forc
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
