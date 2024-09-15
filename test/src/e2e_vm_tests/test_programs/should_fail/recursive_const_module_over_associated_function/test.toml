@@ -1,0 +1,9 @@
+category = "fail"
+
+#check: $()const MOD_CONST: u8 = S::assoc();
+#nextln: $()No method named "assoc" found for type "S".
+
+#check: $()const MOD_CONST: u8 = S::assoc();
+#nextln: $()Could not evaluate initializer to a const declaration.
+
+#check: $()2 errors.

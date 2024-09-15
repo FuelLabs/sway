@@ -1,3 +1,5 @@
 category = "fail"
 
 # check: $()recursive types are not supported
+
+# check: $()1 error.
