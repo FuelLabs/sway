@@ -1,0 +1,10 @@
+category = "fail" # TODO: Adjust these checks once https://github.com/FuelLabs/sway/issues/6534 is fixed.
+
+# check: $()Type B is recursive via A, which is unsupported at this time.
+# check: $()Type A is recursive via B, which is unsupported at this time.
+
+# check: $()Type Y is recursive via Z and X, which is unsupported at this time.
+# check: $()Type Z is recursive via X and Y, which is unsupported at this time.
+# check: $()Type X is recursive via Y and Z, which is unsupported at this time.
+
+# check: $()5 errors.
