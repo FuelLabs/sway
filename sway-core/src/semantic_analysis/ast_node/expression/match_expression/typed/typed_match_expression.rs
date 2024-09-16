@@ -658,7 +658,7 @@ impl ty::TyMatchExpression {
             };
         }
         let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
-        ctx.scoped(Some(branch_span), |mut branch_ctx| {
+        ctx.scoped(handler, Some(branch_span), |mut branch_ctx| {
             let result_span = result.span.clone();
             let condition = condition
                 .clone()

@@ -216,13 +216,17 @@ impl<'a> TypeCheckContext<'a> {
     /// so it enters the lexical scope corresponding to the given span.
     pub fn scoped<T>(
         self,
+        handler: &Handler,
         span: Option<Span>,
         with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
         let mut namespace = self.namespace.clone();
         if let Some(span) = span {
-            self.collection_ctx
-                .enter_lexical_scope(self.engines, span, |scoped_collection_ctx| {
+            self.collection_ctx.enter_lexical_scope(
+                handler,
+                self.engines,
+                span,
+                |scoped_collection_ctx| {
                     let ctx = TypeCheckContext {
                         namespace: &mut namespace,
                         collection_ctx: scoped_collection_ctx,
@@ -244,7 +248,8 @@ impl<'a> TypeCheckContext<'a> {
                         code_block_first_pass: self.code_block_first_pass,
                     };
                     with_scoped_ctx(ctx)
-                })
+                },
+            )
         } else {
             let ctx = TypeCheckContext {
                 collection_ctx: self.collection_ctx,
@@ -275,13 +280,17 @@ impl<'a> TypeCheckContext<'a> {
     /// the given span.
     pub fn scoped_and_namespace<T>(
         self,
+        handler: &Handler,
         span: Option<Span>,
         with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
     ) -> Result<(T, Namespace), ErrorEmitted> {
         let mut namespace = self.namespace.clone();
         if let Some(span) = span {
-            self.collection_ctx
-                .enter_lexical_scope(self.engines, span, |scoped_collection_ctx| {
+            self.collection_ctx.enter_lexical_scope(
+                handler,
+                self.engines,
+                span,
+                |scoped_collection_ctx| {
                     let ctx = TypeCheckContext {
                         collection_ctx: scoped_collection_ctx,
                         namespace: &mut namespace,
@@ -303,7 +312,8 @@ impl<'a> TypeCheckContext<'a> {
                         code_block_first_pass: self.code_block_first_pass,
                     };
                     Ok((with_scoped_ctx(ctx)?, namespace))
-                })
+                },
+            )
         } else {
             let ctx = TypeCheckContext {
                 collection_ctx: self.collection_ctx,

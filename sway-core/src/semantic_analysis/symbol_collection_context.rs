@@ -60,13 +60,14 @@ impl SymbolCollectionContext {
     /// Returns the result of the given `with_ctx` function.
     pub fn enter_lexical_scope<T>(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
         span: Span,
         with_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
-        self.namespace
-            .module_mut(engines)
-            .write(engines, |m| m.enter_lexical_scope(span.clone()));
+        self.namespace.module_mut(engines).write(engines, |m| {
+            m.enter_lexical_scope(handler, engines, span.clone())
+        })?;
         let ret = with_ctx(self);
         self.namespace
             .module_mut(engines)

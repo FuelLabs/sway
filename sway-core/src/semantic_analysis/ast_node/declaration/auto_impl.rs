@@ -324,7 +324,7 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(None, |ctx| {
+        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
             TyDecl::type_check(
                 &handler,
                 ctx,
@@ -375,7 +375,7 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(None, |ctx| {
+        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
             TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 

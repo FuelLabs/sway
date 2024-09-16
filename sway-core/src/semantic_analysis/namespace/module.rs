@@ -232,11 +232,29 @@ impl Module {
     }
 
     /// Enters the scope with the given span in the module's lexical scope hierarchy.
-    pub fn enter_lexical_scope(&mut self, span: Span) -> LexicalScopeId {
+    pub fn enter_lexical_scope(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        span: Span,
+    ) -> Result<LexicalScopeId, ErrorEmitted> {
         let id_opt = self.lexical_scopes_spans.get(&span);
-        let id = *id_opt.unwrap();
-        self.current_lexical_scope_id = id;
-        id
+        if id_opt.is_none() {
+            eprintln!("Error: {:?}", engines.help_out(span.clone()));
+            panic!();
+        }
+        match id_opt {
+            Some(id) => {
+                self.current_lexical_scope_id = *id;
+                Ok(*id)
+            }
+            None => {
+                Err(handler.emit_err(CompileError::Internal(
+                    "Could not find a valid lexical scope for this source location.",
+                    span.clone(),
+                )))
+            }
+        }
     }
 
     /// Pushes a new scope to the module's lexical scope hierarchy.

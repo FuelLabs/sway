@@ -305,7 +305,7 @@ pub(crate) fn struct_instantiation(
 
     let instantiation_span = inner_span.clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(None, |mut scoped_ctx| {
+        .scoped(handler, None, |mut scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
             for type_parameter in struct_decl.type_parameters.iter() {
