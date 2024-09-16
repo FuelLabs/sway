@@ -79,13 +79,14 @@ impl<'a> SymbolResolveContext<'a> {
     }
 
     /// Scope the `SymbolResolveContext` with a new namespace lexical scope.
-    pub fn scoped<T>(
+    pub fn enter_lexical_scope<T>(
         self,
+        span: Span,
         with_scoped_ctx: impl FnOnce(SymbolResolveContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
         let engines = self.engines;
         self.symbol_collection_ctx
-            .enter_lexical_scope(engines, |sub_scope_collect_ctx| {
+            .enter_lexical_scope(engines, span, |sub_scope_collect_ctx| {
                 let sub_scope_resolve_ctx =
                     SymbolResolveContext::new(engines, sub_scope_collect_ctx);
                 with_scoped_ctx(sub_scope_resolve_ctx)

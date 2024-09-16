@@ -2768,6 +2768,7 @@ mod tests {
     use super::*;
     use crate::{Engines, ExperimentalFlags};
     use sway_error::type_error::TypeError;
+    use symbol_collection_context::SymbolCollectionContext;
 
     fn do_type_check(
         handler: &Handler,
@@ -2776,6 +2777,9 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let collection_ctx_ns = Namespace::new();
+        let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
+
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
         let mut root_module = namespace::Root::from(namespace::Module::new(
             root_module_name,
@@ -2783,8 +2787,13 @@ mod tests {
             None,
         ));
         let mut namespace = Namespace::init_root(&mut root_module);
-        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
-            .with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_namespace(
+            &mut namespace,
+            &mut collection_ctx,
+            engines,
+            experimental,
+        )
+        .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }
 

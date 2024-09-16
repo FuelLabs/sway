@@ -59,9 +59,10 @@ impl TyDecl {
                 let decl_id = *decl_id;
                 let mut fn_decl = engines.pe().get_function(&decl_id).as_ref().clone();
                 let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl);
-                let (_ret, lexical_scope_id) = ctx.scoped(engines, |scoped_ctx| {
-                    TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
-                });
+                let (_ret, lexical_scope_id) =
+                    ctx.scoped(fn_decl.span.clone(), engines, |scoped_ctx| {
+                        TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
+                    });
                 fn_decl.lexical_scope = lexical_scope_id;
                 engines.pe().replace(decl_id, fn_decl);
             }

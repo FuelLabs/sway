@@ -28,7 +28,7 @@ impl ty::TyCodeBlock {
         is_root: bool,
     ) -> Result<Self, ErrorEmitted> {
         if !is_root {
-            let code_block_result = ctx.by_ref().scoped(|mut ctx| {
+            let code_block_result = ctx.by_ref().scoped(Some(code_block.span()), |mut ctx| {
                 let evaluated_contents = code_block
                     .contents
                     .iter()
@@ -57,7 +57,7 @@ impl ty::TyCodeBlock {
         ctx.by_ref()
             .with_collecting_unifications()
             .with_code_block_first_pass(true)
-            .scoped(|mut ctx| {
+            .scoped(Some(code_block.span()), |mut ctx| {
                 code_block.contents.iter().for_each(|node| {
                     ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
                 });
@@ -66,7 +66,7 @@ impl ty::TyCodeBlock {
 
         ctx.engines.te().reapply_unifications(ctx.engines());
 
-        ctx.by_ref().scoped(|mut ctx| {
+        ctx.by_ref().scoped(Some(code_block.span()), |mut ctx| {
             let evaluated_contents = code_block
                 .contents
                 .iter()

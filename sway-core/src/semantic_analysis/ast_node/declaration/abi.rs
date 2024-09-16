@@ -55,7 +55,7 @@ impl ty::TyAbiDecl {
         // A temporary namespace for checking within this scope.
         ctx.with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
             .with_self_type(Some(self_type_id))
-            .scoped(|mut ctx| {
+            .scoped(Some(span.clone()), |mut ctx| {
                 // Insert the "self" type param into the namespace.
                 self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
 

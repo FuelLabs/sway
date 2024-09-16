@@ -57,7 +57,7 @@ impl TyImplSelfOrTrait {
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .with_self_type(Some(self_type_id))
             .allow_functions()
-            .scoped(|mut ctx| {
+            .scoped(Some(block_span.clone()), |mut ctx| {
                 // Type check the type parameters
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -304,7 +304,7 @@ impl TyImplSelfOrTrait {
         // create the namespace for the impl
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
-            .scoped(|mut ctx| {
+            .scoped(Some(block_span.clone()), |mut ctx| {
                 // Create a new type parameter for the "self type".
                 let self_type_param =
                     TypeParameter::new_self_type(engines, implementing_for.span());
