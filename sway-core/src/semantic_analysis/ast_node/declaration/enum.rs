@@ -87,7 +87,6 @@ impl ty::TyEnumVariant {
         variant: EnumVariant,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
         let mut type_argument = variant.type_argument;
         type_argument.type_id = ctx
             .resolve_type(
@@ -97,7 +96,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         Ok(ty::TyEnumVariant {
             name: variant.name.clone(),
             type_argument,

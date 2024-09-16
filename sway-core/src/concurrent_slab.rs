@@ -100,6 +100,13 @@ where
         Arc::into_inner(old)
     }
 
+    pub fn replace_arc(&self, index: usize, new_value: Arc<T>) -> Option<T> {
+        let mut inner = self.inner.write();
+        let item = inner.items.get_mut(index)?;
+        let old = item.replace(new_value)?;
+        Arc::into_inner(old)
+    }
+
     pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read();
         inner.items[index]

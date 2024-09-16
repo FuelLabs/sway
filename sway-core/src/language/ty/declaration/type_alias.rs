@@ -64,15 +64,9 @@ impl SubstTypes for TyTypeAliasDecl {
 
 impl CreateTypeId for TyTypeAliasDecl {
     fn create_type_id(&self, engines: &Engines) -> TypeId {
-        let type_engine = engines.te();
-        type_engine.insert(
-            engines,
-            TypeInfo::Alias {
-                name: self.name.clone(),
-                ty: self.ty.clone(),
-            },
-            self.name.span().source_id(),
-        )
+        engines
+            .te()
+            .new_alias(engines, self.name.clone(), self.ty.clone())
     }
 }
 
