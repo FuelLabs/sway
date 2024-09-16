@@ -1711,16 +1711,23 @@ impl<'a> TypeCheckContext<'a> {
                 // reported the number of arguments including the implicit self, hence
                 // we adjust it below
                 let adjust_for_trait_decl = value.has_self_type_param() as usize;
-                let num_type_params = num_type_params - adjust_for_trait_decl;
+                let non_parent_type_params = value
+                    .type_parameters()
+                    .iter()
+                    .filter(|x| !x.is_from_parent)
+                    .count()
+                    - adjust_for_trait_decl;
+
                 let num_type_args = num_type_args - adjust_for_trait_decl;
-                if num_type_params != num_type_args {
+                if non_parent_type_params != num_type_args {
                     return Err(handler.emit_err(make_type_arity_mismatch_error(
                         value.name().clone(),
                         type_arguments_span,
                         num_type_args,
-                        num_type_params,
+                        non_parent_type_params,
                     )));
                 }
+
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = self
                         .resolve(
