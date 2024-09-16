@@ -1,4 +1,4 @@
-script;
+library;
 
 enum MyOption<T> {
     Some: T,
@@ -13,5 +13,5 @@ fn bar<V>(value: V) -> MyOption<V> {
 }
 
 fn main() {
-    let x = bar(false);
+    let _ = bar(false);
 }
