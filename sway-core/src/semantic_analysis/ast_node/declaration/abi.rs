@@ -5,13 +5,13 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclEngineInsertArc, DeclId},
-    language::ty::TyAbiDecl,
+    language::ty::{TyAbiDecl, TyFunctionDecl},
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    TypeParameter,
+    Engines, TypeParameter,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -29,6 +29,22 @@ use crate::{
 };
 
 impl ty::TyAbiDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        abi_decl: &AbiDeclaration,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = ctx.scoped(engines, abi_decl.span.clone(), |scoped_ctx| {
+            abi_decl.methods.iter().for_each(|m| {
+                let method_decl = engines.pe().get_function(m).as_ref().clone();
+                let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);
+            });
+            Ok(())
+        });
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,

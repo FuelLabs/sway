@@ -11,19 +11,37 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem, TyTraitDecl, TyTraitItem},
+        ty::{self, TyFunctionDecl, TyImplItem, TyTraitDecl, TyTraitItem},
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
+        symbol_collection_context::SymbolCollectionContext,
         AbiMode, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
+    Engines,
 };
 
 impl TyTraitDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl: &TraitDeclaration,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = ctx.scoped(engines, decl.span.clone(), |scoped_ctx| {
+            decl.methods.iter().for_each(|m| {
+                let method_decl = engines.pe().get_function(m).as_ref().clone();
+                let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);
+            });
+            Ok(())
+        });
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,

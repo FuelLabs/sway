@@ -39,8 +39,8 @@ impl SymbolCollectionContext {
     /// Scope the `CollectionContext` with a new lexical scope.
     pub fn scoped<T>(
         &mut self,
-        span: Span,
         engines: &Engines,
+        span: Span,
         with_scoped_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
         let lexical_scope_id: LexicalScopeId = self

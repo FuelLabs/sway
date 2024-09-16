@@ -5,6 +5,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
+use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
     decl_engine::{DeclId, DeclRefFunction},
@@ -15,10 +16,23 @@ use crate::{
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
+    Engines,
 };
 use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        fn_decl: &FunctionDeclaration,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = ctx.scoped(engines, fn_decl.span.clone(), |scoped_ctx| {
+            TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
+        });
+        Ok(())
+    }
+
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,

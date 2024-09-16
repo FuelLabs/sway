@@ -2,10 +2,21 @@ use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyEnumDecl {
+    pub(crate) fn collect(
+        _handler: &Handler,
+        _engines: &Engines,
+        _ctx: &mut SymbolCollectionContext,
+        _decl: &EnumDeclaration,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+
     pub fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,

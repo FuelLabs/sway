@@ -232,8 +232,11 @@ impl Module {
     }
 
     /// Enters the scope with the given span in the module's lexical scope hierarchy.
-    pub fn enter_lexical_scope(&mut self, _span: Span) -> LexicalScopeId {
-        todo!()
+    pub fn enter_lexical_scope(&mut self, span: Span) -> LexicalScopeId {
+        let id_opt = self.lexical_scopes_spans.get(&span);
+        let id = *id_opt.unwrap();
+        self.current_lexical_scope_id = id;
+        id
     }
 
     /// Pushes a new scope to the module's lexical scope hierarchy.

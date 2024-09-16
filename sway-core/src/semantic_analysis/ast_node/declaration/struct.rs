@@ -2,10 +2,27 @@ use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyStructDecl {
+    pub(crate) fn collect(
+        _handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl: &StructDeclaration,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = ctx.scoped(engines, decl.span.clone(), |_scoped_ctx| {
+            decl.fields.iter().for_each(|_field| {
+                //let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);
+            });
+            Ok(())
+        });
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,

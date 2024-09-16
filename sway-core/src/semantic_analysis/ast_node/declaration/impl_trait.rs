@@ -15,11 +15,15 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem},
+        ty::{
+            self, TyDecl, TyFunctionDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem,
+            TyTraitItem,
+        },
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
+        symbol_collection_context::SymbolCollectionContext,
         type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode,
         TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -28,6 +32,26 @@ use crate::{
 };
 
 impl TyImplSelfOrTrait {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl: &ImplSelfOrTrait,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = ctx.scoped(engines, decl.block_span.clone(), |scoped_ctx| {
+            decl.items.iter().for_each(|item| match item {
+                ImplItem::Fn(decl_id) => {
+                    let fn_decl = engines.pe().get_function(decl_id).as_ref().clone();
+                    let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &fn_decl);
+                }
+                ImplItem::Constant(_) => {}
+                ImplItem::Type(_) => {}
+            });
+            Ok(())
+        });
+        Ok(())
+    }
+
     pub(crate) fn type_check_impl_trait(
         handler: &Handler,
         mut ctx: TypeCheckContext,
