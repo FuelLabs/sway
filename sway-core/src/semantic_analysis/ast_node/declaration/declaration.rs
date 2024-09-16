@@ -11,7 +11,7 @@ use crate::{
         },
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, ResolvedDeclaration},
+    namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext,
         type_check_context::EnforceTypeArguments, ConstShadowingMode, GenericShadowingMode,
@@ -114,89 +114,15 @@ impl TyDecl {
 
         let decl = match decl {
             parsed::Declaration::VariableDeclaration(decl_id) => {
-                let var_decl = engines.pe().get_variable(&decl_id);
-                let mut type_ascription = var_decl.type_ascription.clone();
-
-                type_ascription.type_id = ctx
-                    .resolve_type(
-                        handler,
-                        type_ascription.type_id,
-                        &type_ascription.span,
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )
-                    .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                    });
-                let mut ctx = ctx
-                    .with_type_annotation(type_ascription.type_id)
-                    .with_help_text(
-                        "Variable declaration's type annotation does not match up \
-                        with the assigned expression's type.",
-                    );
-                let result = ty::TyExpression::type_check(handler, ctx.by_ref(), &var_decl.body);
-                let body = result.unwrap_or_else(|err| {
-                    ty::TyExpression::error(err, var_decl.name.span(), engines)
-                });
-
-                // TODO: Integers shouldn't be anything special. RHS expressions should be written in
-                //       a way to always use the context provided from the LHS, and if the LHS is
-                //       an integer, RHS should properly unify or type check should fail.
-                //       Remove this special case as a part of the initiative of improving type inference.
-                // Integers are special in the sense that we can't only rely on the type of `body`
-                // to get the type of the variable. The type of the variable *has* to follow
-                // `type_ascription` if `type_ascription` is a concrete integer type that does not
-                // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match &*type_engine.get(type_ascription.type_id) {
-                    TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-                    _ => match &*type_engine.get(body.return_type) {
-                        // If RHS type check ends up in an error we want to use the
-                        // provided type ascription as the variable type. E.g.:
-                        //   let v: Struct<u8> = Struct<u64> { x: 0 }; // `v` should be "Struct<u8>".
-                        //   let v: ExistingType = non_existing_identifier; // `v` should be "ExistingType".
-                        //   let v = <some error>; // `v` will remain "{unknown}".
-                        // TODO: Refine and improve this further. E.g.,
-                        //   let v: Struct { /* MISSING FIELDS */ }; // Despite the error, `v` should be of type "Struct".
-                        TypeInfo::ErrorRecovery(_) => type_ascription.type_id,
-                        _ => body.return_type,
-                    },
+                let decl = engines.pe().get_variable(&decl_id).as_ref().clone();
+                let name = decl.name.clone();
+                let span = decl.name.span();
+                let var_decl = match ty::TyVariableDecl::type_check(handler, ctx.by_ref(), decl) {
+                    Ok(res) => res,
+                    Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
-
-                if !ctx.code_block_first_pass() {
-                    let previous_symbol = ctx
-                        .namespace()
-                        .module(engines)
-                        .current_items()
-                        .check_symbols_unique_while_collecting_unifications(&var_decl.name.clone())
-                        .ok();
-
-                    if let Some(ResolvedDeclaration::Typed(ty::TyDecl::VariableDecl(
-                        variable_decl,
-                    ))) = previous_symbol
-                    {
-                        type_engine.unify(
-                            handler,
-                            engines,
-                            body.return_type,
-                            variable_decl.body.return_type,
-                            &decl.span(engines),
-                            "",
-                            None,
-                        );
-                    }
-                }
-
-                let typed_var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
-                    name: var_decl.name.clone(),
-                    body,
-                    mutability: ty::VariableMutability::new_from_ref_mut(
-                        false,
-                        var_decl.is_mutable,
-                    ),
-                    return_type,
-                    type_ascription,
-                }));
-                ctx.insert_symbol(handler, var_decl.name.clone(), typed_var_decl.clone())?;
+                let typed_var_decl = ty::TyDecl::VariableDecl(Box::new(var_decl));
+                ctx.insert_symbol(handler, name, typed_var_decl.clone())?;
                 typed_var_decl
             }
             parsed::Declaration::ConstantDeclaration(decl_id) => {
@@ -665,8 +591,8 @@ impl TypeCheckAnalysis for TyDecl {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         match self {
-            TyDecl::VariableDecl(node) => {
-                node.type_check_analyze(handler, ctx)?;
+            TyDecl::VariableDecl(var_decl) => {
+                var_decl.type_check_analyze(handler, ctx)?;
             }
             TyDecl::ConstantDecl(node) => {
                 let const_decl = ctx.engines.de().get_constant(&node.decl_id);
