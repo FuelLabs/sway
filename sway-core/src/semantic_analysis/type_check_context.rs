@@ -1672,13 +1672,7 @@ impl<'a> TypeCheckContext<'a> {
             }
         }
 
-        let non_parent_type_params = value
-            .type_parameters()
-            .iter()
-            .filter(|x| !x.is_from_parent)
-            .count();
-
-        match (non_parent_type_params, type_arguments.len()) {
+        match (value.type_parameters().len(), type_arguments.len()) {
             (0, 0) => Ok(TypeSubstMap::default()),
             (num_type_params, 0) => {
                 if let EnforceTypeArguments::Yes = enforce_type_arguments {
@@ -1706,13 +1700,18 @@ impl<'a> TypeCheckContext<'a> {
                     0,
                 )))
             }
-            (non_parent_type_params, num_type_args) => {
+            (_, num_type_args) => {
                 // a trait decl is passed the self type parameter and the corresponding argument
                 // but it would be confusing for the user if the error reporting mechanism
                 // reported the number of arguments including the implicit self, hence
                 // we adjust it below
                 let adjust_for_trait_decl = value.has_self_type_param() as usize;
-                let non_parent_type_params = non_parent_type_params - adjust_for_trait_decl;
+                let non_parent_type_params = value
+                    .type_parameters()
+                    .iter()
+                    .filter(|x| !x.is_from_parent)
+                    .count()
+                    - adjust_for_trait_decl;
 
                 let num_type_args = num_type_args - adjust_for_trait_decl;
                 if non_parent_type_params != num_type_args {
@@ -1721,6 +1720,7 @@ impl<'a> TypeCheckContext<'a> {
                         .map(|x| x.span.clone())
                         .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                         .unwrap_or_else(|| value.name().span());
+
                     return Err(handler.emit_err(make_type_arity_mismatch_error(
                         value.name().clone(),
                         type_arguments_span,
