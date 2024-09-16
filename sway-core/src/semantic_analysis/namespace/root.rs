@@ -935,6 +935,12 @@ impl Root {
                 ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
                 ty::TyDecl::TraitTypeDecl(type_decl) => {
                     let type_decl = engines.de().get_type(&type_decl.decl_id);
+                    if type_decl.ty.is_none() {
+                        return Err(handler.emit_err(CompileError::Internal(
+                            "Trait type declaration has no type",
+                            symbol.span(),
+                        )));
+                    }
                     (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
                 }
                 _ => {
