@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::*,
         ty::{self, TyExpression, TyVariableDecl},
@@ -17,9 +18,16 @@ impl ty::TyVariableDecl {
         handler: &Handler,
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
-        decl: &VariableDeclaration,
+        decl_id: &ParsedDeclId<VariableDeclaration>,
     ) -> Result<(), ErrorEmitted> {
-        TyExpression::collect(handler, engines, ctx, &decl.body)
+        let var_decl = engines.pe().get_variable(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            var_decl.name.clone(),
+            Declaration::VariableDeclaration(*decl_id),
+        )?;
+        TyExpression::collect(handler, engines, ctx, &var_decl.body)
     }
 
     pub fn type_check(

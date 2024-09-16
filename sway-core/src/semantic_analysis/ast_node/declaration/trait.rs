@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
+use parsed_id::ParsedDeclId;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -11,7 +12,10 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyFunctionDecl, TyImplItem, TyTraitDecl, TyTraitFn, TyTraitItem},
+        ty::{
+            self, TyConstantDecl, TyFunctionDecl, TyImplItem, TyTraitDecl, TyTraitFn, TyTraitItem,
+            TyTraitType,
+        },
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -25,28 +29,45 @@ use crate::{
     Engines,
 };
 
+impl TyTraitItem {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        item: &TraitItem,
+    ) -> Result<(), ErrorEmitted> {
+        match item {
+            TraitItem::TraitFn(decl_id) => TyTraitFn::collect(handler, engines, ctx, decl_id),
+            TraitItem::Constant(decl_id) => TyConstantDecl::collect(handler, engines, ctx, decl_id),
+            TraitItem::Type(decl_id) => TyTraitType::collect(handler, engines, ctx, decl_id),
+            TraitItem::Error(_, _) => Ok(()),
+        }
+    }
+}
+
 impl TyTraitDecl {
     pub(crate) fn collect(
         handler: &Handler,
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
-        decl: &TraitDeclaration,
+        decl_id: &ParsedDeclId<TraitDeclaration>,
     ) -> Result<(), ErrorEmitted> {
+        let trait_decl = engines.pe().get_trait(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            trait_decl.name.clone(),
+            Declaration::TraitDeclaration(*decl_id),
+        )?;
+
         // A temporary namespace for checking within the trait's scope.
-        let _ = ctx.scoped(engines, decl.span.clone(), |scoped_ctx| {
-            decl.interface_surface.iter().for_each(|item| match item {
-                TraitItem::TraitFn(decl_id) => {
-                    let trait_fn = engines.pe().get_trait_fn(decl_id).as_ref().clone();
-                    let _ = TyTraitFn::collect(handler, engines, scoped_ctx, &trait_fn);
-                }
-                TraitItem::Constant(_) => todo!(),
-                TraitItem::Type(_) => {}
-                TraitItem::Error(_, _) => todo!(),
+        let _ = ctx.scoped(engines, trait_decl.span.clone(), |scoped_ctx| {
+            trait_decl.interface_surface.iter().for_each(|item| {
+                let _ = TyTraitItem::collect(handler, engines, scoped_ctx, item);
             });
 
-            decl.methods.iter().for_each(|m| {
-                let method_decl = engines.pe().get_function(m).as_ref().clone();
-                let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);
+            trait_decl.methods.iter().for_each(|decl_id| {
+                let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
             });
             Ok(())
         });

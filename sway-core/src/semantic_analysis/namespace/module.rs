@@ -235,7 +235,7 @@ impl Module {
     pub fn enter_lexical_scope(
         &mut self,
         handler: &Handler,
-        engines: &Engines,
+        _engines: &Engines,
         span: Span,
     ) -> Result<LexicalScopeId, ErrorEmitted> {
         let id_opt = self.lexical_scopes_spans.get(&span);

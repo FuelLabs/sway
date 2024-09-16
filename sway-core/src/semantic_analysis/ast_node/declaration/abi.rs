@@ -4,7 +4,10 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclEngineInsertArc, DeclId},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclEngineInsertArc,
+        DeclId,
+    },
     language::ty::{TyAbiDecl, TyFunctionDecl},
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
@@ -33,12 +36,23 @@ impl ty::TyAbiDecl {
         handler: &Handler,
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
-        abi_decl: &AbiDeclaration,
+        decl_id: &ParsedDeclId<AbiDeclaration>,
     ) -> Result<(), ErrorEmitted> {
+        let abi_decl = engines.pe().get_abi(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            abi_decl.name.clone(),
+            Declaration::AbiDeclaration(*decl_id),
+        )?;
+
         let _ = ctx.scoped(engines, abi_decl.span.clone(), |scoped_ctx| {
-            abi_decl.methods.iter().for_each(|m| {
-                let method_decl = engines.pe().get_function(m).as_ref().clone();
-                let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);
+            abi_decl.interface_surface.iter().for_each(|item| {
+                let _ = TyTraitItem::collect(handler, engines, scoped_ctx, item);
+            });
+
+            abi_decl.methods.iter().for_each(|decl_id| {
+                let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
             });
             Ok(())
         });

@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
@@ -9,18 +10,21 @@ use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyStructDecl {
     pub(crate) fn collect(
-        _handler: &Handler,
+        handler: &Handler,
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
-        decl: &StructDeclaration,
+        decl_id: &ParsedDeclId<StructDeclaration>,
     ) -> Result<(), ErrorEmitted> {
+        let struct_decl = engines.pe().get_struct(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            struct_decl.name.clone(),
+            Declaration::StructDeclaration(*decl_id),
+        )?;
+
         // create a namespace for the decl, used to create a scope for generics
-        let _ = ctx.scoped(engines, decl.span.clone(), |_scoped_ctx| {
-            decl.fields.iter().for_each(|_field| {
-                //let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &method_decl);
-            });
-            Ok(())
-        });
+        let _ = ctx.scoped(engines, struct_decl.span.clone(), |_scoped_ctx| Ok(()));
         Ok(())
     }
 

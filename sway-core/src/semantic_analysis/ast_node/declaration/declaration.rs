@@ -6,8 +6,9 @@ use crate::{
     language::{
         parsed::{self, StorageEntry},
         ty::{
-            self, FunctionDecl, TyAbiDecl, TyDecl, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait,
-            TyStorageField, TyStructDecl, TyTraitDecl, TyVariableDecl,
+            self, FunctionDecl, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyDecl, TyEnumDecl,
+            TyFunctionDecl, TyImplSelfOrTrait, TyStorageDecl, TyStorageField, TyStructDecl,
+            TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl, TyVariableDecl,
         },
         CallPath,
     },
@@ -31,73 +32,44 @@ impl TyDecl {
     ) -> Result<(), ErrorEmitted> {
         match &decl {
             parsed::Declaration::VariableDeclaration(decl_id) => {
-                let var_decl = engines.pe().get_variable(decl_id);
-                ctx.insert_parsed_symbol(handler, engines, var_decl.name.clone(), decl)?;
-                TyVariableDecl::collect(handler, engines, ctx, &var_decl)?
+                TyVariableDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::ConstantDeclaration(decl_id) => {
-                let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, const_decl.name.clone(), decl)?;
+                TyConstantDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::ConfigurableDeclaration(decl_id) => {
-                let config_decl = engines.pe().get_configurable(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, config_decl.name.clone(), decl)?;
+                TyConfigurableDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::TraitTypeDeclaration(decl_id) => {
-                let trait_type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, trait_type_decl.name.clone(), decl)?;
+                TyTraitType::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::TraitFnDeclaration(decl_id) => {
-                let trait_fn_decl = engines.pe().get_trait_fn(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, trait_fn_decl.name.clone(), decl)?;
+                TyTraitFn::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::EnumDeclaration(decl_id) => {
-                let enum_decl = engines.pe().get_enum(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl)?;
-                TyEnumDecl::collect(handler, engines, ctx, &enum_decl)?
+                TyEnumDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::EnumVariantDeclaration(_decl) => {}
             parsed::Declaration::FunctionDeclaration(decl_id) => {
-                let fn_decl = engines.pe().get_function(decl_id).as_ref().clone();
-                let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl);
-                TyFunctionDecl::collect(handler, engines, ctx, &fn_decl)?
+                TyFunctionDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::TraitDeclaration(decl_id) => {
-                let trait_decl = engines.pe().get_trait(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, trait_decl.name.clone(), decl)?;
-                TyTraitDecl::collect(handler, engines, ctx, &trait_decl)?
+                TyTraitDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::ImplSelfOrTrait(decl_id) => {
-                let impl_trait = engines
-                    .pe()
-                    .get_impl_self_or_trait(decl_id)
-                    .as_ref()
-                    .clone();
-                ctx.insert_parsed_symbol(
-                    handler,
-                    engines,
-                    impl_trait.trait_name.suffix.clone(),
-                    decl,
-                )?;
-                TyImplSelfOrTrait::collect(handler, engines, ctx, &impl_trait)?
+                TyImplSelfOrTrait::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::StructDeclaration(decl_id) => {
-                let struct_decl = engines.pe().get_struct(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, struct_decl.name.clone(), decl)?;
-                TyStructDecl::collect(handler, engines, ctx, &struct_decl)?
+                TyStructDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::AbiDeclaration(decl_id) => {
-                let abi_decl = engines.pe().get_abi(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, abi_decl.name.clone(), decl)?;
-                TyAbiDecl::collect(handler, engines, ctx, &abi_decl)?
+                TyAbiDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::StorageDeclaration(decl_id) => {
-                let _storage_decl = engines.pe().get_storage(decl_id).as_ref().clone();
-                //ctx.insert_parsed_symbol(handler, storage_decl.name.clone(), decl)?;
+                TyStorageDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
-                let type_alias_decl = engines.pe().get_type_alias(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, type_alias_decl.name, decl.clone())?;
+                TyTypeAliasDecl::collect(handler, engines, ctx, decl_id)?
             }
         };
 

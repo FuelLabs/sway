@@ -16,8 +16,8 @@ use crate::{
     language::{
         parsed::*,
         ty::{
-            self, TyDecl, TyFunctionDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem,
-            TyTraitItem,
+            self, TyConstantDecl, TyDecl, TyFunctionDecl, TyImplItem, TyImplSelfOrTrait,
+            TyTraitInterfaceItem, TyTraitItem, TyTraitType,
         },
         *,
     },
@@ -36,16 +36,27 @@ impl TyImplSelfOrTrait {
         handler: &Handler,
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
-        decl: &ImplSelfOrTrait,
+        decl_id: &ParsedDeclId<ImplSelfOrTrait>,
     ) -> Result<(), ErrorEmitted> {
-        let _ = ctx.scoped(engines, decl.block_span.clone(), |scoped_ctx| {
-            decl.items.iter().for_each(|item| match item {
+        let impl_trait = engines.pe().get_impl_self_or_trait(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            impl_trait.trait_name.suffix.clone(),
+            Declaration::ImplSelfOrTrait(*decl_id),
+        )?;
+
+        let _ = ctx.scoped(engines, impl_trait.block_span.clone(), |scoped_ctx| {
+            impl_trait.items.iter().for_each(|item| match item {
                 ImplItem::Fn(decl_id) => {
-                    let fn_decl = engines.pe().get_function(decl_id).as_ref().clone();
-                    let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, &fn_decl);
+                    let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
                 }
-                ImplItem::Constant(_) => {}
-                ImplItem::Type(_) => {}
+                ImplItem::Constant(decl_id) => {
+                    let _ = TyConstantDecl::collect(handler, engines, scoped_ctx, decl_id);
+                }
+                ImplItem::Type(decl_id) => {
+                    let _ = TyTraitType::collect(handler, engines, scoped_ctx, decl_id);
+                }
             });
             Ok(())
         });

@@ -1,9 +1,9 @@
 use sway_types::Spanned;
 
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::{parsed_id::ParsedDeclId, DeclId},
     language::{
-        parsed::{self, TraitFn},
+        parsed::{self, Declaration, TraitFn},
         ty, CallPath, Visibility,
     },
     semantic_analysis::{
@@ -21,12 +21,19 @@ use crate::{
 
 impl ty::TyTraitFn {
     pub(crate) fn collect(
-        _handler: &Handler,
+        handler: &Handler,
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
-        decl: &TraitFn,
+        decl_id: &ParsedDeclId<TraitFn>,
     ) -> Result<(), ErrorEmitted> {
-        let _ = ctx.scoped(engines, decl.span.clone(), |_scoped_ctx| Ok(()));
+        let trait_fn = engines.pe().get_trait_fn(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            trait_fn.name.clone(),
+            Declaration::TraitFnDeclaration(*decl_id),
+        )?;
+        let _ = ctx.scoped(engines, trait_fn.span.clone(), |_scoped_ctx| Ok(()));
         Ok(())
     }
 

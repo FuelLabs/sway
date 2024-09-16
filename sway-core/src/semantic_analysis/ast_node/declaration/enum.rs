@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
@@ -9,13 +10,21 @@ use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyEnumDecl {
     pub(crate) fn collect(
-        _handler: &Handler,
+        handler: &Handler,
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
-        decl: &EnumDeclaration,
+        decl_id: &ParsedDeclId<EnumDeclaration>,
     ) -> Result<(), ErrorEmitted> {
+        let enum_decl = engines.pe().get_enum(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            enum_decl.name.clone(),
+            Declaration::EnumDeclaration(*decl_id),
+        )?;
+
         // create a namespace for the decl, used to create a scope for generics
-        let _ = ctx.scoped(engines, decl.span.clone(), |mut _ctx| Ok(()));
+        let _ = ctx.scoped(engines, enum_decl.span.clone(), |mut _ctx| Ok(()));
         Ok(())
     }
 
