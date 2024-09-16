@@ -12,6 +12,7 @@ mod asm_lang;
 mod build_config;
 pub mod compiler_generated;
 mod concurrent_slab;
+mod concurrent_slab_mut;
 mod control_flow_analysis;
 mod debug_generation;
 pub mod decl_engine;
@@ -34,8 +35,10 @@ pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, 
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
+use language::parsed::ParseModuleId;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
+use semantic_analysis::module::ModuleDepGraph;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -113,6 +116,7 @@ pub fn parse(
             config.include_tests,
             config.experimental,
             config.lsp_mode.as_ref(),
+            None,
         )
         .map(
             |ParsedModuleTree {
@@ -217,6 +221,8 @@ fn parse_in_memory(
     let submodules = Vec::default();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
     let root = parsed::ParseModule {
+        id: ParseModuleId::default(),
+        parent: None,
         span: span::Span::dummy(),
         module_kind_span,
         module_eval_order: vec![],
@@ -224,7 +230,9 @@ fn parse_in_memory(
         submodules,
         attributes,
         hash,
+        name: None,
     };
+    let root_id = engines.pme().insert(root);
     let lexed_program = lexed::LexedProgram::new(
         kind,
         lexed::LexedModule {
@@ -233,7 +241,13 @@ fn parse_in_memory(
         },
     );
 
-    Ok((lexed_program, parsed::ParseProgram { kind, root }))
+    Ok((
+        lexed_program,
+        parsed::ParseProgram {
+            kind,
+            root: root_id,
+        },
+    ))
 }
 
 pub struct Submodule {
@@ -258,13 +272,14 @@ fn parse_submodules(
     include_tests: bool,
     experimental: ExperimentalFlags,
     lsp_mode: Option<&LspConfig>,
+    parent: Option<ParseModuleId>,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
     module.submodules().for_each(|submod| {
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
-        let submod_path = Arc::new(module_path(module_dir, module_name, submod));
+        let submod_path = Arc::new(module_path(module_dir, module_name.clone(), submod));
         let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
@@ -290,6 +305,7 @@ fn parse_submodules(
             include_tests,
             experimental,
             lsp_mode,
+            parent,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
@@ -327,7 +343,7 @@ pub type SourceHash = u64;
 pub struct ParsedModuleTree {
     pub tree_type: parsed::TreeType,
     pub lexed_module: lexed::LexedModule,
-    pub parse_module: parsed::ParseModule,
+    pub parse_module: ParseModuleId,
 }
 
 /// Given the source of the module along with its path,
@@ -343,6 +359,7 @@ fn parse_module_tree(
     include_tests: bool,
     experimental: ExperimentalFlags,
     lsp_mode: Option<&LspConfig>,
+    parent: Option<ParseModuleId>,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
@@ -350,6 +367,35 @@ fn parse_module_tree(
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
     let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
+
+    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(
+        &mut to_parsed_lang::Context::new(build_target, experimental),
+        handler,
+        engines,
+        module.value.clone(),
+    )?;
+    let module_kind_span = module.value.kind.span();
+    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
+
+    let mut hasher = DefaultHasher::new();
+    src.hash(&mut hasher);
+    let hash = hasher.finish();
+
+    let parse_module = parsed::ParseModule {
+        id: ParseModuleId::default(),
+        parent,
+        span: span::Span::new(src, 0, 0, Some(source_id)).unwrap(),
+        module_kind_span,
+        module_eval_order: vec![],
+        tree,
+        submodules: vec![],
+        attributes,
+        hash,
+        name: module_name.map(|n| n.to_string()),
+    };
+
+    let parse_module_id = engines.pme().insert(parse_module);
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
@@ -363,44 +409,25 @@ fn parse_module_tree(
         include_tests,
         experimental,
         lsp_mode,
+        Some(parse_module_id),
     );
-
-    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(build_target, experimental),
-        handler,
-        engines,
-        module.value.clone(),
-    )?;
-    let module_kind_span = module.value.kind.span();
-    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
     let lexed_submodules = submodules
         .iter()
         .map(|s| (s.name.clone(), s.lexed.clone()))
         .collect::<Vec<_>>();
-    let lexed = lexed::LexedModule {
+    let lexed_module = lexed::LexedModule {
         tree: module.value,
         submodules: lexed_submodules,
     };
 
-    let mut hasher = DefaultHasher::new();
-    src.hash(&mut hasher);
-    let hash = hasher.finish();
-
-    let parsed_submodules = submodules
-        .iter()
-        .map(|s| (s.name.clone(), s.parsed.clone()))
-        .collect::<Vec<_>>();
-    let parsed = parsed::ParseModule {
-        span: span::Span::new(src, 0, 0, Some(source_id)).unwrap(),
-        module_kind_span,
-        module_eval_order: vec![],
-        tree,
-        submodules: parsed_submodules,
-        attributes,
-        hash,
-    };
+    parse_module_id.write(engines, |m| {
+        let parsed_submodules = submodules
+            .iter()
+            .map(|s| (s.name.clone(), s.parsed.clone()))
+            .collect::<Vec<_>>();
+        m.submodules = parsed_submodules;
+    });
 
     // Let's prime the cache with the module dependency and hash data.
     let modified_time = std::fs::metadata(path.as_path())
@@ -426,8 +453,8 @@ fn parse_module_tree(
 
     Ok(ParsedModuleTree {
         tree_type: kind,
-        lexed_module: lexed,
-        parse_module: parsed,
+        lexed_module,
+        parse_module: parse_module_id,
     })
 }
 
@@ -536,14 +563,34 @@ fn module_path(
 
 pub fn build_module_dep_graph(
     handler: &Handler,
-    parse_module: &mut parsed::ParseModule,
+    engines: &Engines,
+    parse_module: ParseModuleId,
 ) -> Result<(), ErrorEmitted> {
-    let module_dep_graph = ty::TyModule::build_dep_graph(handler, parse_module)?;
-    parse_module.module_eval_order = module_dep_graph.compute_order(handler)?;
+    let module_name = parse_module.read(engines, |m| m.name.clone());
 
-    for (_, submodule) in &mut parse_module.submodules {
-        build_module_dep_graph(handler, &mut submodule.module)?;
-    }
+    let mut dep_graph = ModuleDepGraph::new();
+    ty::TyModule::build_dep_graph(handler, engines, &mut dep_graph, &parse_module)?;
+
+    dep_graph.visualize(
+        engines,
+        Some(format!(
+            "module_dep_graph_{}.dot",
+            module_name.clone().unwrap_or_default()
+        )),
+    );
+
+    // let order = dep_graph.compute_order(handler)?;
+    // parse_module.write(engines, |m| {
+    //     m.module_eval_order = order.clone();
+    // });
+
+    // parse_module.read(engines, |m| {
+    //     m.submodules
+    //         .iter()
+    //         .map(|(_, submodule)| build_module_dep_graph(handler, engines, submodule.module))
+    //         .collect::<Result<(), ErrorEmitted>>()
+    // })?;
+
     Ok(())
 }
 
@@ -565,8 +612,8 @@ pub fn parsed_to_ast(
         });
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
-    // Build the dependency graph for the submodules.
-    build_module_dep_graph(handler, &mut parse_program.root)?;
+    // Build the dependency graph starting from the root module.
+    build_module_dep_graph(handler, engines, parse_program.root)?;
 
     let namespace = Namespace::init_root(initial_namespace);
     // Collect the program symbols.
@@ -1253,32 +1300,34 @@ fn test_unary_ordering() {
     let (.., prog) = prog.unwrap();
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
-    if let parsed::AstNode {
-        content:
-            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(decl_id)),
-        ..
-    } = &prog.root.tree.root_nodes[0]
-    {
-        let fn_decl = engines.pe().get_function(decl_id);
+    prog.root.read(&engines, |root| {
         if let parsed::AstNode {
             content:
-                parsed::AstNodeContent::Expression(parsed::Expression {
-                    kind:
-                        parsed::ExpressionKind::LazyOperator(parsed::LazyOperatorExpression {
-                            op, ..
-                        }),
-                    ..
-                }),
+                parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(decl_id)),
             ..
-        } = &fn_decl.body.contents[2]
+        } = &root.tree.root_nodes[0]
         {
-            assert_eq!(op, &language::LazyOp::And)
+            let fn_decl = engines.pe().get_function(decl_id);
+            if let parsed::AstNode {
+                content:
+                    parsed::AstNodeContent::Expression(parsed::Expression {
+                        kind:
+                            parsed::ExpressionKind::LazyOperator(parsed::LazyOperatorExpression {
+                                op, ..
+                            }),
+                        ..
+                    }),
+                ..
+            } = &fn_decl.body.contents[2]
+            {
+                assert_eq!(op, &language::LazyOp::And)
+            } else {
+                panic!("Was not lazy operator.")
+            }
         } else {
-            panic!("Was not lazy operator.")
-        }
-    } else {
-        panic!("Was not ast node")
-    };
+            panic!("Was not ast node")
+        };
+    })
 }
 
 #[test]

@@ -4,6 +4,7 @@ pub mod declaration;
 mod expression;
 mod include_statement;
 mod module;
+mod parsed_module_engine;
 mod program;
 mod use_statement;
 
@@ -12,6 +13,7 @@ pub use declaration::*;
 pub use expression::*;
 pub use include_statement::IncludeStatement;
 pub use module::{ModuleEvaluationOrder, ParseModule, ParseSubmodule};
+pub use parsed_module_engine::*;
 pub use program::{ParseProgram, TreeType};
 use sway_error::handler::ErrorEmitted;
 use sway_types::span::Span;
