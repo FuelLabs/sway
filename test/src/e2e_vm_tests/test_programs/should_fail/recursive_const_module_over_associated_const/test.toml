@@ -1,0 +1,11 @@
+category = "fail"
+
+#check: $()error
+#check: $()const MOD_CONST: u8 = S::S_ASSOC;
+#nextln: $()Could not find symbol "S_ASSOC" in this scope.
+
+#check: $()error
+#check: $()const MOD_CONST: u8 = S::S_ASSOC;
+#nextln: $()Could not evaluate initializer to a const declaration.
+
+#check: $()2 errors.

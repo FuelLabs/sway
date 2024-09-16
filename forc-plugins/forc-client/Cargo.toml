@@ -49,6 +49,9 @@ rexpect = "0.5"
 tempfile = "3"
 toml_edit = "0.21.1"
 
+[build-dependencies]
+regex = "1.5.4"
+
 [[bin]]
 name = "forc-deploy"
 path = "src/bin/deploy.rs"

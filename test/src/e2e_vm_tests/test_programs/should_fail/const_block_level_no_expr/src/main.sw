@@ -1,4 +1,4 @@
-script;
+library;
 
 fn main() -> u64 {
     const X;
