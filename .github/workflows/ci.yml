@@ -245,6 +245,9 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+      - name: Install clang
+        if: ${{ env.ACT }}
+        run:  dpkg -l clang || apt-get update && apt-get install -y clang
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc
       - name: Initialize test project
@@ -423,32 +426,40 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v3
-      - name: Install toolchain
+      - name: Install Rust toolchain
+        if: ${{ !env.ACT }}
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - name: Enable Rust caching
+        if: ${{ !env.ACT }}
+        uses: Swatinem/rust-cache@v2
       - name: Install Forc
+        if: ${{ !env.ACT }}
         run: cargo install --locked --debug --path ./forc
       - name: Run benchmarks
+        if: ${{ !env.ACT }}
         run: ./benchmark.sh
       - name: Checkout benchmark data
-        if: github.event_name != 'push'
+        if: ${{ !env.ACT && github.event_name != 'push' }}
         uses: actions/checkout@v3
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
+          token: ${{ secrets.CI_ACCOUNT_PAT }}
       - name: Checkout benchmark data
-        if: github.event_name == 'push'
+        if: ${{ !env.ACT && github.event_name == 'push' }}
         uses: actions/checkout@v3
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
           token: ${{ secrets.CI_ACCOUNT_PAT }}
       - name: Prepare benchmarks data for commit
-        if: github.event_name == 'push'
+        if: ${{ !env.ACT && github.event_name == 'push' }}
         run: ./benchmark.sh --prepare-for-commit
-      - uses: EndBug/add-and-commit@v9
+      - name: Commit benchmark data
+        if: ${{ !env.ACT }}
+        uses: EndBug/add-and-commit@v9
         with:
           cwd: "./performance-data"
           message: "Updated benchmark data"
@@ -542,7 +553,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Rust and cargo-nextest
-        uses: moonrepo/setup-rust@v0
+        uses: moonrepo/setup-rust@v1
         with:
           channel: stable
           cache-target: release
@@ -588,7 +599,8 @@ jobs:
       - name: Install cargo-udeps
         run: cargo install --locked cargo-udeps
       - name: Check Unused Deps
-        run: cargo udeps --locked --all-targets
+        # cargo udeps will fail if the cache is empty on first go, so try one more time
+        run: cargo udeps --locked --all-targets || cargo udeps --locked --all-targets
 
   notify-slack-on-failure:
     needs:

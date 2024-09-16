@@ -428,12 +428,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedContract {
         id: ContractId::from_str(
-            "50fe882cbef5f3da6da82509a66b7e5e0a64a40d70164861c01c908a332198ae",
+            "47fd96252869c61cc26e8274a7991c8d97bf522d4742036ce09699af59524cbb",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "8eae70214f55d25a65608bd288a5863e7187fcf65705143ee1a45fd228dacc19",
+                "a325d26e72eb664e3d080e547a7cd8824256e37bccad508aedeec5e24fc20cc7",
             )
             .unwrap(),
         ),

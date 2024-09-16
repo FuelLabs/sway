@@ -43,6 +43,32 @@ _n_ tests run (0 skipped)
 
 Congratulations! You've now got everything setup and are ready to start making contributions.
 
+### Running GitHub Actions Workflow Locally
+
+All [GitHub](https://github.com/) pull requests are run through the [GitHub Actions workflow](https://docs.github.com/en/actions) defined in `.github/workflows/ci.yml`. For convenience, these can be run locally in [Docker](https://www.docker.com/) using a 3rd-party tool called [`act`](https://github.com/nektos/act):
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+./bin/act pull_request \
+  -P buildjet-4vcpu-ubuntu-2204=catthehacker/ubuntu:act-latest \
+  -P buildjet-8vcpu-ubuntu-2204=catthehacker/ubuntu:act-latest \
+  -P ubuntu-latest=catthehacker/ubuntu:act-latest \
+  -W .github/workflows/ci.yml \
+  | tee output.txt
+```
+
+By default `act` will run all jobs within `.github/workflows/ci.yml`, but you can narrow down to a single job using the `-j` argument:
+
+```sh
+./bin/act pull_request \
+  -P buildjet-4vcpu-ubuntu-2204=catthehacker/ubuntu:act-latest \
+  -P buildjet-8vcpu-ubuntu-2204=catthehacker/ubuntu:act-latest \
+  -P ubuntu-latest=catthehacker/ubuntu:act-latest \
+  -W .github/workflows/ci.yml \
+  -j cargo-clippy \
+  | tee output.txt
+```
+
 ## Finding something to work on
 
 There are many ways in which you may contribute to the Sway project, some of which involve coding knowledge and some which do not. A few examples include:

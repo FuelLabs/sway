@@ -578,7 +578,7 @@ impl Built {
 impl BuildPlan {
     /// Create a new build plan for the project from the build options provided.
     ///
-    /// To do so, it tries to read the manifet file at the target path and creates the plan with
+    /// To do so, it tries to read the manifest file at the target path and creates the plan with
     /// `BuildPlan::from_lock_and_manifest`.
     pub fn from_pkg_opts(pkg_options: &PkgOpts) -> Result<Self> {
         let path = &pkg_options.path;
@@ -2081,10 +2081,15 @@ fn build_profile_from_opts(
         .get(selected_profile_name)
         .cloned()
         .unwrap_or_else(|| {
-            println_warning(&format!(
-                "The provided profile option {selected_profile_name} is not present in the manifest file. \
-            Using default profile."
-            ));
+            if selected_profile_name.is_empty() {
+                println_warning("No profile provided. Using default profile.");
+            }
+            else {
+                println_warning(&format!(
+                    "The provided profile option '{selected_profile_name}' is not present in the manifest \
+                    file. Using default profile."
+                ));
+            }
             BuildProfile::default()
         });
     profile.name = selected_profile_name.into();

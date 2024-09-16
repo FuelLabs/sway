@@ -33,5 +33,8 @@ forc-plugins/forc-debug/tests/**/Forc.lock
 examples/**/*/Forc.lock
 docs/reference/src/code/examples/**/*/Forc.lock
 
+# `act` for local GitHub Actions
+bin/act
+
 # Insta files
 *.snap.new
