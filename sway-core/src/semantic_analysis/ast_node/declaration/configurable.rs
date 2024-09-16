@@ -12,7 +12,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyConfigurableDecl},
-        CallPath,
+        CallPath, CallPathType, 
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     SubstTypes, SubstTypesContext, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
@@ -102,7 +102,7 @@ impl ty::TyConfigurableDecl {
                             "abi_decode_in_place".into(),
                             value_span.clone(),
                         ),
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
                         type_id: type_ascription.type_id,

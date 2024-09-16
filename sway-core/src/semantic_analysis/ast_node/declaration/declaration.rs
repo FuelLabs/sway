@@ -165,7 +165,7 @@ impl TyDecl {
                 if !ctx.code_block_first_pass() {
                     let previous_symbol = ctx
                         .namespace()
-                        .module(engines)
+                        .current_module()
                         .current_items()
                         .check_symbols_unique_while_collecting_unifications(&var_decl.name.clone())
                         .ok();
@@ -384,7 +384,7 @@ impl TyDecl {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
                             let collecting_unifications = ctx.collecting_unifications();
-                            let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
+                            let _ = ctx.namespace.current_module_mut().write(engines, |m| {
                                 m.current_items_mut().insert_typed_symbol(
                                     handler,
                                     engines,
@@ -608,7 +608,7 @@ impl TyDecl {
 
                 // declarations are not allowed
                 ctx.namespace_mut()
-                    .module_mut(engines)
+                    .current_module_mut()
                     .write(engines, |m| {
                         m.current_items_mut()
                             .set_storage_declaration(handler, decl_ref.clone())

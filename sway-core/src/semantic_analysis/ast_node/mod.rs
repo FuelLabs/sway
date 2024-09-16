@@ -53,13 +53,13 @@ impl ty::TyAstNode {
         let node = ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(stmt) => {
-                    handle_use_statement(&mut ctx, engines, &stmt, handler);
+                    handle_use_statement(&mut ctx, &stmt, handler);
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: stmt.alias,
                             call_path: stmt.call_path,
                             span: stmt.span,
-                            is_absolute: stmt.is_absolute,
+                            is_relative_to_package_root: stmt.is_relative_to_package_root,
                             import_type: stmt.import_type,
                         }),
                     })
@@ -138,31 +138,13 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let mut is_external = false;
-    if let Some(submodule) = ctx
-        .namespace
-        .module(engines)
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external |= submodule.read(engines, |m| m.is_external);
-    }
-    // We create an inner module for each module being processed during the collection.
-    // This does not play well with the existing way we use to lookup an external module.
-    // So check again starting from the root to make sure we find the right module.
-    // Clean this up once paths are normalized before collection and we can just rely on
-    // absolute paths.
-    if let Some(submodule) = ctx
-        .namespace
-        .root_module()
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external |= submodule.read(engines, |m| m.is_external);
-    }
-    let path = if is_external || stmt.is_absolute {
-        stmt.call_path.clone()
-    } else {
-        ctx.namespace.prepend_module_path(&stmt.call_path)
-    };
+    let path = ctx.namespace.parsed_path_to_full_path(&stmt.call_path, stmt.is_relative_to_package_root);
+//    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
+//    let path = if is_external || stmt.is_absolute {
+//        stmt.call_path.clone()
+//    } else {
+//        ctx.namespace.prepend_module_path(&stmt.call_path)
+//    };
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first
@@ -245,23 +227,18 @@ fn collect_use_statement(
 // To be removed once TypeCheckContext is ported to use SymbolCollectionContext.
 fn handle_use_statement(
     ctx: &mut TypeCheckContext<'_>,
-    engines: &Engines,
     stmt: &UseStatement,
     handler: &Handler,
 ) {
-    let mut is_external = false;
-    if let Some(submodule) = ctx
-        .namespace()
-        .module(engines)
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external = submodule.read(engines, |m| m.is_external);
-    }
-    let path = if is_external || stmt.is_absolute {
-        stmt.call_path.clone()
-    } else {
-        ctx.namespace().prepend_module_path(&stmt.call_path)
-    };
+    let path = ctx.namespace.parsed_path_to_full_path(&stmt.call_path, stmt.is_relative_to_package_root);
+//    let is_external = !ctx
+//        .namespace()
+//        .current_module_has_submodule(&stmt.call_path[0]);
+//    let path = if is_external || stmt.is_absolute {
+//        stmt.call_path.clone()
+//    } else {
+//        ctx.namespace().prepend_module_path(&stmt.call_path)
+//    };
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first

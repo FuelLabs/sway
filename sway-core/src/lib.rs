@@ -553,7 +553,7 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &mut parsed::ParseProgram,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -568,17 +568,19 @@ pub fn parsed_to_ast(
     // Build the dependency graph for the submodules.
     build_module_dep_graph(handler, &mut parse_program.root)?;
 
-    let namespace = Namespace::init_root(initial_namespace);
+    let collection_namespace = Namespace::new(handler, engines, initial_namespace.clone(), true)?;
     // Collect the program symbols.
+    // TODO: Eliminate this cloning step?
     let _collection_ctx =
-        ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
+        ty::TyProgram::collect(handler, engines, parse_program, collection_namespace)?;
 
+    let typecheck_namespace = Namespace::new(handler, engines, initial_namespace, true)?;
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
-        namespace,
+	typecheck_namespace,
         package_name,
         build_config,
     );
@@ -673,7 +675,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        typed_program.root.namespace.module(engines),
+        typed_program.root.namespace.current_module(),
     ) {
         handler.emit_err(e);
     }
@@ -724,7 +726,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -816,7 +818,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: &BuildConfig,
     package_name: &str,
 ) -> Result<CompiledAsm, ErrorEmitted> {
@@ -977,7 +979,7 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
