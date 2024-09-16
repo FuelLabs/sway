@@ -883,7 +883,7 @@ pub(crate) fn resolve_method_name(
             let type_id = ty.type_id;
 
             // find the module that the symbol is in
-            let module_path = ctx.namespace().prepend_module_path(vec![]);
+            let module_path = ctx.namespace().current_mod_path().clone();
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
