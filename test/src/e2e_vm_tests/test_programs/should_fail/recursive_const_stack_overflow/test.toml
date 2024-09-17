@@ -1,0 +1,1 @@
+category = "disabled" # TODO: Enable this failing test and write checks once https://github.com/FuelLabs/sway/issues/6540 is fixed.

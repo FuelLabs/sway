@@ -1,0 +1,11 @@
+category = "fail"
+
+#check: $()error
+#check: $()const MOD_CONST: u8 = mod_fn();
+#nextln: $()Could not find symbol "mod_fn" in this scope.
+
+#check: $()error
+#check: $()const MOD_CONST: u8 = mod_fn();
+#nextln: $()Could not evaluate initializer to a const declaration.
+
+#check: $()2 errors.
