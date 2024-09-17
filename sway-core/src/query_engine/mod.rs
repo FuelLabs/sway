@@ -141,17 +141,18 @@ pub struct FunctionCacheEntry {
 #[derive(Debug, Default)]
 pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
-    programs_cache: Arc<RwLock<ProgramsCacheMap>>,
-    function_cache: Arc<RwLock<FunctionsCacheMap>>,
+    programs_cache: CowCache<ProgramsCacheMap>,
     pub module_cache: CowCache<ModuleCacheMap>,
+    // NOTE: Any further AstNodes that are cached need to have garabage collection applied, see clear_module()
+    function_cache: CowCache<FunctionsCacheMap>,
 }
 
 impl Clone for QueryEngine {
     fn clone(&self) -> Self {
         Self {
-            programs_cache: self.programs_cache.clone(),
-            function_cache: self.function_cache.clone(),
+            programs_cache: CowCache::new(self.programs_cache.read().clone()),
             module_cache: CowCache::new(self.module_cache.read().clone()),
+            function_cache: CowCache::new(self.function_cache.read().clone()),
         }
     }
 }
