@@ -223,6 +223,13 @@ impl QueryEngine {
                 .map_or(true, |id| id.program_id() != *program_id)
         });
     }
+
+    ///  Commits all changes to their respective caches.
+    pub fn commit(&self) {
+        self.programs_cache.commit();
+        self.module_cache.commit();
+        self.function_cache.commit();
+    }
 }
 
 /// Thread-safe, copy-on-write cache optimized for LSP operations.

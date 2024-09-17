@@ -176,10 +176,10 @@ impl ServerState {
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                             // as the engines_clone might have cleared some types that are still in use.
                                             if metrics.reused_programs == 0 {
-                                                // Commit local changes in the module cache to the shared state.
+                                                // Commit local changes in the programs, module, and function caches to the shared state.
                                                 // This ensures that any modifications made during compilation are preserved
                                                 // before we swap the engines.
-                                                engines_clone.qe().module_cache.commit();
+                                                engines_clone.qe().commit();
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 mem::swap(
