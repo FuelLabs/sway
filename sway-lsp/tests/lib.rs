@@ -296,6 +296,14 @@ fn garbage_collection_paths() {
 }
 
 #[test]
+fn garbage_collection_minimal_script() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+        .join("src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
 fn lsp_syncs_with_workspace_edits() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
