@@ -4943,8 +4943,13 @@ pub fn cfg_eval(
                         }
                     },
                     _ => {
-                        // Already checked with `AttributeKind::expected_args_*`
-                        unreachable!("cfg attribute should only have the `target` or the `program_type` argument");
+                        return Err(handler.emit_err(
+                            ConvertParseTreeError::InvalidCfgArg {
+                                span: arg.span(),
+                                value: arg.name.as_str().to_string(),
+                            }
+                            .into(),
+                        ));
                     }
                 }
             }
