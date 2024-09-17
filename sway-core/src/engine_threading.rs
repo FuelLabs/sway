@@ -54,6 +54,7 @@ impl Engines {
         self.type_engine.clear_module(source_id);
         self.decl_engine.clear_module(source_id);
         self.parsed_decl_engine.clear_module(source_id);
+        self.query_engine.clear_module(source_id);
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

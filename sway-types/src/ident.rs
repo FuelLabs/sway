@@ -3,10 +3,7 @@ use serde::Serialize;
 use crate::{span::Span, Spanned};
 
 use std::{
-    cmp::{Ord, Ordering},
-    fmt,
-    hash::{Hash, Hasher},
-    sync::Arc,
+    cmp::{Ord, Ordering}, fmt, hash::{Hash, Hasher}, ops::Deref, sync::Arc
 };
 
 pub trait Named {
@@ -174,6 +171,13 @@ impl From<&IdentUnique> for Ident {
             span: item.0.span(),
             is_raw_ident: item.0.is_raw_ident(),
         }
+    }
+}
+
+impl Deref for IdentUnique {
+    type Target = Ident;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

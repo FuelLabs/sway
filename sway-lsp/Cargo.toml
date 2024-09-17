@@ -77,3 +77,6 @@ bench = false
 
 [lints.clippy]
 iter_over_hash_type = "deny"
+
+[profile.dev]
+debug = 2

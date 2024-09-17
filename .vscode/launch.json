@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "attach",
+            "name": "Attach to forc-lsp",
+            "pid": "${command:pickProcess}",
+            "program": "${env:HOME}/.cargo/bin/forc-lsp"
+        }
+    ]
+}

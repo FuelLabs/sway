@@ -7,7 +7,7 @@ use std::{
     time::SystemTime,
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
-use sway_types::IdentUnique;
+use sway_types::{IdentUnique, ProgramId, SourceId, Spanned};
 
 use crate::{
     decl_engine::{DeclId, DeclRef},
@@ -204,6 +204,20 @@ impl QueryEngine {
             (ident, sig.get_type_str(engines)),
             FunctionCacheEntry { fn_decl },
         );
+    }
+
+    /// Removes all data associated with the `source_id` from the function cache.
+    pub fn clear_module(&mut self, source_id: &SourceId) {
+        self.function_cache.write().retain(|(ident, _name), _| {
+            ident.span().source_id().map_or(true, |id| id != source_id)
+        });
+    }
+
+    /// Removes all data associated with the `program_id` from the function cache.
+    pub fn clear_program(&mut self, program_id: &ProgramId) {
+        self.function_cache.write().retain(|(ident, _), _| {
+            ident.span().source_id().map_or(true, |id| id.program_id() != *program_id)
+        });
     }
 }
 
