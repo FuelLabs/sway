@@ -143,7 +143,7 @@ pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
     programs_cache: CowCache<ProgramsCacheMap>,
     pub module_cache: CowCache<ModuleCacheMap>,
-    // NOTE: Any further AstNodes that are cached need to have garabage collection applied, see clear_module()
+    // NOTE: Any further AstNodes that are cached need to have garbage collection applied, see clear_module()
     function_cache: CowCache<FunctionsCacheMap>,
 }
 
