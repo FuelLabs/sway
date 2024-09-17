@@ -137,21 +137,17 @@ impl ServerState {
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
 
-                        if let Some(version) = ctx.version {
-                            // Perform garbage collection at configured intervals if enabled to manage memory usage.
-                            if ctx.gc_options.gc_enabled
-                                && version % ctx.gc_options.gc_frequency == 0
+                        // Perform garbage collection if enabled to manage memory usage.
+                        if ctx.gc_options.gc_enabled {
+                            // Call this on the engines clone so we don't clear types that are still in use
+                            // and might be needed in the case cancel compilation was triggered.
+                            if let Err(err) =
+                                session.garbage_collect_module(&mut engines_clone, &uri)
                             {
-                                // Call this on the engines clone so we don't clear types that are still in use
-                                // and might be needed in the case cancel compilation was triggered.
-                                if let Err(err) =
-                                    session.garbage_collect_module(&mut engines_clone, &uri)
-                                {
-                                    tracing::error!(
-                                        "Unable to perform garbage collection: {}",
-                                        err.to_string()
-                                    );
-                                }
+                                tracing::error!(
+                                    "Unable to perform garbage collection: {}",
+                                    err.to_string()
+                                );
                             }
                         }
 

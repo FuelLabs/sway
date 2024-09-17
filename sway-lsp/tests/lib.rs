@@ -261,13 +261,6 @@ fn garbage_collection_runner(path: PathBuf) {
     run_async!({
         setup_panic_hook();
         let (mut service, _) = LspService::new(ServerState::new);
-        // set the garbage collection frequency to 1
-        service
-            .inner()
-            .config
-            .write()
-            .garbage_collection
-            .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
         let times = 60;
 

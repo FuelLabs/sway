@@ -208,15 +208,18 @@ impl QueryEngine {
 
     /// Removes all data associated with the `source_id` from the function cache.
     pub fn clear_module(&mut self, source_id: &SourceId) {
-        self.function_cache.write().retain(|(ident, _), _| {
-            ident.span().source_id().map_or(true, |id| id != source_id)
-        });
+        self.function_cache
+            .write()
+            .retain(|(ident, _), _| ident.span().source_id().map_or(true, |id| id != source_id));
     }
 
     /// Removes all data associated with the `program_id` from the function cache.
     pub fn clear_program(&mut self, program_id: &ProgramId) {
         self.function_cache.write().retain(|(ident, _), _| {
-            ident.span().source_id().map_or(true, |id| id.program_id() != *program_id)
+            ident
+                .span()
+                .source_id()
+                .map_or(true, |id| id.program_id() != *program_id)
         });
     }
 }
