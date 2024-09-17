@@ -1631,8 +1631,7 @@ impl TypeCheckAnalysis for ty::ImplSelfOrTrait {
         ctx.push_nodes_for_impl_trait(self);
 
         // Now lets analyze each impl trait item.
-        for (i, item) in impl_trait.items.iter().enumerate() {
-            let _node = ctx.items_node_stack[i];
+        for item in impl_trait.items.iter() {
             item.type_check_analyze(handler, ctx)?;
         }
 
