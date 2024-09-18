@@ -200,7 +200,7 @@ pub fn output_amount(index: u64) -> Option<u64> {
     }
 }
 
-/// Gets the AssetId of the output if it is a `Output::Coin`.
+/// Gets the AssetId of the output.
 ///
 /// # Arguments
 ///
@@ -208,7 +208,7 @@ pub fn output_amount(index: u64) -> Option<u64> {
 ///
 /// # Returns
 ///
-/// * [Option<AssetId>] - The AssetId of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<AssetId>] - The AssetId of the output. None otherwise.
 ///
 /// # Reverts
 ///
@@ -227,11 +227,12 @@ pub fn output_amount(index: u64) -> Option<u64> {
 pub fn output_asset_id(index: u64) -> Option<AssetId> {
     match output_type(index) {
         Some(Output::Coin) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        Some(Output::Change) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         _ => None,
     }
 }
 
-/// Returns the receiver of the output if it is a `Output::Coin`.
+/// Returns the receiver of the output.
 ///
 /// # Arguments
 ///
@@ -239,7 +240,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 ///
 /// # Returns
 ///
-/// * [Option<Address>] - The receiver of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<Address>] - The receiver of the output. None otherwise.
 ///
 /// # Reverts
 ///
@@ -258,6 +259,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 pub fn output_asset_to(index: u64) -> Option<Address> {
     match output_type(index) {
         Some(Output::Coin) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
+        Some(Output::Change) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         _ => None,
     }
 }
