@@ -22,6 +22,8 @@ slotmap = "1.0.7"
 sway-ir-macros = { version = "0.63.5", path = "sway-ir-macros" }
 sway-types = { version = "0.63.5", path = "../sway-types" }
 sway-utils = { version = "0.63.5", path = "../sway-utils" }
+serde = { version = "1", features = ["derive"] }
+
 
 [lints.clippy]
 iter_over_hash_type = "deny"

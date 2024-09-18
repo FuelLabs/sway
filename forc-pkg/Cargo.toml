@@ -41,9 +41,13 @@ tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }
 vec1 = "1.8.0"
 walkdir = "2"
+fuel-asm = { version = "0.57.0", features = ["serde"] }
+sway-ir = { version = "0.63.5", path = "../sway-ir" }
+sysinfo = { version = "0.31.4", optional = true }
 
 [dev-dependencies]
 regex = "^1.10.2"
 
-[target.'cfg(not(target_os = "macos"))'.dependencies]
-sysinfo = "0.29"
+[features]
+default = ["dep:sysinfo"]
+profile = []
