@@ -30,7 +30,7 @@ fn minify_json(json: &str) -> String {
 fn update_proxy_abi_decl_with_file(source_file_path: &Path, minified_json: &str) {
     // Read the contents of the source file
     let mut source_code =
-        fs::read_to_string(&source_file_path).expect("Unable to read source file");
+        fs::read_to_string(source_file_path).expect("Unable to read source file");
 
     // Prepare the replacement string for the `abigen!` macro
     let escaped_json = minified_json.replace('\\', "\\\\").replace('"', "\\\"");
