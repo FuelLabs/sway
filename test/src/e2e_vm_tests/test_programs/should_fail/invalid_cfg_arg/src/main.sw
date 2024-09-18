@@ -1,0 +1,2 @@
+predicate;
+#[cfg(c)] a

@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: $()trait T{type E const C:Self::E::E}
+# nextln: $()Expected `;`.
+
+# check: $()Trait type declaration has no type

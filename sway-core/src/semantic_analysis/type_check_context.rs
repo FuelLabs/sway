@@ -1700,27 +1700,35 @@ impl<'a> TypeCheckContext<'a> {
                     0,
                 )))
             }
-            (num_type_params, num_type_args) => {
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
-                    .unwrap_or_else(|| value.name().span());
+            (_, num_type_args) => {
                 // a trait decl is passed the self type parameter and the corresponding argument
                 // but it would be confusing for the user if the error reporting mechanism
                 // reported the number of arguments including the implicit self, hence
                 // we adjust it below
                 let adjust_for_trait_decl = value.has_self_type_param() as usize;
-                let num_type_params = num_type_params - adjust_for_trait_decl;
+                let non_parent_type_params = value
+                    .type_parameters()
+                    .iter()
+                    .filter(|x| !x.is_from_parent)
+                    .count()
+                    - adjust_for_trait_decl;
+
                 let num_type_args = num_type_args - adjust_for_trait_decl;
-                if num_type_params != num_type_args {
+                if non_parent_type_params != num_type_args {
+                    let type_arguments_span = type_arguments
+                        .iter()
+                        .map(|x| x.span.clone())
+                        .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
+                        .unwrap_or_else(|| value.name().span());
+
                     return Err(handler.emit_err(make_type_arity_mismatch_error(
                         value.name().clone(),
                         type_arguments_span,
                         num_type_args,
-                        num_type_params,
+                        non_parent_type_params,
                     )));
                 }
+
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = self
                         .resolve(
