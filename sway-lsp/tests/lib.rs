@@ -261,13 +261,6 @@ fn garbage_collection_runner(path: PathBuf) {
     run_async!({
         setup_panic_hook();
         let (mut service, _) = LspService::new(ServerState::new);
-        // set the garbage collection frequency to 1
-        service
-            .inner()
-            .config
-            .write()
-            .garbage_collection
-            .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
         let times = 60;
 
@@ -299,6 +292,14 @@ fn garbage_collection_storage() {
 #[test]
 fn garbage_collection_paths() {
     let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
+fn garbage_collection_minimal_script() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+        .join("src/main.sw");
     garbage_collection_runner(p);
 }
 
