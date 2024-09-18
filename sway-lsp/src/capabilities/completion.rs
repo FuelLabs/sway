@@ -46,7 +46,10 @@ fn completion_items_for_type_id(
         }
     }
 
-    for method in namespace.get_methods_for_type(engines, type_id) {
+    for method in namespace
+        .module(engines)
+        .get_methods_for_type(engines, type_id)
+    {
         let method = method.expect_typed();
         let fn_decl = engines.de().get_function(&method.id().clone());
         let params = &fn_decl.parameters;

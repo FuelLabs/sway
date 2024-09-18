@@ -18,7 +18,7 @@ use crate::{
         ty::{self, TyDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode,
         TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -653,20 +653,19 @@ fn type_check_trait_implementation(
     ctx.namespace_mut()
         .module_mut(engines)
         .write(engines, |m| {
-            m.current_items_mut()
-                .implemented_traits
-                .check_if_trait_constraints_are_satisfied_for_type(
-                    handler,
-                    implementing_for,
-                    &trait_supertraits
-                        .iter()
-                        .map(|x| x.into())
-                        .collect::<Vec<_>>(),
-                    block_span,
-                    engines,
-                    TryInsertingTraitImplOnFailure::Yes,
-                    code_block_first_pass.into(),
-                )
+            TraitMap::check_if_trait_constraints_are_satisfied_for_type(
+                m,
+                handler,
+                implementing_for,
+                &trait_supertraits
+                    .iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<_>>(),
+                block_span,
+                engines,
+                TryInsertingTraitImplOnFailure::Yes,
+                code_block_first_pass.into(),
+            )
         })?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {

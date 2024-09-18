@@ -3,7 +3,7 @@ use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         parsed::{Declaration, FunctionDeclaration},
-        ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
+        ty::{self, TyDecl, TyStorageDecl},
         CallPath, Visibility,
     },
     namespace::*,
@@ -15,7 +15,7 @@ use super::{root::ResolvedDeclaration, TraitMap};
 
 use parking_lot::RwLock;
 use sway_error::{
-    error::{CompileError, ShadowingSource, StructFieldUsageContext},
+    error::{CompileError, ShadowingSource},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, IdentUnique, Spanned};
@@ -724,14 +724,6 @@ impl Items {
             .clear();
     }
 
-    pub fn get_items_for_type(
-        &self,
-        engines: &Engines,
-        type_id: TypeId,
-    ) -> Vec<ResolvedTraitImplItem> {
-        self.implemented_traits.get_items_for_type(engines, type_id)
-    }
-
     pub fn get_impl_spans_for_decl(&self, engines: &Engines, ty_decl: &TyDecl) -> Vec<Span> {
         let handler = Handler::default();
         ty_decl
@@ -751,24 +743,6 @@ impl Items {
     pub fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
         self.implemented_traits
             .get_impl_spans_for_trait_name(trait_name)
-    }
-
-    pub fn get_methods_for_type(
-        &self,
-        engines: &Engines,
-        type_id: TypeId,
-    ) -> Vec<ResolvedFunctionDecl> {
-        self.get_items_for_type(engines, type_id)
-            .into_iter()
-            .filter_map(|item| match item {
-                ResolvedTraitImplItem::Parsed(_) => todo!(),
-                ResolvedTraitImplItem::Typed(item) => match item {
-                    ty::TyTraitItem::Fn(decl_ref) => Some(ResolvedFunctionDecl::Typed(decl_ref)),
-                    ty::TyTraitItem::Constant(_decl_ref) => None,
-                    ty::TyTraitItem::Type(_decl_ref) => None,
-                },
-            })
-            .collect::<Vec<_>>()
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
@@ -794,155 +768,5 @@ impl Items {
                 Err(handler.emit_err(CompileError::NoDeclaredStorage { span }))
             }
         }
-    }
-
-    /// Returns a tuple where the first element is the [TypeId] of the actual expression, and
-    /// the second is the [TypeId] of its parent.
-    pub(crate) fn find_subfield_type(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        namespace: &Namespace,
-        base_name: &Ident,
-        projections: &[ty::ProjectionKind],
-    ) -> Result<(TypeId, TypeId), ErrorEmitted> {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-
-        let symbol = match self.symbols.get(base_name).cloned() {
-            Some(s) => s,
-            None => {
-                return Err(handler.emit_err(CompileError::UnknownVariable {
-                    var_name: base_name.clone(),
-                    span: base_name.span(),
-                }));
-            }
-        };
-        let mut symbol = match symbol {
-            ResolvedDeclaration::Parsed(_) => unreachable!(),
-            ResolvedDeclaration::Typed(ty_decl) => ty_decl.return_type(handler, engines)?,
-        };
-        let mut symbol_span = base_name.span();
-        let mut parent_rover = symbol;
-        let mut full_span_for_error = base_name.span();
-        for projection in projections {
-            let resolved_type = match type_engine.to_typeinfo(symbol, &symbol_span) {
-                Ok(resolved_type) => resolved_type,
-                Err(error) => {
-                    return Err(handler.emit_err(CompileError::TypeError(error)));
-                }
-            };
-            match (resolved_type, projection) {
-                (
-                    TypeInfo::Struct(decl_ref),
-                    ty::ProjectionKind::StructField { name: field_name },
-                ) => {
-                    let struct_decl = decl_engine.get_struct(&decl_ref);
-                    let (struct_can_be_changed, is_public_struct_access) =
-                        StructAccessInfo::get_info(engines, &struct_decl, namespace).into();
-
-                    let field_type_id = match struct_decl.find_field(field_name) {
-                        Some(struct_field) => {
-                            if is_public_struct_access && struct_field.is_private() {
-                                return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                                    field_name: field_name.into(),
-                                    struct_name: struct_decl.call_path.suffix.clone(),
-                                    field_decl_span: struct_field.name.span(),
-                                    struct_can_be_changed,
-                                    usage_context: StructFieldUsageContext::StructFieldAccess,
-                                }));
-                            }
-
-                            struct_field.type_argument.type_id
-                        }
-                        None => {
-                            return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
-                                field_name: field_name.into(),
-                                available_fields: struct_decl
-                                    .accessible_fields_names(is_public_struct_access),
-                                is_public_struct_access,
-                                struct_name: struct_decl.call_path.suffix.clone(),
-                                struct_decl_span: struct_decl.span(),
-                                struct_is_empty: struct_decl.is_empty(),
-                                usage_context: StructFieldUsageContext::StructFieldAccess,
-                            }));
-                        }
-                    };
-                    parent_rover = symbol;
-                    symbol = field_type_id;
-                    symbol_span = field_name.span().clone();
-                    full_span_for_error = Span::join(full_span_for_error, &field_name.span());
-                }
-                (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
-                    let field_type_opt = {
-                        fields
-                            .get(*index)
-                            .map(|TypeArgument { type_id, .. }| type_id)
-                    };
-                    let field_type = match field_type_opt {
-                        Some(field_type) => field_type,
-                        None => {
-                            return Err(handler.emit_err(CompileError::TupleIndexOutOfBounds {
-                                index: *index,
-                                count: fields.len(),
-                                tuple_type: engines.help_out(symbol).to_string(),
-                                span: index_span.clone(),
-                                prefix_span: full_span_for_error.clone(),
-                            }));
-                        }
-                    };
-                    parent_rover = symbol;
-                    symbol = *field_type;
-                    symbol_span = index_span.clone();
-                    full_span_for_error = Span::join(full_span_for_error, index_span);
-                }
-                (
-                    TypeInfo::Array(elem_ty, _),
-                    ty::ProjectionKind::ArrayIndex { index_span, .. },
-                ) => {
-                    parent_rover = symbol;
-                    symbol = elem_ty.type_id;
-                    symbol_span = index_span.clone();
-                    // `index_span` does not contain the enclosing square brackets.
-                    // Which means, if this array index access is the last one before the
-                    // erroneous expression, the `full_span_for_error` will be missing the
-                    // closing `]`. We can live with this small glitch so far. To fix it,
-                    // we would need to bring the full span of the index all the way from
-                    // the parsing stage. An effort that doesn't pay off at the moment.
-                    // TODO: Include the closing square bracket into the error span.
-                    full_span_for_error = Span::join(full_span_for_error, index_span);
-                }
-                (actually, ty::ProjectionKind::StructField { name }) => {
-                    return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                        actually: engines.help_out(actually).to_string(),
-                        storage_variable: None,
-                        field_name: name.into(),
-                        span: full_span_for_error,
-                    }));
-                }
-                (
-                    actually,
-                    ty::ProjectionKind::TupleField {
-                        index, index_span, ..
-                    },
-                ) => {
-                    return Err(
-                        handler.emit_err(CompileError::TupleElementAccessOnNonTuple {
-                            actually: engines.help_out(actually).to_string(),
-                            span: full_span_for_error,
-                            index: *index,
-                            index_span: index_span.clone(),
-                        }),
-                    );
-                }
-                (actually, ty::ProjectionKind::ArrayIndex { .. }) => {
-                    return Err(handler.emit_err(CompileError::NotIndexable {
-                        actually: engines.help_out(actually).to_string(),
-                        span: full_span_for_error,
-                    }));
-                }
-            }
-        }
-        Ok((symbol, parent_rover))
     }
 }
