@@ -1426,14 +1426,8 @@ fn create_deployment_artifact(
     );
 
     let block_height = deployment_artifact.deployed_block_height;
-    if block_height.is_some() {
-        let block_height_formatted =
-            match u32::from_str_radix(&block_height.unwrap().to_string(), 16) {
-                Ok(decimal) => format!("{block_url}{decimal}"),
-                Err(_) => block_height.unwrap().to_string(),
-            };
-
-        println_action_green("Deployed", &format!("in block {block_height_formatted}"));
+    if let Some(block_height) = block_height {
+        println_action_green("Deployed", &format!("in block {block_url}{block_height}"));
     }
 
     let output_dir = cmd
