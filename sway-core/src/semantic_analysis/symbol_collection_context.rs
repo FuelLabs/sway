@@ -40,12 +40,13 @@ impl SymbolCollectionContext {
     pub fn scoped<T>(
         &mut self,
         engines: &Engines,
+        span: Span,
         with_scoped_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
         let lexical_scope_id: LexicalScopeId = self
             .namespace
             .module_mut(engines)
-            .write(engines, |m| m.push_new_lexical_scope());
+            .write(engines, |m| m.push_new_lexical_scope(span.clone()));
         let ret = with_scoped_ctx(self);
         self.namespace
             .module_mut(engines)
@@ -53,18 +54,20 @@ impl SymbolCollectionContext {
         (ret, lexical_scope_id)
     }
 
-    /// Enter the lexical scope and produce a collection context ready for
-    /// collecting its content.
+    /// Enter the lexical scope corresponding to the given span and produce a
+    /// collection context ready for collecting its content.
     ///
     /// Returns the result of the given `with_ctx` function.
     pub fn enter_lexical_scope<T>(
         &mut self,
+        handler: &Handler,
         engines: &Engines,
-        with_ctx: impl FnOnce(&mut SymbolCollectionContext) -> T,
-    ) -> T {
-        self.namespace
-            .module_mut(engines)
-            .write(engines, |m| m.push_new_lexical_scope());
+        span: Span,
+        with_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
+    ) -> Result<T, ErrorEmitted> {
+        self.namespace.module_mut(engines).write(engines, |m| {
+            m.enter_lexical_scope(handler, engines, span.clone())
+        })?;
         let ret = with_ctx(self);
         self.namespace
             .module_mut(engines)

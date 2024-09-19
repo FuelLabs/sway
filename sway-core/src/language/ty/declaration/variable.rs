@@ -1,15 +1,10 @@
 use std::hash::{Hash, Hasher};
 
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Ident;
+use sway_types::{Ident, Named, Spanned};
 
 use crate::{
     engine_threading::*,
     language::{parsed::VariableDeclaration, ty::*},
-    semantic_analysis::{
-        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
-    },
     type_system::*,
 };
 
@@ -24,6 +19,18 @@ pub struct TyVariableDecl {
 
 impl TyDeclParsedType for TyVariableDecl {
     type ParsedType = VariableDeclaration;
+}
+
+impl Named for TyVariableDecl {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for TyVariableDecl {
+    fn span(&self) -> sway_types::Span {
+        self.name.span()
+    }
 }
 
 impl EqWithEngines for TyVariableDecl {}
@@ -63,26 +70,5 @@ impl SubstTypes for TyVariableDecl {
         self.return_type.subst(type_mapping, ctx);
         self.type_ascription.subst(type_mapping, ctx);
         self.body.subst(type_mapping, ctx)
-    }
-}
-
-impl TypeCheckAnalysis for TyVariableDecl {
-    fn type_check_analyze(
-        &self,
-        handler: &Handler,
-        ctx: &mut TypeCheckAnalysisContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.body.type_check_analyze(handler, ctx)?;
-        Ok(())
-    }
-}
-
-impl TypeCheckFinalization for TyVariableDecl {
-    fn type_check_finalize(
-        &mut self,
-        handler: &Handler,
-        ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.body.type_check_finalize(handler, ctx)
     }
 }
