@@ -1390,34 +1390,6 @@ impl TraitMap {
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
 
-        // If the type is generic/placeholder, its definition needs to contains all
-        // constraints
-        match &*type_engine.get(type_id) {
-            TypeInfo::UnknownGeneric {
-                trait_constraints, ..
-            } => {
-                let all = constraints.iter().all(|required| {
-                    trait_constraints.iter().any(|constraint| {
-                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
-                    })
-                });
-                if all {
-                    return Ok(());
-                }
-            }
-            TypeInfo::Placeholder(p) => {
-                let all = constraints.iter().all(|required| {
-                    p.trait_constraints.iter().any(|constraint| {
-                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
-                    })
-                });
-                if all {
-                    return Ok(());
-                }
-            }
-            _ => {}
-        }
-
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
