@@ -51,7 +51,6 @@ whoami = "1.1"
 default = []
 test = []
 util = []
-profile = []
 uwu = ["uwuify"]
 
 [dev-dependencies]

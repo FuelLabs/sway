@@ -49,12 +49,9 @@ thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"
 vec1 = "1.8.0"
-fuel-asm = "0.57.0"
-sysinfo = { version = "0.31.4", optional = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo = "0.29.0"
 
 [lints.clippy]
 iter_over_hash_type = "deny"
-
-[features]
-default = ["dep:sysinfo"]
-profile = []
