@@ -49,6 +49,7 @@ whoami = "1.1"
 
 [features]
 default = []
+profile = []
 test = []
 util = []
 uwu = ["uwuify"]
