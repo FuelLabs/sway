@@ -1983,9 +1983,10 @@ pub fn compile(
             };
 
             let value_size = match &entry.value {
-                sway_core::asm_generation::Datum::Byte(x) => std::mem::size_of_val(x),
-                sway_core::asm_generation::Datum::Word(x) => std::mem::size_of_val(x),
-                sway_core::asm_generation::Datum::ByteArray(byte_array) => byte_array.len() as u64,
+                sway_core::asm_generation::Datum::Byte(x)
+                | sway_core::asm_generation::Datum::Word(x)
+                | sway_core::asm_generation::Datum::ByteArray(x) => std::mem::size_of_val(x) as u64,
+
                 sway_core::asm_generation::Datum::Slice(slice) => slice.len() as u64,
                 sway_core::asm_generation::Datum::Collection(entries) => entries.iter().map(calculate_entry_size).sum(),
             };
