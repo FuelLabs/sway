@@ -2,12 +2,13 @@ use crate::{
     cmd,
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
+        account::ForcClientAccount,
         node_url::get_node_url,
         pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
         tx::{
-            bech32_from_secret, prompt_forc_wallet_password, select_secret_key,
-            update_proxy_contract_target, WalletSelectionMode,
+            bech32_from_secret, prompt_forc_wallet_password, select_account,
+            update_proxy_contract_target, SignerSelectionMode,
         },
     },
 };
@@ -26,7 +27,7 @@ use fuels::{
     programs::contract::{LoadConfiguration, StorageConfiguration},
     types::{bech32::Bech32ContractId, transaction_builders::Blob},
 };
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
+use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
@@ -158,7 +159,7 @@ async fn deploy_chunked(
     command: &cmd::Deploy,
     compiled: &BuiltPackage,
     salt: Salt,
-    signing_key: &SecretKey,
+    account: &ForcClientAccount,
     provider: &Provider,
     pkg_name: &str,
 ) -> anyhow::Result<ContractId> {
@@ -172,7 +173,6 @@ async fn deploy_chunked(
         None => "".to_string(),
     };
 
-    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
     let blobs = compiled
         .bytecode
         .bytes
@@ -183,7 +183,7 @@ async fn deploy_chunked(
     let tx_policies = tx_policies_from_cmd(command);
     let contract_id =
         fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
-            .deploy(&wallet, tx_policies)
+            .deploy(account, tx_policies)
             .await?
             .into();
 
@@ -201,7 +201,7 @@ async fn deploy_new_proxy(
     pkg_name: &str,
     impl_contract: &fuel_tx::ContractId,
     provider: &Provider,
-    signing_key: &SecretKey,
+    account: &ForcClientAccount,
 ) -> Result<ContractId> {
     fuels::macros::abigen!(Contract(
         name = "ProxyContract",
@@ -931,8 +931,7 @@ async fn deploy_new_proxy(
 }"#,
     ));
     let proxy_dir_output = create_proxy_contract(pkg_name)?;
-    let address = bech32_from_secret(signing_key)?;
-    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
+    let address = account.address();
 
     let storage_path = proxy_dir_output.join("proxy-storage_slots.json");
     let storage_configuration =
@@ -951,7 +950,7 @@ async fn deploy_new_proxy(
         proxy_dir_output.join("proxy.bin"),
         configuration,
     )?
-    .deploy(&wallet, tx_policies)
+    .deploy(account, tx_policies)
     .await?
     .into();
 
@@ -968,7 +967,7 @@ async fn deploy_new_proxy(
     );
 
     let proxy_contract_bech_id: Bech32ContractId = proxy_contract_id.into();
-    let instance = ProxyContract::new(&proxy_contract_bech_id, wallet);
+    let instance = ProxyContract::new(&proxy_contract_bech_id, account.clone());
     instance.methods().initialize_proxy().call().await?;
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
     Ok(proxy_contract_id)
@@ -1059,7 +1058,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     }
 
     // Confirmation step. Summarize the transaction(s) for the deployment.
-    let (provider, signing_key) =
+    let (provider, account) =
         confirm_transaction_details(&pkgs_to_deploy, &command, node_url.clone()).await?;
 
     for pkg in pkgs_to_deploy {
@@ -1087,13 +1086,13 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 &command,
                 pkg,
                 salt,
-                &signing_key,
+                &account,
                 &provider,
                 &pkg.descriptor.name,
             )
             .await?
         } else {
-            deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?
+            deploy_pkg(&command, pkg, salt, &provider, &account).await?
         };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
@@ -1108,13 +1107,8 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 let proxy_contract =
                     ContractId::from_str(proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
 
-                update_proxy_contract_target(
-                    &provider,
-                    signing_key,
-                    proxy_contract,
-                    deployed_contract_id,
-                )
-                .await?;
+                update_proxy_contract_target(&account, proxy_contract, deployed_contract_id)
+                    .await?;
                 Some(proxy_contract)
             }
             Some(forc_pkg::manifest::Proxy {
@@ -1128,7 +1122,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                     pkg_name,
                     &deployed_contract_id,
                     &provider,
-                    &signing_key,
+                    &account,
                 )
                 .await?;
 
@@ -1158,7 +1152,7 @@ async fn confirm_transaction_details(
     pkgs_to_deploy: &[&Arc<BuiltPackage>],
     command: &cmd::Deploy,
     node_url: String,
-) -> Result<(Provider, SecretKey)> {
+) -> Result<(Provider, ForcClientAccount)> {
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let mut tx_count = 0;
     let tx_summary = pkgs_to_deploy
@@ -1203,27 +1197,26 @@ async fn confirm_transaction_details(
     let provider = Provider::connect(node_url.clone()).await?;
 
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
-        WalletSelectionMode::Manual
+        SignerSelectionMode::Manual
     } else {
         println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
         let password = prompt_forc_wallet_password()?;
-        WalletSelectionMode::ForcWallet(password)
+        SignerSelectionMode::ForcWallet(password)
     };
 
     // TODO: Display the estimated gas cost of the transaction(s).
     // https://github.com/FuelLabs/sway/issues/6277
 
-    let signing_key = select_secret_key(
+    let account = select_account(
         &wallet_mode,
         command.default_signer || command.unsigned,
         command.signing_key,
         &provider,
         tx_count,
     )
-    .await?
-    .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
+    .await?;
 
-    Ok((provider.clone(), signing_key))
+    Ok((provider.clone(), account))
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
@@ -1232,7 +1225,7 @@ pub async fn deploy_pkg(
     compiled: &BuiltPackage,
     salt: Salt,
     provider: &Provider,
-    signing_key: &SecretKey,
+    account: &ForcClientAccount,
 ) -> Result<fuel_tx::ContractId> {
     let manifest = &compiled.descriptor.manifest_file;
     let node_url = provider.url();
@@ -1255,10 +1248,9 @@ pub async fn deploy_pkg(
         storage_slots.clone(),
         tx_policies,
     );
-    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
 
-    wallet.add_witnesses(&mut tb)?;
-    wallet.adjust_for_fee(&mut tb, 0).await?;
+    account.add_witnesses(&mut tb)?;
+    account.adjust_for_fee(&mut tb, 0).await?;
     let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);
 

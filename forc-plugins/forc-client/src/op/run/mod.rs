@@ -6,7 +6,7 @@ use crate::{
         gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
-        tx::{prompt_forc_wallet_password, TransactionBuilderExt, WalletSelectionMode},
+        tx::{prompt_forc_wallet_password, SignerSelectionMode, TransactionBuilderExt},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -51,10 +51,10 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs_with_manifest = built_pkgs(&curr_dir, &build_opts)?;
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
-        WalletSelectionMode::Manual
+        SignerSelectionMode::Manual
     } else {
         let password = prompt_forc_wallet_password()?;
-        WalletSelectionMode::ForcWallet(password)
+        SignerSelectionMode::ForcWallet(password)
     };
     for built in built_pkgs_with_manifest {
         if built
@@ -81,7 +81,7 @@ pub async fn run_pkg(
     command: &cmd::Run,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
-    wallet_mode: &WalletSelectionMode,
+    wallet_mode: &SignerSelectionMode,
 ) -> Result<RanScript> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
 
