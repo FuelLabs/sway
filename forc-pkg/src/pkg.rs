@@ -1963,13 +1963,13 @@ pub fn compile(
         metrics,
     };
 
-    #[cfg(feature = "profile")]
+    #[cfg(feature = "profiler")]
     report_assembly_information(&asm, &compiled_package);
 
     Ok(compiled_package)
 }
 
-#[cfg(feature = "profile")]
+#[cfg(feature = "profiler")]
 fn report_assembly_information(
     compiled_asm: &sway_core::CompiledAsm,
     compiled_package: &CompiledPackage,

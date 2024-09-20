@@ -29,7 +29,7 @@ pub struct FunctionEntryPoint {
 macro_rules! time_expr {
     ($pkg_name:expr, $description:expr, $key:expr, $expression:expr, $build_config:expr, $data:expr) => {{
         use std::io::{BufRead, Read, Write};
-        #[cfg(feature = "profile")]
+        #[cfg(feature = "profiler")]
         if let Some(cfg) = $build_config {
             println!("/forc-perf start {} {}", $pkg_name, $description);
             let output = { $expression };
@@ -39,7 +39,7 @@ macro_rules! time_expr {
             $expression
         }
 
-        #[cfg(not(feature = "profile"))]
+        #[cfg(not(feature = "profiler"))]
         if let Some(cfg) = $build_config {
             if cfg.time_phases || cfg.metrics_outfile.is_some() {
                 let expr_start = std::time::Instant::now();

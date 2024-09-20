@@ -2203,7 +2203,6 @@ dependencies = [
  "forc-tracing 0.63.6",
  "forc-util",
  "fuel-abi-types",
- "fuel-asm 0.57.0",
  "futures",
  "git2",
  "gix-url",

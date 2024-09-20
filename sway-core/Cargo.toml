@@ -55,7 +55,7 @@ fuel-asm = "0.57.0"
 sysinfo = "0.29.0"
 
 [features]
-profile = []
+profiler = []
 
 [lints.clippy]
 iter_over_hash_type = "deny"

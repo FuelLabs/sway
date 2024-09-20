@@ -11,7 +11,6 @@ pub mod instruction_set;
 
 mod finalized_asm;
 pub use finalized_asm::*;
-
 pub use fuel::data_section::{Datum, Entry};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

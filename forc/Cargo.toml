@@ -49,7 +49,7 @@ whoami = "1.1"
 
 [features]
 default = []
-profile = []
+profiler = []
 test = []
 util = []
 uwu = ["uwuify"]
