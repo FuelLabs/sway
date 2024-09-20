@@ -729,12 +729,12 @@ fn construct_window<'a>(
     // Find the first char of the first line
     let first_char = chars
         .by_ref()
-        .find(|(current_line, _)| current_line + NUM_LINES_BUFFER < start.line);
+        .find(|(current_line, _)| current_line + NUM_LINES_BUFFER >= start.line);
 
     // Find the last char of the last line
     let last_char = chars
         .by_ref()
-        .find(|(current_line, _)| *current_line < end.line + NUM_LINES_BUFFER + 1)
+        .find(|(current_line, _)| *current_line >= end.line + NUM_LINES_BUFFER + 1)
         .map(|x| x.1);
 
     // this releases the borrow of `current_line`
