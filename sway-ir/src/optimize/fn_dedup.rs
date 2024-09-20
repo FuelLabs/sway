@@ -12,13 +12,14 @@ use std::hash::{Hash, Hasher};
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 use crate::{
-    build_call_graph, callee_first_order, AnalysisResults, Block, Context, Function, InstOp,
-    Instruction, IrError, MetadataIndex, Metadatum, Module, Pass, PassMutability, ScopedPass,
-    Value,
+    build_call_graph, callee_first_order, AnalysisResults, Block, Context, DebugWithContext,
+    Function, InstOp, Instruction, IrError, MetadataIndex, Metadatum, Module, Pass, PassMutability,
+    ScopedPass, Type, Value,
 };
 
 pub const FN_DEDUP_DEBUG_PROFILE_NAME: &str = "fn-dedup-debug";
 pub const FN_DEDUP_RELEASE_PROFILE_NAME: &str = "fn-dedup-release";
+pub const FN_DEDUP_DEMONOMORPHIZE_NAME: &str = "fn-dedup-demonomorphize";
 
 pub fn create_fn_dedup_release_profile_pass() -> Pass {
     Pass {
@@ -38,6 +39,15 @@ pub fn create_fn_dedup_debug_profile_pass() -> Pass {
     }
 }
 
+pub fn create_fn_dedup_demonomorphize_pass() -> Pass {
+    Pass {
+        name: FN_DEDUP_DEMONOMORPHIZE_NAME,
+        descr: "Function deduplication via demonomorphization",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fn_demonomorphize)),
+    }
+}
+
 // Functions that are equivalent are put in the same set.
 struct EqClass {
     // Map a function hash to its equivalence class.
@@ -51,6 +61,7 @@ fn hash_fn(
     function: Function,
     eq_class: &mut EqClass,
     ignore_metadata: bool,
+    ignore_pointee_type: bool,
 ) -> u64 {
     let state = &mut FxHasher::default();
 
@@ -88,6 +99,14 @@ fn hash_fn(
             if !ignore_metadata {
                 hash_metadata(context, *m, metadata_hashes, hasher)
             }
+        }
+    }
+
+    fn hash_type(context: &Context, hasher: &mut FxHasher, t: Type, ignore_pointee_type: bool) {
+        if t.is_ptr(context) && ignore_pointee_type {
+            std::mem::discriminant(t.get_content(context)).hash(hasher);
+        } else {
+            t.hash(hasher);
         }
     }
 
@@ -141,7 +160,12 @@ fn hash_fn(
     }
 
     // Start with the function return type.
-    function.get_return_type(context).hash(state);
+    hash_type(
+        context,
+        state,
+        function.get_return_type(context),
+        ignore_pointee_type,
+    );
 
     // ... and local variables.
     for (local_name, local_var) in function.locals_iter(context) {
@@ -149,7 +173,15 @@ fn hash_fn(
         if let Some(init) = local_var.get_initializer(context) {
             init.hash(state);
         }
-        local_var.get_type(context).hash(state);
+        // Locals are pointers, so if we should ignore the pointee type, ignore the type of locals also.
+        if !ignore_pointee_type {
+            hash_type(
+                context,
+                state,
+                local_var.get_type(context),
+                ignore_pointee_type,
+            );
+        }
     }
 
     // Process every block, first its arguments and then the instructions.
@@ -157,7 +189,12 @@ fn hash_fn(
         get_localised_id(block, localised_block_id).hash(state);
         for &arg in block.arg_iter(context) {
             get_localised_id(arg, localised_value_id).hash(state);
-            arg.get_argument(context).unwrap().ty.hash(state);
+            hash_type(
+                context,
+                state,
+                arg.get_argument(context).unwrap().ty,
+                ignore_pointee_type,
+            );
         }
         for inst in block.instruction_iter(context) {
             get_localised_id(inst, localised_value_id).hash(state);
@@ -187,7 +224,7 @@ fn hash_fn(
                     if let Some(return_name) = &asm_block.return_name {
                         return_name.as_str().hash(state);
                     }
-                    asm_block.return_type.hash(state);
+                    hash_type(context, state, asm_block.return_type, ignore_pointee_type);
                     for asm_inst in &asm_block.body {
                         asm_inst.op_name.as_str().hash(state);
                         for arg in &asm_inst.args {
@@ -200,7 +237,9 @@ fn hash_fn(
                 }
                 crate::InstOp::UnaryOp { op, .. } => op.hash(state),
                 crate::InstOp::BinaryOp { op, .. } => op.hash(state),
-                crate::InstOp::BitCast(_, ty) => ty.hash(state),
+                crate::InstOp::BitCast(_, ty) => {
+                    hash_type(context, state, *ty, ignore_pointee_type)
+                }
                 crate::InstOp::Branch(b) => {
                     get_localised_id(b.block, localised_block_id).hash(state)
                 }
@@ -216,7 +255,9 @@ fn hash_fn(
                         }
                     }
                 }
-                crate::InstOp::CastPtr(_, ty) => ty.hash(state),
+                crate::InstOp::CastPtr(_, ty) => {
+                    hash_type(context, state, *ty, ignore_pointee_type)
+                }
                 crate::InstOp::Cmp(p, _, _) => p.hash(state),
                 crate::InstOp::ConditionalBranch {
                     cond_value: _,
@@ -235,7 +276,9 @@ fn hash_fn(
                         crate::FuelVmInstruction::Gtf { tx_field_id, .. } => {
                             tx_field_id.hash(state)
                         }
-                        crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
+                        crate::FuelVmInstruction::Log { log_ty, .. } => {
+                            hash_type(context, state, *log_ty, ignore_pointee_type)
+                        }
                         crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
                         crate::FuelVmInstruction::Revert(_)
                         | crate::FuelVmInstruction::JmpMem
@@ -260,13 +303,19 @@ fn hash_fn(
                     .unwrap()
                     .hash(state),
                 crate::InstOp::GetConfig(_, name) => name.hash(state),
-                crate::InstOp::GetElemPtr { elem_ptr_ty, .. } => elem_ptr_ty.hash(state),
-                crate::InstOp::IntToPtr(_, ty) => ty.hash(state),
+                crate::InstOp::GetElemPtr { elem_ptr_ty, .. } => {
+                    hash_type(context, state, *elem_ptr_ty, ignore_pointee_type)
+                }
+                crate::InstOp::IntToPtr(_, ty) => {
+                    hash_type(context, state, *ty, ignore_pointee_type)
+                }
                 crate::InstOp::Load(_) => (),
                 crate::InstOp::MemCopyBytes { byte_len, .. } => byte_len.hash(state),
                 crate::InstOp::MemCopyVal { .. } | crate::InstOp::Nop => (),
-                crate::InstOp::PtrToInt(_, ty) => ty.hash(state),
-                crate::InstOp::Ret(_, ty) => ty.hash(state),
+                crate::InstOp::PtrToInt(_, ty) => {
+                    hash_type(context, state, *ty, ignore_pointee_type)
+                }
+                crate::InstOp::Ret(_, ty) => hash_type(context, state, *ty, ignore_pointee_type),
                 crate::InstOp::Store { .. } => (),
             }
         }
@@ -289,7 +338,7 @@ pub fn dedup_fns(
     let cg = build_call_graph(context, &context.modules.get(module.0).unwrap().functions);
     let callee_first = callee_first_order(&cg);
     for function in callee_first {
-        let hash = hash_fn(context, function, eq_class, ignore_metadata);
+        let hash = hash_fn(context, function, eq_class, ignore_metadata, false);
         eq_class
             .hash_set_map
             .entry(hash)
@@ -357,4 +406,41 @@ fn dedup_fn_release_profile(
     module: Module,
 ) -> Result<bool, IrError> {
     dedup_fns(context, analysis_results, module, true)
+}
+
+fn dedup_fn_demonomorphize(
+    context: &mut Context,
+    _analysis_results: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    let modified = false;
+    let eq_class = &mut EqClass {
+        hash_set_map: FxHashMap::default(),
+        function_hash_map: FxHashMap::default(),
+    };
+    let cg = build_call_graph(context, &context.modules.get(module.0).unwrap().functions);
+    let callee_first = callee_first_order(&cg);
+    for function in callee_first {
+        let hash = hash_fn(context, function, eq_class, true, true);
+        eq_class
+            .hash_set_map
+            .entry(hash)
+            .and_modify(|class| {
+                class.insert(function);
+            })
+            .or_insert(vec![function].into_iter().collect());
+        eq_class.function_hash_map.insert(function, hash);
+    }
+
+    for (class_id, class) in &eq_class.hash_set_map {
+        if class.len() > 1 {
+            print!("{}: ", class_id);
+            for f in class {
+                print!("{}, ", f.get_name(context));
+            }
+            println!("");
+        }
+    }
+
+    Ok(modified)
 }
