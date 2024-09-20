@@ -1964,55 +1964,58 @@ pub fn compile(
     };
 
     #[cfg(feature = "profile")]
-    {
-        use sway_core::asm_generation::Entry;
-
-        let mut bytes = compiled_package.bytecode.bytes.clone();
-
-        let data_offset = u64::from_be_bytes(bytes.iter().skip(8).take(8).cloned().collect::<Vec<_>>().try_into().unwrap());
-        let data_section_size = bytes.len() as u64 - data_offset;
-
-        bytes.truncate(data_offset as usize);
-
-        let mut data_section_used = 0u64;
-
-        fn calculate_entry_size(entry: &Entry) -> u64 {
-            let padding = match &entry.padding {
-                sway_ir::Padding::Left { target_size } => target_size,
-                sway_ir::Padding::Right { target_size } => target_size,
-            };
-
-            let value_size = match &entry.value {
-                sway_core::asm_generation::Datum::Byte(x)
-                | sway_core::asm_generation::Datum::Word(x)
-                | sway_core::asm_generation::Datum::ByteArray(x) => std::mem::size_of_val(x) as u64,
-
-                sway_core::asm_generation::Datum::Slice(slice) => slice.len() as u64,
-                sway_core::asm_generation::Datum::Collection(entries) => entries.iter().map(calculate_entry_size).sum(),
-            };
-
-            assert_eq!(*padding as u64, value_size);
-
-            value_size
-        }
-
-        for entry in &asm.0.data_section.value_pairs {
-            data_section_used += calculate_entry_size(entry);
-        }
-
-        let asm_information = sway_core::asm_generation::AsmInformation {
-            bytecode_size: bytes.len() as _,
-            data_section: sway_core::asm_generation::DataSectionInformation { 
-                size: data_section_size, 
-                used: data_section_used, 
-                value_pairs: asm.0.data_section.value_pairs 
-            }
-        };
-
-        println!("/forc-perf info {}", serde_json::to_string(&asm_information).unwrap());
-    }
+    report_assembly_information(&asm, &compiled_package);
 
     Ok(compiled_package)
+}
+
+#[cfg(feature = "profile")]
+fn report_assembly_information(
+    compiled_asm: &sway_core::CompiledAsm,
+    compiled_package: &CompiledPackage,
+) {
+    let mut bytes = compiled_package.bytecode.bytes.clone();
+
+    let data_offset = u64::from_be_bytes(bytes.iter().skip(8).take(8).cloned().collect::<Vec<_>>().try_into().unwrap());
+    let data_section_size = bytes.len() as u64 - data_offset;
+
+    bytes.truncate(data_offset as usize);
+
+    let mut data_section_used = 0u64;
+
+    fn calculate_entry_size(entry: &sway_core::asm_generation::Entry) -> u64 {
+        let padding = match &entry.padding {
+            sway_ir::Padding::Left { target_size } => target_size,
+            sway_ir::Padding::Right { target_size } => target_size,
+        };
+
+        let value_size = match &entry.value {
+            sway_core::asm_generation::Datum::Byte(x) => std::mem::size_of_val(x) as u64,
+            sway_core::asm_generation::Datum::Word(x) => std::mem::size_of_val(x) as u64,
+            sway_core::asm_generation::Datum::ByteArray(x) => std::mem::size_of_val(x) as u64,
+            sway_core::asm_generation::Datum::Slice(slice) => slice.len() as u64,
+            sway_core::asm_generation::Datum::Collection(entries) => entries.iter().map(calculate_entry_size).sum(),
+        };
+
+        assert_eq!(*padding as u64, value_size);
+
+        value_size
+    }
+
+    for entry in &compiled_asm.0.data_section.value_pairs {
+        data_section_used += calculate_entry_size(entry);
+    }
+
+    let asm_information = sway_core::asm_generation::AsmInformation {
+        bytecode_size: bytes.len() as _,
+        data_section: sway_core::asm_generation::DataSectionInformation { 
+            size: data_section_size, 
+            used: data_section_used, 
+            value_pairs: compiled_asm.0.data_section.value_pairs.clone(),
+        }
+    };
+
+    println!("/forc-perf info {}", serde_json::to_string(&asm_information).unwrap());
 }
 
 impl PkgEntry {
