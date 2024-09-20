@@ -734,7 +734,7 @@ fn construct_window<'a>(
     // Find the last char of the last line
     let last_char = chars
         .by_ref()
-        .find(|(current_line, _)| *current_line >= end.line + NUM_LINES_BUFFER + 1)
+        .find(|(current_line, _)| *current_line > end.line + NUM_LINES_BUFFER)
         .map(|x| x.1);
 
     // this releases the borrow of `current_line`
