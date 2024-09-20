@@ -261,13 +261,6 @@ fn garbage_collection_runner(path: PathBuf) {
     run_async!({
         setup_panic_hook();
         let (mut service, _) = LspService::new(ServerState::new);
-        // set the garbage collection frequency to 1
-        service
-            .inner()
-            .config
-            .write()
-            .garbage_collection
-            .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
         let times = 60;
 
@@ -299,6 +292,14 @@ fn garbage_collection_storage() {
 #[test]
 fn garbage_collection_paths() {
     let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
+fn garbage_collection_minimal_script() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+        .join("src/main.sw");
     garbage_collection_runner(p);
 }
 
@@ -973,7 +974,6 @@ fn go_to_definition_for_paths() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 11).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 23).await;
 
-        // // TODO: This test stopped working when https://github.com/FuelLabs/sway/pull/6116 was merged.
         let mut go_to = GotoDefinition {
             req_uri: &uri,
             req_line: 22,
@@ -2009,6 +2009,11 @@ lsp_capability_test!(
     highlight,
     lsp::highlight_request,
     doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    references,
+    lsp::references_request,
+    test_fixtures_dir().join("tokens/structs/src/main.sw")
 );
 lsp_capability_test!(
     code_action_abi,

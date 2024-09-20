@@ -205,8 +205,7 @@ async fn deploy_new_proxy(
 ) -> Result<ContractId> {
     fuels::macros::abigen!(Contract(
         name = "ProxyContract",
-        abi = r#"
-{
+        abi = r#"{
   "programType": "contract",
   "specVersion": "1",
   "encodingVersion": "1",
@@ -921,12 +920,12 @@ async fn deploy_new_proxy(
     {
       "name": "INITIAL_TARGET",
       "concreteTypeId": "0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8",
-      "offset": 13616
+      "offset": 13368
     },
     {
       "name": "INITIAL_OWNER",
       "concreteTypeId": "192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c",
-      "offset": 13568
+      "offset": 13320
     }
   ]
 }"#,
@@ -1427,14 +1426,8 @@ fn create_deployment_artifact(
     );
 
     let block_height = deployment_artifact.deployed_block_height;
-    if block_height.is_some() {
-        let block_height_formatted =
-            match u32::from_str_radix(&block_height.unwrap().to_string(), 16) {
-                Ok(decimal) => format!("{block_url}{decimal}"),
-                Err(_) => block_height.unwrap().to_string(),
-            };
-
-        println_action_green("Deployed", &format!("in block {block_height_formatted}"));
+    if let Some(block_height) = block_height {
+        println_action_green("Deployed", &format!("in block {block_url}{block_height}"));
     }
 
     let output_dir = cmd

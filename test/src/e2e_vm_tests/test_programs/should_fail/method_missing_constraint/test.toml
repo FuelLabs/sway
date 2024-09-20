@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()Self::also_t2(self);
+# nextln: $()Trait "T2" is not implemented for type "T".

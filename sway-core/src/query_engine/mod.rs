@@ -7,7 +7,7 @@ use std::{
     time::SystemTime,
 };
 use sway_error::{error::CompileError, warning::CompileWarning};
-use sway_types::IdentUnique;
+use sway_types::{IdentUnique, ProgramId, SourceId, Spanned};
 
 use crate::{
     decl_engine::{DeclId, DeclRef},
@@ -141,17 +141,18 @@ pub struct FunctionCacheEntry {
 #[derive(Debug, Default)]
 pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
-    programs_cache: Arc<RwLock<ProgramsCacheMap>>,
-    function_cache: Arc<RwLock<FunctionsCacheMap>>,
+    programs_cache: CowCache<ProgramsCacheMap>,
     pub module_cache: CowCache<ModuleCacheMap>,
+    // NOTE: Any further AstNodes that are cached need to have garbage collection applied, see clear_module()
+    function_cache: CowCache<FunctionsCacheMap>,
 }
 
 impl Clone for QueryEngine {
     fn clone(&self) -> Self {
         Self {
-            programs_cache: self.programs_cache.clone(),
-            function_cache: self.function_cache.clone(),
+            programs_cache: CowCache::new(self.programs_cache.read().clone()),
             module_cache: CowCache::new(self.module_cache.read().clone()),
+            function_cache: CowCache::new(self.function_cache.read().clone()),
         }
     }
 }
@@ -204,6 +205,30 @@ impl QueryEngine {
             (ident, sig.get_type_str(engines)),
             FunctionCacheEntry { fn_decl },
         );
+    }
+
+    /// Removes all data associated with the `source_id` from the function cache.
+    pub fn clear_module(&mut self, source_id: &SourceId) {
+        self.function_cache
+            .write()
+            .retain(|(ident, _), _| ident.span().source_id().map_or(true, |id| id != source_id));
+    }
+
+    /// Removes all data associated with the `program_id` from the function cache.
+    pub fn clear_program(&mut self, program_id: &ProgramId) {
+        self.function_cache.write().retain(|(ident, _), _| {
+            ident
+                .span()
+                .source_id()
+                .map_or(true, |id| id.program_id() != *program_id)
+        });
+    }
+
+    ///  Commits all changes to their respective caches.
+    pub fn commit(&self) {
+        self.programs_cache.commit();
+        self.module_cache.commit();
+        self.function_cache.commit();
     }
 }
 
