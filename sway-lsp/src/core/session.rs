@@ -465,7 +465,6 @@ pub fn parse_project(
     }
 
     let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
-    eprintln!("diagnostics: {:?}", diagnostics);
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
