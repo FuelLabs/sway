@@ -70,7 +70,7 @@ pub fn inlay_hints(
             // Function parameter hints
             if let TyExpressionVariant::FunctionApplication { arguments, .. } = &var.body.expression
             {
-                hints.extend(handle_function_parameters(arguments, config.render_colons));
+                hints.extend(handle_function_parameters(arguments, config));
             }
 
             // Variable declaration hints
@@ -84,7 +84,7 @@ pub fn inlay_hints(
                     let kind = InlayKind::TypeHint;
                     let label = format!("{}", session.engines.read().help_out(var.type_ascription));
                     let inlay_hint = InlayHint { range, kind, label };
-                    hints.push(self::inlay_hint(config.render_colons, inlay_hint));
+                    hints.push(self::inlay_hint(config, inlay_hint));
                 }
             }
             hints
@@ -96,7 +96,7 @@ pub fn inlay_hints(
 
 fn handle_function_parameters(
     arguments: &[(Ident, TyExpression)],
-    render_colons: bool,
+    config: &InlayHintsConfig,
 ) -> Vec<lsp_types::InlayHint> {
     arguments
         .iter()
@@ -121,7 +121,7 @@ fn handle_function_parameters(
                 let kind = InlayKind::Parameter;
                 let label = name.as_str().to_string();
                 let inlay_hint = InlayHint { range, kind, label };
-                hints.push(self::inlay_hint(render_colons, inlay_hint));
+                hints.push(self::inlay_hint(config, inlay_hint));
             }
             // Handle nested function applications
             if let TyExpressionVariant::FunctionApplication {
@@ -129,38 +129,51 @@ fn handle_function_parameters(
                 ..
             } = &exp.expression
             {
-                hints.extend(handle_function_parameters(nested_args, render_colons));
+                hints.extend(handle_function_parameters(nested_args, config));
             }
             hints
         })
         .collect::<Vec<_>>()
 }
 
-fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
+fn inlay_hint(config: &InlayHintsConfig, inlay_hint: InlayHint) -> lsp_types::InlayHint {
+    let truncate_label = |label: String| -> String {
+        if let Some(max_length) = config.max_length {
+            if label.len() > max_length {
+                format!("{}...", &label[..max_length.saturating_sub(3)])
+            } else {
+                label
+            }
+        } else {
+            label
+        }
+    };
+
+    let label = match inlay_hint.kind {
+        InlayKind::TypeHint if config.render_colons => format!(": {}", inlay_hint.label),
+        InlayKind::Parameter if config.render_colons => format!("{}: ", inlay_hint.label),
+        _ => inlay_hint.label,
+    };
+
     lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // after annotated thing
             InlayKind::TypeHint => inlay_hint.range.end,
             InlayKind::Parameter => inlay_hint.range.start,
         },
-        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
-            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            InlayKind::Parameter if render_colons => format!("{}: ", inlay_hint.label),
-            InlayKind::TypeHint => inlay_hint.label,
-            InlayKind::Parameter => inlay_hint.label,
-        }),
+        label: lsp_types::InlayHintLabel::String(truncate_label(label)),
         kind: match inlay_hint.kind {
             InlayKind::TypeHint => Some(lsp_types::InlayHintKind::TYPE),
             InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
-            InlayKind::TypeHint => !render_colons,
+            InlayKind::TypeHint => !config.render_colons,
             InlayKind::Parameter => false,
         }),
         padding_right: Some(match inlay_hint.kind {
             InlayKind::TypeHint => false,
-            InlayKind::Parameter => !render_colons,
+            InlayKind::Parameter => !config.render_colons,
         }),
         text_edits: None,
         data: None,
