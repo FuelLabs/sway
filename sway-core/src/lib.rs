@@ -737,16 +737,25 @@ pub fn compile_to_ast(
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;
-        // Check if we can re-use the data in the cache.
-        if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
-            let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
-            entry.programs.metrics.reused_programs += 1;
-
-            let (warnings, errors) = entry.handler_data;
-            let new_handler = Handler::from_parts(warnings, errors);
-            handler.append(new_handler);
-            return Ok(entry.programs);
-        };
+        eprintln!("path {:?} | optimised build: {:?}", path, config.lsp_mode);
+        if let Some(lsp_mode) = &config.lsp_mode {
+            // Only use the cache if lsp_mode optimization is set to true, this occurs from a didChange event
+            // If set to false, then a didSave event was triggered so we want to compute up to date diagnostics,
+            // so we don't want to use the cache.
+            let path_name = path.to_string_lossy().to_string();
+            if lsp_mode.optimized_build && !path_name.contains("/private") {
+                eprintln!("returning cache for path {:?}", path);
+                // Check if we can re-use the data in the cache.
+                if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
+                    let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
+                    entry.programs.metrics.reused_programs += 1;
+                    let (warnings, errors) = entry.handler_data;
+                    let new_handler = Handler::from_parts(warnings, errors);
+                    handler.append(new_handler);
+                    return Ok(entry.programs);
+                };
+            }
+        }
     }
 
     // Parse the program to a concrete syntax tree (CST).
@@ -759,7 +768,7 @@ pub fn compile_to_ast(
     );
 
     check_should_abort(handler, retrigger_compilation.clone())?;
-
+    dbg!();
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
         Err(e) => {
@@ -767,12 +776,12 @@ pub fn compile_to_ast(
             return Err(e);
         }
     };
-
+    dbg!();
     // If tests are not enabled, exclude them from `parsed_program`.
     if build_config.map_or(true, |config| !config.include_tests) {
         parsed_program.exclude_tests(engines);
     }
-
+    dbg!();
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
         "parse the concrete syntax tree (CST) to a typed AST",
@@ -789,13 +798,13 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
-
+    dbg!();
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
 
     let programs = Programs::new(lexed_program, parsed_program, typed_res, metrics);
-
+    dbg!();
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let cache_entry = ProgramsCacheEntry {
@@ -805,7 +814,7 @@ pub fn compile_to_ast(
         };
         query_engine.insert_programs_cache_entry(cache_entry);
     }
-
+    dbg!();
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     Ok(programs)

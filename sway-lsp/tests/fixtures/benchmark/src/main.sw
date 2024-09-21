@@ -13,6 +13,9 @@ struct Struct1 {
     field4: u64,
 }
 
+
+
+
 /// I am a random doc comment.
 fn func_struct1(s: Struct1) -> u16 {
     s.field2
