@@ -8,9 +8,6 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[package.metadata.cargo-udeps.ignore]
-normal = ["tower"]
-
 [dependencies]
 anyhow.workspace = true
 crossbeam-channel.workspace = true
