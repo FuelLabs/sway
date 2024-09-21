@@ -27,10 +27,10 @@ fn main() {
     let foo = 1;
     let _y = my_function(foo, 2, 3);
     let bar = 2;
+    let _function_call = identity(my_function(1, bar, 3));
     let _z = my_function(foo, bar, 3);
     let long_argument_name = 3;
     let _w = my_function(foo, bar, long_argument_name);
-    let _function_call = identity(my_function(1, bar, 3));
     let _a: bool = identity(true);
     let _b: u32 = identity(10u32);
     let _c: u64 = identity(42);
