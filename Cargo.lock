@@ -7399,7 +7399,7 @@ dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.74",
 ]
 
 [[package]]
@@ -7440,7 +7440,7 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "swayfmt",
- "syn 1.0.109",
+ "syn 2.0.74",
  "tempfile",
  "thiserror",
  "tikv-jemallocator",
