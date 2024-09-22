@@ -7,8 +7,8 @@ use crate::{
         pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
         tx::{
-            bech32_from_secret, prompt_forc_wallet_password, select_account,
-            update_proxy_contract_target, SignerSelectionMode,
+            prompt_forc_wallet_password, select_account, update_proxy_contract_target,
+            SignerSelectionMode,
         },
     },
 };
@@ -25,9 +25,12 @@ use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
 use fuels::{
     programs::contract::{LoadConfiguration, StorageConfiguration},
-    types::{bech32::Bech32ContractId, transaction_builders::Blob},
+    types::{
+        bech32::Bech32ContractId,
+        transaction_builders::{Blob, TransactionBuilder},
+    },
 };
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account, ViewOnlyAccount};
+use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
@@ -1251,6 +1254,8 @@ pub async fn deploy_pkg(
 
     account.add_witnesses(&mut tb)?;
     account.adjust_for_fee(&mut tb, 0).await?;
+    tb.add_signer(account.clone())?;
+
     let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);
 

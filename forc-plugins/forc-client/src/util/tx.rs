@@ -2,7 +2,7 @@ use crate::{
     constants::DEFAULT_PRIVATE_KEY,
     util::{account::ForcClientAccount, target::Target},
 };
-use anyhow::{Error, Result};
+use anyhow::Result;
 use dialoguer::{theme::ColorfulTheme, Confirm, Password, Select};
 use forc_tracing::{println_action_green, println_warning};
 use forc_wallet::{
@@ -13,7 +13,7 @@ use forc_wallet::{
     new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
-use fuel_crypto::{PublicKey, SecretKey, Signature};
+use fuel_crypto::SecretKey;
 use fuel_tx::{AssetId, ContractId};
 use fuels::{macros::abigen, programs::responses::CallResponse};
 use fuels_accounts::{
@@ -21,31 +21,14 @@ use fuels_accounts::{
     wallet::{Wallet, WalletUnlocked},
     ViewOnlyAccount,
 };
-use fuels_core::types::bech32::{Bech32Address, FUEL_BECH32_HRP};
-use std::{collections::BTreeMap, io::Write, path::Path, str::FromStr};
+use fuels_core::types::bech32::Bech32Address;
+use std::{collections::BTreeMap, path::Path, str::FromStr};
 
 #[derive(PartialEq, Eq)]
 pub enum SignerSelectionMode {
     /// Holds the password of forc-wallet instance.
     ForcWallet(String),
     Manual,
-}
-
-fn prompt_address() -> Result<Bech32Address> {
-    print!("Please provide the address of the wallet you are going to sign this transaction with:");
-    std::io::stdout().flush()?;
-    let mut buf = String::new();
-    std::io::stdin().read_line(&mut buf)?;
-    Bech32Address::from_str(buf.trim()).map_err(Error::msg)
-}
-
-fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
-    println!("Transaction id to sign: {tx_id}");
-    print!("Please provide the signature:");
-    std::io::stdout().flush()?;
-    let mut buf = String::new();
-    std::io::stdin().read_line(&mut buf)?;
-    Signature::from_str(buf.trim()).map_err(Error::msg)
 }
 
 fn ask_user_yes_no_question(question: &str) -> Result<bool> {
@@ -115,13 +98,6 @@ pub(crate) fn secret_key_from_forc_wallet(
         }
     })?;
     Ok(secret_key)
-}
-
-pub(crate) fn bech32_from_secret(secret_key: &SecretKey) -> Result<Bech32Address> {
-    let public_key = PublicKey::from(secret_key);
-    let hashed = public_key.hash();
-    let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
-    Ok(bech32)
 }
 
 pub(crate) fn select_manual_secret_key(
