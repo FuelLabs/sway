@@ -106,7 +106,7 @@ pub async fn run_pkg(
     let provider = Provider::connect(node_url.clone()).await?;
     let tx_count = 1;
     let account = select_account(
-        &signer_mode,
+        signer_mode,
         command.default_signer || command.unsigned,
         command.signing_key,
         &provider,
@@ -148,7 +148,7 @@ pub async fn run_pkg(
     let script_binary = compiled.bytecode.bytes.clone();
     let external_contracts = contract_ids
         .into_iter()
-        .map(|contract| Bech32ContractId::from(contract))
+        .map(Bech32ContractId::from)
         .collect::<Vec<_>>();
     let call = ScriptCall {
         script_binary,
