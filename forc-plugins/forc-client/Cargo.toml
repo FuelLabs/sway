@@ -11,10 +11,13 @@ repository.workspace = true
 [dependencies]
 anyhow = "1"
 async-trait = "0.1.58"
+aws-config = "1.5.6"
+aws-sdk-kms = "1.44.0"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 clap = { version = "4.5.4", features = ["derive", "env"] }
 devault = "0.1"
 dialoguer = "0.11"
+ecdsa = "0.16.9"
 forc = { version = "0.63.6", path = "../../forc" }
 forc-pkg = { version = "0.63.6", path = "../../forc-pkg" }
 forc-tracing = { version = "0.63.6", path = "../../forc-tracing" }
@@ -32,8 +35,10 @@ fuels-accounts = { workspace = true }
 fuels-core = { workspace = true }
 futures = "0.3"
 hex = "0.4.3"
+k256 = "0.13.4"
 rand = "0.8"
 rpassword = "7.2"
+secp256k1 = "0.29.1"
 serde = "1.0"
 serde_json = "1"
 sway-core = { version = "0.63.6", path = "../../sway-core" }
