@@ -23,7 +23,7 @@ use std::{
     str::FromStr,
 };
 use tempfile::tempdir;
-use toml_edit::{value, Document, InlineTable, Item, Table, Value};
+use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 
 fn get_workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -75,7 +75,7 @@ fn patch_manifest_file_with_path_std(manifest_dir: &Path) -> anyhow::Result<()> 
     let toml_path = manifest_dir.join(sway_utils::constants::MANIFEST_FILE_NAME);
     let toml_content = fs::read_to_string(&toml_path).unwrap();
 
-    let mut doc = toml_content.parse::<Document>().unwrap();
+    let mut doc = toml_content.parse::<DocumentMut>().unwrap();
     let new_std_path = get_workspace_root().join("sway-lib-std");
 
     let mut std_dependency = InlineTable::new();
@@ -89,7 +89,7 @@ fn patch_manifest_file_with_path_std(manifest_dir: &Path) -> anyhow::Result<()> 
 fn patch_manifest_file_with_proxy_table(manifest_dir: &Path, proxy: Proxy) -> anyhow::Result<()> {
     let toml_path = manifest_dir.join(sway_utils::constants::MANIFEST_FILE_NAME);
     let toml_content = fs::read_to_string(&toml_path)?;
-    let mut doc = toml_content.parse::<Document>()?;
+    let mut doc = toml_content.parse::<DocumentMut>()?;
 
     let proxy_table = doc.entry("proxy").or_insert(Item::Table(Table::new()));
     let proxy_table = proxy_table.as_table_mut().unwrap();

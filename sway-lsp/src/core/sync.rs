@@ -286,7 +286,7 @@ pub(crate) fn edit_manifest_dependency_paths(
         if let Ok(mut file) = File::open(manifest.path()) {
             let mut toml = String::new();
             let _ = file.read_to_string(&mut toml);
-            if let Ok(mut manifest_toml) = toml.parse::<toml_edit::Document>() {
+            if let Ok(mut manifest_toml) = toml.parse::<toml_edit::DocumentMut>() {
                 for (name, abs_path) in dependency_map {
                     manifest_toml["dependencies"][&name]["path"] =
                         toml_edit::value(abs_path.display().to_string());

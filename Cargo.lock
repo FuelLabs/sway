@@ -2059,7 +2059,7 @@ dependencies = [
  "term-table",
  "tokio",
  "toml 0.8.19",
- "toml_edit 0.21.1",
+ "toml_edit 0.22.20",
  "tracing",
  "url",
  "uwuify",
@@ -2106,7 +2106,7 @@ dependencies = [
  "sway-utils",
  "tempfile",
  "tokio",
- "toml_edit 0.21.1",
+ "toml_edit 0.22.20",
  "tracing",
 ]
 
@@ -6977,7 +6977,7 @@ dependencies = [
  "thiserror",
  "tikv-jemallocator",
  "tokio",
- "toml_edit 0.21.1",
+ "toml_edit 0.22.20",
  "tower 0.4.13",
  "tower-lsp",
  "tracing",
