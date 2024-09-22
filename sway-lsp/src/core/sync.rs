@@ -194,13 +194,12 @@ impl SyncWorkspace {
                     let handle = tokio::spawn(async move {
                         let (tx, mut rx) = tokio::sync::mpsc::channel(10);
                         // Setup debouncer. No specific tickrate, max debounce time 2 seconds
-                        let mut debouncer =
-                            new_debouncer(Duration::from_secs(1), None, move |event| {
-                                if let Ok(e) = event {
-                                    let _ = tx.blocking_send(e);
-                                }
-                            })
-                            .unwrap();
+                        let mut debouncer = new_debouncer(Duration::from_secs(1), move |event| {
+                            if let Ok(e) = event {
+                                let _ = tx.blocking_send(e);
+                            }
+                        })
+                        .unwrap();
 
                         debouncer
                             .watcher()
