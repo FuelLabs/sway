@@ -2748,7 +2748,6 @@ dependencies = [
  "regex",
  "rexpect 0.5.0",
  "rpassword",
- "secp256k1 0.29.1",
  "serde",
  "serde_json",
  "sway-core",

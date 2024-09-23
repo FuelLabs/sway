@@ -37,7 +37,6 @@ hex.workspace = true
 k256.workspace = true
 rand.workspace = true
 rpassword.workspace = true
-secp256k1.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sway-core.workspace = true
