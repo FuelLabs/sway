@@ -25,10 +25,7 @@ use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
 use fuels::{
     programs::contract::{LoadConfiguration, StorageConfiguration},
-    types::{
-        bech32::Bech32ContractId,
-        transaction_builders::{Blob, TransactionBuilder},
-    },
+    types::{bech32::Bech32ContractId, transaction_builders::Blob},
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
@@ -1256,7 +1253,6 @@ pub async fn deploy_pkg(
 
     account.add_witnesses(&mut tb)?;
     account.adjust_for_fee(&mut tb, 0).await?;
-    tb.add_signer(account.clone())?;
 
     let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);

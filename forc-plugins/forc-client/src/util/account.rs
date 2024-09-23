@@ -35,6 +35,12 @@ impl Account for ForcClientAccount {
             }
         }
     }
+
+    fn add_witnesses<Tb: TransactionBuilder>(&self, tb: &mut Tb) -> Result<()> {
+        tb.add_signer(self.clone())?;
+
+        Ok(())
+    }
 }
 
 impl ViewOnlyAccount for ForcClientAccount {

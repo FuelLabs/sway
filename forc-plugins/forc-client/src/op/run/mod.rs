@@ -23,7 +23,6 @@ use fuels::{
     },
 };
 use fuels_accounts::{provider::Provider, Account};
-use fuels_core::types::transaction_builders::TransactionBuilder;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuiltPackage};
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
@@ -164,7 +163,6 @@ pub async fn run_pkg(
 
     account.add_witnesses(&mut tb)?;
     account.adjust_for_fee(&mut tb, 0).await?;
-    tb.add_signer(account)?;
 
     let tx = tb.build(provider).await?;
 
