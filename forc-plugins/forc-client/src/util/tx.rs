@@ -1,6 +1,6 @@
 use crate::{
     constants::DEFAULT_PRIVATE_KEY,
-    util::{account::ForcClientAccount, target::Target},
+    util::{account::ForcClientAccount, aws::AwsSigner, target::Target},
 };
 use anyhow::Result;
 use dialoguer::{theme::ColorfulTheme, Confirm, Password, Select};
@@ -24,10 +24,14 @@ use fuels_accounts::{
 use fuels_core::types::bech32::Bech32Address;
 use std::{collections::BTreeMap, path::Path, str::FromStr};
 
+use super::aws::{AwsClient, AwsConfig};
+
 #[derive(PartialEq, Eq)]
 pub enum SignerSelectionMode {
     /// Holds the password of forc-wallet instance.
     ForcWallet(String),
+    /// Holds ARN of the AWS signer.
+    AwsSigner(String),
     Manual,
 }
 
@@ -229,6 +233,14 @@ pub(crate) async fn select_account(
                 .ok_or_else(|| anyhow::anyhow!("missing manual secret key"))?;
             let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
             Ok(ForcClientAccount::Wallet(wallet))
+        }
+        SignerSelectionMode::AwsSigner(arn) => {
+            let aws_config = AwsConfig::from_env().await;
+            let aws_client = AwsClient::new(aws_config);
+            let aws_signer = AwsSigner::new(aws_client, arn.clone(), provider.clone()).await?;
+
+            let account = ForcClientAccount::KmsSigner(aws_signer);
+            Ok(account)
         }
     }
 }

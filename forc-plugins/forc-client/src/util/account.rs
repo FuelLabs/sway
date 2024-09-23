@@ -28,7 +28,11 @@ impl Account for ForcClientAccount {
                     .get_asset_inputs_for_amount(asset_id, amount, excluded_coins)
                     .await
             }
-            ForcClientAccount::KmsSigner(_account) => todo!(),
+            ForcClientAccount::KmsSigner(account) => {
+                account
+                    .get_asset_inputs_for_amount(asset_id, amount, excluded_coins)
+                    .await
+            }
         }
     }
 }
@@ -37,14 +41,16 @@ impl ViewOnlyAccount for ForcClientAccount {
     fn address(&self) -> &Bech32Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
-            ForcClientAccount::KmsSigner(_account) => todo!(),
+            ForcClientAccount::KmsSigner(account) => {
+                fuels_accounts::ViewOnlyAccount::address(account)
+            }
         }
     }
 
     fn try_provider(&self) -> Result<&Provider> {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.try_provider(),
-            ForcClientAccount::KmsSigner(_account) => todo!(),
+            ForcClientAccount::KmsSigner(account) => Ok(account.provider()),
         }
     }
 }
@@ -54,14 +60,14 @@ impl Signer for ForcClientAccount {
     async fn sign(&self, message: Message) -> Result<Signature> {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.sign(message).await,
-            ForcClientAccount::KmsSigner(_account) => todo!(),
+            ForcClientAccount::KmsSigner(account) => account.sign(message).await,
         }
     }
 
     fn address(&self) -> &Bech32Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
-            ForcClientAccount::KmsSigner(_account) => todo!(),
+            ForcClientAccount::KmsSigner(account) => fuels_core::traits::Signer::address(account),
         }
     }
 }

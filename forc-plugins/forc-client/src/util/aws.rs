@@ -5,9 +5,13 @@ use aws_sdk_kms::operation::get_public_key::GetPublicKeyOutput;
 use aws_sdk_kms::primitives::Blob;
 use aws_sdk_kms::types::{MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::{config::BehaviorVersion, Client};
-use fuel_crypto::coins_bip32::prelude::k256::pkcs8::spki;
-use fuel_crypto::{Message, PublicKey};
+use fuel_crypto::Message;
+use fuels::prelude::*;
 use fuels::types::bech32::{Bech32Address, FUEL_BECH32_HRP};
+use fuels::types::coin_type_id::CoinTypeId;
+use fuels::types::input::Input;
+use fuels_accounts::provider::Provider;
+use fuels_accounts::{Account, ViewOnlyAccount};
 use fuels_core::traits::Signer;
 
 #[derive(Debug, Clone)]
@@ -56,13 +60,13 @@ impl AwsConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AwsClient {
     client: Client,
 }
 
 impl AwsClient {
-    pub async fn new(config: AwsConfig) -> Self {
+    pub fn new(config: AwsConfig) -> Self {
         let config = config.sdk_config;
         let client = Client::new(&config);
 
@@ -76,16 +80,17 @@ impl AwsClient {
 
 #[derive(Clone, Debug)]
 pub struct AwsSigner {
-    kms: Client,
+    kms: AwsClient,
     key_id: String,
-    public_key_bytes: Vec<u8>,
     bech: Bech32Address,
+    public_key_bytes: Vec<u8>,
+    provider: Provider,
 }
 
 async fn request_get_pubkey(
     kms: &Client,
     key_id: String,
-) -> Result<GetPublicKeyOutput, anyhow::Error> {
+) -> std::result::Result<GetPublicKeyOutput, anyhow::Error> {
     kms.get_public_key()
         .key_id(key_id)
         .send()
@@ -94,14 +99,12 @@ async fn request_get_pubkey(
 }
 
 /// Decode an AWS KMS Pubkey response.
-fn decode_pubkey(resp: &GetPublicKeyOutput) -> Result<&[u8], anyhow::Error> {
+fn decode_pubkey(resp: &GetPublicKeyOutput) -> std::result::Result<Vec<u8>, anyhow::Error> {
     let raw = resp
         .public_key
         .as_ref()
         .ok_or(anyhow::anyhow!("public key not found"))?;
-    let spki = spki::SubjectPublicKeyInfoRef::try_from(raw.as_ref())?;
-    let bytes = spki.subject_public_key.raw_bytes();
-    Ok(bytes)
+    Ok(raw.clone().into_inner())
 }
 
 async fn sign_with_kms(
@@ -169,17 +172,26 @@ async fn sign_with_kms(
 }
 
 impl AwsSigner {
-    pub async fn new(kms: Client, key_id: String) -> Result<Self, anyhow::Error> {
-        let resp = request_get_pubkey(&kms, key_id.clone()).await?;
-        let public_key_bytes = decode_pubkey(&resp)?.to_vec();
-        let public_key = PublicKey::try_from(public_key_bytes.as_slice()).unwrap();
+    pub async fn new(
+        kms: AwsClient,
+        key_id: String,
+        provider: Provider,
+    ) -> std::result::Result<Self, anyhow::Error> {
+        use k256::pkcs8::DecodePublicKey;
+
+        let resp = request_get_pubkey(kms.inner(), key_id.clone()).await?;
+        let public_key_bytes = decode_pubkey(&resp)?;
+        let k256_public_key = k256::PublicKey::from_public_key_der(&public_key_bytes)?;
+
+        let public_key = fuel_crypto::PublicKey::from(k256_public_key);
         let hashed = public_key.hash();
         let bech = Bech32Address::new(FUEL_BECH32_HRP, hashed);
         Ok(Self {
             kms,
             key_id,
-            public_key_bytes,
             bech,
+            public_key_bytes,
+            provider,
         })
     }
 
@@ -188,26 +200,27 @@ impl AwsSigner {
         &self,
         key_id: String,
         message: Message,
-    ) -> Result<fuel_crypto::Signature, anyhow::Error> {
-        sign_with_kms(&self.kms, &key_id, &self.public_key_bytes, message).await
+    ) -> std::result::Result<fuel_crypto::Signature, anyhow::Error> {
+        sign_with_kms(self.kms.inner(), &key_id, &self.public_key_bytes, message).await
     }
 
     /// Sign a digest with this signer's key
     pub async fn sign_message(
         &self,
         message: Message,
-    ) -> Result<fuel_crypto::Signature, anyhow::Error> {
+    ) -> std::result::Result<fuel_crypto::Signature, anyhow::Error> {
         self.sign_message_with_key(self.key_id.clone(), message)
             .await
+    }
+
+    pub fn provider(&self) -> &Provider {
+        &self.provider
     }
 }
 
 #[async_trait]
 impl Signer for AwsSigner {
-    async fn sign(
-        &self,
-        message: Message,
-    ) -> Result<fuel_crypto::Signature, fuels_core::types::errors::Error> {
+    async fn sign(&self, message: Message) -> Result<fuel_crypto::Signature> {
         let sig = self.sign_message(message).await.map_err(|_| {
             fuels_core::types::errors::Error::Other("aws signer failed".to_string())
         })?;
@@ -216,5 +229,32 @@ impl Signer for AwsSigner {
 
     fn address(&self) -> &Bech32Address {
         &self.bech
+    }
+}
+
+impl ViewOnlyAccount for AwsSigner {
+    fn address(&self) -> &Bech32Address {
+        &self.bech
+    }
+
+    fn try_provider(&self) -> Result<&Provider> {
+        Ok(&self.provider)
+    }
+}
+
+#[async_trait]
+impl Account for AwsSigner {
+    async fn get_asset_inputs_for_amount(
+        &self,
+        asset_id: AssetId,
+        amount: u64,
+        excluded_coins: Option<Vec<CoinTypeId>>,
+    ) -> Result<Vec<Input>> {
+        Ok(self
+            .get_spendable_resources(asset_id, amount, excluded_coins)
+            .await?
+            .into_iter()
+            .map(Input::resource_signed)
+            .collect::<Vec<Input>>())
     }
 }

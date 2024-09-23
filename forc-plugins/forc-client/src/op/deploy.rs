@@ -1201,6 +1201,8 @@ async fn confirm_transaction_details(
 
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
         SignerSelectionMode::Manual
+    } else if let Some(arn) = &command.aws_kms_signer {
+        SignerSelectionMode::AwsSigner(arn.clone())
     } else {
         println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
         let password = prompt_forc_wallet_password()?;
