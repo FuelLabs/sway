@@ -21,7 +21,6 @@ use fuels_accounts::{
     wallet::{Wallet, WalletUnlocked},
     ViewOnlyAccount,
 };
-use fuels_core::types::bech32::Bech32Address;
 use std::{collections::BTreeMap, path::Path, str::FromStr};
 
 use super::aws::{AwsClient, AwsConfig};
