@@ -2090,6 +2090,11 @@ lsp_capability_test!(
     lsp::completion_request,
     test_fixtures_dir().join("completion/src/main.sw")
 );
+lsp_capability_test!(
+    inlay_hints_function_params,
+    lsp::inlay_hints_request,
+    test_fixtures_dir().join("inlay_hints/src/main.sw")
+);
 
 // This method iterates over all of the examples in the e2e language should_pass dir
 // and saves the lexed, parsed, and typed ASTs to the users home directory.
