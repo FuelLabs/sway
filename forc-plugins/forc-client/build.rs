@@ -71,6 +71,9 @@ fn main() {
     let util_tx_path = PathBuf::from("src/util/tx.rs");
     update_proxy_abi_decl_with_file(&util_tx_path, &minified_json);
 
-    let util_tx_path = PathBuf::from("tests/deploy.rs");
-    update_proxy_abi_decl_with_file(&util_tx_path, &minified_json);
+    let test_path = PathBuf::from("tests/deploy.rs");
+    update_proxy_abi_decl_with_file(&test_path, &minified_json);
+
+    let deploy_path = PathBuf::from("src/op/deploy.rs");
+    update_proxy_abi_decl_with_file(&deploy_path, &minified_json);
 }
