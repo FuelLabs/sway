@@ -6,10 +6,12 @@ use fuels::{
 };
 use fuels_accounts::{wallet::WalletUnlocked, Account};
 
+use super::aws::AwsSigner;
+
 #[derive(Clone, Debug)]
 pub enum ForcClientAccount {
     Wallet(WalletUnlocked),
-    KmsSigner,
+    KmsSigner(AwsSigner),
 }
 
 #[async_trait]
@@ -26,7 +28,7 @@ impl Account for ForcClientAccount {
                     .get_asset_inputs_for_amount(asset_id, amount, excluded_coins)
                     .await
             }
-            ForcClientAccount::KmsSigner => todo!(),
+            ForcClientAccount::KmsSigner(_account) => todo!(),
         }
     }
 }
@@ -35,14 +37,14 @@ impl ViewOnlyAccount for ForcClientAccount {
     fn address(&self) -> &Bech32Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
-            ForcClientAccount::KmsSigner => todo!(),
+            ForcClientAccount::KmsSigner(_account) => todo!(),
         }
     }
 
     fn try_provider(&self) -> Result<&Provider> {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.try_provider(),
-            ForcClientAccount::KmsSigner => todo!(),
+            ForcClientAccount::KmsSigner(_account) => todo!(),
         }
     }
 }
@@ -52,14 +54,14 @@ impl Signer for ForcClientAccount {
     async fn sign(&self, message: Message) -> Result<Signature> {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.sign(message).await,
-            ForcClientAccount::KmsSigner => todo!(),
+            ForcClientAccount::KmsSigner(_account) => todo!(),
         }
     }
 
     fn address(&self) -> &Bech32Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
-            ForcClientAccount::KmsSigner => todo!(),
+            ForcClientAccount::KmsSigner(_account) => todo!(),
         }
     }
 }

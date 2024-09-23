@@ -74,7 +74,7 @@ impl AwsClient {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AwsSigner {
     kms: Client,
     key_id: String,
