@@ -13,9 +13,9 @@ name = "mdbook_forc_documenter"
 path = "src/lib.rs"
 
 [dependencies]
-anyhow = "1"
-clap = { version = "4.5.4", features = ["derive"] }
-mdbook = { version = "0.4", default-features = false }
-semver = "1.0"
-serde = "1.0"
-serde_json = "1.0"
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+mdbook.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true

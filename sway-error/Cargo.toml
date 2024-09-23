@@ -1,6 +1,6 @@
 [package]
 name = "sway-error"
-version = "0.63.5"
+version.workspace = true
 description = "Sway's error handling"
 authors.workspace = true
 edition.workspace = true
@@ -9,14 +9,14 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-either = "1.9.0"
-in_definite = "1.0.0"
-num-traits = "0.2.14"
-smallvec = "1.7"
-strsim = "0.11.1"
-sway-types = { version = "0.63.5", path = "../sway-types" }
-thiserror = "1.0"
-uwuify = { version = "^0.2", optional = true }
+either.workspace = true
+in_definite.workspace = true
+num-traits.workspace = true
+smallvec.workspace = true
+strsim.workspace = true
+sway-types.workspace = true
+thiserror.workspace = true
+uwuify = { workspace = true, optional = true }
 
 [features]
 default = []

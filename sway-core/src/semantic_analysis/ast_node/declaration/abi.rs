@@ -4,14 +4,17 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclEngineInsertArc, DeclId},
-    language::ty::TyAbiDecl,
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclEngineInsertArc,
+        DeclId,
+    },
+    language::ty::{TyAbiDecl, TyFunctionDecl},
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    TypeParameter,
+    Engines, TypeParameter,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -29,6 +32,33 @@ use crate::{
 };
 
 impl ty::TyAbiDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<AbiDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let abi_decl = engines.pe().get_abi(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            abi_decl.name.clone(),
+            Declaration::AbiDeclaration(*decl_id),
+        )?;
+
+        let _ = ctx.scoped(engines, abi_decl.span.clone(), |scoped_ctx| {
+            abi_decl.interface_surface.iter().for_each(|item| {
+                let _ = TyTraitItem::collect(handler, engines, scoped_ctx, item);
+            });
+
+            abi_decl.methods.iter().for_each(|decl_id| {
+                let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
+            });
+            Ok(())
+        });
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
@@ -55,7 +85,7 @@ impl ty::TyAbiDecl {
         // A temporary namespace for checking within this scope.
         ctx.with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
             .with_self_type(Some(self_type_id))
-            .scoped(|mut ctx| {
+            .scoped(handler, Some(span.clone()), |mut ctx| {
                 // Insert the "self" type param into the namespace.
                 self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
 

@@ -48,6 +48,7 @@ use sway_error::{
     warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
+use symbol_collection_context::SymbolCollectionContext;
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -135,6 +136,143 @@ impl ty::TyExpression {
             span,
         };
         Ok(exp)
+    }
+
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        expr: &Expression,
+    ) -> Result<(), ErrorEmitted> {
+        match &expr.kind {
+            ExpressionKind::Error(_, _) => {}
+            ExpressionKind::Literal(_) => {}
+            ExpressionKind::AmbiguousPathExpression(expr) => {
+                expr.args
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::FunctionApplication(expr) => {
+                expr.arguments
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::LazyOperator(expr) => {
+                Self::collect(handler, engines, ctx, &expr.lhs)?;
+                Self::collect(handler, engines, ctx, &expr.rhs)?;
+            }
+            ExpressionKind::AmbiguousVariableExpression(_) => {}
+            ExpressionKind::Variable(_) => {}
+            ExpressionKind::Tuple(exprs) => {
+                exprs
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::TupleIndex(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+            }
+            ExpressionKind::Array(expr) => {
+                expr.contents
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Struct(expr) => {
+                expr.fields
+                    .iter()
+                    .map(|field| Self::collect(handler, engines, ctx, &field.value))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::CodeBlock(code_block) => {
+                TyCodeBlock::collect(handler, engines, ctx, code_block)?
+            }
+            ExpressionKind::If(if_expr) => {
+                Self::collect(handler, engines, ctx, &if_expr.condition)?;
+                Self::collect(handler, engines, ctx, &if_expr.then)?;
+                if let Some(r#else) = &if_expr.r#else {
+                    Self::collect(handler, engines, ctx, r#else)?
+                }
+            }
+            ExpressionKind::Match(expr) => {
+                Self::collect(handler, engines, ctx, &expr.value)?;
+                expr.branches
+                    .iter()
+                    .map(|branch| {
+                        // create a new namespace for this branch result
+                        ctx.scoped(engines, branch.span.clone(), |scoped_ctx| {
+                            Self::collect(handler, engines, scoped_ctx, &branch.result)
+                        })
+                        .0
+                    })
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Asm(_) => {}
+            ExpressionKind::MethodApplication(expr) => {
+                expr.arguments
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Subfield(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+            }
+            ExpressionKind::DelineatedPath(expr) => {
+                if let Some(expr_args) = &expr.args {
+                    expr_args
+                        .iter()
+                        .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                        .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+                }
+            }
+            ExpressionKind::AbiCast(expr) => {
+                Self::collect(handler, engines, ctx, &expr.address)?;
+            }
+            ExpressionKind::ArrayIndex(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+                Self::collect(handler, engines, ctx, &expr.index)?;
+            }
+            ExpressionKind::StorageAccess(_) => {}
+            ExpressionKind::IntrinsicFunction(expr) => {
+                expr.arguments
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::WhileLoop(expr) => {
+                Self::collect(handler, engines, ctx, &expr.condition)?;
+                TyCodeBlock::collect(handler, engines, ctx, &expr.body)?
+            }
+            ExpressionKind::ForLoop(expr) => {
+                Self::collect(handler, engines, ctx, &expr.desugared)?;
+            }
+            ExpressionKind::Break => {}
+            ExpressionKind::Continue => {}
+            ExpressionKind::Reassignment(expr) => {
+                match &expr.lhs {
+                    ReassignmentTarget::ElementAccess(expr) => {
+                        Self::collect(handler, engines, ctx, expr)?;
+                    }
+                    ReassignmentTarget::Deref(expr) => {
+                        Self::collect(handler, engines, ctx, expr)?;
+                    }
+                }
+                Self::collect(handler, engines, ctx, &expr.rhs)?;
+            }
+            ExpressionKind::ImplicitReturn(expr) => Self::collect(handler, engines, ctx, expr)?,
+            ExpressionKind::Return(expr) => {
+                Self::collect(handler, engines, ctx, expr)?;
+            }
+            ExpressionKind::Ref(expr) => {
+                Self::collect(handler, engines, ctx, &expr.value)?;
+            }
+            ExpressionKind::Deref(expr) => {
+                Self::collect(handler, engines, ctx, expr)?;
+            }
+        }
+        Ok(())
     }
 
     pub(crate) fn type_check(
@@ -2761,6 +2899,7 @@ mod tests {
     use super::*;
     use crate::{Engines, ExperimentalFlags};
     use sway_error::type_error::TypeError;
+    use symbol_collection_context::SymbolCollectionContext;
 
     fn do_type_check(
         handler: &Handler,
@@ -2769,6 +2908,9 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let collection_ctx_ns = Namespace::new();
+        let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
+
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
         let mut root_module = namespace::Root::from(namespace::Module::new(
             root_module_name,
@@ -2776,8 +2918,13 @@ mod tests {
             None,
         ));
         let mut namespace = Namespace::init_root(&mut root_module);
-        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
-            .with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_namespace(
+            &mut namespace,
+            &mut collection_ctx,
+            engines,
+            experimental,
+        )
+        .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }
 
