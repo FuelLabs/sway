@@ -450,8 +450,8 @@ mod tests {
 
         let base_asset_id = AssetId::zeroed();
 
-        accounts_map.insert(0, address1.clone());
-        accounts_map.insert(1, address2.clone());
+        accounts_map.insert(0, address1);
+        accounts_map.insert(1, address2);
 
         let mut account_balances: AccountBalances = Vec::new();
         let mut balance1 = HashMap::new();
