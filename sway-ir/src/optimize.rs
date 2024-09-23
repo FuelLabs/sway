@@ -21,6 +21,8 @@ pub mod constants;
 pub use constants::*;
 pub mod conditional_constprop;
 pub use conditional_constprop::*;
+pub mod cse;
+pub use cse::*;
 pub mod dce;
 pub use dce::*;
 pub mod inline;
