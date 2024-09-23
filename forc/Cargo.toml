@@ -1,6 +1,6 @@
 [package]
 name = "forc"
-version = "0.63.6"
+version.workspace = true
 description = "Fuel Orchestrator."
 authors.workspace = true
 edition.workspace = true
@@ -17,35 +17,35 @@ name = "forc"
 path = "src/main.rs"
 
 [dependencies]
-annotate-snippets = { version = "0.10.1" }
-ansi_term = "0.12"
-anyhow = "1.0.41"
-clap = { version = "4.5.4", features = ["cargo", "derive", "env"] }
-clap_complete = "4.5.2"
-clap_complete_fig = "4.5.0"
-forc-pkg = { version = "0.63.6", path = "../forc-pkg" }
-forc-test = { version = "0.63.6", path = "../forc-test" }
-forc-tracing = { version = "0.63.6", path = "../forc-tracing" }
-forc-util = { version = "0.63.6", path = "../forc-util" }
-fs_extra = "1.2"
-fuel-asm = { workspace = true }
-hex = "0.4.3"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.73"
-sway-core = { version = "0.63.6", path = "../sway-core" }
-sway-error = { version = "0.63.6", path = "../sway-error" }
-sway-ir = { version = "0.63.6", path = "../sway-ir" }
-sway-types = { version = "0.63.6", path = "../sway-types" }
-sway-utils = { version = "0.63.6", path = "../sway-utils" }
-term-table = "1.3"
-tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread"] }
-toml = { version = "0.7", features = ["parse"] }
-toml_edit = "0.19"
-tracing = "0.1"
-url = "2.2"
-uwuify = { version = "^0.2", optional = true }
-walkdir = "2.3"
-whoami = "1.1"
+annotate-snippets.workspace = true
+ansi_term.workspace = true
+anyhow.workspace = true
+clap = { workspace = true, features = ["cargo", "derive", "env"] }
+clap_complete.workspace = true
+clap_complete_fig.workspace = true
+forc-pkg.workspace = true
+forc-test.workspace = true
+forc-tracing.workspace = true
+forc-util.workspace = true
+fs_extra.workspace = true
+fuel-asm.workspace = true
+hex.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sway-core.workspace = true
+sway-error.workspace = true
+sway-ir.workspace = true
+sway-types.workspace = true
+sway-utils.workspace = true
+term-table.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+toml = { workspace = true, features = ["parse"] }
+toml_edit.workspace = true
+tracing.workspace = true
+url.workspace = true
+uwuify = { workspace = true, optional = true }
+walkdir.workspace = true
+whoami.workspace = true
 
 [features]
 default = []

@@ -26,7 +26,7 @@ pub(crate) fn update_proxy_address_in_manifest(
     let mut toml = String::new();
     let mut file = File::open(manifest.path())?;
     file.read_to_string(&mut toml)?;
-    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
+    let mut manifest_toml = toml.parse::<toml_edit::DocumentMut>()?;
     if manifest.proxy().is_some() {
         manifest_toml["proxy"]["address"] = toml_edit::value(address);
         let mut file = std::fs::OpenOptions::new()

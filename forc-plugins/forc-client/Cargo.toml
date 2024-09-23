@@ -1,6 +1,6 @@
 [package]
 name = "forc-client"
-version = "0.63.6"
+version.workspace = true
 description = "A `forc` plugin for interacting with a Fuel node."
 authors.workspace = true
 edition.workspace = true
@@ -9,45 +9,44 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-anyhow = "1"
-async-trait = "0.1.58"
-chrono = { version = "0.4", default-features = false, features = ["std"] }
-clap = { version = "4.5.4", features = ["derive", "env"] }
-devault = "0.1"
-dialoguer = "0.11"
-forc = { version = "0.63.6", path = "../../forc" }
-forc-pkg = { version = "0.63.6", path = "../../forc-pkg" }
-forc-tracing = { version = "0.63.6", path = "../../forc-tracing" }
-forc-tx = { version = "0.63.6", path = "../forc-tx" }
-forc-util = { version = "0.63.6", path = "../../forc-util" }
-forc-wallet = { workspace = true }
-fuel-abi-types = { workspace = true }
+anyhow.workspace = true
+async-trait.workspace = true
+chrono = { workspace = true, features = ["std"] }
+clap = { workspace = true, features = ["derive", "env"] }
+devault.workspace = true
+dialoguer.workspace = true
+forc.workspace = true
+forc-pkg.workspace = true
+forc-tracing.workspace = true
+forc-tx.workspace = true
+forc-util.workspace = true
+forc-wallet.workspace = true
+fuel-abi-types.workspace = true
 fuel-core-client = { workspace = true, features = ["subscriptions"] }
-fuel-core-types = { workspace = true }
-fuel-crypto = { workspace = true }
+fuel-core-types.workspace = true
+fuel-crypto.workspace = true
 fuel-tx = { workspace = true, features = ["test-helpers"] }
-fuel-vm = { workspace = true }
-fuels = { workspace = true }
-fuels-accounts = { workspace = true }
-fuels-core = { workspace = true }
-futures = "0.3"
-hex = "0.4.3"
-rand = "0.8"
-rpassword = "7.2"
-serde = "1.0"
-serde_json = "1"
-sway-core = { version = "0.63.6", path = "../../sway-core" }
-sway-types = { version = "0.63.6", path = "../../sway-types" }
-sway-utils = { version = "0.63.6", path = "../../sway-utils" }
-tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
-toml_edit = "0.21.1"
-tracing = "0.1"
+fuel-vm.workspace = true
+fuels.workspace = true
+fuels-accounts.workspace = true
+fuels-core.workspace = true
+futures.workspace = true
+hex.workspace = true
+rand.workspace = true
+rpassword.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sway-core.workspace = true
+sway-types.workspace = true
+sway-utils.workspace = true
+tokio = { workspace = true, features = ["macros", "process", "rt-multi-thread"] }
+toml_edit.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 portpicker = "0.1.1"
 rexpect = "0.5"
 tempfile = "3"
-toml_edit = "0.21.1"
 
 [build-dependencies]
 regex = "1.5.4"
