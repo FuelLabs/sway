@@ -835,29 +835,30 @@ mod inputs {
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
-    
+
             // Prepare bytecode and subsections
             let bytecode = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
             let subsection_size = 65536;
             let subsections = UploadSubsection::split_bytecode(&bytecode, subsection_size).unwrap();
-    
+
             // Upload each sub section in a separate transaction and include the predicate with the transaction.
             for subsection in subsections.clone() {
                 let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
                     subsection,
                     TxPolicies::default(),
                 );
-    
+
                 // Prepare the predicate
                 let predicate_data = TestTxInputCountPredicateEncoder::default()
                     .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
                     .unwrap();
-                let predicate: Predicate = Predicate::load_from(TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH)
-                    .unwrap()
-                    .with_provider(provider.clone())
-                    .with_data(predicate_data);
+                let predicate: Predicate =
+                    Predicate::load_from(TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH)
+                        .unwrap()
+                        .with_provider(provider.clone())
+                        .with_data(predicate_data);
                 let predicate_coin_amount = 100;
-    
+
                 // Predicate has no funds
                 let predicate_balance = predicate
                     .get_asset_balance(&provider.base_asset_id())
@@ -873,7 +874,7 @@ mod inputs {
                     )
                     .await
                     .unwrap();
-    
+
                 // Predicate has funds
                 let predicate_balance = predicate
                     .get_asset_balance(&provider.base_asset_id())
@@ -883,33 +884,33 @@ mod inputs {
                     predicate_balance as usize,
                     predicate_coin_amount as usize * subsections.len()
                 );
-    
+
                 // Inputs for predicate
                 let predicate_input = predicate
                     .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
                     .await
                     .unwrap();
-    
+
                 // Outputs for predicate
                 let predicate_output = wallet.get_asset_outputs_for_amount(
                     &wallet.address(),
                     *provider.base_asset_id(),
                     1,
                 );
-    
+
                 // Append the predicate to the transaction
                 builder.inputs.push(predicate_input.get(0).unwrap().clone());
                 builder
                     .outputs
                     .push(predicate_output.get(0).unwrap().clone());
-    
+
                 wallet.add_witnesses(&mut builder).unwrap();
                 wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
-    
+
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
                 provider.send_transaction(tx).await.unwrap();
-    
+
                 // The predicate has spent it's funds
                 let predicate_balance = predicate
                     .get_asset_balance(&provider.base_asset_id())
@@ -1570,7 +1571,7 @@ mod outputs {
                 .unwrap();
             assert_eq!(result.value, None);
         }
-    
+
         #[tokio::test]
         async fn can_get_output_count_in_tx_upload() {
             // Prepare wallet and provider
@@ -1586,29 +1587,30 @@ mod outputs {
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
-    
+
             // Prepare bytecode and subsections
             let bytecode = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
             let subsection_size = 65536;
             let subsections = UploadSubsection::split_bytecode(&bytecode, subsection_size).unwrap();
-    
+
             // Upload each sub section in a separate transaction and include the predicate with the transaction.
             for subsection in subsections.clone() {
                 let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
                     subsection,
                     TxPolicies::default(),
                 );
-    
+
                 // Prepare the predicate
                 let predicate_data = TestTxOutputCountPredicateEncoder::default()
                     .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
                     .unwrap();
-                let predicate: Predicate = Predicate::load_from(TX_OUTPUT_COUNT_PREDICATE_BYTECODE_PATH)
-                    .unwrap()
-                    .with_provider(provider.clone())
-                    .with_data(predicate_data);
+                let predicate: Predicate =
+                    Predicate::load_from(TX_OUTPUT_COUNT_PREDICATE_BYTECODE_PATH)
+                        .unwrap()
+                        .with_provider(provider.clone())
+                        .with_data(predicate_data);
                 let predicate_coin_amount = 100;
-    
+
                 // Predicate has no funds
                 let predicate_balance = predicate
                     .get_asset_balance(&provider.base_asset_id())
@@ -1624,7 +1626,7 @@ mod outputs {
                     )
                     .await
                     .unwrap();
-    
+
                 // Predicate has funds
                 let predicate_balance = predicate
                     .get_asset_balance(&provider.base_asset_id())
@@ -1634,33 +1636,33 @@ mod outputs {
                     predicate_balance as usize,
                     predicate_coin_amount as usize * subsections.len()
                 );
-    
+
                 // Inputs for predicate
                 let predicate_input = predicate
                     .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
                     .await
                     .unwrap();
-    
+
                 // Outputs for predicate
                 let predicate_output = wallet.get_asset_outputs_for_amount(
                     &wallet.address(),
                     *provider.base_asset_id(),
                     1,
                 );
-    
+
                 // Append the predicate to the transaction
                 builder.inputs.push(predicate_input.get(0).unwrap().clone());
                 builder
                     .outputs
                     .push(predicate_output.get(0).unwrap().clone());
-    
+
                 wallet.add_witnesses(&mut builder).unwrap();
                 wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
-    
+
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
                 provider.send_transaction(tx).await.unwrap();
-    
+
                 // The predicate has spent it's funds
                 let predicate_balance = predicate
                     .get_asset_balance(&provider.base_asset_id())
