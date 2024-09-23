@@ -1,0 +1,29 @@
+// regex: ID=[[:alpha:]0-9]+
+// regex: VAR=v\d+
+
+script {
+    entry fn main(a: u64, b: u64) -> () {
+        entry(a: u64, b: u64):
+        // check: $(v5=$VAR) = add a, b
+        v5 = add a, b
+        v6 = const u64 0
+        br while(v6, v5)
+
+        while(v3: u64, v4: u64):
+        // check: cmp lt $VAR $v5
+        v8 = cmp lt v3 v4
+        cbr v8, while_body(), end_while()
+
+        while_body():
+        // check: $(v10=$VAR) = add a, b        
+        v10 = add a, b
+        v11 = const u64 1
+        v12 = add v3, v11
+        // check: br while($VAR, $v5)
+        br while(v12, v10)
+
+        end_while():
+        v14 = const unit ()
+        ret () v14
+    }
+}
