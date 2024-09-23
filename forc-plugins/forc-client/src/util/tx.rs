@@ -151,7 +151,7 @@ async fn collect_account_balances(
 ) -> Result<AccountBalances> {
     let accounts: Vec<_> = accounts_map
         .values()
-        .map(|addr| Wallet::from_address(addr.clone().into(), Some(provider.clone())))
+        .map(|addr| Wallet::from_address((*addr).into(), Some(provider.clone())))
         .collect();
 
     futures::future::try_join_all(accounts.iter().map(|acc| acc.get_balances()))
@@ -437,14 +437,16 @@ mod tests {
     fn test_format_base_asset_account_balances() {
         let mut accounts_map: AccountsMap = BTreeMap::new();
 
-        let address1 = Bech32Address::from_str(
+        let address1: fuel_tx::Address = Bech32Address::from_str(
             "fuel1dved7k25uxadatl7l5kql309jnw07dcn4t3a6x9hm9nxyjcpqqns50p7n2",
         )
-        .expect("address1");
-        let address2 = Bech32Address::from_str(
+        .expect("address1")
+        .into();
+        let address2: fuel_tx::Address = Bech32Address::from_str(
             "fuel1x9f3ysyk7fmey5ac23s2p4rwg4gjye2kke3nu3pvrs5p4qc4m4qqwx56k3",
         )
-        .expect("address2");
+        .expect("address2")
+        .into();
 
         let base_asset_id = AssetId::zeroed();
 
