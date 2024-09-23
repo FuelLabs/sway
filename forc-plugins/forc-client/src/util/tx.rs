@@ -64,7 +64,7 @@ fn ask_user_yes_no_question(question: &str) -> Result<bool> {
 fn collect_user_accounts(
     wallet_path: &Path,
     password: &str,
-) -> Result<BTreeMap<usize, Bech32Address>> {
+) -> Result<BTreeMap<usize, fuel_tx::Address>> {
     let verification = AccountVerification::Yes(password.to_string());
     let accounts = collect_accounts_with_verification(wallet_path, verification).map_err(|e| {
         if e.to_string().contains("Mac Mismatch") {
@@ -151,7 +151,7 @@ async fn collect_account_balances(
 ) -> Result<AccountBalances> {
     let accounts: Vec<_> = accounts_map
         .values()
-        .map(|addr| Wallet::from_address(addr.clone(), Some(provider.clone())))
+        .map(|addr| Wallet::from_address(addr.clone().into(), Some(provider.clone())))
         .collect();
 
     futures::future::try_join_all(accounts.iter().map(|acc| acc.get_balances()))
