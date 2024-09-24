@@ -47,7 +47,7 @@ pub fn main() {
                     insta.set_prepend_module_to_snapshot(false);
                     insta.set_omit_expression(true);
                     let scope = insta.bind_to_scope();
-                    insta::assert_snapshot!(snapshot);
+                    insta::assert_snapshot!("stdout", snapshot);
                     drop(scope);
                 }
                 stdout(&format!("../{root}"), &snapshot);
