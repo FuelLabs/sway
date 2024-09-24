@@ -268,8 +268,8 @@ pub async fn update_proxy_contract_target(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
-    use std::collections::HashMap;
+    use fuels::types::bech32::Bech32Address;
+    use std::collections::{BTreeMap, HashMap};
 
     #[test]
     fn test_format_base_asset_account_balances() {
