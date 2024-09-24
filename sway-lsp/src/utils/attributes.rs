@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::core::token::{AstToken, Token};
+use crate::core::token::{ParsedAstToken, Token};
 use sway_core::{language::parsed::Declaration, transform, Engines};
 
 pub fn attributes_map<F>(engines: &Engines, token: &Token, mut callback: F)
@@ -7,7 +7,7 @@ where
     F: FnMut(&transform::AttributesMap),
 {
     match &token.parsed {
-        AstToken::Declaration(declaration) => match declaration {
+        ParsedAstToken::Declaration(declaration) => match declaration {
             Declaration::EnumDeclaration(decl_id) => {
                 let decl = engines.pe().get_enum(decl_id);
                 callback(&decl.attributes);
@@ -34,13 +34,13 @@ where
             }
             _ => {}
         },
-        AstToken::StorageField(field) => callback(&field.attributes),
-        AstToken::StructField(field) => callback(&field.attributes),
-        AstToken::TraitFn(decl_id) => {
+        ParsedAstToken::StorageField(field) => callback(&field.attributes),
+        ParsedAstToken::StructField(field) => callback(&field.attributes),
+        ParsedAstToken::TraitFn(decl_id) => {
             let decl = engines.pe().get_trait_fn(decl_id);
             callback(&decl.attributes);
         }
-        AstToken::EnumVariant(variant) => callback(&variant.attributes),
+        ParsedAstToken::EnumVariant(variant) => callback(&variant.attributes),
         _ => {}
     }
 }

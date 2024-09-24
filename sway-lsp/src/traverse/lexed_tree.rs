@@ -1,5 +1,5 @@
 use crate::{
-    core::token::{AstToken, SymbolKind, Token},
+    core::token::{ParsedAstToken, SymbolKind, Token},
     traverse::{adaptive_iter, Parse, ParseContext},
 };
 use rayon::iter::{ParallelBridge, ParallelIterator};
@@ -59,7 +59,7 @@ fn insert_module_kind(ctx: &ParseContext, kind: &ModuleKind) {
 fn insert_program_type_keyword(ctx: &ParseContext, span: Span) {
     let ident = Ident::new(span);
     let token = Token::from_parsed(
-        AstToken::Keyword(ident.clone()),
+        ParsedAstToken::Keyword(ident.clone()),
         SymbolKind::ProgramTypeKeyword,
     );
     ctx.tokens.insert(ctx.ident(&ident), token);
@@ -67,7 +67,7 @@ fn insert_program_type_keyword(ctx: &ParseContext, span: Span) {
 
 fn insert_keyword(ctx: &ParseContext, span: Span) {
     let ident = Ident::new(span);
-    let token = Token::from_parsed(AstToken::Keyword(ident.clone()), SymbolKind::Keyword);
+    let token = Token::from_parsed(ParsedAstToken::Keyword(ident.clone()), SymbolKind::Keyword);
     ctx.tokens.insert(ctx.ident(&ident), token);
 }
 
