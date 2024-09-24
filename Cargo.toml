@@ -34,7 +34,7 @@ exclude = [
 
 [workspace.package]
 edition = "2021"
-version = "0.63.6"
+version = "0.64.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
