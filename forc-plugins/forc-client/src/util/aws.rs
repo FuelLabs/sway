@@ -14,12 +14,16 @@ use fuels_accounts::provider::Provider;
 use fuels_accounts::{Account, ViewOnlyAccount};
 use fuels_core::traits::Signer;
 
+/// AWS configuration for the `AwsSigner` to be created.
+/// De-facto way of creating the configuration is to load it from env.
 #[derive(Debug, Clone)]
 pub struct AwsConfig {
     sdk_config: SdkConfig,
 }
 
 impl AwsConfig {
+    /// Load configuration from environment variables.
+    /// For more details see: https://docs.rs/aws-config/latest/aws_config/
     pub async fn from_env() -> Self {
         let loader = aws_config::defaults(BehaviorVersion::latest())
             .credentials_provider(DefaultCredentialsChain::builder().build().await);
@@ -60,6 +64,7 @@ impl AwsConfig {
     }
 }
 
+/// A configured `AwsClient` which allows using the AWS KMS SDK.
 #[derive(Clone, Debug)]
 pub struct AwsClient {
     client: Client,
@@ -78,6 +83,10 @@ impl AwsClient {
     }
 }
 
+/// A signer which is capable of signing `fuel_crypto::Message`s using AWS KMS.
+/// This is both a `Signer` and `Account`, which means it is directly usable
+/// with most of the fuels-* calls, without any additional operations on the
+/// representation.
 #[derive(Clone, Debug)]
 pub struct AwsSigner {
     kms: AwsClient,
@@ -204,7 +213,7 @@ impl AwsSigner {
         sign_with_kms(self.kms.inner(), &key_id, &self.public_key_bytes, message).await
     }
 
-    /// Sign a digest with this signer's key
+    /// Sign a digest with this signer's key.
     pub async fn sign_message(
         &self,
         message: Message,
