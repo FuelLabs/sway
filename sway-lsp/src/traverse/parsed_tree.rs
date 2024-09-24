@@ -3,7 +3,8 @@
 use crate::{
     core::{
         token::{
-            desugared_op, type_info_to_symbol_kind, ParsedAstToken, SymbolKind, Token, TypeDefinition,
+            desugared_op, type_info_to_symbol_kind, ParsedAstToken, SymbolKind, Token,
+            TypeDefinition,
         },
         token_map::TokenMap,
     },
@@ -143,26 +144,38 @@ impl Parse for UseStatement {
         if let Some(alias) = &self.alias {
             ctx.tokens.insert(
                 ctx.ident(alias),
-                Token::from_parsed(ParsedAstToken::UseStatement(self.clone()), SymbolKind::Unknown),
+                Token::from_parsed(
+                    ParsedAstToken::UseStatement(self.clone()),
+                    SymbolKind::Unknown,
+                ),
             );
         }
         adaptive_iter(&self.call_path, |prefix| {
             ctx.tokens.insert(
                 ctx.ident(prefix),
-                Token::from_parsed(ParsedAstToken::UseStatement(self.clone()), SymbolKind::Module),
+                Token::from_parsed(
+                    ParsedAstToken::UseStatement(self.clone()),
+                    SymbolKind::Module,
+                ),
             );
         });
         match &self.import_type {
             ImportType::Item(item) => {
                 ctx.tokens.insert(
                     ctx.ident(item),
-                    Token::from_parsed(ParsedAstToken::UseStatement(self.clone()), SymbolKind::Unknown),
+                    Token::from_parsed(
+                        ParsedAstToken::UseStatement(self.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
             ImportType::SelfImport(span) => {
                 ctx.tokens.insert(
                     ctx.ident(&Ident::new(span.clone())),
-                    Token::from_parsed(ParsedAstToken::UseStatement(self.clone()), SymbolKind::Unknown),
+                    Token::from_parsed(
+                        ParsedAstToken::UseStatement(self.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
             ImportType::Star => {}
@@ -334,7 +347,10 @@ impl Parse for Expression {
                 adaptive_iter(field_names, |field_name| {
                     ctx.tokens.insert(
                         ctx.ident(field_name),
-                        Token::from_parsed(ParsedAstToken::Ident(field_name.clone()), SymbolKind::Field),
+                        Token::from_parsed(
+                            ParsedAstToken::Ident(field_name.clone()),
+                            SymbolKind::Field,
+                        ),
                     );
                 });
             }
@@ -402,7 +418,10 @@ impl Parse for AbiCastExpression {
         });
         ctx.tokens.insert(
             ctx.ident(&self.abi_name.suffix),
-            Token::from_parsed(ParsedAstToken::AbiCastExpression(self.clone()), SymbolKind::Trait),
+            Token::from_parsed(
+                ParsedAstToken::AbiCastExpression(self.clone()),
+                SymbolKind::Trait,
+            ),
         );
         self.address.parse(ctx);
     }
@@ -525,7 +544,10 @@ impl Parse for Scrutinee {
                 ctx.tokens.insert(
                     ctx.ident(name),
                     // it could either be a variable or a constant
-                    Token::from_parsed(ParsedAstToken::Scrutinee(self.clone()), SymbolKind::Unknown),
+                    Token::from_parsed(
+                        ParsedAstToken::Scrutinee(self.clone()),
+                        SymbolKind::Unknown,
+                    ),
                 );
             }
             Scrutinee::StructScrutinee {
@@ -534,8 +556,10 @@ impl Parse for Scrutinee {
                 ..
             } => {
                 adaptive_iter(&struct_name.prefixes, |ident| {
-                    let token =
-                        Token::from_parsed(ParsedAstToken::Ident(ident.clone()), SymbolKind::Struct);
+                    let token = Token::from_parsed(
+                        ParsedAstToken::Ident(ident.clone()),
+                        SymbolKind::Struct,
+                    );
                     ctx.tokens.insert(ctx.ident(ident), token);
                 });
                 ctx.tokens.insert(
@@ -553,13 +577,16 @@ impl Parse for Scrutinee {
                         Token::from_parsed(ParsedAstToken::Ident(ident.clone()), SymbolKind::Enum),
                     );
                 });
-                let token =
-                    Token::from_parsed(ParsedAstToken::Scrutinee(self.clone()), SymbolKind::Variant);
+                let token = Token::from_parsed(
+                    ParsedAstToken::Scrutinee(self.clone()),
+                    SymbolKind::Variant,
+                );
                 ctx.tokens.insert(ctx.ident(&call_path.suffix), token);
                 value.parse(ctx);
             }
             Scrutinee::AmbiguousSingleIdent(ident) => {
-                let token = Token::from_parsed(ParsedAstToken::Ident(ident.clone()), SymbolKind::Unknown);
+                let token =
+                    Token::from_parsed(ParsedAstToken::Ident(ident.clone()), SymbolKind::Unknown);
                 ctx.tokens.insert(ctx.ident(ident), token);
             }
             Scrutinee::Tuple { elems, .. } | Scrutinee::Or { elems, .. } => {
@@ -634,7 +661,10 @@ impl Parse for ArrayExpression {
             let ident = Ident::new(length_span.clone());
             ctx.tokens.insert(
                 ctx.ident(&ident),
-                Token::from_parsed(ParsedAstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
+                Token::from_parsed(
+                    ParsedAstToken::Ident(ident.clone()),
+                    SymbolKind::NumericLiteral,
+                ),
             );
         }
     }
@@ -924,7 +954,10 @@ impl Parse for StorageNamespace {
     fn parse(&self, ctx: &ParseContext) {
         ctx.tokens.insert(
             ctx.ident(&self.name),
-            Token::from_parsed(ParsedAstToken::StorageNamespace(self.clone()), SymbolKind::Field),
+            Token::from_parsed(
+                ParsedAstToken::StorageNamespace(self.clone()),
+                SymbolKind::Field,
+            ),
         );
         self.entries.iter().for_each(|entry| entry.parse(ctx));
     }
@@ -934,7 +967,10 @@ impl Parse for StorageField {
     fn parse(&self, ctx: &ParseContext) {
         ctx.tokens.insert(
             ctx.ident(&self.name),
-            Token::from_parsed(ParsedAstToken::StorageField(self.clone()), SymbolKind::Field),
+            Token::from_parsed(
+                ParsedAstToken::StorageField(self.clone()),
+                SymbolKind::Field,
+            ),
         );
         self.type_argument.parse(ctx);
         self.initializer.parse(ctx);
@@ -1011,7 +1047,10 @@ impl Parse for EnumVariant {
     fn parse(&self, ctx: &ParseContext) {
         ctx.tokens.insert(
             ctx.ident(&self.name),
-            Token::from_parsed(ParsedAstToken::EnumVariant(self.clone()), SymbolKind::Variant),
+            Token::from_parsed(
+                ParsedAstToken::EnumVariant(self.clone()),
+                SymbolKind::Variant,
+            ),
         );
         self.type_argument.parse(ctx);
         self.attributes.parse(ctx);
@@ -1038,7 +1077,10 @@ impl Parse for TypeArgument {
                 let ident = Ident::new(length.span());
                 ctx.tokens.insert(
                     ctx.ident(&ident),
-                    Token::from_parsed(ParsedAstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
+                    Token::from_parsed(
+                        ParsedAstToken::Ident(ident.clone()),
+                        SymbolKind::NumericLiteral,
+                    ),
                 );
                 type_arg.parse(ctx);
             }
@@ -1089,7 +1131,10 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             let ident = Ident::new(length.span());
             ctx.tokens.insert(
                 ctx.ident(&ident),
-                Token::from_parsed(ParsedAstToken::Ident(ident.clone()), SymbolKind::NumericLiteral),
+                Token::from_parsed(
+                    ParsedAstToken::Ident(ident.clone()),
+                    SymbolKind::NumericLiteral,
+                ),
             );
             type_arg.parse(ctx);
         }

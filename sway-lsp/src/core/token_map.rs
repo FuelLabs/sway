@@ -188,7 +188,8 @@ impl<'a> TokenMap {
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {
                     if functions_only == Some(true) {
-                        if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = &token.as_typed() {
+                        if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = &token.as_typed()
+                        {
                             return Some(entry);
                         }
                         return None;
