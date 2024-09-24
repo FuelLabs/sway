@@ -1,47 +1,97 @@
 #![allow(dead_code)]
-use crate::core::token::{ParsedAstToken, Token};
-use sway_core::{language::parsed::Declaration, transform, Engines};
+use crate::core::token::{ParsedAstToken, Token, TokenAstNode, TypedAstToken};
+use sway_core::{
+    language::{
+        parsed::Declaration,
+        ty,
+    },
+    transform, Engines,
+};
 
 pub fn attributes_map<F>(engines: &Engines, token: &Token, mut callback: F)
 where
     F: FnMut(&transform::AttributesMap),
 {
-    match &token.parsed {
-        ParsedAstToken::Declaration(declaration) => match declaration {
-            Declaration::EnumDeclaration(decl_id) => {
-                let decl = engines.pe().get_enum(decl_id);
-                callback(&decl.attributes);
+    // Get the attributes map from the typed token if it exists.
+    // Otherwise, get the attributes map from the parsed ast node.
+    match &token.ast_node {
+        TokenAstNode::Typed(typed_token) => match typed_token {
+            TypedAstToken::TypedDeclaration(decl) => match decl {
+                ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
+                    let enum_decl = engines.de().get_enum(decl_id);
+                    callback(&enum_decl.attributes);
+                }
+                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                    let struct_decl = engines.de().get_struct(decl_id);
+                    callback(&struct_decl.attributes);
+                }
+                ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. }) => {
+                    let storage_decl = engines.de().get_storage(decl_id);
+                    callback(&storage_decl.attributes);
+                }
+                ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
+                    let abi_decl = engines.de().get_abi(decl_id);
+                    callback(&abi_decl.attributes);
+                }
+                _ => {}
+            },
+            TypedAstToken::TypedFunctionDeclaration(fn_decl) => {
+                callback(&fn_decl.attributes);
             }
-            Declaration::FunctionDeclaration(decl_id) => {
-                let decl = engines.pe().get_function(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedConstantDeclaration(constant) => {
+                callback(&constant.attributes);
             }
-            Declaration::StructDeclaration(decl_id) => {
-                let decl = engines.pe().get_struct(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedStorageField(field) => {
+                callback(&field.attributes);
             }
-            Declaration::ConstantDeclaration(decl_id) => {
-                let decl = engines.pe().get_constant(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedStructField(field) => {
+                callback(&field.attributes);
             }
-            Declaration::StorageDeclaration(decl_id) => {
-                let decl = engines.pe().get_storage(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedTraitFn(trait_fn) => {
+                callback(&trait_fn.attributes);
             }
-            Declaration::AbiDeclaration(decl_id) => {
-                let decl = engines.pe().get_abi(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedEnumVariant(variant) => {
+                callback(&variant.attributes);
             }
             _ => {}
         },
-        ParsedAstToken::StorageField(field) => callback(&field.attributes),
-        ParsedAstToken::StructField(field) => callback(&field.attributes),
-        ParsedAstToken::TraitFn(decl_id) => {
-            let decl = engines.pe().get_trait_fn(decl_id);
-            callback(&decl.attributes);
-        }
-        ParsedAstToken::EnumVariant(variant) => callback(&variant.attributes),
-        _ => {}
+        TokenAstNode::Parsed(parsed_token) => match &parsed_token {
+            ParsedAstToken::Declaration(declaration) => match declaration {
+                Declaration::EnumDeclaration(decl_id) => {
+                    let decl = engines.pe().get_enum(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::FunctionDeclaration(decl_id) => {
+                    let decl = engines.pe().get_function(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::StructDeclaration(decl_id) => {
+                    let decl = engines.pe().get_struct(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::ConstantDeclaration(decl_id) => {
+                    let decl = engines.pe().get_constant(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::StorageDeclaration(decl_id) => {
+                    let decl = engines.pe().get_storage(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::AbiDeclaration(decl_id) => {
+                    let decl = engines.pe().get_abi(decl_id);
+                    callback(&decl.attributes);
+                }
+                _ => {}
+            },
+            ParsedAstToken::StorageField(field) => callback(&field.attributes),
+            ParsedAstToken::StructField(field) => callback(&field.attributes),
+            ParsedAstToken::TraitFn(decl_id) => {
+                let decl = engines.pe().get_trait_fn(decl_id);
+                callback(&decl.attributes);
+            }
+            ParsedAstToken::EnumVariant(variant) => callback(&variant.attributes),
+            _ => {}
+        },
     }
 }
 
