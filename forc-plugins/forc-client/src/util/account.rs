@@ -15,7 +15,7 @@ pub enum ForcClientAccount {
     /// generated through `forc-wallet` integration or manually by providing
     /// a private-key.
     Wallet(WalletUnlocked),
-    /// A KMS Signer specifically using AWS KMS service. The signing key is
+    /// A KMS Signer specifically using AWS KMS service. The signing key
     /// is managed by another entity for KMS signers. Messages are
     /// signed by the KMS entity. Signed transactions are retrieved
     /// and submitted to the node by `forc-client`.
