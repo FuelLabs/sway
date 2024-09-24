@@ -11,12 +11,14 @@ use super::aws::AwsSigner;
 #[derive(Clone, Debug)]
 /// Set of different signers available to be used with `forc-client` operations.
 pub enum ForcClientAccount {
-    /// Local signer, where the private key owned locally. This can be
-    /// generated through forc-wallet integration or manually by providing
+    /// Local signer where the private key owned locally. This can be
+    /// generated through `forc-wallet` integration or manually by providing
     /// a private-key.
     Wallet(WalletUnlocked),
-    /// A KMS Signer specifcally using AWS KMS service. The signing key is
-    /// is managed by another entity.
+    /// A KMS Signer specifically using AWS KMS service. The signing key is
+    /// is managed by another entity for KMS signers. Messages are
+    /// signed by the KMS entity. Signed transactions are retrieved
+    /// and submitted to the node by `forc-client`.
     KmsSigner(AwsSigner),
 }
 
