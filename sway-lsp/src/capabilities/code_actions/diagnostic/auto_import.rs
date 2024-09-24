@@ -43,7 +43,8 @@ pub(crate) fn import_code_action(
     ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
         if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().as_typed() {
             use_statements.push(use_stmt.clone());
-        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = &item.value().as_typed()
+        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) =
+            &item.value().as_typed()
         {
             include_statements.push(include_stmt.clone());
         } else if item.value().kind == SymbolKind::ProgramTypeKeyword {

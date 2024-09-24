@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 use crate::{
     core::token::{
-        type_info_to_symbol_kind, SymbolKind, Token, TokenAstNode, TokenIdent, TypeDefinition, TypedAstToken
+        type_info_to_symbol_kind, SymbolKind, Token, TokenAstNode, TokenIdent, TypeDefinition,
+        TypedAstToken,
     },
     traverse::{adaptive_iter, Parse, ParseContext},
 };
@@ -108,7 +109,9 @@ impl Parse for ty::TySideEffect {
             ) => {
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
                     if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
-                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(use_statement.clone()));
+                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
+                            use_statement.clone(),
+                        ));
 
                         if let Some(span) = ctx
                             .namespace
@@ -123,7 +126,9 @@ impl Parse for ty::TySideEffect {
                     ImportType::Item(item) => {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(item))
                         {
-                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(use_statement.clone()));
+                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
+                                use_statement.clone(),
+                            ));
                             let mut symbol_kind = SymbolKind::Unknown;
                             let mut type_def = None;
                             if let Some(decl_ident) = ctx
@@ -149,9 +154,9 @@ impl Parse for ty::TySideEffect {
                                 if let Some(mut token) =
                                     ctx.tokens.try_get_mut_with_retry(&ctx.ident(alias))
                                 {
-                                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
-                                        use_statement.clone(),
-                                    ));
+                                    token.ast_node = TokenAstNode::Typed(
+                                        TypedAstToken::TypedUseStatement(use_statement.clone()),
+                                    );
                                     token.kind = symbol_kind;
                                     token.type_def = type_def;
                                 }
@@ -163,8 +168,9 @@ impl Parse for ty::TySideEffect {
                             .tokens
                             .try_get_mut_with_retry(&ctx.ident(&Ident::new(span.clone())))
                         {
-                            token.ast_node =
-                            TokenAstNode::Typed(TypedAstToken::TypedUseStatement(use_statement.clone()));
+                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
+                                use_statement.clone(),
+                            ));
                             if let Some(span) = ctx
                                 .namespace
                                 .submodule(ctx.engines, call_path)
@@ -209,7 +215,8 @@ impl Parse for ty::TyExpression {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&Ident::new(self.span.clone())))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                 }
             }
             ty::TyExpressionVariant::FunctionApplication {
@@ -236,7 +243,9 @@ impl Parse for ty::TyExpression {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(last))
                         {
                             if let Some(call_path_typeid) = call_path_typeid {
-                                token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(impl_type_name.clone()));
+                                token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(
+                                    impl_type_name.clone(),
+                                ));
                                 token.type_def = Some(TypeDefinition::TypeId(*call_path_typeid));
                             }
                         }
@@ -252,7 +261,8 @@ impl Parse for ty::TyExpression {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&call_path.suffix))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     let function_decl = ctx.engines.de().get_function(fn_ref);
                     token.type_def = Some(TypeDefinition::Ident(function_decl.name.clone()));
                 }
@@ -305,7 +315,8 @@ impl Parse for ty::TyExpression {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&Ident::new(span.clone())))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(name.clone()));
                 }
             }
@@ -331,7 +342,8 @@ impl Parse for ty::TyExpression {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&call_path_binding.inner.suffix))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(self.return_type));
                 }
                 adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
@@ -342,7 +354,9 @@ impl Parse for ty::TyExpression {
                     if let Some(mut token) =
                         ctx.tokens.try_get_mut_with_retry(&ctx.ident(&field.name))
                     {
-                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(field.value.clone()));
+                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(
+                            field.value.clone(),
+                        ));
                         if let Some(struct_decl) = &ctx
                             .tokens
                             .struct_declaration_of_type_id(ctx.engines, &self.return_type)
@@ -400,7 +414,8 @@ impl Parse for ty::TyExpression {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(
                     &ctx.ident(&Ident::new(field_instantiation_span.clone())),
                 ) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
                 }
             }
@@ -414,7 +429,8 @@ impl Parse for ty::TyExpression {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&Ident::new(elem_to_access_span.clone())))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                 }
             }
             ty::TyExpressionVariant::EnumInstantiation {
@@ -429,7 +445,8 @@ impl Parse for ty::TyExpression {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&call_path_binding.inner.suffix))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                 }
                 adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
@@ -439,7 +456,8 @@ impl Parse for ty::TyExpression {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(
                     &ctx.ident(&Ident::new(variant_instantiation_span.clone())),
                 ) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(variant_name.clone()));
                 }
                 if let Some(contents) = contents.as_deref() {
@@ -454,7 +472,8 @@ impl Parse for ty::TyExpression {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&abi_name.suffix))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .submodule(ctx.engines, &abi_name.prefixes)
@@ -471,7 +490,9 @@ impl Parse for ty::TyExpression {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(
                     &ctx.ident(&Ident::new(storage_access.storage_keyword_span.clone())),
                 ) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedStorageAccess(storage_access.clone()));
+                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedStorageAccess(
+                        storage_access.clone(),
+                    ));
                     if let Some(storage) = ctx
                         .namespace
                         .current_items()
@@ -487,9 +508,9 @@ impl Parse for ty::TyExpression {
                         .tokens
                         .try_get_mut_with_retry(&ctx.ident(&head_field.name))
                     {
-                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedStorageAccessDescriptor(
-                            head_field.clone(),
-                        ));
+                        token.ast_node = TokenAstNode::Typed(
+                            TypedAstToken::TypedStorageAccessDescriptor(head_field.clone()),
+                        );
                         if let Some(storage_field) = ctx
                             .namespace
                             .current_items()
@@ -513,7 +534,8 @@ impl Parse for ty::TyExpression {
                             if let Some(mut token) =
                                 ctx.tokens.try_get_mut_with_retry(&ctx.ident(&field.name))
                             {
-                                token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(field.name.clone()));
+                                token.ast_node =
+                                    TokenAstNode::Typed(TypedAstToken::Ident(field.name.clone()));
                                 match &*ctx.engines.te().get(container_type_id) {
                                     TypeInfo::Struct(decl_ref) => {
                                         if let Some(field_name) = ctx
@@ -556,7 +578,8 @@ impl Parse for ty::TyExpression {
                 if let Some(mut token) =
                     ctx.tokens.try_get_mut_with_retry(&ctx.ident(&variant.name))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                 }
             }
             ty::TyExpressionVariant::WhileLoop {
@@ -585,9 +608,9 @@ impl Parse for ty::TyExpression {
 impl Parse for ty::TyVariableDecl {
     fn parse(&self, ctx: &ParseContext) {
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&self.name)) {
-            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(ty::TyDecl::VariableDecl(
-                Box::new(self.clone()),
-            )));
+            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(
+                ty::TyDecl::VariableDecl(Box::new(self.clone())),
+            ));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         if let Some(call_path_tree) = &self.type_ascription.call_path_tree {
@@ -666,9 +689,9 @@ impl Parse for ty::TraitDecl {
             .tokens
             .try_get_mut_with_retry(&ctx.ident(&trait_decl.name))
         {
-            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(ty::TyDecl::TraitDecl(
-                self.clone(),
-            )));
+            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(
+                ty::TyDecl::TraitDecl(self.clone()),
+            ));
             token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
         }
         adaptive_iter(&trait_decl.interface_surface, |item| match item {
@@ -698,9 +721,9 @@ impl Parse for ty::StructDecl {
             .tokens
             .try_get_mut_with_retry(&ctx.ident(&struct_decl.call_path.suffix))
         {
-            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(ty::TyDecl::StructDecl(
-                self.clone(),
-            )));
+            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(
+                ty::TyDecl::StructDecl(self.clone()),
+            ));
             token.type_def = Some(TypeDefinition::Ident(struct_decl.call_path.suffix.clone()));
         }
         adaptive_iter(&struct_decl.fields, |field| {
@@ -711,7 +734,8 @@ impl Parse for ty::StructDecl {
                 .tokens
                 .try_get_mut_with_retry(&ctx.ident(&type_param.name_ident))
             {
-                token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedParameter(type_param.clone()));
+                token.ast_node =
+                    TokenAstNode::Typed(TypedAstToken::TypedParameter(type_param.clone()));
                 token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
             }
         });
@@ -815,9 +839,9 @@ impl Parse for ty::AbiDecl {
             .tokens
             .try_get_mut_with_retry(&ctx.ident(&abi_decl.name))
         {
-            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(ty::TyDecl::AbiDecl(
-                self.clone(),
-            )));
+            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(
+                ty::TyDecl::AbiDecl(self.clone()),
+            ));
             token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
         }
         adaptive_iter(&abi_decl.interface_surface, |item| match item {
@@ -856,7 +880,8 @@ impl Parse for ty::StorageDecl {
         let storage_decl = ctx.engines.de().get_storage(&self.decl_id);
         adaptive_iter(&storage_decl.fields, |field| {
             if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&field.name)) {
-                token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedStorageField(field.clone()));
+                token.ast_node =
+                    TokenAstNode::Typed(TypedAstToken::TypedStorageField(field.clone()));
                 token.type_def = Some(TypeDefinition::Ident(field.name.clone()));
             }
             collect_type_argument(ctx, &field.type_argument);
@@ -959,7 +984,8 @@ impl Parse for ty::TyFunctionDecl {
 impl Parse for ty::TyTypeAliasDecl {
     fn parse(&self, ctx: &ParseContext) {
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&self.name)) {
-            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedTypeAliasDeclaration(self.clone()));
+            token.ast_node =
+                TokenAstNode::Typed(TypedAstToken::TypedTypeAliasDeclaration(self.clone()));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         collect_type_argument(ctx, &self.ty);
@@ -986,7 +1012,8 @@ impl Parse for ty::TyScrutinee {
             CatchAll => {}
             Constant(name, _, decl) => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
                 }
             }
@@ -995,12 +1022,14 @@ impl Parse for ty::TyScrutinee {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&Ident::new(self.span.clone())))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
                 }
             }
             Variable(ident) => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
                 }
             }
             StructScrutinee {
@@ -1012,7 +1041,8 @@ impl Parse for ty::TyScrutinee {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&instantiation_call_path.suffix))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(struct_ref.name().clone()));
                 }
                 adaptive_iter(fields, |field| field.parse(ctx));
@@ -1029,7 +1059,8 @@ impl Parse for ty::TyScrutinee {
                 {
                     // the last prefix of the call path is not a module but a type
                     if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(last)) {
-                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
+                        token.ast_node =
+                            TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
                         token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                     }
                     prefixes
@@ -1041,7 +1072,8 @@ impl Parse for ty::TyScrutinee {
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&instantiation_call_path.suffix))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(variant.name.clone()));
                 }
                 value.parse(ctx);
@@ -1056,7 +1088,8 @@ impl Parse for ty::TyScrutinee {
 impl Parse for ty::TyStructScrutineeField {
     fn parse(&self, ctx: &ParseContext) {
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&self.field)) {
-            token.ast_node = TokenAstNode::Typed(TypedAstToken::TyStructScrutineeField(self.clone()));
+            token.ast_node =
+                TokenAstNode::Typed(TypedAstToken::TyStructScrutineeField(self.clone()));
             token.type_def = Some(TypeDefinition::Ident(self.field_def_name.clone()));
         }
         if let Some(scrutinee) = &self.scrutinee {
@@ -1076,13 +1109,15 @@ impl Parse for ty::TyReassignment {
                 indices,
             } => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(base_name)) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
                 }
                 adaptive_iter(indices, |proj_kind| {
                     if let ty::ProjectionKind::StructField { name } = proj_kind {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
                         {
-                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
+                            token.ast_node =
+                                TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
                             if let Some(struct_decl) = &ctx
                                 .tokens
                                 .struct_declaration_of_type_id(ctx.engines, base_type)
@@ -1173,7 +1208,8 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&abi_call_path.call_path.suffix))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedArgument(type_arg.clone()));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedArgument(type_arg.clone()));
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .submodule(ctx.engines, &abi_call_path.call_path.prefixes)
@@ -1214,7 +1250,8 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
     let key = ctx.ident(ident.unwrap_or(const_decl.name()));
 
     if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&key) {
-        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
+        token.ast_node =
+            TokenAstNode::Typed(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
     }
     if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree {
@@ -1233,7 +1270,8 @@ fn collect_configurable_decl(
     let key = ctx.ident(ident.unwrap_or(decl.name()));
 
     if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&key) {
-        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedConfigurableDeclaration(decl.clone()));
+        token.ast_node =
+            TokenAstNode::Typed(TypedAstToken::TypedConfigurableDeclaration(decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
     }
     if let Some(call_path_tree) = &decl.type_ascription.call_path_tree {
@@ -1249,7 +1287,8 @@ fn collect_trait_type_decl(ctx: &ParseContext, type_decl: &ty::TyTraitType, span
         .tokens
         .try_get_mut_with_retry(&ctx.ident(&Ident::new(span.clone())))
     {
-        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedTraitTypeDeclaration(type_decl.clone()));
+        token.ast_node =
+            TokenAstNode::Typed(TypedAstToken::TypedTraitTypeDeclaration(type_decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(type_decl.name.clone()));
     }
     if let Some(ty) = &type_decl.ty {
