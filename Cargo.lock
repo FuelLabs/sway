@@ -2218,7 +2218,6 @@ dependencies = [
  "serde_with",
  "sway-core",
  "sway-error",
- "sway-ir",
  "sway-types",
  "sway-utils",
  "sysinfo",

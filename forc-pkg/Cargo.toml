@@ -41,7 +41,6 @@ tracing = "0.1"
 url = { version = "2.2", features = ["serde"] }
 vec1 = "1.8.0"
 walkdir = "2"
-sway-ir = { version = "0.63.6", path = "../sway-ir", optional = true }
 
 [dev-dependencies]
 regex = "^1.10.2"
@@ -50,4 +49,4 @@ regex = "^1.10.2"
 sysinfo = "0.29"
 
 [features]
-profiler = ["dep:sway-ir"]
+profiler = []
