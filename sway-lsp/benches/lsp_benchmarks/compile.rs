@@ -1,6 +1,7 @@
 use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
 use std::sync::Arc;
-use sway_core::{Engines, ExperimentalFlags};
+use sway_core::Engines;
+use sway_features::ExperimentalFeatures;
 use sway_lsp::core::session;
 use tokio::runtime::Runtime;
 
@@ -21,9 +22,7 @@ fn benchmarks(c: &mut Criterion) {
         file_versions: Default::default(),
     });
 
-    let experimental = ExperimentalFlags {
-        new_encoding: false,
-    };
+    let experimental = ExperimentalFeatures::default();
 
     c.bench_function("compile", |b| {
         b.iter(|| {
