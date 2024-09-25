@@ -7,7 +7,7 @@ use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
 use sway_types::{LineCol, LineColRange, SourceEngine, Spanned};
 
-pub(crate) type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
+pub type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
 
 #[derive(Debug, Default, Clone)]
 pub struct Diagnostics {

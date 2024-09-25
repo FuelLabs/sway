@@ -38,6 +38,8 @@ pub trait Runnable: core::fmt::Debug + Send + Sync + 'static {
     fn arguments(&self) -> Option<Vec<Value>>;
     /// The range in the file where the runnable button should be displayed.
     fn range(&self) -> &Range;
+    /// Clone the runnable.
+    fn clone_box(&self) -> Box<dyn Runnable>;
 }
 
 impl Runnable for RunnableMainFn {
@@ -52,6 +54,9 @@ impl Runnable for RunnableMainFn {
     }
     fn range(&self) -> &Range {
         &self.range
+    }
+    fn clone_box(&self) -> Box<dyn Runnable> {
+        Box::new(self.clone())
     }
 }
 
@@ -69,5 +74,8 @@ impl Runnable for RunnableTestFn {
     }
     fn range(&self) -> &Range {
         &self.range
+    }
+    fn clone_box(&self) -> Box<dyn Runnable> {
+        Box::new(self.clone())
     }
 }

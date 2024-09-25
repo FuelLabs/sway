@@ -25,7 +25,7 @@ use sway_utils::{
 use tempfile::Builder;
 use tokio::task::JoinHandle;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
     Manifest,
     Temp,
@@ -37,10 +37,19 @@ pub struct SyncWorkspace {
     pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
 }
 
+impl Clone for SyncWorkspace {
+    fn clone(&self) -> Self {
+        Self {
+            directories: self.directories.clone(),
+            notify_join_handle: RwLock::new(self.notify_join_handle.write().take()), 
+        }
+    }
+}
+
 impl SyncWorkspace {
     pub const LSP_TEMP_PREFIX: &'static str = "SWAY_LSP_TEMP_DIR";
 
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             directories: DashMap::new(),
             notify_join_handle: RwLock::new(None),

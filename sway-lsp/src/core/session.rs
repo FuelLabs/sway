@@ -49,7 +49,7 @@ use sway_utils::{helpers::get_sway_files, PerformanceData};
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
@@ -62,7 +62,7 @@ pub struct CompiledProgram {
 /// The API provides methods for responding to LSP requests from the server.
 #[derive(Debug)]
 pub struct Session {
-    token_map: TokenMap,
+    pub token_map: TokenMap,
     pub runnables: RunnableMap,
     pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
@@ -72,6 +72,34 @@ pub struct Session {
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
     pub metrics: DashMap<ProgramId, PerformanceData>,
 }
+
+impl Clone for Session {
+    fn clone(&self) -> Self {
+        let clone_runnables = |runnables: &DashMap<PathBuf, Vec<Box<dyn Runnable>>>| {
+            let new_map = DashMap::new();
+            for entry in runnables.iter() {
+                let key = entry.key().clone();
+                let value = entry.value()
+                    .iter()
+                    .map(|runnable| runnable.clone_box())
+                    .collect();
+                new_map.insert(key, value);
+            }
+            new_map
+        };
+        Self {
+            token_map: self.token_map.clone(),
+            runnables: clone_runnables(&self.runnables), 
+            build_plan_cache: self.build_plan_cache.clone(),
+            compiled_program: RwLock::new(self.compiled_program.read().clone()),
+            engines: RwLock::new(self.engines.read().clone()),
+            sync: self.sync.clone(),
+            diagnostics: self.diagnostics.clone(),
+            metrics: self.metrics.clone(),
+        }
+    }
+}
+
 
 impl Default for Session {
     fn default() -> Self {
