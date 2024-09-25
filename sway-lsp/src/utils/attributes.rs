@@ -1,10 +1,7 @@
 #![allow(dead_code)]
 use crate::core::token::{ParsedAstToken, Token, TokenAstNode, TypedAstToken};
 use sway_core::{
-    language::{
-        parsed::Declaration,
-        ty,
-    },
+    language::{parsed::Declaration, ty},
     transform, Engines,
 };
 
