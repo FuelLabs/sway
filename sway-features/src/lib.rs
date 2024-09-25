@@ -97,7 +97,7 @@ impl ExperimentalFeatures {
         features: impl AsRef<str>,
         enabled: bool,
     ) -> Result<(), Error> {
-        for feature in features.as_ref().split(",") {
+        for feature in features.as_ref().split(',') {
             self.set_enabled(feature, enabled)?;
         }
         Ok(())
