@@ -12,7 +12,6 @@ use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
 use fuels_core::codec::ABIDecoder;
 use fuels_core::types::param_types::ParamType;
-use pkg::manifest::build_profile::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
@@ -20,6 +19,7 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::asm_generation::ProgramABI;
 use sway_core::BuildTarget;
+use sway_features::ExperimentalFeatures;
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
@@ -155,7 +155,7 @@ pub struct TestOpts {
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
     /// Set of experimental flags
-    pub experimental: ExperimentalFlags,
+    pub experimental: ExperimentalFeatures,
 }
 
 /// The set of options provided for controlling logs printed for each test.

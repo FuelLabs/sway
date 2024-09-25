@@ -13,10 +13,10 @@ use sway_core::{
 };
 use sway_error::handler::Handler;
 
+use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    create_fn_inline_pass, register_known_passes, ExperimentalFlags, PassGroup, PassManager,
-    ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
-    RET_DEMOTION_NAME,
+    create_fn_inline_pass, register_known_passes, PassGroup, PassManager, ARG_DEMOTION_NAME,
+    CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
 };
 
 enum Checker {
@@ -166,10 +166,10 @@ fn pretty_print_error_report(error: &str) {
 pub(super) async fn run(
     filter_regex: Option<&regex::Regex>,
     verbose: bool,
-    mut experimental: ExperimentalFlags,
+    mut experimental: ExperimentalFeatures,
 ) -> Result<()> {
     // TODO the way modules are built for these tests, new_encoding is not working.
-    experimental.new_encoding = false;
+    experimental.encoding_v1 = false;
 
     // Create new initial namespace for every test by reusing the precompiled
     // standard libraries. The namespace, thus its root module, must have the
@@ -229,8 +229,9 @@ pub(super) async fn run(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
-                ).with_experimental(sway_core::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding,
+                ).with_experimental(ExperimentalFeatures {
+                    encoding_v1: experimental.encoding_v1,
+                    ..Default::default()
                 });
 
                 // Include unit tests in the build.
@@ -274,8 +275,9 @@ pub(super) async fn run(
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(typed_program, include_tests, &engines, sway_core::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding,
+                let mut ir = compile_program(typed_program, include_tests, &engines, ExperimentalFeatures {
+                    encoding_v1: experimental.encoding_v1,
+                    ..Default::default()
                 })
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
@@ -372,8 +374,9 @@ pub(super) async fn run(
                             let mut ir = sway_ir::parser::parse(
                                 &ir_output,
                                  engines.se(),
-                                 sway_ir::ExperimentalFlags {
-                                    new_encoding: experimental.new_encoding,
+                                 sway_features::ExperimentalFeatures {
+                                    encoding_v1: experimental.encoding_v1,
+                                    ..Default::default()
                                 }
                                 )
                                 .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
@@ -469,8 +472,9 @@ pub(super) async fn run(
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
-                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), sway_ir::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding,
+                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), sway_features::ExperimentalFeatures {
+                    encoding_v1: experimental.encoding_v1,
+                    ..Default::default()
                 })
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
@@ -530,7 +534,7 @@ fn compile_core(
     lib_name: sway_types::Ident,
     build_target: BuildTarget,
     engines: &Engines,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
@@ -543,7 +547,7 @@ fn compile_core(
         disable_tests: false,
         locked: false,
         ipfs_node: None,
-        no_encoding_v1: !experimental.new_encoding,
+        no_encoding_v1: !experimental.encoding_v1,
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {

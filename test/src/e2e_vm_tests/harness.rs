@@ -5,9 +5,7 @@ use forc_client::{
     op::{deploy, run, DeployedPackage},
     NodeTarget,
 };
-use forc_pkg::{
-    manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage, PrintOpts,
-};
+use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
@@ -82,7 +80,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
-        no_encoding_v1: !run_config.experimental.new_encoding,
+        no_encoding_v1: !run_config.experimental.encoding_v1,
         ..Default::default()
     })
     .await?;
@@ -132,7 +130,7 @@ pub(crate) async fn runs_on_node(
             },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
-            no_encoding_v1: !run_config.experimental.new_encoding,
+            no_encoding_v1: !run_config.experimental.encoding_v1,
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {
@@ -284,9 +282,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             ..Default::default()
         },
-        experimental: ExperimentalFlags {
-            new_encoding: run_config.experimental.new_encoding,
-        },
+        experimental: run_config.experimental,
         ..Default::default()
     };
     match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
@@ -329,9 +325,7 @@ pub(crate) async fn compile_and_run_unit_tests(
                     terse: !(capture_output || run_config.verbose),
                     ..Default::default()
                 },
-                experimental: ExperimentalFlags {
-                    new_encoding: run_config.experimental.new_encoding,
-                },
+                experimental: run_config.experimental,
                 ..Default::default()
             })
         }) {

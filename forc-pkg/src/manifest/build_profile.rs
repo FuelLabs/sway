@@ -1,11 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sway_core::{OptLevel, PrintAsm, PrintIr};
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
-#[serde(rename_all = "kebab-case")]
-pub struct ExperimentalFlags {
-    pub new_encoding: bool,
-}
+use sway_features::ExperimentalFeatures;
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -39,8 +34,25 @@ pub struct BuildProfile {
     pub reverse_results: bool,
     #[serde(default)]
     pub optimization_level: OptLevel,
-    #[serde(default)]
-    pub experimental: ExperimentalFlags,
+    #[serde(
+        serialize_with = "serialize_experimental_features",
+        deserialize_with = "deserialize_experimental_features"
+    )]
+    pub experimental: ExperimentalFeatures,
+}
+
+fn serialize_experimental_features<S>(_: &ExperimentalFeatures, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    todo!()
+}
+
+fn deserialize_experimental_features<'de, D>(data: D) -> Result<ExperimentalFeatures, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    todo!("")
 }
 
 impl BuildProfile {
@@ -65,9 +77,7 @@ impl BuildProfile {
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags {
-                new_encoding: false,
-            },
+            experimental: ExperimentalFeatures::default(),
         }
     }
 
@@ -88,9 +98,7 @@ impl BuildProfile {
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt1,
-            experimental: ExperimentalFlags {
-                new_encoding: false,
-            },
+            experimental: ExperimentalFeatures::default(),
         }
     }
 }
@@ -104,8 +112,9 @@ impl Default for BuildProfile {
 #[cfg(test)]
 mod tests {
     use sway_core::{OptLevel, PrintAsm, PrintIr};
+    use sway_features::ExperimentalFeatures;
 
-    use crate::{manifest::build_profile::ExperimentalFlags, BuildProfile, PackageManifest};
+    use crate::{BuildProfile, PackageManifest};
 
     #[test]
     fn test_build_profiles() {
@@ -160,7 +169,7 @@ mod tests {
             error_on_warnings: true,
             reverse_results: true,
             optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags { new_encoding: true },
+            experimental: ExperimentalFeatures::default().with_encoding_v1(true),
         };
         let profile = build_profiles.get("release").expect("release profile");
         assert_eq!(*profile, expected);

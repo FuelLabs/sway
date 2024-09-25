@@ -49,12 +49,7 @@ impl TyProgram {
         package_name: &str,
         build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
-        let experimental =
-            build_config
-                .map(|x| x.experimental)
-                .unwrap_or(crate::ExperimentalFlags {
-                    new_encoding: false,
-                });
+        let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
 
         let mut ctx =
             TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)

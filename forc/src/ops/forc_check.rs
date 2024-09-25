@@ -4,8 +4,9 @@ use forc_pkg as pkg;
 use forc_pkg::manifest::GenericManifestFile;
 use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
-use sway_core::{language::ty, Engines, ExperimentalFlags};
+use sway_core::{language::ty, Engines};
 use sway_error::handler::Handler;
+use sway_features::ExperimentalFeatures;
 
 pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyProgram>, Handler)> {
     let CheckCommand {
@@ -44,8 +45,9 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         tests_enabled,
         engines,
         None,
-        ExperimentalFlags {
-            new_encoding: !no_encoding_v1,
+        ExperimentalFeatures {
+            encoding_v1: !no_encoding_v1,
+            ..Default::default()
         },
     )?;
     let (res, handler) = v

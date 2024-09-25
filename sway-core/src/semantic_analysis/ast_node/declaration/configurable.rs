@@ -81,7 +81,7 @@ impl ty::TyConfigurableDecl {
         }
 
         // Configurables using encoding v1 will be encoded and must be type_checked into "slice"
-        let (value, decode_fn) = if ctx.experimental.new_encoding {
+        let (value, decode_fn) = if ctx.experimental.encoding_v1 {
             let mut ctx = ctx
                 .by_ref()
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::RawUntypedSlice, None))

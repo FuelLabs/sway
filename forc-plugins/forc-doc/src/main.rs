@@ -8,6 +8,7 @@ use std::{
     process::Command as Process,
     {fs, path::PathBuf},
 };
+use sway_features::ExperimentalFeatures;
 
 pub fn main() -> Result<()> {
     let build_instructions = Command::parse();
@@ -15,8 +16,9 @@ pub fn main() -> Result<()> {
     let (doc_path, pkg_manifest) = compile_html(
         &build_instructions,
         &get_doc_dir,
-        sway_core::ExperimentalFlags {
-            new_encoding: !build_instructions.no_encoding_v1,
+        ExperimentalFeatures {
+            encoding_v1: !build_instructions.no_encoding_v1,
+            ..Default::default()
         },
     )?;
 

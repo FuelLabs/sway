@@ -282,7 +282,7 @@ impl TestContext {
     ) -> Result<ContractId> {
         let key = DeployedContractKey {
             contract_path: contract_path.clone(),
-            new_encoding: run_config.experimental.new_encoding,
+            new_encoding: run_config.experimental.encoding_v1,
         };
 
         let mut deployed_contracts = self.deployed_contracts.lock().await;
@@ -316,13 +316,13 @@ impl TestContext {
 
         let checker = checker.build().unwrap();
 
-        let script_data = if run_config.experimental.new_encoding {
+        let script_data = if run_config.experimental.encoding_v1 {
             script_data_new_encoding
         } else {
             script_data
         };
 
-        let expected_result = if run_config.experimental.new_encoding {
+        let expected_result = if run_config.experimental.encoding_v1 {
             expected_result_new_encoding
         } else {
             expected_result
@@ -438,7 +438,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 &name,
                                 &compiled,
-                                run_config.experimental.new_encoding,
+                                run_config.experimental.encoding_v1,
                                 run_config.update_output_files,
                             )
                         })
@@ -484,7 +484,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 name,
                                 built_pkg,
-                                run_config.experimental.new_encoding,
+                                run_config.experimental.encoding_v1,
                                 run_config.update_output_files,
                             )
                         })
@@ -944,7 +944,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     // if new encoding is on, allow a "category_new_encoding"
     // for tests that should have different categories
-    let category = if run_config.experimental.new_encoding {
+    let category = if run_config.experimental.encoding_v1 {
         toml_content
             .get("category_new_encoding")
             .or_else(|| toml_content.get("category"))
@@ -1158,7 +1158,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     Ok(TestDescription {
         name,
-        suffix: if run_config.experimental.new_encoding {
+        suffix: if run_config.experimental.encoding_v1 {
             None
         } else {
             Some("encoding v0".into())

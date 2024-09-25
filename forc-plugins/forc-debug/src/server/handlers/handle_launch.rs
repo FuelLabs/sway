@@ -6,6 +6,7 @@ use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;
 use std::{collections::HashMap, sync::Arc};
+use sway_features::ExperimentalFeatures;
 use sway_types::LineCol;
 
 impl DapServer {
@@ -54,9 +55,7 @@ impl DapServer {
             }
         }
 
-        let experimental = sway_core::ExperimentalFlags {
-            new_encoding: false,
-        };
+        let experimental = ExperimentalFeatures::default();
 
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)

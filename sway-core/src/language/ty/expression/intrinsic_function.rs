@@ -114,7 +114,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
 
         match self.kind {
             Intrinsic::Log => {
-                let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
+                let logged_type = self.get_logged_type(ctx.experimental.encoding_v1).unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(logged_type.get_abi_type_str(
                         &AbiStrContext {

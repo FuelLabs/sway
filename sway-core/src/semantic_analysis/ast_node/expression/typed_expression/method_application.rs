@@ -390,7 +390,7 @@ pub(crate) fn type_check_method_application(
                 )));
             }
         };
-        let func_selector = if ctx.experimental.new_encoding {
+        let func_selector = if ctx.experimental.encoding_v1 {
             None
         } else {
             Some(
@@ -430,7 +430,7 @@ pub(crate) fn type_check_method_application(
     let arguments =
         unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
 
-    if ctx.experimental.new_encoding && method.is_contract_call {
+    if ctx.experimental.encoding_v1 && method.is_contract_call {
         fn call_contract_call(
             ctx: &mut TypeCheckContext,
             original_span: Span,

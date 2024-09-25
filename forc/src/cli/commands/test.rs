@@ -5,8 +5,8 @@ use forc_pkg as pkg;
 use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
-use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::fuel_prelude::fuel_tx::Receipt;
+use sway_features::ExperimentalFeatures;
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -256,8 +256,9 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
+        experimental: ExperimentalFeatures {
+            encoding_v1: !cmd.no_encoding_v1,
+            ..Default::default()
         },
     }
 }

@@ -32,6 +32,7 @@ revm.workspace = true
 serde_json.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true
+sway-features.workspace = true
 sway-ir.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true

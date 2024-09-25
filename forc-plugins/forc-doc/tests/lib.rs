@@ -1,5 +1,6 @@
 use forc_doc::{self, cli::Command, compile_html, get_doc_dir};
 use std::path::Path;
+use sway_features::ExperimentalFeatures;
 
 #[test]
 fn builds_lib_std_docs() {
@@ -12,8 +13,9 @@ fn builds_lib_std_docs() {
     let res = compile_html(
         &build_instructions,
         &get_doc_dir,
-        sway_core::ExperimentalFlags {
-            new_encoding: !build_instructions.no_encoding_v1,
+        ExperimentalFeatures {
+            encoding_v1: !build_instructions.no_encoding_v1,
+            ..Default::default()
         },
     );
     assert!(res.is_ok());

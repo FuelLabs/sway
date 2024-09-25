@@ -1,8 +1,8 @@
 use crate::cli::PredicateRootCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, build_with_options};
-use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::BuildTarget;
+use sway_features::ExperimentalFeatures;
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
     let build_options = build_opts_from_cmd(command);
@@ -47,8 +47,9 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_predicates(),
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
+        experimental: ExperimentalFeatures {
+            encoding_v1: !cmd.no_encoding_v1,
+            ..Default::default()
         },
     }
 }
