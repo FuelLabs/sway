@@ -11,6 +11,8 @@ repository.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
+aws-config.workspace = true
+aws-sdk-kms.workspace = true
 chrono = { workspace = true, features = ["std"] }
 clap = { workspace = true, features = ["derive", "env"] }
 devault.workspace = true
@@ -32,6 +34,7 @@ fuels-accounts.workspace = true
 fuels-core.workspace = true
 futures.workspace = true
 hex.workspace = true
+k256.workspace = true
 rand.workspace = true
 rpassword.workspace = true
 serde.workspace = true
