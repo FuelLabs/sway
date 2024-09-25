@@ -300,7 +300,7 @@ fn function_to_doc<'a>(
     //       values will be true.
     // TODO: When removing old encoding, remove also the TODO in the
     //       `rule fn_decl()` definition of the IR parser.
-    let original_entry = if context.experimental.new_encoding {
+    let original_entry = if context.experimental.encoding_v1 {
         if function.is_original_entry {
             "entry_orig "
         } else {

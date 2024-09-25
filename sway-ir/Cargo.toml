@@ -19,6 +19,7 @@ peg.workspace = true
 prettydiff.workspace = true
 rustc-hash.workspace = true
 slotmap.workspace = true
+sway-features.workspace = true
 sway-ir-macros.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true

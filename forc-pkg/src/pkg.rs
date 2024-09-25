@@ -1,10 +1,7 @@
 use crate::manifest::GenericManifestFile;
 use crate::{
     lock::Lock,
-    manifest::{
-        build_profile::ExperimentalFlags, Dependency, ManifestFile, MemberManifestFiles,
-        PackageManifestFile,
-    },
+    manifest::{Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, IPFSNode, Source},
     BuildProfile,
 };
@@ -51,6 +48,7 @@ use sway_core::{
 };
 use sway_core::{PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_features::ExperimentalFeatures;
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
@@ -311,7 +309,7 @@ pub struct BuildOpts {
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
     /// Set of experimental flags
-    pub experimental: ExperimentalFlags,
+    pub experimental: ExperimentalFeatures,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1566,8 +1564,9 @@ pub fn sway_build_config(
     .with_time_phases(build_profile.time_phases)
     .with_metrics(build_profile.metrics_outfile.clone())
     .with_optimization_level(build_profile.optimization_level)
-    .with_experimental(sway_core::ExperimentalFlags {
-        new_encoding: build_profile.experimental.new_encoding,
+    .with_experimental(ExperimentalFeatures {
+        encoding_v1: build_profile.experimental.encoding_v1,
+        ..Default::default()
     });
     Ok(build_config)
 }
@@ -1594,7 +1593,7 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1849,7 +1848,7 @@ pub fn compile(
                     engines,
                     profile
                         .experimental
-                        .new_encoding
+                        .encoding_v1
                         .then(|| NEW_ENCODING_VERSION.into())
                         .unwrap_or(OLD_ENCODING_VERSION.into()),
                     SPEC_VERSION.into(),
@@ -2106,9 +2105,7 @@ fn build_profile_from_opts(
     }
     profile.include_tests |= tests;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental = ExperimentalFlags {
-        new_encoding: experimental.new_encoding,
-    };
+    profile.experimental = *experimental;
 
     Ok(profile)
 }
@@ -2192,9 +2189,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         *build_target,
         &build_profile,
         &outputs,
-        sway_core::ExperimentalFlags {
-            new_encoding: experimental.new_encoding,
-        },
+        *experimental,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2305,7 +2300,7 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2515,7 +2510,7 @@ pub fn check(
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();

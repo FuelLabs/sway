@@ -43,6 +43,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
     PrintPassesOpts, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, FN_DCE_NAME,
@@ -70,7 +71,6 @@ pub mod fuel_prelude {
     pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
 }
 
-pub use build_config::ExperimentalFlags;
 pub use engine_threading::Engines;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
@@ -93,14 +93,7 @@ pub fn parse(
     config: Option<&BuildConfig>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(
-            handler,
-            engines,
-            input,
-            ExperimentalFlags {
-                new_encoding: false,
-            },
-        ),
+        None => parse_in_memory(handler, engines, input, ExperimentalFeatures::default()),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => parse_module_tree(
@@ -200,7 +193,7 @@ fn parse_in_memory(
     handler: &Handler,
     engines: &Engines,
     src: Arc<str>,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let mut hasher = DefaultHasher::new();
     src.hash(&mut hasher);
@@ -256,7 +249,7 @@ fn parse_submodules(
     module_dir: &Path,
     build_target: BuildTarget,
     include_tests: bool,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
@@ -341,7 +334,7 @@ fn parse_module_tree(
     module_name: Option<&str>,
     build_target: BuildTarget,
     include_tests: bool,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
@@ -558,11 +551,7 @@ pub fn parsed_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
-    let experimental = build_config
-        .map(|x| x.experimental)
-        .unwrap_or(ExperimentalFlags {
-            new_encoding: false,
-        });
+    let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.
@@ -661,12 +650,7 @@ pub fn parsed_to_ast(
     };
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
-    let mut ctx = Context::new(
-        engines.se(),
-        sway_ir::ExperimentalFlags {
-            new_encoding: experimental.new_encoding,
-        },
-    );
+    let mut ctx = Context::new(engines.se(), experimental);
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(e) = ir_generation::compile::compile_constants(

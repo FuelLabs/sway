@@ -43,6 +43,7 @@ use sway_core::{
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_features::ExperimentalFeatures;
 use sway_types::{ProgramId, SourceEngine, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
 
@@ -298,7 +299,7 @@ pub fn compile(
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<&LspConfig>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
     pkg::check(
@@ -442,7 +443,7 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
@@ -708,6 +709,7 @@ impl BuildPlanCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sway_features::ExperimentalFeatures;
     use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
@@ -722,9 +724,7 @@ mod tests {
             None,
             None,
             session,
-            sway_core::ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         )
         .expect_err("expected ManifestFileNotFound");
         assert!(matches!(

@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 use strum::{Display, EnumString};
+use sway_features::ExperimentalFeatures;
 use sway_ir::{PassManager, PrintPassesOpts};
 
 #[derive(
@@ -189,7 +190,7 @@ pub struct BuildConfig {
     pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
-    pub experimental: ExperimentalFlags,
+    pub experimental: ExperimentalFeatures,
     pub lsp_mode: Option<LspConfig>,
 }
 
@@ -237,8 +238,9 @@ impl BuildConfig {
             time_phases: false,
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags {
-                new_encoding: false,
+            experimental: ExperimentalFeatures {
+                encoding_v1: false,
+                ..Default::default()
             },
             lsp_mode: None,
         }
@@ -310,7 +312,7 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_experimental(self, experimental: ExperimentalFlags) -> Self {
+    pub fn with_experimental(self, experimental: ExperimentalFeatures) -> Self {
         Self {
             experimental,
             ..self
@@ -324,11 +326,6 @@ impl BuildConfig {
     pub fn canonical_root_module(&self) -> Arc<PathBuf> {
         self.canonical_root_module.clone()
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct ExperimentalFlags {
-    pub new_encoding: bool,
 }
 
 #[derive(Clone, Debug, Default)]

@@ -7,13 +7,14 @@ use crate::{
     transform::AllowDeprecatedState,
     type_system::*,
     types::*,
-    Engines, ExperimentalFlags,
+    Engines,
 };
 
 use sway_error::{
     error::{CompileError, TypeNotAllowedReason},
     handler::{ErrorEmitted, Handler},
 };
+use sway_features::ExperimentalFeatures;
 use sway_types::*;
 
 #[derive(Debug, Clone)]
@@ -64,7 +65,7 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Result<(TyProgramKind, Vec<TyDecl>, Vec<TyConfigurableDecl>), ErrorEmitted> {
         // Extract program-kind-specific properties from the root nodes.
 
@@ -226,7 +227,7 @@ impl TyProgram {
                 }
 
                 TyProgramKind::Contract {
-                    entry_function: if experimental.new_encoding {
+                    entry_function: if experimental.encoding_v1 {
                         if entries.len() != 1 {
                             return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
                                 span: Span::dummy(),
@@ -273,7 +274,7 @@ impl TyProgram {
                 // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
                 check_no_ref_main(engines, handler, &mains[0]);
 
-                let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
+                let (entry_fn_id, main_fn_id) = if experimental.encoding_v1 {
                     if entries.len() != 1 {
                         return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
                             span: Span::dummy(),
@@ -322,7 +323,7 @@ impl TyProgram {
                 // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
                 check_no_ref_main(engines, handler, &mains[0]);
 
-                let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
+                let (entry_fn_id, main_fn_id) = if experimental.encoding_v1 {
                     if entries.len() != 1 {
                         return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
                             span: Span::dummy(),
@@ -335,7 +336,7 @@ impl TyProgram {
                 };
 
                 // On encoding v0, we cannot accept/return ptrs, slices etc...
-                if !experimental.new_encoding {
+                if !experimental.encoding_v1 {
                     let main_fn = decl_engine.get(&main_fn_id);
                     for p in main_fn.parameters() {
                         if let Some(error) = get_type_not_allowed_error(

@@ -8,7 +8,8 @@ use clap::Parser;
 use forc::cli::shared::{PrintAsmCliOpt, PrintIrCliOpt};
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
-use sway_core::{BuildTarget, ExperimentalFlags, PrintAsm, PrintIr};
+use sway_core::{BuildTarget, PrintAsm, PrintIr};
+use sway_features::ExperimentalFeatures;
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -100,7 +101,7 @@ pub struct RunConfig {
     pub locked: bool,
     pub verbose: bool,
     pub release: bool,
-    pub experimental: ExperimentalFlags,
+    pub experimental: ExperimentalFeatures,
     pub update_output_files: bool,
     pub print_ir: PrintIr,
     pub print_asm: PrintAsm,
@@ -135,8 +136,9 @@ async fn main() -> Result<()> {
         verbose: cli.verbose,
         release: cli.release,
         build_target,
-        experimental: sway_core::ExperimentalFlags {
-            new_encoding: !cli.no_encoding_v1,
+        experimental: ExperimentalFeatures {
+            encoding_v1: !cli.no_encoding_v1,
+            ..Default::default()
         },
         update_output_files: cli.update_output_files,
         print_ir: cli
@@ -167,9 +169,7 @@ async fn main() -> Result<()> {
         ir_generation::run(
             filter_config.include.as_ref(),
             cli.verbose,
-            sway_ir::ExperimentalFlags {
-                new_encoding: run_config.experimental.new_encoding,
-            },
+            run_config.experimental,
         )
         .instrument(tracing::trace_span!("IR"))
         .await?;

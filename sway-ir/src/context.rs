@@ -8,6 +8,7 @@
 
 use rustc_hash::FxHashMap;
 use slotmap::{DefaultKey, SlotMap};
+use sway_features::ExperimentalFeatures;
 use sway_types::SourceEngine;
 
 use crate::{
@@ -40,16 +41,11 @@ pub struct Context<'eng> {
 
     next_unique_sym_tag: u64,
 
-    pub experimental: ExperimentalFlags,
-}
-
-#[derive(Copy, Clone)]
-pub struct ExperimentalFlags {
-    pub new_encoding: bool,
+    pub experimental: ExperimentalFeatures,
 }
 
 impl<'eng> Context<'eng> {
-    pub fn new(source_engine: &'eng SourceEngine, experimental: ExperimentalFlags) -> Self {
+    pub fn new(source_engine: &'eng SourceEngine, experimental: ExperimentalFeatures) -> Self {
         let mut def = Self {
             source_engine,
             modules: Default::default(),

@@ -17,6 +17,7 @@ members = [
     "sway-ast",
     "sway-core",
     "sway-error",
+    "sway-features",
     "sway-ir",
     "sway-ir/sway-ir-macros",
     "sway-lsp",
@@ -60,6 +61,7 @@ forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.2" }
 sway-ast = { path = "sway-ast/", version = "0.66.2" }
 sway-core = { path = "sway-core/", version = "0.66.2" }
 sway-error = { path = "sway-error/", version = "0.66.2" }
+sway-features = { path = "sway-features/", version = "0.66.2" }
 sway-lsp = { path = "sway-lsp/", version = "0.66.2" }
 sway-parse = { path = "sway-parse/", version = "0.66.2" }
 sway-types = { path = "sway-types/", version = "0.66.2" }

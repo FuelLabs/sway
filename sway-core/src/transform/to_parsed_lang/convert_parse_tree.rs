@@ -7,7 +7,7 @@ use crate::{
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
-    BuildTarget, Engines, ExperimentalFlags,
+    BuildTarget, Engines,
 };
 
 use indexmap::IndexMap;
@@ -29,6 +29,7 @@ use sway_ast::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
+use sway_features::ExperimentalFeatures;
 use sway_types::{
     constants::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
@@ -1909,7 +1910,7 @@ fn expr_func_app_to_expression_kind(
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
         Some(Intrinsic::Log)
-            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
+            if context.experimental.encoding_v1 && last.is_none() && !is_absolute =>
         {
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
@@ -2617,7 +2618,7 @@ fn configurable_field_to_configurable_declaration(
     let type_ascription = ty_to_type_argument(context, handler, engines, configurable_field.ty)?;
 
     let value = expr_to_expression(context, handler, engines, configurable_field.initializer)?;
-    let value = if context.experimental.new_encoding {
+    let value = if context.experimental.encoding_v1 {
         let call_encode =
             ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
                 call_path_binding: TypeBinding {
@@ -4862,7 +4863,7 @@ pub fn cfg_eval(
     context: &Context,
     handler: &Handler,
     attrs_map: &AttributesMap,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<bool, ErrorEmitted> {
     if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
         for cfg_attr in cfg_attrs {
@@ -4931,7 +4932,7 @@ pub fn cfg_eval(
                     CFG_EXPERIMENTAL_NEW_ENCODING => match &arg.value {
                         Some(sway_ast::Literal::Bool(v)) => {
                             let is_true = matches!(v.kind, sway_ast::literal::LitBoolType::True);
-                            return Ok(experimental.new_encoding == is_true);
+                            return Ok(experimental.encoding_v1 == is_true);
                         }
                         _ => {
                             let error =

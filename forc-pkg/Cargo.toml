@@ -17,10 +17,7 @@ forc-tracing.workspace = true
 forc-util.workspace = true
 fuel-abi-types.workspace = true
 futures.workspace = true
-git2 = { workspace = true, features = [
-    "vendored-libgit2",
-    "vendored-openssl",
-] }
+git2 = { workspace = true, features = ["vendored-libgit2", "vendored-openssl"] }
 gix-url = { workspace = true, features = ["serde"] }
 hex.workspace = true
 ipfs-api-backend-hyper = { workspace = true, features = ["with-builder"] }
@@ -33,6 +30,7 @@ serde_json.workspace = true
 serde_with.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true
+sway-features.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
 tar.workspace = true
