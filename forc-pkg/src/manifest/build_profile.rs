@@ -64,7 +64,7 @@ where
 
     let s: std::collections::HashMap<String, bool> = <_>::deserialize(deserializer)?;
     for (k, enabled) in s {
-        let snake_case = k.replace("-", "_");
+        let snake_case = k.replace('-', "_");
         experimental
             .set_enabled(&snake_case, enabled)
             .map_err(D::Error::custom)?;

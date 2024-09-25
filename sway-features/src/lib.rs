@@ -127,8 +127,8 @@ mod tests {
 
     #[test]
     fn ok_parse_experimental_features() {
-        let __ = RollbackEnvVar::new("FORC_EXPERIMENTAL");
-        let __ = RollbackEnvVar::new("FORC_NO_EXPERIMENTAL");
+        let _old = RollbackEnvVar::new("FORC_EXPERIMENTAL");
+        let _old = RollbackEnvVar::new("FORC_NO_EXPERIMENTAL");
 
         let mut features = ExperimentalFeatures::default();
 
