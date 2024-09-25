@@ -9,16 +9,16 @@ macro_rules! features {
             }
 
             impl ExperimentalFeatures {
-                fn set_enabled(&mut self, feature: &str, enabled: bool) {
+                pub fn set_enabled(&mut self, feature: &str, enabled: bool) -> Result<(), Error> {
                     let feature = feature.trim();
                     match feature {
                         $(
                             stringify!([<$name:snake>]) => {
-                                self.[<$name:snake>] = enabled;
+                                Ok(self.[<$name:snake>] = enabled)
                             },
                         )*
-                        "" => {}
-                        _ => todo!("unknown feature"),
+                        "" => Ok(()),
+                        _ => Err(Error::UnknownFeature(feature.to_string())),
                     }
                 }
 
@@ -60,8 +60,21 @@ features! {
     "https://github.com/FuelLabs/sway/pull/6466",
 }
 
+#[derive(Debug)]
 pub enum Error {
     ParseError(String),
+    UnknownFeature(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::ParseError(_) => f.write_str("ParserError"),
+            Error::UnknownFeature(feature) => {
+                f.write_fmt(format_args!("UnknownFeature: {feature}"))
+            }
+        }
+    }
 }
 
 impl ExperimentalFeatures {
@@ -69,20 +82,25 @@ impl ExperimentalFeatures {
     /// environment variables "FORC_EXPERIMENTAL" and "FORC_NO_EXPERIMENTAL".
     pub fn parse_from_environment_variables(&mut self) -> Result<(), Error> {
         if let Ok(features) = std::env::var("FORC_EXPERIMENTAL") {
-            self.parse_comma_separated_list(&features, true);
+            self.parse_comma_separated_list(&features, true)?;
         }
 
         if let Ok(features) = std::env::var("FORC_NO_EXPERIMENTAL") {
-            self.parse_comma_separated_list(&features, false);
+            self.parse_comma_separated_list(&features, false)?;
         }
 
         Ok(())
     }
 
-    pub fn parse_comma_separated_list(&mut self, features: impl AsRef<str>, enabled: bool) {
+    pub fn parse_comma_separated_list(
+        &mut self,
+        features: impl AsRef<str>,
+        enabled: bool,
+    ) -> Result<(), Error> {
         for feature in features.as_ref().split(",") {
-            self.set_enabled(feature, enabled);
+            self.set_enabled(feature, enabled)?;
         }
+        Ok(())
     }
 }
 
