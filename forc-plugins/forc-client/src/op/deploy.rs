@@ -200,6 +200,7 @@ async fn deploy_chunked(
 async fn deploy_new_proxy(
     command: &cmd::Deploy,
     pkg_name: &str,
+    pkg_storage_slots: &[StorageSlot],
     impl_contract: &fuel_tx::ContractId,
     provider: &Provider,
     account: &ForcClientAccount,
@@ -208,9 +209,11 @@ async fn deploy_new_proxy(
     let proxy_dir_output = create_proxy_contract(pkg_name)?;
     let address = account.address();
 
-    let storage_path = proxy_dir_output.join("proxy-storage_slots.json");
-    let storage_configuration =
-        StorageConfiguration::default().add_slot_overrides_from_file(storage_path)?;
+    // Add the combined storage slots from the original contract and the proxy contract.
+    let proxy_storage_path = proxy_dir_output.join("proxy-storage_slots.json");
+    let storage_configuration = StorageConfiguration::default()
+        .add_slot_overrides(pkg_storage_slots.iter().cloned())
+        .add_slot_overrides_from_file(proxy_storage_path)?;
 
     let configurables = ProxyContractConfigurables::default()
         .with_INITIAL_TARGET(Some(*impl_contract))?
@@ -391,10 +394,12 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 address: None,
             }) => {
                 let pkg_name = &pkg.descriptor.name;
+                let pkg_storage_slots = &pkg.storage_slots;
                 // Deploy a new proxy contract.
                 let deployed_proxy_contract = deploy_new_proxy(
                     &command,
                     pkg_name,
+                    pkg_storage_slots,
                     &deployed_contract_id,
                     &provider,
                     &account,
