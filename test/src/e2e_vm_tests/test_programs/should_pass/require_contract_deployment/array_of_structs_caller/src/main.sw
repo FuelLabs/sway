@@ -6,7 +6,7 @@ use std::hash::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x14ed3cd06c2947248f69d54bfa681fe40d26267be84df7e19e253622b7921bbe;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xc3ddf503af65135b5e7dfa0eca48c96717b52379a75ffeb9622719941dabeb9d; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
+const CONTRACT_ID = 0xc89bc49478ca8e66d9b5223318e791213fa176ad722ad1a263f5e26795fce610; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
 
 fn get_address() -> Option<std::address::Address> {
     Some(CONTRACT_ID.into())
