@@ -200,7 +200,7 @@ async fn deploy_chunked(
 async fn deploy_new_proxy(
     command: &cmd::Deploy,
     pkg_name: &str,
-    pkg_storage_slots: &Vec<StorageSlot>,
+    pkg_storage_slots: &[StorageSlot],
     impl_contract: &fuel_tx::ContractId,
     provider: &Provider,
     account: &ForcClientAccount,
