@@ -321,6 +321,56 @@ pub(crate) async fn highlight_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
+pub(crate) async fn references_request(server: &ServerState, uri: &Url) {
+    let params = ReferenceParams {
+        text_document_position: TextDocumentPositionParams {
+            text_document: TextDocumentIdentifier { uri: uri.clone() },
+            position: Position {
+                line: 15,
+                character: 22,
+            },
+        },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+        context: ReferenceContext {
+            include_declaration: false,
+        },
+    };
+
+    let create_location = |line: u32, start_char: u32, end_char: u32| -> Location {
+        Location {
+            uri: uri.clone(),
+            range: Range {
+                start: Position {
+                    line,
+                    character: start_char,
+                },
+                end: Position {
+                    line,
+                    character: end_char,
+                },
+            },
+        }
+    };
+
+    let mut response = request::handle_references(server, params)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let mut expected = vec![
+        create_location(12, 7, 11),
+        create_location(15, 21, 25),
+        create_location(15, 14, 18),
+        create_location(13, 13, 17),
+        create_location(3, 5, 9),
+        create_location(14, 8, 12),
+    ];
+    response.sort_by(|a, b| a.range.start.cmp(&b.range.start));
+    expected.sort_by(|a, b| a.range.start.cmp(&b.range.start));
+    assert_eq!(expected, response);
+}
+
 pub(crate) async fn code_lens_empty_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -611,5 +661,128 @@ pub fn create_did_change_params(
             range_length: Some(range_length),
             text: "\n".into(),
         }],
+    }
+}
+
+pub(crate) async fn inlay_hints_request<'a>(
+    server: &ServerState,
+    uri: &Url,
+) -> Option<Vec<InlayHint>> {
+    let params = InlayHintParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        range: Range {
+            start: Position {
+                line: 25,
+                character: 0,
+            },
+            end: Position {
+                line: 26,
+                character: 1,
+            },
+        },
+        work_done_progress_params: Default::default(),
+    };
+    let res = request::handle_inlay_hints(server, params)
+        .await
+        .unwrap()
+        .unwrap();
+    let expected = vec![
+        InlayHint {
+            position: Position {
+                line: 25,
+                character: 25,
+            },
+            label: InlayHintLabel::String("foo: ".to_string()),
+            kind: Some(InlayHintKind::PARAMETER),
+            text_edits: None,
+            tooltip: None,
+            padding_left: Some(false),
+            padding_right: Some(false),
+            data: None,
+        },
+        InlayHint {
+            position: Position {
+                line: 25,
+                character: 28,
+            },
+            label: InlayHintLabel::String("bar: ".to_string()),
+            kind: Some(InlayHintKind::PARAMETER),
+            text_edits: None,
+            tooltip: None,
+            padding_left: Some(false),
+            padding_right: Some(false),
+            data: None,
+        },
+        InlayHint {
+            position: Position {
+                line: 25,
+                character: 31,
+            },
+            label: InlayHintLabel::String("long_argument_name: ".to_string()),
+            kind: Some(InlayHintKind::PARAMETER),
+            text_edits: None,
+            tooltip: None,
+            padding_left: Some(false),
+            padding_right: Some(false),
+            data: None,
+        },
+        InlayHint {
+            position: Position {
+                line: 25,
+                character: 10,
+            },
+            label: InlayHintLabel::String(": u64".to_string()),
+            kind: Some(InlayHintKind::TYPE),
+            text_edits: None,
+            tooltip: None,
+            padding_left: Some(false),
+            padding_right: Some(false),
+            data: None,
+        },
+    ];
+
+    assert!(
+        compare_inlay_hint_vecs(&expected, &res),
+        "InlayHint vectors are not equal.\nExpected:\n{:#?}\n\nActual:\n{:#?}",
+        expected,
+        res
+    );
+    Some(res)
+}
+
+// This is a helper function to compare two inlay hints. because PartialEq is not implemented for InlayHint
+fn compare_inlay_hints(a: &InlayHint, b: &InlayHint) -> bool {
+    a.position == b.position
+        && compare_inlay_hint_labels(&a.label, &b.label)
+        && a.kind == b.kind
+        && a.text_edits == b.text_edits
+        && compare_inlay_hint_tooltips(&a.tooltip, &b.tooltip)
+        && a.padding_left == b.padding_left
+        && a.padding_right == b.padding_right
+        && a.data == b.data
+}
+
+fn compare_inlay_hint_vecs(a: &[InlayHint], b: &[InlayHint]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).all(|(a, b)| compare_inlay_hints(a, b))
+}
+
+fn compare_inlay_hint_labels(a: &InlayHintLabel, b: &InlayHintLabel) -> bool {
+    match (a, b) {
+        (InlayHintLabel::String(a), InlayHintLabel::String(b)) => a == b,
+        _ => false,
+    }
+}
+
+fn compare_inlay_hint_tooltips(a: &Option<InlayHintTooltip>, b: &Option<InlayHintTooltip>) -> bool {
+    match (a, b) {
+        (None, None) => true,
+        (Some(a), Some(b)) => match (a, b) {
+            (InlayHintTooltip::String(a), InlayHintTooltip::String(b)) => a == b,
+            (InlayHintTooltip::MarkupContent(a), InlayHintTooltip::MarkupContent(b)) => {
+                a.kind == b.kind && a.value == b.value
+            }
+            _ => false,
+        },
+        _ => false,
     }
 }

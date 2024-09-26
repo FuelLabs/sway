@@ -463,33 +463,27 @@ impl TypeId {
         }))
     }
 
-    pub(crate) fn is_concrete(
-        &self,
-        engines: &Engines,
-        numeric_non_concrete: TreatNumericAs,
-    ) -> bool {
+    pub(crate) fn is_concrete(&self, engines: &Engines, treat_numeric_as: TreatNumericAs) -> bool {
         let nested_types = (*self).extract_nested_types(engines);
-        !nested_types
-            .into_iter()
-            .any(|x| match numeric_non_concrete {
-                TreatNumericAs::Abstract => matches!(
-                    x,
-                    TypeInfo::UnknownGeneric { .. }
-                        | TypeInfo::Custom { .. }
-                        | TypeInfo::Placeholder(..)
-                        | TypeInfo::TraitType { .. }
-                        | TypeInfo::TypeParam(..)
-                        | TypeInfo::Numeric
-                ),
-                TreatNumericAs::Concrete => matches!(
-                    x,
-                    TypeInfo::UnknownGeneric { .. }
-                        | TypeInfo::Custom { .. }
-                        | TypeInfo::Placeholder(..)
-                        | TypeInfo::TraitType { .. }
-                        | TypeInfo::TypeParam(..)
-                ),
-            })
+        !nested_types.into_iter().any(|x| match treat_numeric_as {
+            TreatNumericAs::Abstract => matches!(
+                x,
+                TypeInfo::UnknownGeneric { .. }
+                    | TypeInfo::Custom { .. }
+                    | TypeInfo::Placeholder(..)
+                    | TypeInfo::TraitType { .. }
+                    | TypeInfo::TypeParam(..)
+                    | TypeInfo::Numeric
+            ),
+            TreatNumericAs::Concrete => matches!(
+                x,
+                TypeInfo::UnknownGeneric { .. }
+                    | TypeInfo::Custom { .. }
+                    | TypeInfo::Placeholder(..)
+                    | TypeInfo::TraitType { .. }
+                    | TypeInfo::TypeParam(..)
+            ),
+        })
     }
 
     /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
@@ -519,7 +513,7 @@ impl TypeId {
         span: &Span,
         type_param: Option<TypeParameter>,
     ) -> Result<(), ErrorEmitted> {
-        if ctx.collecting_unifications() {
+        if ctx.code_block_first_pass() {
             return Ok(());
         }
 

@@ -1,6 +1,6 @@
 [package]
 name = "forc-pkg"
-version = "0.63.3"
+version.workspace = true
 description = "Building, locking, fetching and updating Sway projects as Forc packages."
 authors.workspace = true
 edition.workspace = true
@@ -9,38 +9,38 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ansi_term = "0.12"
-anyhow = "1"
-byte-unit = "5.1.4"
-cid = "0.11"
-forc-tracing = { version = "0.63.3", path = "../forc-tracing" }
-forc-util = { version = "0.63.3", path = "../forc-util" }
-fuel-abi-types = { workspace = true }
-futures = "0.3"
-git2 = { version = "0.19", features = [
+ansi_term.workspace = true
+anyhow.workspace = true
+byte-unit.workspace = true
+cid.workspace = true
+forc-tracing.workspace = true
+forc-util.workspace = true
+fuel-abi-types.workspace = true
+futures.workspace = true
+git2 = { workspace = true, features = [
     "vendored-libgit2",
     "vendored-openssl",
 ] }
-gix-url = { version = "0.27", features = ["serde"] }
-hex = "0.4.3"
-ipfs-api-backend-hyper = { version = "0.6", features = ["with-builder"] }
-petgraph = { version = "0.6", features = ["serde-1"] }
-reqwest = "0.12"
-semver = { version = "1.0", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_ignored = "0.1.9"
-serde_json = "1.0"
-serde_with = "3.3.0"
-sway-core = { version = "0.63.3", path = "../sway-core" }
-sway-error = { version = "0.63.3", path = "../sway-error" }
-sway-types = { version = "0.63.3", path = "../sway-types" }
-sway-utils = { version = "0.63.3", path = "../sway-utils" }
-tar = "0.4.38"
-toml = { version = "0.8", features = ["parse"] }
-tracing = "0.1"
-url = { version = "2.2", features = ["serde"] }
-vec1 = "1.8.0"
-walkdir = "2"
+gix-url = { workspace = true, features = ["serde"] }
+hex.workspace = true
+ipfs-api-backend-hyper = { workspace = true, features = ["with-builder"] }
+petgraph = { workspace = true, features = ["serde-1"] }
+reqwest.workspace = true
+semver = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_ignored.workspace = true
+serde_json.workspace = true
+serde_with.workspace = true
+sway-core.workspace = true
+sway-error.workspace = true
+sway-types.workspace = true
+sway-utils.workspace = true
+tar.workspace = true
+toml = { workspace = true, features = ["parse"] }
+tracing.workspace = true
+url = { workspace = true, features = ["serde"] }
+vec1.workspace = true
+walkdir.workspace = true
 
 [dev-dependencies]
 regex = "^1.10.2"

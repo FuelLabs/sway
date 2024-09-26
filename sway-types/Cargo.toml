@@ -1,6 +1,6 @@
 [package]
 name = "sway-types"
-version = "0.63.3"
+version.workspace = true
 description = "Sway core types."
 authors.workspace = true
 edition.workspace = true
@@ -9,19 +9,19 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bytecount = "0.6"
-fuel-asm = { workspace = true }
-fuel-crypto = { workspace = true }
-fuel-tx = { workspace = true }
-indexmap = "2.0.0"
-lazy_static = "1.4"
-num-bigint = "0.4.3"
-num-traits = "0.2.16"
-parking_lot = "0.12"
-rustc-hash = "1.1.0"
-serde = { version = "1.0", features = ["derive"] }
-sway-utils = { version = "0.63.3", path = "../sway-utils" }
-thiserror = "1"
+bytecount.workspace = true
+fuel-asm.workspace = true
+fuel-crypto.workspace = true
+fuel-tx.workspace = true
+indexmap.workspace = true
+lazy_static.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+parking_lot.workspace = true
+rustc-hash.workspace = true
+serde = { workspace = true, features = ["derive"] }
+sway-utils.workspace = true
+thiserror.workspace = true
 
 [features]
 no-span-debug = []

@@ -27,7 +27,7 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
-use super::GenericShadowingMode;
+use super::{symbol_collection_context::SymbolCollectionContext, GenericShadowingMode};
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'a> {
@@ -45,6 +45,9 @@ pub struct TypeCheckContext<'a> {
 
     /// Set of experimental flags.
     pub(crate) experimental: ExperimentalFlags,
+
+    /// Keeps the accumulated symbols previously collected.
+    pub(crate) collection_ctx: &'a mut SymbolCollectionContext,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -95,19 +98,27 @@ pub struct TypeCheckContext<'a> {
     /// Indicates when semantic analysis is type checking storage declaration.
     storage_declaration: bool,
 
+    // Indicates when we are collecting unifications.
     collecting_unifications: bool,
+
+    // Indicates when we are doing the first pass of the code block type checking.
+    // In some nested places of the first pass we want to disable the first pass optimizations
+    // To disable those optimizations we can set this to false.
+    code_block_first_pass: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
     /// Initialize a type-checking context with a namespace.
     pub fn from_namespace(
         namespace: &'a mut Namespace,
+        collection_ctx: &'a mut SymbolCollectionContext,
         engines: &'a Engines,
         experimental: ExperimentalFlags,
     ) -> Self {
         Self {
             namespace,
             engines,
+            collection_ctx,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
             function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
             unify_generic: false,
@@ -122,6 +133,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: false,
             experimental,
             collecting_unifications: false,
+            code_block_first_pass: false,
         }
     }
 
@@ -134,18 +146,21 @@ impl<'a> TypeCheckContext<'a> {
     /// - help_text: ""
     pub fn from_root(
         root_namespace: &'a mut Namespace,
+        collection_ctx: &'a mut SymbolCollectionContext,
         engines: &'a Engines,
         experimental: ExperimentalFlags,
     ) -> Self {
-        Self::from_module_namespace(root_namespace, engines, experimental)
+        Self::from_module_namespace(root_namespace, collection_ctx, engines, experimental)
     }
 
     fn from_module_namespace(
         namespace: &'a mut Namespace,
+        collection_ctx: &'a mut SymbolCollectionContext,
         engines: &'a Engines,
         experimental: ExperimentalFlags,
     ) -> Self {
         Self {
+            collection_ctx,
             namespace,
             engines,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
@@ -162,6 +177,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: false,
             experimental,
             collecting_unifications: false,
+            code_block_first_pass: false,
         }
     }
 
@@ -176,6 +192,7 @@ impl<'a> TypeCheckContext<'a> {
     pub fn by_ref(&mut self) -> TypeCheckContext<'_> {
         TypeCheckContext {
             namespace: self.namespace,
+            collection_ctx: self.collection_ctx,
             type_annotation: self.type_annotation,
             function_type_annotation: self.function_type_annotation,
             unify_generic: self.unify_generic,
@@ -191,61 +208,135 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
+            code_block_first_pass: self.code_block_first_pass,
         }
     }
 
-    /// Scope the `TypeCheckContext` with a new namespace.
+    /// Scope the `TypeCheckContext` with a new namespace, and set up the collection context
+    /// so it enters the lexical scope corresponding to the given span.
     pub fn scoped<T>(
         self,
+        handler: &Handler,
+        span: Option<Span>,
         with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
         let mut namespace = self.namespace.clone();
-        let ctx = TypeCheckContext {
-            namespace: &mut namespace,
-            type_annotation: self.type_annotation,
-            function_type_annotation: self.function_type_annotation,
-            unify_generic: self.unify_generic,
-            self_type: self.self_type,
-            type_subst: self.type_subst,
-            abi_mode: self.abi_mode,
-            const_shadowing_mode: self.const_shadowing_mode,
-            generic_shadowing_mode: self.generic_shadowing_mode,
-            help_text: self.help_text,
-            kind: self.kind,
-            engines: self.engines,
-            disallow_functions: self.disallow_functions,
-            storage_declaration: self.storage_declaration,
-            experimental: self.experimental,
-            collecting_unifications: self.collecting_unifications,
-        };
-        with_scoped_ctx(ctx)
+        if let Some(span) = span {
+            self.collection_ctx.enter_lexical_scope(
+                handler,
+                self.engines,
+                span,
+                |scoped_collection_ctx| {
+                    let ctx = TypeCheckContext {
+                        namespace: &mut namespace,
+                        collection_ctx: scoped_collection_ctx,
+                        type_annotation: self.type_annotation,
+                        function_type_annotation: self.function_type_annotation,
+                        unify_generic: self.unify_generic,
+                        self_type: self.self_type,
+                        type_subst: self.type_subst,
+                        abi_mode: self.abi_mode,
+                        const_shadowing_mode: self.const_shadowing_mode,
+                        generic_shadowing_mode: self.generic_shadowing_mode,
+                        help_text: self.help_text,
+                        kind: self.kind,
+                        engines: self.engines,
+                        disallow_functions: self.disallow_functions,
+                        storage_declaration: self.storage_declaration,
+                        experimental: self.experimental,
+                        collecting_unifications: self.collecting_unifications,
+                        code_block_first_pass: self.code_block_first_pass,
+                    };
+                    with_scoped_ctx(ctx)
+                },
+            )
+        } else {
+            let ctx = TypeCheckContext {
+                collection_ctx: self.collection_ctx,
+                namespace: &mut namespace,
+                type_annotation: self.type_annotation,
+                function_type_annotation: self.function_type_annotation,
+                unify_generic: self.unify_generic,
+                self_type: self.self_type,
+                type_subst: self.type_subst,
+                abi_mode: self.abi_mode,
+                const_shadowing_mode: self.const_shadowing_mode,
+                generic_shadowing_mode: self.generic_shadowing_mode,
+                help_text: self.help_text,
+                kind: self.kind,
+                engines: self.engines,
+                disallow_functions: self.disallow_functions,
+                storage_declaration: self.storage_declaration,
+                experimental: self.experimental,
+                collecting_unifications: self.collecting_unifications,
+                code_block_first_pass: self.code_block_first_pass,
+            };
+            with_scoped_ctx(ctx)
+        }
     }
 
     /// Scope the `TypeCheckContext` with a new namespace and returns it in case of success.
+    /// Also sets up the collection context so it enters the lexical scope corresponding to
+    /// the given span.
     pub fn scoped_and_namespace<T>(
         self,
+        handler: &Handler,
+        span: Option<Span>,
         with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
     ) -> Result<(T, Namespace), ErrorEmitted> {
         let mut namespace = self.namespace.clone();
-        let ctx = TypeCheckContext {
-            namespace: &mut namespace,
-            type_annotation: self.type_annotation,
-            function_type_annotation: self.function_type_annotation,
-            unify_generic: self.unify_generic,
-            self_type: self.self_type,
-            type_subst: self.type_subst,
-            abi_mode: self.abi_mode,
-            const_shadowing_mode: self.const_shadowing_mode,
-            generic_shadowing_mode: self.generic_shadowing_mode,
-            help_text: self.help_text,
-            kind: self.kind,
-            engines: self.engines,
-            disallow_functions: self.disallow_functions,
-            storage_declaration: self.storage_declaration,
-            experimental: self.experimental,
-            collecting_unifications: self.collecting_unifications,
-        };
-        Ok((with_scoped_ctx(ctx)?, namespace))
+        if let Some(span) = span {
+            self.collection_ctx.enter_lexical_scope(
+                handler,
+                self.engines,
+                span,
+                |scoped_collection_ctx| {
+                    let ctx = TypeCheckContext {
+                        collection_ctx: scoped_collection_ctx,
+                        namespace: &mut namespace,
+                        type_annotation: self.type_annotation,
+                        function_type_annotation: self.function_type_annotation,
+                        unify_generic: self.unify_generic,
+                        self_type: self.self_type,
+                        type_subst: self.type_subst,
+                        abi_mode: self.abi_mode,
+                        const_shadowing_mode: self.const_shadowing_mode,
+                        generic_shadowing_mode: self.generic_shadowing_mode,
+                        help_text: self.help_text,
+                        kind: self.kind,
+                        engines: self.engines,
+                        disallow_functions: self.disallow_functions,
+                        storage_declaration: self.storage_declaration,
+                        experimental: self.experimental,
+                        collecting_unifications: self.collecting_unifications,
+                        code_block_first_pass: self.code_block_first_pass,
+                    };
+                    Ok((with_scoped_ctx(ctx)?, namespace))
+                },
+            )
+        } else {
+            let ctx = TypeCheckContext {
+                collection_ctx: self.collection_ctx,
+                namespace: &mut namespace,
+                type_annotation: self.type_annotation,
+                function_type_annotation: self.function_type_annotation,
+                unify_generic: self.unify_generic,
+                self_type: self.self_type,
+                type_subst: self.type_subst,
+                abi_mode: self.abi_mode,
+                const_shadowing_mode: self.const_shadowing_mode,
+                generic_shadowing_mode: self.generic_shadowing_mode,
+                help_text: self.help_text,
+                kind: self.kind,
+                engines: self.engines,
+                disallow_functions: self.disallow_functions,
+                storage_declaration: self.storage_declaration,
+                experimental: self.experimental,
+                collecting_unifications: self.collecting_unifications,
+                code_block_first_pass: self.code_block_first_pass,
+            };
+            Ok((with_scoped_ctx(ctx)?, namespace))
+        }
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
@@ -253,7 +344,7 @@ impl<'a> TypeCheckContext<'a> {
     ///
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
-        mut self,
+        self,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
@@ -264,11 +355,28 @@ impl<'a> TypeCheckContext<'a> {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
-        let mut submod_ns =
-            self.namespace_mut()
-                .enter_submodule(engines, mod_name, visibility, module_span);
-        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
-        with_submod_ctx(submod_ctx)
+        let mut submod_ns = self.namespace.enter_submodule(
+            engines,
+            mod_name.clone(),
+            visibility,
+            module_span.clone(),
+        );
+
+        self.collection_ctx.enter_submodule(
+            engines,
+            mod_name,
+            visibility,
+            module_span,
+            |submod_collection_ctx| {
+                let submod_ctx = TypeCheckContext::from_namespace(
+                    &mut submod_ns,
+                    submod_collection_ctx,
+                    engines,
+                    experimental,
+                );
+                with_submod_ctx(submod_ctx)
+            },
+        )
     }
 
     /// Returns a mutable reference to the current namespace.
@@ -362,6 +470,13 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
+    pub(crate) fn with_code_block_first_pass(self, value: bool) -> Self {
+        Self {
+            code_block_first_pass: value,
+            ..self
+        }
+    }
+
     /// Map this `TypeCheckContext` instance to a new one with
     /// `disallow_functions` set to `true`.
     pub(crate) fn disallow_functions(self) -> Self {
@@ -435,6 +550,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn collecting_unifications(&self) -> bool {
         self.collecting_unifications
+    }
+
+    pub(crate) fn code_block_first_pass(&self) -> bool {
+        self.code_block_first_pass
     }
 
     // Provide some convenience functions around the inner context.
@@ -1439,11 +1558,7 @@ impl<'a> TypeCheckContext<'a> {
             src_mod
                 .current_items()
                 .implemented_traits
-                .filter_by_type_item_import(
-                    type_id,
-                    engines,
-                    self.collecting_unifications().into(),
-                ),
+                .filter_by_type_item_import(type_id, engines, self.code_block_first_pass().into()),
             engines,
         );
 
@@ -1682,27 +1797,35 @@ impl<'a> TypeCheckContext<'a> {
                     0,
                 )))
             }
-            (num_type_params, num_type_args) => {
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
-                    .unwrap_or_else(|| value.name().span());
+            (_, num_type_args) => {
                 // a trait decl is passed the self type parameter and the corresponding argument
                 // but it would be confusing for the user if the error reporting mechanism
                 // reported the number of arguments including the implicit self, hence
                 // we adjust it below
                 let adjust_for_trait_decl = value.has_self_type_param() as usize;
-                let num_type_params = num_type_params - adjust_for_trait_decl;
+                let non_parent_type_params = value
+                    .type_parameters()
+                    .iter()
+                    .filter(|x| !x.is_from_parent)
+                    .count()
+                    - adjust_for_trait_decl;
+
                 let num_type_args = num_type_args - adjust_for_trait_decl;
-                if num_type_params != num_type_args {
+                if non_parent_type_params != num_type_args {
+                    let type_arguments_span = type_arguments
+                        .iter()
+                        .map(|x| x.span.clone())
+                        .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
+                        .unwrap_or_else(|| value.name().span());
+
                     return Err(handler.emit_err(make_type_arity_mismatch_error(
                         value.name().clone(),
                         type_arguments_span,
                         num_type_args,
-                        num_type_params,
+                        non_parent_type_params,
                     )));
                 }
+
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = self
                         .resolve(
@@ -1739,12 +1862,12 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
-        let collecting_unifications = self.collecting_unifications();
+        let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
             .implemented_traits
-            .insert_for_type(engines, type_id, collecting_unifications.into());
+            .insert_for_type(engines, type_id, code_block_first_pass.into());
     }
 
     pub fn check_type_impls_traits(
@@ -1754,7 +1877,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
         let engines = self.engines;
-        let collecting_unifications = self.collecting_unifications();
+        let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
@@ -1766,7 +1889,7 @@ impl<'a> TypeCheckContext<'a> {
                 &Span::dummy(),
                 engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
-                collecting_unifications.into(),
+                code_block_first_pass.into(),
             )
             .is_ok()
     }

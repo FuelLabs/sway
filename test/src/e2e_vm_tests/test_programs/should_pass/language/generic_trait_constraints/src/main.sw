@@ -58,6 +58,21 @@ impl MyFrom<Struct4> for Struct3 {
     }
 }
 
+// call an associated function through generic constraints
+pub trait SizeInBytes {
+    fn size() -> u64;
+}
+
+impl SizeInBytes for u64 {
+    fn size() -> u64 {
+        8
+    }
+}
+
+fn call_size<T>() -> u64 where T: SizeInBytes {
+    T::size()
+}
+
 fn main() -> bool {
     let s1 = Struct {data: 1_u64 };
     assert_eq(s1.data.my_add(1,2),3);
@@ -71,6 +86,9 @@ fn main() -> bool {
 
     let s4: Struct3 = Struct4{data:42}.my_into();
     assert_eq(s4.data,42);
+
+    // call an associated function through generic constraints
+    assert_eq(call_size::<u64>(), 8);
 
     true
 }

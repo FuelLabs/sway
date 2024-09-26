@@ -1,0 +1,6 @@
+category = "fail"
+validate_abi = false
+expected_warnings = 3
+
+# check: fn foo(self) -> u64 {
+# nextln: $()Duplicate definitions for the method "foo" for type "S<T>".

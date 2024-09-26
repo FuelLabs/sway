@@ -71,17 +71,11 @@ impl Default for DiagnosticConfig {
 #[serde(rename_all = "camelCase")]
 pub struct GarbageCollectionConfig {
     pub gc_enabled: bool,
-    pub gc_frequency: i32,
 }
 
 impl Default for GarbageCollectionConfig {
     fn default() -> Self {
-        Self {
-            gc_enabled: true,
-            // Garbage collection is fairly expsensive so we default to only clear on every 3rd keystroke.
-            // Waiting too long to clear can cause a stack overflow to occur.
-            gc_frequency: 3,
-        }
+        Self { gc_enabled: true }
     }
 }
 

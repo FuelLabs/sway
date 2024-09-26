@@ -7,26 +7,27 @@ version = "0.0.0"
 publish = false
 
 [dependencies]
-assert_matches = "1.5.0"
+assert_matches = "1.5"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.32.1", default-features = false }
-fuel-core-client = { version = "0.32.1", default-features = false }
+fuel-core = { version = "0.36", default-features = false }
+# Using full semver as the workspace Cargo.toml (see the comment there) 
+fuel-core-client = { version = "0.36.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-vm = { version = "0.56.0", features = ["random"] }
+fuel-vm = { version = "0.57", features = ["random"] }
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { version = "0.66.1", features = ["fuel-core-lib"] }
+fuels = { version = "0.66", features = ["fuel-core-lib"] }
 
-hex = "0.4.3"
-paste = "1.0.14"
-pretty_assertions = "1.4.0"
+hex = "0.4"
+paste = "1.0"
+pretty_assertions = "1.4"
 rand = "0.8"
 sha2 = "0.10"
-sha3 = "0.10.1"
+sha3 = "0.10"
 tai64 = { version = "4.0", features = ["serde"] }
-tokio = { version = "1.12", features = ["rt", "macros"] }
+tokio = { version = "1.12", features = ["macros", "rt"] }
 
 [[test]]
 harness = true

@@ -216,6 +216,26 @@ pub async fn handle_document_highlight(
     }
 }
 
+pub async fn handle_references(
+    state: &ServerState,
+    params: lsp_types::ReferenceParams,
+) -> Result<Option<Vec<lsp_types::Location>>> {
+    let _ = state.wait_for_parsing().await;
+    match state
+        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
+        .await
+    {
+        Ok((uri, session)) => {
+            let position = params.text_document_position.position;
+            Ok(session.token_references(&uri, position))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}
+
 pub async fn handle_formatting(
     state: &ServerState,
     params: DocumentFormattingParams,
@@ -313,7 +333,7 @@ pub async fn handle_semantic_tokens_full(
     }
 }
 
-pub(crate) async fn handle_inlay_hints(
+pub async fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {

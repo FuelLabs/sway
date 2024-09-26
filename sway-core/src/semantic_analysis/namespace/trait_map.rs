@@ -30,17 +30,17 @@ use crate::{
 use super::TryInsertingTraitImplOnFailure;
 
 #[derive(Clone)]
-pub enum CollectingUnification {
+pub enum CodeBlockFirstPass {
     Yes,
     No,
 }
 
-impl From<bool> for CollectingUnification {
+impl From<bool> for CodeBlockFirstPass {
     fn from(value: bool) -> Self {
         if value {
-            CollectingUnification::Yes
+            CodeBlockFirstPass::Yes
         } else {
-            CollectingUnification::No
+            CodeBlockFirstPass::No
         }
     }
 }
@@ -570,10 +570,10 @@ impl TraitMap {
         &mut self,
         engines: &Engines,
         type_id: TypeId,
-        collecting_unifications: CollectingUnification,
+        code_block_first_pass: CodeBlockFirstPass,
     ) {
         self.extend(
-            self.filter_by_type(type_id, engines, collecting_unifications),
+            self.filter_by_type(type_id, engines, code_block_first_pass),
             engines,
         );
     }
@@ -746,7 +746,7 @@ impl TraitMap {
         &self,
         type_id: TypeId,
         engines: &Engines,
-        collecting_unifications: CollectingUnification,
+        code_block_first_pass: CodeBlockFirstPass,
     ) -> TraitMap {
         let unify_checker = UnifyCheck::constraint_subset(engines);
 
@@ -755,7 +755,7 @@ impl TraitMap {
         let mut all_types = type_id.extract_inner_types(engines, IncludeSelf::No);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
-        self.filter_by_type_inner(engines, all_types, decider, collecting_unifications)
+        self.filter_by_type_inner(engines, all_types, decider, code_block_first_pass)
     }
 
     /// Filters the entries in `self` with the given [TypeId] `type_id` and
@@ -820,7 +820,7 @@ impl TraitMap {
         &self,
         type_id: TypeId,
         engines: &Engines,
-        collecting_unifications: CollectingUnification,
+        code_block_first_pass: CodeBlockFirstPass,
     ) -> TraitMap {
         let unify_checker = UnifyCheck::constraint_subset(engines);
         let unify_checker_for_item_import = UnifyCheck::non_generic_constraint_subset(engines);
@@ -833,7 +833,7 @@ impl TraitMap {
             engines,
             vec![type_id],
             decider,
-            collecting_unifications.clone(),
+            code_block_first_pass.clone(),
         );
         let all_types = type_id
             .extract_inner_types(engines, IncludeSelf::No)
@@ -843,7 +843,7 @@ impl TraitMap {
         let decider2 = |left: TypeId, right: TypeId| unify_checker.check(left, right);
 
         trait_map.extend(
-            self.filter_by_type_inner(engines, all_types, decider2, collecting_unifications),
+            self.filter_by_type_inner(engines, all_types, decider2, code_block_first_pass),
             engines,
         );
         trait_map
@@ -854,7 +854,7 @@ impl TraitMap {
         engines: &Engines,
         mut all_types: Vec<TypeId>,
         decider: impl Fn(TypeId, TypeId) -> bool,
-        collecting_unifications: CollectingUnification,
+        code_block_first_pass: CodeBlockFirstPass,
     ) -> TraitMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -908,7 +908,7 @@ impl TraitMap {
                         &type_mapping,
                         &SubstTypesContext::new(
                             engines,
-                            matches!(collecting_unifications, CollectingUnification::No),
+                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
                         ),
                     );
                     let trait_items: TraitItems = map_trait_items
@@ -927,8 +927,8 @@ impl TraitMap {
                                             &SubstTypesContext::new(
                                                 engines,
                                                 matches!(
-                                                    collecting_unifications,
-                                                    CollectingUnification::No
+                                                    code_block_first_pass,
+                                                    CodeBlockFirstPass::No
                                                 ),
                                             ),
                                         );
@@ -952,10 +952,7 @@ impl TraitMap {
                                         &type_mapping,
                                         &SubstTypesContext::new(
                                             engines,
-                                            matches!(
-                                                collecting_unifications,
-                                                CollectingUnification::No
-                                            ),
+                                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
                                         ),
                                     );
                                     let new_ref = decl_engine.insert(
@@ -973,10 +970,7 @@ impl TraitMap {
                                         &type_mapping,
                                         &SubstTypesContext::new(
                                             engines,
-                                            matches!(
-                                                collecting_unifications,
-                                                CollectingUnification::No
-                                            ),
+                                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
                                         ),
                                     );
                                     let new_ref = decl_engine.insert(
@@ -1342,7 +1336,7 @@ impl TraitMap {
         access_span: &Span,
         engines: &Engines,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
-        collecting_unifications: CollectingUnification,
+        code_block_first_pass: CodeBlockFirstPass,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
 
@@ -1373,7 +1367,7 @@ impl TraitMap {
             access_span,
             engines,
             try_inserting_trait_impl_on_failure,
-            collecting_unifications,
+            code_block_first_pass,
         ) {
             Ok(()) => {
                 self.satisfied_cache.insert(hash);
@@ -1392,37 +1386,9 @@ impl TraitMap {
         access_span: &Span,
         engines: &Engines,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
-        collecting_unifications: CollectingUnification,
+        code_block_first_pass: CodeBlockFirstPass,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
-
-        // If the type is generic/placeholder, its definition needs to contains all
-        // constraints
-        match &*type_engine.get(type_id) {
-            TypeInfo::UnknownGeneric {
-                trait_constraints, ..
-            } => {
-                let all = constraints.iter().all(|required| {
-                    trait_constraints.iter().any(|constraint| {
-                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
-                    })
-                });
-                if all {
-                    return Ok(());
-                }
-            }
-            TypeInfo::Placeholder(p) => {
-                let all = constraints.iter().all(|required| {
-                    p.trait_constraints.iter().any(|constraint| {
-                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
-                    })
-                });
-                if all {
-                    return Ok(());
-                }
-            }
-            _ => {}
-        }
 
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
@@ -1496,7 +1462,7 @@ impl TraitMap {
                     try_inserting_trait_impl_on_failure,
                     TryInsertingTraitImplOnFailure::Yes
                 ) {
-                    self.insert_for_type(engines, type_id, collecting_unifications.clone());
+                    self.insert_for_type(engines, type_id, code_block_first_pass.clone());
                     return self.check_if_trait_constraints_are_satisfied_for_type(
                         handler,
                         type_id,
@@ -1504,7 +1470,7 @@ impl TraitMap {
                         access_span,
                         engines,
                         TryInsertingTraitImplOnFailure::No,
-                        collecting_unifications.clone(),
+                        code_block_first_pass.clone(),
                     );
                 } else {
                     let mut type_arguments_string = "".to_string();

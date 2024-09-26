@@ -3,11 +3,13 @@ use sway_error::{
     warning::{CompileWarning, Warning},
 };
 use sway_types::{style::is_screaming_snake_case, Spanned};
+use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::{self, *},
-        ty::{self, TyConstantDecl},
+        ty::{self, TyConstantDecl, TyExpression},
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
@@ -15,6 +17,25 @@ use crate::{
 };
 
 impl ty::TyConstantDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<ConstantDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let constant_decl = engines.pe().get_constant(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            constant_decl.name.clone(),
+            Declaration::ConstantDeclaration(*decl_id),
+        )?;
+        if let Some(value) = &constant_decl.value {
+            TyExpression::collect(handler, engines, ctx, value)?;
+        }
+        Ok(())
+    }
+
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -45,7 +66,7 @@ impl ty::TyConstantDecl {
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         type_ascription.type_id.subst(
             &ctx.type_subst(),
-            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
+            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
         );
 
         if !is_screaming_snake_case(name.as_str()) {

@@ -1,6 +1,6 @@
 [package]
 name = "sway-ir"
-version = "0.63.3"
+version.workspace = true
 description = "Sway intermediate representation."
 authors.workspace = true
 edition.workspace = true
@@ -9,19 +9,19 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-anyhow = "1.0"
-downcast-rs = "1.2.0"
-filecheck = "0.5"
-indexmap = { version = "2.0.0", features = ["rayon"] }
-itertools = "0.10.3"
-once_cell = "1.18.0"
-peg = "0.7"
-prettydiff = "0.6.4"
-rustc-hash = "1.1.0"
-slotmap = "1.0.7"
-sway-ir-macros = { version = "0.63.3", path = "sway-ir-macros" }
-sway-types = { version = "0.63.3", path = "../sway-types" }
-sway-utils = { version = "0.63.3", path = "../sway-utils" }
+anyhow.workspace = true
+downcast-rs.workspace = true
+filecheck.workspace = true
+indexmap = { workspace = true, features = ["rayon"] }
+itertools.workspace = true
+once_cell.workspace = true
+peg.workspace = true
+prettydiff.workspace = true
+rustc-hash.workspace = true
+slotmap.workspace = true
+sway-ir-macros.workspace = true
+sway-types.workspace = true
+sway-utils.workspace = true
 
 [lints.clippy]
 iter_over_hash_type = "deny"
