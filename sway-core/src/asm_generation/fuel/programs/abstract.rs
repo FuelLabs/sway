@@ -5,7 +5,7 @@ use crate::{
             abstract_instruction_set::AbstractInstructionSet,
             allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
             compiler_constants,
-            data_section::{DataSection, Entry},
+            data_section::{DataSection, Entry, EntryName},
             globals_section::GlobalsSection,
             register_sequencer::RegisterSequencer,
         },
@@ -75,7 +75,7 @@ impl AbstractProgram {
     pub(crate) fn is_empty(&self) -> bool {
         self.non_entries.is_empty()
             && self.entries.is_empty()
-            && self.data_section.value_pairs.is_empty()
+            && self.data_section.iter_all_entries().next().is_none()
     }
 
     /// Adds prologue, globals allocation, before entries, contract method switch, and allocates virtual register
@@ -302,7 +302,7 @@ impl AbstractProgram {
             // Put the selector in the data section.
             let data_label = self.data_section.insert_data_value(Entry::new_word(
                 u32::from_be_bytes(selector) as u64,
-                None,
+                EntryName::NonConfigurable,
                 None,
             ));
 

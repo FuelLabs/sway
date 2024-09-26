@@ -1931,6 +1931,7 @@ pub fn compile(
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
+        let mut configurables_offset = compiled.bytecode.len() as u64;
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
             configurables.retain(|c| {
@@ -1940,21 +1941,20 @@ pub fn compile(
             });
             // Set the actual offsets in the JSON object
             for (config, offset) in &compiled.named_data_section_entries_offsets {
+                if *offset < configurables_offset {
+                    configurables_offset = *offset;
+                }
                 if let Some(idx) = configurables.iter().position(|c| &c.name == config) {
                     configurables[idx].offset = *offset;
                 }
             }
         }
 
-        // Set metadata to a hash of the ABI.
-        // TODO: Do the right thing. This is just a placeholder.
-        let abi_json = serde_json::to_string_pretty(&program_abi)?;
-        let mut hasher = std::hash::DefaultHasher::new();
-        abi_json.hash(&mut hasher);
-        let hash: [u8; 8] = hasher.finish().to_be_bytes();
-        let hash = [hash, hash, hash, hash].concat();
+        let configurables_offset: [u8; 8] = configurables_offset.to_be_bytes();
+        let zeroes = 0u64.to_be_bytes();
+        let metadata = [configurables_offset, zeroes, zeroes, zeroes].concat();
         for (index, byte) in md.iter_mut().enumerate() {
-            *byte = hash[index];
+            *byte = metadata[index];
         }
     }
 

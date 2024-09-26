@@ -1,7 +1,10 @@
-use crate::asm_lang::{
-    allocated_ops::{AllocatedOpcode, AllocatedRegister},
-    AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp, VirtualImmediate12,
-    VirtualImmediate18, VirtualImmediate24,
+use crate::{
+    asm_generation::fuel::data_section::EntryName,
+    asm_lang::{
+        allocated_ops::{AllocatedOpcode, AllocatedRegister},
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp,
+        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+    },
 };
 
 use super::{
@@ -346,8 +349,11 @@ impl AllocatedAbstractInstructionSet {
                         // We compute the relative offset w.r.t the actual jump.
                         // Sub 1 because the relative jumps add a 1.
                         let offset = rel_offset(curr_offset + 1, lab) - 1;
-                        let data_id =
-                            data_section.insert_data_value(Entry::new_word(offset, None, None));
+                        let data_id = data_section.insert_data_value(Entry::new_word(
+                            offset,
+                            EntryName::NonConfigurable,
+                            None,
+                        ));
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::LoadDataId(r1, data_id),
                             owning_span,

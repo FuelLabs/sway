@@ -4,7 +4,7 @@ use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
-use crate::asm_generation::fuel::data_section::{DataId, Datum, Entry};
+use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode, FuelAsmData};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
@@ -316,9 +316,9 @@ fn to_bytecode_mut(
             };
         }
 
-        for (i, entry) in data_section.value_pairs.iter().enumerate() {
-            let entry_offset = data_section.data_id_to_offset(&DataId(i as u32));
-            print_entry(indentation, offset + entry_offset, entry);
+        for (i, entry) in data_section.iter_all_entries().enumerate() {
+            let entry_offset = data_section.absolute_idx_to_offset(i);
+            print_entry(indentation, offset + entry_offset, &entry);
         }
 
         println!(";; --- END OF TARGET BYTECODE ---\n");
@@ -327,16 +327,19 @@ fn to_bytecode_mut(
     assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
     assert_eq!(bytecode.len(), offset_to_data_section_in_bytes as usize);
 
+    let num_nonconfigurables = data_section.non_configurables.len();
     let named_data_section_entries_offsets = data_section
-        .value_pairs
+        .configurables
         .iter()
         .enumerate()
-        .filter(|entry| entry.1.name.is_some())
         .map(|(id, entry)| {
+            let EntryName::Configurable(name) = &entry.name else {
+                panic!("Non-configurable in configurables part of datasection");
+            };
             (
-                entry.name.as_ref().unwrap().clone(),
+                name.clone(),
                 offset_to_data_section_in_bytes
-                    + data_section.raw_data_id_to_offset(id as u32) as u64,
+                    + data_section.absolute_idx_to_offset(id + num_nonconfigurables) as u64,
             )
         })
         .collect::<BTreeMap<String, u64>>();
