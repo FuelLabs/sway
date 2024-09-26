@@ -113,6 +113,7 @@ impl TextDocument {
     }
 }
 
+#[derive(Clone)]
 pub struct Documents(DashMap<String, TextDocument>);
 
 impl Default for Documents {
@@ -215,6 +216,7 @@ impl std::ops::Deref for Documents {
 }
 
 /// Manages process-based file locking for multiple files.
+#[derive(Clone)]
 pub struct PidLockedFiles {
     locks: DashMap<Url, Arc<PidFileLocking>>,
 }

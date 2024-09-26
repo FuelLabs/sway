@@ -34,24 +34,25 @@ use tower_lsp::{jsonrpc, Client};
 const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
 
 /// `ServerState` is the primary mutable state of the language server
+#[derive(Clone)]
 pub struct ServerState {
-    pub(crate) client: Option<Client>,
+    pub client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
-    pub(crate) keyword_docs: Arc<KeywordDocs>,
+    pub keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
     /// evicting the least recently used sessions when the capacity is reached.
     pub sessions: LruSessionCache,
     pub documents: Documents,
     // Compilation thread related fields
-    pub(crate) retrigger_compilation: Arc<AtomicBool>,
+    pub retrigger_compilation: Arc<AtomicBool>,
     pub is_compiling: Arc<AtomicBool>,
-    pub(crate) cb_tx: Sender<TaskMessage>,
-    pub(crate) cb_rx: Arc<Receiver<TaskMessage>>,
-    pub(crate) finished_compilation: Arc<Notify>,
-    pub(crate) pid_locked_files: PidLockedFiles,
-    manifest_cache: DashMap<Url, Arc<PathBuf>>,
-    last_compilation_state: Arc<RwLock<LastCompilationState>>,
+    pub cb_tx: Sender<TaskMessage>,
+    pub cb_rx: Arc<Receiver<TaskMessage>>,
+    pub finished_compilation: Arc<Notify>,
+    pub pid_locked_files: PidLockedFiles,
+    pub manifest_cache: DashMap<Url, Arc<PathBuf>>,
+    pub last_compilation_state: Arc<RwLock<LastCompilationState>>,
 }
 
 impl Default for ServerState {
@@ -81,7 +82,7 @@ impl Default for ServerState {
 /// `LastCompilationState` represents the state of the last compilation process.
 /// It is primarily used for debugging purposes.
 #[derive(Debug, PartialEq)]
-enum LastCompilationState {
+pub enum LastCompilationState {
     Success,
     Failed,
     Uninitialized,
@@ -388,6 +389,7 @@ impl ServerState {
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.
 /// This cache helps limit memory usage by maintaining a fixed number of active sessions.
+#[derive(Clone)]
 pub struct LruSessionCache {
     /// Stores the actual `Session` objects, keyed by their file paths.
     sessions: Arc<DashMap<PathBuf, Arc<Session>>>,
