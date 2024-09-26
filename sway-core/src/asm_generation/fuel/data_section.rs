@@ -273,7 +273,7 @@ impl DataSection {
     fn get(&self, id: &DataId) -> Option<&Entry> {
         match id.kind {
             DataIdEntryKind::NonConfigurable => self.non_configurables.get(id.idx as usize),
-            DataIdEntryKind::Configurable => self.non_configurables.get(id.idx as usize),
+            DataIdEntryKind::Configurable => self.configurables.get(id.idx as usize),
         }
     }
 
