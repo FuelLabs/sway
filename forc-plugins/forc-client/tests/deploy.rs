@@ -492,7 +492,7 @@ async fn test_proxy_contract_re_routes_call() {
 
     let impl_contract_a = ImplementationContract::new(proxy_contract_id, wallet_unlocked.clone());
 
-    // Test storage function
+    // Test storage functions
     let res = impl_contract_a
         .methods()
         .test_function_read()
@@ -501,6 +501,14 @@ async fn test_proxy_contract_re_routes_call() {
         .await
         .unwrap();
     assert_eq!(res.value, 5);
+    let res = impl_contract_a
+        .methods()
+        .test_function_write(8)
+        .with_contract_ids(&[impl_contract_id.into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(res.value, 8);
 
     let res = impl_contract_a
         .methods()
@@ -537,16 +545,24 @@ async fn test_proxy_contract_re_routes_call() {
     assert!(impl_contract_id != impl_contract_id_after_update);
     let impl_contract_a = ImplementationContract::new(proxy_contract_after_update, wallet_unlocked);
 
-    // TODO: Why isn't this working?
-    // // Test storage function
-    // let res = impl_contract_a
-    //     .methods()
-    //     .test_function_read()
-    //     .with_contract_ids(&[impl_contract_id.into()])
-    //     .call()
-    //     .await
-    //     .unwrap();
-    // assert_eq!(res.value, 5);
+    // Test storage functions
+    let res = impl_contract_a
+        .methods()
+        .test_function_read()
+        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .call()
+        .await
+        .unwrap();
+    // Storage should be preserved from the previous target contract.
+    assert_eq!(res.value, 8);
+    let res = impl_contract_a
+        .methods()
+        .test_function_write(9)
+        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(res.value, 9);
 
     let res = impl_contract_a
         .methods()

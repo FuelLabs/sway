@@ -10,8 +10,8 @@ abi MyContract {
     #[storage(read)]
     fn test_function_read() -> u8;
 
-    #[storage(write)]
-    fn test_function_write(value: u8);
+    #[storage(read, write)]
+    fn test_function_write(value: u8) -> u8;
 }
 
 impl MyContract for Contract {
@@ -24,8 +24,9 @@ impl MyContract for Contract {
         storage.value.read()
     }
 
-    #[storage(write)]
-    fn test_function_write(value: u8) {
-        storage.value.write(value)
+    #[storage(read, write)]
+    fn test_function_write(value: u8) -> u8 {
+        storage.value.write(value);
+        storage.value.read()
     }
 }
