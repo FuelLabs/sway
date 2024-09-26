@@ -341,7 +341,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedContract {
         id: ContractId::from_str(
-            "50fe882cbef5f3da6da82509a66b7e5e0a64a40d70164861c01c908a332198ae",
+            "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
@@ -383,7 +383,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedContract {
         id: ContractId::from_str(
-            "50fe882cbef5f3da6da82509a66b7e5e0a64a40d70164861c01c908a332198ae",
+            "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
