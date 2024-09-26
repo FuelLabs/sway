@@ -491,6 +491,17 @@ async fn test_proxy_contract_re_routes_call() {
     ));
 
     let impl_contract_a = ImplementationContract::new(proxy_contract_id, wallet_unlocked.clone());
+
+    // Test storage function
+    let res = impl_contract_a
+        .methods()
+        .test_function_read()
+        .with_contract_ids(&[impl_contract_id.into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(res.value, 5);
+
     let res = impl_contract_a
         .methods()
         .test_function()
@@ -525,6 +536,18 @@ async fn test_proxy_contract_re_routes_call() {
     let impl_contract_id_after_update = contract_ids[0].id;
     assert!(impl_contract_id != impl_contract_id_after_update);
     let impl_contract_a = ImplementationContract::new(proxy_contract_after_update, wallet_unlocked);
+
+    // TODO: Why isn't this working?
+    // // Test storage function
+    // let res = impl_contract_a
+    //     .methods()
+    //     .test_function_read()
+    //     .with_contract_ids(&[impl_contract_id.into()])
+    //     .call()
+    //     .await
+    //     .unwrap();
+    // assert_eq!(res.value, 5);
+
     let res = impl_contract_a
         .methods()
         .test_function()
