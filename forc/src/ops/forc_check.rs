@@ -16,6 +16,8 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         locked,
         disable_tests,
         ipfs_node,
+        experimental,
+        no_experimental,
         ..
     } = command;
 
@@ -44,6 +46,8 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         tests_enabled,
         engines,
         None,
+        &experimental,
+        &no_experimental,
     )?;
     let (res, handler) = v
         .pop()

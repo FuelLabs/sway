@@ -308,6 +308,8 @@ pub fn compile(
         true,
         engines,
         retrigger_compilation,
+        &[],
+        &[],
     )
     .map_err(LanguageServerError::FailedToCompile)
 }

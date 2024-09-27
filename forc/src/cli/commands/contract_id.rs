@@ -29,9 +29,9 @@ pub struct Command {
     #[clap(flatten)]
     pub salt: Salt,
     /// Set of enabled experimental flags
-    pub experimental: Option<String>,
+    pub experimental: Vec<sway_features::Features>,
     /// Set of disabled experimental flags
-    pub no_experimental: Option<String>,
+    pub no_experimental: Vec<sway_features::Features>,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {

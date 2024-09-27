@@ -27,12 +27,17 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input_bytes = std::fs::read(&path).unwrap();
         let input = String::from_utf8_lossy(&input_bytes);
 
-        let mut ir =
-            sway_ir::parser::parse(&input, &source_engine, ExperimentalFeatures::default())
-                .unwrap_or_else(|parse_err| {
-                    println!("{}: {parse_err}", path.display());
-                    panic!()
-                });
+        let experimental = ExperimentalFeatures {
+            encoding_v1: false,
+            ..Default::default()
+        };
+
+        let mut ir = sway_ir::parser::parse(&input, &source_engine, experimental).unwrap_or_else(
+            |parse_err| {
+                println!("{}: {parse_err}", path.display());
+                panic!()
+            },
+        );
 
         let first_line = input.split('\n').next().unwrap();
 
