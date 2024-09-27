@@ -643,7 +643,7 @@ jobs:
       - name: Verify tag version
         run: |
           cargo install toml-cli
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }}
 
       - name: Notify if Job Fails
         uses: ravsamhq/notify-slack-action@v2
