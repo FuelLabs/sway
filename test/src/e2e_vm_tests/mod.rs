@@ -282,7 +282,7 @@ impl TestContext {
     ) -> Result<ContractId> {
         let key = DeployedContractKey {
             contract_path: contract_path.clone(),
-            new_encoding: run_config.experimental.encoding_v1,
+            new_encoding: true, // TODO
         };
 
         let mut deployed_contracts = self.deployed_contracts.lock().await;
@@ -316,13 +316,15 @@ impl TestContext {
 
         let checker = checker.build().unwrap();
 
-        let script_data = if run_config.experimental.encoding_v1 {
+        let script_data = if true {
+            // TODO
             script_data_new_encoding
         } else {
             script_data
         };
 
-        let expected_result = if run_config.experimental.encoding_v1 {
+        let expected_result = if true {
+            // TODO
             expected_result_new_encoding
         } else {
             expected_result
@@ -438,7 +440,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 &name,
                                 &compiled,
-                                run_config.experimental.encoding_v1,
+                                true, // TODO
                                 run_config.update_output_files,
                             )
                         })
@@ -484,7 +486,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 name,
                                 built_pkg,
-                                run_config.experimental.encoding_v1,
+                                true, // TODO
                                 run_config.update_output_files,
                             )
                         })
@@ -686,7 +688,7 @@ impl TestContext {
 
 pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
     // Discover tests
-    let mut tests = discover_test_configs(run_config)?;
+    let mut tests = discover_test_tomls(run_config)?;
     let total_number_of_tests = tests.len();
 
     // Filter tests
@@ -882,36 +884,23 @@ fn exclude_tests_dependency(t: &TestDescription, dep: &str) -> bool {
     }
 }
 
-fn discover_test_configs(run_config: &RunConfig) -> Result<Vec<TestDescription>> {
-    fn recursive_search(
-        path: &Path,
-        run_config: &RunConfig,
-        configs: &mut Vec<TestDescription>,
-    ) -> Result<()> {
-        let wrap_err = |e| {
-            let relative_path = path
-                .iter()
-                .skip_while(|part| part.to_string_lossy() != "test_programs")
-                .skip(1)
-                .collect::<PathBuf>();
-            anyhow!("{}: {}", relative_path.display(), e)
-        };
-        if path.is_dir() {
-            for entry in std::fs::read_dir(path).unwrap() {
-                recursive_search(&entry.unwrap().path(), run_config, configs)?;
-            }
-        } else if path.is_file() && path.file_name().map(|f| f == "test.toml").unwrap_or(false) {
-            configs.push(parse_test_toml(path, run_config).map_err(wrap_err)?);
-        }
-        Ok(())
+fn discover_test_tomls(run_config: &RunConfig) -> Result<Vec<TestDescription>> {
+    let mut descriptions = vec![];
+
+    let pattern = format!(
+        "{}/src/e2e_vm_tests/test_programs/**/test*.toml",
+        env!("CARGO_MANIFEST_DIR")
+    );
+
+    for entry in glob::glob(&pattern)
+        .expect("Failed to read glob pattern")
+        .flatten()
+    {
+        let t = parse_test_toml(&entry, run_config)?;
+        descriptions.push(t);
     }
 
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let tests_root_dir = format!("{manifest_dir}/src/e2e_vm_tests/test_programs");
-
-    let mut configs = Vec::new();
-    recursive_search(&PathBuf::from(tests_root_dir), run_config, &mut configs)?;
-    Ok(configs)
+    Ok(descriptions)
 }
 
 /// This functions gets passed the previously built FileCheck-based file checker,
@@ -944,14 +933,14 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     // if new encoding is on, allow a "category_new_encoding"
     // for tests that should have different categories
-    let category = if run_config.experimental.encoding_v1 {
+    let category = if true {
+        // TODO
         toml_content
             .get("category_new_encoding")
             .or_else(|| toml_content.get("category"))
     } else {
         toml_content.get("category")
     };
-
     let category = category
         .ok_or_else(|| anyhow!("Missing mandatory 'category' entry."))
         .and_then(|category_val| match category_val.as_str() {
@@ -1158,11 +1147,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     Ok(TestDescription {
         name,
-        suffix: if run_config.experimental.encoding_v1 {
-            None
-        } else {
-            Some("encoding v0".into())
-        },
+        suffix: None,
         category,
         script_data,
         script_data_new_encoding,

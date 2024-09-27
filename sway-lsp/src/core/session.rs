@@ -43,7 +43,6 @@ use sway_core::{
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_features::ExperimentalFeatures;
 use sway_types::{ProgramId, SourceEngine, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
 
@@ -299,7 +298,6 @@ pub fn compile(
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<&LspConfig>,
-    experimental: ExperimentalFeatures,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
     pkg::check(
@@ -310,7 +308,6 @@ pub fn compile(
         true,
         engines,
         retrigger_compilation,
-        experimental,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -443,7 +440,6 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
-    experimental: ExperimentalFeatures,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
@@ -455,7 +451,6 @@ pub fn parse_project(
         engines,
         retrigger_compilation,
         lsp_mode.as_ref(),
-        experimental,
     )?;
 
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
@@ -709,7 +704,6 @@ impl BuildPlanCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sway_features::ExperimentalFeatures;
     use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
@@ -718,15 +712,8 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(
-            &uri,
-            &engines,
-            None,
-            None,
-            session,
-            ExperimentalFeatures::default(),
-        )
-        .expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, &engines, None, None, session)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

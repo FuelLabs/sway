@@ -6,7 +6,6 @@ use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
 use sway_core::fuel_prelude::fuel_tx::Receipt;
-use sway_features::ExperimentalFeatures;
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -51,10 +50,10 @@ pub struct Command {
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
     pub test_threads: Option<usize>,
-
-    /// Disable the "new encoding" feature
-    #[clap(long)]
-    pub no_encoding_v1: bool,
+    /// Set of enabled experimental flags
+    pub experimental: Option<String>,
+    /// Set of disabled experimental flags
+    pub no_experimental: Option<String>,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -256,10 +255,8 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
-        experimental: ExperimentalFeatures {
-            encoding_v1: !cmd.no_encoding_v1,
-            ..Default::default()
-        },
+        experimental: cmd.experimental,
+        no_experimental: cmd.no_experimental,
     }
 }
 

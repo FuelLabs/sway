@@ -19,7 +19,6 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::asm_generation::ProgramABI;
 use sway_core::BuildTarget;
-use sway_features::ExperimentalFeatures;
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
@@ -154,8 +153,10 @@ pub struct TestOpts {
     pub time_phases: bool,
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
-    /// Set of experimental flags
-    pub experimental: ExperimentalFeatures,
+    /// Set of enabled experimental flags
+    pub experimental: Option<String>,
+    /// Set of disabled experimental flags
+    pub no_experimental: Option<String>,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -456,6 +457,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             tests: true,
             member_filter: Default::default(),
             experimental: val.experimental,
+            no_experimental: val.no_experimental, // experimental: val.experimental,
         }
     }
 }
@@ -478,6 +480,7 @@ impl TestOpts {
             tests: true,
             member_filter: Default::default(),
             experimental: self.experimental,
+            no_experimental: self.no_experimental,
         }
     }
 }

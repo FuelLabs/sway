@@ -53,7 +53,9 @@ pub struct Command {
     #[cfg(test)]
     pub(crate) doc_path: Option<String>,
 
-    /// Disable the "new encoding" feature
     #[clap(long)]
-    pub no_encoding_v1: bool,
+    pub experimental: Option<String>,
+
+    #[clap(long)]
+    pub no_experimental: Option<String>,
 }

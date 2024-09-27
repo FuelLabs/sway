@@ -1,7 +1,6 @@
 use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
 use std::sync::Arc;
 use sway_core::Engines;
-use sway_features::ExperimentalFeatures;
 use sway_lsp::core::session;
 use tokio::runtime::Runtime;
 
@@ -22,23 +21,19 @@ fn benchmarks(c: &mut Criterion) {
         file_versions: Default::default(),
     });
 
-    let experimental = ExperimentalFeatures::default();
-
     c.bench_function("compile", |b| {
         b.iter(|| {
             let engines = Engines::default();
             let _ = black_box(
-                session::compile(&build_plan, &engines, None, lsp_mode.as_ref(), experimental)
-                    .unwrap(),
+                session::compile(&build_plan, &engines, None, lsp_mode.as_ref()).unwrap(),
             );
         })
     });
 
     c.bench_function("traverse", |b| {
         let engines = Engines::default();
-        let results = black_box(
-            session::compile(&build_plan, &engines, None, lsp_mode.as_ref(), experimental).unwrap(),
-        );
+        let results =
+            black_box(session::compile(&build_plan, &engines, None, lsp_mode.as_ref()).unwrap());
         let session = Arc::new(session::Session::new());
         b.iter(|| {
             let _ = black_box(
@@ -59,8 +54,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..NUM_DID_CHANGE_ITERATIONS {
                 let _ = black_box(
-                    session::compile(&build_plan, &engines, None, lsp_mode.as_ref(), experimental)
-                        .unwrap(),
+                    session::compile(&build_plan, &engines, None, lsp_mode.as_ref()).unwrap(),
                 );
             }
         })

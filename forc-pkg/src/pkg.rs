@@ -308,8 +308,10 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
-    /// Set of experimental flags
-    pub experimental: ExperimentalFeatures,
+    /// Set of enabled experimental flags
+    pub experimental: Option<String>,
+    /// Set of disabled experimental flags
+    pub no_experimental: Option<String>,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1563,11 +1565,11 @@ pub fn sway_build_config(
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
     .with_metrics(build_profile.metrics_outfile.clone())
-    .with_optimization_level(build_profile.optimization_level)
-    .with_experimental(ExperimentalFeatures {
-        encoding_v1: build_profile.experimental.encoding_v1,
-        ..Default::default()
-    });
+    .with_optimization_level(build_profile.optimization_level);
+    // .with_experimental(ExperimentalFeatures {
+    //     encoding_v1: build_profile.experimental.encoding_v1,
+    //     ..Default::default()
+    // });
     Ok(build_config)
 }
 
@@ -1759,6 +1761,7 @@ pub fn compile(
     engines: &Engines,
     namespace: &mut namespace::Root,
     source_map: &mut SourceMap,
+    experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
 
@@ -1794,6 +1797,7 @@ pub fn compile(
             Some(&sway_build_config),
             &pkg.name,
             None,
+            experimental
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -1824,13 +1828,19 @@ pub fn compile(
     let asm_res = time_expr!(
         "compile ast to asm",
         "compile_ast_to_asm",
-        sway_core::ast_to_asm(&handler, engines, &programs, &sway_build_config),
+        sway_core::ast_to_asm(
+            &handler,
+            engines,
+            &programs,
+            &sway_build_config,
+            experimental
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
 
-    const OLD_ENCODING_VERSION: &str = "0";
-    const NEW_ENCODING_VERSION: &str = "1";
+    const ENCODING_V0: &str = "0";
+    const ENCODING_V1: &str = "1";
     const SPEC_VERSION: &str = "1";
 
     let mut program_abi = match pkg.target {
@@ -1846,11 +1856,11 @@ pub fn compile(
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
-                    profile
-                        .experimental
-                        .encoding_v1
-                        .then(|| NEW_ENCODING_VERSION.into())
-                        .unwrap_or(OLD_ENCODING_VERSION.into()),
+                    if experimental.encoding_v1 {
+                        ENCODING_V1.into()
+                    } else {
+                        ENCODING_V0.into()
+                    },
                     SPEC_VERSION.into(),
                 ),
                 Some(sway_build_config.clone()),
@@ -2064,7 +2074,6 @@ fn build_profile_from_opts(
         metrics_outfile,
         tests,
         error_on_warnings,
-        experimental,
         ..
     } = build_options;
 
@@ -2105,7 +2114,7 @@ fn build_profile_from_opts(
     }
     profile.include_tests |= tests;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental = *experimental;
+    // profile.experimental = *experimental;
 
     Ok(profile)
 }
@@ -2143,7 +2152,6 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         pkg,
         build_target,
         member_filter,
-        experimental,
         ..
     } = &build_options;
 
@@ -2184,13 +2192,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
     // Build it!
     let mut built_workspace = Vec::new();
     let build_start = std::time::Instant::now();
-    let built_packages = build(
-        &build_plan,
-        *build_target,
-        &build_profile,
-        &outputs,
-        *experimental,
-    )?;
+    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
         .iter()
@@ -2300,7 +2302,6 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    experimental: ExperimentalFeatures,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2334,6 +2335,13 @@ pub fn build(
             &pkg.name,
             &pkg.source.display_compiling(manifest.dir()),
         );
+
+        let mut experimental = ExperimentalFeatures::default();
+        experimental
+            .parse_from_package_manifest(&manifest.project.experimental)
+            .map_err(|err| anyhow!("{err}"))?;
+        //experimental.parse_from_cli();
+        experimental.parse_from_environment_variables().unwrap();
 
         let descriptor = PackageDescriptor {
             name: pkg.name.clone(),
@@ -2392,6 +2400,7 @@ pub fn build(
                 &engines,
                 &mut dep_namespace,
                 &mut source_map,
+                experimental,
             )?;
 
             if let Some(outfile) = profile.metrics_outfile {
@@ -2465,6 +2474,7 @@ pub fn build(
             &engines,
             &mut dep_namespace,
             &mut source_map,
+            experimental,
         )?;
 
         if let Some(outfile) = profile.metrics_outfile {
@@ -2510,7 +2520,6 @@ pub fn check(
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    experimental: ExperimentalFeatures,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
@@ -2521,6 +2530,13 @@ pub fn check(
     for (idx, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+
+        let mut experimental = ExperimentalFeatures::default();
+        experimental
+            .parse_from_package_manifest(&manifest.project.experimental)
+            .map_err(|err| anyhow!("{err}"))?;
+        //experimental.parse_from_cli();
+        experimental.parse_from_environment_variables().unwrap();
 
         // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
         // compiler's namespace. Although we only know the contract id during building, we are
@@ -2569,6 +2585,7 @@ pub fn check(
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
+            experimental,
         );
 
         if retrigger_compilation

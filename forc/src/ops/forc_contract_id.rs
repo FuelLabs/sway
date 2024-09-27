@@ -3,7 +3,6 @@ use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options};
 use forc_tracing::println_green;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
-use sway_features::ExperimentalFeatures;
 use tracing::info;
 
 pub fn contract_id(command: ContractIdCommand) -> Result<()> {
@@ -78,9 +77,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
-        experimental: ExperimentalFeatures {
-            encoding_v1: !cmd.no_encoding_v1,
-            ..Default::default()
-        },
+        experimental: cmd.experimental.clone(),
+        no_experimental: cmd.no_experimental.clone(),
     }
 }
