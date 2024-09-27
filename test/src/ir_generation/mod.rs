@@ -19,6 +19,8 @@ use sway_ir::{
     CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
 };
 
+use crate::RunConfig;
+
 enum Checker {
     Ir,
     Asm,
@@ -166,11 +168,8 @@ fn pretty_print_error_report(error: &str) {
 pub(super) async fn run(
     filter_regex: Option<&regex::Regex>,
     verbose: bool,
-    mut experimental: ExperimentalFeatures,
+    run_config: &RunConfig,
 ) -> Result<()> {
-    // TODO the way modules are built for these tests, new_encoding is not working.
-    experimental.encoding_v1 = false;
-
     // Create new initial namespace for every test by reusing the precompiled
     // standard libraries. The namespace, thus its root module, must have the
     // name set.
@@ -180,7 +179,7 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(core_lib_name, build_target, &engines, experimental);
+    let core_lib = compile_core(core_lib_name, build_target, &engines, run_config);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -223,16 +222,21 @@ pub(super) async fn run(
                 let test_file_name = path.file_name().unwrap().to_string_lossy().to_string();
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
+                let experimental = ExperimentalFeatures {
+                    encoding_v1: false, // IR tests still need encoding v1 off
+                    ..Default::default()
+                };
+
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
                 // no span metadata.
                 let bld_cfg = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
-                ).with_experimental(ExperimentalFeatures {
-                    encoding_v1: experimental.encoding_v1,
-                    ..Default::default()
-                });
+                );//.with_experimental(ExperimentalFeatures {
+                //     encoding_v1: experimental.encoding_v1,
+                //     ..Default::default()
+                // });
 
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.with_include_tests(true);
@@ -248,6 +252,7 @@ pub(super) async fn run(
                     Some(&bld_cfg),
                     PACKAGE_NAME,
                     None,
+                    experimental
                 );
                 let (errors, _warnings) = handler.consume();
                 if !errors.is_empty() {
@@ -534,7 +539,7 @@ fn compile_core(
     lib_name: sway_types::Ident,
     build_target: BuildTarget,
     engines: &Engines,
-    experimental: ExperimentalFeatures,
+    run_config: &RunConfig,
 ) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
@@ -547,7 +552,8 @@ fn compile_core(
         disable_tests: false,
         locked: false,
         ipfs_node: None,
-        no_encoding_v1: !experimental.encoding_v1,
+        experimental: run_config.experimental.clone(),
+        no_experimental: run_config.no_experimental.clone(),
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {

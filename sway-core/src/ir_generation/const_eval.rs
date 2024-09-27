@@ -1405,6 +1405,7 @@ mod tests {
             None,
             "test",
             None,
+            ExperimentalFeatures::default(),
         );
 
         let (errors, _warnings) = handler.consume();

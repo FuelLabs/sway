@@ -4,14 +4,12 @@ pub mod token_map;
 
 use lsp_types::Url;
 use std::{path::PathBuf, sync::Arc};
-use sway_features::ExperimentalFeatures;
 use sway_lsp::core::{
     document::Documents,
     session::{self, Session},
 };
 
 pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
-    let experimental = ExperimentalFeatures::default();
     let session = Arc::new(Session::new());
     let documents = Documents::new();
     let lsp_mode = Some(sway_core::LspConfig {
@@ -28,7 +26,6 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
         None,
         lsp_mode,
         session.clone(),
-        experimental,
     )
     .unwrap();
     (uri, session, documents)

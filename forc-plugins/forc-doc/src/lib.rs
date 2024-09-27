@@ -20,7 +20,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::{language::ty::TyProgram, BuildTarget, Engines};
-use sway_features::ExperimentalFeatures;
 
 pub const ASSETS_DIR_NAME: &str = "static.files";
 
@@ -56,7 +55,6 @@ pub struct ProgramInfo<'a> {
 pub fn compile_html(
     build_instructions: &Command,
     get_doc_dir: &dyn Fn(&Command) -> String,
-    experimental: ExperimentalFeatures,
 ) -> Result<(PathBuf, Box<PackageManifestFile>)> {
     // get manifest directory
     let dir = if let Some(ref path) = build_instructions.manifest_path {
@@ -109,7 +107,6 @@ pub fn compile_html(
         tests_enabled,
         &engines,
         None,
-        experimental,
     )?;
 
     let raw_docs = if build_instructions.no_deps {

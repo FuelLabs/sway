@@ -1,11 +1,21 @@
 macro_rules! features {
-    ($($name:ident, $url:literal),* $(,)?) => {
+    ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
         paste::paste! {
-            #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+            #[derive(Copy, Clone, Debug, PartialEq, Eq)]
             pub struct ExperimentalFeatures {
                 $(
                     pub [<$name:snake>]: bool,
                 )*
+            }
+
+            impl std::default::Default for ExperimentalFeatures {
+                fn default() -> Self {
+                    Self {
+                        $(
+                            [<$name:snake>]: $enabled,
+                        )*
+                    }
+                }
             }
 
             impl ExperimentalFeatures {
@@ -53,10 +63,10 @@ macro_rules! features {
 }
 
 features! {
-    encoding_v1,
+    encoding_v1 = true,
     "https://github.com/FuelLabs/sway/issues/5727",
 
-    storage_domains,
+    storage_domains = false,
     "https://github.com/FuelLabs/sway/pull/6466",
 }
 
@@ -78,6 +88,16 @@ impl std::fmt::Display for Error {
 }
 
 impl ExperimentalFeatures {
+    pub fn parse_from_package_manifest(
+        &mut self,
+        experimental: &std::collections::HashMap<String, bool>,
+    ) -> Result<(), Error> {
+        for (feature, enabled) in experimental {
+            self.set_enabled(feature, *enabled)?;
+        }
+        Ok(())
+    }
+
     /// Enable and disable features using comma separated feature names from
     /// environment variables "FORC_EXPERIMENTAL" and "FORC_NO_EXPERIMENTAL".
     pub fn parse_from_environment_variables(&mut self) -> Result<(), Error> {

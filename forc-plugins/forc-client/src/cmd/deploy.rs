@@ -84,9 +84,11 @@ pub struct Command {
     #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
     pub override_storage_slots: Option<String>,
 
-    /// Disable the "new encoding" feature
     #[clap(long)]
-    pub no_encoding_v1: bool,
+    pub experimental: Option<String>,
+
+    #[clap(long)]
+    pub no_experimental: Option<String>,
 
     /// AWS KMS signer arn. If present forc-deploy will automatically use AWS KMS signer instead of forc-wallet.
     #[clap(long)]

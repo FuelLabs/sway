@@ -28,10 +28,10 @@ pub struct Command {
     pub build_profile: BuildProfile,
     #[clap(flatten)]
     pub salt: Salt,
-
-    /// Disable the "new encoding" feature
-    #[clap(long)]
-    pub no_encoding_v1: bool,
+    /// Set of enabled experimental flags
+    pub experimental: Option<String>,
+    /// Set of disabled experimental flags
+    pub no_experimental: Option<String>,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {

@@ -28,7 +28,6 @@ use std::{
     },
 };
 use sway_core::LspConfig;
-use sway_features::ExperimentalFeatures;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -127,7 +126,6 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
-        let experimental = ExperimentalFeatures::default();
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
@@ -162,7 +160,6 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
-                            experimental,
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();

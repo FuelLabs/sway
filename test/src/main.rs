@@ -9,7 +9,6 @@ use forc::cli::shared::{PrintAsmCliOpt, PrintIrCliOpt};
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
 use sway_core::{BuildTarget, PrintAsm, PrintIr};
-use sway_features::ExperimentalFeatures;
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -62,10 +61,6 @@ struct Cli {
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
 
-    /// Disable the "new encoding" feature
-    #[arg(long)]
-    no_encoding_v1: bool,
-
     /// Update all output files
     #[arg(long)]
     update_output_files: bool,
@@ -81,6 +76,12 @@ struct Cli {
     /// Print out the final bytecode, if the verbose option is on
     #[arg(long)]
     print_bytecode: bool,
+
+    #[arg(long)]
+    experimental: Option<String>,
+
+    #[arg(long)]
+    no_experimental: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -101,11 +102,12 @@ pub struct RunConfig {
     pub locked: bool,
     pub verbose: bool,
     pub release: bool,
-    pub experimental: ExperimentalFeatures,
     pub update_output_files: bool,
     pub print_ir: PrintIr,
     pub print_asm: PrintAsm,
     pub print_bytecode: bool,
+    pub experimental: Option<String>,
+    pub no_experimental: Option<String>,
 }
 
 #[tokio::main]
@@ -136,10 +138,8 @@ async fn main() -> Result<()> {
         verbose: cli.verbose,
         release: cli.release,
         build_target,
-        experimental: ExperimentalFeatures {
-            encoding_v1: !cli.no_encoding_v1,
-            ..Default::default()
-        },
+        experimental: cli.experimental.clone(),
+        no_experimental: cli.no_experimental.clone(),
         update_output_files: cli.update_output_files,
         print_ir: cli
             .print_ir
@@ -166,13 +166,9 @@ async fn main() -> Result<()> {
     // Run IR tests
     if !filter_config.first_only {
         println!("\n");
-        ir_generation::run(
-            filter_config.include.as_ref(),
-            cli.verbose,
-            run_config.experimental,
-        )
-        .instrument(tracing::trace_span!("IR"))
-        .await?;
+        ir_generation::run(filter_config.include.as_ref(), cli.verbose, &run_config)
+            .instrument(tracing::trace_span!("IR"))
+            .await?;
     }
 
     // Run snapshot tests

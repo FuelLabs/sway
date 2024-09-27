@@ -33,9 +33,13 @@ pub struct Command {
     #[clap(long)]
     pub tests: bool,
 
-    /// Disable the "new encoding" feature
+    /// Comma separated list of all experimental features that will enabled
     #[clap(long)]
-    pub no_encoding_v1: bool,
+    pub experimental: Option<String>,
+
+    /// Comma separated list of all experimental features that will be disabled
+    #[clap(long)]
+    pub no_experimental: Option<String>,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

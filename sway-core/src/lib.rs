@@ -91,9 +91,10 @@ pub fn parse(
     handler: &Handler,
     engines: &Engines,
     config: Option<&BuildConfig>,
+    experimental: ExperimentalFeatures,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(handler, engines, input, ExperimentalFeatures::default()),
+        None => parse_in_memory(handler, engines, input, experimental),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => parse_module_tree(
@@ -104,7 +105,7 @@ pub fn parse(
             None,
             config.build_target,
             config.include_tests,
-            config.experimental,
+            experimental,
             config.lsp_mode.as_ref(),
         )
         .map(
@@ -542,6 +543,7 @@ pub fn build_module_dep_graph(
 
 pub struct CompiledAsm(pub FinalizedAsm);
 
+#[allow(clippy::too_many_arguments)]
 pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
@@ -550,8 +552,8 @@ pub fn parsed_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    experimental: ExperimentalFeatures,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
-    let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.
@@ -571,6 +573,7 @@ pub fn parsed_to_ast(
         namespace,
         package_name,
         build_config,
+        experimental,
     );
     check_should_abort(handler, retrigger_compilation.clone())?;
 
@@ -705,6 +708,7 @@ pub fn parsed_to_ast(
     Ok(typed_program_with_storage_slots)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
@@ -713,6 +717,7 @@ pub fn compile_to_ast(
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    experimental: ExperimentalFeatures,
 ) -> Result<Programs, ErrorEmitted> {
     check_should_abort(handler, retrigger_compilation.clone())?;
 
@@ -737,7 +742,7 @@ pub fn compile_to_ast(
     let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
-        parse(input, handler, engines, build_config),
+        parse(input, handler, engines, build_config, experimental),
         build_config,
         metrics
     );
@@ -769,6 +774,7 @@ pub fn compile_to_ast(
             build_config,
             package_name,
             retrigger_compilation.clone(),
+            experimental
         ),
         build_config,
         metrics
@@ -804,6 +810,7 @@ pub fn compile_to_asm(
     initial_namespace: &mut namespace::Root,
     build_config: &BuildConfig,
     package_name: &str,
+    experimental: ExperimentalFeatures,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let ast_res = compile_to_ast(
         handler,
@@ -813,8 +820,9 @@ pub fn compile_to_asm(
         Some(build_config),
         package_name,
         None,
+        experimental,
     )?;
-    ast_to_asm(handler, engines, &ast_res, build_config)
+    ast_to_asm(handler, engines, &ast_res, build_config, experimental)
 }
 
 /// Given an AST compilation result, try compiling to a `CompiledAsm`,
@@ -824,19 +832,22 @@ pub fn ast_to_asm(
     engines: &Engines,
     programs: &Programs,
     build_config: &BuildConfig,
+    experimental: ExperimentalFeatures,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let typed_program = match &programs.typed {
         Ok(typed_program) => typed_program,
         Err(err) => return Err(*err),
     };
 
-    let asm = match compile_ast_to_ir_to_asm(handler, engines, typed_program, build_config) {
-        Ok(res) => res,
-        Err(err) => {
-            handler.dedup();
-            return Err(err);
-        }
-    };
+    let asm =
+        match compile_ast_to_ir_to_asm(handler, engines, typed_program, build_config, experimental)
+        {
+            Ok(res) => res,
+            Err(err) => {
+                handler.dedup();
+                return Err(err);
+            }
+        };
     Ok(CompiledAsm(asm))
 }
 
@@ -845,6 +856,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     engines: &Engines,
     program: &ty::TyProgram,
     build_config: &BuildConfig,
+    experimental: ExperimentalFeatures,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
     // The IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
@@ -861,7 +873,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         program,
         build_config.include_tests,
         engines,
-        build_config.experimental,
+        experimental,
     ) {
         Ok(ir) => ir,
         Err(errors) => {
@@ -966,6 +978,7 @@ pub fn compile_to_bytecode(
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
+    experimental: ExperimentalFeatures,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let asm_res = compile_to_asm(
         handler,
@@ -974,6 +987,7 @@ pub fn compile_to_bytecode(
         initial_namespace,
         build_config,
         package_name,
+        experimental,
     )?;
     asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
 }
@@ -1194,6 +1208,7 @@ fn test_basic_prog() {
         &handler,
         &engines,
         None,
+        ExperimentalFeatures::default(),
     );
     prog.unwrap();
 }
@@ -1213,6 +1228,7 @@ fn test_parenthesized() {
         &handler,
         &engines,
         None,
+        ExperimentalFeatures::default(),
     );
     prog.unwrap();
 }
@@ -1234,6 +1250,7 @@ fn test_unary_ordering() {
         &handler,
         &engines,
         None,
+        ExperimentalFeatures::default(),
     );
     let (.., prog) = prog.unwrap();
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
@@ -1282,6 +1299,7 @@ fn test_parser_recovery() {
         &handler,
         &engines,
         None,
+        ExperimentalFeatures::default(),
     );
     let (_, _) = prog.unwrap();
     assert!(handler.has_errors());

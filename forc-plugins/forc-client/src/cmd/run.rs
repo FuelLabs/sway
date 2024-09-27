@@ -56,7 +56,8 @@ pub struct Command {
     #[clap(long)]
     pub args: Option<Vec<String>>,
 
-    /// Disable the "new encoding" feature
     #[clap(long)]
-    pub no_encoding_v1: bool,
+    pub experimental: Option<String>,
+    #[clap(long)]
+    pub no_experimental: Option<String>,
 }
