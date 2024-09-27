@@ -14,7 +14,9 @@ pub(crate) enum Type {
     U16,
     U32,
     U64,
+    U128,
     U256,
+    B256,
     Bool,
 }
 
@@ -61,6 +63,16 @@ impl Token {
                 let bool_val = value.parse::<bool>()?;
                 Ok(Token(fuels_core::types::Token::Bool(bool_val)))
             }
+            Type::U128 => {
+                let u128_val = value.parse::<u128>()?;
+                Ok(Token(fuels_core::types::Token::U128(u128_val)))
+            }
+            Type::B256 => {
+                let s = value.strip_prefix("0x").unwrap_or(value);
+                let mut res: [u8; 32] = Default::default();
+                hex::decode_to_slice(&s, &mut res)?;
+                Ok(Token(fuels_core::types::Token::B256(res)))
+            }
         }
     }
 }
@@ -75,8 +87,10 @@ impl FromStr for Type {
             "u16" => Ok(Type::U16),
             "u32" => Ok(Type::U32),
             "u64" => Ok(Type::U64),
+            "u128" => Ok(Type::U128),
             "u256" => Ok(Type::U256),
             "bool" => Ok(Type::Bool),
+            "b256" => Ok(Type::B256),
             other => anyhow::bail!("{other} type is not supported."),
         }
     }
@@ -92,14 +106,29 @@ mod tests {
         let u16_token = Token::from_type_and_value(&Type::U16, "1").unwrap();
         let u32_token = Token::from_type_and_value(&Type::U32, "1").unwrap();
         let u64_token = Token::from_type_and_value(&Type::U64, "1").unwrap();
+        let u128_token = Token::from_type_and_value(&Type::U128, "1").unwrap();
+        let u256_token = Token::from_type_and_value(&Type::U256, "1").unwrap();
+        let b256_token = Token::from_type_and_value(
+            &Type::B256,
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
         let bool_token = Token::from_type_and_value(&Type::Bool, "true").unwrap();
 
-        let generated_tokens = [u8_token, u16_token, u32_token, u64_token, bool_token];
+        let generated_tokens = [
+            u8_token, u16_token, u32_token, u64_token, u128_token, u256_token, b256_token,
+            bool_token,
+        ];
         let expected_tokens = [
             Token(fuels_core::types::Token::U8(1)),
             Token(fuels_core::types::Token::U16(1)),
             Token(fuels_core::types::Token::U32(1)),
             Token(fuels_core::types::Token::U64(1)),
+            Token(fuels_core::types::Token::U128(1)),
+            Token(fuels_core::types::Token::U256(fuels::types::U256([
+                1, 0, 0, 0,
+            ]))),
+            Token(fuels_core::types::Token::B256([0; 32])),
             Token(fuels_core::types::Token::Bool(true)),
         ];
 
@@ -114,7 +143,9 @@ mod tests {
 
     #[test]
     fn test_type_generation_success() {
-        let possible_type_list = ["()", "u8", "u16", "u32", "u64", "u256", "bool"];
+        let possible_type_list = [
+            "()", "u8", "u16", "u32", "u64", "u128", "u256", "b256", "bool",
+        ];
         let types = possible_type_list
             .iter()
             .map(|type_str| Type::from_str(type_str))
@@ -127,7 +158,9 @@ mod tests {
             Type::U16,
             Type::U32,
             Type::U64,
+            Type::U128,
             Type::U256,
+            Type::B256,
             Type::Bool,
         ];
         assert_eq!(types, expected_types)
