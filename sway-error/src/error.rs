@@ -2764,7 +2764,7 @@ impl ToDiagnostic for CompileError {
                     String::new()
                 ),
                 hints: vec![],
-                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.into_iter().enumerate().map(|(e, (type_id, name))| 
+                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.iter().enumerate().map(|(e, (type_id, name))| 
                     format!("#{} {} for {}", e, name, type_id.clone())
                 ).collect::<Vec<_>>().join("\n"))],
             },

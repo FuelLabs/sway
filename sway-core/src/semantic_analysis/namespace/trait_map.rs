@@ -1525,7 +1525,7 @@ impl TraitMap {
                             .all(|(a1, a2)| unify_check_equality.check(a1.type_id, a2.type_id))
                         && unify_check.check(type_id, key.type_id)
                     {
-                        let name_type_args = if key.name.suffix.args.len() > 0 {
+                        let name_type_args = if !key.name.suffix.args.is_empty() {
                             format!("<{}>", engines.help_out(key.name.suffix.args.clone()))
                         } else {
                             "".to_string()

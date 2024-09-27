@@ -530,23 +530,27 @@ impl TypeParameter {
                                 }
                             }).collect();
 
-                        if concrete_trait_type_ids.len() == 1 {
-                            ctx.engines.te().unify_with_generic(
-                                handler,
-                                engines,
-                                *type_id,
-                                concrete_trait_type_ids.first().unwrap().0,
-                                access_span,
-                                "Type parameter type does not match up with matched trait implementing type.",
-                                None,
-                            );
-                        } else if concrete_trait_type_ids.len() > 1 {
-                            return Err(handler.emit_err(CompileError::MultipleImplsSatisfyingTraitForType{
-                                span:access_span.clone(),
-                                type_annotation: engines.help_out(type_id).to_string(),
-                                trait_names: trait_constraints.iter().map(|t| engines.help_out(t).to_string()).collect(),
-                                trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
-                            }));
+                        match concrete_trait_type_ids.len().cmp(&1) {
+                            Ordering::Equal => {
+                                ctx.engines.te().unify_with_generic(
+                                    handler,
+                                    engines,
+                                    *type_id,
+                                    concrete_trait_type_ids.first().unwrap().0,
+                                    access_span,
+                                    "Type parameter type does not match up with matched trait implementing type.",
+                                    None,
+                                );
+                            }
+                            Ordering::Greater => {
+                                return Err(handler.emit_err(CompileError::MultipleImplsSatisfyingTraitForType{
+                                    span:access_span.clone(),
+                                    type_annotation: engines.help_out(type_id).to_string(),
+                                    trait_names: trait_constraints.iter().map(|t| engines.help_out(t).to_string()).collect(),
+                                    trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
+                                }));
+                            }
+                            Ordering::Less => {}
                         }
                     }
                     // Check to see if the trait constraints are satisfied.
