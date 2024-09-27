@@ -78,10 +78,10 @@ struct Cli {
     print_bytecode: bool,
 
     #[arg(long)]
-    experimental: Option<String>,
+    experimental: Vec<sway_features::Features>,
 
     #[arg(long)]
-    no_experimental: Option<String>,
+    no_experimental: Vec<sway_features::Features>,
 }
 
 #[derive(Debug, Clone)]
@@ -106,8 +106,8 @@ pub struct RunConfig {
     pub print_ir: PrintIr,
     pub print_asm: PrintAsm,
     pub print_bytecode: bool,
-    pub experimental: Option<String>,
-    pub no_experimental: Option<String>,
+    pub experimental: Vec<sway_features::Features>,
+    pub no_experimental: Vec<sway_features::Features>,
 }
 
 #[tokio::main]

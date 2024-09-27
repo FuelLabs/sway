@@ -7658,6 +7658,7 @@ dependencies = [
 name = "sway-features"
 version = "0.66.2"
 dependencies = [
+ "clap 4.5.16",
  "paste",
 ]
 

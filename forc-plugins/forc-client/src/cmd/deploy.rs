@@ -85,10 +85,10 @@ pub struct Command {
     pub override_storage_slots: Option<String>,
 
     #[clap(long)]
-    pub experimental: Option<String>,
+    pub experimental: Vec<sway_features::Features>,
 
     #[clap(long)]
-    pub no_experimental: Option<String>,
+    pub no_experimental: Vec<sway_features::Features>,
 
     /// AWS KMS signer arn. If present forc-deploy will automatically use AWS KMS signer instead of forc-wallet.
     #[clap(long)]

@@ -47,11 +47,11 @@ pub struct Command {
 
     /// Comma separated list of all experimental features that will enabled
     #[clap(long)]
-    pub experimental: Option<String>,
+    pub experimental: Vec<sway_features::Features>,
 
     /// Comma separated list of all experimental features that will be disabled
     #[clap(long)]
-    pub no_experimental: Option<String>,
+    pub no_experimental: Vec<sway_features::Features>,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

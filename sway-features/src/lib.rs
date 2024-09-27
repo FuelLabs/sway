@@ -1,6 +1,16 @@
+use clap::ValueEnum;
+
 macro_rules! features {
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
         paste::paste! {
+            #[derive(Copy, Clone, Debug, ValueEnum)]
+            #[value(rename_all = "snake")]
+            pub enum Features {
+                $(
+                    [<$name:camel>],
+                )*
+            }
+
             #[derive(Copy, Clone, Debug, PartialEq, Eq)]
             pub struct ExperimentalFeatures {
                 $(
@@ -24,11 +34,22 @@ macro_rules! features {
                     match feature {
                         $(
                             stringify!([<$name:snake>]) => {
-                                Ok(self.[<$name:snake>] = enabled)
+                                self.[<$name:snake>] = enabled;
+                                Ok(())
                             },
                         )*
                         "" => Ok(()),
                         _ => Err(Error::UnknownFeature(feature.to_string())),
+                    }
+                }
+
+                pub fn enable_feature(&mut self, feature: Features, enabled: bool) {
+                    match feature {
+                        $(
+                            Features::[<$name:camel>] => {
+                                self.[<$name:snake>] = enabled
+                            },
+                        )*
                     }
                 }
 

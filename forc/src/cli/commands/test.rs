@@ -50,10 +50,12 @@ pub struct Command {
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
     pub test_threads: Option<usize>,
+
     /// Set of enabled experimental flags
-    pub experimental: Option<String>,
+    pub experimental: Vec<sway_features::Features>,
+
     /// Set of disabled experimental flags
-    pub no_experimental: Option<String>,
+    pub no_experimental: Vec<sway_features::Features>,
 }
 
 /// The set of options provided for controlling output of a test.

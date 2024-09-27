@@ -106,6 +106,8 @@ impl DapServer {
                 ..Default::default()
             },
             &outputs,
+            &[],
+            &[],
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build packages: {:?}", err),
