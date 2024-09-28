@@ -1,5 +1,6 @@
 use anyhow::Context;
 use fuel_abi_types::abi::full_program::FullTypeApplication;
+use fuels::types::StaticStringToken;
 use std::str::FromStr;
 use sway_types::u256::U256;
 
@@ -18,6 +19,8 @@ pub(crate) enum Type {
     U256,
     B256,
     Bool,
+    String,
+    StringSlice(usize),
 }
 
 impl TryFrom<&FullTypeApplication> for Type {
@@ -55,7 +58,7 @@ impl Token {
                 Ok(Token(fuels_core::types::Token::U64(u64_val)))
             }
             Type::U256 => {
-                let v = value.parse::<U256>().context("u256 literal out of range")?;
+                let v = value.parse::<U256>().context("Invalid value for U256")?;
                 let bytes = v.to_be_bytes();
                 Ok(Token(fuels_core::types::Token::U256(bytes.into())))
             }
@@ -70,8 +73,16 @@ impl Token {
             Type::B256 => {
                 let s = value.strip_prefix("0x").unwrap_or(value);
                 let mut res: [u8; 32] = Default::default();
-                hex::decode_to_slice(&s, &mut res)?;
+                hex::decode_to_slice(&s, &mut res).context("Invalid value for B256")?;
                 Ok(Token(fuels_core::types::Token::B256(res)))
+            }
+            Type::String => {
+                let s = value.to_string();
+                Ok(Token(fuels_core::types::Token::String(s)))
+            }
+            Type::StringSlice(len) => {
+                let s = StaticStringToken::new(value.to_string(), Some(*len));
+                Ok(Token(fuels_core::types::Token::StringSlice(s)))
             }
         }
     }
@@ -91,7 +102,23 @@ impl FromStr for Type {
             "u256" => Ok(Type::U256),
             "bool" => Ok(Type::Bool),
             "b256" => Ok(Type::B256),
-            other => anyhow::bail!("{other} type is not supported."),
+            "String" => Ok(Type::String),
+            other => {
+                // Use a regular expression to check for string slice syntax
+                let re = forc_util::Regex::new(r"^str\[(\d+)\]$").expect("Invalid regex pattern");
+                if let Some(captures) = re.captures(other) {
+                    // Extract the number inside the brackets
+                    let len = captures
+                        .get(1)
+                        .ok_or_else(|| anyhow::anyhow!("Invalid string slice length"))?
+                        .as_str()
+                        .parse::<usize>()
+                        .map_err(|_| anyhow::anyhow!("Invalid number for string slice length"))?;
+                    Ok(Type::StringSlice(len))
+                } else {
+                    anyhow::bail!("{other} type is not supported.")
+                }
+            }
         }
     }
 }
@@ -99,6 +126,8 @@ impl FromStr for Type {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fuel_abi_types::abi::full_program::{FullTypeApplication, FullTypeDeclaration};
+    use fuels::types::StaticStringToken;
 
     #[test]
     fn test_token_generation_success() {
@@ -114,10 +143,21 @@ mod tests {
         )
         .unwrap();
         let bool_token = Token::from_type_and_value(&Type::Bool, "true").unwrap();
+        let string_token = Token::from_type_and_value(&Type::String, "Hello, World!").unwrap();
+        let string_slice_token =
+            Token::from_type_and_value(&Type::StringSlice(5), "Hello").unwrap();
 
         let generated_tokens = [
-            u8_token, u16_token, u32_token, u64_token, u128_token, u256_token, b256_token,
+            u8_token,
+            u16_token,
+            u32_token,
+            u64_token,
+            u128_token,
+            u256_token,
+            b256_token,
             bool_token,
+            string_token,
+            string_slice_token,
         ];
         let expected_tokens = [
             Token(fuels_core::types::Token::U8(1)),
@@ -130,6 +170,12 @@ mod tests {
             ]))),
             Token(fuels_core::types::Token::B256([0; 32])),
             Token(fuels_core::types::Token::Bool(true)),
+            Token(fuels_core::types::Token::String(
+                "Hello, World!".to_string(),
+            )),
+            Token(fuels_core::types::Token::StringSlice(
+                StaticStringToken::new("Hello".to_string(), Some(5)),
+            )),
         ];
 
         assert_eq!(generated_tokens, expected_tokens)
@@ -142,9 +188,25 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "attempt to subtract with overflow")]
+    fn test_token_generation_fail_u256_out_of_range() {
+        Token::from_type_and_value(
+            &Type::U256,
+            "115792089237316195423570985008687907853269984665640564039457584007913129639937",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid value for B256")]
+    fn test_token_generation_fail_b256_invalid_length() {
+        Token::from_type_and_value(&Type::B256, "0x123").unwrap();
+    }
+
+    #[test]
     fn test_type_generation_success() {
         let possible_type_list = [
-            "()", "u8", "u16", "u32", "u64", "u128", "u256", "b256", "bool",
+            "()", "u8", "u16", "u32", "u64", "u128", "u256", "b256", "bool", "String", "str[5]",
         ];
         let types = possible_type_list
             .iter()
@@ -162,6 +224,8 @@ mod tests {
             Type::U256,
             Type::B256,
             Type::Bool,
+            Type::String,
+            Type::StringSlice(5),
         ];
         assert_eq!(types, expected_types)
     }
@@ -171,5 +235,42 @@ mod tests {
     fn test_type_generation_fail_invalid_type() {
         let invalid_type_str = "u2";
         Type::from_str(invalid_type_str).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "str[abc] type is not supported.")]
+    fn test_type_generation_fail_invalid_string_slice() {
+        let invalid_type_str = "str[abc]";
+        Type::from_str(invalid_type_str).unwrap();
+    }
+
+    #[test]
+    fn test_try_from_full_type_application() {
+        let type_application = FullTypeApplication {
+            type_decl: FullTypeDeclaration {
+                type_field: "u8".to_string(),
+                components: Default::default(),
+                type_parameters: Default::default(),
+            },
+            name: "none".to_string(),
+            type_arguments: vec![],
+        };
+        let generated_type = Type::try_from(&type_application).unwrap();
+        assert_eq!(generated_type, Type::U8);
+    }
+
+    #[test]
+    #[should_panic(expected = "str[abc] type is not supported.")]
+    fn test_try_from_full_type_application_invalid_string_slice() {
+        let type_application = FullTypeApplication {
+            type_decl: FullTypeDeclaration {
+                type_field: "str[abc]".to_string(),
+                components: Default::default(),
+                type_parameters: Default::default(),
+            },
+            name: "none".to_string(),
+            type_arguments: vec![],
+        };
+        Type::try_from(&type_application).unwrap();
     }
 }
