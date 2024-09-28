@@ -1,0 +1,42 @@
+{
+  "U16": {
+    "configType": "u16",
+    "offset": 4544,
+    "value": "2"
+  },
+  "BOOL": {
+    "configType": "bool",
+    "offset": 4528,
+    "value": "false"
+  },
+  "STR_4": {
+    "configType": "str[4]",
+    "offset": 4536,
+    "value": "test"
+  },
+  "U256": {
+    "configType": "u256",
+    "offset": 4552,
+    "value": "0x0000000000000000000000000000000000000000000000000000000000000005"
+  },
+  "U32": {
+    "configType": "u32",
+    "offset": 4584,
+    "value": "3"
+  },
+  "U64": {
+    "configType": "u64",
+    "offset": 4592,
+    "value": "4"
+  },
+  "B256": {
+    "configType": "b256",
+    "offset": 4496,
+    "value": "0x0606060606060606060606060606060606060606060606060606060606060606"
+  },
+  "U8": {
+    "configType": "u8",
+    "offset": 4600,
+    "value": "1"
+  }
+}

@@ -5,12 +5,12 @@ use forc_client::{
     util::{account::ForcClientAccount, tx::update_proxy_contract_target},
     NodeTarget,
 };
-use forc_pkg::manifest::Proxy;
+use forc_pkg::{manifest::Proxy, BuildProfile};
 use fuel_crypto::SecretKey;
 use fuel_tx::{ContractId, Salt};
 use fuels::{
     macros::abigen,
-    types::{transaction::TxPolicies, AsciiString, Bits256},
+    types::{transaction::TxPolicies, AsciiString, Bits256, SizedAsciiString},
 };
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use portpicker::Port;
@@ -790,6 +790,78 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
     let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
 
     assert_big_contract_calls(wallet_unlocked, deployed_contract.id).await;
+
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn configurable_override() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("contract_with_configurables");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let override_config_file = tmp_dir.path().join("override-configurables.json");
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        override_configurable_slots: Some(format!("{}", override_config_file.display())),
+        build_profile: BuildProfile::RELEASE.to_string(),
+        ..Default::default()
+    };
+    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+    let contract_id = deployed_contract.id;
+    abigen!(Contract(
+        name = "ContractWithConfigurables",
+        abi = "forc-plugins/forc-client/test/data/contract_with_configurables/contract_with_configurables-abi.json"
+    ));
+
+    let instance = ContractWithConfigurables::new(contract_id, wallet_unlocked);
+
+    let (b_val, u8_val, u16_val, u32_val, u64_val, u256_val, b256_val, str_arr_val) = instance
+        .methods()
+        .return_configurables()
+        .call()
+        .await
+        .unwrap()
+        .value;
+
+    assert_eq!(b_val, false);
+    assert_eq!(u8_val, 1);
+    assert_eq!(u16_val, 2);
+    assert_eq!(u32_val, 3);
+    assert_eq!(u64_val, 4);
+    let expected_u256 = fuels::types::U256::from_str(
+        "0x0000000000000000000000000000000000000000000000000000000000000005",
+    )
+    .unwrap();
+    assert_eq!(u256_val, expected_u256);
+    let expected_b256 = fuels::types::Bits256::from_hex_str(
+        "0x0606060606060606060606060606060606060606060606060606060606060606",
+    )
+    .unwrap();
+    assert_eq!(b256_val, expected_b256);
+    let expected_str_arr = SizedAsciiString::new("test".to_string()).unwrap();
+    assert_eq!(str_arr_val, expected_str_arr);
 
     node.kill().unwrap();
 }

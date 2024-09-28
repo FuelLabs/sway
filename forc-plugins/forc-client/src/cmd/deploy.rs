@@ -91,7 +91,7 @@ pub struct Command {
     /// containing the overridden values.
     ///
     /// Use forc build --generate_configurable_slots_file <OUTPUT_PATH> to generate the file.
-    #[clap(long, name = "JSON_FILE_PATH")]
+    #[clap(long, verbatim_doc_comment)]
     pub override_configurable_slots: Option<String>,
 
     /// Disable the "new encoding" feature
