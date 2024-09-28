@@ -845,7 +845,7 @@ async fn configurable_override() {
         .unwrap()
         .value;
 
-    assert_eq!(b_val, false);
+    assert!(!b_val);
     assert_eq!(u8_val, 1);
     assert_eq!(u16_val, 2);
     assert_eq!(u32_val, 3);
