@@ -28,6 +28,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             bytecode_spans: false,
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
+            configurable_override_file: cmd.build.print.configurable_override_file,
         },
         time_phases: cmd.build.print.time_phases,
         metrics_outfile: cmd.build.print.metrics_outfile,

@@ -257,6 +257,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             bytecode_spans: false,
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
+            configurable_override_file: cmd.print.configurable_override_file.clone(),
         },
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,

@@ -84,19 +84,21 @@ pub struct Command {
     #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
     pub override_storage_slots: Option<String>,
 
+    /// Override configurable slot initialization.
+    ///
+    /// By default, configurable slots are initialized with the values defined in the configurable block in
+    /// the sway code. You can override the initialization by providing the file path to a JSON file
+    /// containing the overridden values.
+    ///
+    /// Use forc build --generate_configurable_slots_file <OUTPUT_PATH> to generate the file.
+    #[clap(long, name = "JSON_FILE_PATH")]
+    pub override_configurable_slots: Option<String>,
+
     /// Disable the "new encoding" feature
     #[clap(long)]
     pub no_encoding_v1: bool,
 
     /// AWS KMS signer arn. If present forc-deploy will automatically use AWS KMS signer instead of forc-wallet.
-    #[clap(long)]
+    #[clap(long, name = "AWS_KMS_ARN")]
     pub aws_kms_signer: Option<String>,
-
-    /// Path to configurable override file.
-    #[clap(long)]
-    pub override_configurable_slots: Option<String>,
-
-    /// Generate configurable slots file from abi.
-    #[clap(long)]
-    pub generate_configurable_slots_file: Option<String>,
 }

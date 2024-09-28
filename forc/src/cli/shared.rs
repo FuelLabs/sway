@@ -105,6 +105,9 @@ pub struct Print {
     /// Output compilation metrics into the specified file.
     #[clap(long)]
     pub metrics_outfile: Option<String>,
+    /// Generate a JSON file at the given path to use for overriding configurable slots.
+    #[clap(long, name = "OUTPUT_PATH")]
+    pub configurable_override_file: Option<String>,
 }
 
 impl Print {

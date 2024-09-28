@@ -63,6 +63,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             bytecode_spans: false,
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
+            configurable_override_file: cmd.print.configurable_override_file.clone(),
         },
         time_phases: cmd.print.time_phases,
         metrics_outfile: cmd.print.metrics_outfile.clone(),

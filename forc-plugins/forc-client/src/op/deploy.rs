@@ -3,7 +3,6 @@ use crate::{
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         account::ForcClientAccount,
-        configurables::ConfigurableDeclarations,
         node_url::get_node_url,
         pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
@@ -17,7 +16,7 @@ use anyhow::{bail, Context, Result};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::{println_action_green, println_warning};
-use forc_util::default_output_directory;
+use forc_util::{configurables::ConfigurableDeclarations, default_output_directory};
 use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
@@ -39,14 +38,13 @@ use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
-    fs,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
     time::Duration,
 };
+use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
 
 /// Maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -536,15 +534,6 @@ pub async fn deploy_pkg(
         for (offset, val) in config_values_with_offset {
             bytecode[offset..offset + val.len()].copy_from_slice(&val);
         }
-    } else if let Some(path) = &command.generate_configurable_slots_file {
-        let program_abi = &compiled.program_abi;
-        if let ProgramABI::Fuel(program_abi) = program_abi {
-            let config_decls = ConfigurableDeclarations::try_from(program_abi.clone())?;
-            let config_decls_str = serde_json::to_string(&config_decls)?;
-            fs::write(path, config_decls_str)?;
-        } else {
-            bail!("Only Fuel ABI configurable generation is supported");
-        }
     }
 
     let contract = Contract::from(bytecode.clone());
@@ -682,6 +671,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             bytecode_spans: false,
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
+            configurable_override_file: cmd.print.configurable_override_file.clone(),
         },
         time_phases: cmd.print.time_phases,
         metrics_outfile: cmd.print.metrics_outfile.clone(),

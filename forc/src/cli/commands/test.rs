@@ -243,6 +243,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             bytecode_spans: false,
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
+            configurable_override_file: cmd.build.print.configurable_override_file.clone(),
         },
         time_phases: cmd.build.print.time_phases,
         metrics_outfile: cmd.build.print.metrics_outfile,
