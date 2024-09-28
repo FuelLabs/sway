@@ -27,6 +27,7 @@ use std::{
     sync::Arc,
 };
 use sway_core::BuildTarget;
+use sway_features::ExperimentalFeatures;
 use tokio::sync::Mutex;
 use tracing::Instrument;
 
@@ -101,6 +102,7 @@ struct TestDescription {
     unsupported_profiles: Vec<&'static str>,
     checker: FileCheck,
     run_config: RunConfig,
+    experimental: ExperimentalFeatures,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -311,20 +313,19 @@ impl TestContext {
             checker,
             run_config,
             expected_decoded_test_logs,
+            experimental,
             ..
         } = test;
 
         let checker = checker.build().unwrap();
 
-        let script_data = if true {
-            // TODO
+        let script_data = if experimental.encoding_v1 {
             script_data_new_encoding
         } else {
             script_data
         };
 
-        let expected_result = if true {
-            // TODO
+        let expected_result = if experimental.encoding_v1 {
             expected_result_new_encoding
         } else {
             expected_result
@@ -440,7 +441,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 &name,
                                 &compiled,
-                                true, // TODO
+                                experimental.encoding_v1,
                                 run_config.update_output_files,
                             )
                         })
@@ -486,7 +487,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 name,
                                 built_pkg,
-                                true, // TODO
+                                experimental.encoding_v1,
                                 run_config.update_output_files,
                             )
                         })
@@ -931,10 +932,18 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         bail!("Malformed test description.");
     }
 
+    // TODO this should leave to multiple test files
+    let mut experimental = ExperimentalFeatures::default();
+    for f in &run_config.experimental.no_experimental {
+        experimental.enable_feature(*f, false);
+    }
+    for f in &run_config.experimental.experimental {
+        experimental.enable_feature(*f, true);
+    }
+
     // if new encoding is on, allow a "category_new_encoding"
     // for tests that should have different categories
-    let category = if true {
-        // TODO
+    let category = if experimental.encoding_v1 {
         toml_content
             .get("category_new_encoding")
             .or_else(|| toml_content.get("category"))
@@ -1163,6 +1172,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         checker: file_check,
         run_config: run_config.clone(),
         expected_decoded_test_logs,
+        experimental,
     })
 }
 

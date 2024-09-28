@@ -152,6 +152,7 @@ impl ServerState {
                             optimized_build: ctx.optimized_build,
                             file_versions: ctx.file_versions,
                         });
+
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(

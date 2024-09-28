@@ -309,7 +309,7 @@ pub fn compile(
         engines,
         retrigger_compilation,
         &[],
-        &[],
+        &[sway_features::Features::EncodingV1],
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
