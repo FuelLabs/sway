@@ -1,8 +1,7 @@
 use anyhow::Context;
 use fuel_abi_types::abi::full_program::FullTypeApplication;
-use fuels::types::StaticStringToken;
+use fuels::types::{Bits256, StaticStringToken, U256};
 use std::str::FromStr;
-use sway_types::u256::U256;
 
 /// A wrapper around fuels_core::types::Token, which enables serde de/serialization.
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -20,7 +19,7 @@ pub(crate) enum Type {
     B256,
     Bool,
     String,
-    StringSlice(usize),
+    StringArray(usize),
 }
 
 impl TryFrom<&FullTypeApplication> for Type {
@@ -59,8 +58,7 @@ impl Token {
             }
             Type::U256 => {
                 let v = value.parse::<U256>().context("Invalid value for U256")?;
-                let bytes = v.to_be_bytes();
-                Ok(Token(fuels_core::types::Token::U256(bytes.into())))
+                Ok(Token(fuels_core::types::Token::U256(v)))
             }
             Type::Bool => {
                 let bool_val = value.parse::<bool>()?;
@@ -71,18 +69,16 @@ impl Token {
                 Ok(Token(fuels_core::types::Token::U128(u128_val)))
             }
             Type::B256 => {
-                let s = value.strip_prefix("0x").unwrap_or(value);
-                let mut res: [u8; 32] = Default::default();
-                hex::decode_to_slice(&s, &mut res).context("Invalid value for B256")?;
-                Ok(Token(fuels_core::types::Token::B256(res)))
+                let bits256 = Bits256::from_hex_str(value)?;
+                Ok(Token(fuels_core::types::Token::B256(bits256.0)))
             }
             Type::String => {
                 let s = value.to_string();
                 Ok(Token(fuels_core::types::Token::String(s)))
             }
-            Type::StringSlice(len) => {
+            Type::StringArray(len) => {
                 let s = StaticStringToken::new(value.to_string(), Some(*len));
-                Ok(Token(fuels_core::types::Token::StringSlice(s)))
+                Ok(Token(fuels_core::types::Token::StringArray(s)))
             }
         }
     }
@@ -114,7 +110,7 @@ impl FromStr for Type {
                         .as_str()
                         .parse::<usize>()
                         .map_err(|_| anyhow::anyhow!("Invalid number for string slice length"))?;
-                    Ok(Type::StringSlice(len))
+                    Ok(Type::StringArray(len))
                 } else {
                     anyhow::bail!("{other} type is not supported.")
                 }
@@ -145,7 +141,7 @@ mod tests {
         let bool_token = Token::from_type_and_value(&Type::Bool, "true").unwrap();
         let string_token = Token::from_type_and_value(&Type::String, "Hello, World!").unwrap();
         let string_slice_token =
-            Token::from_type_and_value(&Type::StringSlice(5), "Hello").unwrap();
+            Token::from_type_and_value(&Type::StringArray(5), "Hello").unwrap();
 
         let generated_tokens = [
             u8_token,
@@ -225,7 +221,7 @@ mod tests {
             Type::B256,
             Type::Bool,
             Type::String,
-            Type::StringSlice(5),
+            Type::StringArray(5),
         ];
         assert_eq!(types, expected_types)
     }

@@ -93,16 +93,17 @@ mod tests {
 
     #[test]
     fn test_configurable_decl() {
-        let decl = r#"{ "configType": "Type A", "value": "Value" }"#;
+        let decl = r#"{ "configType": "Type A", "offset": 120, "value": "Value" }"#;
         let decl_parsed: ConfigurableDeclaration = serde_json::from_str(decl).unwrap();
 
         assert_eq!(decl_parsed.config_type, "Type A".to_string());
+        assert_eq!(decl_parsed.offset, 120);
         assert_eq!(decl_parsed.value, "Value".to_string())
     }
 
     #[test]
     fn test_configurable_decls() {
-        let decls = r#"{ "configName": {"configType": "Name", "value": "Value"} }"#;
+        let decls = r#"{ "configName": {"configType": "Name", "offset": 120, "value": "Value"} }"#;
         let decls_parsed: ConfigurableDeclarations = serde_json::from_str(decls).unwrap();
 
         assert_eq!(decls_parsed.declarations.len(), 1);
@@ -111,6 +112,7 @@ mod tests {
 
         assert_eq!(decl_parsed.0, "configName");
         assert_eq!(decl_parsed.1.config_type, "Name");
+        assert_eq!(decl_parsed.1.offset, 120);
         assert_eq!(decl_parsed.1.value, "Value");
     }
 }

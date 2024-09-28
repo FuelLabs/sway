@@ -532,8 +532,6 @@ pub async fn deploy_pkg(
             let offset = decl.offset as usize;
             config_values_with_offset.push((offset, encoded_val));
         }
-        // sort config decls based on the offsets.
-        config_values_with_offset.sort_by(|a, b| a.0.cmp(&b.0));
 
         for (offset, val) in config_values_with_offset {
             bytecode[offset..offset + val.len()].copy_from_slice(&val);
