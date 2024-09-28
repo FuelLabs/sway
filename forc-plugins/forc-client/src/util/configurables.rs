@@ -6,21 +6,27 @@ use std::{collections::HashMap, path::Path};
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableDeclarations {
     #[serde(flatten)]
-    declarations: HashMap<String, ConfigurableDeclaration>,
+    pub declarations: HashMap<String, ConfigurableDeclaration>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigurableDeclaration {
     /// Name of the configurable field.
-    config_type: String,
+    pub config_type: String,
+    /// Ofset of the configurable field.
+    pub offset: u64,
     /// Value of the configurable field.
-    value: String,
+    pub value: String,
 }
 
 impl ConfigurableDeclaration {
-    pub fn new(config_type: String, value: String) -> Self {
-        Self { config_type, value }
+    pub fn new(config_type: String, offset: u64, value: String) -> Self {
+        Self {
+            config_type,
+            offset,
+            value,
+        }
     }
 }
 
@@ -65,9 +71,13 @@ impl TryFrom<ProgramABI> for ConfigurableDeclarations {
                     .ok_or_else(|| {
                         anyhow::anyhow!("missing {config_name} type declaration in program abi.")
                     })?;
+                let offset = configurable.offset;
 
-                let decl =
-                    ConfigurableDeclaration::new(config_type_str.to_string(), "".to_string());
+                let decl = ConfigurableDeclaration::new(
+                    config_type_str.to_string(),
+                    offset,
+                    "".to_string(),
+                );
 
                 Ok((config_name.to_string(), decl))
             })

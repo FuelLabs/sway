@@ -91,4 +91,12 @@ pub struct Command {
     /// AWS KMS signer arn. If present forc-deploy will automatically use AWS KMS signer instead of forc-wallet.
     #[clap(long)]
     pub aws_kms_signer: Option<String>,
+
+    /// Path to configurable override file.
+    #[clap(long)]
+    pub override_configurable_slots: Option<String>,
+
+    /// Generate configurable slots file from abi.
+    #[clap(long)]
+    pub generate_configurable_slots_file: Option<String>,
 }

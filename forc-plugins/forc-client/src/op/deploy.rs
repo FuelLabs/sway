@@ -3,6 +3,7 @@ use crate::{
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         account::ForcClientAccount,
+        configurables::ConfigurableDeclarations,
         node_url::get_node_url,
         pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
@@ -29,19 +30,23 @@ use fuels::{
     types::{bech32::Bech32ContractId, transaction_builders::Blob},
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
-use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
+use fuels_core::{
+    codec::ABIEncoder,
+    types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder},
+};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
     time::Duration,
 };
-use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
 
 /// Maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -513,9 +518,37 @@ pub async fn deploy_pkg(
     let node_url = provider.url();
     let client = FuelClient::new(node_url)?;
 
-    let bytecode = &compiled.bytecode.bytes;
+    let mut bytecode = compiled.bytecode.bytes.clone();
 
     let storage_slots = resolve_storage_slots(command, compiled)?;
+    if let Some(config_slots) = &command.override_configurable_slots {
+        let mut config_values_with_offset: Vec<_> = vec![];
+        let config_decls = ConfigurableDeclarations::from_file(&PathBuf::from_str(config_slots)?)?;
+        for decl in config_decls.declarations.values() {
+            let config_type = crate::util::encode::Type::from_str(&decl.config_type)?;
+            let token = crate::util::encode::Token::from_type_and_value(&config_type, &decl.value)?;
+            let abi_encoder = ABIEncoder::new(Default::default());
+            let encoded_val = abi_encoder.encode(&[token.0])?;
+            let offset = decl.offset as usize;
+            config_values_with_offset.push((offset, encoded_val));
+        }
+        // sort config decls based on the offsets.
+        config_values_with_offset.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (offset, val) in config_values_with_offset {
+            bytecode[offset..offset + val.len()].copy_from_slice(&val);
+        }
+    } else if let Some(path) = &command.generate_configurable_slots_file {
+        let program_abi = &compiled.program_abi;
+        if let ProgramABI::Fuel(program_abi) = program_abi {
+            let config_decls = ConfigurableDeclarations::try_from(program_abi.clone())?;
+            let config_decls_str = serde_json::to_string(&config_decls)?;
+            fs::write(path, config_decls_str)?;
+        } else {
+            bail!("Only Fuel ABI configurable generation is supported");
+        }
+    }
+
     let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
