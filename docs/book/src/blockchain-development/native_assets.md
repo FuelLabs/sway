@@ -207,13 +207,11 @@ use std::{
         burn,
         mint_to,
     },
-    call_frames::{
-        contract_id,
-        msg_asset_id,
-    },
+    call_frames::msg_asset_id,
     constants::DEFAULT_SUB_ID,
     context::msg_amount,
     string::String,
+    contract_id::ContractId
 };
 
 configurable {
@@ -349,16 +347,14 @@ use std::{
         burn,
         mint_to,
     },
-    call_frames::{
-        contract_id,
-        msg_asset_id,
-    },
+    call_frames::msg_asset_id,
     hash::{
         Hash,
     },
     context::this_balance,
     storage::storage_string::*,
-    string::String
+    string::String,
+    contract_id::ContractId
 };
 
 storage {
