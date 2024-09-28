@@ -927,8 +927,8 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
         build_target: BuildTarget::default(),
         tests: false,
         member_filter,
-        experimental: cmd.experimental.clone(),
-        no_experimental: cmd.no_experimental.clone(),
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }
 

@@ -81,7 +81,6 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             false => BuildProfile::DEBUG.to_string(),
         },
         experimental: run_config.experimental.clone(),
-        no_experimental: run_config.no_experimental.clone(),
         ..Default::default()
     })
     .await?;
@@ -132,7 +131,6 @@ pub(crate) async fn runs_on_node(
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             experimental: run_config.experimental.clone(),
-            no_experimental: run_config.no_experimental.clone(),
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {
@@ -285,8 +283,8 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             ..Default::default()
         },
-        experimental: run_config.experimental.clone(),
-        no_experimental: run_config.no_experimental.clone(),
+        experimental: run_config.experimental.experimental.clone(),
+        no_experimental: run_config.experimental.no_experimental.clone(),
         ..Default::default()
     };
     match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
@@ -329,8 +327,8 @@ pub(crate) async fn compile_and_run_unit_tests(
                     terse: !(capture_output || run_config.verbose),
                     ..Default::default()
                 },
-                experimental: run_config.experimental.clone(),
-                no_experimental: run_config.no_experimental.clone(),
+                experimental: run_config.experimental.experimental.clone(),
+                no_experimental: run_config.experimental.no_experimental.clone(),
                 ..Default::default()
             })
         }) {

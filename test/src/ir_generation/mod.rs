@@ -553,7 +553,6 @@ fn compile_core(
         locked: false,
         ipfs_node: None,
         experimental: run_config.experimental.clone(),
-        no_experimental: run_config.no_experimental.clone(),
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {

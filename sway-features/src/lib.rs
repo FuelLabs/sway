@@ -1,4 +1,4 @@
-use clap::ValueEnum;
+use clap::{Parser, ValueEnum};
 
 macro_rules! features {
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
@@ -91,6 +91,17 @@ features! {
     "https://github.com/FuelLabs/sway/pull/6466",
 }
 
+#[derive(Clone, Debug, Default, Parser)]
+pub struct CliFields {
+    /// Comma separated list of all experimental features that will enabled
+    #[clap(long, value_delimiter = ',')]
+    pub experimental: Vec<Features>,
+
+    /// Comma separated list of all experimental features that will be disabled
+    #[clap(long, value_delimiter = ',')]
+    pub no_experimental: Vec<Features>,
+}
+
 #[derive(Debug)]
 pub enum Error {
     ParseError(String),
@@ -122,12 +133,12 @@ impl ExperimentalFeatures {
     /// Enable and disable features using comma separated feature names from
     /// environment variables "FORC_EXPERIMENTAL" and "FORC_NO_EXPERIMENTAL".
     pub fn parse_from_environment_variables(&mut self) -> Result<(), Error> {
-        if let Ok(features) = std::env::var("FORC_EXPERIMENTAL") {
-            self.parse_comma_separated_list(&features, true)?;
-        }
-
         if let Ok(features) = std::env::var("FORC_NO_EXPERIMENTAL") {
             self.parse_comma_separated_list(&features, false)?;
+        }
+
+        if let Ok(features) = std::env::var("FORC_EXPERIMENTAL") {
+            self.parse_comma_separated_list(&features, true)?;
         }
 
         Ok(())

@@ -28,10 +28,9 @@ pub struct Command {
     pub build_profile: BuildProfile,
     #[clap(flatten)]
     pub salt: Salt,
-    /// Set of enabled experimental flags
-    pub experimental: Vec<sway_features::Features>,
-    /// Set of disabled experimental flags
-    pub no_experimental: Vec<sway_features::Features>,
+
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {

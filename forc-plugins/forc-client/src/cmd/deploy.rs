@@ -84,11 +84,8 @@ pub struct Command {
     #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
     pub override_storage_slots: Option<String>,
 
-    #[clap(long)]
-    pub experimental: Vec<sway_features::Features>,
-
-    #[clap(long)]
-    pub no_experimental: Vec<sway_features::Features>,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 
     /// AWS KMS signer arn. If present forc-deploy will automatically use AWS KMS signer instead of forc-wallet.
     #[clap(long)]

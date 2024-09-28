@@ -2355,11 +2355,11 @@ pub fn build(
         experimental
             .parse_from_package_manifest(&manifest.project.experimental)
             .map_err(|err| anyhow!("{err}"))?;
-        for f in cli_experimental {
-            experimental.enable_feature(*f, true);
-        }
         for f in cli_no_experimental {
             experimental.enable_feature(*f, false);
+        }
+        for f in cli_experimental {
+            experimental.enable_feature(*f, true);
         }
         experimental
             .parse_from_environment_variables()
@@ -2563,11 +2563,11 @@ pub fn check(
         experimental
             .parse_from_package_manifest(&manifest.project.experimental)
             .map_err(|err| anyhow!("{err}"))?;
-        for f in cli_experimental {
-            experimental.enable_feature(*f, true);
-        }
         for f in cli_no_experimental {
             experimental.enable_feature(*f, false);
+        }
+        for f in cli_experimental {
+            experimental.enable_feature(*f, true);
         }
         experimental
             .parse_from_environment_variables()

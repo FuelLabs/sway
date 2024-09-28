@@ -45,13 +45,8 @@ pub struct Command {
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
 
-    /// Comma separated list of all experimental features that will enabled
-    #[clap(long)]
-    pub experimental: Vec<sway_features::Features>,
-
-    /// Comma separated list of all experimental features that will be disabled
-    #[clap(long)]
-    pub no_experimental: Vec<sway_features::Features>,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

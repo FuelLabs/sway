@@ -77,11 +77,8 @@ struct Cli {
     #[arg(long)]
     print_bytecode: bool,
 
-    #[arg(long)]
-    experimental: Vec<sway_features::Features>,
-
-    #[arg(long)]
-    no_experimental: Vec<sway_features::Features>,
+    #[command(flatten)]
+    experimental: sway_features::CliFields,
 }
 
 #[derive(Debug, Clone)]
@@ -106,8 +103,7 @@ pub struct RunConfig {
     pub print_ir: PrintIr,
     pub print_asm: PrintAsm,
     pub print_bytecode: bool,
-    pub experimental: Vec<sway_features::Features>,
-    pub no_experimental: Vec<sway_features::Features>,
+    pub experimental: sway_features::CliFields,
 }
 
 #[tokio::main]
@@ -139,7 +135,6 @@ async fn main() -> Result<()> {
         release: cli.release,
         build_target,
         experimental: cli.experimental.clone(),
-        no_experimental: cli.no_experimental.clone(),
         update_output_files: cli.update_output_files,
         print_ir: cli
             .print_ir

@@ -53,9 +53,6 @@ pub struct Command {
     #[cfg(test)]
     pub(crate) doc_path: Option<String>,
 
-    #[clap(long)]
-    pub experimental: Option<String>,
-
-    #[clap(long)]
-    pub no_experimental: Option<String>,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
