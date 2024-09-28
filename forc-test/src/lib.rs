@@ -457,7 +457,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             tests: true,
             member_filter: Default::default(),
             experimental: val.experimental,
-            no_experimental: val.no_experimental, // experimental: val.experimental,
+            no_experimental: val.no_experimental,
         }
     }
 }

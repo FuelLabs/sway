@@ -51,11 +51,8 @@ pub struct Command {
     /// threads available in your system.
     pub test_threads: Option<usize>,
 
-    /// Set of enabled experimental flags
-    pub experimental: Vec<sway_features::Features>,
-
-    /// Set of disabled experimental flags
-    pub no_experimental: Vec<sway_features::Features>,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -257,8 +254,8 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
-        experimental: cmd.experimental,
-        no_experimental: cmd.no_experimental,
+        experimental: cmd.experimental.experimental,
+        no_experimental: cmd.experimental.no_experimental,
     }
 }
 

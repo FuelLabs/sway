@@ -56,8 +56,6 @@ pub struct Command {
     #[clap(long)]
     pub args: Option<Vec<String>>,
 
-    #[clap(long)]
-    pub experimental: Vec<sway_features::Features>,
-    #[clap(long)]
-    pub no_experimental: Vec<sway_features::Features>,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }

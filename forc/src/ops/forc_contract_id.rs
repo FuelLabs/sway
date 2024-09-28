@@ -77,7 +77,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
-        experimental: cmd.experimental.clone(),
-        no_experimental: cmd.no_experimental.clone(),
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }

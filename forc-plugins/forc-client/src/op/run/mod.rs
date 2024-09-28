@@ -272,7 +272,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
-        experimental: cmd.experimental.clone(),
-        no_experimental: cmd.no_experimental.clone(),
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }

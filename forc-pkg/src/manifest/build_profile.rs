@@ -33,44 +33,7 @@ pub struct BuildProfile {
     pub reverse_results: bool,
     #[serde(default)]
     pub optimization_level: OptLevel,
-    // #[serde(
-    //     default,
-    //     serialize_with = "serialize_experimental_features",
-    //     deserialize_with = "deserialize_experimental_features"
-    // )]
-    // pub experimental: ExperimentalFeatures,
 }
-
-// fn serialize_experimental_features<S>(
-//     _experimental: &ExperimentalFeatures,
-//     _s: S,
-// ) -> Result<S::Ok, S::Error>
-// where
-//     S: serde::Serializer,
-// {
-//     todo!()
-// }
-
-// fn deserialize_experimental_features<'de, D>(
-//     deserializer: D,
-// ) -> Result<ExperimentalFeatures, D::Error>
-// where
-//     D: serde::Deserializer<'de>,
-// {
-//     use serde::de::Error;
-
-//     let mut experimental = ExperimentalFeatures::default();
-
-//     let s: std::collections::HashMap<String, bool> = <_>::deserialize(deserializer)?;
-//     for (k, enabled) in s {
-//         let snake_case = k.replace('-', "_");
-//         experimental
-//             .set_enabled(&snake_case, enabled)
-//             .map_err(D::Error::custom)?;
-//     }
-
-//     Ok(experimental)
-// }
 
 impl BuildProfile {
     pub const DEBUG: &'static str = "debug";
