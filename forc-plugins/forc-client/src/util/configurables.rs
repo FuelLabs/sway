@@ -14,7 +14,7 @@ pub struct ConfigurableDeclarations {
 pub struct ConfigurableDeclaration {
     /// Name of the configurable field.
     pub config_type: String,
-    /// Ofset of the configurable field.
+    /// Offset of the configurable field.
     pub offset: u64,
     /// Value of the configurable field.
     pub value: String,
@@ -108,7 +108,7 @@ mod tests {
 
         assert_eq!(decls_parsed.declarations.len(), 1);
 
-        let decl_parsed = decls_parsed.declarations.iter().nth(0).unwrap();
+        let decl_parsed = decls_parsed.declarations.iter().next().unwrap();
 
         assert_eq!(decl_parsed.0, "configName");
         assert_eq!(decl_parsed.1.config_type, "Name");

@@ -140,7 +140,7 @@ mod tests {
         .unwrap();
         let bool_token = Token::from_type_and_value(&Type::Bool, "true").unwrap();
         let string_token = Token::from_type_and_value(&Type::String, "Hello, World!").unwrap();
-        let string_slice_token =
+        let string_array_token =
             Token::from_type_and_value(&Type::StringArray(5), "Hello").unwrap();
 
         let generated_tokens = [
@@ -153,7 +153,7 @@ mod tests {
             b256_token,
             bool_token,
             string_token,
-            string_slice_token,
+            string_array_token,
         ];
         let expected_tokens = [
             Token(fuels_core::types::Token::U8(1)),
@@ -169,7 +169,7 @@ mod tests {
             Token(fuels_core::types::Token::String(
                 "Hello, World!".to_string(),
             )),
-            Token(fuels_core::types::Token::StringSlice(
+            Token(fuels_core::types::Token::StringArray(
                 StaticStringToken::new("Hello".to_string(), Some(5)),
             )),
         ];
@@ -178,25 +178,69 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_token_generation_fail_type_mismatch() {
-        Token::from_type_and_value(&Type::U8, "false").unwrap();
+        for (arg_type, value, error_msg) in [
+            (Type::U8, "false", "invalid digit found in string"),
+            (Type::U16, "false", "invalid digit found in string"),
+            (Type::U32, "false", "invalid digit found in string"),
+            (Type::U64, "false", "invalid digit found in string"),
+            (Type::U128, "false", "invalid digit found in string"),
+            (Type::U256, "false", "Invalid value for U256"),
+            (Type::B256, "false", "Odd number of digits"),
+            (Type::B256, "0x123", "Odd number of digits"),
+            (
+                Type::Bool,
+                "Hello",
+                "provided string was not `true` or `false`",
+            ),
+        ] {
+            assert_eq!(
+                Token::from_type_and_value(&arg_type, value)
+                    .expect_err("should panic")
+                    .to_string(),
+                error_msg
+            );
+        }
     }
 
     #[test]
-    #[should_panic(expected = "attempt to subtract with overflow")]
-    fn test_token_generation_fail_u256_out_of_range() {
-        Token::from_type_and_value(
-            &Type::U256,
-            "115792089237316195423570985008687907853269984665640564039457584007913129639937",
-        )
-        .unwrap();
-    }
-
-    #[test]
-    #[should_panic(expected = "Invalid value for B256")]
-    fn test_token_generation_fail_b256_invalid_length() {
-        Token::from_type_and_value(&Type::B256, "0x123").unwrap();
+    fn test_token_generation_fail_out_of_range() {
+        for (arg_type, value, error_msg) in [
+            (Type::U8, "256", "number too large to fit in target type"),
+            (Type::U16, "65536", "number too large to fit in target type"),
+            (
+                Type::U32,
+                "4294967296",
+                "number too large to fit in target type",
+            ),
+            (
+                Type::U64,
+                "18446744073709551616",
+                "number too large to fit in target type",
+            ),
+            (
+                Type::U128,
+                "340282366920938463463374607431768211456",
+                "number too large to fit in target type",
+            ),
+            (
+                Type::U256,
+                "115792089237316195423570985008687907853269984665640564039457584007913129639936",
+                "Invalid value for U256",
+            ),
+            (
+                Type::B256,
+                "0x10000000000000000000000000000000000000000000000000000000000000000",
+                "Odd number of digits",
+            ),
+        ] {
+            assert_eq!(
+                Token::from_type_and_value(&arg_type, value)
+                    .expect_err("should panic")
+                    .to_string(),
+                error_msg
+            );
+        }
     }
 
     #[test]
