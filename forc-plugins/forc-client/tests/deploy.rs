@@ -341,7 +341,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedContract {
         id: ContractId::from_str(
-            "50fe882cbef5f3da6da82509a66b7e5e0a64a40d70164861c01c908a332198ae",
+            "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
@@ -383,7 +383,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedContract {
         id: ContractId::from_str(
-            "50fe882cbef5f3da6da82509a66b7e5e0a64a40d70164861c01c908a332198ae",
+            "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
@@ -428,12 +428,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedContract {
         id: ContractId::from_str(
-            "50fe882cbef5f3da6da82509a66b7e5e0a64a40d70164861c01c908a332198ae",
+            "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "8eae70214f55d25a65608bd288a5863e7187fcf65705143ee1a45fd228dacc19",
+                "deb633128bceadcd4eb4fe546089f6653727348b60228638a7f9d55d0b6da1ae",
             )
             .unwrap(),
         ),
@@ -491,6 +491,25 @@ async fn test_proxy_contract_re_routes_call() {
     ));
 
     let impl_contract_a = ImplementationContract::new(proxy_contract_id, wallet_unlocked.clone());
+
+    // Test storage functions
+    let res = impl_contract_a
+        .methods()
+        .test_function_read()
+        .with_contract_ids(&[impl_contract_id.into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(res.value, 5);
+    let res = impl_contract_a
+        .methods()
+        .test_function_write(8)
+        .with_contract_ids(&[impl_contract_id.into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(res.value, 8);
+
     let res = impl_contract_a
         .methods()
         .test_function()
@@ -525,6 +544,26 @@ async fn test_proxy_contract_re_routes_call() {
     let impl_contract_id_after_update = contract_ids[0].id;
     assert!(impl_contract_id != impl_contract_id_after_update);
     let impl_contract_a = ImplementationContract::new(proxy_contract_after_update, wallet_unlocked);
+
+    // Test storage functions
+    let res = impl_contract_a
+        .methods()
+        .test_function_read()
+        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .call()
+        .await
+        .unwrap();
+    // Storage should be preserved from the previous target contract.
+    assert_eq!(res.value, 8);
+    let res = impl_contract_a
+        .methods()
+        .test_function_write(9)
+        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(res.value, 9);
+
     let res = impl_contract_a
         .methods()
         .test_function()
