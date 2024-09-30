@@ -2190,9 +2190,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             let comment = comment.into();
-            let data_id = self
-                .data_section
-                .insert_data_value(Entry::new_word(imm, EntryName::NonConfigurable, None));
+            let data_id = self.data_section.insert_data_value(Entry::new_word(
+                imm,
+                EntryName::NonConfigurable,
+                None,
+            ));
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(reg.clone(), data_id)),
                 owning_span: span.clone(),

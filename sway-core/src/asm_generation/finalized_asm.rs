@@ -148,7 +148,7 @@ fn to_bytecode_mut(
                     offset_to_data_section_in_bytes - offset_from_instr_start + offset_bytes - 4;
                 data_section.append_pointer(pointer_offset_from_current_instr);
             }
-            _ => ()
+            _ => (),
         }
         offset_from_instr_start += op_size_in_bytes(data_section, op);
     }
