@@ -1,0 +1,597 @@
+---
+source: test/tests/tests.rs
+---
+> forc addr2line -h
+exit status: 0
+output:
+Show location and context of an opcode address in its source file
+
+Usage: forc addr2line [OPTIONS] --sourcemap-path <SOURCEMAP_PATH> --opcode-index <OPCODE_INDEX>
+
+Options:
+  -S, --search-dir <SEARCH_DIR>          Where to search for the project root [default: .]
+  -g, --sourcemap-path <SOURCEMAP_PATH>  Source file mapping in JSON format
+  -c, --context <CONTEXT>                How many lines of context to show [default: 2]
+  -i, --opcode-index <OPCODE_INDEX>      Opcode index
+  -v, --verbose...                       Use verbose output
+  -s, --silent                           Silence all output
+  -L, --log-level <LOG_LEVEL>            Set the log level
+  -h, --help                             Print help
+
+> forc build -h
+exit status: 0
+output:
+Compile the current or target project
+
+Usage: forc build [OPTIONS]
+
+Options:
+  -p, --path <PATH>
+          Path to the project
+      --offline
+          Offline mode
+  -t, --terse
+          Terse mode
+      --output-directory <OUTPUT_DIRECTORY>
+          The directory in which Forc output artifacts are placed
+      --locked
+          Requires that the Forc.lock file is up-to-date
+      --ipfs-node <IPFS_NODE>
+          The IPFS node to use for fetching IPFS sources
+      --ast
+          Print the generated Sway AST (Abstract Syntax Tree)
+      --dca-graph <DCA_GRAPH>
+          Print the computed Sway DCA (Dead Code Analysis) graph
+      --dca-graph-url-format <DCA_GRAPH_URL_FORMAT>
+          URL format to be used in the generated DCA graph .dot file.
+      --asm <ASM>...
+          Print the generated ASM (assembler). [possible values: virtual, allocated, abstract, final, all]
+      --bytecode
+          Print the bytecode
+      --ir <IR>...
+          Print the generated Sway IR (Intermediate Representation). [possible values: initial, final, all, modified, inline, simplify-cfg, sroa, dce, fn-dce, fn-dedup-release, fn-dedup-debug, mem2reg, memcpyopt, const-folding, arg-demotion, const-demotion, ret-demotion, misc-demotion]
+      --time-phases
+          Output the time elapsed over each part of the compilation process
+      --reverse-order
+          Output build errors and warnings in reverse order
+      --metrics-outfile <METRICS_OUTFILE>
+          Output compilation metrics into the specified file
+  -v, --verbose...
+          Use verbose output
+      --json-abi
+          Minify JSON ABI files
+  -s, --silent
+          Silence all output
+      --json-storage-slots
+          Minify JSON storage slot files
+  -L, --log-level <LOG_LEVEL>
+          Set the log level
+  -o, --output-bin <BIN_FILE>
+          Create a binary file at the provided path representing the final bytecode
+  -g, --output-debug <DEBUG_FILE>
+          Create a file at the provided path containing debug information
+      --build-profile <BUILD_PROFILE>
+          The name of the build profile to use [default: debug]
+      --release
+          Use the release build profile
+      --error-on-warnings
+          Treat warnings as errors
+      --build-target <BUILD_TARGET>
+          Build target to use for code generation [default: fuel] [possible values: fuel, evm, midenvm]
+      --tests
+          Also build all tests within the project
+      --experimental <EXPERIMENTAL>
+          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+      --no-experimental <NO_EXPERIMENTAL>
+          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
+
+EXAMPLES:
+    # Compile the current projectx
+    forc build
+
+    # Compile the current project from a different path
+    forc build --path <PATH>
+
+    # Compile the current project without updating dependencies
+    forc build --path <PATH> --locked
+
+> forc check -h
+exit status: 0
+output:
+Check the current or target project and all of its dependencies for errors
+
+Usage: forc check [OPTIONS] [BUILD_TARGET]
+
+Arguments:
+  [BUILD_TARGET]  Build target to use for code generation [default: fuel] [possible values: fuel, evm, midenvm]
+
+Options:
+  -p, --path <PATH>
+          Path to the project, if not specified, current working directory will be used
+      --offline
+          Offline mode, prevents Forc from using the network when managing dependencies. Meaning it will only try to use previously downloaded dependencies
+      --locked
+          Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs to be updated, Forc will exit with an error
+  -t, --terse
+          Terse mode. Limited warning and error output
+      --disable-tests
+          Disable checking unit tests
+      --ipfs-node <IPFS_NODE>
+          The IPFS Node to use for fetching IPFS sources
+      --experimental <EXPERIMENTAL>
+          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+      --no-experimental <NO_EXPERIMENTAL>
+          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+  -v, --verbose...
+          Use verbose output
+  -s, --silent
+          Silence all output
+  -L, --log-level <LOG_LEVEL>
+          Set the log level
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
+
+EXAMPLES:
+    # Check the current project
+    forc check
+
+    # Check the current project with a different path
+    forc check --path <PATH>
+
+    # Check the current project without updating dependencies
+    forc check --locked
+
+> forc clean -h
+exit status: 0
+output:
+Removes the default forc compiler output artifact directory, i.e. `<project-name>/out`
+
+Usage: forc clean [OPTIONS]
+
+Options:
+  -p, --path <PATH>            Path to the project, if not specified, current working directory will be used
+  -v, --verbose...             Use verbose output
+  -s, --silent                 Silence all output
+  -L, --log-level <LOG_LEVEL>  Set the log level
+  -h, --help                   Print help
+  -V, --version                Print version
+
+EXAMPLES:
+    # Clean project
+    forc clean
+
+    # Clean project with a custom path
+    forc clean --path <PATH>
+
+> forc completions -h
+exit status: 0
+output:
+Generate tab-completion scripts for your shell
+
+Usage: forc completions [OPTIONS] --target <TARGET>
+
+Options:
+  -T, --target <TARGET>        Specify shell to enable tab-completion for [possible values: bash, elvish, fish, power-shell, zsh, fig]
+  -v, --verbose...             Use verbose output
+  -s, --silent                 Silence all output
+  -L, --log-level <LOG_LEVEL>  Set the log level
+  -h, --help                   Print help (see more with '--help')
+
+> forc new -h
+exit status: 0
+output:
+Create a new Forc project at `<path>`
+
+Usage: forc new [OPTIONS] <PATH>
+
+Arguments:
+  <PATH>  The path at which the project directory will be created
+
+Options:
+      --contract               The default program type. Excluding all flags or adding this flag creates a basic contract program
+      --script                 Adding this flag creates an empty script program
+      --predicate              Adding this flag creates an empty predicate program
+      --library                Adding this flag creates an empty library program
+      --workspace              Adding this flag creates an empty workspace
+      --name <NAME>            Set the package name. Defaults to the directory name
+  -v, --verbose...             Use verbose output
+  -s, --silent                 Silence all output
+  -L, --log-level <LOG_LEVEL>  Set the log level
+  -h, --help                   Print help
+  -V, --version                Print version
+
+EXAMPLES:
+    # Create a new project
+    forc new --contract --name my_project <PATH>
+
+    # Create a new workspace
+    forc new --workspace --name my_workspace <PATH>
+
+    # Create a new Forc project with a predicate
+    forc new <PATH> --predicate
+
+    # Create a new Forc library project
+    forc new <PATH> --library
+
+> forc init -h
+exit status: 0
+output:
+Create a new Forc project in an existing directory
+
+Usage: forc init [OPTIONS]
+
+Options:
+      --path <PATH>            The directory in which the forc project will be initialized
+      --contract               The default program type, excluding all flags or adding this flag creates a basic contract program
+      --script                 Create a package with a script target (src/main.sw)
+      --predicate              Create a package with a predicate target (src/predicate.rs)
+      --library                Create a package with a library target (src/lib.sw)
+      --workspace              Adding this flag creates an empty workspace
+      --name <NAME>            Set the package name. Defaults to the directory name
+  -v, --verbose...             Use verbose output
+  -s, --silent                 Silence all output
+  -L, --log-level <LOG_LEVEL>  Set the log level
+  -h, --help                   Print help
+  -V, --version                Print version
+
+EXAMPLES:
+    # Initialize a new Forc project
+    forc init --path <PATH>
+
+    # Initialize a new Forc project as workspace
+    forc init --path <PATH> --workspace
+
+    # Initialize a new Forc project with a predicate
+    forc init --path <PATH> --predicate
+
+    # Initialize a new Forc library project
+    forc init --path <PATH> --library
+
+> forc parse-bytecode -h
+exit status: 0
+output:
+Parse bytecode file into a debug format
+
+Usage: forc parse-bytecode [OPTIONS] <FILE_PATH>
+
+Arguments:
+  <FILE_PATH>  
+
+Options:
+  -v, --verbose...             Use verbose output
+  -s, --silent                 Silence all output
+  -L, --log-level <LOG_LEVEL>  Set the log level
+  -h, --help                   Print help
+  -V, --version                Print version
+
+EXAMPLES:
+    # Parse bytecode
+    forc parse-bytecode <PATH>
+
+> forc test -h
+exit status: 0
+output:
+Run the Sway unit tests for the current project
+
+Usage: forc test [OPTIONS] [FILTER]
+
+Arguments:
+  [FILTER]  When specified, only tests containing the given string will be executed
+
+Options:
+  -p, --path <PATH>
+          Path to the project
+      --offline
+          Offline mode
+  -t, --terse
+          Terse mode
+      --output-directory <OUTPUT_DIRECTORY>
+          The directory in which Forc output artifacts are placed
+      --locked
+          Requires that the Forc.lock file is up-to-date
+      --ipfs-node <IPFS_NODE>
+          The IPFS node to use for fetching IPFS sources
+      --ast
+          Print the generated Sway AST (Abstract Syntax Tree)
+      --dca-graph <DCA_GRAPH>
+          Print the computed Sway DCA (Dead Code Analysis) graph
+      --dca-graph-url-format <DCA_GRAPH_URL_FORMAT>
+          URL format to be used in the generated DCA graph .dot file.
+      --asm <ASM>...
+          Print the generated ASM (assembler). [possible values: virtual, allocated, abstract, final, all]
+      --bytecode
+          Print the bytecode
+      --ir <IR>...
+          Print the generated Sway IR (Intermediate Representation). [possible values: initial, final, all, modified, inline, simplify-cfg, sroa, dce, fn-dce, fn-dedup-release, fn-dedup-debug, mem2reg, memcpyopt, const-folding, arg-demotion, const-demotion, ret-demotion, misc-demotion]
+      --time-phases
+          Output the time elapsed over each part of the compilation process
+      --reverse-order
+          Output build errors and warnings in reverse order
+      --metrics-outfile <METRICS_OUTFILE>
+          Output compilation metrics into the specified file
+  -v, --verbose...
+          Use verbose output
+      --json-abi
+          Minify JSON ABI files
+  -s, --silent
+          Silence all output
+      --json-storage-slots
+          Minify JSON storage slot files
+  -L, --log-level <LOG_LEVEL>
+          Set the log level
+  -o, --output-bin <BIN_FILE>
+          Create a binary file at the provided path representing the final bytecode
+  -g, --output-debug <DEBUG_FILE>
+          Create a file at the provided path containing debug information
+      --build-profile <BUILD_PROFILE>
+          The name of the build profile to use [default: debug]
+      --release
+          Use the release build profile
+      --error-on-warnings
+          Treat warnings as errors
+      --build-target <BUILD_TARGET>
+          Build target to use for code generation [default: fuel] [possible values: fuel, evm, midenvm]
+      --pretty
+          Pretty-print the logs emitted from tests
+  -l, --logs
+          Print `Log` and `LogData` receipts for tests
+      --raw-logs
+          Print the raw logs for tests
+      --filter-exact
+          When specified, only the test exactly matching the given string will be executed
+      --test-threads <TEST_THREADS>
+          Number of threads to utilize when running the tests. By default, this is the number of threads available in your system
+      --experimental <EXPERIMENTAL>
+          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+      --no-experimental <NO_EXPERIMENTAL>
+          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
+
+EXAMPLES:
+    # Run test
+    forc test
+
+    # Run test with a filter
+    forc test $filter
+
+    # Run test without any output
+    forc test --silent
+
+    # Run test without creating or update the lock file
+    forc test --locked
+
+> forc update -h
+exit status: 0
+output:
+Update dependencies in the Forc dependencies directory
+
+Usage: forc update [OPTIONS]
+
+Options:
+  -p, --path <PATH>            Path to the project, if not specified, current working directory will be used
+  -d <TARGET_DEPENDENCY>       Dependency to be updated. If not set, all dependencies will be updated
+  -c, --check                  Checks if the dependencies have newer versions. Won't actually perform the update, will output which ones are up-to-date and outdated
+      --ipfs-node <IPFS_NODE>  The IPFS Node to use for fetching IPFS sources
+  -v, --verbose...             Use verbose output
+  -s, --silent                 Silence all output
+  -L, --log-level <LOG_LEVEL>  Set the log level
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
+
+EXAMPLES:
+    # Update dependencies
+    forc update
+
+    # Update a specific dependency
+    forc update -d std
+
+    # Check if dependencies have newer versions
+    forc update --check
+
+> forc plugins -h
+exit status: 0
+output:
+List all forc plugins
+
+Usage: forc plugins [OPTIONS]
+
+Options:
+  -p, --paths                  Prints the absolute path to each discovered plugin
+  -d, --describe               Prints the long description associated with each listed plugin
+  -v, --verbose...             Use verbose output
+  -s, --silent                 Silence all output
+  -L, --log-level <LOG_LEVEL>  Set the log level
+  -h, --help                   Print help (see more with '--help')
+  -V, --version                Print version
+
+EXAMPLES:
+    # List all plugins
+    forc plugins
+
+    # List all plugins with their paths
+    forc plugins --paths
+
+    # List all plugins with their descriptions
+    forc plugins --describe
+
+    # List all plugins with their paths and descriptions
+    forc plugins --paths --describe
+
+> forc template -h
+exit status: 0
+output:
+Create a new Forc project from a git template
+
+Usage: forc template [OPTIONS] <PROJECT_NAME>
+
+Arguments:
+  <PROJECT_NAME>  The name of the project that will be created
+
+Options:
+  -u, --url <URL>                      The template url, should be a git repo [default: https://github.com/fuellabs/sway]
+  -t, --template-name <TEMPLATE_NAME>  The name of the template that needs to be fetched and used from git repo provided
+  -v, --verbose...                     Use verbose output
+  -s, --silent                         Silence all output
+  -L, --log-level <LOG_LEVEL>          Set the log level
+  -h, --help                           Print help
+  -V, --version                        Print version
+
+EXAMPLES:
+    # Create a new Forc project from an option template
+    forc template new-path --template-name option
+
+> forc contract-id -h
+exit status: 0
+output:
+Determine contract-id for a contract. For workspaces outputs all contract ids in the workspace
+
+Usage: forc contract-id [OPTIONS]
+
+Options:
+  -p, --path <PATH>
+          Path to the project
+      --offline
+          Offline mode
+  -t, --terse
+          Terse mode
+      --output-directory <OUTPUT_DIRECTORY>
+          The directory in which Forc output artifacts are placed
+      --locked
+          Requires that the Forc.lock file is up-to-date
+      --ipfs-node <IPFS_NODE>
+          The IPFS node to use for fetching IPFS sources
+      --json-abi
+          Minify JSON ABI files
+      --json-storage-slots
+          Minify JSON storage slot files
+      --ast
+          Print the generated Sway AST (Abstract Syntax Tree)
+      --dca-graph <DCA_GRAPH>
+          Print the computed Sway DCA (Dead Code Analysis) graph
+      --dca-graph-url-format <DCA_GRAPH_URL_FORMAT>
+          URL format to be used in the generated DCA graph .dot file.
+      --asm <ASM>...
+          Print the generated ASM (assembler). [possible values: virtual, allocated, abstract, final, all]
+      --bytecode
+          Print the bytecode
+      --ir <IR>...
+          Print the generated Sway IR (Intermediate Representation). [possible values: initial, final, all, modified, inline, simplify-cfg, sroa, dce, fn-dce, fn-dedup-release, fn-dedup-debug, mem2reg, memcpyopt, const-folding, arg-demotion, const-demotion, ret-demotion, misc-demotion]
+      --time-phases
+          Output the time elapsed over each part of the compilation process
+  -v, --verbose...
+          Use verbose output
+      --reverse-order
+          Output build errors and warnings in reverse order
+  -s, --silent
+          Silence all output
+  -L, --log-level <LOG_LEVEL>
+          Set the log level
+      --metrics-outfile <METRICS_OUTFILE>
+          Output compilation metrics into the specified file
+  -o, --output-bin <BIN_FILE>
+          Create a binary file at the provided path representing the final bytecode
+  -g, --output-debug <DEBUG_FILE>
+          Create a file at the provided path containing debug information
+      --build-profile <BUILD_PROFILE>
+          The name of the build profile to use [default: debug]
+      --release
+          Use the release build profile
+      --error-on-warnings
+          Treat warnings as errors
+      --salt <SALT>
+          Added salt used to derive the contract ID
+      --experimental <EXPERIMENTAL>
+          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+      --no-experimental <NO_EXPERIMENTAL>
+          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
+
+EXAMPLES:
+    # Get contract id
+    forc contract-id
+
+    # Get contract id from a different path
+    forc contract-id --path <PATH>
+
+> forc predicate-root -h
+exit status: 0
+output:
+Determine predicate-root for a predicate. For workspaces outputs all predicate roots in the workspace
+
+Usage: forc predicate-root [OPTIONS]
+
+Options:
+  -p, --path <PATH>
+          Path to the project
+      --offline
+          Offline mode
+  -t, --terse
+          Terse mode
+      --output-directory <OUTPUT_DIRECTORY>
+          The directory in which Forc output artifacts are placed
+      --locked
+          Requires that the Forc.lock file is up-to-date
+      --ipfs-node <IPFS_NODE>
+          The IPFS node to use for fetching IPFS sources
+      --json-abi
+          Minify JSON ABI files
+      --json-storage-slots
+          Minify JSON storage slot files
+      --ast
+          Print the generated Sway AST (Abstract Syntax Tree)
+      --dca-graph <DCA_GRAPH>
+          Print the computed Sway DCA (Dead Code Analysis) graph
+      --dca-graph-url-format <DCA_GRAPH_URL_FORMAT>
+          URL format to be used in the generated DCA graph .dot file.
+      --asm <ASM>...
+          Print the generated ASM (assembler). [possible values: virtual, allocated, abstract, final, all]
+      --bytecode
+          Print the bytecode
+      --ir <IR>...
+          Print the generated Sway IR (Intermediate Representation). [possible values: initial, final, all, modified, inline, simplify-cfg, sroa, dce, fn-dce, fn-dedup-release, fn-dedup-debug, mem2reg, memcpyopt, const-folding, arg-demotion, const-demotion, ret-demotion, misc-demotion]
+      --time-phases
+          Output the time elapsed over each part of the compilation process
+  -v, --verbose...
+          Use verbose output
+      --reverse-order
+          Output build errors and warnings in reverse order
+  -s, --silent
+          Silence all output
+  -L, --log-level <LOG_LEVEL>
+          Set the log level
+      --metrics-outfile <METRICS_OUTFILE>
+          Output compilation metrics into the specified file
+  -o, --output-bin <BIN_FILE>
+          Create a binary file at the provided path representing the final bytecode
+  -g, --output-debug <DEBUG_FILE>
+          Create a file at the provided path containing debug information
+      --build-profile <BUILD_PROFILE>
+          The name of the build profile to use [default: debug]
+      --release
+          Use the release build profile
+      --error-on-warnings
+          Treat warnings as errors
+      --experimental <EXPERIMENTAL>
+          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+      --no-experimental <NO_EXPERIMENTAL>
+          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
+
+EXAMPLES:
+    # Get predicate root
+    forc predicate-root

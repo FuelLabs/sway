@@ -1,0 +1,16 @@
+cmds = [
+    "forc addr2line -h",
+    "forc build -h",
+    "forc check -h",
+    "forc clean -h",
+    "forc completions -h",
+    "forc new -h",
+    "forc init -h",
+    "forc parse-bytecode -h",
+    "forc test -h",
+    "forc update -h",
+    "forc plugins -h",
+    "forc template -h",
+    "forc contract-id -h",
+    "forc predicate-root -h",
+]
