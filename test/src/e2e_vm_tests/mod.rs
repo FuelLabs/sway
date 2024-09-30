@@ -27,7 +27,7 @@ use std::{
     sync::Arc,
 };
 use sway_core::BuildTarget;
-use sway_features::ExperimentalFeatures;
+use sway_features::{CliFields, ExperimentalFeatures};
 use tokio::sync::Mutex;
 use tracing::Instrument;
 
@@ -103,6 +103,7 @@ struct TestDescription {
     checker: FileCheck,
     run_config: RunConfig,
     experimental: ExperimentalFeatures,
+    has_experimental_field: bool,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -300,6 +301,7 @@ impl TestContext {
     async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<()> {
         let TestDescription {
             name,
+            suffix,
             category,
             script_data,
             script_data_new_encoding,
@@ -314,18 +316,19 @@ impl TestContext {
             run_config,
             expected_decoded_test_logs,
             experimental,
+            has_experimental_field,
             ..
         } = test;
 
         let checker = checker.build().unwrap();
 
-        let script_data = if experimental.encoding_v1 {
+        let script_data = if !has_experimental_field && experimental.encoding_v1 {
             script_data_new_encoding
         } else {
             script_data
         };
 
-        let expected_result = if experimental.encoding_v1 {
+        let expected_result = if !has_experimental_field && experimental.encoding_v1 {
             expected_result_new_encoding
         } else {
             expected_result
@@ -443,9 +446,12 @@ impl TestContext {
                                 &compiled,
                                 experimental.encoding_v1,
                                 run_config.update_output_files,
+                                &suffix,
+                                has_experimental_field,
                             )
                         })
                         .await;
+
                         output.push_str(&out);
                         result?;
                     }
@@ -489,6 +495,8 @@ impl TestContext {
                                 built_pkg,
                                 experimental.encoding_v1,
                                 run_config.update_output_files,
+                                &suffix,
+                                has_experimental_field,
                             )
                         })
                         .await;
@@ -926,24 +934,72 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     let mut file_check = FileCheck(toml_content_str.clone());
     let checker = file_check.build()?;
 
-    let toml_content = toml_content_str.parse::<toml::Value>()?;
+    let mut toml_content = toml_content_str.parse::<toml::Value>()?;
 
     if !toml_content.is_table() {
         bail!("Malformed test description.");
     }
 
-    // TODO this should leave to multiple test files
-    let mut experimental = ExperimentalFeatures::default();
-    for f in &run_config.experimental.no_experimental {
-        experimental.enable_feature(*f, false);
+    // use test.toml as base if this test has a suffix
+    {
+        let toml_content_map = toml_content.as_table_mut().unwrap();
+        if path.file_name().and_then(|x| x.to_str()) != Some("test.toml") {
+            let base_test_toml = path.parent().unwrap().join("test.toml");
+            let base_test_toml = std::fs::read_to_string(base_test_toml)?;
+            let base_toml_content = base_test_toml.parse::<toml::Value>()?;
+            match base_toml_content {
+                toml::Value::Table(map) => {
+                    for (k, v) in map {
+                        let _ = toml_content_map.entry(&k).or_insert(v);
+                    }
+                }
+                _ => todo!(),
+            }
+        };
     }
-    for f in &run_config.experimental.experimental {
-        experimental.enable_feature(*f, true);
-    }
+
+    let mut run_config = run_config.clone();
+
+    // To keep the current test.toml compatible we check if a field named "experimental" exists
+    // or not. If it does not, we keep the current behaviour.
+    // If it does, we ignore the experimental flags from the CLI and use the one from the toml file.
+    // TODO: this backwards compatilibty can be removed after all tests migrate to new version
+    let (has_experimental_field, experimental) =
+        if let Some(toml_experimental) = toml_content.get("experimental") {
+            run_config.experimental = CliFields::default();
+
+            let mut experimental = ExperimentalFeatures::default();
+            for (k, v) in toml_experimental.as_table().unwrap() {
+                let v = v.as_bool().unwrap();
+                experimental.set_enabled(k, v).unwrap();
+
+                if v {
+                    run_config
+                        .experimental
+                        .experimental
+                        .push(k.parse().unwrap());
+                } else {
+                    run_config
+                        .experimental
+                        .no_experimental
+                        .push(k.parse().unwrap());
+                }
+            }
+            (true, experimental)
+        } else {
+            let mut experimental = ExperimentalFeatures::default();
+            for f in &run_config.experimental.no_experimental {
+                experimental.enable_feature(*f, false);
+            }
+            for f in &run_config.experimental.experimental {
+                experimental.enable_feature(*f, true);
+            }
+            (false, experimental)
+        };
 
     // if new encoding is on, allow a "category_new_encoding"
     // for tests that should have different categories
-    let category = if experimental.encoding_v1 {
+    let category = if !has_experimental_field && experimental.encoding_v1 {
         toml_content
             .get("category_new_encoding")
             .or_else(|| toml_content.get("category"))
@@ -989,7 +1045,8 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     // the old encoding anymore, and currently we do not have any other configurations.
     // Currently, we will simply ignore the `FileCheck` directives if the test category
     // is not "fails" and the "category_new_encoding" is explicitly specified.
-    if toml_content.get("category_new_encoding").is_some()
+    if !has_experimental_field
+        && toml_content.get("category_new_encoding").is_some()
         && category != TestCategory::FailsToCompile
     {
         file_check = FileCheck("".into());
@@ -1016,12 +1073,19 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
                     Some(decoded)
                 }
                 Some(_) => {
-                    bail!("Expected 'script_data' to be a hex string.");
+                    bail!("Expected 'script_data_new_encoding' to be a hex string.");
                 }
                 _ => None,
             };
 
-            (script_data, script_data_new_encoding)
+            (
+                script_data,
+                if has_experimental_field {
+                    None
+                } else {
+                    script_data_new_encoding
+                },
+            )
         }
         TestCategory::Compiles
         | TestCategory::FailsToCompile
@@ -1075,7 +1139,11 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         &category,
         get_expected_result("expected_result_new_encoding", &toml_content),
     ) {
-        (TestCategory::Runs | TestCategory::RunsWithContract, Some(value)) => Some(value),
+        (TestCategory::Runs | TestCategory::RunsWithContract, Some(value))
+            if !has_experimental_field =>
+        {
+            Some(value)
+        }
         _ => None,
     };
 
@@ -1156,7 +1224,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     Ok(TestDescription {
         name,
-        suffix: None,
+        suffix: path.file_name().unwrap().to_str().map(|x| x.to_string()),
         category,
         script_data,
         script_data_new_encoding,
@@ -1170,9 +1238,10 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         supported_targets,
         unsupported_profiles,
         checker: file_check,
-        run_config: run_config.clone(),
+        run_config,
         expected_decoded_test_logs,
         experimental,
+        has_experimental_field,
     })
 }
 

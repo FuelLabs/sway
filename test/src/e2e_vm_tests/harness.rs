@@ -1,3 +1,4 @@
+use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
 use forc_client::{
@@ -17,8 +18,6 @@ use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
 use sway_core::{asm_generation::ProgramABI, BuildTarget};
-
-use super::RunConfig;
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -352,19 +351,40 @@ pub(crate) fn test_json_abi(
     built_package: &BuiltPackage,
     experimental_new_encoding: bool,
     update_output_files: bool,
+    suffix: &Option<String>,
+    has_experimental_field: bool,
 ) -> Result<()> {
     emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let oracle_path = if experimental_new_encoding {
-        format!(
-            "{}/src/e2e_vm_tests/test_programs/{}/{}",
-            manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
-        )
-    } else {
-        format!(
-            "{}/src/e2e_vm_tests/test_programs/{}/{}",
-            manifest_dir, file_name, "json_abi_oracle.json"
-        )
+
+    let oracle_path = match (has_experimental_field, experimental_new_encoding) {
+        (true, _) => {
+            format!(
+                "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle.{}json",
+                manifest_dir,
+                file_name,
+                suffix
+                    .as_ref()
+                    .unwrap()
+                    .strip_prefix("test")
+                    .unwrap()
+                    .strip_suffix("toml")
+                    .unwrap()
+                    .trim_start_matches('.')
+            )
+        }
+        (false, true) => {
+            format!(
+                "{}/src/e2e_vm_tests/test_programs/{}/{}",
+                manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
+            )
+        }
+        (false, false) => {
+            format!(
+                "{}/src/e2e_vm_tests/test_programs/{}/{}",
+                manifest_dir, file_name, "json_abi_oracle.json"
+            )
+        }
     };
 
     let output_path = format!(

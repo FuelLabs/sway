@@ -113,7 +113,7 @@ async fn main() -> Result<()> {
     // Parse args
     let cli = Cli::parse();
     let filter_config = FilterConfig {
-        include: cli.include,
+        include: cli.include.clone(),
         exclude: cli.exclude,
         skip_until: cli.skip_until,
         abi_only: cli.abi_only,
@@ -167,7 +167,11 @@ async fn main() -> Result<()> {
     }
 
     // Run snapshot tests
-    let args = vec!["t", "--release", "-p", "test"];
+    let mut args = vec!["t", "--release", "-p", "test", "--"];
+    if let Some(include) = cli.include.as_ref().map(|x| x.as_str()) {
+        args.push(include);
+    }
+
     let mut t = std::process::Command::new("cargo")
         .args(args)
         .spawn()

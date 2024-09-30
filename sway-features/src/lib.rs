@@ -11,6 +11,21 @@ macro_rules! features {
                 )*
             }
 
+            impl std::str::FromStr for Features {
+                type Err = Error;
+
+                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                    match s {
+                        $(
+                            stringify!([<$name:snake>]) => {
+                                Ok(Self::[<$name:camel>])
+                            },
+                        )*
+                        _ => Err(Error::UnknownFeature(s.to_string())),
+                    }
+                }
+            }
+
             #[derive(Copy, Clone, Debug, PartialEq, Eq)]
             pub struct ExperimentalFeatures {
                 $(
