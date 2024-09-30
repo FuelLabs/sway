@@ -571,7 +571,7 @@ impl AllocatedOp {
         &self,
         offset_to_data_section: u64,
         offset_from_instr_start: u64,
-        data_section: &mut DataSection,
+        data_section: &DataSection,
     ) -> FuelAsmData {
         use AllocatedOpcode::*;
         FuelAsmData::Instructions(vec![match &self.opcode {
@@ -763,9 +763,10 @@ impl AllocatedOp {
 fn addr_of(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    data_section: &mut DataSection,
+    data_section: &DataSection,
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
+    dbg!(data_id, offset_bytes);
     vec![fuel_asm::Instruction::ADDI(ADDI::new(
         dest.to_reg_id(),
         fuel_asm::RegId::new(DATA_SECTION_REGISTER),
@@ -780,7 +781,7 @@ fn addr_of(
 fn realize_load(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    data_section: &mut DataSection,
+    data_section: &DataSection,
     offset_to_data_section: u64,
     offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
@@ -823,7 +824,9 @@ fn realize_load(
             offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
 
         // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer = data_section.append_pointer(pointer_offset_from_current_instr);
+        let data_id_for_pointer = data_section
+            .data_id_of_pointer(pointer_offset_from_current_instr)
+            .expect("Pointer offset must be in data_section");
 
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);

@@ -130,6 +130,29 @@ fn to_bytecode_mut(
         .iter()
         .fold(0, |acc, item| acc + op_size_in_bytes(data_section, item));
 
+    let mut offset_from_instr_start = 0;
+    for op in ops.iter() {
+        match &op.opcode {
+            AllocatedOpcode::LoadDataId(_reg, data_label)
+                if !data_section
+                    .has_copy_type(data_label)
+                    .expect("data label references non existent data -- internal error") =>
+            {
+                // For non-copy type loads, pre-insert pointers into the data_section so that
+                // from this point on, the data_section remains immutable. This is necessary
+                // so that when we take addresses of configurables, that address doesn't change
+                // later on if a non-configurable is added to the data-section.
+                let offset_bytes = data_section.data_id_to_offset(data_label) as u64;
+                // The -4 is because $pc is added in the *next* instruction.
+                let pointer_offset_from_current_instr =
+                    offset_to_data_section_in_bytes - offset_from_instr_start + offset_bytes - 4;
+                data_section.append_pointer(pointer_offset_from_current_instr);
+            }
+            _ => ()
+        }
+        offset_from_instr_start += op_size_in_bytes(data_section, op);
+    }
+
     // A noop is inserted in ASM generation if required, to word-align the data section.
     let mut ops_padded = Vec::new();
     let ops = if offset_to_data_section_in_bytes & 7 == 0 {

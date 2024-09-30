@@ -1,3 +1,4 @@
+use rustc_hash::FxHashMap;
 use sway_ir::{size_bytes_round_up_to_word_alignment, Constant, ConstantValue, Context, Padding};
 
 use std::{fmt, iter::repeat};
@@ -245,6 +246,7 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     pub non_configurables: Vec<Entry>,
     pub configurables: Vec<Entry>,
+    pub(crate) pointer_id: FxHashMap<u64, DataId>,
 }
 
 impl DataSection {
@@ -324,11 +326,19 @@ impl DataSection {
     /// relative to the current (load) instruction.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
         // The 'pointer' is just a literal 64 bit address.
-        self.insert_data_value(Entry::new_word(
+        let data_id = self.insert_data_value(Entry::new_word(
             pointer_value,
             EntryName::NonConfigurable,
             None,
-        ))
+        ));
+        self.pointer_id.insert(pointer_value, data_id.clone());
+        data_id
+    }
+
+    /// Get the [DataId] for a pointer, if it exists.
+    /// The pointer must've been inserted with append_pointer.
+    pub(crate) fn data_id_of_pointer(&self, pointer_value: u64) -> Option<DataId> {
+        self.pointer_id.get(&pointer_value).cloned()
     }
 
     /// Given any data in the form of a [Literal] (using this type mainly because it includes type
