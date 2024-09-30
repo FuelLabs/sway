@@ -12,7 +12,7 @@ stderr:
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:41:27
    |
-39 | 
+39 |     // unexpected Option<u8>
 40 |     let a = [None, Some(1), Some(1u8)];
 41 |     let _b: Option<u16> = a[1];
    |                           ^^^^ Mismatched types.
@@ -27,7 +27,7 @@ ____
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:45:18
    |
-43 | 
+43 |     // unexpected u8
 44 |     let a = [8, 256u16, 8u8];
 45 |     let b: u32 = a[2];
    |                  ^^^^ Mismatched types.
@@ -42,7 +42,7 @@ ____
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:9:22
    |
- 7 | 
+ 7 | fn main() {
  8 |     // unexpected u16
  9 |     let a: [u8;1] = [1u16];
    |                      ^^^^ Mismatched types.
@@ -65,13 +65,14 @@ expected: u8
 found:    u16.
 
 13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+14 | 
    |
 ____
 
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:13:22
    |
-11 | 
+11 |     // unexpected u16
 12 |     let _ = [1u8, 1u16];
 13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
    |                      ^^^^ Mismatched types.
@@ -86,7 +87,7 @@ ____
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:13:28
    |
-11 | 
+11 |     // unexpected u16
 12 |     let _ = [1u8, 1u16];
 13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
    |                            ^^^^ Mismatched types.
@@ -101,7 +102,7 @@ ____
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:13:34
    |
-11 | 
+11 |     // unexpected u16
 12 |     let _ = [1u8, 1u16];
 13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
    |                                  ^^^^ Mismatched types.
@@ -221,7 +222,7 @@ ____
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:32:20
    |
-30 | 
+30 |     // unexpected str
 31 |     let _ = [1, "", 1u16];
 32 |     let _ = [1, 2, "hello"];
    |                    ^^^^^^^ Mismatched types.
@@ -236,7 +237,7 @@ ____
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:33:25
    |
-31 | 
+31 |     let _ = [1, "", 1u16];
 32 |     let _ = [1, 2, "hello"];
 33 |     let _ = [1, return, "", 1u16];
    |                         ^^ Mismatched types.
@@ -244,13 +245,14 @@ expected: u16
 found:    str.
 
 34 |     let _ = [1, "", return, 1u16];
+35 | 
    |
 ____
 
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:34:17
    |
-32 | 
+32 |     let _ = [1, 2, "hello"];
 33 |     let _ = [1, return, "", 1u16];
 34 |     let _ = [1, "", return, 1u16];
    |                 ^^ Mismatched types.
@@ -288,6 +290,7 @@ expected: u16
 found:    u8.
 
 45 |     let b: u32 = a[2];
+46 | 
    |
 ____
 
