@@ -2,6 +2,7 @@
 source: test/tests/tests.rs
 ---
 <<<<<<< HEAD
+<<<<<<< HEAD
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
 exit status: 1
 output:
@@ -12,6 +13,12 @@ exit status: 1
 output:
     Building src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
 >>>>>>> b1b90db46 (forc help snapshot test)
+=======
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
+>>>>>>> 59a685835 (small improvement of snapshot tests paths)
    Compiling library core (sway-lib-core)
    Compiling library std (sway-lib-std)
    Compiling script type_check_analyze_errors (test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors)

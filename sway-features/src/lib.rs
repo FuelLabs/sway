@@ -1,8 +1,8 @@
 use clap::{Parser, ValueEnum};
 
 macro_rules! features {
-    (count; $name:ident) => {1};
-    (count; $name:ident $rest:tt) => {1 + features!{count; $rest}};
+    (count; ) => {0};
+    (count; $name:ident $($rest:tt)?) => {1 + features!{count; $($rest)*}};
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
         paste::paste! {
             pub const CFG: [&str; features!{count; $($name)*}] = [

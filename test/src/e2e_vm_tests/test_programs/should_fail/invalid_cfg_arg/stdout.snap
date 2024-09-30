@@ -1,0 +1,37 @@
+---
+source: test/tests/tests.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/invalid_cfg_arg
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/invalid_cfg_arg
+   Compiling predicate invalid_cfg_arg (test/src/e2e_vm_tests/test_programs/should_fail/invalid_cfg_arg)
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_fail/invalid_cfg_arg/src/main.sw:1:3
+  |
+0 | predicate;
+1 | #[cfg(c)] a
+  |   --- Unexpected attribute value: "c" for attribute: "cfg" expected value "target" or "program_type" or "experimental_encoding_v1" or "experimental_storage_domains"
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/invalid_cfg_arg/src/main.sw:1:11
+  |
+0 | predicate;
+1 | #[cfg(c)] a
+  |           ^ Expected an item.
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/invalid_cfg_arg/src/main.sw:1:7
+  |
+0 | predicate;
+1 | #[cfg(c)] a
+  |       ^ Unexpected attribute value: "c" for attribute: "cfg"
+  |
+____
+
+  Aborting due to 2 errors.
+error: Failed to compile invalid_cfg_arg
