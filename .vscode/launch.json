@@ -1,0 +1,23 @@
+// Configuration for debugging the Sway Language Server (forc-lsp)
+// Usage instructions:
+// 1. Ensure you've built forc-lsp with debug symbols:
+//    cargo build -p forc-lsp
+// 2. Install the debug version:
+//    cargo install --path ./forc-plugins/forc-lsp --debug
+// 3. Open your Sway project in a separate VSCode window (this starts forc-lsp)
+// 4. In the forc-lsp project window, set breakpoints in the code
+// 5. Go to Run and Debug view, select "Attach to forc-lsp", and start debugging
+// 6. When prompted, select the forc-lsp process
+// 7. Debug forc-lsp as it responds to actions in your Sway project
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "attach",
+            "name": "Attach to forc-lsp",
+            "pid": "${command:pickProcess}",
+            "program": "${env:HOME}/.cargo/bin/forc-lsp"
+        }
+    ]
+}

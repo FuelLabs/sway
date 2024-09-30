@@ -570,7 +570,7 @@ pub fn parsed_to_ast(
 
     let namespace = Namespace::init_root(initial_namespace);
     // Collect the program symbols.
-    let _collection_ctx =
+    let mut collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
 
     // Type check the program.
@@ -578,6 +578,7 @@ pub fn parsed_to_ast(
         handler,
         engines,
         parse_program,
+        &mut collection_ctx,
         namespace,
         package_name,
         build_config,

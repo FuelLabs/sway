@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-6B977435DD9C5058"
+
+[[package]]
+name = "missing_hash_trait"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-6B977435DD9C5058"
+dependencies = ["core"]

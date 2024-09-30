@@ -199,18 +199,27 @@ It implements the [SRC-20; Native Asset](https://github.com/FuelLabs/sway-standa
 // ERC20 equivalent in Sway.
 contract;
 
-use src3::SRC3;
-use src5::{SRC5, State, AccessError};
-use src20::SRC20;
+use standards::{
+    src3::SRC3,
+    src5::{
+        SRC5, 
+        State, 
+        AccessError,
+    },
+    src20::{
+        SetDecimalsEvent, 
+        SetNameEvent, 
+        SetSymbolEvent, 
+        SRC20, 
+        TotalSupplyEvent,
+    },
+};
 use std::{
     asset::{
         burn,
         mint_to,
     },
-    call_frames::{
-        contract_id,
-        msg_asset_id,
-    },
+    call_frames::msg_asset_id,
     constants::DEFAULT_SUB_ID,
     context::msg_amount,
     string::String,
@@ -282,14 +291,21 @@ impl SRC5 for Contract {
 // Mint and Burn Standard
 impl SRC3 for Contract {
     #[storage(read, write)]
-    fn mint(recipient: Identity, sub_id: SubId, amount: u64) {
-        require(sub_id == DEFAULT_SUB_ID, "incorrect-sub-id");
+    fn mint(recipient: Identity, sub_id: Option<SubId>, amount: u64) {
+        require(sub_id.is_some() && sub_id.unwrap() == DEFAULT_SUB_ID, "incorrect-sub-id");
         require_access_owner();
 
+        let new_supply = storage.total_supply.read() + amount;
         storage
             .total_supply
-            .write(amount + storage.total_supply.read());
+            .write(new_supply);
         mint_to(recipient, DEFAULT_SUB_ID, amount);
+        
+        TotalSupplyEvent::new(
+            AssetId::default(), 
+            new_supply, 
+            msg_sender().unwrap()
+        ).log();
     }
 
     #[storage(read, write)]
@@ -302,10 +318,17 @@ impl SRC3 for Contract {
         );
         require_access_owner();
 
+        let new_supply = storage.total_supply.read() - amount;
         storage
             .total_supply
-            .write(storage.total_supply.read() - amount);
+            .write(new_supply);
         burn(DEFAULT_SUB_ID, amount);
+        
+        TotalSupplyEvent::new(
+            AssetId::default(), 
+            new_supply, 
+            msg_sender().unwrap()
+        ).log();
     }
 }
 
@@ -329,6 +352,24 @@ fn require_access_owner() {
         AccessError::NotOwner,
     );
 }
+
+abi EmitSRC20Events {
+    fn emit_src20_events();
+}
+
+impl EmitSRC20Events for Contract {
+    fn emit_src20_events() {
+        // Metadata that is stored as a configurable should only be emitted once.
+        let asset = AssetId::default();
+        let sender = msg_sender().unwrap();
+        let name = Some(String::from_ascii_str(from_str_array(NAME)));
+        let symbol = Some(String::from_ascii_str(from_str_array(SYMBOL)));
+
+        SetNameEvent::new(asset, name, sender).log();
+        SetSymbolEvent::new(asset, symbol, sender).log();
+        SetDecimalsEvent::new(asset, DECIMALS, sender).log();
+    }
+}
 ```
 
 ## Multi Native Asset Example
@@ -341,18 +382,27 @@ It implements the [SRC-20; Native Asset](https://github.com/FuelLabs/sway-standa
 // ERC1155 equivalent in Sway.
 contract;
 
-use src5::{SRC5, State, AccessError};
-use src20::SRC20;
-use src3::SRC3;
+use standards::{
+    src5::{
+        SRC5, 
+        State, 
+        AccessError
+    },
+    src20::{
+        SetDecimalsEvent, 
+        SetNameEvent, 
+        SetSymbolEvent, 
+        SRC20, 
+        TotalSupplyEvent,
+    }
+    src3::SRC3,
+};
 use std::{
     asset::{
         burn,
         mint_to,
     },
-    call_frames::{
-        contract_id,
-        msg_asset_id,
-    },
+    call_frames::msg_asset_id,
     hash::{
         Hash,
     },
@@ -401,28 +451,42 @@ impl SRC20 for Contract {
 // Mint and Burn Standard
 impl SRC3 for Contract {
     #[storage(read, write)]
-    fn mint(recipient: Identity, sub_id: SubId, amount: u64) {
+    fn mint(recipient: Identity, sub_id: Option<SubId>, amount: u64) {
+        require(sub_id.is_some(), "Error: SubId is None");
         require_access_owner();
-        let asset_id = AssetId::new(contract_id(), sub_id);
+
+        let asset_id = AssetId::new(ContractId::this(), sub_id.unwrap());
         let supply = storage.total_supply.get(asset_id).try_read();
         if supply.is_none() {
             storage.total_assets.write(storage.total_assets.try_read().unwrap_or(0) + 1);
         }
-        let current_supply = supply.unwrap_or(0);
-        storage.total_supply.insert(asset_id, current_supply + amount);
+        let new_supply = supply.unwrap_or(0) + amount;
+        storage.total_supply.insert(asset_id, new_supply);
         mint_to(recipient, sub_id, amount);
+        
+        TotalSupplyEvent::new(
+            asset_id, 
+            new_supply, 
+            msg_sender().unwrap()
+        ).log();
     }
     
     #[storage(read, write)]
     fn burn(sub_id: SubId, amount: u64) {
         require_access_owner();
-        let asset_id = AssetId::new(contract_id(), sub_id);
+        let asset_id = AssetId::new(ContractId::this(), sub_id);
         require(this_balance(asset_id) >= amount, "not-enough-coins");
         
         let supply = storage.total_supply.get(asset_id).try_read();
-        let current_supply = supply.unwrap_or(0);
-        storage.total_supply.insert(asset_id, current_supply - amount);
+        let new_supply = supply.unwrap_or(0) - amount;
+        storage.total_supply.insert(asset_id, new_supply);
         burn(sub_id, amount);
+
+        TotalSupplyEvent::new(
+            asset_id, 
+            new_supply, 
+            msg_sender().unwrap()
+        ).log();
     }
 }
 
@@ -431,10 +495,10 @@ abi MultiAsset {
     fn constructor(owner_: Identity);
     
     #[storage(read, write)]
-    fn set_name(asset: AssetId, name: String);
+    fn set_name(asset: AssetId, name: Option<String>);
 
     #[storage(read, write)]
-    fn set_symbol(asset: AssetId, symbol: String);
+    fn set_symbol(asset: AssetId, symbol: Option<String>);
 
     #[storage(read, write)]
     fn set_decimals(asset: AssetId, decimals: u8);
@@ -448,23 +512,29 @@ impl MultiAsset for Contract {
     }
     
     #[storage(read, write)]
-    fn set_name(asset: AssetId, name: String) {
+    fn set_name(asset: AssetId, name: Option<String>) {
         require_access_owner();
         storage.name.insert(asset, StorageString {});
         storage.name.get(asset).write_slice(name);
+
+        SetNameEvent::new(asset, name, msg_sender().unwrap()).log();
     }
 
     #[storage(read, write)]
-    fn set_symbol(asset: AssetId, symbol: String) {
+    fn set_symbol(asset: AssetId, symbol: Option<String>) {
         require_access_owner();
         storage.symbol.insert(asset, StorageString {});
         storage.symbol.get(asset).write_slice(symbol);
+
+        SetSymbolEvent::new(asset, symbol, msg_sender().unwrap()).log();
     }
 
     #[storage(read, write)]
     fn set_decimals(asset: AssetId, decimals: u8) {
         require_access_owner();
         storage.decimals.insert(asset, decimals);
+
+        SetDecimalsEvent::new(asset, decimals, msg_sender().unwrap()).log();
     }
 }
 

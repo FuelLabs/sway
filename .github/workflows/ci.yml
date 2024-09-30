@@ -465,8 +465,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc
-      - name: Run Unit Tests
-        run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std && forc build --path test/src/in_language_tests & forc test --path test/src/in_language_tests
+      - name: Run Core Unit Tests
+        run: forc build --path sway-lib-core && forc test --path sway-lib-core
+      - name: Run Std Unit Tests
+        run: forc build --path sway-lib-std && forc test --path sway-lib-std
+      - name: Run In Language Unit Tests
+        run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
@@ -551,6 +555,19 @@ jobs:
         env:
           RUST_BACKTRACE: full
         run: cargo nextest run --locked --release -p sway-lsp --no-capture --profile ci --config-file sway-lsp/tests/nextest.toml
+  cargo-test-forc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Run forc tests separately 
+        env:
+          RUST_BACKTRACE: full
+        run: cargo test --locked --release -p forc -- --nocapture
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -561,7 +578,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client --exclude forc
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
@@ -626,28 +643,7 @@ jobs:
       - name: Verify tag version
         run: |
           cargo install toml-cli
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-debug/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-doc/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-tx/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-crypto/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-test/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ast/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-error/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/sway-ir-macros/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-parse/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }}
 
       - name: Notify if Job Fails
         uses: ravsamhq/notify-slack-action@v2

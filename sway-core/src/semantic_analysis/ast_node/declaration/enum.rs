@@ -1,11 +1,33 @@
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyEnumDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<EnumDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let enum_decl = engines.pe().get_enum(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            enum_decl.name.clone(),
+            Declaration::EnumDeclaration(*decl_id),
+        )?;
+
+        // create a namespace for the decl, used to create a scope for generics
+        let _ = ctx.scoped(engines, enum_decl.span.clone(), |mut _ctx| Ok(()));
+        Ok(())
+    }
+
     pub fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
@@ -22,7 +44,7 @@ impl ty::TyEnumDecl {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        ctx.scoped(|mut ctx| {
+        ctx.scoped(handler, Some(span.clone()), |mut ctx| {
             // Type check the type parameters.
             let new_type_parameters = TypeParameter::type_check_type_params(
                 handler,
