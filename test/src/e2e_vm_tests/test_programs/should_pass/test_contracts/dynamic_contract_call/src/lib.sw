@@ -1,6 +1,6 @@
 library;
 
-#[cfg(experimental_new_encoding = false)]
+#[cfg(experimental_encoding_v1 = false)]
 pub fn dynamic_contract_call(contract_id: b256) -> u64 {
     // Call the fallback fn
     let call_params = (contract_id, 0, 0);
@@ -16,7 +16,7 @@ pub fn dynamic_contract_call(contract_id: b256) -> u64 {
     v
 }
 
-#[cfg(experimental_new_encoding = true)]
+#[cfg(experimental_encoding_v1 = true)]
 pub fn dynamic_contract_call(contract_id: b256) -> u64 {
     contract_call::<u64, (u64, u64, u64)>(contract_id,
         "some_method_name",

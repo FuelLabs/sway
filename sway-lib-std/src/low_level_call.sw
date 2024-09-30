@@ -48,7 +48,7 @@ pub struct CallParams {
 ///     call_with_raw_payload(payload, call_params);
 /// }
 /// ```
-#[cfg(experimental_new_encoding = false)]
+#[cfg(experimental_encoding_v1 = false)]
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
     let target_ptr = alloc_bytes(8);
 
@@ -131,7 +131,7 @@ fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
 ///     call_with_raw_payload(payload, call_params);
 /// }
 /// ```
-#[cfg(experimental_new_encoding = false)]
+#[cfg(experimental_encoding_v1 = false)]
 fn create_payload(
     target: ContractId,
     function_selector: Bytes,
@@ -191,7 +191,7 @@ fn create_payload(
 ///     call_with_raw_payload(payload, call_params);
 /// }
 /// ```
-#[cfg(experimental_new_encoding = true)]
+#[cfg(experimental_encoding_v1 = true)]
 fn create_payload(
     target: ContractId,
     function_selector: Bytes,
@@ -235,7 +235,7 @@ fn create_payload(
 ///     call_with_function_selector(target, function_selector, calldata, single_value_type_arg, call_params);
 /// }
 /// ```
-#[cfg(experimental_new_encoding = false)]
+#[cfg(experimental_encoding_v1 = false)]
 pub fn call_with_function_selector(
     target: ContractId,
     function_selector: Bytes,
@@ -266,7 +266,7 @@ pub fn call_with_function_selector(
 ///     call_with_function_selector(target, function_selector, calldata, call_params);
 /// }
 /// ```
-#[cfg(experimental_new_encoding = true)]
+#[cfg(experimental_encoding_v1 = true)]
 pub fn call_with_function_selector(
     target: ContractId,
     function_selector: Bytes,
