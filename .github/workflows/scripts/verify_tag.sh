@@ -6,30 +6,66 @@ err() {
 }
 
 status() {
-    WIDTH=12
-    printf "\e[32m\e[1m%${WIDTH}s\e[0m %s\n" "$1" "$2"
+    local width=12
+    printf "\e[32m\e[1m%${width}s\e[0m %s\n" "$1" "$2"
+}
+
+get_toml_version () {
+    local toml_path="$1"
+
+    local manifest="Cargo.toml"
+    echo $(toml get $manifest $toml_path | tr -d '"')
+}
+
+check_version () {
+    local ref=$1
+    local toml_path=$2
+
+    # strip preceeding 'v' if it exists on tag
+    ref=${ref/#v}
+
+    local toml_version=$(get_toml_version "$toml_path")
+  
+    if [ "$toml_version" != "$ref" ]; then
+        err "Crate version $toml_version for $toml_path, doesn't match tag version $ref"
+        exit 1
+    else
+      status "Crate version for $toml_path matches tag $toml_version"
+    fi
 }
 
 REF=$1
-MANIFEST=$2
 
 if [ -z "$REF" ]; then
     err "Expected ref to be set"
     exit 1
 fi
 
-if [ -z "$MANIFEST" ]; then
-    err "Expected manifest to be set"
-    exit 1
-fi
-
-# strip preceeding 'v' if it exists on tag
-REF=${REF/#v}
-TOML_VERSION=$(toml get $MANIFEST workspace.package.version | tr -d '"')
-
-if [ "$TOML_VERSION" != "$REF" ]; then
-    err "Crate version $TOML_VERSION, doesn't match tag version $REF"
-    exit 1
-else
-  status "Crate version matches tag $TOML_VERSION"
-fi
+for toml_path in \
+    "workspace.package.version" \
+    "workspace.dependencies.forc.version" \
+    "workspace.dependencies.forc-pkg.version" \
+    "workspace.dependencies.forc-test.version" \
+    "workspace.dependencies.forc-tracing.version" \
+    "workspace.dependencies.forc-util.version" \
+    "workspace.dependencies.forc-plugins.version" \
+    "workspace.dependencies.forc-client.version" \
+    "workspace.dependencies.forc-crypto.version" \
+    "workspace.dependencies.forc-debug.version" \
+    "workspace.dependencies.forc-doc.version" \
+    "workspace.dependencies.forc-fmt.version" \
+    "workspace.dependencies.forc-lsp.version" \
+    "workspace.dependencies.forc-tx.version" \
+    "workspace.dependencies.sway-ast.version" \
+    "workspace.dependencies.sway-core.version" \
+    "workspace.dependencies.sway-error.version" \
+    "workspace.dependencies.sway-lsp.version" \
+    "workspace.dependencies.sway-parse.version" \
+    "workspace.dependencies.sway-types.version" \
+    "workspace.dependencies.sway-utils.version" \
+    "workspace.dependencies.swayfmt.version" \
+    "workspace.dependencies.sway-ir.version" \
+    "workspace.dependencies.sway-ir-macros.version" \
+; do
+    check_version $REF $toml_path
+done
