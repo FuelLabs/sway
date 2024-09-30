@@ -333,7 +333,7 @@ pub async fn handle_semantic_tokens_full(
     }
 }
 
-pub(crate) async fn handle_inlay_hints(
+pub async fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {

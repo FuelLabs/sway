@@ -38,7 +38,6 @@ use crate::{
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use either::Either;
 use indexmap::IndexMap;
-use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use std::collections::{HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
@@ -1947,7 +1946,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_array(
-        handler: &Handler,
+        _handler: &Handler,
         mut ctx: TypeCheckContext,
         contents: &[Expression],
         span: Span,
@@ -1979,8 +1978,8 @@ impl ty::TyExpression {
             });
         };
 
-        // start each element with the known array element type, or Unknown if it is to be inferred
-        // from the elements
+        // capture the expected array element type from context,
+        // otherwise, fallback to Unknown.
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
                 let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
@@ -2001,44 +2000,32 @@ impl ty::TyExpression {
                     .by_ref()
                     .with_help_text("")
                     .with_type_annotation(type_engine.insert(engines, initial_type.clone(), None));
-                Self::type_check(handler, ctx, expr)
+
+                // type_check_analyze unification will give the final error
+                let handler = Handler::default();
+                Self::type_check(&handler, ctx, expr)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
             })
             .collect();
 
-        // choose the best type to be the array elem type
-        use itertools::FoldWhile::{Continue, Done};
-        let elem_type = typed_contents
-            .iter()
-            .fold_while(None, |last, current| match last {
-                None => Continue(Some(current.return_type)),
-                Some(last) => {
-                    if last.is_concrete(engines, TreatNumericAs::Abstract) {
-                        return Done(Some(last));
-                    }
+        // if the element type is still unknown, and all elements are Never,
+        // fallback to unit
+        let initial_type = if matches!(initial_type, TypeInfo::Unknown) {
+            let is_all_elements_never = typed_contents
+                .iter()
+                .all(|expr| matches!(&*engines.te().get(expr.return_type), TypeInfo::Never));
+            if is_all_elements_never {
+                TypeInfo::Tuple(vec![])
+            } else {
+                initial_type
+            }
+        } else {
+            initial_type
+        };
 
-                    if current
-                        .return_type
-                        .is_concrete(engines, TreatNumericAs::Abstract)
-                    {
-                        return Done(Some(current.return_type));
-                    }
-
-                    let last_info = ctx.engines().te().get(last);
-                    let current_info = ctx.engines().te().get(current.return_type);
-                    match (&*last_info, &*current_info) {
-                        (TypeInfo::Numeric, TypeInfo::UnsignedInteger(_)) => {
-                            Done(Some(current.return_type))
-                        }
-                        _ => Continue(Some(last)),
-                    }
-                }
-            })
-            .into_inner();
-        let elem_type = elem_type.unwrap_or_else(|| typed_contents[0].return_type);
-
+        let elem_type = type_engine.insert(engines, initial_type.clone(), None);
         let array_count = typed_contents.len();
-        Ok(ty::TyExpression {
+        let expr = ty::TyExpression {
             expression: ty::TyExpressionVariant::Array {
                 elem_type,
                 contents: typed_contents,
@@ -2055,9 +2042,15 @@ impl ty::TyExpression {
                     Length::new(array_count, Span::dummy()),
                 ),
                 None,
-            ), // Maybe?
+            ),
             span,
-        })
+        };
+
+        // type_check_analyze unification will give the final error
+        let handler = Handler::default();
+        expr.as_array_unify_elements(&handler, ctx.engines);
+
+        Ok(expr)
     }
 
     fn type_check_array_index(
@@ -2940,7 +2933,7 @@ mod tests {
         expr: &Expression,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = Engines::default();
-        do_type_check(
+        let expr = do_type_check(
             handler,
             &engines,
             expr,
@@ -2960,7 +2953,9 @@ mod tests {
             ExperimentalFlags {
                 new_encoding: false,
             },
-        )
+        )?;
+        expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
+        Ok(expr)
     }
 
     #[test]
@@ -3021,7 +3016,7 @@ mod tests {
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
 
-        assert!(errors.len() == 2);
+        assert!(errors.len() == 1);
         assert!(matches!(&errors[0],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
@@ -3029,13 +3024,6 @@ mod tests {
                              ..
                          }) if expected == "bool"
                                 && received == "u64"));
-        assert!(matches!(&errors[1],
-                         CompileError::TypeError(TypeError::MismatchedType {
-                             expected,
-                             received,
-                             ..
-                         }) if expected == "[bool; 2]"
-                                && received == "[u64; 2]"));
     }
 
     #[test]

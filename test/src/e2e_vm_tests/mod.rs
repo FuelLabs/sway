@@ -414,14 +414,16 @@ impl TestContext {
                             }
                         }
                     }
-                    harness::VMExecutionResult::Evm(state) => match state.exit_reason {
-                        revm::Return::Continue => todo!(),
-                        revm::Return::Stop => TestResult::Result(0),
-                        revm::Return::Return => todo!(),
-                        revm::Return::SelfDestruct => todo!(),
-                        revm::Return::Revert => TestResult::Revert(0),
-                        _ => {
-                            panic!("EVM exited with unhandled reason: {:?}", state.exit_reason);
+                    harness::VMExecutionResult::Evm(state) => match state {
+                        revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
+                            revm::primitives::SuccessReason::Stop => TestResult::Result(0),
+                            revm::primitives::SuccessReason::Return => todo!(),
+                            revm::primitives::SuccessReason::SelfDestruct => todo!(),
+                            revm::primitives::SuccessReason::EofReturnContract => todo!(),
+                        },
+                        revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
+                        revm::primitives::ExecutionResult::Halt { reason, .. } => {
+                            panic!("EVM exited with unhandled reason: {:?}", reason);
                         }
                     },
                     harness::VMExecutionResult::MidenVM(trace) => {
