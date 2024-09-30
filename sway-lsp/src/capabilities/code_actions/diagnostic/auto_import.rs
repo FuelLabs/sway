@@ -18,7 +18,8 @@ use std::{
 use sway_core::language::{
     parsed::ImportType,
     ty::{
-        TyConstantDecl, TyDecl, TyFunctionDecl, TyIncludeStatement, TyTypeAliasDecl, TyUseStatement,
+        TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl, TyIncludeStatement, TyStructDecl,
+        TyTraitDecl, TyTypeAliasDecl, TyUseStatement,
     },
     CallPath,
 };
@@ -118,10 +119,31 @@ pub(crate) fn get_call_paths_for_name<'s>(
                                 trait_decl.call_path.to_import_path(ctx.engines, &namespace);
                             Some(call_path)
                         }
+                        TyDecl::FunctionDecl(decl) => {
+                            let function_decl = ctx.engines.de().get_function(&decl.decl_id);
+                            let call_path = function_decl
+                                .call_path
+                                .to_import_path(ctx.engines, &namespace);
+                            Some(call_path)
+                        }
+                        TyDecl::ConstantDecl(decl) => {
+                            let constant_decl = ctx.engines.de().get_constant(&decl.decl_id);
+                            let call_path = constant_decl
+                                .call_path
+                                .to_import_path(ctx.engines, &namespace);
+                            Some(call_path)
+                        }
+                        TyDecl::TypeAliasDecl(decl) => {
+                            let type_alias_decl = ctx.engines.de().get_type_alias(&decl.decl_id);
+                            let call_path = type_alias_decl
+                                .call_path
+                                .to_import_path(ctx.engines, &namespace);
+                            Some(call_path)
+                        }
                         _ => None,
                     };
                 }
-                Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
+                | Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
                     call_path, ..
                 }))
                 | Some(TypedAstToken::TypedConstantDeclaration(TyConstantDecl {
