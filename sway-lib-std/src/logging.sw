@@ -19,12 +19,12 @@ library;
 ///     log("Fuel is blazingly fast");
 /// }
 /// ```
-#[cfg(experimental_new_encoding = false)]
+#[cfg(experimental_encoding_v1 = false)]
 pub fn log<T>(value: T) {
     __log::<T>(value);
 }
 
-#[cfg(experimental_new_encoding = true)]
+#[cfg(experimental_encoding_v1 = true)]
 pub fn log<T>(value: T)
 where
     T: AbiEncode,

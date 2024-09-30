@@ -3,9 +3,9 @@ script;
 use array_of_structs_abi::{Id, TestContract, Wrapper};
 use std::hash::*;
 
-#[cfg(experimental_new_encoding = false)]
+#[cfg(experimental_encoding_v1 = false)]
 const CONTRACT_ID = 0x14ed3cd06c2947248f69d54bfa681fe40d26267be84df7e19e253622b7921bbe;
-#[cfg(experimental_new_encoding = true)]
+#[cfg(experimental_encoding_v1 = true)]
 const CONTRACT_ID = 0xbbda20fb25bdb4b18451501418b06324376c61cb984e75fcbc983fc0a047f85b; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
 
 fn get_address() -> Option<std::address::Address> {

@@ -3,9 +3,9 @@ script;
 use increment_abi::Incrementor;
 use dynamic_contract_call::*;
 
-#[cfg(experimental_new_encoding = false)]
+#[cfg(experimental_encoding_v1 = false)]
 const CONTRACT_ID = 0xd1b4047af7ef111c023ab71069e01dc2abfde487c0a0ce1268e4f447e6c6e4c2;
-#[cfg(experimental_new_encoding = true)]
+#[cfg(experimental_encoding_v1 = true)]
 const CONTRACT_ID = 0xc906accda9e1e516ee3122770217d913edca1ae6e3b8bad15c2c1a53ebf5e13e; // AUTO-CONTRACT-ID ../../test_contracts/increment_contract --release
 
 fn main() -> bool {

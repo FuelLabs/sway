@@ -32,12 +32,11 @@ use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::Compile
 use sway_features::ExperimentalFeatures;
 use sway_types::{
     constants::{
-        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
-        CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
-        DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, FALLBACK_ATTRIBUTE_NAME,
-        INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        VALID_ATTRIBUTE_NAMES,
+        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
+        DEPRECATED_ATTRIBUTE_NAME, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
+        FALLBACK_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
     BaseIdent,
@@ -4929,19 +4928,28 @@ pub fn cfg_eval(
                             return Err(handler.emit_err(error.into()));
                         }
                     }
-                    CFG_EXPERIMENTAL_NEW_ENCODING => match &arg.value {
-                        Some(sway_ast::Literal::Bool(v)) => {
-                            let is_true = matches!(v.kind, sway_ast::literal::LitBoolType::True);
-                            return Ok(experimental.encoding_v1 == is_true);
+                    // Check if this is a known experimental feature
+                    cfg_experimental
+                        if sway_features::CFG.iter().any(|x| *x == cfg_experimental) =>
+                    {
+                        match &arg.value {
+                            Some(sway_ast::Literal::Bool(v)) => {
+                                let is_true =
+                                    matches!(v.kind, sway_ast::literal::LitBoolType::True);
+                                return Ok(experimental
+                                    .is_enabled_by_cfg(cfg_experimental)
+                                    .unwrap()
+                                    == is_true);
+                            }
+                            _ => {
+                                let error =
+                                    ConvertParseTreeError::UnexpectedValueForCfgExperimental {
+                                        span: arg.span(),
+                                    };
+                                return Err(handler.emit_err(error.into()));
+                            }
                         }
-                        _ => {
-                            let error =
-                                ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue {
-                                    span: arg.span(),
-                                };
-                            return Err(handler.emit_err(error.into()));
-                        }
-                    },
+                    }
                     _ => {
                         return Err(handler.emit_err(
                             ConvertParseTreeError::InvalidCfgArg {

@@ -1,8 +1,16 @@
 use clap::{Parser, ValueEnum};
 
 macro_rules! features {
+    (count; $name:ident) => {1};
+    (count; $name:ident $rest:tt) => {1 + features!{count; $rest}};
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
         paste::paste! {
+            pub const CFG: [&str; features!{count; $($name)*}] = [
+                $(
+                    stringify!([<experimental_ $name:snake>]),
+                )*
+            ];
+
             #[derive(Copy, Clone, Debug, ValueEnum)]
             #[value(rename_all = "snake")]
             pub enum Features {
@@ -65,6 +73,15 @@ macro_rules! features {
                                 self.[<$name:snake>] = enabled
                             },
                         )*
+                    }
+                }
+
+                pub fn is_enabled_by_cfg(&self, cfg: &str) -> Result<bool, Error> {
+                    match cfg {
+                        $(
+                            stringify!([<experimental_ $name:snake>]) => Ok(self.[<$name:snake>]),
+                        )*
+                        _ => Err(Error::UnknownFeature(cfg.to_string()))
                     }
                 }
 
