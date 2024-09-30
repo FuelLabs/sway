@@ -18,8 +18,7 @@ use std::{
 use sway_core::language::{
     parsed::ImportType,
     ty::{
-        TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl, TyIncludeStatement, TyStructDecl,
-        TyTraitDecl, TyTypeAliasDecl, TyUseStatement,
+        TyConstantDecl, TyDecl, TyFunctionDecl, TyIncludeStatement, TyTypeAliasDecl, TyUseStatement,
     },
     CallPath,
 };
@@ -143,7 +142,7 @@ pub(crate) fn get_call_paths_for_name<'s>(
                         _ => None,
                     };
                 }
-                | Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
+                Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
                     call_path, ..
                 }))
                 | Some(TypedAstToken::TypedConstantDeclaration(TyConstantDecl {
