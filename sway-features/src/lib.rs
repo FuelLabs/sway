@@ -93,7 +93,7 @@ features! {
 
 #[derive(Clone, Debug, Default, Parser)]
 pub struct CliFields {
-    /// Comma separated list of all experimental features that will enabled
+    /// Comma separated list of all experimental features that will be enabled
     #[clap(long, value_delimiter = ',')]
     pub experimental: Vec<Features>,
 
