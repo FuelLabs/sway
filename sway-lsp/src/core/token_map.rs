@@ -137,7 +137,7 @@ impl<'a> TokenMap {
             .into_iter()
             .find_map(|entry| {
                 let (_, token) = entry.pair();
-                if let Some(TypedAstToken::TypedDeclaration(_)) = &token.typed {
+                if let Some(TypedAstToken::TypedDeclaration(_)) = &token.as_typed() {
                     Some(entry)
                 } else {
                     None
@@ -175,7 +175,7 @@ impl<'a> TokenMap {
         self.tokens_for_file(uri)
             .filter_map(move |entry| {
                 let (ident, token) = entry.pair();
-                let token_ident = match &token.typed {
+                let token_ident = match &token.as_typed() {
                     Some(TypedAstToken::TypedFunctionDeclaration(decl))
                         if functions_only == Some(true) =>
                     {
@@ -188,7 +188,8 @@ impl<'a> TokenMap {
                 };
                 if position >= token_ident.range.start && position <= token_ident.range.end {
                     if functions_only == Some(true) {
-                        if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = &token.typed {
+                        if let Some(TypedAstToken::TypedFunctionDeclaration(_)) = &token.as_typed()
+                        {
                             return Some(entry);
                         }
                         return None;
@@ -213,7 +214,7 @@ impl<'a> TokenMap {
         token::ident_of_type_id(engines, type_id)
             .and_then(|decl_ident| self.try_get(&decl_ident).try_unwrap())
             .map(|item| item.value().clone())
-            .and_then(|token| token.typed)
+            .and_then(|token| token.as_typed().cloned())
             .and_then(|typed_token| match typed_token {
                 TypedAstToken::TypedDeclaration(dec) => Some(dec),
                 _ => None,
