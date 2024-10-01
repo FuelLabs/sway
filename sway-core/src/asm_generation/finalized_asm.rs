@@ -130,6 +130,22 @@ fn to_bytecode_mut(
         .iter()
         .fold(0, |acc, item| acc + op_size_in_bytes(data_section, item));
 
+    // A noop is inserted in ASM generation if required, to word-align the data section.
+    let mut ops_padded = Vec::new();
+    let ops = if offset_to_data_section_in_bytes & 7 == 0 {
+        ops
+    } else {
+        ops_padded.reserve(ops.len() + 1);
+        ops_padded.extend(ops.iter().cloned());
+        ops_padded.push(AllocatedOp {
+            opcode: AllocatedOpcode::NOOP,
+            comment: "word-alignment of data section".into(),
+            owning_span: None,
+        });
+        offset_to_data_section_in_bytes += 4;
+        &ops_padded
+    };
+
     let mut offset_from_instr_start = 0;
     for op in ops.iter() {
         match &op.opcode {
@@ -152,22 +168,6 @@ fn to_bytecode_mut(
         }
         offset_from_instr_start += op_size_in_bytes(data_section, op);
     }
-
-    // A noop is inserted in ASM generation if required, to word-align the data section.
-    let mut ops_padded = Vec::new();
-    let ops = if offset_to_data_section_in_bytes & 7 == 0 {
-        ops
-    } else {
-        ops_padded.reserve(ops.len() + 1);
-        ops_padded.extend(ops.iter().cloned());
-        ops_padded.push(AllocatedOp {
-            opcode: AllocatedOpcode::NOOP,
-            comment: "word-alignment of data section".into(),
-            owning_span: None,
-        });
-        offset_to_data_section_in_bytes += 4;
-        &ops_padded
-    };
 
     let mut bytecode = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
 
