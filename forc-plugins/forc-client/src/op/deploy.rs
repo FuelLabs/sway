@@ -16,7 +16,7 @@ use anyhow::{bail, Context, Result};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::{println_action_green, println_warning};
-use forc_util::default_output_directory;
+use forc_util::{configurables::ConfigurableDeclarations, default_output_directory};
 use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
@@ -29,7 +29,10 @@ use fuels::{
     types::{bech32::Bech32ContractId, transaction_builders::Blob},
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
-use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
+use fuels_core::{
+    codec::ABIEncoder,
+    types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder},
+};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
@@ -513,9 +516,26 @@ pub async fn deploy_pkg(
     let node_url = provider.url();
     let client = FuelClient::new(node_url)?;
 
-    let bytecode = &compiled.bytecode.bytes;
+    let mut bytecode = compiled.bytecode.bytes.clone();
 
     let storage_slots = resolve_storage_slots(command, compiled)?;
+    if let Some(config_slots) = &command.override_configurable_slots {
+        let mut config_values_with_offset: Vec<_> = vec![];
+        let config_decls = ConfigurableDeclarations::from_file(&PathBuf::from_str(config_slots)?)?;
+        for decl in config_decls.declarations.values() {
+            let config_type = crate::util::encode::Type::from_str(&decl.config_type)?;
+            let token = crate::util::encode::Token::from_type_and_value(&config_type, &decl.value)?;
+            let abi_encoder = ABIEncoder::new(Default::default());
+            let encoded_val = abi_encoder.encode(&[token.0])?;
+            let offset = decl.offset as usize;
+            config_values_with_offset.push((offset, encoded_val));
+        }
+
+        for (offset, val) in config_values_with_offset {
+            bytecode[offset..offset + val.len()].copy_from_slice(&val);
+        }
+    }
+
     let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
@@ -651,6 +671,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             bytecode_spans: false,
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
+            configurable_override_file: cmd.print.configurable_override_file.clone(),
         },
         time_phases: cmd.print.time_phases,
         metrics_outfile: cmd.print.metrics_outfile.clone(),

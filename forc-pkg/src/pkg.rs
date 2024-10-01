@@ -11,6 +11,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Error, Result};
 use byte_unit::{Byte, UnitType};
 use forc_tracing::{println_action_green, println_warning};
+use forc_util::configurables::ConfigurableDeclarations;
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
@@ -266,6 +267,8 @@ pub struct PrintOpts {
     pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
     pub reverse_order: bool,
+    /// Generate a JSON file at the given path to use for overriding configurable slots.
+    pub configurable_override_file: Option<String>,
 }
 
 #[derive(Default, Clone)]
@@ -2149,6 +2152,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         build_target,
         member_filter,
         experimental,
+        print: print_opts,
         ..
     } = &build_options;
 
@@ -2228,6 +2232,15 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         }
         if let Some(outfile) = &debug_outfile {
             built_package.write_debug_info(outfile.as_ref())?;
+        }
+        if let Some(path) = &print_opts.configurable_override_file {
+            if let ProgramABI::Fuel(program_abi) = &built_package.program_abi {
+                let config_decls = ConfigurableDeclarations::try_from(program_abi.clone())?;
+                let config_decls_str = serde_json::to_string_pretty(&config_decls)?;
+                fs::write(path, config_decls_str)?;
+            } else {
+                bail!("Only Fuel ABI configurable generation is supported");
+            }
         }
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));

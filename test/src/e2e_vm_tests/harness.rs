@@ -288,6 +288,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             bytecode_spans: run_config.print_bytecode,
             ir: run_config.print_ir.clone(),
             reverse_order: false,
+            configurable_override_file: None,
         },
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(

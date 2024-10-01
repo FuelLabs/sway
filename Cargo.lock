@@ -2964,6 +2964,7 @@ dependencies = [
  "dirs 5.0.1",
  "fd-lock",
  "forc-tracing 0.64.0",
+ "fuel-abi-types",
  "fuel-tx",
  "hex",
  "paste",
