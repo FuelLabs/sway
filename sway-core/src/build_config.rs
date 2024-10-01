@@ -237,10 +237,6 @@ impl BuildConfig {
             time_phases: false,
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
-            // experimental: ExperimentalFeatures {
-            //     encoding_v1: false,
-            //     ..Default::default()
-            // },
             lsp_mode: None,
         }
     }

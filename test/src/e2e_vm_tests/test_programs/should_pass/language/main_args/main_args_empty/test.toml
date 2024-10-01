@@ -6,4 +6,4 @@ expected_result = { action = "return", value = 1337 }
 
 validate_abi = true
 
-experimental = { encoding_v1 = false }
+experimental = { new_encoding = false }

@@ -1566,10 +1566,6 @@ pub fn sway_build_config(
     .with_time_phases(build_profile.time_phases)
     .with_metrics(build_profile.metrics_outfile.clone())
     .with_optimization_level(build_profile.optimization_level);
-    // .with_experimental(ExperimentalFeatures {
-    //     encoding_v1: build_profile.experimental.new_encoding,
-    //     ..Default::default()
-    // });
     Ok(build_config)
 }
 

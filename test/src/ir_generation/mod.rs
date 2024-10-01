@@ -233,10 +233,7 @@ pub(super) async fn run(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
-                );//.with_experimental(ExperimentalFeatures {
-                //     encoding_v1: experimental.new_encoding,
-                //     ..Default::default()
-                // });
+                );
 
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.with_include_tests(true);
