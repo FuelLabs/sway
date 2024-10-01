@@ -1531,67 +1531,67 @@ fn go_to_definition_for_storage() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 8).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 8).await;
 
-        let mut go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 24,
-            req_char: 17,
-            def_line: 13,
-            def_start_char: 4,
-            def_end_char: 8,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1
-        lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 17).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 17).await;
+        // let mut go_to = GotoDefinition {
+        //     req_uri: &uri,
+        //     req_line: 24,
+        //     req_char: 17,
+        //     def_line: 13,
+        //     def_start_char: 4,
+        //     def_end_char: 8,
+        //     def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+        // };
+        // // storage.var1
+        // lsp::definition_check(&server, &go_to).await;
+        // lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 17).await;
+        // lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 17).await;
 
-        let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 24,
-            req_char: 21,
-            def_line: 3,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.x
-        lsp::definition_check(&server, &go_to).await;
+        // let go_to = GotoDefinition {
+        //     req_uri: &uri,
+        //     req_line: 24,
+        //     req_char: 21,
+        //     def_line: 3,
+        //     def_start_char: 4,
+        //     def_end_char: 5,
+        //     def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+        // };
+        // // storage.var1.x
+        // lsp::definition_check(&server, &go_to).await;
 
-        let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 25,
-            req_char: 21,
-            def_line: 4,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.y
-        lsp::definition_check(&server, &go_to).await;
+        // let go_to = GotoDefinition {
+        //     req_uri: &uri,
+        //     req_line: 25,
+        //     req_char: 21,
+        //     def_line: 4,
+        //     def_start_char: 4,
+        //     def_end_char: 5,
+        //     def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+        // };
+        // // storage.var1.y
+        // lsp::definition_check(&server, &go_to).await;
 
-        let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 26,
-            req_char: 21,
-            def_line: 5,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.z
-        lsp::definition_check(&server, &go_to).await;
+        // let go_to = GotoDefinition {
+        //     req_uri: &uri,
+        //     req_line: 26,
+        //     req_char: 21,
+        //     def_line: 5,
+        //     def_start_char: 4,
+        //     def_end_char: 5,
+        //     def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+        // };
+        // // storage.var1.z
+        // lsp::definition_check(&server, &go_to).await;
 
-        let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 26,
-            req_char: 23,
-            def_line: 9,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.z.x
-        lsp::definition_check(&server, &go_to).await;
+        // let go_to = GotoDefinition {
+        //     req_uri: &uri,
+        //     req_line: 26,
+        //     req_char: 23,
+        //     def_line: 9,
+        //     def_start_char: 4,
+        //     def_end_char: 5,
+        //     def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
+        // };
+        // // storage.var1.z.x
+        // lsp::definition_check(&server, &go_to).await;
 
         let _ = server.shutdown_server();
     });

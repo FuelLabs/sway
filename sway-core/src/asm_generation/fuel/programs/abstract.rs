@@ -87,7 +87,7 @@ impl AbstractProgram {
         self.append_globals_allocation(&mut prologue);
         self.append_before_entries(&mut prologue)?;
 
-        match (self.experimental.encoding_v1, self.kind) {
+        match (self.experimental.new_encoding, self.kind) {
             (true, ProgramKind::Contract) => {
                 self.append_jump_to_entry(&mut prologue);
             }

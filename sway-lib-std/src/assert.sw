@@ -55,7 +55,7 @@ pub fn assert(condition: bool) {
 ///     log("a is equal to b");
 /// }
 /// ```
-#[cfg(experimental_encoding_v1 = false)]
+#[cfg(experimental_new_encoding = false)]
 pub fn assert_eq<T>(v1: T, v2: T)
 where
     T: Eq,
@@ -67,7 +67,7 @@ where
     }
 }
 
-#[cfg(experimental_encoding_v1 = true)]
+#[cfg(experimental_new_encoding = true)]
 pub fn assert_eq<T>(v1: T, v2: T)
 where
     T: Eq + AbiEncode,
@@ -99,7 +99,7 @@ where
 ///     log("a is not equal to b");
 /// }
 /// ```
-#[cfg(experimental_encoding_v1 = false)]
+#[cfg(experimental_new_encoding = false)]
 pub fn assert_ne<T>(v1: T, v2: T)
 where
     T: Eq,
@@ -111,7 +111,7 @@ where
     }
 }
 
-#[cfg(experimental_encoding_v1 = true)]
+#[cfg(experimental_new_encoding = true)]
 pub fn assert_ne<T>(v1: T, v2: T)
 where
     T: Eq + AbiEncode,

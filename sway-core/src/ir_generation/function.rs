@@ -1229,7 +1229,7 @@ impl<'eng> FnCompiler<'eng> {
                     &arguments[0]
                 )?);
                 let logged_type = i
-                    .get_logged_type(context.experimental.encoding_v1)
+                    .get_logged_type(context.experimental.new_encoding)
                     .expect("Could not return logged type.");
                 let log_id = match self.logged_types_map.get(&logged_type) {
                     None => {
@@ -2733,7 +2733,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Convert selector to U64 and then insert it
-        assert!(!context.experimental.encoding_v1);
+        assert!(!context.experimental.new_encoding);
         let sel = call_params.func_selector.as_ref().unwrap();
         let sel_val = convert_literal_to_value(
             context,

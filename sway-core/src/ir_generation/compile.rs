@@ -321,7 +321,7 @@ pub(crate) fn compile_configurables(
 
             let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 
-            if context.experimental.encoding_v1 {
+            if context.experimental.new_encoding {
                 let mut encoded_bytes = match constant.value {
                     ConstantValue::RawUntypedSlice(bytes) => bytes,
                     _ => unreachable!(),
@@ -437,7 +437,7 @@ pub(super) fn compile_entry_function(
     let is_entry = true;
     // In the new encoding, the only entry function is the `__entry`,
     // which is not an original entry.
-    let is_original_entry = !context.experimental.encoding_v1;
+    let is_original_entry = !context.experimental.new_encoding;
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
     compile_function(
         engines,
@@ -668,7 +668,7 @@ fn compile_abi_method(
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
 
     // method selector is only used for encoding v0
-    let selector = if context.experimental.encoding_v1 {
+    let selector = if context.experimental.new_encoding {
         None
     } else {
         let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
@@ -700,7 +700,7 @@ fn compile_abi_method(
         &ast_fn_decl,
         &ast_fn_decl.name,
         // ABI methods are only entries when the "new encoding" is off
-        !context.experimental.encoding_v1,
+        !context.experimental.new_encoding,
         // ABI methods are always original entries
         true,
         selector,

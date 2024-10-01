@@ -710,7 +710,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         asset_id: &Value,
         gas: &Value,
     ) -> Result<(), IrError> {
-        if !self.context.experimental.encoding_v1 {
+        if !self.context.experimental.new_encoding {
             // - The params must be a struct with the B256 address, u64 selector and u64 address to
             //   user args.
             // - The coins and gas must be u64s.

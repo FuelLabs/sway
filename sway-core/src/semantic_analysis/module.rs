@@ -382,7 +382,7 @@ impl ty::TyModule {
             }
         }
 
-        if ctx.experimental.encoding_v1 {
+        if ctx.experimental.new_encoding {
             let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
                     let fn_decl = engines.de().get_function(&decl.decl_id);
@@ -562,7 +562,7 @@ impl ty::TyModule {
                 continue;
             };
 
-            if ctx.experimental.encoding_v1 {
+            if ctx.experimental.new_encoding {
                 let mut generated = vec![];
                 if let (true, Some(mut ctx)) = (
                     auto_impl_encoding_traits,

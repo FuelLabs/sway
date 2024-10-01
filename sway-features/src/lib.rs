@@ -116,7 +116,7 @@ macro_rules! features {
 }
 
 features! {
-    encoding_v1 = true,
+    new_encoding = true,
     "https://github.com/FuelLabs/sway/issues/5727",
 
     storage_domains = false,
