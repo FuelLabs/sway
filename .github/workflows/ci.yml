@@ -412,7 +412,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Cargo Run E2E Tests (EVM)
-        run: cargo run --locked --release --bin test -- --target evm --locked --no-experimental encoding_v1
+        run: cargo run --locked --release --bin test -- --target evm --locked --no-experimental new_encoding
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
