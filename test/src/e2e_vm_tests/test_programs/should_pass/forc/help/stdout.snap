@@ -81,9 +81,9 @@ Options:
       --tests
           Also build all tests within the project
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
   -h, --help
           Print help (see more with '--help')
   -V, --version
@@ -123,9 +123,9 @@ Options:
       --ipfs-node <IPFS_NODE>
           The IPFS Node to use for fetching IPFS sources
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
   -v, --verbose...
           Use verbose output
   -s, --silent
@@ -348,9 +348,9 @@ Options:
       --test-threads <TEST_THREADS>
           Number of threads to utilize when running the tests. By default, this is the number of threads available in your system
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
   -h, --help
           Print help (see more with '--help')
   -V, --version
@@ -510,9 +510,9 @@ Options:
       --salt <SALT>
           Added salt used to derive the contract ID
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
   -h, --help
           Print help (see more with '--help')
   -V, --version
@@ -584,9 +584,9 @@ Options:
       --error-on-warnings
           Treat warnings as errors
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: encoding_v1, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
   -h, --help
           Print help (see more with '--help')
   -V, --version
