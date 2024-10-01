@@ -17,6 +17,7 @@ members = [
     "sway-ast",
     "sway-core",
     "sway-error",
+    "sway-features",
     "sway-ir",
     "sway-ir/sway-ir-macros",
     "sway-lsp",
@@ -26,11 +27,7 @@ members = [
     "swayfmt",
     "test",
 ]
-exclude = [
-    "examples/*",
-    "swayfmt/test_macros",
-    "forc-test/test_data"
-]
+exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
@@ -64,6 +61,7 @@ forc-tx = { path = "forc-plugins/forc-tx/", version = "0.64.0" }
 sway-ast = { path = "sway-ast/", version = "0.64.0" }
 sway-core = { path = "sway-core/", version = "0.64.0" }
 sway-error = { path = "sway-error/", version = "0.64.0" }
+sway-features = { path = "sway-features/", version = "0.64.0" }
 sway-lsp = { path = "sway-lsp/", version = "0.64.0" }
 sway-parse = { path = "sway-parse/", version = "0.64.0" }
 sway-types = { path = "sway-types/", version = "0.64.0" }

@@ -7,13 +7,14 @@ use crate::{
     transform::AllowDeprecatedState,
     type_system::*,
     types::*,
-    Engines, ExperimentalFlags,
+    Engines,
 };
 
 use sway_error::{
     error::{CompileError, TypeNotAllowedReason},
     handler::{ErrorEmitted, Handler},
 };
+use sway_features::ExperimentalFeatures;
 use sway_types::*;
 
 #[derive(Debug, Clone)]
@@ -64,7 +65,7 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Result<(TyProgramKind, Vec<TyDecl>, Vec<TyConfigurableDecl>), ErrorEmitted> {
         // Extract program-kind-specific properties from the root nodes.
 

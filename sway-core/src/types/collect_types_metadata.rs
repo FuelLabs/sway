@@ -8,9 +8,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{type_system::TypeId, Engines, ExperimentalFlags};
+use crate::{type_system::TypeId, Engines};
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, Span};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
@@ -69,7 +70,7 @@ pub struct CollectTypesMetadataContext<'cx> {
 
     pub(crate) program_name: String,
 
-    pub experimental: ExperimentalFlags,
+    pub experimental: ExperimentalFeatures,
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {
@@ -111,7 +112,7 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
 
     pub fn new(
         engines: &'cx Engines,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
         program_name: String,
     ) -> Self {
         let mut ctx = Self {

@@ -49,7 +49,6 @@ pub const ALLOW_DEPRECATED_NAME: &str = "deprecated";
 pub const CFG_ATTRIBUTE_NAME: &str = "cfg";
 pub const CFG_TARGET_ARG_NAME: &str = "target";
 pub const CFG_PROGRAM_TYPE_ARG_NAME: &str = "program_type";
-pub const CFG_EXPERIMENTAL_NEW_ENCODING: &str = "experimental_new_encoding";
 
 pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
 

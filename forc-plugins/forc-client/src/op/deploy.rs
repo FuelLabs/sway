@@ -31,7 +31,7 @@ use fuels::{
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
-use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
+use pkg::{BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -666,9 +666,8 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }
 

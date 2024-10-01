@@ -39,6 +39,7 @@ sha2.workspace = true
 strum = { workspace = true, features = ["derive"] }
 sway-ast.workspace = true
 sway-error.workspace = true
+sway-features.workspace = true
 sway-ir.workspace = true
 sway-parse.workspace = true
 sway-types.workspace = true
