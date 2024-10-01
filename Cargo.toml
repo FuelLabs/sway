@@ -166,6 +166,7 @@ libtest-mimic = "0.7"
 lsp-types = "0.94"
 mdbook = { version = "0.4", default-features = false }
 minifier = "0.3"
+normalize-path = "0.2.1"
 notify = "6.1"
 notify-debouncer-mini = "0.4"
 num-bigint = "0.4"

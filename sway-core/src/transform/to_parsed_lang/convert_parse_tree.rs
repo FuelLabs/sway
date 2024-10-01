@@ -1909,7 +1909,7 @@ fn expr_func_app_to_expression_kind(
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
         Some(Intrinsic::Log)
-            if context.experimental.encoding_v1 && last.is_none() && !is_absolute =>
+            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
         {
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
@@ -2617,7 +2617,7 @@ fn configurable_field_to_configurable_declaration(
     let type_ascription = ty_to_type_argument(context, handler, engines, configurable_field.ty)?;
 
     let value = expr_to_expression(context, handler, engines, configurable_field.initializer)?;
-    let value = if context.experimental.encoding_v1 {
+    let value = if context.experimental.new_encoding {
         let call_encode =
             ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
                 call_path_binding: TypeBinding {

@@ -322,13 +322,13 @@ impl TestContext {
 
         let checker = checker.build().unwrap();
 
-        let script_data = if !has_experimental_field && experimental.encoding_v1 {
+        let script_data = if !has_experimental_field && experimental.new_encoding {
             script_data_new_encoding
         } else {
             script_data
         };
 
-        let expected_result = if !has_experimental_field && experimental.encoding_v1 {
+        let expected_result = if !has_experimental_field && experimental.new_encoding {
             expected_result_new_encoding
         } else {
             expected_result
@@ -444,7 +444,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 &name,
                                 &compiled,
-                                experimental.encoding_v1,
+                                experimental.new_encoding,
                                 run_config.update_output_files,
                                 &suffix,
                                 has_experimental_field,
@@ -493,7 +493,7 @@ impl TestContext {
                             harness::test_json_abi(
                                 name,
                                 built_pkg,
-                                experimental.encoding_v1,
+                                experimental.new_encoding,
                                 run_config.update_output_files,
                                 &suffix,
                                 has_experimental_field,
@@ -999,7 +999,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     // if new encoding is on, allow a "category_new_encoding"
     // for tests that should have different categories
-    let category = if !has_experimental_field && experimental.encoding_v1 {
+    let category = if !has_experimental_field && experimental.new_encoding {
         toml_content
             .get("category_new_encoding")
             .or_else(|| toml_content.get("category"))

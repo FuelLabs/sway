@@ -1567,7 +1567,7 @@ pub fn sway_build_config(
     .with_metrics(build_profile.metrics_outfile.clone())
     .with_optimization_level(build_profile.optimization_level);
     // .with_experimental(ExperimentalFeatures {
-    //     encoding_v1: build_profile.experimental.encoding_v1,
+    //     encoding_v1: build_profile.experimental.new_encoding,
     //     ..Default::default()
     // });
     Ok(build_config)
@@ -1856,7 +1856,7 @@ pub fn compile(
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
-                    if experimental.encoding_v1 {
+                    if experimental.new_encoding {
                         ENCODING_V1.into()
                     } else {
                         ENCODING_V0.into()

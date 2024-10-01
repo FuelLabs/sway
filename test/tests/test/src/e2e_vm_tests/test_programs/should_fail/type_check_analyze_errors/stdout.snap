@@ -1,0 +1,63 @@
+---
+source: test/tests/tests.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
+   Compiling library core (sway-lib-core)
+   Compiling library std (sway-lib-std)
+   Compiling script type_check_analyze_errors (test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors)
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:5:14
+  |
+3 | fn main() {
+4 |     // 0x100 does not fit into a u8
+5 |     let _a = 0x100;
+  |              ^^^^^ Literal would overflow because its value does not fit into "u8"
+6 |     Vec::<u8>::new().push(_a);
+7 | 
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:9:14
+   |
+ 7 | 
+ 8 |     // 0x10000 does not fit into a u16
+ 9 |     let _a = 0x10000;
+   |              ^^^^^^^ Literal would overflow because its value does not fit into "u16"
+10 |     Vec::<u16>::new().push(_a);
+11 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:13:14
+   |
+11 | 
+12 |     // 0x100000000 does not fit into a u32
+13 |     let _a = 0x100000000;
+   |              ^^^^^^^^^^^ Literal would overflow because its value does not fit into "u32"
+14 |     Vec::<u32>::new().push(_a);
+15 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:20:22
+   |
+18 | 
+19 | fn insufficient_type_check(arg: u64) -> [u32;2] {
+20 |     let res = [1u32, arg];
+   |                      ^^^ Mismatched types.
+expected: u32
+found:    u64.
+
+21 |     res
+22 | }
+   |
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile type_check_analyze_errors

@@ -223,7 +223,7 @@ pub(super) async fn run(
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
                 let experimental = ExperimentalFeatures {
-                    encoding_v1: false, // IR tests still need encoding v1 off
+                    new_encoding: false, // IR tests still need encoding v1 off
                     ..Default::default()
                 };
 
@@ -234,7 +234,7 @@ pub(super) async fn run(
                     PathBuf::from("/"),
                     build_target,
                 );//.with_experimental(ExperimentalFeatures {
-                //     encoding_v1: experimental.encoding_v1,
+                //     encoding_v1: experimental.new_encoding,
                 //     ..Default::default()
                 // });
 
@@ -280,10 +280,7 @@ pub(super) async fn run(
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(typed_program, include_tests, &engines, ExperimentalFeatures {
-                    encoding_v1: experimental.encoding_v1,
-                    ..Default::default()
-                })
+                let mut ir = compile_program(typed_program, include_tests, &engines, experimental)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let e = e[0].clone();
@@ -379,10 +376,7 @@ pub(super) async fn run(
                             let mut ir = sway_ir::parser::parse(
                                 &ir_output,
                                  engines.se(),
-                                 sway_features::ExperimentalFeatures {
-                                    encoding_v1: experimental.encoding_v1,
-                                    ..Default::default()
-                                }
+                                 experimental,
                                 )
                                 .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
 
@@ -477,10 +471,7 @@ pub(super) async fn run(
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
-                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), sway_features::ExperimentalFeatures {
-                    encoding_v1: experimental.encoding_v1,
-                    ..Default::default()
-                })
+                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), experimental)
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {

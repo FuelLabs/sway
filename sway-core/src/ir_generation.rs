@@ -149,13 +149,7 @@ pub fn compile_program<'eng>(
         .map(|(message_id, type_id)| (*type_id, *message_id))
         .collect();
 
-    let mut ctx = Context::new(
-        engines.se(),
-        sway_features::ExperimentalFeatures {
-            encoding_v1: experimental.encoding_v1,
-            ..Default::default()
-        },
-    );
+    let mut ctx = Context::new(engines.se(), experimental);
     ctx.program_kind = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,

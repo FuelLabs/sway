@@ -2,7 +2,7 @@ script;
 
 use contract_with_type_aliases_abi::*;
 
-#[cfg(experimental_encoding_v1 = false)]
+#[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x0cbeb6efe3104b460be769bdc4ea101ebf16ccc16f2d7b667ec3e1c7f5ce35b5;
 #[cfg(experimental_new_encoding = true)]
 const CONTRACT_ID = 0x741e73148cf8c2f12b620adb9a15275eeabe703a5c058b0e786117e92024fde2; // AUTO-CONTRACT-ID ../../test_contracts/contract_with_type_aliases --release

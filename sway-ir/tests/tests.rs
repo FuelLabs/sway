@@ -28,7 +28,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input = String::from_utf8_lossy(&input_bytes);
 
         let experimental = ExperimentalFeatures {
-            encoding_v1: false,
+            new_encoding: false,
             ..Default::default()
         };
 
