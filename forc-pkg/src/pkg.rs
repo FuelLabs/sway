@@ -1958,7 +1958,10 @@ pub fn compile(
         }
     }
 
-    set_bytecode_metadata(&mut compiled, &md);
+    // We know to set the metadata only for fuelvm right now.
+    if let BuildTarget::Fuel = pkg.target {
+        set_bytecode_metadata(&mut compiled, &md);
+    }
 
     metrics.bytecode_size = compiled.bytecode.len();
     let bytecode = BuiltPackageBytecode {
