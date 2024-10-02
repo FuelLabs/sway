@@ -409,9 +409,9 @@ impl fmt::Display for DataSection {
         for (ix, entry) in self.iter_all_entries().enumerate() {
             writeln!(
                 data_buf,
-                "{}: {} {}",
-                ix,
+                "data_{}_{} {}",
                 entry.name,
+                ix,
                 display_entry(&entry.value)
             )?;
         }
