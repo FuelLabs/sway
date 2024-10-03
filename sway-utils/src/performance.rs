@@ -31,9 +31,9 @@ macro_rules! time_expr {
         use std::io::{BufRead, Read, Write};
         #[cfg(feature = "profiler")]
         if let Some(cfg) = $build_config {
-            println!("/forc-perf start {} {}", $pkg_name, $description);
+            println!("/dyno start {} {}", $pkg_name, $description);
             let output = { $expression };
-            println!("/forc-perf stop {} {}", $pkg_name, $description);
+            println!("/dyno stop {} {}", $pkg_name, $description);
             output
         } else {
             $expression

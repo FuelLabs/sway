@@ -1969,7 +1969,7 @@ pub fn compile(
     Ok(compiled_package)
 }
 
-/// Reports assembly information for a compiled package to an external `forc-perf` process through `stdout`.
+/// Reports assembly information for a compiled package to an external `dyno` process through `stdout`.
 #[cfg(feature = "profiler")]
 fn report_assembly_information(
     compiled_asm: &sway_core::CompiledAsm,
@@ -2017,8 +2017,8 @@ fn report_assembly_information(
         }
     };
 
-    // Report the assembly information to the `forc-perf` process through `stdout`.
-    println!("/forc-perf info {}", serde_json::to_string(&asm_information).unwrap());
+    // Report the assembly information to the `dyno` process through `stdout`.
+    println!("/dyno info {}", serde_json::to_string(&asm_information).unwrap());
 }
 
 impl PkgEntry {
