@@ -642,7 +642,7 @@ impl TypeSize {
 /// the value in aggregates. E.g., in an array of `u8`, each `u8` is "padded"
 /// to its size of one byte while as a struct field, it will be right padded
 /// to 8 bytes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub enum Padding {
     Left { target_size: usize },
     Right { target_size: usize },

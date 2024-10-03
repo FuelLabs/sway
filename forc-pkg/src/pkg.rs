@@ -1785,6 +1785,7 @@ pub fn compile(
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
+        pkg.name,
         "compile to ast",
         "compile_to_ast",
         sway_core::compile_to_ast(
@@ -1823,6 +1824,7 @@ pub fn compile(
     }
 
     let asm_res = time_expr!(
+        pkg.name,
         "compile ast to asm",
         "compile_ast_to_asm",
         sway_core::ast_to_asm(&handler, engines, &programs, &sway_build_config),
@@ -1837,6 +1839,7 @@ pub fn compile(
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let program_abi_res = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 fuel_abi::generate_program_abi(
@@ -1875,6 +1878,7 @@ pub fn compile(
             };
 
             let abi = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 evm_abi::generate_abi_program(typed_program, engines),
@@ -1899,15 +1903,16 @@ pub fn compile(
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
 
-    let asm = match asm_res {
+    let mut asm = match asm_res {
         Err(_) => return fail(handler),
         Ok(asm) => asm,
     };
 
     let bc_res = time_expr!(
+        pkg.name,
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se(), &sway_build_config),
+        sway_core::asm_to_bytecode(&handler, &mut asm, source_map, engines.se(), &sway_build_config),
         Some(sway_build_config.clone()),
         metrics
     );
@@ -1957,7 +1962,63 @@ pub fn compile(
         warnings,
         metrics,
     };
+
+    #[cfg(feature = "profiler")]
+    report_assembly_information(&asm, &compiled_package);
+
     Ok(compiled_package)
+}
+
+/// Reports assembly information for a compiled package to an external `dyno` process through `stdout`.
+#[cfg(feature = "profiler")]
+fn report_assembly_information(
+    compiled_asm: &sway_core::CompiledAsm,
+    compiled_package: &CompiledPackage,
+) {
+    // Get the bytes of the compiled package.
+    let mut bytes = compiled_package.bytecode.bytes.clone();
+
+    // Attempt to get the data section offset out of the compiled package bytes.
+    let data_offset = u64::from_be_bytes(bytes.iter().skip(8).take(8).cloned().collect::<Vec<_>>().try_into().unwrap());
+    let data_section_size = bytes.len() as u64 - data_offset;
+
+    // Remove the data section from the compiled package bytes.
+    bytes.truncate(data_offset as usize);
+
+    // Calculate the unpadded size of each data section section.
+    // Implementation based directly on `sway_core::asm_generation::Entry::to_bytes`, referenced here:
+    // https://github.com/FuelLabs/sway/blob/afd6a6709e7cb11c676059a5004012cc466e653b/sway-core/src/asm_generation/fuel/data_section.rs#L147
+    fn calculate_entry_size(entry: &sway_core::asm_generation::Entry) -> u64 {
+        match &entry.value {
+            sway_core::asm_generation::Datum::Byte(value) => std::mem::size_of_val(value) as u64,
+
+            sway_core::asm_generation::Datum::Word(value) => std::mem::size_of_val(value) as u64,
+            
+            sway_core::asm_generation::Datum::ByteArray(bytes)
+            | sway_core::asm_generation::Datum::Slice(bytes) => {
+                if bytes.len() % 8 == 0 {
+                    bytes.len() as u64
+                } else {
+                    ((bytes.len() + 7) & 0xfffffff8_usize) as u64
+                }
+            }
+            
+            sway_core::asm_generation::Datum::Collection(items) => items.iter().map(calculate_entry_size).sum(),
+        }
+    }
+
+    // Compute the assembly information to be reported.
+    let asm_information = sway_core::asm_generation::AsmInformation {
+        bytecode_size: bytes.len() as _,
+        data_section: sway_core::asm_generation::DataSectionInformation {
+            size: data_section_size,
+            used: compiled_asm.0.data_section.value_pairs.iter().map(calculate_entry_size).sum(),
+            value_pairs: compiled_asm.0.data_section.value_pairs.clone(),
+        }
+    };
+
+    // Report the assembly information to the `dyno` process through `stdout`.
+    println!("/dyno info {}", serde_json::to_string(&asm_information).unwrap());
 }
 
 impl PkgEntry {

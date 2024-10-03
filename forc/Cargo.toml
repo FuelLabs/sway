@@ -49,6 +49,7 @@ whoami.workspace = true
 
 [features]
 default = []
+profiler = []
 test = []
 util = []
 uwu = ["uwuify"]
