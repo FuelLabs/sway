@@ -70,18 +70,6 @@ impl PartialEq for Span {
 
 impl Eq for Span {}
 
-// impl Serialize for Span {
-//     // Serialize a tuple two fields: `start` and `end`.
-//     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-//         use serde::ser::SerializeTuple;
-
-//         let mut state = serializer.serialize_tuple(2)?;
-//         state.serialize_element(&self.start)?;
-//         state.serialize_element(&self.end)?;
-//         state.end()
-//     }
-// }
-
 impl From<Span> for std::ops::Range<usize> {
     fn from(value: Span) -> Self {
         Self {
