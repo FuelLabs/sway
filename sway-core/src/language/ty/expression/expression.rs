@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
     types::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{fmt, hash::Hasher};
 use sway_error::{
     error::CompileError,
@@ -20,8 +20,6 @@ use sway_error::{
     warning::{CompileWarning, Warning},
 };
 use sway_types::{Span, Spanned};
-
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyExpression {

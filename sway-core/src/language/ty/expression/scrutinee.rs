@@ -3,7 +3,7 @@ use crate::{
     language::{ty::*, *},
     type_system::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sway_types::{Ident, Span};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

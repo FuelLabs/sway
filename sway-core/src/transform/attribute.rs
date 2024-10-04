@@ -21,7 +21,7 @@
 //!   #[foo(bar, bar)]
 
 use indexmap::IndexMap;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{hash::Hash, sync::Arc};
 use sway_ast::Literal;
 use sway_types::{

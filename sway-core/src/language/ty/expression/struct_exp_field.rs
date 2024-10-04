@@ -5,12 +5,10 @@ use crate::{
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
-
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStructExpressionField {

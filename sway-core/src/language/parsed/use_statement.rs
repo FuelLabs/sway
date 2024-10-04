@@ -1,5 +1,5 @@
 use crate::{language::Visibility, parsed::Span};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sway_types::ident::Ident;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

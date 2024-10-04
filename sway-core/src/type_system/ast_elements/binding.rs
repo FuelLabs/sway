@@ -14,12 +14,10 @@ use crate::{
     type_system::priv_prelude::*,
     EnforceTypeArguments, Ident,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
-
-
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.

@@ -2,12 +2,12 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStructDecl, TyTraitDecl, TyTraitFn,
-        TyTypeAliasDecl, TyDeclParsedType, TyTraitType,
+        TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStructDecl, TyTraitDecl,
+        TyTraitFn, TyTraitType, TyTypeAliasDecl,
     },
     type_system::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map::DefaultHasher,
     fmt,
@@ -15,7 +15,6 @@ use std::{
     marker::PhantomData,
 };
 use sway_types::{Named, Spanned};
-
 
 pub type DeclIdIndexType = usize;
 

@@ -1,5 +1,5 @@
 use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 

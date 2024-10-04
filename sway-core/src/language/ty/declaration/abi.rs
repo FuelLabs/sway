@@ -1,14 +1,13 @@
+use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 use crate::{
     engine_threading::*,
     language::parsed::{self, AbiDeclaration},
     transform,
     type_system::*,
 };
-use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
-
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.

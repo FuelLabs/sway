@@ -1,5 +1,5 @@
 use crate::{span::Span, Spanned};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::{Ord, Ordering},
     fmt,

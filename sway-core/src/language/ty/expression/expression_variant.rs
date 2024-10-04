@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 use indexmap::IndexMap;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::VecDeque,
     fmt::{self, Write},
@@ -19,7 +19,6 @@ use std::{
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyExpressionVariant {

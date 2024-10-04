@@ -3,7 +3,7 @@ use crate::{
     type_system::*, types::*,
 };
 use itertools::Itertools;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},

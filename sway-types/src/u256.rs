@@ -1,6 +1,6 @@
 use num_bigint::{BigUint, ParseBigIntError, TryFromBigIntError};
 use num_traits::Zero;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::ops::{Not, Shl, Shr};
 use thiserror::Error;
 

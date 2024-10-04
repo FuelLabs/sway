@@ -1,3 +1,4 @@
+use super::{parsed_engine::ParsedDeclEngineGet, parsed_id::ParsedDeclId};
 use crate::{
     decl_engine::*,
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
@@ -6,8 +7,7 @@ use crate::{
         ty,
     },
 };
-use super::{parsed_engine::ParsedDeclEngineGet, parsed_id::ParsedDeclId};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub enum ParsedInterfaceDeclId {

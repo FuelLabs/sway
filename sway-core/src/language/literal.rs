@@ -1,5 +1,5 @@
 use crate::{type_system::*, Engines};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
@@ -7,8 +7,6 @@ use std::{
 };
 use sway_error::error::CompileError;
 use sway_types::{integer_bits::IntegerBits, span, u256::U256};
-
-
 
 #[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub enum Literal {

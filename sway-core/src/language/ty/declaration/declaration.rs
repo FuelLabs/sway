@@ -5,7 +5,7 @@ use crate::{
     type_system::*,
     types::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
@@ -16,8 +16,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Named, Span, Spanned};
-
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyDecl {

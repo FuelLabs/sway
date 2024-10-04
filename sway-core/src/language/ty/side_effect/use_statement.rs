@@ -1,5 +1,5 @@
 use crate::language::parsed;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sway_types::{ident::Ident, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

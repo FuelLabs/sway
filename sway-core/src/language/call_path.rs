@@ -6,7 +6,7 @@ use crate::{
     parsed::QualifiedPathType,
     Engines, Ident, Namespace,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     fmt,

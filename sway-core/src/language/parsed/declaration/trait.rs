@@ -1,3 +1,4 @@
+use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, DeclRefTrait},
     engine_threading::*,
@@ -5,8 +6,7 @@ use crate::{
     transform,
     type_system::*,
 };
-use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, span::Span, Named, Spanned};

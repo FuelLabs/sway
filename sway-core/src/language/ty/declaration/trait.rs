@@ -7,8 +7,8 @@ use crate::{
     has_changes,
     language::{
         parsed::{self, TraitDeclaration},
-        CallPath, Visibility,
         ty::{TyDecl, TyDeclParsedType},
+        CallPath, Visibility,
     },
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
@@ -25,7 +25,6 @@ use std::{
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTraitDecl {

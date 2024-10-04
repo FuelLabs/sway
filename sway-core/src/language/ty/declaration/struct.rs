@@ -15,7 +15,6 @@ use std::{
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStructDecl {
     pub call_path: CallPath,

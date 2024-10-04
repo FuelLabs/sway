@@ -1,5 +1,5 @@
 use crate::language::ty::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ContractCallParams {

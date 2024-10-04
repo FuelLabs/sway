@@ -1,13 +1,12 @@
 use crate::{
     engine_threading::*,
-    language::{parsed::TypeAliasDeclaration, CallPath, Visibility, ty::TyDeclParsedType},
+    language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
     type_system::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTypeAliasDecl {

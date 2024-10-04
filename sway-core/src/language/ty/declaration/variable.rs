@@ -3,7 +3,7 @@ use crate::{
     language::{parsed::VariableDeclaration, ty::*},
     type_system::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Spanned};
 

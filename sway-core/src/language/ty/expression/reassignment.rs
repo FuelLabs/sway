@@ -9,14 +9,13 @@ use crate::{
     },
     type_system::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span, Spanned};
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyReassignment {

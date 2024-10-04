@@ -1,9 +1,8 @@
-use crate::{engine_threading::*, type_system::TypeId};
 use super::TyExpression;
-use serde::{Serialize, Deserialize};
+use crate::{engine_threading::*, type_system::TypeId};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
-
 
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug, Serialize, Deserialize)]

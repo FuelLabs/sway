@@ -1,3 +1,4 @@
+use super::{TyDeclParsedType, TyTraitItem};
 use crate::{
     decl_engine::DeclRefMixedInterface,
     engine_threading::*,
@@ -5,11 +6,9 @@ use crate::{
     language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
-use super::{TyDeclParsedType, TyTraitItem};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
-
 
 pub type TyImplItem = TyTraitItem;
 

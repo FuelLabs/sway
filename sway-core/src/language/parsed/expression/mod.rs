@@ -8,7 +8,7 @@ use crate::{
     type_system::TypeBinding,
     Engines, TypeArgument, TypeId,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, Span, Spanned};

@@ -10,14 +10,13 @@ use crate::{
     type_system::*,
     types::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span};
-
 
 pub trait GetDeclIdent {
     fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;

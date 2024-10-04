@@ -2,7 +2,7 @@ use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
     type_system::*,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::hash::Hasher;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;

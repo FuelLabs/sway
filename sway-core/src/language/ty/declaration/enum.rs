@@ -17,7 +17,6 @@ use sway_error::{
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyEnumDecl {
     pub call_path: CallPath,

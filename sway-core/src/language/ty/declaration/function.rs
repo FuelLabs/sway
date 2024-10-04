@@ -1,5 +1,8 @@
 use crate::{
+    decl_engine::*,
+    engine_threading::*,
     has_changes,
+    language::{parsed, ty::*, Inline, Purity, Visibility},
     language::{
         parsed::{FunctionDeclaration, FunctionDeclarationKind},
         CallPath,
@@ -10,6 +13,7 @@ use crate::{
     language::{parsed, ty::*, Inline, Purity, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
+    transform::AttributeKind,
     type_system::*,
     types::*,
 };
