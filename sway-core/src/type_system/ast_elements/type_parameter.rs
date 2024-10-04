@@ -378,19 +378,7 @@ impl TypeParameter {
         Ok(())
     }
 
-    pub fn insert_into_namespace(
-        &self,
-        handler: &Handler,
-        mut ctx: TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.insert_into_namespace_constraints(handler, ctx.by_ref())?;
-
-        self.insert_into_namespace_self(handler, ctx.by_ref())?;
-
-        Ok(())
-    }
-
-    fn insert_into_namespace_constraints(
+    pub(crate) fn insert_into_namespace_constraints(
         &self,
         handler: &Handler,
         mut ctx: TypeCheckContext,
