@@ -1052,29 +1052,8 @@ impl<'a> TypeCheckContext<'a> {
                     maybe_method_decl_refs.first().cloned()
                 }
             } else {
-                // When we can't match any method with parameter types we still return the first method found
-                // This was the behavior before introducing the parameter type matching
-                //matching_method_decl_refs.first().cloned();
-
                 for decl_ref in matching_method_decl_refs.clone().into_iter() {
                     let method = decl_engine.get_function(&decl_ref);
-                    println!(
-                        "  {} {} {:?} // {:?} Return:{:?} // {:?}",
-                        method.is_contract_call,
-                        method.name.as_str(),
-                        self.engines.help_out(
-                            method
-                                .parameters
-                                .iter()
-                                .map(|p| p.type_argument.type_id)
-                                .collect::<Vec<_>>()
-                        ),
-                        self.engines
-                            .help_out(arguments_types.iter().collect::<Vec<_>>()),
-                        self.engines.help_out(method.return_type.type_id),
-                        self.engines.help_out(self.type_annotation())
-                    );
-
                     matching_method_strings.insert(format!(
                         "{}({}) -> {}{}",
                         method.name.as_str(),
@@ -1093,6 +1072,7 @@ impl<'a> TypeCheckContext<'a> {
                     ));
                 }
 
+                // When we can't match any method with parameter types we will throw an error.
                 None
             }
         };
