@@ -4,15 +4,15 @@ use crate::{
     transform,
     type_system::*,
 };
+use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
+use serde::{Serialize, Deserialize};
 use std::hash::{Hash, Hasher};
-
 use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyAbiDecl {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,

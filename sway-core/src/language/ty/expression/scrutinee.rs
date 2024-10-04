@@ -1,19 +1,19 @@
-use sway_types::{Ident, Span};
-
 use crate::{
     decl_engine::{DeclRefEnum, DeclRefStruct},
     language::{ty::*, *},
     type_system::*,
 };
+use serde::{Serialize, Deserialize};
+use sway_types::{Ident, Span};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyScrutinee {
     pub variant: TyScrutineeVariant,
     pub type_id: TypeId,
     pub span: Span,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TyScrutineeVariant {
     Or(Vec<TyScrutinee>),
     CatchAll,
@@ -36,7 +36,7 @@ pub enum TyScrutineeVariant {
     Tuple(Vec<TyScrutinee>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyStructScrutineeField {
     pub field: Ident,
     pub scrutinee: Option<TyScrutinee>,

@@ -1,5 +1,3 @@
-use std::{cmp::Ordering, fmt, hash::Hasher};
-
 use crate::{
     decl_engine::parsed_id::ParsedDeclId,
     engine_threading::{
@@ -10,6 +8,8 @@ use crate::{
     type_system::TypeBinding,
     Engines, TypeArgument, TypeId,
 };
+use serde::{Serialize, Deserialize};
+use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, Span, Spanned};
 
@@ -198,7 +198,7 @@ impl Spanned for AmbiguousSuffix {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualifiedPathType {
     pub ty: TypeArgument,
     pub as_trait: TypeId,

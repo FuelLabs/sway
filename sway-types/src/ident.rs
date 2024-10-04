@@ -1,7 +1,5 @@
-use serde::Serialize;
-
 use crate::{span::Span, Spanned};
-
+use serde::{Serialize, Deserialize};
 use std::{
     cmp::{Ord, Ordering},
     fmt,
@@ -13,7 +11,7 @@ pub trait Named {
     fn name(&self) -> &BaseIdent;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct BaseIdent {
     name_override_opt: Option<Arc<String>>,
     span: Span,
@@ -93,17 +91,17 @@ impl BaseIdent {
 /// often be different.
 pub type Ident = BaseIdent;
 
-impl Serialize for Ident {
-    // Serialize an `Ident` struct with two fields: `to_string` and `span`.
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeStruct;
+// impl Serialize for Ident {
+//     // Serialize an `Ident` struct with two fields: `to_string` and `span`.
+//     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+//         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("Ident", 2)?;
-        state.serialize_field("to_string", &self.to_string())?;
-        state.serialize_field("span", &self.span)?;
-        state.end()
-    }
-}
+//         let mut state = serializer.serialize_struct("Ident", 2)?;
+//         state.serialize_field("to_string", &self.to_string())?;
+//         state.serialize_field("span", &self.span)?;
+//         state.end()
+//     }
+// }
 
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {

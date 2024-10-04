@@ -1,6 +1,7 @@
 use crate::language::Visibility;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum VariableMutability {
     // mutable
     Mutable,

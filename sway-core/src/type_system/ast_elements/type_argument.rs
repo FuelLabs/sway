@@ -1,4 +1,5 @@
 use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use serde::{Serialize, Deserialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
@@ -13,7 +14,7 @@ use sway_types::{Span, Spanned};
 ///
 /// The annotations are ignored when calculating the [TypeArgument]'s hash
 /// (with engines) and equality (with engines).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeArgument {
     /// The [TypeId] of the "referenced" [TypeInfo].
     pub type_id: TypeId,

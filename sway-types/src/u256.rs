@@ -1,10 +1,10 @@
-use std::ops::{Not, Shl, Shr};
-
 use num_bigint::{BigUint, ParseBigIntError, TryFromBigIntError};
 use num_traits::Zero;
+use serde::{Serialize, Deserialize};
+use std::ops::{Not, Shl, Shr};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize)]
 pub struct U256(BigUint);
 
 impl U256 {

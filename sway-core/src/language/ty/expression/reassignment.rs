@@ -1,11 +1,3 @@
-use std::{
-    borrow::Cow,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Span, Spanned};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -17,14 +9,22 @@ use crate::{
     },
     type_system::*,
 };
+use serde::{Serialize, Deserialize};
+use std::{
+    borrow::Cow,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Span, Spanned};
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyReassignment {
     pub lhs: TyReassignmentTarget,
     pub rhs: TyExpression,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyReassignmentTarget {
     /// An [TyExpression] representing a single variable or a path
     /// to a part of an aggregate.
@@ -258,7 +258,7 @@ impl UpdateConstantExpression for TyReassignment {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ProjectionKind {
     StructField {
         name: Ident,

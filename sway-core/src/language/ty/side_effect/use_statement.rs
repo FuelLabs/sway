@@ -1,7 +1,8 @@
 use crate::language::parsed;
+use serde::{Serialize, Deserialize};
 use sway_types::{ident::Ident, Span, Spanned};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TyUseStatement {
     pub call_path: Vec<Ident>,
     pub span: Span,

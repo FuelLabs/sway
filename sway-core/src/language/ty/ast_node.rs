@@ -1,11 +1,3 @@
-use std::{
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Span};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -18,12 +10,20 @@ use crate::{
     type_system::*,
     types::*,
 };
+use serde::{Serialize, Deserialize};
+use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Span};
+
 
 pub trait GetDeclIdent {
     fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
     pub span: Span,
@@ -353,13 +353,13 @@ impl TyAstNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Expression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect(TySideEffect),
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 
 impl EqWithEngines for TyAstNodeContent {}

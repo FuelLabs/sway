@@ -1,24 +1,22 @@
-use std::{
-    cmp::Ordering,
-    hash::{Hash, Hasher},
-};
-
-use monomorphization::MonomorphizeHelper;
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{parsed::StructDeclaration, CallPath, Visibility},
+    language::{parsed::StructDeclaration, CallPath, Visibility, ty::TyDeclParsedType},
     transform,
     type_system::*,
     Namespace,
 };
+use monomorphization::MonomorphizeHelper;
+use serde::{Serialize, Deserialize};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::TyDeclParsedType;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStructDecl {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
@@ -182,7 +180,7 @@ impl From<StructAccessInfo> for (bool, bool) {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyStructField {
     pub visibility: Visibility,
     pub name: Ident,

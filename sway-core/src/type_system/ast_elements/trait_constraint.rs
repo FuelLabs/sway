@@ -1,15 +1,3 @@
-use std::{
-    cmp::Ordering,
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::Spanned;
-
 use crate::{
     engine_threading::*,
     language::{parsed::Supertrait, ty, CallPath},
@@ -21,8 +9,20 @@ use crate::{
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
     EnforceTypeArguments,
 };
+use serde::{Serialize, Deserialize};
+use std::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::Spanned;
 
-#[derive(Debug, Clone)]
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitConstraint {
     pub trait_name: CallPath,
     pub type_arguments: Vec<TypeArgument>,

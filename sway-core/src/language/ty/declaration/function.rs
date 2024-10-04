@@ -1,12 +1,3 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use monomorphization::MonomorphizeHelper;
-use sha2::{Digest, Sha256};
-use sway_error::handler::{ErrorEmitted, Handler};
-
 use crate::{
     has_changes,
     language::{
@@ -14,9 +5,6 @@ use crate::{
         CallPath,
     },
     transform::AttributeKind,
-};
-
-use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
@@ -25,13 +13,20 @@ use crate::{
     type_system::*,
     types::*,
 };
-
+use monomorphization::MonomorphizeHelper;
+use serde::{Serialize, Deserialize};
+use sha2::{Digest, Sha256};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{
     constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
     Ident, Named, Span, Spanned,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyFunctionDeclKind {
     Default,
     Entry,
@@ -39,7 +34,7 @@ pub enum TyFunctionDeclKind {
     Test,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyFunctionDecl {
     pub name: Ident,
     pub body: TyCodeBlock,
@@ -489,7 +484,7 @@ impl TyFunctionDecl {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,

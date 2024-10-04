@@ -1,5 +1,6 @@
 #![allow(clippy::mutable_key_type)]
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -34,7 +35,7 @@ pub enum TreatNumericAs {
 }
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, Deserialize, Serialize)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {

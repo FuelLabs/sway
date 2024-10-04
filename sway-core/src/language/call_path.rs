@@ -1,27 +1,25 @@
+use crate::{
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    parsed::QualifiedPathType,
+    Engines, Ident, Namespace,
+};
+use serde::{Serialize, Deserialize};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
     sync::Arc,
 };
-
-use crate::{
-    engine_threading::{
-        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
-    },
-    Engines, Ident, Namespace,
-};
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, Spanned};
 
-use super::parsed::QualifiedPathType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CallPathTree {
     pub qualified_call_path: QualifiedCallPath,
     pub children: Vec<CallPathTree>,
@@ -75,7 +73,7 @@ impl OrdWithEngines for CallPathTree {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct QualifiedCallPath {
     pub call_path: CallPath,
@@ -179,7 +177,7 @@ impl DebugWithEngines for QualifiedCallPath {
 
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,

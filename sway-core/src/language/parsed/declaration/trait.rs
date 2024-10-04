@@ -1,7 +1,3 @@
-use std::hash::{Hash, Hasher};
-
-use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
-
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, DeclRefTrait},
     engine_threading::*,
@@ -9,16 +5,19 @@ use crate::{
     transform,
     type_system::*,
 };
+use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
+use serde::{Serialize, Deserialize};
+use std::hash::{Hash, Hasher};
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TraitItem {
     TraitFn(ParsedDeclId<TraitFn>),
     Constant(ParsedDeclId<ConstantDeclaration>),
     Type(ParsedDeclId<TraitTypeDeclaration>),
     // to handle parser recovery: Error represents an incomplete trait item
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 
 impl EqWithEngines for TraitItem {}
@@ -75,7 +74,7 @@ impl Spanned for TraitDeclaration {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Supertrait {
     pub name: CallPath,
     pub decl_ref: Option<DeclRefTrait>,

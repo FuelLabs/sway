@@ -1,20 +1,21 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
-use std::marker::PhantomData;
-use std::{fmt, hash::Hash};
-
-use sway_types::{Named, Spanned};
-
-use crate::language::ty::{TyDeclParsedType, TyTraitType};
 use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
         TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStructDecl, TyTraitDecl, TyTraitFn,
-        TyTypeAliasDecl,
+        TyTypeAliasDecl, TyDeclParsedType, TyTraitType,
     },
     type_system::*,
 };
+use serde::{Serialize, Deserialize};
+use std::{
+    collections::hash_map::DefaultHasher,
+    fmt,
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+};
+use sway_types::{Named, Spanned};
+
 
 pub type DeclIdIndexType = usize;
 
@@ -27,7 +28,7 @@ impl<T> fmt::Debug for DeclId<T> {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct DeclUniqueId(pub(crate) u64);
 
 impl<T> DeclId<T> {
@@ -256,5 +257,24 @@ where
         } else {
             None
         }
+    }
+}
+
+impl<T> Serialize for DeclId<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for DeclId<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let id = DeclIdIndexType::deserialize(deserializer)?;
+        Ok(DeclId::new(id))
     }
 }

@@ -1,7 +1,8 @@
 use crate::{language::Visibility, parsed::Span};
+use serde::{Serialize, Deserialize};
 use sway_types::ident::Ident;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ImportType {
     Star,
     SelfImport(Span),

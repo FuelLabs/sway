@@ -1,13 +1,3 @@
-use std::{
-    collections::VecDeque,
-    fmt::{self, Write},
-    hash::{Hash, Hasher},
-};
-
-use indexmap::IndexMap;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -20,8 +10,18 @@ use crate::{
     },
     type_system::*,
 };
+use indexmap::IndexMap;
+use serde::{Serialize, Deserialize};
+use std::{
+    collections::VecDeque,
+    fmt::{self, Write},
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {

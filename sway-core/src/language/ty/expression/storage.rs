@@ -1,13 +1,12 @@
+use crate::{engine_threading::*, type_system::TypeId};
+use super::TyExpression;
+use serde::{Serialize, Deserialize};
 use std::hash::{Hash, Hasher};
-
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{engine_threading::*, type_system::TypeId};
-
-use super::TyExpression;
 
 /// Describes the full storage access including all the subfields
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStorageAccess {
     pub fields: Vec<TyStorageAccessDescriptor>,
     pub storage_field_names: Vec<String>,
@@ -64,7 +63,7 @@ impl TyStorageAccess {
 }
 
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStorageAccessDescriptor {
     pub name: Ident,
     pub type_id: TypeId,

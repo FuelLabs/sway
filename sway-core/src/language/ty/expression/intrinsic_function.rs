@@ -1,18 +1,18 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
 use crate::{
     abi_generation::abi_str::AbiStrContext, engine_threading::*, has_changes, language::ty::*,
     type_system::*, types::*,
 };
 use itertools::Itertools;
+use serde::{Serialize, Deserialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,

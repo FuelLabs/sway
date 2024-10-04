@@ -1,12 +1,11 @@
-use std::fmt::Display;
-
-use serde::{Deserialize, Serialize};
-
 use crate::SourceId;
-
-use {
-    lazy_static::lazy_static,
-    std::{cmp, fmt, hash::Hash, sync::Arc},
+use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use std::{
+    cmp,
+    fmt::{self, Display},
+    hash::Hash,
+    sync::Arc,
 };
 
 lazy_static! {
@@ -43,7 +42,7 @@ impl<'a> Position<'a> {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Ord, PartialOrd)]
+#[derive(Clone, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,
@@ -71,17 +70,17 @@ impl PartialEq for Span {
 
 impl Eq for Span {}
 
-impl Serialize for Span {
-    // Serialize a tuple two fields: `start` and `end`.
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeTuple;
+// impl Serialize for Span {
+//     // Serialize a tuple two fields: `start` and `end`.
+//     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+//         use serde::ser::SerializeTuple;
 
-        let mut state = serializer.serialize_tuple(2)?;
-        state.serialize_element(&self.start)?;
-        state.serialize_element(&self.end)?;
-        state.end()
-    }
-}
+//         let mut state = serializer.serialize_tuple(2)?;
+//         state.serialize_element(&self.start)?;
+//         state.serialize_element(&self.end)?;
+//         state.end()
+//     }
+// }
 
 impl From<Span> for std::ops::Range<usize> {
     fn from(value: Span) -> Self {

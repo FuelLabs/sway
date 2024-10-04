@@ -1,13 +1,3 @@
-use std::{fmt, hash::Hasher};
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-    type_error::TypeError,
-    warning::{CompileWarning, Warning},
-};
-use sway_types::{Span, Spanned};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -21,8 +11,19 @@ use crate::{
     type_system::*,
     types::*,
 };
+use serde::{Serialize, Deserialize};
+use std::{fmt, hash::Hasher};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{Span, Spanned};
 
-#[derive(Clone, Debug)]
+
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyExpression {
     pub expression: TyExpressionVariant,
     pub return_type: TypeId,

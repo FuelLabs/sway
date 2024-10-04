@@ -7,19 +7,19 @@ use crate::{
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::{ident::Ident, span::Span, BaseIdent, Spanned};
-
+use serde::{Serialize, Deserialize};
 use std::{
     cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::{ident::Ident, span::Span, BaseIdent, Spanned};
+
 
 /// [TypeParameter] describes a generic type parameter, including its
 /// monomorphized version. It holds the `name` of the parameter, its
@@ -33,7 +33,7 @@ use std::{
 ///
 /// The annotations are ignored when calculating the [TypeParameter]'s hash
 /// (with engines) and equality (with engines).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     /// Denotes the initial type represented by the [TypeParameter], before

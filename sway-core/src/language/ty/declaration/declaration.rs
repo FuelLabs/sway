@@ -1,3 +1,11 @@
+use crate::{
+    decl_engine::*,
+    engine_threading::*,
+    language::{parsed::Declaration, ty::*, Visibility},
+    type_system::*,
+    types::*,
+};
+use serde::{Serialize, Deserialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
@@ -9,15 +17,9 @@ use sway_error::{
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    language::{parsed::Declaration, ty::*, Visibility},
-    type_system::*,
-    types::*,
-};
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyDecl {
     VariableDecl(Box<TyVariableDecl>),
     ConstantDecl(ConstantDecl),
@@ -33,7 +35,7 @@ pub enum TyDecl {
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope(GenericTypeForFunctionScope),
-    ErrorRecovery(Span, ErrorEmitted),
+    ErrorRecovery(Span, #[serde(skip)] ErrorEmitted),
     StorageDecl(StorageDecl),
     TypeAliasDecl(TypeAliasDecl),
 }
@@ -46,70 +48,70 @@ pub trait TyDeclParsedType {
     type ParsedType;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConstantDecl {
     pub decl_id: DeclId<TyConstantDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfigurableDecl {
     pub decl_id: DeclId<TyConfigurableDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TraitTypeDecl {
     pub decl_id: DeclId<TyTraitType>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FunctionDecl {
     pub decl_id: DeclId<TyFunctionDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TraitDecl {
     pub decl_id: DeclId<TyTraitDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StructDecl {
     pub decl_id: DeclId<TyStructDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EnumDecl {
     pub decl_id: DeclId<TyEnumDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EnumVariantDecl {
     pub enum_ref: DeclRefEnum,
     pub variant_name: Ident,
     pub variant_decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImplSelfOrTrait {
     pub decl_id: DeclId<TyImplSelfOrTrait>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AbiDecl {
     pub decl_id: DeclId<TyAbiDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenericTypeForFunctionScope {
     pub name: Ident,
     pub type_id: TypeId,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StorageDecl {
     pub decl_id: DeclId<TyStorageDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TypeAliasDecl {
     pub decl_id: DeclId<TyTypeAliasDecl>,
 }

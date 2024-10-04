@@ -1,11 +1,3 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::{DeclId, DeclMapping, DeclRef, ReplaceDecls},
     engine_threading::*,
@@ -15,8 +7,15 @@ use crate::{
     transform,
     type_system::*,
 };
+use serde::{Serialize, Deserialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyConfigurableDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
