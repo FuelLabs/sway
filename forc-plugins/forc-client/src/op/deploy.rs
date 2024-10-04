@@ -43,7 +43,7 @@ use std::{
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 
-/// Maximum contract size allowed for a single contract. If the target
+/// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
 /// starts dividing the contract and deploy them in chunks automatically.
 /// The value is in bytes.
@@ -153,7 +153,7 @@ fn resolve_storage_slots(
 }
 
 /// Creates blobs from the contract to deploy contracts that are larger than
-/// `MAX_CONTRACT_SIZE`. Created blobs are deployed, and a loader contract is
+/// maximum contract size. Created blobs are deployed, and a loader contract is
 /// generated such that it loads all the deployed blobs, and provides the user
 /// a single contract (loader contract that loads the blobs) to call into.
 async fn deploy_chunked(
@@ -174,10 +174,15 @@ async fn deploy_chunked(
         None => "".to_string(),
     };
 
+    let chunk_size = chain_info
+        .consensus_parameters
+        .contract_params()
+        .contract_max_size() as usize;
+
     let blobs = compiled
         .bytecode
         .bytes
-        .chunks(MAX_CONTRACT_SIZE)
+        .chunks(chunk_size)
         .map(|chunk| Blob::new(chunk.to_vec()))
         .collect();
 
@@ -335,9 +340,29 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         bail!("All contracts in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all contracts is the same.");
     }
 
+    let provider = Provider::connect(node_url.clone()).await?;
+    let max_contract_size = provider
+        .chain_info()
+        .await
+        .ok()
+        .and_then(|chain_info| {
+            chain_info
+                .consensus_parameters
+                .contract_params()
+                .contract_max_size()
+                .try_into()
+                .ok()
+        })
+        .unwrap_or(MAX_CONTRACT_SIZE);
+
     // Confirmation step. Summarize the transaction(s) for the deployment.
-    let (provider, account) =
-        confirm_transaction_details(&pkgs_to_deploy, &command, node_url.clone()).await?;
+    let account = confirm_transaction_details(
+        &pkgs_to_deploy,
+        &command,
+        node_url.clone(),
+        max_contract_size,
+    )
+    .await?;
 
     for pkg in pkgs_to_deploy {
         let salt = match (&contract_salt_map, command.default_salt) {
@@ -355,7 +380,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             }
         };
         let bytecode_size = pkg.bytecode.bytes.len();
-        let deployed_contract_id = if bytecode_size > MAX_CONTRACT_SIZE {
+        let deployed_contract_id = if bytecode_size > max_contract_size {
             // Deploy chunked
             let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
             let provider = Provider::connect(node_url).await?;
@@ -420,7 +445,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         let deployed_contract = DeployedContract {
             id: deployed_contract_id,
             proxy: proxy_id,
-            chunked: bytecode_size > MAX_CONTRACT_SIZE,
+            chunked: bytecode_size > max_contract_size,
         };
         deployed_contracts.push(deployed_contract);
     }
@@ -432,7 +457,9 @@ async fn confirm_transaction_details(
     pkgs_to_deploy: &[&Arc<BuiltPackage>],
     command: &cmd::Deploy,
     node_url: String,
-) -> Result<(Provider, ForcClientAccount)> {
+    max_contract_size: usize,
+) -> Result<ForcClientAccount> {
+    let provider = Provider::connect(node_url.clone()).await?;
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let mut tx_count = 0;
     let tx_summary = pkgs_to_deploy
@@ -455,8 +482,8 @@ async fn confirm_transaction_details(
             };
 
             let pkg_bytecode_len = pkg.bytecode.bytes.len();
-            let blob_text = if pkg_bytecode_len > MAX_CONTRACT_SIZE {
-                let number_of_blobs = pkg_bytecode_len.div_ceil(MAX_CONTRACT_SIZE);
+            let blob_text = if pkg_bytecode_len > max_contract_size {
+                let number_of_blobs = pkg_bytecode_len.div_ceil(max_contract_size);
                 tx_count += number_of_blobs;
                 &format!(" + {number_of_blobs} blobs")
             } else {
@@ -473,8 +500,6 @@ async fn confirm_transaction_details(
 
     println_action_green("Confirming", &format!("transactions [{tx_summary}]"));
     println_action_green("", &format!("Network: {node_url}"));
-
-    let provider = Provider::connect(node_url.clone()).await?;
 
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
         SignerSelectionMode::Manual
@@ -498,7 +523,7 @@ async fn confirm_transaction_details(
     )
     .await?;
 
-    Ok((provider.clone(), account))
+    Ok(account)
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
