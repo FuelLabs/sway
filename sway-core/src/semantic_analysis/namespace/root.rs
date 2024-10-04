@@ -573,8 +573,9 @@ impl Root {
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
 
-        let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
-
+        let (decl, mut path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+	path.push(enum_name.clone());
+	
         match decl {
             ResolvedDeclaration::Parsed(decl) => {
                 if let Declaration::EnumDeclaration(decl_id) = decl {
@@ -740,7 +741,8 @@ impl Root {
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
 
-        let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+        let (decl, mut path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+	path.push(enum_name.clone());
 
         match decl {
             ResolvedDeclaration::Parsed(Declaration::EnumDeclaration(decl_id)) => {

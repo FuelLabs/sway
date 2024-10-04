@@ -154,22 +154,23 @@ impl ty::TyExpression {
                 Ok(Self::type_check_literal(engines, lit.clone(), span))
             }
             ExpressionKind::AmbiguousVariableExpression(name) => {
-                let call_path = CallPath {
-                    prefixes: vec![],
-                    suffix: name.clone(),
-                    callpath_type: CallPathType::Ambiguous,
-                };
                 if matches!(
                     ctx.namespace()
-                        .resolve_call_path_typed(
-                            &Handler::default(),
-                            engines,
-                            &call_path,
-                            ctx.self_type()
-                        )
+			.resolve_symbol_typed(
+			    &Handler::default(),
+			    engines,
+			    &name,
+			    ctx.self_type(),
+			)
                         .ok(),
                     Some(ty::TyDecl::EnumVariantDecl { .. })
                 ) {
+                    let call_path = CallPath {
+			prefixes: vec![],
+			suffix: name.clone(),
+			callpath_type: CallPathType::Ambiguous,
+                    }.to_fullpath(engines, ctx.namespace());
+		    
                     Self::type_check_delineated_path(
                         handler,
                         ctx.by_ref(),
