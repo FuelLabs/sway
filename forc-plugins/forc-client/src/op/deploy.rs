@@ -322,14 +322,14 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     let mut deployed_packages = Vec::new();
 
     deployed_packages.extend(
-        deploy_contracts(&command, contracts_to_deploy)
+        deploy_contracts(&command, &contracts_to_deploy)
             .await?
             .into_iter()
             .map(|contract| DeployedPackage::Contract(contract)),
     );
 
     deployed_packages.extend(
-        deploy_scripts(command, scripts_to_deploy)
+        deploy_scripts(command, &scripts_to_deploy)
             .await?
             .into_iter()
             .map(|script| DeployedPackage::Script(script)),
@@ -341,7 +341,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
 /// Builds and deploys script(s) as blobs, and generates a loader for each pkg.
 pub async fn deploy_scripts(
     command: cmd::Deploy,
-    scripts_to_deploy: Vec<Arc<BuiltPackage>>,
+    scripts_to_deploy: &[Arc<BuiltPackage>],
 ) -> Result<Vec<DeployedScript>> {
     let mut deployed_scripts = vec![];
     if scripts_to_deploy.is_empty() {
@@ -383,7 +383,7 @@ pub async fn deploy_scripts(
     )
     .await?;
 
-    for pkg in &scripts_to_deploy {
+    for pkg in scripts_to_deploy {
         let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
         let loader = script.convert_to_loader()?;
         println_action_green("Uploading", "blob containing script bytecode.");
@@ -407,7 +407,7 @@ pub async fn deploy_scripts(
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy_contracts(
     command: &cmd::Deploy,
-    contracts_to_deploy: Vec<Arc<BuiltPackage>>,
+    contracts_to_deploy: &[Arc<BuiltPackage>],
 ) -> Result<Vec<DeployedContract>> {
     let mut deployed_contracts = Vec::new();
 
@@ -483,7 +483,7 @@ pub async fn deploy_contracts(
 
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let account = confirm_transaction_details(
-        contracts_to_deploy.as_slice(),
+        contracts_to_deploy,
         &command,
         node_url.clone(),
         max_contract_size,
