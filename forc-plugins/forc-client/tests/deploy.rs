@@ -1,7 +1,7 @@
 use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
-    op::{deploy, DeployedContract, DeployedPackage},
+    op::{deploy, DeployedContract, DeployedPackage, DeployedScript},
     util::{account::ForcClientAccount, tx::update_proxy_contract_target},
     NodeTarget,
 };
@@ -78,6 +78,16 @@ fn expect_deployed_contract(deployed_package: DeployedPackage) -> DeployedContra
         contract
     } else {
         panic!("expected deployed package to be a contract")
+    }
+}
+
+/// Tries to get an `DeployedScript` out of the given `DeployedPackage`.
+/// Panics otherwise.
+fn expect_deployed_script(deployed_package: DeployedPackage) -> DeployedScript {
+    if let DeployedPackage::Script(script) = deployed_package {
+        script
+    } else {
+        panic!("expected deployed package to be a script")
     }
 }
 
@@ -801,5 +811,35 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
 
     assert_big_contract_calls(wallet_unlocked, deployed_contract.id).await;
 
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn can_deploy_script() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_script");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
     node.kill().unwrap();
 }
