@@ -849,25 +849,6 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
-    pub(crate) fn resolve_type_without_self(
-        &mut self,
-        handler: &Handler,
-        type_id: TypeId,
-        span: &Span,
-        type_info_prefix: Option<&ModulePath>,
-    ) -> Result<TypeId, ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
-        self.resolve(
-            handler,
-            type_id,
-            span,
-            EnforceTypeArguments::Yes,
-            type_info_prefix,
-            &mod_path,
-        )
-    }
-
     /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
     pub(crate) fn resolve_call_path_with_visibility_check(
         &self,
@@ -1331,11 +1312,19 @@ impl<'a> TypeCheckContext<'a> {
                                                 .iter()
                                                 .zip(trait_decl.trait_type_arguments.clone())
                                             {
-                                                let p1_type_id = self.resolve_type_without_self(
-                                                    handler, p1.type_id, &p1.span, None,
+                                                let p1_type_id = self.resolve_type(
+                                                    handler,
+                                                    p1.type_id,
+                                                    &p1.span,
+                                                    EnforceTypeArguments::Yes,
+                                                    None,
                                                 )?;
-                                                let p2_type_id = self.resolve_type_without_self(
-                                                    handler, p2.type_id, &p2.span, None,
+                                                let p2_type_id = self.resolve_type(
+                                                    handler,
+                                                    p2.type_id,
+                                                    &p2.span,
+                                                    EnforceTypeArguments::Yes,
+                                                    None,
                                                 )?;
                                                 if !eq_check.check(p1_type_id, p2_type_id) {
                                                     params_equal = false;
