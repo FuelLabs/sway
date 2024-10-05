@@ -23,8 +23,7 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext,
-        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode,
+        symbol_collection_context::SymbolCollectionContext, AbiMode, ConstShadowingMode,
         TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
