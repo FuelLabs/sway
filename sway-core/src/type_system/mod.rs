@@ -2,6 +2,7 @@ pub(crate) mod ast_elements;
 mod engine;
 mod id;
 mod info;
+pub(crate) mod monomorphization;
 mod priv_prelude;
 mod substitute;
 pub(crate) mod unify;

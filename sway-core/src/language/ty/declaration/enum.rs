@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -13,7 +14,6 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{parsed::EnumDeclaration, CallPath, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };

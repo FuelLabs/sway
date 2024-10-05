@@ -3,13 +3,13 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
     has_changes,
     language::{parsed::TraitFn, ty::*, Purity},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };

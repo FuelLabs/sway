@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -12,7 +13,6 @@ use crate::{
         parsed::{FunctionDeclaration, FunctionDeclarationKind},
         CallPath,
     },
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform::AttributeKind,
 };
 

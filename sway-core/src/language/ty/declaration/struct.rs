@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
@@ -10,7 +11,6 @@ use crate::{
     error::module_can_be_changed,
     has_changes,
     language::{parsed::StructDeclaration, CallPath, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
     Namespace,

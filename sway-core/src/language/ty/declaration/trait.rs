@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -18,8 +19,8 @@ use crate::{
         CallPath, Visibility,
     },
     semantic_analysis::{
-        type_check_context::MonomorphizeHelper, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext,
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
     },
     transform,
     type_system::*,

@@ -205,7 +205,7 @@ impl Module {
 
     /// Returns the root lexical scope id associated with this module.
     pub fn root_lexical_scope_id(&self) -> LexicalScopeId {
-        return 0;
+        0
     }
 
     /// Returns the root lexical scope associated with this module.
