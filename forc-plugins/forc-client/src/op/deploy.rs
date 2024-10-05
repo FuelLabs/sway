@@ -13,8 +13,8 @@ use crate::{
     },
 };
 use anyhow::{bail, Context, Result};
-use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
@@ -25,7 +25,10 @@ use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
 use fuels::{
     macros::abigen,
-    programs::contract::{LoadConfiguration, StorageConfiguration},
+    programs::{
+        contract::{LoadConfiguration, StorageConfiguration},
+        executable::Executable,
+    },
     types::{bech32::Bech32ContractId, transaction_builders::Blob},
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
@@ -54,6 +57,11 @@ pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
     pub proxy: Option<fuel_tx::ContractId>,
     pub chunked: bool,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
+pub struct DeployedScript {
+    pub bytecode: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -256,27 +264,19 @@ async fn deploy_new_proxy(
     Ok(proxy_contract_id)
 }
 
-/// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
-/// will be built and deployed.
-///
-/// Upon success, returns the ID of each deployed contract in order of deployment.
-///
-/// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     if command.unsigned {
         println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
-
-    let mut deployed_contracts = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
     };
-
-    let build_opts = build_opts_from_cmd(&command);
+    let build_opts = build_opts_from_cmd(&command, MemberFilter::default());
     let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
-    let pkgs_to_deploy = built_pkgs
+
+    let contracts_to_deploy = built_pkgs
         .iter()
         .filter(|pkg| {
             pkg.descriptor
@@ -284,20 +284,118 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 .check_program_type(&[TreeType::Contract])
                 .is_ok()
         })
+        .cloned()
         .collect::<Vec<_>>();
 
-    if pkgs_to_deploy.is_empty() {
-        println_warning("No deployable contracts found in the current directory.");
+    let scripts_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Script])
+                .is_ok()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if contracts_to_deploy.is_empty() && scripts_to_deploy.is_empty() {
+        println_warning("No deployable package is found in the current directory.");
+        return Ok(vec![]);
+    }
+
+    let deployed_contracts = deploy_contracts(&command, contracts_to_deploy).await?;
+
+    deploy_scripts(command, scripts_to_deploy).await?;
+
+    Ok(deployed_contracts)
+}
+
+/// Builds and deploys script(s) as blobs, and generates a loader for each pkg.
+pub async fn deploy_scripts(
+    command: cmd::Deploy,
+    scripts_to_deploy: Vec<Arc<BuiltPackage>>,
+) -> Result<Vec<DeployedScript>> {
+    let mut deployed_scripts = vec![];
+    if scripts_to_deploy.is_empty() {
+        return Ok(deployed_scripts);
+    }
+
+    // Ensure that all packages are being deployed to the same node.
+    let node_url = get_node_url(
+        &command.node,
+        &scripts_to_deploy[0].descriptor.manifest_file.network,
+    )?;
+    if !scripts_to_deploy.iter().all(|pkg| {
+        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
+            == Some(node_url.clone())
+    }) {
+        bail!("All scripts in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all contracts is the same.");
+    }
+
+    let provider = Provider::connect(node_url).await?;
+
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        SignerSelectionMode::Manual
+    } else if let Some(arn) = &command.aws_kms_signer {
+        SignerSelectionMode::AwsSigner(arn.clone())
+    } else {
+        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
+        let password = prompt_forc_wallet_password()?;
+        SignerSelectionMode::ForcWallet(password)
+    };
+
+    // We will have 1 transaction per script as each script deployment uses a single blob.
+    let tx_count = scripts_to_deploy.len();
+    let account = select_account(
+        &wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+        tx_count,
+    )
+    .await?;
+
+    for pkg in &scripts_to_deploy {
+        let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
+        let loader = script.to_loader();
+        println_action_green("Uploading", "blob containing script bytecode.");
+        loader.upload_blob(account.clone()).await;
+        println_action_green("Uploaded", "blob containing script bytecode.");
+
+        let loader_bytecode = loader.code();
+        let deployed_script = DeployedScript {
+            bytecode: loader_bytecode,
+        };
+        deployed_scripts.push(deployed_script);
+    }
+    Ok(deployed_scripts)
+}
+
+/// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
+/// will be built and deployed.
+///
+/// Upon success, returns the ID of each deployed contract in order of deployment.
+///
+/// When deploying a single contract, only that contract's ID is returned.
+pub async fn deploy_contracts(
+    command: &cmd::Deploy,
+    contracts_to_deploy: Vec<Arc<BuiltPackage>>,
+) -> Result<Vec<DeployedContract>> {
+    let mut deployed_contracts = Vec::new();
+
+    if contracts_to_deploy.is_empty() {
         return Ok(deployed_contracts);
     }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
         // If we're building 1 package, we just parse the salt as a string, ie. 0x00...
         // If we're building >1 package, we must parse the salt as a pair of strings, ie. contract_name:0x00...
-        if built_pkgs.len() > 1 {
+        if contracts_to_deploy.len() > 1 {
             let map = validate_and_parse_salts(
                 salt_input,
-                built_pkgs.iter().map(|b| &b.descriptor.manifest_file),
+                contracts_to_deploy
+                    .iter()
+                    .map(|b| &b.descriptor.manifest_file),
             )?;
 
             Some(map)
@@ -315,7 +413,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 .unwrap();
             let mut contract_salt_map = ContractSaltMap::default();
             contract_salt_map.insert(
-                built_pkgs[0]
+                contracts_to_deploy[0]
                     .descriptor
                     .manifest_file
                     .project_name()
@@ -331,9 +429,9 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     // Ensure that all packages are being deployed to the same node.
     let node_url = get_node_url(
         &command.node,
-        &pkgs_to_deploy[0].descriptor.manifest_file.network,
+        &contracts_to_deploy[0].descriptor.manifest_file.network,
     )?;
-    if !pkgs_to_deploy.iter().all(|pkg| {
+    if !contracts_to_deploy.iter().all(|pkg| {
         get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
             == Some(node_url.clone())
     }) {
@@ -357,14 +455,14 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let account = confirm_transaction_details(
-        &pkgs_to_deploy,
+        contracts_to_deploy.as_slice(),
         &command,
         node_url.clone(),
         max_contract_size,
     )
     .await?;
 
-    for pkg in pkgs_to_deploy {
+    for pkg in contracts_to_deploy {
         let salt = match (&contract_salt_map, command.default_salt) {
             (Some(map), false) => {
                 if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
@@ -387,7 +485,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
             deploy_chunked(
                 &command,
-                pkg,
+                &pkg,
                 salt,
                 &account,
                 &provider,
@@ -395,7 +493,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             )
             .await?
         } else {
-            deploy_pkg(&command, pkg, salt, &provider, &account).await?
+            deploy_pkg(&command, &pkg, salt, &provider, &account).await?
         };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
@@ -454,7 +552,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
 /// Prompt the user to confirm the transactions required for deployment, as well as the signing key.
 async fn confirm_transaction_details(
-    pkgs_to_deploy: &[&Arc<BuiltPackage>],
+    pkgs_to_deploy: &[Arc<BuiltPackage>],
     command: &cmd::Deploy,
     node_url: String,
     max_contract_size: usize,
@@ -657,7 +755,7 @@ fn tx_policies_from_cmd(cmd: &cmd::Deploy) -> TxPolicies {
     tx_policies
 }
 
-fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
+fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> pkg::BuildOpts {
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.pkg.path.clone(),
@@ -690,7 +788,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         build_target: BuildTarget::default(),
         tests: false,
-        member_filter: pkg::MemberFilter::only_contracts(),
+        member_filter,
         experimental: ExperimentalFlags {
             new_encoding: !cmd.no_encoding_v1,
         },

@@ -2737,9 +2737,9 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-vm",
- "fuels",
- "fuels-accounts",
- "fuels-core",
+ "fuels 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-accounts 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-core 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "futures",
  "hex",
  "k256",
@@ -2771,7 +2771,7 @@ dependencies = [
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
- "fuels-core",
+ "fuels-core 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "futures",
  "hex",
  "libp2p-identity",
@@ -2910,7 +2910,7 @@ dependencies = [
  "fuel-abi-types",
  "fuel-tx",
  "fuel-vm",
- "fuels-core",
+ "fuels-core 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "rand",
  "rayon",
  "sway-core",
@@ -2992,8 +2992,8 @@ dependencies = [
  "forc-tracing 0.47.0",
  "fuel-crypto",
  "fuel-types",
- "fuels",
- "fuels-core",
+ "fuels 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-core 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures",
  "hex",
  "home",
@@ -3384,11 +3384,26 @@ dependencies = [
  "fuel-core-client",
  "fuel-crypto",
  "fuel-tx",
- "fuels-accounts",
- "fuels-core",
- "fuels-macros",
- "fuels-programs",
- "fuels-test-helpers",
+ "fuels-accounts 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-core 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-macros 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-programs 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-test-helpers 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "fuels"
+version = "0.66.5"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs#b6d7c87849a942cdbfc0067b3b88cff6280ea1f1"
+dependencies = [
+ "fuel-core-client",
+ "fuel-crypto",
+ "fuel-tx",
+ "fuels-accounts 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-core 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-macros 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-programs 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-test-helpers 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
 ]
 
 [[package]]
@@ -3406,7 +3421,31 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-types",
- "fuels-core",
+ "fuels-core 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools 0.12.1",
+ "rand",
+ "semver 1.0.23",
+ "tai64",
+ "thiserror",
+ "tokio",
+ "zeroize",
+]
+
+[[package]]
+name = "fuels-accounts"
+version = "0.66.5"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs#b6d7c87849a942cdbfc0067b3b88cff6280ea1f1"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "elliptic-curve",
+ "eth-keystore",
+ "fuel-core-client",
+ "fuel-core-types",
+ "fuel-crypto",
+ "fuel-tx",
+ "fuel-types",
+ "fuels-core 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "itertools 0.12.1",
  "rand",
  "semver 1.0.23",
@@ -3421,6 +3460,21 @@ name = "fuels-code-gen"
 version = "0.66.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8d1949debe40c9eb731a93b22a50da560007d85f6f7983679d217c01b9dc867"
+dependencies = [
+ "Inflector",
+ "fuel-abi-types",
+ "itertools 0.12.1",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde_json",
+ "syn 2.0.74",
+]
+
+[[package]]
+name = "fuels-code-gen"
+version = "0.66.5"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs#b6d7c87849a942cdbfc0067b3b88cff6280ea1f1"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -3450,7 +3504,34 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-macros",
+ "fuels-macros 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex",
+ "itertools 0.12.1",
+ "postcard",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "fuels-core"
+version = "0.66.5"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs#b6d7c87849a942cdbfc0067b3b88cff6280ea1f1"
+dependencies = [
+ "async-trait",
+ "bech32",
+ "chrono",
+ "fuel-abi-types",
+ "fuel-asm",
+ "fuel-core-chain-config",
+ "fuel-core-client",
+ "fuel-core-types",
+ "fuel-crypto",
+ "fuel-tx",
+ "fuel-types",
+ "fuel-vm",
+ "fuels-macros 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "hex",
  "itertools 0.12.1",
  "postcard",
@@ -3466,7 +3547,19 @@ version = "0.66.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4f7b391259fceb75331bcbde2878cd9765b579e9167abd818641205b4c96b9a"
 dependencies = [
- "fuels-code-gen",
+ "fuels-code-gen 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools 0.12.1",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.74",
+]
+
+[[package]]
+name = "fuels-macros"
+version = "0.66.5"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs#b6d7c87849a942cdbfc0067b3b88cff6280ea1f1"
+dependencies = [
+ "fuels-code-gen 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "itertools 0.12.1",
  "proc-macro2",
  "quote",
@@ -3484,8 +3577,26 @@ dependencies = [
  "fuel-asm",
  "fuel-tx",
  "fuel-types",
- "fuels-accounts",
- "fuels-core",
+ "fuels-accounts 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-core 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools 0.12.1",
+ "rand",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "fuels-programs"
+version = "0.66.5"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs#b6d7c87849a942cdbfc0067b3b88cff6280ea1f1"
+dependencies = [
+ "async-trait",
+ "fuel-abi-types",
+ "fuel-asm",
+ "fuel-tx",
+ "fuel-types",
+ "fuels-accounts 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-core 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "itertools 0.12.1",
  "rand",
  "serde_json",
@@ -3506,8 +3617,31 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-types",
- "fuels-accounts",
- "fuels-core",
+ "fuels-accounts 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-core 0.66.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures",
+ "portpicker",
+ "rand",
+ "tempfile",
+ "tokio",
+ "which",
+]
+
+[[package]]
+name = "fuels-test-helpers"
+version = "0.66.5"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs#b6d7c87849a942cdbfc0067b3b88cff6280ea1f1"
+dependencies = [
+ "fuel-core-chain-config",
+ "fuel-core-client",
+ "fuel-core-poa",
+ "fuel-core-services",
+ "fuel-core-types",
+ "fuel-crypto",
+ "fuel-tx",
+ "fuel-types",
+ "fuels-accounts 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
+ "fuels-core 0.66.5 (git+https://github.com/FuelLabs/fuels-rs?branch=feat/script_and_predicate_blobs)",
  "futures",
  "portpicker",
  "rand",
