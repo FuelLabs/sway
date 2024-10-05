@@ -52,12 +52,15 @@ use sway_core::BuildTarget;
 /// The value is in bytes.
 const MAX_CONTRACT_SIZE: usize = 100_000;
 
+/// Represents a deployed instance of a forc package.
+/// Packages other than libraries are deployable through different mechanisms.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DeployedPackage {
     Contract(DeployedContract),
     Script(DeployedScript),
 }
 
+/// Represents a deployed contract on the Fuel network.
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
@@ -65,6 +68,8 @@ pub struct DeployedContract {
     pub chunked: bool,
 }
 
+/// Represents a deployed script on the Fuel network.
+/// Scripts are deployed as blobs with generated loaders for efficiency.
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedScript {
     pub bytecode: Vec<u8>,
@@ -270,6 +275,11 @@ async fn deploy_new_proxy(
     Ok(proxy_contract_id)
 }
 
+/// Builds and deploys contracts, scripts, and predicates from the given path or workspace.
+///
+/// Contracts are deployed directly, while scripts and predicates are deployed as blobs with generated loaders.
+///
+/// Returns a vector of `DeployedPackage` representing all successful deployments.
 pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     if command.unsigned {
         println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
