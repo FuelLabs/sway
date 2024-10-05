@@ -10,7 +10,7 @@ use fuel_crypto::SecretKey;
 use fuel_tx::{ContractId, Salt};
 use fuels::{
     macros::abigen,
-    types::{transaction::TxPolicies, AsciiString, Bits256},
+    types::{transaction::TxPolicies, AsciiString, Bits256, SizedAsciiString},
 };
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use portpicker::Port;
@@ -841,5 +841,87 @@ async fn can_deploy_script() {
     };
 
     expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn deploy_script_calls() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_script");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    let deployed_script = expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
+
+    abigen!(Script(
+        name = "MyScript",
+        abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-abi.json"
+    ));
+
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+
+    let loader_path = tmp_dir.path().join("deployed-script-loader.bin");
+    fs::write(&loader_path, deployed_script.bytecode).unwrap();
+    let instance = MyScript::new(wallet_unlocked, &loader_path.display().to_string());
+
+    let call_handler = instance.main(10).call().await.unwrap();
+    let (configs, with_input, without_input) = call_handler.value;
+    let receipts = call_handler.receipts;
+
+    assert!(configs.0); // bool
+    assert_eq!(configs.1, 8); // u8
+    assert_eq!(configs.2, 16); // u16
+    assert_eq!(configs.3, 32); // u32
+    assert_eq!(configs.4, 63); // u64
+    assert_eq!(configs.5, 8.try_into().unwrap()); // u256
+    assert_eq!(
+        configs.6,
+        Bits256::from_hex_str("0x0101010101010101010101010101010101010101010101010101010101010101")
+            .unwrap()
+    ); // b256
+    assert_eq!(
+        configs.7,
+        SizedAsciiString::new("fuel".to_string()).unwrap()
+    ); // str[4]
+    assert_eq!(configs.8, (8, true)); // tuple
+    assert_eq!(configs.9, [253, 254, 255]); // array
+
+    let expected_struct = StructWithGeneric {
+        field_1: 8,
+        field_2: 16,
+    };
+    assert_eq!(configs.10, expected_struct); // struct
+
+    let expected_enum = EnumWithGeneric::VariantOne(true);
+    assert_eq!(configs.11, expected_enum); // enum
+
+    assert!(with_input); // 10 % 2 == 0
+    assert_eq!(without_input, 2500); // 25 * 100 = 2500
+
+    // TODO: Check if the receipts have a log.
+    let log_receipts = receipts.iter().find(|receipt| todo!());
+
+    // TODO: Add a contract call to the script.
     node.kill().unwrap();
 }
