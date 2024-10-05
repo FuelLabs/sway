@@ -1,7 +1,7 @@
 use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
-    op::{deploy, DeployedContract},
+    op::{deploy, DeployedContract, DeployedPackage},
     util::{account::ForcClientAccount, tx::update_proxy_contract_target},
     NodeTarget,
 };
@@ -69,6 +69,16 @@ fn copy_dir(source: &Path, dest: &Path) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+/// Tries to get an `DeployedContract` out of the given `DeployedPackage`.
+/// Panics otherwise.
+fn expect_deployed_contract(deployed_package: DeployedPackage) -> DeployedContract {
+    if let DeployedPackage::Contract(contract) = deployed_package {
+        contract
+    } else {
+        panic!("expected deployed package to be a contract")
+    }
 }
 
 fn patch_manifest_file_with_path_std(manifest_dir: &Path) -> anyhow::Result<()> {
@@ -339,14 +349,14 @@ async fn test_simple_deploy() {
     };
     let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
-    let expected = vec![DeployedContract {
+    let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
             "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
         chunked: false,
-    }];
+    })];
 
     assert_eq!(contract_ids, expected)
 }
@@ -381,14 +391,14 @@ async fn test_deploy_submit_only() {
     };
     let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
-    let expected = vec![DeployedContract {
+    let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
             "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
         chunked: false,
-    }];
+    })];
 
     assert_eq!(contract_ids, expected)
 }
@@ -426,7 +436,7 @@ async fn test_deploy_fresh_proxy() {
     };
     let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
-    let impl_contract = DeployedContract {
+    let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
             "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
@@ -438,7 +448,7 @@ async fn test_deploy_fresh_proxy() {
             .unwrap(),
         ),
         chunked: false,
-    };
+    });
     let expected = vec![impl_contract];
 
     assert_eq!(contract_ids, expected)
@@ -475,10 +485,10 @@ async fn test_proxy_contract_re_routes_call() {
         default_signer: true,
         ..Default::default()
     };
-    let contract_ids = deploy(cmd).await.unwrap();
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     // At this point we deployed a contract with proxy.
-    let proxy_contract_id = contract_ids[0].proxy.unwrap();
-    let impl_contract_id = contract_ids[0].id;
+    let proxy_contract_id = deployed_contract.proxy.unwrap();
+    let impl_contract_id = deployed_contract.id;
     // Make a contract call into proxy contract, and check if the initial
     // contract returns a true.
     let provider = Provider::connect(&node_url).await.unwrap();
@@ -537,11 +547,11 @@ async fn test_proxy_contract_re_routes_call() {
         default_signer: true,
         ..Default::default()
     };
-    let contract_ids = deploy(cmd).await.unwrap();
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     // proxy contract id should be the same.
-    let proxy_contract_after_update = contract_ids[0].proxy.unwrap();
+    let proxy_contract_after_update = deployed_contract.proxy.unwrap();
     assert_eq!(proxy_contract_id, proxy_contract_after_update);
-    let impl_contract_id_after_update = contract_ids[0].id;
+    let impl_contract_id_after_update = deployed_contract.id;
     assert!(impl_contract_id != impl_contract_id_after_update);
     let impl_contract_a = ImplementationContract::new(proxy_contract_after_update, wallet_unlocked);
 
@@ -606,9 +616,9 @@ async fn test_non_owner_fails_to_set_target() {
         default_signer: true,
         ..Default::default()
     };
-    let contract_id = deploy(cmd).await.unwrap();
+    let contract_id = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     // Proxy contract's id.
-    let proxy_id = contract_id.first().and_then(|f| f.proxy).unwrap();
+    let proxy_id = contract_id.proxy.unwrap();
 
     // Create and fund an owner account and an attacker account.
     let provider = Provider::connect(&node_url).await.unwrap();
@@ -709,7 +719,7 @@ async fn chunked_deploy() {
         default_signer: true,
         ..Default::default()
     };
-    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     node.kill().unwrap();
 
     assert!(deployed_contract.chunked);
@@ -741,7 +751,7 @@ async fn chunked_deploy_re_routes_calls() {
         default_signer: true,
         ..Default::default()
     };
-    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
 
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
@@ -783,7 +793,7 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
         default_signer: true,
         ..Default::default()
     };
-    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
 
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();

@@ -52,6 +52,12 @@ use sway_core::BuildTarget;
 /// The value is in bytes.
 const MAX_CONTRACT_SIZE: usize = 100_000;
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DeployedPackage {
+    Contract(DeployedContract),
+    Script(DeployedScript),
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
@@ -264,7 +270,7 @@ async fn deploy_new_proxy(
     Ok(proxy_contract_id)
 }
 
-pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
+pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     if command.unsigned {
         println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
@@ -303,11 +309,23 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         return Ok(vec![]);
     }
 
-    let deployed_contracts = deploy_contracts(&command, contracts_to_deploy).await?;
+    let mut deployed_packages = Vec::new();
 
-    deploy_scripts(command, scripts_to_deploy).await?;
+    deployed_packages.extend(
+        deploy_contracts(&command, contracts_to_deploy)
+            .await?
+            .into_iter()
+            .map(|contract| DeployedPackage::Contract(contract)),
+    );
 
-    Ok(deployed_contracts)
+    deployed_packages.extend(
+        deploy_scripts(command, scripts_to_deploy)
+            .await?
+            .into_iter()
+            .map(|script| DeployedPackage::Script(script)),
+    );
+
+    Ok(deployed_packages)
 }
 
 /// Builds and deploys script(s) as blobs, and generates a loader for each pkg.
@@ -357,9 +375,9 @@ pub async fn deploy_scripts(
 
     for pkg in &scripts_to_deploy {
         let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
-        let loader = script.to_loader();
+        let loader = script.convert_to_loader()?;
         println_action_green("Uploading", "blob containing script bytecode.");
-        loader.upload_blob(account.clone()).await;
+        loader.upload_blob(account.clone()).await?;
         println_action_green("Uploaded", "blob containing script bytecode.");
 
         let loader_bytecode = loader.code();
@@ -493,7 +511,7 @@ pub async fn deploy_contracts(
             )
             .await?
         } else {
-            deploy_pkg(&command, &pkg, salt, &provider, &account).await?
+            deploy_pkg(command, &pkg, salt, &provider, &account).await?
         };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {

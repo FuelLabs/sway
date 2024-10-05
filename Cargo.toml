@@ -86,13 +86,19 @@ fuel-abi-types = "0.7"
 # Although ALL verions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball
-fuel-core-client = { version = "0.36.0", default-features = false }
+fuel-core-client = { version = "0.36", default-features = false }
 fuel-core-types = { version = "0.36", default-features = false }
+# fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "feature/predicate-ldc", default-features = false }
+# fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core", branch = "feature/predicate-ldc", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/script_and_predicate_blobs" }
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/script_and_predicate_blobs" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/script_and_predicate_blobs" }
+# fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/script_and_predicate_blobs" }
+# fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/script_and_predicate_blobs" }
+# fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/script_and_predicate_blobs" }
+
+fuels = "0.66"
+fuels-core = "0.66"
+fuels-accounts = "0.66"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.57"
@@ -236,3 +242,21 @@ vec1 = "1.8"
 vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
+
+[patch.crates-io]
+fuel-vm = { git = "https://github.com/FuelLabs/fuel-vm", branch = "feature/ldc-mode-2" }
+fuel-asm = { git = "https://github.com/FuelLabs/fuel-vm", branch = "feature/ldc-mode-2" }
+fuel-crypto = { git = "https://github.com/FuelLabs/fuel-vm", branch = "feature/ldc-mode-2" }
+fuel-merkle = { git = "https://github.com/FuelLabs/fuel-vm", branch = "feature/ldc-mode-2" }
+fuel-storage = { git = "https://github.com/FuelLabs/fuel-vm", branch = "feature/ldc-mode-2" }
+fuel-tx = { git = "https://github.com/FuelLabs/fuel-vm", branch = "feature/ldc-mode-2" }
+fuel-types = { git = "https://github.com/FuelLabs/fuel-vm", branch = "feature/ldc-mode-2" }
+fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "feat/blob_exists_query" }
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "feat/blob_exists_query" }
+fuel-core-chain-config = { git = "https://github.com/FuelLabs/fuel-core", branch = "feat/blob_exists_query" }
+fuel-core-poa = { git = "https://github.com/FuelLabs/fuel-core", branch = "feat/blob_exists_query" }
+fuel-core-services = { git = "https://github.com/FuelLabs/fuel-core", branch = "feat/blob_exists_query" }
+fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core", branch = "feat/blob_exists_query" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs/", branch = "feat/script_and_predicate_blobs" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs/", branch = "feat/script_and_predicate_blobs" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs/", branch = "feat/script_and_predicate_blobs" }
