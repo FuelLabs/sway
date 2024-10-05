@@ -7,14 +7,17 @@
 //! generating a new function for each instantiation even when the exact
 //! same instantiation exists.
 
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    ops::Deref,
+};
 
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 use crate::{
-    build_call_graph, callee_first_order, AnalysisResults, Block, Context, Function, InstOp,
-    Instruction, IrError, MetadataIndex, Metadatum, Module, Pass, PassMutability, ScopedPass,
-    Value,
+    build_call_graph, callee_first_order, AnalysisResults, Block, ConfigContent, Context, Function,
+    InstOp, Instruction, IrError, MetadataIndex, Metadatum, Module, Pass, PassMutability,
+    ScopedPass, Value,
 };
 
 pub const FN_DEDUP_DEBUG_PROFILE_NAME: &str = "fn-dedup-debug";
@@ -338,6 +341,27 @@ pub fn dedup_fns(
                 }),
             );
         }
+    }
+
+    for config in module.iter_configs(context) {
+        let ConfigContent::V1 { decode_fn, .. } = config else {
+            continue;
+        };
+
+        let Some(callee_hash) = eq_class.function_hash_map.get(&decode_fn.get()) else {
+            continue;
+        };
+
+        let Some(callee_rep) = eq_class
+            .hash_set_map
+            .get(callee_hash)
+            .and_then(|f| f.iter().next())
+            .filter(|rep| **rep != decode_fn.get())
+        else {
+            continue;
+        };
+
+        decode_fn.replace(callee_rep.clone());
     }
 
     Ok(modified)

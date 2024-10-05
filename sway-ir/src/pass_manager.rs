@@ -268,8 +268,11 @@ impl PassManager {
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
     pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
         let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            modified |= self.actually_run(ir, pass)?;
+        for i in 0..5 {
+            println!("OPT {i}");
+            for pass in passes.flatten_pass_group() {
+                modified |= self.actually_run(ir, pass)?;
+            }
         }
         Ok(modified)
     }
@@ -309,14 +312,19 @@ impl PassManager {
         }
 
         let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            let modified_in_pass = self.actually_run(ir, pass)?;
 
-            if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified_in_pass) {
-                print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+        for _ in 0..5 {
+            for pass in passes.flatten_pass_group() {
+                let modified_in_pass = self.actually_run(ir, pass)?;
+
+                if print_opts.passes.contains(pass)
+                    && (!print_opts.modified_only || modified_in_pass)
+                {
+                    print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+                }
+
+                modified |= modified_in_pass;
             }
-
-            modified |= modified_in_pass;
         }
 
         if print_opts.r#final {

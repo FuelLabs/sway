@@ -359,7 +359,7 @@ pub(crate) fn compile_configurables(
                         ty,
                         ptr_ty,
                         encoded_bytes,
-                        decode_fn,
+                        decode_fn: std::cell::Cell::new(decode_fn),
                         opt_metadata,
                     },
                 );

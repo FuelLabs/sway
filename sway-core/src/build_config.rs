@@ -235,7 +235,7 @@ impl BuildConfig {
             print_dca_graph_url_format: None,
             print_asm: PrintAsm::default(),
             print_bytecode: false,
-            print_bytecode_spans: false,
+            print_bytecode_spans: true,
             print_ir: PrintIr::default(),
             include_tests: false,
             time_phases: false,

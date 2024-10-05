@@ -8,7 +8,7 @@ use sway_types::{FxIndexMap, FxIndexSet};
 
 pub type CallGraph = FxIndexMap<Function, FxIndexSet<Function>>;
 
-/// Build call graph considering all providing functions.
+/// Build call graph considering all provided functions.
 pub fn build_call_graph(ctx: &Context, functions: &[Function]) -> CallGraph {
     let mut res = CallGraph::default();
     for function in functions {

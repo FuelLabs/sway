@@ -6,15 +6,16 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use slotmap::Key;
 use std::{
-    collections::hash_map,
+    collections::{hash_map, HashMap},
     fmt::Debug,
     hash::{Hash, Hasher},
 };
+use sway_types::Instruction;
 
 use crate::{
-    AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function, InstOp, IrError,
-    Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind, Value,
-    DOMINATORS_NAME, POSTORDER_NAME,
+    instruction, AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function,
+    InstOp, IrError, LocalVar, Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type,
+    UnaryOpKind, Value, DOMINATORS_NAME, POSTORDER_NAME,
 };
 
 pub const CSE_NAME: &str = "cse";
@@ -404,5 +405,129 @@ pub fn cse(
 
     function.replace_values(context, &replace_map, None);
 
+    modified |= propagate_values(context, analyses, function);
+
     Ok(modified)
+}
+
+fn propagate_values(
+    context: &mut Context,
+    _analyses: &AnalysisResults,
+    function: Function,
+) -> bool {
+    let mut fn_call_changes = vec![];
+
+    fn kill_aliasing_of_value(map: &mut HashMap<LocalVar, Value>, value: &Value) {
+        if let Some(k) = map.iter().find(|x| x.1 == value).map(|x| *x.0) {
+            let _ = map.remove(&k);
+        }
+    }
+
+    // Find locals wich are just aliasing other values
+    // and propose changes
+    let mut local_is_aliasing = HashMap::<LocalVar, Value>::new();
+    for block in function.block_iter(context) {
+        for instruction in block.instruction_iter(context) {
+            let Some(op) = instruction.get_instruction(context).map(|x| &x.op) else {
+                continue;
+            };
+
+            match op {
+                InstOp::MemCopyVal {
+                    dst_val_ptr,
+                    src_val_ptr,
+                } => {
+                    // We found a local that is aliasing another Value
+                    match dst_val_ptr.get_instruction(context).map(|x| &x.op) {
+                        Some(InstOp::GetLocal(local_var)) => {
+                            let _ = local_is_aliasing.insert(*local_var, *src_val_ptr);
+                        }
+                        _ => {}
+                    }
+                }
+                // We found a fn call, check if any argument is a local
+                // which is just aliasing another value.
+                // In this case we can just the use the aliased Value directly.
+                InstOp::Call(_, vec) => {
+                    for (arg_idx, v) in vec.iter().enumerate() {
+                        match v.get_instruction(context).map(|x| &x.op) {
+                            Some(InstOp::GetLocal(local_var)) => {
+                                let Some(aliased_value) = local_is_aliasing.get(&local_var) else {
+                                    continue;
+                                };
+                                fn_call_changes.push((instruction, arg_idx, *aliased_value));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            // We cannot be sure about the alias anymore if there is a chance the aliased value is being changed
+            match op {
+                InstOp::AsmBlock(_, vec) => {
+                    for v in vec {
+                        if let Some(initializer) = v.initializer.as_ref() {
+                            kill_aliasing_of_value(&mut local_is_aliasing, initializer);
+                        }
+                    }
+                }
+                // this does not change, but it is used to cast ptrs, so there is chance it will
+                // be changed later
+                InstOp::BitCast(value, _) => {
+                    kill_aliasing_of_value(&mut local_is_aliasing, value);
+                }
+                InstOp::Call(_, vec) => {
+                    for v in vec {
+                        kill_aliasing_of_value(&mut local_is_aliasing, v);
+                    }
+                }
+                InstOp::CastPtr(value, _) => {
+                    kill_aliasing_of_value(&mut local_is_aliasing, value);
+                }
+                InstOp::ContractCall { params, .. } => {
+                    kill_aliasing_of_value(&mut local_is_aliasing, params);
+                }
+                InstOp::FuelVm(fuel_vm_instruction) => match fuel_vm_instruction {
+                    crate::FuelVmInstruction::WideUnaryOp { result, .. }
+                    | crate::FuelVmInstruction::WideBinaryOp { result, .. }
+                    | crate::FuelVmInstruction::WideModularOp { result, .. } => {
+                        kill_aliasing_of_value(&mut local_is_aliasing, result);
+                    }
+                    _ => {}
+                },
+                // If a ptr to a local is requested, we cannot be sure
+                // if the local is aliasing another value anymore
+                InstOp::GetLocal(local_var) => {
+                    let _ = local_is_aliasing.remove(local_var);
+                }
+                InstOp::GetElemPtr { base, .. } => {
+                    kill_aliasing_of_value(&mut local_is_aliasing, base);
+                }
+                InstOp::MemCopyBytes { dst_val_ptr, .. }
+                | InstOp::MemCopyVal { dst_val_ptr, .. }
+                | InstOp::Store { dst_val_ptr, .. } => {
+                    kill_aliasing_of_value(&mut local_is_aliasing, dst_val_ptr);
+                }
+                InstOp::PtrToInt(value, _) => {
+                    kill_aliasing_of_value(&mut local_is_aliasing, value);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    let mut changed = false;
+
+    for (instruction, arg_idx, new_value) in fn_call_changes {
+        let instruction = instruction.get_instruction_mut(context).unwrap();
+        match &mut instruction.op {
+            InstOp::Call(_, vec) => vec[arg_idx] = new_value,
+            _ => {}
+        }
+        changed = true;
+    }
+
+    changed
 }

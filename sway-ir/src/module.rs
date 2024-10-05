@@ -38,7 +38,7 @@ pub enum ConfigContent {
         ty: Type,
         ptr_ty: Type,
         encoded_bytes: Vec<u8>,
-        decode_fn: Function,
+        decode_fn: std::cell::Cell<Function>,
         opt_metadata: Option<MetadataIndex>,
     },
 }
