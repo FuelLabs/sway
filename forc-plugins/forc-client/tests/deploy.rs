@@ -93,7 +93,7 @@ fn expect_deployed_script(deployed_package: DeployedPackage) -> DeployedExecutab
 
 /// Tries to get a predicate (`DeployedExecutable`) out of given deployed package.
 /// Panics otherwise.
-fn expect_deployed_script(deployed_package: DeployedPackage) -> DeployedExecutable {
+fn expect_deployed_predicate(deployed_package: DeployedPackage) -> DeployedExecutable {
     if let DeployedPackage::Predicate(predicate) = deployed_package {
         predicate
     } else {
@@ -929,9 +929,44 @@ async fn deploy_script_calls() {
     assert!(with_input); // 10 % 2 == 0
     assert_eq!(without_input, 2500); // 25 * 100 = 2500
 
-    // TODO: Check if the receipts have a log.
-    let log_receipts = receipts.iter().find(|receipt| todo!());
+    receipts.iter().find(|receipt| {
+        if let fuel_tx::Receipt::LogData { data, .. } = receipt {
+            *data == Some(vec![0x08])
+        } else {
+            false
+        }
+    });
 
     // TODO: Add a contract call to the script.
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn can_deploy_predicates() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_predicate");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    expect_deployed_predicate(deploy(cmd).await.unwrap().remove(0));
     node.kill().unwrap();
 }

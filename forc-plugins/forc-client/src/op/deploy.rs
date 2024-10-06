@@ -374,21 +374,28 @@ pub async fn deploy_executables(
 
     for pkg in executables_to_deploy {
         let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
-        println_action_green("Generating", "loader bytecode for the uploaded executable.");
         let loader = script.convert_to_loader()?;
         println_action_green("Uploading", "blob containing executable bytecode.");
         loader.upload_blob(account.clone()).await?;
-
-        // TODO: generate the loader bin artifact
+        println_action_green("Generating", "loader bytecode for the uploaded executable.");
         let loader_bytecode = loader.code();
+        let pkg_name = &pkg.descriptor.name;
+        let bin_path = pkg
+            .descriptor
+            .manifest_file
+            .dir()
+            .join("out")
+            .join(format!("{pkg_name}-loader.bin"));
+        std::fs::write(&bin_path, &loader_bytecode)?;
+        println_action_green(
+            "Saved",
+            &format!("loader bytecode at {}", bin_path.display()),
+        );
         let deployed = DeployedExecutable {
             bytecode: loader_bytecode,
         };
         deployed_executable.push(deployed);
-        println_action_green(
-            "Finished",
-            &format!("deploying executable {}", pkg.descriptor.name),
-        );
+        println_action_green("Finished", &format!("deploying executable {pkg_name}"));
     }
     Ok(deployed_executable)
 }
