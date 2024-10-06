@@ -938,7 +938,7 @@ async fn deploy_script_calls() {
     assert_eq!(configs.2, 16); // u16
     assert_eq!(configs.3, 32); // u32
     assert_eq!(configs.4, 63); // u64
-    assert_eq!(configs.5, 8.try_into().unwrap()); // u256
+    assert_eq!(configs.5, 8.into()); // u256
     assert_eq!(
         configs.6,
         Bits256::from_hex_str("0x0101010101010101010101010101010101010101010101010101010101010101")
@@ -1039,7 +1039,7 @@ async fn deployed_predicate_call() {
     ));
 
     let provider = Provider::connect(&node_url).await.unwrap();
-    let base_asset_id = provider.base_asset_id().clone();
+    let base_asset_id = *provider.base_asset_id();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
     let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
     let loader_path = tmp_dir.path().join("out/deployed_predicate-loader.bin");
