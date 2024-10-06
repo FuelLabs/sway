@@ -57,7 +57,8 @@ const MAX_CONTRACT_SIZE: usize = 100_000;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DeployedPackage {
     Contract(DeployedContract),
-    Script(DeployedScript),
+    Script(DeployedExecutable),
+    Predicate(DeployedExecutable),
 }
 
 /// Represents a deployed contract on the Fuel network.
@@ -68,10 +69,10 @@ pub struct DeployedContract {
     pub chunked: bool,
 }
 
-/// Represents a deployed script on the Fuel network.
-/// Scripts are deployed as blobs with generated loaders for efficiency.
+/// Represents a deployed executable (script or predicate) on the Fuel network.
+/// Executables are deployed as blobs with generated loaders for efficiency.
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
-pub struct DeployedScript {
+pub struct DeployedExecutable {
     pub bytecode: Vec<u8>,
 }
 
@@ -291,6 +292,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     };
     let build_opts = build_opts_from_cmd(&command, MemberFilter::default());
     let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
+    let mut deployed_packages = Vec::new();
 
     let contracts_to_deploy = built_pkgs
         .iter()
@@ -314,59 +316,78 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
         .cloned()
         .collect::<Vec<_>>();
 
-    if contracts_to_deploy.is_empty() && scripts_to_deploy.is_empty() {
+    let predicates_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Predicate])
+                .is_ok()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if contracts_to_deploy.is_empty()
+        && scripts_to_deploy.is_empty()
+        && predicates_to_deploy.is_empty()
+    {
         println_warning("No deployable package is found in the current directory.");
-        return Ok(vec![]);
+    } else {
+        deployed_packages.extend(
+            deploy_contracts(&command, &contracts_to_deploy)
+                .await?
+                .into_iter()
+                .map(|contract| DeployedPackage::Contract(contract)),
+        );
+        deployed_packages.extend(
+            deploy_executables(&command, &scripts_to_deploy)
+                .await?
+                .into_iter()
+                .map(|script| DeployedPackage::Script(script)),
+        );
+        deployed_packages.extend(
+            deploy_executables(&command, &predicates_to_deploy)
+                .await?
+                .into_iter()
+                .map(|predicate| DeployedPackage::Predicate(predicate)),
+        );
     }
-
-    let mut deployed_packages = Vec::new();
-
-    deployed_packages.extend(
-        deploy_contracts(&command, &contracts_to_deploy)
-            .await?
-            .into_iter()
-            .map(|contract| DeployedPackage::Contract(contract)),
-    );
-
-    deployed_packages.extend(
-        deploy_scripts(command, &scripts_to_deploy)
-            .await?
-            .into_iter()
-            .map(|script| DeployedPackage::Script(script)),
-    );
 
     Ok(deployed_packages)
 }
 
-/// Builds and deploys script(s) as blobs, and generates a loader for each pkg.
-pub async fn deploy_scripts(
-    command: cmd::Deploy,
-    scripts_to_deploy: &[Arc<BuiltPackage>],
-) -> Result<Vec<DeployedScript>> {
-    let mut deployed_scripts = vec![];
-    if scripts_to_deploy.is_empty() {
-        return Ok(deployed_scripts);
+/// Builds and deploys executable (script and predicate) package(s) as blobs,
+/// and generates a loader for each of them.
+pub async fn deploy_executables(
+    command: &cmd::Deploy,
+    executables_to_deploy: &[Arc<BuiltPackage>],
+) -> Result<Vec<DeployedExecutable>> {
+    let mut deployed_executable = vec![];
+    if executables_to_deploy.is_empty() {
+        return Ok(deployed_executable);
     }
 
-    let node_url = validate_and_get_node_url(&command, scripts_to_deploy).await?;
-    // We will have 1 transaction per script as each script deployment uses a single blob.
-    let tx_count = scripts_to_deploy.len();
+    let node_url = validate_and_get_node_url(&command, executables_to_deploy).await?;
+    // We will have 1 transaction per executable as each deployment uses a single blob.
+    let tx_count = executables_to_deploy.len();
     let account = setup_deployment_account(&command, &node_url, tx_count).await?;
 
-    for pkg in scripts_to_deploy {
+    for pkg in executables_to_deploy {
         let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
+        println_action_green("Generating", "loader bytecode for the uploaded executable.");
         let loader = script.convert_to_loader()?;
-        println_action_green("Uploading", "blob containing script bytecode.");
+        println_action_green("Uploading", "blob containing executable bytecode.");
         loader.upload_blob(account.clone()).await?;
-        println_action_green("Uploaded", "blob containing script bytecode.");
 
+        // TODO: generate the loader bin artifact
         let loader_bytecode = loader.code();
-        let deployed_script = DeployedScript {
+        let deployed = DeployedExecutable {
             bytecode: loader_bytecode,
         };
-        deployed_scripts.push(deployed_script);
+        deployed_executable.push(deployed);
+        println_action_green("Finished", &format!("deploying executable {}", pkg.descriptor.name));
     }
-    Ok(deployed_scripts)
+    Ok(deployed_executable)
 }
 
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members

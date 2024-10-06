@@ -1,7 +1,7 @@
 use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
-    op::{deploy, DeployedContract, DeployedPackage, DeployedScript},
+    op::{deploy, DeployedContract, DeployedPackage, DeployedExecutable},
     util::{account::ForcClientAccount, tx::update_proxy_contract_target},
     NodeTarget,
 };
@@ -81,13 +81,23 @@ fn expect_deployed_contract(deployed_package: DeployedPackage) -> DeployedContra
     }
 }
 
-/// Tries to get an `DeployedScript` out of the given `DeployedPackage`.
+/// Tries to get a script (`DeployedExecutable`) out of given deployed package.
 /// Panics otherwise.
-fn expect_deployed_script(deployed_package: DeployedPackage) -> DeployedScript {
+fn expect_deployed_script(deployed_package: DeployedPackage) -> DeployedExecutable {
     if let DeployedPackage::Script(script) = deployed_package {
         script
     } else {
         panic!("expected deployed package to be a script")
+    }
+}
+
+/// Tries to get a predicate (`DeployedExecutable`) out of given deployed package.
+/// Panics otherwise.
+fn expect_deployed_script(deployed_package: DeployedPackage) -> DeployedExecutable {
+    if let DeployedPackage::Predicate(predicate) = deployed_package {
+        predicate
+    } else {
+        panic!("expected deployed package to be a predicate")
     }
 }
 

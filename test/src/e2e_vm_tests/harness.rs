@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
-    op::{deploy, run},
+    op::{deploy, run, DeployedPackage},
     NodeTarget,
 };
 use forc_pkg::{
@@ -67,7 +67,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
     println!(" Deploying {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    deploy(DeployCommand {
+    let deployed_packages = deploy(DeployCommand {
         pkg: forc_client::cmd::deploy::Pkg {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
@@ -85,13 +85,20 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         no_encoding_v1: !run_config.experimental.new_encoding,
         ..Default::default()
     })
-    .await
-    .map(|contract_ids| {
-        contract_ids
-            .first()
-            .map(|contract_id| contract_id.id)
-            .unwrap()
-    })
+    .await?;
+
+    deployed_packages
+        .into_iter()
+        .map(|deployed_pkg| {
+            if let DeployedPackage::Contract(deployed_contract) = deployed_pkg {
+                Some(deployed_contract.id)
+            } else {
+                None
+            }
+        })
+        .nth(0)
+        .flatten()
+        .ok_or_else(|| anyhow!("expected to find at least one deployed contract."))
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
