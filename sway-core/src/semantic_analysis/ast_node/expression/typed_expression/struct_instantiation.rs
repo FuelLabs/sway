@@ -15,9 +15,7 @@ use crate::{
         CallPath, Visibility,
     },
     namespace::ResolvedTraitImplItem,
-    semantic_analysis::{
-        type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
-    },
+    semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::*,
     Engines, Namespace,
 };

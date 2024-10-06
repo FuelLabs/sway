@@ -14,7 +14,7 @@ use crate::{
         ty::{self, TyCodeBlock, TyFunctionDecl},
         CallPath, Visibility,
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
     Engines,
 };

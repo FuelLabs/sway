@@ -861,7 +861,7 @@ impl Root {
                     None => {
                         decl_opt = Some(
                             module
-                                .current_lexical_scope()
+                                .root_lexical_scope()
                                 .items
                                 .resolve_symbol(handler, engines, ident)?,
                         );
@@ -879,7 +879,7 @@ impl Root {
             .lookup_submodule(handler, engines, mod_path)
             .and_then(|module| {
                 let decl = module
-                    .current_lexical_scope()
+                    .root_lexical_scope()
                     .items
                     .resolve_symbol(handler, engines, symbol)?;
                 Ok((decl, mod_path.to_vec()))

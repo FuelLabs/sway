@@ -9,7 +9,7 @@ use crate::{
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
