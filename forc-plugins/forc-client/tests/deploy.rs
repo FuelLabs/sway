@@ -12,7 +12,7 @@ use fuels::{
     macros::abigen,
     types::{transaction::TxPolicies, AsciiString, Bits256, SizedAsciiString},
 };
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
+use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account, ViewOnlyAccount};
 use portpicker::Port;
 use rand::thread_rng;
 use rexpect::spawn;
@@ -880,7 +880,7 @@ async fn deploy_script_calls() {
         ..Default::default()
     };
 
-    let deployed_script = expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
+    expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
 
     abigen!(Script(
         name = "MyScript",
@@ -891,8 +891,8 @@ async fn deploy_script_calls() {
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
     let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
 
-    let loader_path = tmp_dir.path().join("deployed-script-loader.bin");
-    fs::write(&loader_path, deployed_script.bytecode).unwrap();
+    let loader_path = tmp_dir.path().join("out/deployed_script-loader.bin");
+    //fs::write(&loader_path, deployed_script.bytecode).unwrap();
     let instance = MyScript::new(wallet_unlocked, &loader_path.display().to_string());
 
     let call_handler = instance.main(10).call().await.unwrap();
@@ -968,5 +968,90 @@ async fn can_deploy_predicates() {
     };
 
     expect_deployed_predicate(deploy(cmd).await.unwrap().remove(0));
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn deployed_predicate_call() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_predicate");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    expect_deployed_predicate(deploy(cmd).await.unwrap().remove(0));
+
+    abigen!(Predicate(
+        name = "MyPredicate",
+        abi = "forc-plugins/forc-client/test/data/deployed_predicate/deployed_predicate-abi.json"
+    ));
+
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let base_asset_id = provider.base_asset_id().clone();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let loader_path = tmp_dir.path().join("out/deployed_predicate-loader.bin");
+    let strct = StructWithGeneric {
+        field_1: 8,
+        field_2: 16,
+    };
+    let enm = EnumWithGeneric::VariantOne(true);
+    let encoded_data = MyPredicateEncoder::default()
+        .encode_data(true, 8, strct, enm)
+        .unwrap();
+    let predicate: fuels::prelude::Predicate =
+        fuels::prelude::Predicate::load_from(&loader_path.display().to_string())
+            .unwrap()
+            .with_data(encoded_data)
+            .with_provider(provider);
+
+    // lock some amount under the predicate
+    wallet_unlocked
+        .transfer(
+            predicate.address(),
+            500,
+            base_asset_id,
+            TxPolicies::default(),
+        )
+        .await
+        .unwrap();
+
+    // Check predicate balance.
+    let balance = predicate.get_asset_balance(&base_asset_id).await.unwrap();
+    assert_eq!(balance, 500);
+
+    // Try to spend it
+    let amount_to_unlock = 300;
+    predicate
+        .transfer(
+            wallet_unlocked.address(),
+            amount_to_unlock,
+            base_asset_id,
+            TxPolicies::default(),
+        )
+        .await
+        .unwrap();
+
+    // Check predicate balance again.
+    let balance = predicate.get_asset_balance(&base_asset_id).await.unwrap();
+    assert_eq!(balance, 200);
+
     node.kill().unwrap();
 }
