@@ -103,6 +103,8 @@ fn convert_resolved_type_info(
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::StringSlice => Type::get_slice(context),
         TypeInfo::StringArray(n) => Type::new_string_array(context, n.val() as u64),
+        TypeInfo::UntypedEnum(_) => todo!(),
+        TypeInfo::UntypedStruct(_) => todo!(),
         TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
             type_engine,
             decl_engine,

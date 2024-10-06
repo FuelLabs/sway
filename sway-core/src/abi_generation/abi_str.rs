@@ -117,6 +117,8 @@ impl TypeInfo {
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery(_) => "unknown due to error".into(),
+            UntypedEnum(_) => todo!(),
+            UntypedStruct(_) => todo!(),
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let type_params = if (ctx.abi_root_type_without_generic_type_parameters && is_root)

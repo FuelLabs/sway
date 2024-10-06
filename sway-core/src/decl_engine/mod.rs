@@ -22,6 +22,7 @@ pub(crate) mod replace_decls;
 use std::collections::BTreeMap;
 
 pub(crate) use associated_item_decl_id::*;
+pub use parsed_engine::*;
 pub use engine::*;
 pub(crate) use id::*;
 pub use interface_decl_id::*;

@@ -1032,6 +1032,8 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {abi_name}");
         }
+        TypeInfo::UntypedEnum(_) => todo!(),
+        TypeInfo::UntypedStruct(_) => todo!(),
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
