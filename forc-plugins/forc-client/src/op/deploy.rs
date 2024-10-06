@@ -430,7 +430,7 @@ fn loader_data_offset(binary: &[u8], blob_id: &BlobId) -> Result<Option<usize>> 
         ]
     };
 
-    let offset = extract_data_offset(&binary)?;
+    let offset = extract_data_offset(binary)?;
 
     if binary.len() < offset {
         anyhow::bail!("data sectio offset is out of bounds");
