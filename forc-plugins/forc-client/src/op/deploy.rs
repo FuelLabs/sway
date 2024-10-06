@@ -337,19 +337,19 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
             deploy_contracts(&command, &contracts_to_deploy)
                 .await?
                 .into_iter()
-                .map(|contract| DeployedPackage::Contract(contract)),
+                .map(DeployedPackage::Contract),
         );
         deployed_packages.extend(
             deploy_executables(&command, &scripts_to_deploy)
                 .await?
                 .into_iter()
-                .map(|script| DeployedPackage::Script(script)),
+                .map(DeployedPackage::Script),
         );
         deployed_packages.extend(
             deploy_executables(&command, &predicates_to_deploy)
                 .await?
                 .into_iter()
-                .map(|predicate| DeployedPackage::Predicate(predicate)),
+                .map(DeployedPackage::Predicate),
         );
     }
 
@@ -367,10 +367,10 @@ pub async fn deploy_executables(
         return Ok(deployed_executable);
     }
 
-    let node_url = validate_and_get_node_url(&command, executables_to_deploy).await?;
+    let node_url = validate_and_get_node_url(command, executables_to_deploy).await?;
     // We will have 1 transaction per executable as each deployment uses a single blob.
     let tx_count = executables_to_deploy.len();
-    let account = setup_deployment_account(&command, &node_url, tx_count).await?;
+    let account = setup_deployment_account(command, &node_url, tx_count).await?;
 
     for pkg in executables_to_deploy {
         let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
@@ -493,7 +493,7 @@ pub async fn deploy_contracts(
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let account = confirm_transaction_details(
         contracts_to_deploy,
-        &command,
+        command,
         node_url.clone(),
         max_contract_size,
     )
@@ -521,8 +521,8 @@ pub async fn deploy_contracts(
             let provider = Provider::connect(node_url).await?;
 
             deploy_chunked(
-                &command,
-                &pkg,
+                command,
+                pkg,
                 salt,
                 &account,
                 &provider,
@@ -530,7 +530,7 @@ pub async fn deploy_contracts(
             )
             .await?
         } else {
-            deploy_pkg(command, &pkg, salt, &provider, &account).await?
+            deploy_pkg(command, pkg, salt, &provider, &account).await?
         };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
@@ -557,7 +557,7 @@ pub async fn deploy_contracts(
                 let pkg_storage_slots = &pkg.storage_slots;
                 // Deploy a new proxy contract.
                 let deployed_proxy_contract = deploy_new_proxy(
-                    &command,
+                    command,
                     pkg_name,
                     pkg_storage_slots,
                     &deployed_contract_id,
