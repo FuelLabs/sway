@@ -1,7 +1,7 @@
 use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
-    op::{deploy, DeployedContract},
+    op::{deploy, DeployedContract, DeployedExecutable, DeployedPackage},
     util::{account::ForcClientAccount, tx::update_proxy_contract_target},
     NodeTarget,
 };
@@ -10,9 +10,9 @@ use fuel_crypto::SecretKey;
 use fuel_tx::{ContractId, Salt};
 use fuels::{
     macros::abigen,
-    types::{transaction::TxPolicies, AsciiString, Bits256},
+    types::{transaction::TxPolicies, AsciiString, Bits256, SizedAsciiString},
 };
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
+use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account, ViewOnlyAccount};
 use portpicker::Port;
 use rand::thread_rng;
 use rexpect::spawn;
@@ -69,6 +69,37 @@ fn copy_dir(source: &Path, dest: &Path) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+/// Tries to get an `DeployedContract` out of the given `DeployedPackage`.
+/// Panics otherwise.
+fn expect_deployed_contract(deployed_package: DeployedPackage) -> DeployedContract {
+    if let DeployedPackage::Contract(contract) = deployed_package {
+        contract
+    } else {
+        println!("{deployed_package:?}");
+        panic!("expected deployed package to be a contract")
+    }
+}
+
+/// Tries to get a script (`DeployedExecutable`) out of given deployed package.
+/// Panics otherwise.
+fn expect_deployed_script(deployed_package: DeployedPackage) -> DeployedExecutable {
+    if let DeployedPackage::Script(script) = deployed_package {
+        script
+    } else {
+        panic!("expected deployed package to be a script")
+    }
+}
+
+/// Tries to get a predicate (`DeployedExecutable`) out of given deployed package.
+/// Panics otherwise.
+fn expect_deployed_predicate(deployed_package: DeployedPackage) -> DeployedExecutable {
+    if let DeployedPackage::Predicate(predicate) = deployed_package {
+        predicate
+    } else {
+        panic!("expected deployed package to be a predicate")
+    }
 }
 
 fn patch_manifest_file_with_path_std(manifest_dir: &Path) -> anyhow::Result<()> {
@@ -339,14 +370,14 @@ async fn test_simple_deploy() {
     };
     let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
-    let expected = vec![DeployedContract {
+    let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
             "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
         chunked: false,
-    }];
+    })];
 
     assert_eq!(contract_ids, expected)
 }
@@ -381,14 +412,14 @@ async fn test_deploy_submit_only() {
     };
     let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
-    let expected = vec![DeployedContract {
+    let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
             "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
         .unwrap(),
         proxy: None,
         chunked: false,
-    }];
+    })];
 
     assert_eq!(contract_ids, expected)
 }
@@ -426,7 +457,7 @@ async fn test_deploy_fresh_proxy() {
     };
     let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
-    let impl_contract = DeployedContract {
+    let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
             "4ea5fa100cd7c8972bc8925ed6f8ccfb6bf1e16f79c3642c3a503c73b7d18de2",
         )
@@ -438,7 +469,7 @@ async fn test_deploy_fresh_proxy() {
             .unwrap(),
         ),
         chunked: false,
-    };
+    });
     let expected = vec![impl_contract];
 
     assert_eq!(contract_ids, expected)
@@ -475,10 +506,10 @@ async fn test_proxy_contract_re_routes_call() {
         default_signer: true,
         ..Default::default()
     };
-    let contract_ids = deploy(cmd).await.unwrap();
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     // At this point we deployed a contract with proxy.
-    let proxy_contract_id = contract_ids[0].proxy.unwrap();
-    let impl_contract_id = contract_ids[0].id;
+    let proxy_contract_id = deployed_contract.proxy.unwrap();
+    let impl_contract_id = deployed_contract.id;
     // Make a contract call into proxy contract, and check if the initial
     // contract returns a true.
     let provider = Provider::connect(&node_url).await.unwrap();
@@ -537,11 +568,11 @@ async fn test_proxy_contract_re_routes_call() {
         default_signer: true,
         ..Default::default()
     };
-    let contract_ids = deploy(cmd).await.unwrap();
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     // proxy contract id should be the same.
-    let proxy_contract_after_update = contract_ids[0].proxy.unwrap();
+    let proxy_contract_after_update = deployed_contract.proxy.unwrap();
     assert_eq!(proxy_contract_id, proxy_contract_after_update);
-    let impl_contract_id_after_update = contract_ids[0].id;
+    let impl_contract_id_after_update = deployed_contract.id;
     assert!(impl_contract_id != impl_contract_id_after_update);
     let impl_contract_a = ImplementationContract::new(proxy_contract_after_update, wallet_unlocked);
 
@@ -606,9 +637,9 @@ async fn test_non_owner_fails_to_set_target() {
         default_signer: true,
         ..Default::default()
     };
-    let contract_id = deploy(cmd).await.unwrap();
+    let contract_id = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     // Proxy contract's id.
-    let proxy_id = contract_id.first().and_then(|f| f.proxy).unwrap();
+    let proxy_id = contract_id.proxy.unwrap();
 
     // Create and fund an owner account and an attacker account.
     let provider = Provider::connect(&node_url).await.unwrap();
@@ -709,7 +740,7 @@ async fn chunked_deploy() {
         default_signer: true,
         ..Default::default()
     };
-    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
     node.kill().unwrap();
 
     assert!(deployed_contract.chunked);
@@ -741,7 +772,7 @@ async fn chunked_deploy_re_routes_calls() {
         default_signer: true,
         ..Default::default()
     };
-    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
 
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
@@ -783,13 +814,279 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
         default_signer: true,
         ..Default::default()
     };
-    let deployed_contract = deploy(cmd).await.unwrap().remove(0);
+    let deployed_contract = expect_deployed_contract(deploy(cmd).await.unwrap().remove(0));
 
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
     let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
 
     assert_big_contract_calls(wallet_unlocked, deployed_contract.id).await;
+
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn can_deploy_script() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_script");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn deploy_script_calls() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_script");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
+
+    // Deploy the contract the script is going to be calling.
+    let contract_tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, contract_tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(contract_tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(contract_tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let deployed_packages = deploy(cmd).await.unwrap().remove(0);
+    let contract = expect_deployed_contract(deployed_packages);
+    let contract_id = contract.id;
+
+    abigen!(Script(
+        name = "MyScript",
+        abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-abi.json"
+    ));
+
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+
+    let loader_path = tmp_dir.path().join("out/deployed_script-loader.bin");
+    let instance = MyScript::new(wallet_unlocked, &loader_path.display().to_string());
+
+    let contract_id_bits256 = Bits256(contract.id.into());
+    let call_handler = instance
+        .main(10, contract_id_bits256)
+        .with_contract_ids(&[contract_id.into()])
+        .call()
+        .await
+        .unwrap();
+    let (configs, with_input, without_input, from_contract) = call_handler.value;
+    let receipts = call_handler.receipts;
+
+    assert!(configs.0); // bool
+    assert_eq!(configs.1, 8); // u8
+    assert_eq!(configs.2, 16); // u16
+    assert_eq!(configs.3, 32); // u32
+    assert_eq!(configs.4, 63); // u64
+    assert_eq!(configs.5, 8.into()); // u256
+    assert_eq!(
+        configs.6,
+        Bits256::from_hex_str("0x0101010101010101010101010101010101010101010101010101010101010101")
+            .unwrap()
+    ); // b256
+    assert_eq!(
+        configs.7,
+        SizedAsciiString::new("fuel".to_string()).unwrap()
+    ); // str[4]
+    assert_eq!(configs.8, (8, true)); // tuple
+    assert_eq!(configs.9, [253, 254, 255]); // array
+
+    let expected_struct = StructWithGeneric {
+        field_1: 8,
+        field_2: 16,
+    };
+    assert_eq!(configs.10, expected_struct); // struct
+
+    let expected_enum = EnumWithGeneric::VariantOne(true);
+    assert_eq!(configs.11, expected_enum); // enum
+
+    assert!(with_input); // 10 % 2 == 0
+    assert_eq!(without_input, 2500); // 25 * 100 = 2500
+
+    assert_eq!(from_contract, 5);
+
+    receipts.iter().find(|receipt| {
+        if let fuel_tx::Receipt::LogData { data, .. } = receipt {
+            *data == Some(vec![0x08])
+        } else {
+            false
+        }
+    });
+
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn can_deploy_predicates() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_predicate");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    expect_deployed_predicate(deploy(cmd).await.unwrap().remove(0));
+    node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn deployed_predicate_call() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_predicate");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    expect_deployed_predicate(deploy(cmd).await.unwrap().remove(0));
+
+    abigen!(Predicate(
+        name = "MyPredicate",
+        abi = "forc-plugins/forc-client/test/data/deployed_predicate/deployed_predicate-abi.json"
+    ));
+
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let base_asset_id = *provider.base_asset_id();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let loader_path = tmp_dir.path().join("out/deployed_predicate-loader.bin");
+    let strct = StructWithGeneric {
+        field_1: 8,
+        field_2: 16,
+    };
+    let enm = EnumWithGeneric::VariantOne(true);
+    let encoded_data = MyPredicateEncoder::default()
+        .encode_data(true, 8, strct, enm)
+        .unwrap();
+    let predicate: fuels::prelude::Predicate =
+        fuels::prelude::Predicate::load_from(&loader_path.display().to_string())
+            .unwrap()
+            .with_data(encoded_data)
+            .with_provider(provider);
+
+    // lock some amount under the predicate
+    wallet_unlocked
+        .transfer(
+            predicate.address(),
+            500,
+            base_asset_id,
+            TxPolicies::default(),
+        )
+        .await
+        .unwrap();
+
+    // Check predicate balance.
+    let balance = predicate.get_asset_balance(&base_asset_id).await.unwrap();
+    assert_eq!(balance, 500);
+
+    // Try to spend it
+    let amount_to_unlock = 300;
+    predicate
+        .transfer(
+            wallet_unlocked.address(),
+            amount_to_unlock,
+            base_asset_id,
+            TxPolicies::default(),
+        )
+        .await
+        .unwrap();
+
+    // Check predicate balance again.
+    let balance = predicate.get_asset_balance(&base_asset_id).await.unwrap();
+    assert_eq!(balance, 200);
 
     node.kill().unwrap();
 }
