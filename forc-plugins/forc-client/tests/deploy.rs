@@ -77,6 +77,7 @@ fn expect_deployed_contract(deployed_package: DeployedPackage) -> DeployedContra
     if let DeployedPackage::Contract(contract) = deployed_package {
         contract
     } else {
+        println!("{deployed_package:?}");
         panic!("expected deployed package to be a contract")
     }
 }
@@ -882,6 +883,34 @@ async fn deploy_script_calls() {
 
     expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
 
+    // Deploy the contract the script is going to be calling.
+    let contract_tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, contract_tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(contract_tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(contract_tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let deployed_packages = deploy(cmd).await.unwrap().remove(0);
+    let contract = expect_deployed_contract(deployed_packages);
+    let contract_id = contract.id;
+
     abigen!(Script(
         name = "MyScript",
         abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-abi.json"
@@ -892,11 +921,16 @@ async fn deploy_script_calls() {
     let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
 
     let loader_path = tmp_dir.path().join("out/deployed_script-loader.bin");
-    //fs::write(&loader_path, deployed_script.bytecode).unwrap();
     let instance = MyScript::new(wallet_unlocked, &loader_path.display().to_string());
 
-    let call_handler = instance.main(10).call().await.unwrap();
-    let (configs, with_input, without_input) = call_handler.value;
+    let contract_id_bits256 = Bits256(contract.id.into());
+    let call_handler = instance
+        .main(10, contract_id_bits256)
+        .with_contract_ids(&[contract_id.into()])
+        .call()
+        .await
+        .unwrap();
+    let (configs, with_input, without_input, from_contract) = call_handler.value;
     let receipts = call_handler.receipts;
 
     assert!(configs.0); // bool
@@ -929,6 +963,8 @@ async fn deploy_script_calls() {
     assert!(with_input); // 10 % 2 == 0
     assert_eq!(without_input, 2500); // 25 * 100 = 2500
 
+    assert_eq!(from_contract, 5);
+
     receipts.iter().find(|receipt| {
         if let fuel_tx::Receipt::LogData { data, .. } = receipt {
             *data == Some(vec![0x08])
@@ -937,7 +973,6 @@ async fn deploy_script_calls() {
         }
     });
 
-    // TODO: Add a contract call to the script.
     node.kill().unwrap();
 }
 

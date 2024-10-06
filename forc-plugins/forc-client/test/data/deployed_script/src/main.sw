@@ -13,6 +13,16 @@ struct StructWithGeneric<D> {
     field_2: u64,
 }
 
+abi MyContract {
+    fn test_function() -> bool;
+
+    #[storage(read)]
+    fn test_function_read() -> u8;
+
+    #[storage(read, write)]
+    fn test_function_write(value: u8) -> u8;
+}
+
 configurable {
     BOOL: bool = true,
     U8: u8 = 8,
@@ -49,11 +59,14 @@ fn basic_function_without_input() -> u64 {
     a*b
 }
 
-fn main(a: u32) -> ((bool, u8, u16, u32, u64, u256, b256, str[4], (u8, bool), [u32; 3], StructWithGeneric<u8>, EnumWithGeneric<bool>), bool, u64) {
+fn main(a: u32, contract_addr: b256) -> ((bool, u8, u16, u32, u64, u256, b256, str[4], (u8, bool), [u32; 3], StructWithGeneric<u8>, EnumWithGeneric<bool>), bool, u64, u8) {
     log(U8);
     let configs = get_configurables();
     let with_in = basic_function_with_input(a);
     let without_in = basic_function_without_input();
 
-    return (configs, with_in, without_in);
+    let contract_instance = abi(MyContract, contract_addr);
+    let from_contract = contract_instance.test_function_read();
+
+    return (configs, with_in, without_in, from_contract);
 }
