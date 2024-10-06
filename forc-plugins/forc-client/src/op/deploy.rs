@@ -322,14 +322,14 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     let mut deployed_packages = Vec::new();
 
     deployed_packages.extend(
-        deploy_contracts(&command, contracts_to_deploy)
+        deploy_contracts(&command, &contracts_to_deploy)
             .await?
             .into_iter()
             .map(|contract| DeployedPackage::Contract(contract)),
     );
 
     deployed_packages.extend(
-        deploy_scripts(command, scripts_to_deploy)
+        deploy_scripts(command, &scripts_to_deploy)
             .await?
             .into_iter()
             .map(|script| DeployedPackage::Script(script)),
@@ -341,49 +341,19 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
 /// Builds and deploys script(s) as blobs, and generates a loader for each pkg.
 pub async fn deploy_scripts(
     command: cmd::Deploy,
-    scripts_to_deploy: Vec<Arc<BuiltPackage>>,
+    scripts_to_deploy: &[Arc<BuiltPackage>],
 ) -> Result<Vec<DeployedScript>> {
     let mut deployed_scripts = vec![];
     if scripts_to_deploy.is_empty() {
         return Ok(deployed_scripts);
     }
 
-    // Ensure that all packages are being deployed to the same node.
-    let node_url = get_node_url(
-        &command.node,
-        &scripts_to_deploy[0].descriptor.manifest_file.network,
-    )?;
-    if !scripts_to_deploy.iter().all(|pkg| {
-        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
-            == Some(node_url.clone())
-    }) {
-        bail!("All scripts in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all contracts is the same.");
-    }
-
-    let provider = Provider::connect(node_url).await?;
-
-    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
-        SignerSelectionMode::Manual
-    } else if let Some(arn) = &command.aws_kms_signer {
-        SignerSelectionMode::AwsSigner(arn.clone())
-    } else {
-        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
-        let password = prompt_forc_wallet_password()?;
-        SignerSelectionMode::ForcWallet(password)
-    };
-
+    let node_url = validate_and_get_node_url(&command, scripts_to_deploy).await?;
     // We will have 1 transaction per script as each script deployment uses a single blob.
     let tx_count = scripts_to_deploy.len();
-    let account = select_account(
-        &wallet_mode,
-        command.default_signer || command.unsigned,
-        command.signing_key,
-        &provider,
-        tx_count,
-    )
-    .await?;
+    let account = setup_deployment_account(&command, &node_url, tx_count).await?;
 
-    for pkg in &scripts_to_deploy {
+    for pkg in scripts_to_deploy {
         let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
         let loader = script.convert_to_loader()?;
         println_action_green("Uploading", "blob containing script bytecode.");
@@ -407,7 +377,7 @@ pub async fn deploy_scripts(
 /// When deploying a single contract, only that contract's ID is returned.
 pub async fn deploy_contracts(
     command: &cmd::Deploy,
-    contracts_to_deploy: Vec<Arc<BuiltPackage>>,
+    contracts_to_deploy: &[Arc<BuiltPackage>],
 ) -> Result<Vec<DeployedContract>> {
     let mut deployed_contracts = Vec::new();
 
@@ -454,18 +424,7 @@ pub async fn deploy_contracts(
         None
     };
 
-    // Ensure that all packages are being deployed to the same node.
-    let node_url = get_node_url(
-        &command.node,
-        &contracts_to_deploy[0].descriptor.manifest_file.network,
-    )?;
-    if !contracts_to_deploy.iter().all(|pkg| {
-        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
-            == Some(node_url.clone())
-    }) {
-        bail!("All contracts in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all contracts is the same.");
-    }
-
+    let node_url = validate_and_get_node_url(command, contracts_to_deploy).await?;
     let provider = Provider::connect(node_url.clone()).await?;
     let max_contract_size = provider
         .chain_info()
@@ -483,7 +442,7 @@ pub async fn deploy_contracts(
 
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let account = confirm_transaction_details(
-        contracts_to_deploy.as_slice(),
+        contracts_to_deploy,
         &command,
         node_url.clone(),
         max_contract_size,
@@ -585,7 +544,6 @@ async fn confirm_transaction_details(
     node_url: String,
     max_contract_size: usize,
 ) -> Result<ForcClientAccount> {
-    let provider = Provider::connect(node_url.clone()).await?;
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let mut tx_count = 0;
     let tx_summary = pkgs_to_deploy
@@ -627,27 +585,10 @@ async fn confirm_transaction_details(
     println_action_green("Confirming", &format!("transactions [{tx_summary}]"));
     println_action_green("", &format!("Network: {node_url}"));
 
-    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
-        SignerSelectionMode::Manual
-    } else if let Some(arn) = &command.aws_kms_signer {
-        SignerSelectionMode::AwsSigner(arn.clone())
-    } else {
-        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
-        let password = prompt_forc_wallet_password()?;
-        SignerSelectionMode::ForcWallet(password)
-    };
+    let account = setup_deployment_account(command, &node_url, tx_count).await?;
 
     // TODO: Display the estimated gas cost of the transaction(s).
     // https://github.com/FuelLabs/sway/issues/6277
-
-    let account = select_account(
-        &wallet_mode,
-        command.default_signer || command.unsigned,
-        command.signing_key,
-        &provider,
-        tx_count,
-    )
-    .await?;
 
     Ok(account)
 }
@@ -866,6 +807,50 @@ fn create_deployment_artifact(
     deployment_artifact.to_file(&output_dir, pkg_name, contract_id)
 }
 
+/// Validates that all packages are being deployed to the same node and returns the node URL.
+async fn validate_and_get_node_url(
+    command: &cmd::Deploy,
+    packages: &[Arc<BuiltPackage>],
+) -> Result<String> {
+    let node_url = get_node_url(&command.node, &packages[0].descriptor.manifest_file.network)?;
+    if !packages.iter().all(|pkg| {
+        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
+            == Some(node_url.clone())
+    }) {
+        bail!("All packages in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all packages is the same.");
+    }
+    Ok(node_url)
+}
+
+/// Sets up and returns the account for deployment.
+async fn setup_deployment_account(
+    command: &cmd::Deploy,
+    node_url: &str,
+    tx_count: usize,
+) -> Result<ForcClientAccount> {
+    let provider = Provider::connect(node_url).await?;
+
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        SignerSelectionMode::Manual
+    } else if let Some(arn) = &command.aws_kms_signer {
+        SignerSelectionMode::AwsSigner(arn.clone())
+    } else {
+        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
+        let password = prompt_forc_wallet_password()?;
+        SignerSelectionMode::ForcWallet(password)
+    };
+
+    let account = select_account(
+        &wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+        tx_count,
+    )
+    .await?;
+
+    Ok(account)
+}
 #[cfg(test)]
 mod test {
     use super::*;
