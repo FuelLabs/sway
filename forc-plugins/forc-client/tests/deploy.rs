@@ -1,7 +1,7 @@
 use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
-    op::{deploy, DeployedContract, DeployedPackage, DeployedExecutable},
+    op::{deploy, DeployedContract, DeployedExecutable, DeployedPackage},
     util::{account::ForcClientAccount, tx::update_proxy_contract_target},
     NodeTarget,
 };

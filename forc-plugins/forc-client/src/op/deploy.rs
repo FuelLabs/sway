@@ -385,7 +385,10 @@ pub async fn deploy_executables(
             bytecode: loader_bytecode,
         };
         deployed_executable.push(deployed);
-        println_action_green("Finished", &format!("deploying executable {}", pkg.descriptor.name));
+        println_action_green(
+            "Finished",
+            &format!("deploying executable {}", pkg.descriptor.name),
+        );
     }
     Ok(deployed_executable)
 }
