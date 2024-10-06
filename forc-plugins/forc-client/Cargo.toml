@@ -48,6 +48,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 portpicker = "0.1.1"
+pretty_assertions = "1.4.1"
 rexpect = "0.5"
 tempfile = "3"
 

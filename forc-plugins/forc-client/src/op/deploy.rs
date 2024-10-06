@@ -18,18 +18,22 @@ use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
+use fuel_abi_types::abi::program::Configurable;
 use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Salt, Transaction};
-use fuel_vm::prelude::*;
+use fuel_vm::{consts::WORD_SIZE, fuel_asm::op, prelude::*};
 use fuels::{
     macros::abigen,
     programs::{
         contract::{LoadConfiguration, StorageConfiguration},
         executable::Executable,
     },
-    types::{bech32::Bech32ContractId, transaction_builders::Blob},
+    types::{
+        bech32::Bech32ContractId,
+        transaction_builders::{Blob, BlobId},
+    },
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
@@ -43,8 +47,8 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -356,6 +360,103 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     Ok(deployed_packages)
 }
 
+/// Calculates the loader data offset. Returns a `None` if the original `binary`
+/// does not have a data section (no configurables and no args). Otherwise
+/// returns the new offset of the data section.
+fn loader_data_offset(binary: &[u8], blob_id: &BlobId) -> Result<Option<usize>> {
+    // The following code is taken from SDK, and once they expose the offsets
+    // we will no longer need to maintain this duplicate version here.
+
+    // The final code is going to have this structure (if the data section is non-empty):
+    // 1. loader instructions
+    // 2. blob id
+    // 3. length_of_data_section
+    // 4. the data_section (updated with configurables as needed)
+    const BLOB_ID_SIZE: u16 = 32;
+    const REG_ADDRESS_OF_DATA_AFTER_CODE: u8 = 0x10;
+    const REG_START_OF_LOADED_CODE: u8 = 0x11;
+    const REG_GENERAL_USE: u8 = 0x12;
+    let get_instructions = |num_of_instructions| {
+        // There are 3 main steps:
+        // 1. Load the blob content into memory
+        // 2. Load the data section right after the blob
+        // 3. Jump to the beginning of the memory where the blob was loaded
+        [
+            // 1. Load the blob content into memory
+            // Find the start of the hardcoded blob ID, which is located after the loader code ends.
+            op::move_(REG_ADDRESS_OF_DATA_AFTER_CODE, RegId::PC),
+            // hold the address of the blob ID.
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                num_of_instructions * Instruction::SIZE as u16,
+            ),
+            // The code is going to be loaded from the current value of SP onwards, save
+            // the location into REG_START_OF_LOADED_CODE so we can jump into it at the end.
+            op::move_(REG_START_OF_LOADED_CODE, RegId::SP),
+            // REG_GENERAL_USE to hold the size of the blob.
+            op::bsiz(REG_GENERAL_USE, REG_ADDRESS_OF_DATA_AFTER_CODE),
+            // Push the blob contents onto the stack.
+            op::ldc(REG_ADDRESS_OF_DATA_AFTER_CODE, 0, REG_GENERAL_USE, 1),
+            // Move on to the data section length
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                BLOB_ID_SIZE,
+            ),
+            // load the size of the data section into REG_GENERAL_USE
+            op::lw(REG_GENERAL_USE, REG_ADDRESS_OF_DATA_AFTER_CODE, 0),
+            // after we have read the length of the data section, we move the pointer to the actual
+            // data by skipping WORD_SIZE B.
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                WORD_SIZE as u16,
+            ),
+            // load the data section of the executable
+            op::ldc(REG_ADDRESS_OF_DATA_AFTER_CODE, 0, REG_GENERAL_USE, 2),
+            // Jump into the memory where the contract is loaded.
+            // What follows is called _jmp_mem by the sway compiler.
+            // Subtract the address contained in IS because jmp will add it back.
+            op::sub(
+                REG_START_OF_LOADED_CODE,
+                REG_START_OF_LOADED_CODE,
+                RegId::IS,
+            ),
+            // jmp will multiply by 4, so we need to divide to cancel that out.
+            op::divi(REG_START_OF_LOADED_CODE, REG_START_OF_LOADED_CODE, 4),
+            // Jump to the start of the contract we loaded.
+            op::jmp(REG_START_OF_LOADED_CODE),
+        ]
+    };
+
+    let offset = extract_data_offset(binary)?;
+
+    if binary.len() < offset {
+        anyhow::bail!("data sectio offset is out of bounds");
+    }
+
+    let data_section = binary[offset..].to_vec();
+
+    if !data_section.is_empty() {
+        let num_of_instructions = u16::try_from(get_instructions(0).len())
+            .expect("to never have more than u16::MAX instructions");
+
+        let instruction_bytes = get_instructions(num_of_instructions)
+            .into_iter()
+            .flat_map(|instruction| instruction.to_bytes());
+
+        let blob_bytes = blob_id.iter().copied();
+
+        let loader_offset =
+            instruction_bytes.count() + blob_bytes.count() + data_section.len().to_be_bytes().len();
+
+        Ok(Some(loader_offset))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Builds and deploys executable (script and predicate) package(s) as blobs,
 /// and generates a loader for each of them.
 pub async fn deploy_executables(
@@ -387,6 +488,29 @@ pub async fn deploy_executables(
             "Saved",
             &format!("loader bytecode at {}", bin_path.display()),
         );
+        if let Some(loader_data_section_offset) =
+            loader_data_offset(&pkg.bytecode.bytes, &BlobId::default())?
+        {
+            if let ProgramABI::Fuel(mut fuel_abi) = pkg.program_abi.clone() {
+                println_action_green("Generating", "loader abi for the uploaded executable.");
+                let json_abi_path = out_dir.join(format!("{pkg_name}-loader-abi.json"));
+                let original_data_section = extract_data_offset(&pkg.bytecode.bytes).unwrap();
+                let offset_shift = original_data_section - loader_data_section_offset;
+                // if there are configurables in the abi we need to shift them by `offset_shift`.
+                let configurables = fuel_abi.configurables.clone().map(|configs| {
+                    configs
+                        .into_iter()
+                        .map(|config| Configurable {
+                            offset: config.offset - offset_shift as u64,
+                            ..config.clone()
+                        })
+                        .collect()
+                });
+                fuel_abi.configurables = configurables;
+                let json_string = serde_json::to_string_pretty(&fuel_abi)?;
+                std::fs::write(json_abi_path, json_string)?;
+            }
+        }
         // If the executable is a predicate, we also want to display and save the predicate root.
         if pkg
             .descriptor
@@ -417,6 +541,19 @@ pub async fn deploy_executables(
         println_action_green("Finished", &format!("deploying executable {pkg_name}"));
     }
     Ok(deployed_executable)
+}
+
+fn extract_data_offset(binary: &[u8]) -> Result<usize> {
+    if binary.len() < 16 {
+        anyhow::bail!(
+            "given binary is too short to contain a data offset, len: {}",
+            binary.len()
+        );
+    }
+
+    let data_offset: [u8; 8] = binary[8..16].try_into().expect("checked above");
+
+    Ok(u64::from_be_bytes(data_offset) as usize)
 }
 
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
