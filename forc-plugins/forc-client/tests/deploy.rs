@@ -1090,3 +1090,208 @@ async fn deployed_predicate_call() {
 
     node.kill().unwrap();
 }
+
+/// Generates a script instance using SDK, and returns the result as a string.
+async fn call_with_sdk_generated_overrides(node_url: &str, contract_id: ContractId) -> String {
+    let project_dir = test_data_path().join("deployed_script");
+    abigen!(Script(
+        name = "MyScript",
+        abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-abi.json"
+    ));
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let bin_dir = project_dir.join("deployed_script.bin");
+    let script_instance = MyScript::new(wallet_unlocked, bin_dir.display().to_string().as_str());
+
+    let strc = StructWithGeneric {
+        field_1: 1u8,
+        field_2: 2,
+    };
+    let encoded = MyScriptConfigurables::default()
+        .with_BOOL(false)
+        .unwrap()
+        .with_U8(1)
+        .unwrap()
+        .with_U16(2)
+        .unwrap()
+        .with_U32(3)
+        .unwrap()
+        .with_U64(4)
+        .unwrap()
+        .with_U256(5.into())
+        .unwrap()
+        .with_B256(Bits256::zeroed())
+        .unwrap()
+        .with_ARRAY([1, 2, 3])
+        .unwrap()
+        .with_STRUCT(strc)
+        .unwrap()
+        .with_ENUM(EnumWithGeneric::VariantTwo)
+        .unwrap();
+
+    let mut script_instance_with_configs = script_instance.with_configurables(encoded);
+
+    let loader_from_sdk = script_instance_with_configs
+        .convert_into_loader()
+        .await
+        .unwrap();
+
+    let contract_ids_bits256 = Bits256(contract_id.into());
+    format!(
+        "{:?}",
+        loader_from_sdk
+            .main(10, contract_ids_bits256)
+            .with_contract_ids(&[contract_id.into()])
+            .call()
+            .await
+            .unwrap()
+            .value
+    )
+}
+
+/// Generates a script instance using the shifted abi, and returns the result as a string.
+async fn call_with_forc_generated_overrides(node_url: &str, contract_id: ContractId) -> String {
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("deployed_script");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let target = NodeTarget {
+        node_url: Some(node_url.to_string()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    expect_deployed_script(deploy(cmd).await.unwrap().remove(0));
+
+    // Since `abigen!` macro does not allow for dynamic paths, we need to
+    // pre-generate the loader bin and abi and read them from project dir. Here
+    // we are ensuring forc-deploy indeed generated the files we are basing our
+    // tests below.
+    let generated_loader_abi_path = tmp_dir.path().join("out/deployed_script-loader-abi.json");
+    let generated_loader_abi = fs::read_to_string(generated_loader_abi_path).unwrap();
+
+    // this path is basically, `forc-plugins/forc-client/test/data/deployed_script/deployed_script-loader-abi.json`.
+    let used_loader_abi_path = project_dir.join("deployed_script-loader-abi.json");
+    let used_loader_abi = fs::read_to_string(used_loader_abi_path).unwrap();
+
+    assert_eq!(generated_loader_abi, used_loader_abi);
+
+    let generated_loader_bin = tmp_dir.path().join("out/deployed_script-loader.bin");
+    abigen!(Script(
+        name = "MyScript",
+        abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-loader-abi.json"
+    ));
+    let forc_generated_script_instance = MyScript::new(
+        wallet_unlocked,
+        generated_loader_bin.display().to_string().as_str(),
+    );
+    let strc = StructWithGeneric {
+        field_1: 1u8,
+        field_2: 2,
+    };
+    let encoded = MyScriptConfigurables::default()
+        .with_BOOL(false)
+        .unwrap()
+        .with_U8(1)
+        .unwrap()
+        .with_U16(2)
+        .unwrap()
+        .with_U32(3)
+        .unwrap()
+        .with_U64(4)
+        .unwrap()
+        .with_U256(5.into())
+        .unwrap()
+        .with_B256(Bits256::zeroed())
+        .unwrap()
+        .with_ARRAY([1, 2, 3])
+        .unwrap()
+        .with_STRUCT(strc)
+        .unwrap()
+        .with_ENUM(EnumWithGeneric::VariantTwo)
+        .unwrap();
+
+    let forc_generated_script_with_configs =
+        forc_generated_script_instance.with_configurables(encoded);
+    let contract_ids_bits256 = Bits256(contract_id.into());
+    format!(
+        "{:?}",
+        forc_generated_script_with_configs
+            .main(10, contract_ids_bits256)
+            .with_contract_ids(&[contract_id.into()])
+            .call()
+            .await
+            .unwrap()
+            .value
+    )
+}
+
+#[tokio::test]
+async fn offset_shifted_abi_works() {
+    // To test if offset shifted abi works or not, we generate a loader
+    // contract using sdk and give a configurable override, and call the
+    // main function.
+
+    // We also create the shited abi using forc-deploy and create a script
+    // instance using this new shifted abi, and generate a normal script out of
+    // the loader binary generated again by forc-deploy.
+
+    // We then override the configurables with the same values as sdk flow on
+    // this script, generated with loader abi and bin coming from forc-deploy.
+
+    // If returned value is equal, than the configurables work correctly.
+    let (mut node, port) = run_node();
+    // Deploy the contract the script is going to be calling.
+    let contract_tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, contract_tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(contract_tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(contract_tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let deployed_packages = deploy(cmd).await.unwrap().remove(0);
+    let contract = expect_deployed_contract(deployed_packages);
+    let contract_id = contract.id;
+    // Generating the sdk loader bytecode with configurables.
+    let loader_with_configs_from_sdk =
+        call_with_sdk_generated_overrides(&node_url, contract_id).await;
+
+    // Genearating the forc-deploy loader bytecode and loader abi.
+    let loader_with_configs_from_forc =
+        call_with_forc_generated_overrides(&node_url, contract_id).await;
+    pretty_assertions::assert_eq!(loader_with_configs_from_forc, loader_with_configs_from_sdk);
+
+    node.kill().unwrap()
+}
