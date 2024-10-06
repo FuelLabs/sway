@@ -331,7 +331,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
         && scripts_to_deploy.is_empty()
         && predicates_to_deploy.is_empty()
     {
-        println_warning("No deployable package is found in the current directory.");
+        println_warning("No deployable package was found in the current directory.");
     } else {
         deployed_packages.extend(
             deploy_contracts(&command, &contracts_to_deploy)
