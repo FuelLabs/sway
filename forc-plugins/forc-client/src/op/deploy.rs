@@ -380,17 +380,36 @@ pub async fn deploy_executables(
         println_action_green("Generating", "loader bytecode for the uploaded executable.");
         let loader_bytecode = loader.code();
         let pkg_name = &pkg.descriptor.name;
-        let bin_path = pkg
-            .descriptor
-            .manifest_file
-            .dir()
-            .join("out")
-            .join(format!("{pkg_name}-loader.bin"));
+        let out_dir = pkg.descriptor.manifest_file.dir().join("out");
+        let bin_path = out_dir.join(format!("{pkg_name}-loader.bin"));
         std::fs::write(&bin_path, &loader_bytecode)?;
         println_action_green(
             "Saved",
             &format!("loader bytecode at {}", bin_path.display()),
         );
+        // If the executable is a predicate, we also want to display and save the predicate root.
+        if pkg
+            .descriptor
+            .manifest_file
+            .program_type()
+            .with_context(|| {
+                "error while trying to retrieve program type for executable deployment."
+            })?
+            == TreeType::Predicate
+        {
+            // Calculate the root.
+            let root = format!("0x{}", fuel_tx::Input::predicate_owner(&loader_bytecode));
+            // Root files are named in `pkg-name-root` from, since this is a
+            // loader we are also adding an identifier to differentiate it from
+            // the root of the "original" predicate.
+            let root_file_name = format!("{}-loader-root", &pkg_name);
+            let root_path = out_dir.join(root_file_name);
+            std::fs::write(&root_path, &root)?;
+            println_action_green(
+                "Saved",
+                &format!("loader root ({}) at {}", root, root_path.display()),
+            );
+        }
         let deployed = DeployedExecutable {
             bytecode: loader_bytecode,
         };
