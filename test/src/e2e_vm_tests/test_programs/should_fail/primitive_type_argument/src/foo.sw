@@ -1,3 +1,3 @@
 library;
 
-mod bar;
+pub mod bar;

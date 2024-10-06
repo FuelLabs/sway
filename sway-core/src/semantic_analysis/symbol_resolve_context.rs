@@ -1,12 +1,18 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    decl_engine::parsed_id::ParsedDeclId, engine_threading::*, language::{
+    decl_engine::parsed_id::ParsedDeclId,
+    engine_threading::*,
+    language::{
         parsed::{self, Declaration, FunctionDeclaration},
         CallPath, QualifiedCallPath, Visibility,
-    }, namespace::{
+    },
+    namespace::{
         ModulePath, ResolvedDeclaration, ResolvedTraitImplItem, TryInsertingTraitImplOnFailure,
-    }, semantic_analysis::{ast_node::ConstShadowingMode, Namespace}, type_system::{TypeArgument, TypeId, TypeInfo}, EnforceTypeArguments, TraitConstraint, UnifyCheck
+    },
+    semantic_analysis::{ast_node::ConstShadowingMode, Namespace},
+    type_system::{TypeArgument, TypeId, TypeInfo},
+    EnforceTypeArguments, TraitConstraint, UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -1062,7 +1068,7 @@ impl<'a> SymbolResolveContext<'a> {
                 &Span::dummy(),
                 engines,
                 crate::namespace::TryInsertingTraitImplOnFailure::Yes,
-                crate::namespace::CodeBlockFirstPass::Yes
+                crate::namespace::CodeBlockFirstPass::Yes,
             )
             .is_ok()
     }

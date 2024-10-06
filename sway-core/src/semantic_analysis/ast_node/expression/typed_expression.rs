@@ -445,6 +445,7 @@ impl ty::TyExpression {
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     args,
                 } = *delineated_path_expression.clone();
                 Self::type_check_delineated_path(
