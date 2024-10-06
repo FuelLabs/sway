@@ -399,7 +399,7 @@ pub async fn deploy_executables(
         {
             // Calculate the root.
             let root = format!("0x{}", fuel_tx::Input::predicate_owner(&loader_bytecode));
-            // Root files are named in `pkg-name-root` from, since this is a
+            // Root files are named in `pkg-name-root` format, since this is a
             // loader we are also adding an identifier to differentiate it from
             // the root of the "original" predicate.
             let root_file_name = format!("{}-loader-root", &pkg_name);
