@@ -96,7 +96,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
                 None
             }
         })
-        .nth(0)
+        .next()
         .flatten()
         .ok_or_else(|| anyhow!("expected to find at least one deployed contract."))
 }
