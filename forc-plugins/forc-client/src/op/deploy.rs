@@ -810,12 +810,9 @@ fn create_deployment_artifact(
 /// Validates that all packages are being deployed to the same node and returns the node URL.
 async fn validate_and_get_node_url(
     command: &cmd::Deploy,
-    packages: &[Arc<BuiltPackage>]
+    packages: &[Arc<BuiltPackage>],
 ) -> Result<String> {
-    let node_url = get_node_url(
-        &command.node,
-        &packages[0].descriptor.manifest_file.network,
-    )?;
+    let node_url = get_node_url(&command.node, &packages[0].descriptor.manifest_file.network)?;
     if !packages.iter().all(|pkg| {
         get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
             == Some(node_url.clone())
@@ -829,8 +826,8 @@ async fn validate_and_get_node_url(
 async fn setup_deployment_account(
     command: &cmd::Deploy,
     node_url: &str,
-    tx_count: usize
-) -> Result<ForcClientAccount> { 
+    tx_count: usize,
+) -> Result<ForcClientAccount> {
     let provider = Provider::connect(node_url).await?;
 
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
@@ -849,7 +846,8 @@ async fn setup_deployment_account(
         command.signing_key,
         &provider,
         tx_count,
-    ).await?;
+    )
+    .await?;
 
     Ok(account)
 }
