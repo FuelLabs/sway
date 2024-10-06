@@ -360,7 +360,13 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     Ok(deployed_packages)
 }
 
+/// Calculates the loader data offset. Returns a `None` if the original `binary`
+/// does not have a data section (no configurables and no args). Otherwise
+/// returns the new offset of the data section.
 fn loader_data_offset(binary: &[u8], blob_id: &BlobId) -> Result<Option<usize>> {
+    // The following code is taken from SDK, and once they expose the offsets
+    // we will no longer need to maintain this duplicate version here.
+
     // The final code is going to have this structure (if the data section is non-empty):
     // 1. loader instructions
     // 2. blob id
@@ -442,7 +448,8 @@ fn loader_data_offset(binary: &[u8], blob_id: &BlobId) -> Result<Option<usize>> 
 
         let blob_bytes = blob_id.iter().copied();
 
-        let loader_offset = instruction_bytes.count() + blob_bytes.count();
+        let loader_offset =
+            instruction_bytes.count() + blob_bytes.count() + data_section.len().to_be_bytes().len();
 
         Ok(Some(loader_offset))
     } else {
