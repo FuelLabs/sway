@@ -575,6 +575,8 @@ pub fn parsed_to_ast(
     let mut collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
 
+    println!("namespace {:#?}", collection_ctx.namespace);
+
     let resolve_ctx = SymbolResolveContext::new(engines, &mut collection_ctx);
     parse_program.resolve_symbols(handler, resolve_ctx);
 

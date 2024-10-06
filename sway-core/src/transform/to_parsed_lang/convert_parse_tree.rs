@@ -454,6 +454,7 @@ fn item_struct_to_struct_declaration(
         )?,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
+        impls: vec![]
     });
     Ok(struct_declaration_id)
 }

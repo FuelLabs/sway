@@ -499,6 +499,8 @@ impl TypeBinding<QualifiedCallPath> {
     ) -> Result<Declaration, ErrorEmitted> {
         let engines = ctx.engines();
 
+        println!("resolve_symbol {:?}", self.inner);
+
         // The first step is to determine if the call path refers to a module,
         // enum, function or constant.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
@@ -644,6 +646,8 @@ impl SymbolResolveTypeBinding<ParsedDeclId<ConstantDeclaration>> for TypeBinding
         handler: &Handler,
         ctx: SymbolResolveContext,
     ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
+        println!("resolve_symbol SymbolResolveTypeBinding Constant {:?}", self);
+
         // Grab the declaration.
         let unknown_decl = ctx
             .resolve_call_path_with_visibility_check(handler, &self.inner)?
@@ -669,6 +673,8 @@ impl SymbolResolveTypeBinding<(ParsedDeclId<ConstantDeclaration>, TypeBinding<Ca
             type_arguments: self.type_arguments.clone(),
             span: self.span.clone(),
         };
+
+        println!("resolve_symbol SymbolResolveTypeBinding Constant {:?}", call_path_binding);
 
         let type_info_opt = call_path_binding
             .clone()
