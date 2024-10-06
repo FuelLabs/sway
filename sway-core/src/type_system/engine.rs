@@ -207,7 +207,7 @@ impl Clone for TypeEngine {
 /// provided twice during the macro invocation, once as an expression `expr` and once as a pattern `pat`.
 ///
 /// The macro recursively creates the `id_of_<type>` methods in order to get the proper `usize` value
-/// generated, which corresponds to the index of those types withing the slab.
+/// generated, which corresponds to the index of those types within the slab.
 macro_rules! type_engine_shareable_built_in_types {
     // The base recursive case.
     (@step $_idx:expr,) => {};
@@ -261,8 +261,8 @@ macro_rules! type_engine_shareable_built_in_types {
         // Also, calling `insert` with built-in shareable types has an optimized path which will redirect
         // to `id_of_<type>` methods, again bypassing the `shareable_types`.
         //
-        // The only negligible small "penalty" comes during the `replace()`ment of replaceable types
-        // where a potentially replacement with a built-in shareable type will create a separate instance
+        // The only negligible small "penalty" comes during replacements of replaceable types,
+        // where a potential replacement with a built-in shareable type will create a separate instance
         // of that built-in type and add it to `shareable_types`.
         fn insert_shareable_built_in_types(&mut self) {
             use TypeInfo::*;
@@ -274,8 +274,8 @@ macro_rules! type_engine_shareable_built_in_types {
             self.slab.insert(tsi);
 
             // For the `ErrorRecovery`, we need an `ErrorEmitted` instance.
-            // All of its instances are the same, so we will (mis)use the `Handler::cancel` method
-            // here to obtain an instance.
+            // All of its instances are the same, so we will use, or perhaps misuse,
+            // the `Handler::cancel` method here to obtain an instance.
             let tsi = TypeSourceInfo {
                 type_info: ErrorRecovery(crate::Handler::default().cancel()).into(),
                 source_id: None,
