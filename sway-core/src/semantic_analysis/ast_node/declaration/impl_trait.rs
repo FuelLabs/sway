@@ -84,7 +84,7 @@ impl TyImplSelfOrTrait {
         let engines = ctx.engines();
 
         // Create a new type parameter for the Self type.
-        // For the `use_site_span` of the self type parameter we take the `bock_span`.
+        // For the `use_site_span` of the self type parameter we take the `block_span`.
         // This is the span of the whole impl trait and block and thus, points to
         // the code in the source file in which the self type is used in the implementation.
         let self_type_use_site_span = block_span.clone();
