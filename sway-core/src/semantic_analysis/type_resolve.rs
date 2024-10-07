@@ -17,11 +17,11 @@ pub trait TypeResolver {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
+        mod_path: &ModulePath,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&ModulePath>,
-        mod_path: &ModulePath,
         self_type: Option<TypeId>,
     ) -> Result<TypeId, ErrorEmitted>;
 

@@ -664,11 +664,11 @@ impl<'a> TypeCheckContext<'a> {
             handler,
             engines,
             namespace,
+            &mod_path,
             type_id,
             span,
             enforce_type_arguments,
             type_info_prefix,
-            &mod_path,
             self_type,
         )
     }
@@ -739,11 +739,11 @@ impl<'a> TypeCheckContext<'a> {
                 handler,
                 self.engines(),
                 self.namespace(),
+                item_prefix,
                 type_id,
                 &item_name.span(),
                 EnforceTypeArguments::No,
                 None,
-                item_prefix,
                 self.self_type(),
             )
             .unwrap_or_else(|err| {
@@ -1299,11 +1299,11 @@ impl TypeResolver for TypeCheckContext<'_> {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
+        mod_path: &ModulePath,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&ModulePath>,
-        mod_path: &ModulePath,
         self_type: Option<TypeId>,
     ) -> Result<TypeId, ErrorEmitted> {
         let type_engine = engines.te();
@@ -1358,11 +1358,11 @@ impl TypeResolver for TypeCheckContext<'_> {
                         handler,
                         engines,
                         namespace,
+                        mod_path,
                         elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
-                        mod_path,
                         self_type,
                     )
                     .unwrap_or_else(|err| {
@@ -1383,11 +1383,11 @@ impl TypeResolver for TypeCheckContext<'_> {
                         handler,
                         engines,
                         namespace,
+                        mod_path,
                         elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
-                        mod_path,
                         self_type,
                     )
                     .unwrap_or_else(|err| {
@@ -1409,11 +1409,11 @@ impl TypeResolver for TypeCheckContext<'_> {
                             handler,
                             engines,
                             namespace,
+                            mod_path,
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
                             None,
-                            mod_path,
                             self_type,
                         )
                         .unwrap_or_else(|err| {
@@ -1461,11 +1461,11 @@ impl TypeResolver for TypeCheckContext<'_> {
                         handler,
                         engines,
                         namespace,
+                        mod_path,
                         ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
-                        mod_path,
                         self_type,
                     )
                     .unwrap_or_else(|err| {

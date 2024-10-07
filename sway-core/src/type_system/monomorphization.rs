@@ -123,11 +123,11 @@ where
                         handler,
                         engines,
                         namespace,
+                        mod_path,
                         type_argument.type_id,
                         &type_argument.span,
                         enforce_type_arguments,
                         None,
-                        mod_path,
                         self_type,
                     )
                     .unwrap_or_else(|err| {
