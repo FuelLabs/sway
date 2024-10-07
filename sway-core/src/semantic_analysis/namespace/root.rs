@@ -783,11 +783,15 @@ impl Root {
 
         if let Some(scope_id) = scope_id_opt {
             let scope = submodule.lexical_scopes.get(scope_id).unwrap();
-            let r = self
-                .resolve_symbol_from_scope(handler, engines, scope, &call_path.suffix)
-                .map(|rd| (rd, mod_path.to_vec()));
-            println!("resolve_symbol_from_scope symbol {:?} {:?}", call_path.suffix, r);
-            return r;
+            // scope.items.reso
+            // let r = self
+            //     .resolve_symbol(handler, engines, scope, &call_path.suffix, self_type)
+            //     .map(|rd| (rd, mod_path.to_vec()));
+            // println!(
+            //     "resolve_symbol_from_scope symbol {:?} {:?}",
+            //     call_path.suffix, r
+            // );
+            // return r;
         }
 
         return res;

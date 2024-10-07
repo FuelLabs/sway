@@ -69,13 +69,13 @@ impl TyImplSelfOrTrait {
             engines.help_out(impl_trait.implementing_for.type_id)
         );
 
-        impl_trait.implementing_for.type_id = ctx.namespace.resolve_type(
-                    handler,
-                    impl_trait.implementing_for.type_id,
-                    &implementing_for.span,
-                    EnforceTypeArguments::Yes,
-                    None,
-                )?;
+        // impl_trait.implementing_for.type_id = ctx.namespace.resolve_type(
+        //             handler,
+        //             impl_trait.implementing_for.type_id,
+        //             &implementing_for.span,
+        //             EnforceTypeArguments::Yes,
+        //             None,
+        //         )?;
 
         Ok(())
     }
