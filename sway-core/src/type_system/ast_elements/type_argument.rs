@@ -2,7 +2,7 @@ use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelu
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
-/// [TypeArgument] can be see as an "annotated reference" to a [TypeInfo].
+/// [TypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
 /// It holds the [TypeArgument::type_id] which is the actual "reference"
 /// to the type, as well as an additional information about that type,
 /// called the annotation.
