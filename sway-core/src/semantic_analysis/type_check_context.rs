@@ -646,7 +646,6 @@ impl<'a> TypeCheckContext<'a> {
             )
     }
 
-
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
     pub(crate) fn resolve_type(
@@ -680,71 +679,13 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_call_path_with_visibility_check_and_modpath(
+        self.resolve_call_path(
             handler,
+            self.engines(),
+            self.namespace(),
             &self.namespace().mod_path,
             call_path,
         )
-    }
-
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    ///
-    /// The `mod_path` is significant here as we assume the resolution is done within the
-    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
-    /// and the symbol's own visibility.
-    pub(crate) fn resolve_call_path_with_visibility_check_and_modpath(
-        &self,
-        handler: &Handler,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let engines = self.engines;
-        let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
-            handler,
-            self.engines,
-            mod_path,
-            call_path,
-            self.self_type,
-        )?;
-        let decl = decl.expect_typed();
-
-        // In case there is no mod path we don't need to check visibility
-        if mod_path.is_empty() {
-            return Ok(decl);
-        }
-
-        // In case there are no prefixes we don't need to check visibility
-        if call_path.prefixes.is_empty() {
-            return Ok(decl);
-        }
-
-        // check the visibility of the call path elements
-        // we don't check the first prefix because direct children are always accessible
-        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self
-                .namespace()
-                .lookup_submodule_from_absolute_path(handler, engines, prefix)?;
-            if module.visibility().is_private() {
-                let prefix_last = prefix[prefix.len() - 1].clone();
-                handler.emit_err(CompileError::ImportPrivateModule {
-                    span: prefix_last.span(),
-                    name: prefix_last,
-                });
-            }
-        }
-
-        // check the visibility of the symbol itself
-        if !decl.visibility(self.engines.de()).is_public() {
-            handler.emit_err(CompileError::ImportPrivateSymbol {
-                name: call_path.suffix.clone(),
-                span: call_path.suffix.span(),
-            });
-        }
-
-        Ok(decl)
     }
 
     pub(crate) fn resolve_qualified_call_path_with_visibility_check(
@@ -1570,8 +1511,10 @@ impl TypeResolver for TypeCheckContext<'_> {
                     type_arguments,
                     ..
                 } => {
-                    let type_decl = self.resolve_call_path_with_visibility_check_and_modpath(
+                    let type_decl = self.resolve_call_path(
                         handler,
+                        engines,
+                        namespace,
                         mod_path,
                         &qualified_call_path.clone().to_call_path(handler)?,
                     )?;
@@ -1618,11 +1561,72 @@ impl TypeResolver for TypeCheckContext<'_> {
                 )
                 .map(|decl| decl.expect_typed())
         } else {
-            self.resolve_call_path_with_visibility_check_and_modpath(
+            self.resolve_call_path(
                 handler,
+                engines,
+                namespace,
                 mod_path,
                 &qualified_call_path.call_path,
             )
         }
+    }
+
+    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
+    ///
+    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    ///
+    /// The `mod_path` is significant here as we assume the resolution is done within the
+    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
+    /// and the symbol's own visibility.
+    fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        namespace: &Namespace,
+        mod_path: &ModulePath,
+        call_path: &CallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let (decl, mod_path) = namespace.root.resolve_call_path_and_mod_path(
+            handler,
+            self.engines,
+            mod_path,
+            call_path,
+            self.self_type,
+        )?;
+        let decl = decl.expect_typed();
+
+        // In case there is no mod path we don't need to check visibility
+        if mod_path.is_empty() {
+            return Ok(decl);
+        }
+
+        // In case there are no prefixes we don't need to check visibility
+        if call_path.prefixes.is_empty() {
+            return Ok(decl);
+        }
+
+        // check the visibility of the call path elements
+        // we don't check the first prefix because direct children are always accessible
+        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+            let module = namespace.lookup_submodule_from_absolute_path(handler, engines, prefix)?;
+            if module.visibility().is_private() {
+                let prefix_last = prefix[prefix.len() - 1].clone();
+                handler.emit_err(CompileError::ImportPrivateModule {
+                    span: prefix_last.span(),
+                    name: prefix_last,
+                });
+            }
+        }
+
+        // check the visibility of the symbol itself
+        if !decl.visibility(self.engines.de()).is_public() {
+            handler.emit_err(CompileError::ImportPrivateSymbol {
+                name: call_path.suffix.clone(),
+                span: call_path.suffix.span(),
+            });
+        }
+
+        Ok(decl)
     }
 }

@@ -2,7 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
-    language::{ty, QualifiedCallPath},
+    language::{ty, CallPath, QualifiedCallPath},
     namespace::ModulePath,
     EnforceTypeArguments, Engines, Namespace, TypeId,
 };
@@ -32,5 +32,14 @@ pub trait TypeResolver {
         namespace: &Namespace,
         mod_path: &ModulePath,
         qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted>;
+
+    fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        namespace: &Namespace,
+        mod_path: &ModulePath,
+        call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted>;
 }
