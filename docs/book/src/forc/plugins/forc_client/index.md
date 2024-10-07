@@ -103,7 +103,7 @@ forc-deploy --testnet
 It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
 
 ```sh
-forc-deploy --node-url https://beta-3.fuel.network
+forc-deploy --node-url "https://beta-3.fuel.network"
 ```
 
 Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `beta-5` you can use:
