@@ -3,10 +3,9 @@ use crate::{
     cmd,
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
-        gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
-        tx::{prompt_forc_wallet_password, TransactionBuilderExt, WalletSelectionMode},
+        tx::{prompt_forc_wallet_password, select_account, SignerSelectionMode},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -14,8 +13,16 @@ use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{ContractId, Transaction, TransactionBuilder};
-use fuels_accounts::provider::Provider;
+use fuel_tx::{ContractId, Transaction};
+use fuels::{
+    programs::calls::{traits::TransactionTuner, ScriptCall},
+    types::{
+        bech32::Bech32ContractId,
+        transaction::TxPolicies,
+        transaction_builders::{BuildableTransaction, VariableOutputPolicy},
+    },
+};
+use fuels_accounts::{provider::Provider, Account};
 use pkg::{manifest::build_profile::ExperimentalFlags, BuiltPackage};
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
@@ -51,10 +58,10 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs_with_manifest = built_pkgs(&curr_dir, &build_opts)?;
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
-        WalletSelectionMode::Manual
+        SignerSelectionMode::Manual
     } else {
         let password = prompt_forc_wallet_password()?;
-        WalletSelectionMode::ForcWallet(password)
+        SignerSelectionMode::ForcWallet(password)
     };
     for built in built_pkgs_with_manifest {
         if built
@@ -77,13 +84,34 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     Ok(receipts)
 }
 
+fn tx_policies_from_cmd(cmd: &cmd::Run) -> TxPolicies {
+    let mut tx_policies = TxPolicies::default();
+    if let Some(max_fee) = cmd.gas.max_fee {
+        tx_policies = tx_policies.with_max_fee(max_fee);
+    }
+    if let Some(script_gas_limit) = cmd.gas.script_gas_limit {
+        tx_policies = tx_policies.with_script_gas_limit(script_gas_limit);
+    }
+    tx_policies
+}
+
 pub async fn run_pkg(
     command: &cmd::Run,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
-    wallet_mode: &WalletSelectionMode,
+    signer_mode: &SignerSelectionMode,
 ) -> Result<RanScript> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
+    let provider = Provider::connect(node_url.clone()).await?;
+    let tx_count = 1;
+    let account = select_account(
+        signer_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+        tx_count,
+    )
+    .await?;
 
     let script_data = match (&command.data, &command.args) {
         (None, Some(args)) => {
@@ -116,30 +144,27 @@ pub async fn run_pkg(
         })
         .collect::<Result<Vec<ContractId>>>()?;
 
-    let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
-    tb.maturity(command.maturity.maturity.into())
-        .add_contracts(contract_ids);
-
-    let provider = Provider::connect(node_url.clone()).await?;
-
-    let script_gas_limit = if compiled.bytecode.bytes.is_empty() {
-        0
-    } else if let Some(script_gas_limit) = command.gas.script_gas_limit {
-        script_gas_limit
-    // Dry run tx and get `gas_used`
-    } else {
-        get_script_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
+    let script_binary = compiled.bytecode.bytes.clone();
+    let external_contracts = contract_ids
+        .into_iter()
+        .map(Bech32ContractId::from)
+        .collect::<Vec<_>>();
+    let call = ScriptCall {
+        script_binary,
+        encoded_args: Ok(script_data),
+        inputs: vec![],
+        outputs: vec![],
+        external_contracts,
     };
-    tb.script_gas_limit(script_gas_limit);
-
-    let tx = tb
-        .finalize_signed(
-            Provider::connect(node_url.clone()).await?,
-            command.default_signer,
-            command.signing_key,
-            wallet_mode,
-        )
+    let tx_policies = tx_policies_from_cmd(command);
+    let mut tb = call
+        .transaction_builder(tx_policies, VariableOutputPolicy::EstimateMinimum, &account)
         .await?;
+
+    account.add_witnesses(&mut tb)?;
+    account.adjust_for_fee(&mut tb, 0).await?;
+
+    let tx = tb.build(provider).await?;
 
     if command.dry_run {
         info!("{:?}", tx);

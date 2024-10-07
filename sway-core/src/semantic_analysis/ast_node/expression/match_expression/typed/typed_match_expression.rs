@@ -607,10 +607,12 @@ impl ty::TyMatchExpression {
             matched_or_variant_index_vars,
             condition,
             result,
+            span: branch_span,
             ..
         } in self.branches.iter().rev()
         {
             if let ControlFlow::Break(_) = self.convert_to_typed_if_expression_inner_branch(
+                branch_span.clone(),
                 &mut typed_if_exp,
                 condition,
                 result,
@@ -629,6 +631,7 @@ impl ty::TyMatchExpression {
     #[allow(clippy::too_many_arguments)]
     fn convert_to_typed_if_expression_inner_branch(
         &self,
+        branch_span: Span,
         typed_if_exp: &mut Option<TyExpression>,
         condition: &Option<TyExpression>,
         result: &TyExpression,
@@ -655,7 +658,7 @@ impl ty::TyMatchExpression {
             };
         }
         let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
-        ctx.scoped(|mut branch_ctx| {
+        ctx.scoped(handler, Some(branch_span), |mut branch_ctx| {
             let result_span = result.span.clone();
             let condition = condition
                 .clone()

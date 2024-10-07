@@ -151,6 +151,26 @@ impl Session {
         Ok(())
     }
 
+    pub fn token_references(&self, url: &Url, position: Position) -> Option<Vec<Location>> {
+        let _p = tracing::trace_span!("token_references").entered();
+        let token_references: Vec<_> = self
+            .token_map
+            .iter()
+            .all_references_of_token(
+                self.token_map.token_at_position(url, position)?.value(),
+                &self.engines.read(),
+            )
+            .filter_map(|item| {
+                let path = item.key().path.as_ref()?;
+                let uri = Url::from_file_path(path).ok()?;
+                self.sync
+                    .to_workspace_url(uri)
+                    .map(|workspace_url| Location::new(workspace_url, item.key().range))
+            })
+            .collect();
+        Some(token_references)
+    }
+
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let _p = tracing::trace_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = self
@@ -457,7 +477,18 @@ pub fn parse_project(
 
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
-        create_runnables(&session.runnables, typed, engines.de(), engines.se());
+        let path = uri.to_file_path().unwrap();
+        let program_id = program_id_from_path(&path, engines)?;
+        if let Some(metrics) = session.metrics.get(&program_id) {
+            // Check if the cached AST was returned by the compiler for the users workspace.
+            // If it was, then we need to use the original engines.
+            let engines = if metrics.reused_programs > 0 {
+                &*session.engines.read()
+            } else {
+                engines
+            };
+            create_runnables(&session.runnables, typed, engines.de(), engines.se());
+        }
     }
     Ok(())
 }

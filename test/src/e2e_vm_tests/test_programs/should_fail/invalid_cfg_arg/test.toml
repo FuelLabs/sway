@@ -1,0 +1,10 @@
+category = "fail"
+
+# check: $()#[cfg(c)] a
+# nextln: $()Unexpected attribute value: "c" for attribute: "cfg" expected value "target" or "program_type" or "experimental_new_encoding"
+
+# check: $()#[cfg(c)] a
+# nextln: $()Expected an item.
+
+# check: $()#[cfg(c)] a
+# nextln: $()Unexpected attribute value: "c" for attribute: "cfg"

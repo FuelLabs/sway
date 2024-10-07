@@ -1,0 +1,298 @@
+---
+source: test/tests/tests.rs
+---
+exit status: 1
+stdout:
+    Building src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
+   Compiling library core (sway-lib-core)
+   Compiling library std (sway-lib-std)
+   Compiling script array_wrong_elements_types (test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types)
+
+stderr:
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:41:27
+   |
+39 |     // unexpected Option<u8>
+40 |     let a = [None, Some(1), Some(1u8)];
+41 |     let _b: Option<u16> = a[1];
+   |                           ^^^^ Mismatched types.
+expected: Option<u16>
+found:    Option<u8>.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+42 | 
+43 |     // unexpected u8
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:45:18
+   |
+43 |     // unexpected u8
+44 |     let a = [8, 256u16, 8u8];
+45 |     let b: u32 = a[2];
+   |                  ^^^^ Mismatched types.
+expected: u32
+found:    u16.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+46 | 
+47 |     // Should not warn or error
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:9:22
+   |
+ 7 | fn main() {
+ 8 |     // unexpected u16
+ 9 |     let a: [u8;1] = [1u16];
+   |                      ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+10 | 
+11 |     // unexpected u16
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:12:19
+   |
+10 | 
+11 |     // unexpected u16
+12 |     let _ = [1u8, 1u16];
+   |                   ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+14 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:13:22
+   |
+11 |     // unexpected u16
+12 |     let _ = [1u8, 1u16];
+13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+   |                      ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+14 | 
+15 |     // unexpected u8
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:13:28
+   |
+11 |     // unexpected u16
+12 |     let _ = [1u8, 1u16];
+13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+   |                            ^^^^ Mismatched types.
+expected: u8
+found:    u32.
+
+14 | 
+15 |     // unexpected u8
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:13:34
+   |
+11 |     // unexpected u16
+12 |     let _ = [1u8, 1u16];
+13 |     let a = [1, 2u8, 3u16, 4u32, 5u64];
+   |                                  ^^^^ Mismatched types.
+expected: u8
+found:    u64.
+
+14 | 
+15 |     // unexpected u8
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:16:23
+   |
+14 | 
+15 |     // unexpected u8
+16 |     let _ = [1, 1u16, a[0]];
+   |                       ^^^^ Mismatched types.
+expected: u16
+found:    u8.
+
+17 | 
+18 |     // unexpected string slice
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:19:17
+   |
+17 | 
+18 |     // unexpected string slice
+19 |     let _ = [1, "", 1u8, 1u16];
+   |                 ^^ Mismatched types.
+expected: u8
+found:    str.
+
+20 | 
+21 |     // unexpected u8
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:19:26
+   |
+17 | 
+18 |     // unexpected string slice
+19 |     let _ = [1, "", 1u8, 1u16];
+   |                          ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+20 | 
+21 |     // unexpected u8
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:22:27
+   |
+20 | 
+21 |     // unexpected u8
+22 |     let _ = [return, 1u8, 1u16];
+   |                           ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+23 | 
+24 |     // unexpected u16
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:25:27
+   |
+23 | 
+24 |     // unexpected u16
+25 |     let _ = [1u8, return, 1u16];
+   |                           ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+26 | 
+27 |     // unexpected u16
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:28:30
+   |
+26 | 
+27 |     // unexpected u16
+28 |     let _ = [1, return, 1u8, 1u16];
+   |                              ^^^^ Mismatched types.
+expected: u8
+found:    u16.
+
+29 | 
+30 |     // unexpected str
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:31:17
+   |
+29 | 
+30 |     // unexpected str
+31 |     let _ = [1, "", 1u16];
+   |                 ^^ Mismatched types.
+expected: u16
+found:    str.
+
+32 |     let _ = [1, 2, "hello"];
+33 |     let _ = [1, return, "", 1u16];
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:32:20
+   |
+30 |     // unexpected str
+31 |     let _ = [1, "", 1u16];
+32 |     let _ = [1, 2, "hello"];
+   |                    ^^^^^^^ Mismatched types.
+expected: numeric
+found:    str.
+
+33 |     let _ = [1, return, "", 1u16];
+34 |     let _ = [1, "", return, 1u16];
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:33:25
+   |
+31 |     let _ = [1, "", 1u16];
+32 |     let _ = [1, 2, "hello"];
+33 |     let _ = [1, return, "", 1u16];
+   |                         ^^ Mismatched types.
+expected: u16
+found:    str.
+
+34 |     let _ = [1, "", return, 1u16];
+35 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:34:17
+   |
+32 |     let _ = [1, 2, "hello"];
+33 |     let _ = [1, return, "", 1u16];
+34 |     let _ = [1, "", return, 1u16];
+   |                 ^^ Mismatched types.
+expected: u16
+found:    str.
+
+35 | 
+36 |     // unexpected Vec<u16>
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:37:39
+   |
+35 | 
+36 |     // unexpected Vec<u16>
+37 |     let _ = [Vec::new(), vec::<u8>(), vec::<u16>()];
+   |                                       ^^^^^^^^^^^^ Mismatched types.
+expected: Vec<u8>
+found:    Vec<u16>.
+
+38 |     
+39 |     // unexpected Option<u8>
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:44:25
+   |
+42 | 
+43 |     // unexpected u8
+44 |     let a = [8, 256u16, 8u8];
+   |                         ^^^ Mismatched types.
+expected: u16
+found:    u8.
+
+45 |     let b: u32 = a[2];
+46 | 
+   |
+____
+
+  Aborting due to 19 errors.
+error: Failed to compile array_wrong_elements_types

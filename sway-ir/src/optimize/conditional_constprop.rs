@@ -59,17 +59,13 @@ pub fn ccp(
     }
 
     // lets walk the dominator tree from the root.
-    let Some((root_block, _root_node)) =
-        dom_tree.iter().find(|(_block, node)| node.parent.is_none())
-    else {
-        panic!("Dominator tree without root");
-    };
+    let root_block = function.get_entry_block(context);
 
     if dom_region_replacements.is_empty() {
         return Ok(false);
     }
 
-    let mut stack = vec![(*root_block, 0)];
+    let mut stack = vec![(root_block, 0)];
     let mut replacements = FxHashMap::default();
     while let Some((block, next_child)) = stack.last().cloned() {
         let cur_replacement_opt = dom_region_replacements.get(&block);
@@ -83,14 +79,12 @@ pub fn ccp(
             block.replace_values(context, &replacements);
         }
 
-        let block_node = &dom_tree[&block];
-
         // walk children.
-        if let Some(child) = block_node.children.get(next_child) {
+        if let Some(child) = dom_tree.child(block, next_child) {
             // When we arrive back at "block" next time, we should process the next child.
             stack.last_mut().unwrap().1 = next_child + 1;
             // Go on to process the child.
-            stack.push((*child, 0));
+            stack.push((child, 0));
         } else {
             // No children left to process. Start postorder processing.
             if let Some(cur_replacement) = cur_replacement_opt {

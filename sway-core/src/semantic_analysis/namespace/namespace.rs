@@ -23,7 +23,7 @@ pub enum TryInsertingTraitImplOnFailure {
 }
 
 /// The set of items that represent the namespace context passed throughout type checking.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Namespace {
     /// An immutable namespace that consists of the names that should always be present, no matter
     /// what module or scope we are currently checking.
@@ -47,6 +47,14 @@ pub struct Namespace {
 }
 
 impl Namespace {
+    pub fn new() -> Self {
+        Self {
+            init: Module::default(),
+            mod_path: vec![],
+            root: Root::default(),
+        }
+    }
+
     pub fn program_id(&self, engines: &Engines) -> &Module {
         self.root
             .module

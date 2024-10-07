@@ -179,4 +179,25 @@ If an `address` is present, `forc` calls into that contract to update its `targe
 
 ## Large Contracts
 
-For contracts over 100KB, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
+For contracts over the maximum contract size limit (currently `100kB`) defined by the network, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
+
+## Deploying Scripts and Predicates
+
+`forc deploy` now supports deploying scripts and predicates in addition to contracts. These are deployed as blobs with generated loaders for efficiency.
+
+Scripts and predicates are deployed automatically when you run `forc deploy` on a project that contains them. The deployment process differs slightly from contract deployment:
+
+1. For scripts and predicates, the bytecode is uploaded as a blob.
+2. A loader is generated that can load and execute the blob.
+3. The loader bytecode is saved in the project's output directory.
+
+After deployment, you'll find new files in your project's output directory:
+
+- For scripts: `<script_name>-loader.bin`
+- For predicates: `<predicate_name>-loader.bin` and `<predicate_name>-loader-root`
+
+The loader files contain the bytecode necessary to load and execute your script or predicate from the deployed blob.
+
+This new deployment method allows for more efficient storage and execution of scripts and predicates on the Fuel network.
+
+Note: Contracts are still deployed directly, not as blobs given that the contract size is under the maximum contract size limit defined by network (currently `100kB`).

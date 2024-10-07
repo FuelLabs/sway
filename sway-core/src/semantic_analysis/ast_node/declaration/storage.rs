@@ -1,16 +1,20 @@
 use std::collections::HashMap;
 
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     fuel_prelude::fuel_tx::StorageSlot,
     ir_generation::{
         const_eval::compile_constant_expression_to_constant,
         storage::{get_storage_key_string, serialize_to_storage_slots},
     },
-    language::ty::{self, TyExpression, TyStorageField},
+    language::{
+        parsed::StorageDeclaration,
+        ty::{self, TyExpression, TyStorageField},
+    },
     metadata::MetadataManager,
     semantic_analysis::{
-        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     Engines,
 };
@@ -24,6 +28,15 @@ use sway_ir::{ConstantValue, Context, Module};
 use sway_types::{u256::U256, Spanned};
 
 impl ty::TyStorageDecl {
+    pub(crate) fn collect(
+        _handler: &Handler,
+        _engines: &Engines,
+        _ctx: &mut SymbolCollectionContext,
+        _decl_id: &ParsedDeclId<StorageDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+
     pub(crate) fn get_initialized_storage_slots(
         &self,
         handler: &Handler,
