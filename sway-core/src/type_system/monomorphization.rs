@@ -11,32 +11,16 @@ use crate::{
         CallPath,
     },
     namespace::ModulePath,
+    semantic_analysis::type_resolve::TypeResolver,
     type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, SubstTypes, SubstTypesContext, TypeArgument, TypeId, TypeInfo,
-    TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
+    TypeInfo, TypeParameter, TypeSubstMap,
 };
 
 pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
     fn type_parameters(&self) -> &[TypeParameter];
     fn has_self_type_param(&self) -> bool;
-}
-
-pub trait TypeResolver {
-    /// Resolve the type of the given [TypeId], replacing any instances of
-    /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
-    /// enum, or a reference to a type parameter.
-    #[allow(clippy::too_many_arguments)]
-    fn resolve(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        type_id: TypeId,
-        span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&ModulePath>,
-        mod_path: &ModulePath,
-    ) -> Result<TypeId, ErrorEmitted>;
 }
 
 /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -46,12 +30,14 @@ pub trait TypeResolver {
 pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
     handler: &Handler,
     engines: &Engines,
-    type_resolver: &mut dyn TypeResolver,
+    namespace: &Namespace,
+    type_resolver: &dyn TypeResolver,
     value: &T,
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
+    self_type: Option<TypeId>,
 ) -> Result<TypeSubstMap, ErrorEmitted>
 where
     T: MonomorphizeHelper + SubstTypes,
@@ -136,11 +122,13 @@ where
                     .resolve(
                         handler,
                         engines,
+                        namespace,
                         type_argument.type_id,
                         &type_argument.span,
                         enforce_type_arguments,
                         None,
                         mod_path,
+                        self_type,
                     )
                     .unwrap_or_else(|err| {
                         engines
@@ -198,12 +186,14 @@ where
 pub(crate) fn monomorphize_with_modpath<T>(
     handler: &Handler,
     engines: &Engines,
-    type_resolver: &mut dyn TypeResolver,
+    namespace: &Namespace,
+    type_resolver: &dyn TypeResolver,
     value: &mut T,
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
+    self_type: Option<TypeId>,
 ) -> Result<(), ErrorEmitted>
 where
     T: MonomorphizeHelper + SubstTypes,
@@ -211,12 +201,14 @@ where
     let type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,
         engines,
+        namespace,
         type_resolver,
         value,
         type_arguments,
         enforce_type_arguments,
         call_site_span,
         mod_path,
+        self_type,
     )?;
     value.subst(&type_mapping, &SubstTypesContext::new(engines, true));
     Ok(())
@@ -226,7 +218,8 @@ where
 pub(crate) fn type_decl_opt_to_type_id(
     handler: &Handler,
     engines: &Engines,
-    type_resolver: &mut dyn TypeResolver,
+    namespace: &Namespace,
+    type_resolver: &dyn TypeResolver,
     type_decl_opt: Option<TyDecl>,
     call_path: &CallPath,
     span: &Span,
@@ -249,12 +242,14 @@ pub(crate) fn type_decl_opt_to_type_id(
             monomorphize_with_modpath(
                 handler,
                 engines,
+                namespace,
                 type_resolver,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
                 enforce_type_arguments,
                 span,
                 mod_path,
+                self_type,
             )?;
 
             // insert the new copy in the decl engine
@@ -281,12 +276,14 @@ pub(crate) fn type_decl_opt_to_type_id(
             monomorphize_with_modpath(
                 handler,
                 engines,
+                namespace,
                 type_resolver,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
                 enforce_type_arguments,
                 span,
                 mod_path,
+                self_type,
             )?;
 
             // insert the new copy in the decl engine

@@ -9,9 +9,7 @@ use crate::{
         ty::{self, TyDecl, TyTraitItem},
         CallPath, QualifiedCallPath, Visibility,
     },
-    monomorphization::{
-        monomorphize_with_modpath, type_decl_opt_to_type_id, MonomorphizeHelper, TypeResolver,
-    },
+    monomorphization::{monomorphize_with_modpath, type_decl_opt_to_type_id, MonomorphizeHelper},
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
         ResolvedTraitImplItem, TraitMap, TryInsertingTraitImplOnFailure,
@@ -30,7 +28,10 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
-use super::{symbol_collection_context::SymbolCollectionContext, GenericShadowingMode};
+use super::{
+    symbol_collection_context::SymbolCollectionContext, type_resolve::TypeResolver,
+    GenericShadowingMode,
+};
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'a> {
@@ -576,13 +577,15 @@ impl<'a> TypeCheckContext<'a> {
         let mod_path = self.namespace().mod_path.clone();
         monomorphize_with_modpath(
             handler,
-            self.engines,
+            self.engines(),
+            self.namespace(),
             self,
             value,
             type_arguments,
             enforce_type_arguments,
             call_site_span,
             &mod_path,
+            self.self_type(),
         )
     }
 
@@ -653,15 +656,20 @@ impl<'a> TypeCheckContext<'a> {
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&ModulePath>,
     ) -> Result<TypeId, ErrorEmitted> {
+        let engines = self.engines();
+        let namespace = self.namespace();
         let mod_path = self.namespace().mod_path.clone();
+        let self_type = self.self_type();
         self.resolve(
             handler,
-            self.engines,
+            engines,
+            namespace,
             type_id,
             span,
             enforce_type_arguments,
             type_info_prefix,
             &mod_path,
+            self_type,
         )
     }
 
@@ -743,81 +751,13 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         qualified_call_path: &QualifiedCallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+        self.resolve_qualified_call_path(
             handler,
+            self.engines(),
+            self.namespace(),
             &self.namespace().mod_path.clone(),
             qualified_call_path,
         )
-    }
-
-    pub(crate) fn resolve_qualified_call_path_with_visibility_check_and_modpath(
-        &mut self,
-        handler: &Handler,
-        mod_path: &ModulePath,
-        qualified_call_path: &QualifiedCallPath,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let type_engine = self.engines().te();
-        if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
-            let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
-                TypeInfo::Custom {
-                    qualified_call_path,
-                    type_arguments,
-                    ..
-                } => {
-                    let type_decl = self.resolve_call_path_with_visibility_check_and_modpath(
-                        handler,
-                        mod_path,
-                        &qualified_call_path.clone().to_call_path(handler)?,
-                    )?;
-                    let self_type = self.self_type();
-                    type_decl_opt_to_type_id(
-                        handler,
-                        self.engines,
-                        self,
-                        Some(type_decl),
-                        &qualified_call_path.call_path,
-                        &qualified_path_root.ty.span(),
-                        EnforceTypeArguments::No,
-                        mod_path,
-                        type_arguments.clone(),
-                        self_type,
-                    )?
-                }
-                _ => qualified_path_root.ty.type_id,
-            };
-
-            let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
-                TypeInfo::Custom {
-                    qualified_call_path: call_path,
-                    ..
-                } => Some(
-                    call_path
-                        .clone()
-                        .to_call_path(handler)?
-                        .to_fullpath(self.engines(), self.namespace()),
-                ),
-                _ => None,
-            };
-
-            self.namespace()
-                .root
-                .resolve_call_path_and_root_type_id(
-                    handler,
-                    self.engines,
-                    &self.namespace().root.module,
-                    root_type_id,
-                    as_trait_opt,
-                    &qualified_call_path.call_path,
-                    self.self_type(),
-                )
-                .map(|decl| decl.expect_typed())
-        } else {
-            self.resolve_call_path_with_visibility_check_and_modpath(
-                handler,
-                mod_path,
-                &qualified_call_path.call_path,
-            )
-        }
     }
 
     /// Given a name and a type (plus a `self_type` to potentially
@@ -855,12 +795,14 @@ impl<'a> TypeCheckContext<'a> {
         let type_id = self
             .resolve(
                 handler,
-                self.engines,
+                self.engines(),
+                self.namespace(),
                 type_id,
                 &item_name.span(),
                 EnforceTypeArguments::No,
                 None,
                 item_prefix,
+                self.self_type(),
             )
             .unwrap_or_else(|err| {
                 type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
@@ -1411,14 +1353,16 @@ impl TypeResolver for TypeCheckContext<'_> {
     /// enum, or a reference to a type parameter.
     #[allow(clippy::too_many_arguments)]
     fn resolve(
-        &mut self,
+        &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&ModulePath>,
         mod_path: &ModulePath,
+        self_type: Option<TypeId>,
     ) -> Result<TypeId, ErrorEmitted> {
         let type_engine = engines.te();
         let module_path = type_info_prefix.unwrap_or(mod_path);
@@ -1429,12 +1373,12 @@ impl TypeResolver for TypeCheckContext<'_> {
                 root_type_id,
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
-                    self.namespace()
-                        .root
+                    namespace
+                        .root()
                         .resolve_call_path_and_root_type_id(
                             handler,
                             engines,
-                            self.namespace().module(engines),
+                            namespace.module(engines),
                             root_type_id,
                             None,
                             &qualified_call_path.clone().to_call_path(handler)?,
@@ -1443,17 +1387,19 @@ impl TypeResolver for TypeCheckContext<'_> {
                         .map(|decl| decl.expect_typed())
                         .ok()
                 } else {
-                    self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+                    self.resolve_qualified_call_path(
                         handler,
+                        engines,
+                        namespace,
                         module_path,
                         &qualified_call_path,
                     )
                     .ok()
                 };
-                let self_type = self.self_type();
                 type_decl_opt_to_type_id(
                     handler,
-                    self.engines,
+                    engines,
+                    namespace,
                     self,
                     type_decl_opt,
                     &qualified_call_path.call_path,
@@ -1469,11 +1415,13 @@ impl TypeResolver for TypeCheckContext<'_> {
                     .resolve(
                         handler,
                         engines,
+                        namespace,
                         elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
                         mod_path,
+                        self_type,
                     )
                     .unwrap_or_else(|err| {
                         engines
@@ -1492,11 +1440,13 @@ impl TypeResolver for TypeCheckContext<'_> {
                     .resolve(
                         handler,
                         engines,
+                        namespace,
                         elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
                         mod_path,
+                        self_type,
                     )
                     .unwrap_or_else(|err| {
                         engines
@@ -1516,11 +1466,13 @@ impl TypeResolver for TypeCheckContext<'_> {
                         .resolve(
                             handler,
                             engines,
+                            namespace,
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
                             None,
                             mod_path,
+                            self_type,
                         )
                         .unwrap_or_else(|err| {
                             engines
@@ -1566,11 +1518,13 @@ impl TypeResolver for TypeCheckContext<'_> {
                     .resolve(
                         handler,
                         engines,
+                        namespace,
                         ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
                         mod_path,
+                        self_type,
                     )
                     .unwrap_or_else(|err| {
                         engines
@@ -1597,5 +1551,77 @@ impl TypeResolver for TypeCheckContext<'_> {
         );
 
         Ok(type_id)
+    }
+
+    fn resolve_qualified_call_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        namespace: &Namespace,
+        mod_path: &ModulePath,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_engine = engines.te();
+        if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
+            let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
+                TypeInfo::Custom {
+                    qualified_call_path,
+                    type_arguments,
+                    ..
+                } => {
+                    let type_decl = self.resolve_call_path_with_visibility_check_and_modpath(
+                        handler,
+                        mod_path,
+                        &qualified_call_path.clone().to_call_path(handler)?,
+                    )?;
+                    type_decl_opt_to_type_id(
+                        handler,
+                        self.engines(),
+                        self.namespace(),
+                        self,
+                        Some(type_decl),
+                        &qualified_call_path.call_path,
+                        &qualified_path_root.ty.span(),
+                        EnforceTypeArguments::No,
+                        mod_path,
+                        type_arguments.clone(),
+                        self.self_type(),
+                    )?
+                }
+                _ => qualified_path_root.ty.type_id,
+            };
+
+            let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                } => Some(
+                    call_path
+                        .clone()
+                        .to_call_path(handler)?
+                        .to_fullpath(self.engines(), self.namespace()),
+                ),
+                _ => None,
+            };
+
+            namespace
+                .root
+                .resolve_call_path_and_root_type_id(
+                    handler,
+                    engines,
+                    &namespace.root.module,
+                    root_type_id,
+                    as_trait_opt,
+                    &qualified_call_path.call_path,
+                    self.self_type(),
+                )
+                .map(|decl| decl.expect_typed())
+        } else {
+            self.resolve_call_path_with_visibility_check_and_modpath(
+                handler,
+                mod_path,
+                &qualified_call_path.call_path,
+            )
+        }
     }
 }
