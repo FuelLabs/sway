@@ -53,7 +53,7 @@ use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
 /// starts dividing the contract and deploy them in chunks automatically.
-/// The value is in bytes.
+/// The value is in bytes
 const MAX_CONTRACT_SIZE: usize = 100_000;
 
 /// Represents a deployed instance of a forc package.
@@ -198,15 +198,10 @@ async fn deploy_chunked(
         None => "".to_string(),
     };
 
-    let chunk_size = chain_info
-        .consensus_parameters
-        .contract_params()
-        .contract_max_size() as usize;
-
     let blobs = compiled
         .bytecode
         .bytes
-        .chunks(chunk_size)
+        .chunks(MAX_CONTRACT_SIZE)
         .map(|chunk| Blob::new(chunk.to_vec()))
         .collect();
 
@@ -613,26 +608,13 @@ pub async fn deploy_contracts(
 
     let node_url = validate_and_get_node_url(command, contracts_to_deploy).await?;
     let provider = Provider::connect(node_url.clone()).await?;
-    let max_contract_size = provider
-        .chain_info()
-        .await
-        .ok()
-        .and_then(|chain_info| {
-            chain_info
-                .consensus_parameters
-                .contract_params()
-                .contract_max_size()
-                .try_into()
-                .ok()
-        })
-        .unwrap_or(MAX_CONTRACT_SIZE);
 
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let account = confirm_transaction_details(
         contracts_to_deploy,
         command,
         node_url.clone(),
-        max_contract_size,
+        MAX_CONTRACT_SIZE,
     )
     .await?;
 
@@ -652,7 +634,7 @@ pub async fn deploy_contracts(
             }
         };
         let bytecode_size = pkg.bytecode.bytes.len();
-        let deployed_contract_id = if bytecode_size > max_contract_size {
+        let deployed_contract_id = if bytecode_size > MAX_CONTRACT_SIZE {
             // Deploy chunked
             let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
             let provider = Provider::connect(node_url).await?;
@@ -717,7 +699,7 @@ pub async fn deploy_contracts(
         let deployed_contract = DeployedContract {
             id: deployed_contract_id,
             proxy: proxy_id,
-            chunked: bytecode_size > max_contract_size,
+            chunked: bytecode_size > MAX_CONTRACT_SIZE,
         };
         deployed_contracts.push(deployed_contract);
     }
