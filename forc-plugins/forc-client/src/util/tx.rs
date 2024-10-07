@@ -181,7 +181,7 @@ pub(crate) async fn select_account(
                 let first_account = accounts
                     .get(&0)
                     .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
-                let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+                let target = Target::from_str(&chain_info.name).unwrap_or(Target::local());
                 let faucet_link = format!("{}/?address={first_account}", target.faucet_url());
                 anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
                                       \n\nIf you are interacting with a testnet consider using the faucet.\

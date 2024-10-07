@@ -24,9 +24,15 @@ pub struct NodeTarget {
     /// Possible values are: [beta-1, beta-2, beta-3, beta-4, local]
     #[clap(long)]
     pub target: Option<Target>,
-    /// Use preset configuration for the latest testnet.
+    /// Use preset configuration for testnet.
     ///
     /// You can also use `--node-url` or `--target` to specify the Fuel node.
     #[clap(long)]
     pub testnet: bool,
+
+    /// Use preset configuration for mainnet.
+    ///
+    /// You can also use `--node-url` or `--target` to specify the Fuel node.
+    #[clap(long)]
+    pub mainnet: bool,
 }
