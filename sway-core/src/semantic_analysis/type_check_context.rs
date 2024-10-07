@@ -560,6 +560,11 @@ impl<'a> TypeCheckContext<'a> {
         self.code_block_first_pass
     }
 
+    /// Get the engines needed for engine threading.
+    pub(crate) fn engines(&self) -> &'a Engines {
+        self.engines
+    }
+
     // Provide some convenience functions around the inner context.
 
     /// Short-hand for calling the `monomorphize` function in the type engine
@@ -641,10 +646,6 @@ impl<'a> TypeCheckContext<'a> {
             )
     }
 
-    /// Get the engines needed for engine threading.
-    pub(crate) fn engines(&self) -> &'a Engines {
-        self.engines
-    }
 
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
