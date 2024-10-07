@@ -1019,6 +1019,13 @@ pub enum CompileError {
     },
     #[error("Type must be known at this point")]
     TypeMustBeKnownAtThisPoint { span: Span, internal: String },
+    #[error("Multiple impls satisfying trait for type.")]
+    MultipleImplsSatisfyingTraitForType {
+        span: Span,
+        type_annotation: String,
+        trait_names: Vec<String>,
+        trait_types_and_names: Vec<(String, String)>,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1237,6 +1244,7 @@ impl Spanned for CompileError {
             ABIHashCollision { span, .. } => span.clone(),
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
+            MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
         }
     }
 }
@@ -2747,6 +2755,18 @@ impl ToDiagnostic for CompileError {
                         }
                     ),
                 ],
+            },
+            MultipleImplsSatisfyingTraitForType { span, type_annotation , trait_names, trait_types_and_names: trait_types_and_spans } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("Multiple impls satisfying {} for {}", trait_names.join("+"), type_annotation))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![],
+                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.iter().enumerate().map(|(e, (type_id, name))| 
+                    format!("#{} {} for {}", e, name, type_id.clone())
+                ).collect::<Vec<_>>().join("\n"))],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
