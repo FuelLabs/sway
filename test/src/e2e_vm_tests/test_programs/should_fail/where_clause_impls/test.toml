@@ -3,8 +3,8 @@ category = "fail"
 # check: $()x: a.x.my_add(b.x),
 
 # check: $()x: a.x.my_add(b.x),
-# nextln: $()No method named "my_add" found for type "T".
+# nextln: $()No method "my_add(T, T) -> T" found for type "T".
 # check: $()y: a.y.my_add(b.y),
 
 # check: $()y: a.y.my_add(b.y),
-# nextln: $()No method named "my_add" found for type "T".
+# nextln: $()No method "my_add(T, T) -> T" found for type "T".

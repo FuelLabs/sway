@@ -1,3 +1,5 @@
 category = "fail"
 
-# check: $()Function "add_values" expects 2 arguments but you provided 1.
+# check: $()No method "add_values(Data) -> u64" found for type "Data".
+# nextln: $()Matching method:
+# nextln: $()add_values(Data, Data) -> u64 in Data

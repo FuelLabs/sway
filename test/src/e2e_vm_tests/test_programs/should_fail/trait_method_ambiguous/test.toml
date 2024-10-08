@@ -4,7 +4,7 @@ category = "fail"
 # nextln: $()Could not find symbol "asd" in this scope.
 
 # check: $()<S as S2>::method();
-# nextln: $()No method named "method" found for type "S as S2".
+# nextln: $()No method "method()" found for type "S as S2".
 
 # check: $()S::method(); // ambiguous method call here
 # nextln: $()Multiple applicable items in scope.

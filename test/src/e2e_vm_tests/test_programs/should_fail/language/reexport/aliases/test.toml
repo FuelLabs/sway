@@ -107,7 +107,7 @@ category = "fail"
 
 #check: $()error
 #check: $()assert(items_2_struct_res == 123);
-#nextln: $()No method named "eq" found for type "{unknown}".
+#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_2_enum = Items2_Enum::C(432);
@@ -123,7 +123,7 @@ category = "fail"
 
 #check: $()error
 #check: $()assert(items_2_enum_res == 432);
-#nextln: $()No method named "eq" found for type "{unknown}".
+#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_2_variants = Z(680);
@@ -135,7 +135,7 @@ category = "fail"
 
 #check: $()error
 #check: $()let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
-#nextln: $()No method named "items_2_trait_function" found for type "TestStruct1".
+#nextln: $()No method "items_2_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
 
 #check: $()error
 #check: $()let items_3_struct = Items3_Struct { c: 123 };
@@ -151,7 +151,7 @@ category = "fail"
 
 #check: $()error
 #check: $()assert(items_3_struct_res == 123);
-#nextln: $()No method named "eq" found for type "{unknown}".
+#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_3_enum = Items3_Enum::E(432);
@@ -167,7 +167,7 @@ category = "fail"
 
 #check: $()error
 #check: $()assert(items_3_enum_res == 432);
-#nextln: $()No method named "eq" found for type "{unknown}".
+#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_3_variants = U(680);
@@ -179,7 +179,7 @@ category = "fail"
 
 #check: $()error
 #check: $()let items_3_trait_teststruct_1_res = teststruct_1.items_3_trait_function(teststruct_2);
-#nextln: $()No method named "items_3_trait_function" found for type "TestStruct1".
+#nextln: $()No method "items_3_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
 
 #check: $()error
 #check: $()let items_5_trait_teststruct_1_res = teststruct_1.items_5_trait_function(teststruct_2);

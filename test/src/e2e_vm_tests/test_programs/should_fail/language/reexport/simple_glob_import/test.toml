@@ -64,7 +64,7 @@ category = "fail"
 #check: $()Could not find symbol "project_items_1_struct" in this scope.
 
 #check: $()error
-#check: $()No method named "eq" found for type "{unknown}".
+#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "Items1_Enum" in this scope.
@@ -76,7 +76,7 @@ category = "fail"
 #check: $()Could not find symbol "project_items_1_enum" in this scope.
 
 #check: $()error
-#check: $()No method named "eq" found for type "{unknown}".
+#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "X" in this scope.
@@ -85,7 +85,7 @@ category = "fail"
 #check: $()Variable "ITEMS_1_FUNCTION_RES" does not exist in this scope.
 
 #check: $()error
-#check: $()No method named "items_1_trait_function" found for type "TestStruct1".
+#check: $()No method "items_1_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
 
 #check: $()error
 #check: $()Could not find symbol "Items2_Struct" in this scope.
@@ -97,7 +97,7 @@ category = "fail"
 #check: $()Could not find symbol "project_items_2_struct" in this scope.
 
 #check: $()error
-#check: $()No method named "eq" found for type "{unknown}".
+#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "Items2_Enum" in this scope.
@@ -109,7 +109,7 @@ category = "fail"
 #check: $()Could not find symbol "project_items_2_enum" in this scope.
 
 #check: $()error
-#check: $()No method named "eq" found for type "{unknown}".
+#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "O" in this scope.
@@ -118,12 +118,12 @@ category = "fail"
 #check: $()Could not find symbol "project_items_2_variants" in this scope.
 
 #check: $()error
-#check: $()No method named "eq" found for type "{unknown}".
+#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()error
 #check: $()Variable "ITEMS_2_FUNCTION_RES" does not exist in this scope.
 
 #check: $()error
-#check: $()No method named "items_2_trait_function" found for type "TestStruct1".
+#check: $()No method "items_2_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
 
 #check: $()Aborting due to 42 errors.

@@ -1,9 +1,11 @@
 category = "fail"
 
 # check: $()error
-# nextln: generics_in_contract/src/main.sw:19:22
+# nextln: generics_in_contract/src/main.sw:19:17
 # check: $()vec.push(item);
-# check: $()This parameter was declared as type V, but argument of type K was provided.
+# check: $()No method "push(Vec<V>, K)" found for type "Vec<V>".
+# nextln: $()Matching method:
+# nextln: $()push(Vec<V>, V) -> () in Vec<V>
 
 # check: $()error
 # nextln: generics_in_contract/src/main.sw:39:9

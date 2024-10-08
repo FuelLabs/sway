@@ -53,4 +53,6 @@ category = "fail"
 # check: $()help: Function body's return type does not match up with its return type annotation.
 
 # check: $()let b = a.set(42);
-# check: $()No method named "set" found for type "FooBarData<u8>".
+# check: $()No method "set(FooBarData<u8>, numeric) -> bool" found for type "FooBarData<u8>".
+
+# check: $()Aborting due to 21 errors.

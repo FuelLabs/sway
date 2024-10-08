@@ -1,4 +1,6 @@
 category = "fail"
 
 # check: $()let _c = a.set_it(false);
-# nextln: $()This parameter was declared as type u8, but argument of type bool was provided.
+# nextln: $()No method "set_it(FooBarData<u8>, bool)" found for type "FooBarData<u8>".
+# nextln: $()Matching method:
+# nextln: $()set_it(FooBarData<u8>, u8) -> FooBarData<u8> in FooBarData<u8>

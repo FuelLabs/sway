@@ -4,6 +4,6 @@ category = "fail"
 #nextln: $()Could not find symbol "S_ASSOC" in this scope.
 
 #check: $()const S_ASSOC: u8 = Self::assoc();
-#nextln: $()No method named "assoc" found for type "S".
+#nextln: $()No method "assoc() -> u8" found for type "S".
 
 #check: $()2 errors.

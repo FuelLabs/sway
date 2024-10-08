@@ -4,7 +4,7 @@ use crate::{
     type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum UnifyCheckMode {
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
     /// coerced into `right`.
@@ -173,6 +173,8 @@ enum UnifyCheckMode {
 pub(crate) struct UnifyCheck<'a> {
     engines: &'a Engines,
     mode: UnifyCheckMode,
+    unify_ref_mut: bool,
+    ignore_generic_names: bool,
 }
 
 impl<'a> UnifyCheck<'a> {
@@ -180,18 +182,24 @@ impl<'a> UnifyCheck<'a> {
         Self {
             engines,
             mode: UnifyCheckMode::Coercion,
+            unify_ref_mut: true,
+            ignore_generic_names: false,
         }
     }
     pub(crate) fn constraint_subset(engines: &'a Engines) -> Self {
         Self {
             engines,
             mode: UnifyCheckMode::ConstraintSubset,
+            unify_ref_mut: true,
+            ignore_generic_names: false,
         }
     }
     pub(crate) fn non_generic_constraint_subset(engines: &'a Engines) -> Self {
         Self {
             engines,
             mode: UnifyCheckMode::NonGenericConstraintSubset,
+            unify_ref_mut: true,
+            ignore_generic_names: false,
         }
     }
 
@@ -199,6 +207,26 @@ impl<'a> UnifyCheck<'a> {
         Self {
             engines,
             mode: UnifyCheckMode::NonDynamicEquality,
+            unify_ref_mut: true,
+            ignore_generic_names: false,
+        }
+    }
+
+    pub(crate) fn with_unify_ref_mut(&self, unify_ref_mut: bool) -> Self {
+        Self {
+            unify_ref_mut,
+            ignore_generic_names: self.ignore_generic_names,
+            engines: self.engines,
+            mode: self.mode.clone(),
+        }
+    }
+
+    pub(crate) fn with_ignore_generic_names(&self, ignore_generic_names: bool) -> Self {
+        Self {
+            unify_ref_mut: self.unify_ref_mut,
+            ignore_generic_names,
+            engines: self.engines,
+            mode: self.mode.clone(),
         }
     }
 
@@ -337,7 +365,7 @@ impl<'a> UnifyCheck<'a> {
                     to_mutable_value: r_to_mut,
                     referenced_type: r_ty,
                 },
-            ) => {
+            ) if self.unify_ref_mut => {
                 // Unification is possible in these situations, assuming that the referenced types
                 // can unify:
                 //     l  ->  r
@@ -345,6 +373,19 @@ impl<'a> UnifyCheck<'a> {
                 //  - `&mut` -> `&`
                 //  - `&mut` -> `&mut`
                 return (*l_to_mut || !*r_to_mut) && self.check_inner(l_ty.type_id, r_ty.type_id);
+            }
+
+            (
+                Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => {
+                return *l_to_mut == *r_to_mut && self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
             (UnknownGeneric { parent: lp, .. }, r)
@@ -402,12 +443,12 @@ impl<'a> UnifyCheck<'a> {
                             parent: _,
                             is_from_type_parameter: _,
                         },
-                    ) => ln == rn && rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
-                    // any type can be coerced into a generic,
-                    // except if the type already contains the generic
-                    (_e, _g @ UnknownGeneric { .. }) => {
-                        !OccursCheck::new(self.engines).check(right, left)
+                    ) => {
+                        (ln == rn || self.ignore_generic_names)
+                            && rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines))
                     }
+                    // any type can be coerced into a generic,
+                    (_e, _g @ UnknownGeneric { .. }) => true,
 
                     // Never coerces to any other type.
                     (Never, _) => true,

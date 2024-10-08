@@ -1,10 +1,10 @@
 category = "fail"
 
 # check: let _i = b.add();
-# nextln: $()No method named "add" found for type "DoubleIdentity<bool, bool>".
+# nextln: $()No method "add(DoubleIdentity<bool, bool>)" found for type "DoubleIdentity<bool, bool>".
 
 # check: let _j = c.get_first();
-# nextln: $()No method named "get_first" found for type "DoubleIdentity<u64, str>".
+# nextln: $()No method "get_first(DoubleIdentity<u64, str>)" found for type "DoubleIdentity<u64, str>".
 
 # check: let _l = c.add();
-# nextln: $()No method named "add" found for type "DoubleIdentity<u64, str>".
+# nextln: $()No method "add(DoubleIdentity<u64, str>)" found for type "DoubleIdentity<u64, str>".

@@ -9,4 +9,5 @@ category = "fail"
 # nextln: $()Implicit return must match up with block's type.
 
 # check: $()error
-# check: $()No method named "does_not_exist" found for type "MyResult<Data<bool>, str[4]>".
+# check: $()No method "does_not_exist(MyResult<Data<bool>, str[4]>)" found for type "MyResult<Data<bool>, str[4]>"
+

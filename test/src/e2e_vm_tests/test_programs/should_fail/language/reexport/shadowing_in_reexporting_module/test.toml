@@ -92,7 +92,7 @@ category = "fail"
 
 #check: $()error
 #check: $()Items1_Enum::B(val) => val + 1000,
-#nextln: $()No method named "add" found for type "bool".
+#nextln: $()No method "add(bool, numeric) -> u64" found for type "bool".
 
 #check: $()error
 #check: $()items_1_function()
@@ -131,7 +131,7 @@ category = "fail"
 
 #check: $()error
 #check: $()Items2_Enum::D(val) => val + 1000,
-#nextln: $()No method named "add" found for type "bool".
+#nextln: $()No method "add(bool, numeric) -> u64" found for type "bool".
 
 #check: $()error
 #check: $()items_2_function()
@@ -164,7 +164,9 @@ category = "fail"
 
 #check: $()error
 #check: $()let items_1_trait_teststruct_1_res = teststruct_1.items_1_trait_function(teststruct_2);
-#nextln: $()Cannot call associated function "items_1_trait_function" as a method. Use associated function syntax instead.
+#nextln: $()No method "items_1_trait_function(TestStruct1, TestStruct2)" found for type "TestStruct1".
+#nextln: $()Matching method:
+#nextln: $()items_1_trait_function() -> u64
 
 #check: $()error
 #check: $()let items_2_struct = Items2_Struct { b: 879 };
@@ -180,7 +182,9 @@ category = "fail"
 
 #check: $()error
 #check: $()let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
-#nextln: $()Cannot call associated function "items_2_trait_function" as a method. Use associated function syntax instead.
+#nextln: $()No method "items_2_trait_function(TestStruct1, TestStruct2)" found for type "TestStruct1".
+#nextln: $()Matching method:
+#nextln: $()items_2_trait_function() -> u64
 
 #check: $()error
 #check: $()This path must return a value of type "u64" from function "items_1_trait_function", but it does not.
@@ -188,4 +192,4 @@ category = "fail"
 #check: $()error
 #check: $()This path must return a value of type "u64" from function "items_2_trait_function", but it does not.
 
-#check: $()Aborting due to 42 errors.
+#check: $()Aborting due to 44 errors.

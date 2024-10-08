@@ -1,6 +1,8 @@
 category = "fail"
 
 # check: bar.associated()
-# nextln: $()Cannot call associated function "associated" as a method. Use associated function syntax instead.
+# nextln: $()No method "associated(Bar)" found for type "Bar".
+# nextln: $()Matching method:
+# nextln: $()associated() -> () in Bar
 
 expected_warnings = 1
