@@ -7,21 +7,20 @@ use crate::{
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::{ident::Ident, span::Span, Spanned};
-
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,

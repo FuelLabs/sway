@@ -1,10 +1,11 @@
-use std::hash::{DefaultHasher, Hasher};
-use std::marker::PhantomData;
-use std::{fmt, hash::Hash};
-
-use crate::engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext};
-
 use super::DeclUniqueId;
+use crate::engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext};
+use serde::{Deserialize, Serialize};
+use std::{
+    hash::{DefaultHasher, Hasher},
+    marker::PhantomData,
+    {fmt, hash::Hash},
+};
 
 pub type ParsedDeclIdIndexType = usize;
 
@@ -69,6 +70,25 @@ impl<T> PartialOrd for ParsedDeclId<T> {
 impl<T> Ord for ParsedDeclId<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+impl<T> Serialize for ParsedDeclId<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for ParsedDeclId<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let id = usize::deserialize(deserializer)?;
+        Ok(ParsedDeclId::new(id))
     }
 }
 

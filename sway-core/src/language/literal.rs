@@ -1,15 +1,14 @@
 use crate::{type_system::*, Engines};
-
-use sway_error::error::CompileError;
-use sway_types::{integer_bits::IntegerBits, span, u256::U256};
-
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
     num::{IntErrorKind, ParseIntError},
 };
+use sway_error::error::CompileError;
+use sway_types::{integer_bits::IntegerBits, span, u256::U256};
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub enum Literal {
     U8(u8),
     U16(u16),

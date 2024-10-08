@@ -21,6 +21,8 @@
 //!   #[foo(bar, bar)]
 
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
+use std::{hash::Hash, sync::Arc};
 use sway_ast::Literal;
 use sway_types::{
     constants::{
@@ -30,9 +32,7 @@ use sway_types::{
     Ident, Span, Spanned,
 };
 
-use std::{hash::Hash, sync::Arc};
-
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AttributeArg {
     pub name: Ident,
     pub value: Option<Literal>,
@@ -48,7 +48,7 @@ impl Spanned for AttributeArg {
 /// An attribute has a name (i.e "doc", "storage"),
 /// a vector of possible arguments and
 /// a span from its declaration.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Attribute {
     pub name: Ident,
     pub args: Vec<AttributeArg>,
@@ -56,7 +56,7 @@ pub struct Attribute {
 }
 
 /// Valid kinds of attributes supported by the compiler
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AttributeKind {
     Doc,
     DocComment,
@@ -102,7 +102,7 @@ impl AttributeKind {
 }
 
 /// Stores the attributes associated with the type.
-#[derive(Default, Clone, Debug, Eq, PartialEq)]
+#[derive(Default, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AttributesMap(Arc<IndexMap<AttributeKind, Vec<Attribute>>>);
 
 impl AttributesMap {

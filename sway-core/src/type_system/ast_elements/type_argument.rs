@@ -1,8 +1,9 @@
 use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,

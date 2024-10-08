@@ -1,26 +1,23 @@
+use crate::{
+    engine_threading::*,
+    has_changes,
+    language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    semantic_analysis::type_check_context::MonomorphizeHelper,
+    transform,
+    type_system::*,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
 };
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    has_changes,
-    language::{parsed::EnumDeclaration, CallPath, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
-    transform,
-    type_system::*,
-};
-
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
@@ -133,7 +130,7 @@ impl Spanned for TyEnumVariant {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyEnumVariant {
     pub name: Ident,
     pub type_argument: TypeArgument,

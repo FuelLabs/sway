@@ -23,7 +23,7 @@ graph-cycles.workspace = true
 hashbrown.workspace = true
 hex = { workspace = true, optional = true }
 im.workspace = true
-indexmap.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
 lazy_static.workspace = true
 miden-core.workspace = true
