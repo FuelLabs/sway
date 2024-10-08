@@ -29,7 +29,7 @@ use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
     symbol_collection_context::SymbolCollectionContext,
-    type_resolve::{resolve, resolve_call_path, resolve_qualified_call_path},
+    type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type},
     GenericShadowingMode,
 };
 
@@ -660,7 +660,7 @@ impl<'a> TypeCheckContext<'a> {
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&ModulePath>,
     ) -> Result<TypeId, ErrorEmitted> {
-        resolve(
+        resolve_type(
             handler,
             self.engines(),
             self.namespace(),
@@ -738,7 +738,7 @@ impl<'a> TypeCheckContext<'a> {
             .get_items_for_type(self.engines, type_id);
 
         // resolve the type
-        let type_id = resolve(
+        let type_id = resolve_type(
             handler,
             self.engines(),
             self.namespace(),

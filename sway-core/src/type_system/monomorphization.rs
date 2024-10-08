@@ -11,7 +11,7 @@ use crate::{
         CallPath,
     },
     namespace::ModulePath,
-    semantic_analysis::type_resolve::resolve,
+    semantic_analysis::type_resolve::resolve_type,
     type_system::ast_elements::create_type_id::CreateTypeId,
     EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
     TypeInfo, TypeParameter, TypeSubstMap,
@@ -118,7 +118,7 @@ where
             }
 
             for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = resolve(
+                type_argument.type_id = resolve_type(
                     handler,
                     engines,
                     namespace,

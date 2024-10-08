@@ -20,7 +20,7 @@ use crate::{
 /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
 /// enum, or a reference to a type parameter.
 #[allow(clippy::too_many_arguments)]
-pub fn resolve(
+pub fn resolve_type(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
@@ -81,7 +81,7 @@ pub fn resolve(
             )?
         }
         TypeInfo::Array(mut elem_ty, n) => {
-            elem_ty.type_id = resolve(
+            elem_ty.type_id = resolve_type(
                 handler,
                 engines,
                 namespace,
@@ -106,7 +106,7 @@ pub fn resolve(
             )
         }
         TypeInfo::Slice(mut elem_ty) => {
-            elem_ty.type_id = resolve(
+            elem_ty.type_id = resolve_type(
                 handler,
                 engines,
                 namespace,
@@ -132,7 +132,7 @@ pub fn resolve(
         }
         TypeInfo::Tuple(mut type_arguments) => {
             for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = resolve(
+                type_argument.type_id = resolve_type(
                     handler,
                     engines,
                     namespace,
@@ -184,7 +184,7 @@ pub fn resolve(
             referenced_type: mut ty,
             to_mutable_value,
         } => {
-            ty.type_id = resolve(
+            ty.type_id = resolve_type(
                 handler,
                 engines,
                 namespace,
