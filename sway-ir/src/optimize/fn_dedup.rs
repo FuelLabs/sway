@@ -286,6 +286,9 @@ pub fn dedup_fns(
         hash_set_map: FxHashMap::default(),
         function_hash_map: FxHashMap::default(),
     };
+
+    let mut dup_to_delete = vec![];
+
     let cg = build_call_graph(context, &context.modules.get(module.0).unwrap().functions);
     let callee_first = callee_first_order(&cg);
     for function in callee_first {
@@ -294,6 +297,7 @@ pub fn dedup_fns(
             .hash_set_map
             .entry(hash)
             .and_modify(|class| {
+                dup_to_delete.push(function);
                 class.insert(function);
             })
             .or_insert(vec![function].into_iter().collect());
@@ -342,36 +346,32 @@ pub fn dedup_fns(
 
     // Replace config decode fns
     for config in module.iter_configs(context) {
-        match config {
-            crate::ConfigContent::V1 { decode_fn, .. } => {
-                let f = decode_fn.get();
+        if let crate::ConfigContent::V1 { decode_fn, .. } = config {
+            let f = decode_fn.get();
 
-                let Some(callee_hash) = eq_class.function_hash_map.get(&f) else {
-                    continue;
-                };
+            let Some(callee_hash) = eq_class.function_hash_map.get(&f) else {
+                continue;
+            };
 
-                // If the representative (first element in the set) is different, we need to replace.
-                let Some(callee_rep) = eq_class
-                    .hash_set_map
-                    .get(callee_hash)
-                    .and_then(|f| f.iter().next())
-                    .filter(|rep| *rep != &f)
-                else {
-                    continue;
-                };
+            // If the representative (first element in the set) is different, we need to replace.
+            let Some(callee_rep) = eq_class
+                .hash_set_map
+                .get(callee_hash)
+                .and_then(|f| f.iter().next())
+                .filter(|rep| *rep != &f)
+            else {
+                continue;
+            };
 
-                decode_fn.replace(*callee_rep);
-            }
-            _ => {}
+            decode_fn.replace(*callee_rep);
         }
     }
 
     // Remove replaced functions
-    for (_, fns) in eq_class.hash_set_map.iter() {
-        for function in fns.iter().skip(1) {
-            module.remove_function(context, function);
-        }
+    for function in dup_to_delete {
+        module.remove_function(context, &function);
     }
+
     Ok(modified)
 }
 

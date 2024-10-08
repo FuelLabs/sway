@@ -229,8 +229,8 @@ script {
 }
 
 !0 = "test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode/src/main.sw"
-!1 = span !0 101 106
-!2 = span !0 60 67
+!1 = span !0 177 182
+!2 = span !0 136 143
 !3 = "sway-lib-core/src/codec.sw"
 !4 = span !3 64814 64817
 !5 = span !3 64828 64831
@@ -347,15 +347,15 @@ script {
 !116 = (!49 !50 !66 !67)
 !117 = (!49 !50 !66 !67)
 !118 = (!49 !50 !66 !67)
-!119 = span !0 126 170
-!120 = fn_name_span !0 129 133
+!119 = span !0 202 246
+!120 = fn_name_span !0 205 209
 !121 = (!119 !120)
-!122 = span !0 149 156
+!122 = span !0 225 232
 !123 = span !0 30 36
-!124 = span !0 161 166
-!125 = span !0 167 168
-!126 = span !0 149 168
-!127 = fn_call_path_span !0 159 160
+!124 = span !0 237 242
+!125 = span !0 243 244
+!126 = span !0 225 244
+!127 = fn_call_path_span !0 235 236
 !128 = (!126 !127)
 
     Finished release [optimized + fuel] target(s) [736 B] in ???
