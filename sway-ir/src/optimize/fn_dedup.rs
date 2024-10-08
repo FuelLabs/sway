@@ -287,7 +287,7 @@ pub fn dedup_fns(
         function_hash_map: FxHashMap::default(),
     };
 
-    let mut dup_to_delete = vec![];
+    let mut dups_to_delete = vec![];
 
     let cg = build_call_graph(context, &context.modules.get(module.0).unwrap().functions);
     let callee_first = callee_first_order(&cg);
@@ -297,7 +297,6 @@ pub fn dedup_fns(
             .hash_set_map
             .entry(hash)
             .and_modify(|class| {
-                dup_to_delete.push(function);
                 class.insert(function);
             })
             .or_insert(vec![function].into_iter().collect());
@@ -328,6 +327,7 @@ pub fn dedup_fns(
             else {
                 continue;
             };
+            dups_to_delete.push(*callee);
             replacements.push((inst, args.clone(), callee_rep));
         }
         if !replacements.is_empty() {
@@ -363,12 +363,13 @@ pub fn dedup_fns(
                 continue;
             };
 
+            dups_to_delete.push(decode_fn.get());
             decode_fn.replace(*callee_rep);
         }
     }
 
     // Remove replaced functions
-    for function in dup_to_delete {
+    for function in dups_to_delete {
         module.remove_function(context, &function);
     }
 
