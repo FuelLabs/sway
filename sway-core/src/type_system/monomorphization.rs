@@ -11,7 +11,7 @@ use crate::{
         CallPath,
     },
     namespace::ModulePath,
-    semantic_analysis::type_resolve::TypeResolver,
+    semantic_analysis::type_resolve::resolve,
     type_system::ast_elements::create_type_id::CreateTypeId,
     EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
     TypeInfo, TypeParameter, TypeSubstMap,
@@ -31,13 +31,14 @@ pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
-    type_resolver: &dyn TypeResolver,
     value: &T,
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
+    type_subst_map: &TypeSubstMap,
+    subst_ctx: &SubstTypesContext,
 ) -> Result<TypeSubstMap, ErrorEmitted>
 where
     T: MonomorphizeHelper + SubstTypes,
@@ -118,23 +119,24 @@ where
             }
 
             for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = type_resolver
-                    .resolve(
-                        handler,
-                        engines,
-                        namespace,
-                        mod_path,
-                        type_argument.type_id,
-                        &type_argument.span,
-                        enforce_type_arguments,
-                        None,
-                        self_type,
-                    )
-                    .unwrap_or_else(|err| {
-                        engines
-                            .te()
-                            .insert(engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                type_argument.type_id = resolve(
+                    handler,
+                    engines,
+                    namespace,
+                    mod_path,
+                    type_argument.type_id,
+                    &type_argument.span,
+                    enforce_type_arguments,
+                    None,
+                    self_type,
+                    type_subst_map,
+                    subst_ctx,
+                )
+                .unwrap_or_else(|err| {
+                    engines
+                        .te()
+                        .insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
             }
             let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                 value
@@ -187,13 +189,14 @@ pub(crate) fn monomorphize_with_modpath<T>(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
-    type_resolver: &dyn TypeResolver,
     value: &mut T,
     type_arguments: &mut [TypeArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
+    type_subst_map: &TypeSubstMap,
+    subst_ctx: &SubstTypesContext,
 ) -> Result<(), ErrorEmitted>
 where
     T: MonomorphizeHelper + SubstTypes,
@@ -202,13 +205,14 @@ where
         handler,
         engines,
         namespace,
-        type_resolver,
         value,
         type_arguments,
         enforce_type_arguments,
         call_site_span,
         mod_path,
         self_type,
+        type_subst_map,
+        subst_ctx,
     )?;
     value.subst(&type_mapping, &SubstTypesContext::new(engines, true));
     Ok(())
@@ -219,7 +223,6 @@ pub(crate) fn type_decl_opt_to_type_id(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
-    type_resolver: &dyn TypeResolver,
     type_decl_opt: Option<TyDecl>,
     call_path: &CallPath,
     span: &Span,
@@ -227,6 +230,8 @@ pub(crate) fn type_decl_opt_to_type_id(
     mod_path: &ModulePath,
     type_arguments: Option<Vec<TypeArgument>>,
     self_type: Option<TypeId>,
+    type_subst_map: &TypeSubstMap,
+    subst_ctx: &SubstTypesContext,
 ) -> Result<TypeId, ErrorEmitted> {
     let decl_engine = engines.de();
     let type_engine = engines.te();
@@ -243,13 +248,14 @@ pub(crate) fn type_decl_opt_to_type_id(
                 handler,
                 engines,
                 namespace,
-                type_resolver,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
                 enforce_type_arguments,
                 span,
                 mod_path,
                 self_type,
+                type_subst_map,
+                subst_ctx,
             )?;
 
             // insert the new copy in the decl engine
@@ -277,13 +283,14 @@ pub(crate) fn type_decl_opt_to_type_id(
                 handler,
                 engines,
                 namespace,
-                type_resolver,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
                 enforce_type_arguments,
                 span,
                 mod_path,
                 self_type,
+                type_subst_map,
+                subst_ctx,
             )?;
 
             // insert the new copy in the decl engine
