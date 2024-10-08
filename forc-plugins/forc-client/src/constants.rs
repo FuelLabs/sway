@@ -14,7 +14,6 @@ pub const BETA_4_FAUCET_URL: &str = "https://faucet-beta-4.fuel.network";
 pub const BETA_5_FAUCET_URL: &str = "https://faucet-beta-5.fuel.network";
 pub const DEVNET_FAUCET_URL: &str = "https://faucet-devnet.fuel.network";
 pub const TESTNET_FAUCET_URL: &str = "https://faucet-testnet.fuel.network";
-pub const MAINNET_FAUCET_URL: &str = "https://faucet-mainnet.fuel.network";
 
 pub const TESTNET_EXPLORER_URL: &str = "https://app.fuel.network";
 pub const MAINNET_EXPLORER_URL: &str = "https://app.fuel.network";

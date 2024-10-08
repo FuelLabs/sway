@@ -68,16 +68,16 @@ impl Target {
         Target::Mainnet
     }
 
-    pub fn faucet_url(&self) -> String {
+    pub fn faucet_url(&self) -> Option<String> {
         match self {
-            Target::Beta2 => BETA_2_FAUCET_URL.to_string(),
-            Target::Beta3 => BETA_3_FAUCET_URL.to_string(),
-            Target::Beta4 => BETA_4_FAUCET_URL.to_string(),
-            Target::Beta5 => BETA_5_FAUCET_URL.to_string(),
-            Target::Devnet => DEVNET_FAUCET_URL.to_string(),
-            Target::Testnet => TESTNET_FAUCET_URL.to_string(),
-            Target::Mainnet => TESTNET_FAUCET_URL.to_string(),
-            Target::Local => "http://localhost:3000".to_string(),
+            Target::Beta2 => Some(BETA_2_FAUCET_URL.to_string()),
+            Target::Beta3 => Some(BETA_3_FAUCET_URL.to_string()),
+            Target::Beta4 => Some(BETA_4_FAUCET_URL.to_string()),
+            Target::Beta5 => Some(BETA_5_FAUCET_URL.to_string()),
+            Target::Devnet => Some(DEVNET_FAUCET_URL.to_string()),
+            Target::Testnet => Some(TESTNET_FAUCET_URL.to_string()),
+            Target::Mainnet => None,
+            Target::Local => Some("http://localhost:3000".to_string()),
         }
     }
 
