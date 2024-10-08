@@ -1,14 +1,13 @@
 ---
 source: test/tests/tests.rs
 ---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
 exit status: 1
-stdout:
-    Building src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
    Compiling library core (sway-lib-core)
    Compiling library std (sway-lib-std)
    Compiling script array_wrong_elements_types (test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types)
-
-stderr:
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:41:27
    |
