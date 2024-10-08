@@ -984,22 +984,38 @@ impl<'a> TypeCheckContext<'a> {
                             }
                         }
 
+                        let trait_methods_key = (
+                            trait_decl.trait_name.clone(),
+                            trait_decl
+                                .trait_type_arguments
+                                .iter()
+                                .cloned()
+                                .map(|a| self.engines.help_out(a))
+                                .collect::<Vec<_>>(),
+                            method.implementing_for_typeid.map(|t| {
+                                self.engines.help_out((*self.engines.te().get(t)).clone())
+                            }),
+                        );
+
+                        // If we have: impl<T> FromBytes for T
+                        // and: impl FromBytes for DataPoint
+                        // We pick the second implementation.
+                        if let Some(existing_value) = trait_methods.get(&trait_methods_key) {
+                            let existing_method = decl_engine.get_function(existing_value);
+                            if let Some(ty::TyDecl::ImplSelfOrTrait(existing_impl_trait)) =
+                                existing_method.implementing_type.clone()
+                            {
+                                let existing_trait_decl = decl_engine
+                                    .get_impl_self_or_trait(&existing_impl_trait.decl_id);
+                                if existing_trait_decl.impl_type_parameters.is_empty() {
+                                    // We already have an impl without type parameters so we skip the others.
+                                    skip_insert = true;
+                                }
+                            }
+                        }
+
                         if !skip_insert {
-                            trait_methods.insert(
-                                (
-                                    trait_decl.trait_name.clone(),
-                                    trait_decl
-                                        .trait_type_arguments
-                                        .iter()
-                                        .cloned()
-                                        .map(|a| self.engines.help_out(a))
-                                        .collect::<Vec<_>>(),
-                                    method.implementing_for_typeid.map(|t| {
-                                        self.engines.help_out((*self.engines.te().get(t)).clone())
-                                    }),
-                                ),
-                                method_ref.clone(),
-                            );
+                            trait_methods.insert(trait_methods_key, method_ref.clone());
                         }
                         if trait_decl.trait_decl_ref.is_none() {
                             impl_self_method = Some(method_ref);
