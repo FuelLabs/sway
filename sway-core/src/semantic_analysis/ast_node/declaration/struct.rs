@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::parsed_id::ParsedDeclId,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
     Engines,
 };

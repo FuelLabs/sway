@@ -1,7 +1,8 @@
 use std::fmt;
 
 use super::{
-    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
+    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, LexicalScope,
+    ResolvedTraitImplItem,
 };
 use crate::{
     decl_engine::{DeclEngine, DeclRef},
@@ -18,7 +19,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Named, Spanned};
+use sway_types::Spanned;
 use sway_utils::iter_prefixes;
 
 #[derive(Clone, Debug)]
@@ -740,13 +741,60 @@ impl Root {
             .chain(&call_path.prefixes)
             .cloned()
             .collect();
-        self.resolve_symbol_and_mod_path(
+        let res = self.resolve_symbol_and_mod_path(
             handler,
             engines,
             &symbol_path,
             &call_path.suffix,
             self_type,
-        )
+        );
+
+        if res.is_ok() {
+            return res;
+        }
+
+        // First lets get the submodule and then hierarchically lookup the call path,
+        // starting from the module's root scope.
+        let submodule = self.module.lookup_submodule(handler, engines, mod_path)?;
+        let mut scope_id_opt = Some(submodule.root_lexical_scope_id());
+
+        for ident in call_path.prefixes.iter() {
+            println!("checking for ident {:?}", ident);
+            if scope_id_opt.is_none() {
+                break;
+            }
+
+            let scope = submodule.lexical_scopes.get(scope_id_opt.unwrap()).unwrap();
+            let item = scope.items.symbols().get(ident);
+            println!("new item looked up {:?}", engines.help_out(item));
+            if item.is_none() {
+                break;
+            }
+
+            match item.unwrap() {
+                ResolvedDeclaration::Parsed(decl) => {
+                    let span = decl.span(engines);
+                    scope_id_opt = submodule.lexical_scopes_spans.get(&span).copied();
+                    println!("new scope from item span {:?}", scope_id_opt);
+                }
+                ResolvedDeclaration::Typed(decl_id) => todo!(),
+            };
+        }
+
+        if let Some(scope_id) = scope_id_opt {
+            let scope = submodule.lexical_scopes.get(scope_id).unwrap();
+            // scope.items.reso
+            // let r = self
+            //     .resolve_symbol(handler, engines, scope, &call_path.suffix, self_type)
+            //     .map(|rd| (rd, mod_path.to_vec()));
+            // println!(
+            //     "resolve_symbol_from_scope symbol {:?} {:?}",
+            //     call_path.suffix, r
+            // );
+            // return r;
+        }
+
+        return res;
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -859,8 +907,12 @@ impl Root {
                         current_mod_path.push(ident.clone());
                     }
                     None => {
-                        decl_opt =
-                            Some(self.resolve_symbol_helper(handler, engines, ident, module)?);
+                        decl_opt = Some(
+                            module
+                                .root_lexical_scope()
+                                .items
+                                .resolve_symbol(handler, engines, ident)?,
+                        );
                     }
                 }
             }
@@ -874,7 +926,10 @@ impl Root {
         self.module
             .lookup_submodule(handler, engines, mod_path)
             .and_then(|module| {
-                let decl = self.resolve_symbol_helper(handler, engines, symbol, module)?;
+                let decl = module
+                    .root_lexical_scope()
+                    .items
+                    .resolve_symbol(handler, engines, symbol)?;
                 Ok((decl, mod_path.to_vec()))
             })
     }
@@ -929,7 +984,28 @@ impl Root {
         decl: ResolvedDeclaration,
     ) -> Result<TypeInfo, ErrorEmitted> {
         match decl {
-            ResolvedDeclaration::Parsed(_decl) => todo!(),
+            ResolvedDeclaration::Parsed(decl) => Ok(match decl.clone() {
+                Declaration::StructDeclaration(struct_ty_decl) => {
+                    TypeInfo::UntypedStruct(struct_ty_decl)
+                }
+                Declaration::EnumDeclaration(enum_ty_decl) => TypeInfo::UntypedEnum(enum_ty_decl),
+                Declaration::TraitTypeDeclaration(type_decl) => {
+                    let type_decl = engines.pe().get_trait_type(&type_decl);
+                    if type_decl.ty_opt.is_none() {
+                        return Err(handler.emit_err(CompileError::Internal(
+                            "Trait type declaration has no type",
+                            symbol.span(),
+                        )));
+                    }
+                    (*engines.te().get(type_decl.ty_opt.clone().unwrap().type_id)).clone()
+                }
+                _ => {
+                    return Err(handler.emit_err(CompileError::SymbolNotFound {
+                        name: symbol.clone(),
+                        span: symbol.span(),
+                    }))
+                }
+            }),
             ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
                 ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
                 ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
@@ -1007,70 +1083,6 @@ impl Root {
                 TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
             },
         }
-    }
-
-    fn resolve_symbol_helper(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        module: &Module,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        // Check locally declared items. Any name clash with imports will have already been reported as an error.
-        if let Some(decl) = module.current_items().symbols.get(symbol) {
-            return Ok(decl.clone());
-        }
-        // Check item imports
-        if let Some((_, _, decl, _)) = module.current_items().use_item_synonyms.get(symbol) {
-            return Ok(decl.clone());
-        }
-        // Check glob imports
-        if let Some(decls) = module.current_items().use_glob_synonyms.get(symbol) {
-            if decls.len() == 1 {
-                return Ok(decls[0].1.clone());
-            } else if decls.is_empty() {
-                return Err(handler.emit_err(CompileError::Internal(
-                    "The name {symbol} was bound in a star import, but no corresponding module paths were found",
-                    symbol.span(),
-                )));
-            } else {
-                return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
-                    name: symbol.clone(),
-                    paths: decls
-                        .iter()
-                        .map(|(path, decl, _)| {
-                            let mut path_strs =
-                                path.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-                            // Add the enum name to the path if the decl is an enum variant.
-                            match decl {
-                                ResolvedDeclaration::Parsed(decl) => {
-                                    if let Declaration::EnumVariantDeclaration(decl) = decl {
-                                        let enum_ref = engines.pe().get_enum(&decl.enum_ref);
-                                        path_strs.push(enum_ref.name().to_string())
-                                    };
-                                }
-                                ResolvedDeclaration::Typed(decl) => {
-                                    if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                        enum_ref,
-                                        ..
-                                    }) = decl
-                                    {
-                                        path_strs.push(enum_ref.name().to_string())
-                                    };
-                                }
-                            }
-                            path_strs.join("::")
-                        })
-                        .collect(),
-                    span: symbol.span(),
-                }));
-            }
-        }
-        // Symbol not found
-        Err(handler.emit_err(CompileError::SymbolNotFound {
-            name: symbol.clone(),
-            span: symbol.span(),
-        }))
     }
 }
 

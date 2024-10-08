@@ -1,6 +1,5 @@
 use crate::{
     concurrent_slab::ConcurrentSlab,
-    decl_engine::*,
     language::parsed::{
         AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration, EnumVariant,
         FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration, StructDeclaration,
@@ -47,7 +46,7 @@ pub trait ParsedDeclEngineReplace<T> {
 
 #[allow(unused)]
 pub trait ParsedDeclEngineIndex<T>:
-    ParsedDeclEngineGet<DeclId<T>, T> + ParsedDeclEngineInsert<T> + ParsedDeclEngineReplace<T>
+    ParsedDeclEngineGet<ParsedDeclId<T>, T> + ParsedDeclEngineInsert<T> + ParsedDeclEngineReplace<T>
 {
 }
 
@@ -135,6 +134,25 @@ macro_rules! decl_engine_clear {
         }
     };
 }
+
+macro_rules! decl_engine_index {
+    ($slab:ident, $decl:ty) => {
+        impl ParsedDeclEngineIndex<$decl> for ParsedDeclEngine {}
+    };
+}
+decl_engine_index!(variable_slab, VariableDeclaration);
+decl_engine_index!(function_slab, FunctionDeclaration);
+decl_engine_index!(trait_slab, TraitDeclaration);
+decl_engine_index!(trait_fn_slab, TraitFn);
+decl_engine_index!(trait_type_slab, TraitTypeDeclaration);
+decl_engine_index!(impl_self_or_trait_slab, ImplSelfOrTrait);
+decl_engine_index!(struct_slab, StructDeclaration);
+decl_engine_index!(storage_slab, StorageDeclaration);
+decl_engine_index!(abi_slab, AbiDeclaration);
+decl_engine_index!(configurable_slab, ConfigurableDeclaration);
+decl_engine_index!(constant_slab, ConstantDeclaration);
+decl_engine_index!(enum_slab, EnumDeclaration);
+decl_engine_index!(type_alias_slab, TypeAliasDeclaration);
 
 decl_engine_clear!(
     variable_slab, VariableDeclaration;
