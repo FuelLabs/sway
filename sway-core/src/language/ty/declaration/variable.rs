@@ -66,9 +66,9 @@ impl HashWithEngines for TyVariableDecl {
 }
 
 impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.return_type.subst(type_mapping, ctx);
-        self.type_ascription.subst(type_mapping, ctx);
-        self.body.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.return_type.subst(ctx);
+        self.type_ascription.subst(ctx);
+        self.body.subst(ctx)
     }
 }

@@ -37,7 +37,6 @@ pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
     call_site_span: &Span,
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
-    type_subst_map: &TypeSubstMap,
     subst_ctx: &SubstTypesContext,
 ) -> Result<TypeSubstMap, ErrorEmitted>
 where
@@ -129,7 +128,6 @@ where
                     enforce_type_arguments,
                     None,
                     self_type,
-                    type_subst_map,
                     subst_ctx,
                 )
                 .unwrap_or_else(|err| {
@@ -195,7 +193,6 @@ pub(crate) fn monomorphize_with_modpath<T>(
     call_site_span: &Span,
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
-    type_subst_map: &TypeSubstMap,
     subst_ctx: &SubstTypesContext,
 ) -> Result<(), ErrorEmitted>
 where
@@ -211,10 +208,9 @@ where
         call_site_span,
         mod_path,
         self_type,
-        type_subst_map,
         subst_ctx,
     )?;
-    value.subst(&type_mapping, &SubstTypesContext::new(engines, true));
+    value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
     Ok(())
 }
 
@@ -230,7 +226,6 @@ pub(crate) fn type_decl_opt_to_type_id(
     mod_path: &ModulePath,
     type_arguments: Option<Vec<TypeArgument>>,
     self_type: Option<TypeId>,
-    type_subst_map: &TypeSubstMap,
     subst_ctx: &SubstTypesContext,
 ) -> Result<TypeId, ErrorEmitted> {
     let decl_engine = engines.de();
@@ -254,7 +249,6 @@ pub(crate) fn type_decl_opt_to_type_id(
                 span,
                 mod_path,
                 self_type,
-                type_subst_map,
                 subst_ctx,
             )?;
 
@@ -289,7 +283,6 @@ pub(crate) fn type_decl_opt_to_type_id(
                 span,
                 mod_path,
                 self_type,
-                type_subst_map,
                 subst_ctx,
             )?;
 

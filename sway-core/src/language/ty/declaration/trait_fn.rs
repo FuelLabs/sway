@@ -122,10 +122,10 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.parameters.subst(type_mapping, ctx);
-            self.return_type.subst(type_mapping, ctx);
+            self.parameters.subst(ctx);
+            self.return_type.subst(ctx);
         }
     }
 }

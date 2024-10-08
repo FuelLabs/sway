@@ -13,7 +13,7 @@ use crate::{
     monomorphization::type_decl_opt_to_type_id,
     namespace::{ModulePath, ResolvedTraitImplItem},
     type_system::SubstTypes,
-    EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo, TypeSubstMap,
+    EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
 
 /// Resolve the type of the given [TypeId], replacing any instances of
@@ -30,7 +30,6 @@ pub fn resolve(
     enforce_type_arguments: EnforceTypeArguments,
     type_info_prefix: Option<&ModulePath>,
     self_type: Option<TypeId>,
-    type_subst_map: &TypeSubstMap,
     subst_ctx: &SubstTypesContext,
 ) -> Result<TypeId, ErrorEmitted> {
     let type_engine = engines.te();
@@ -63,7 +62,6 @@ pub fn resolve(
                     module_path,
                     &qualified_call_path,
                     self_type,
-                    type_subst_map,
                     subst_ctx,
                 )
                 .ok()
@@ -79,7 +77,6 @@ pub fn resolve(
                 mod_path,
                 type_arguments.clone(),
                 self_type,
-                type_subst_map,
                 subst_ctx,
             )?
         }
@@ -94,7 +91,6 @@ pub fn resolve(
                 enforce_type_arguments,
                 None,
                 self_type,
-                type_subst_map,
                 subst_ctx,
             )
             .unwrap_or_else(|err| {
@@ -120,7 +116,6 @@ pub fn resolve(
                 enforce_type_arguments,
                 None,
                 self_type,
-                type_subst_map,
                 subst_ctx,
             )
             .unwrap_or_else(|err| {
@@ -147,7 +142,6 @@ pub fn resolve(
                     enforce_type_arguments,
                     None,
                     self_type,
-                    type_subst_map,
                     subst_ctx,
                 )
                 .unwrap_or_else(|err| {
@@ -200,7 +194,6 @@ pub fn resolve(
                 enforce_type_arguments,
                 None,
                 self_type,
-                type_subst_map,
                 subst_ctx,
             )
             .unwrap_or_else(|err| {
@@ -222,7 +215,7 @@ pub fn resolve(
     };
 
     let mut type_id = type_id;
-    type_id.subst(type_subst_map, subst_ctx);
+    type_id.subst(subst_ctx);
 
     Ok(type_id)
 }
@@ -234,7 +227,6 @@ pub fn resolve_qualified_call_path(
     mod_path: &ModulePath,
     qualified_call_path: &QualifiedCallPath,
     self_type: Option<TypeId>,
-    type_subst_map: &TypeSubstMap,
     subst_ctx: &SubstTypesContext,
 ) -> Result<ty::TyDecl, ErrorEmitted> {
     let type_engine = engines.te();
@@ -264,7 +256,6 @@ pub fn resolve_qualified_call_path(
                     mod_path,
                     type_arguments.clone(),
                     self_type,
-                    type_subst_map,
                     subst_ctx,
                 )?
             }

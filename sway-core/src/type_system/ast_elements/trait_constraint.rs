@@ -98,8 +98,8 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_arguments.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_arguments.subst(ctx)
     }
 }
 

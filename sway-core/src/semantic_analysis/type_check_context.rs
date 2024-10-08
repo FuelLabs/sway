@@ -531,8 +531,12 @@ impl<'a> TypeCheckContext<'a> {
         self.self_type
     }
 
-    pub(crate) fn type_subst(&self) -> TypeSubstMap {
-        self.type_subst.clone()
+    pub(crate) fn subst_ctx(&self) -> SubstTypesContext {
+        SubstTypesContext::new(
+            self.engines(),
+            &self.type_subst,
+            !self.code_block_first_pass(),
+        )
     }
 
     pub(crate) fn abi_mode(&self) -> AbiMode {
@@ -590,8 +594,7 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             &mod_path,
             self.self_type(),
-            &self.type_subst(),
-            &SubstTypesContext::new(self.engines(), !self.collecting_unifications()),
+            &self.subst_ctx(),
         )
     }
 
@@ -667,8 +670,7 @@ impl<'a> TypeCheckContext<'a> {
             enforce_type_arguments,
             type_info_prefix,
             self.self_type(),
-            &self.type_subst(),
-            &SubstTypesContext::new(self.engines(), !self.collecting_unifications()),
+            &self.subst_ctx(),
         )
     }
 
@@ -700,8 +702,7 @@ impl<'a> TypeCheckContext<'a> {
             &self.namespace().mod_path.clone(),
             qualified_call_path,
             self.self_type(),
-            &self.type_subst(),
-            &SubstTypesContext::new(self.engines(), !self.collecting_unifications()),
+            &self.subst_ctx(),
         )
     }
 
@@ -747,8 +748,7 @@ impl<'a> TypeCheckContext<'a> {
             EnforceTypeArguments::No,
             None,
             self.self_type(),
-            &self.type_subst(),
-            &SubstTypesContext::new(self.engines(), !self.collecting_unifications()),
+            &self.subst_ctx(),
         )
         .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None));
 
