@@ -88,11 +88,11 @@ impl HashWithEngines for TyImplSelfOrTrait {
 }
 
 impl SubstTypes for TyImplSelfOrTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.impl_type_parameters.subst(type_mapping, ctx);
-            self.implementing_for.subst_inner(type_mapping, ctx);
-            self.items.subst(type_mapping, ctx);
+            self.impl_type_parameters.subst(ctx);
+            self.implementing_for.subst_inner(ctx);
+            self.items.subst(ctx);
         }
     }
 }

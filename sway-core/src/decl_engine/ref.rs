@@ -99,17 +99,15 @@ where
     DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
     T: Named + Spanned + IsConcrete + SubstTypes + Clone + TyDeclParsedType,
 {
-    pub(crate) fn subst_types_and_insert_new(
-        &self,
-        type_mapping: &TypeSubstMap,
-        ctx: &SubstTypesContext,
-    ) -> Option<Self> {
+    pub(crate) fn subst_types_and_insert_new(&self, ctx: &SubstTypesContext) -> Option<Self> {
         let decl_engine = ctx.engines.de();
-        if type_mapping.source_ids_contains_concrete_type(ctx.engines)
+        if ctx
+            .type_subst_map
+            .source_ids_contains_concrete_type(ctx.engines)
             || !decl_engine.get(&self.id).is_concrete(ctx.engines)
         {
             let mut decl = (*decl_engine.get(&self.id)).clone();
-            if decl.subst(type_mapping, ctx).has_changes() {
+            if decl.subst(ctx).has_changes() {
                 Some(decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref()))
             } else {
                 None
@@ -143,12 +141,11 @@ where
 {
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
-        type_mapping: &TypeSubstMap,
         ctx: &SubstTypesContext,
     ) -> Option<Self> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, ctx).has_changes() {
+        if decl.subst(ctx).has_changes() {
             Some(
                 decl_engine
                     .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
@@ -263,10 +260,10 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, ctx).has_changes() {
+        if decl.subst(ctx).has_changes() {
             decl_engine.replace(self.id, decl);
             HasChanges::Yes
         } else {

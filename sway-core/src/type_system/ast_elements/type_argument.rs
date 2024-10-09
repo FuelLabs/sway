@@ -109,7 +109,7 @@ impl From<&TypeParameter> for TypeArgument {
 }
 
 impl SubstTypes for TypeArgument {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_id.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_id.subst(ctx)
     }
 }

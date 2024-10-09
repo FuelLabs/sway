@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -12,7 +13,6 @@ use crate::{
         parsed::{FunctionDeclaration, FunctionDeclarationKind},
         CallPath,
     },
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform::AttributeKind,
 };
 
@@ -220,21 +220,21 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         if ctx.subst_function_body {
             has_changes! {
-                self.type_parameters.subst(type_mapping, ctx);
-                self.parameters.subst(type_mapping, ctx);
-                self.return_type.subst(type_mapping, ctx);
-                self.body.subst(type_mapping, ctx);
-                self.implementing_for_typeid.subst(type_mapping, ctx);
+                self.type_parameters.subst(ctx);
+                self.parameters.subst(ctx);
+                self.return_type.subst(ctx);
+                self.body.subst(ctx);
+                self.implementing_for_typeid.subst(ctx);
             }
         } else {
             has_changes! {
-                self.type_parameters.subst(type_mapping, ctx);
-                self.parameters.subst(type_mapping, ctx);
-                self.return_type.subst(type_mapping, ctx);
-                self.implementing_for_typeid.subst(type_mapping, ctx);
+                self.type_parameters.subst(ctx);
+                self.parameters.subst(ctx);
+                self.return_type.subst(ctx);
+                self.implementing_for_typeid.subst(ctx);
             }
         }
     }
@@ -527,8 +527,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.type_id.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.type_id.subst(ctx)
     }
 }
 

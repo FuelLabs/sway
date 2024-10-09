@@ -18,7 +18,7 @@ use sway_error::{
     error::{CompileError, ShadowingSource, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{span::Span, IdentUnique, Spanned};
+use sway_types::{span::Span, IdentUnique, Named, Spanned};
 
 use std::sync::Arc;
 
@@ -154,6 +154,50 @@ impl Items {
 
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
         self.symbols().keys()
+    }
+
+    pub fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        // Check locally declared items. Any name clash with imports will have already been reported as an error.
+        if let Some(decl) = self.symbols.get(symbol) {
+            return Ok(decl.clone());
+        }
+
+        // Check item imports
+        if let Some((_, _, decl, _)) = self.use_item_synonyms.get(symbol) {
+            return Ok(decl.clone());
+        }
+
+        // Check glob imports
+        if let Some(decls) = self.use_glob_synonyms.get(symbol) {
+            if decls.len() == 1 {
+                return Ok(decls[0].1.clone());
+            } else if decls.is_empty() {
+                return Err(handler.emit_err(CompileError::Internal(
+                    "The name {symbol} was bound in a star import, but no corresponding module paths were found",
+                    symbol.span(),
+                )));
+            } else {
+                return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
+                    name: symbol.clone(),
+                    paths: decls
+                        .iter()
+                        .map(|(path, decl, _)| get_path_for_decl(path, decl, engines))
+                        .collect(),
+                    span: symbol.span(),
+                }));
+            }
+        }
+
+        // Symbol not found
+        Err(handler.emit_err(CompileError::SymbolNotFound {
+            name: symbol.clone(),
+            span: symbol.span(),
+        }))
     }
 
     pub(crate) fn insert_parsed_symbol(
@@ -945,4 +989,27 @@ impl Items {
         }
         Ok((symbol, parent_rover))
     }
+}
+
+fn get_path_for_decl(
+    path: &[sway_types::BaseIdent],
+    decl: &ResolvedDeclaration,
+    engines: &Engines,
+) -> String {
+    let mut path_names = path.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+    // Add the enum name to the path if the decl is an enum variant.
+    match decl {
+        ResolvedDeclaration::Parsed(decl) => {
+            if let Declaration::EnumVariantDeclaration(decl) = decl {
+                let enum_decl = engines.pe().get_enum(&decl.enum_ref);
+                path_names.push(enum_decl.name().to_string())
+            };
+        }
+        ResolvedDeclaration::Typed(decl) => {
+            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl {
+                path_names.push(enum_ref.name().to_string())
+            };
+        }
+    }
+    path_names.join("::")
 }

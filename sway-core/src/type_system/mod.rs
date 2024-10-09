@@ -2,12 +2,15 @@ pub(crate) mod ast_elements;
 mod engine;
 mod id;
 mod info;
+pub(crate) mod monomorphization;
 mod priv_prelude;
 mod substitute;
 pub(crate) mod unify;
 
 #[allow(unused)]
 use std::ops::Deref;
+
+pub use substitute::subst_types::SubstTypesContext;
 
 #[cfg(test)]
 use crate::language::CallPath;
@@ -20,6 +23,41 @@ use sway_error::handler::Handler;
 use sway_types::BaseIdent;
 #[cfg(test)]
 use sway_types::{integer_bits::IntegerBits, Span};
+
+/// This type is used to denote if, during monomorphization, the compiler
+/// should enforce that type arguments be provided. An example of that
+/// might be this:
+///
+/// ```ignore
+/// struct Point<T> {
+///   x: u64,
+///   y: u64
+/// }
+///
+/// fn add<T>(p1: Point<T>, p2: Point<T>) -> Point<T> {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+///
+/// `EnforceTypeArguments` would require that the type annotations
+/// for `p1` and `p2` contain `<...>`. This is to avoid ambiguous definitions:
+///
+/// ```ignore
+/// fn add(p1: Point, p2: Point) -> Point {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+#[derive(Clone, Copy)]
+pub(crate) enum EnforceTypeArguments {
+    Yes,
+    No,
+}
 
 #[test]
 fn generic_enum_resolution() {

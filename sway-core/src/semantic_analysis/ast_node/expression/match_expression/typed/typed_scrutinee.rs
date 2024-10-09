@@ -12,10 +12,7 @@ use crate::{
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
         CallPath,
     },
-    semantic_analysis::{
-        type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
-    },
+    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
 };
 

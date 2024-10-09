@@ -904,13 +904,11 @@ impl TraitMap {
                         *map_type_id,
                         *type_id,
                     );
-                    type_id.subst(
+                    type_id.subst(&SubstTypesContext::new(
+                        engines,
                         &type_mapping,
-                        &SubstTypesContext::new(
-                            engines,
-                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
-                        ),
-                    );
+                        matches!(code_block_first_pass, CodeBlockFirstPass::No),
+                    ));
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
@@ -922,16 +920,11 @@ impl TraitMap {
                                     if decl.is_trait_method_dummy && !insertable {
                                         None
                                     } else {
-                                        decl.subst(
+                                        decl.subst(&SubstTypesContext::new(
+                                            engines,
                                             &type_mapping,
-                                            &SubstTypesContext::new(
-                                                engines,
-                                                matches!(
-                                                    code_block_first_pass,
-                                                    CodeBlockFirstPass::No
-                                                ),
-                                            ),
-                                        );
+                                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
+                                        ));
                                         let new_ref = decl_engine
                                             .insert(
                                                 decl,
@@ -948,13 +941,11 @@ impl TraitMap {
                                 }
                                 ty::TyTraitItem::Constant(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(
+                                    decl.subst(&SubstTypesContext::new(
+                                        engines,
                                         &type_mapping,
-                                        &SubstTypesContext::new(
-                                            engines,
-                                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
-                                        ),
-                                    );
+                                        matches!(code_block_first_pass, CodeBlockFirstPass::No),
+                                    ));
                                     let new_ref = decl_engine.insert(
                                         decl,
                                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
@@ -966,13 +957,11 @@ impl TraitMap {
                                 }
                                 ty::TyTraitItem::Type(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(
+                                    decl.subst(&SubstTypesContext::new(
+                                        engines,
                                         &type_mapping,
-                                        &SubstTypesContext::new(
-                                            engines,
-                                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
-                                        ),
-                                    );
+                                        matches!(code_block_first_pass, CodeBlockFirstPass::No),
+                                    ));
                                     let new_ref = decl_engine.insert(
                                         decl,
                                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),

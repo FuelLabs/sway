@@ -96,10 +96,10 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.type_id.subst(type_mapping, ctx);
-            self.trait_constraints.subst(type_mapping, ctx);
+            self.type_id.subst(ctx);
+            self.trait_constraints.subst(ctx);
         }
     }
 }
