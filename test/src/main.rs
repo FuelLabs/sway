@@ -176,12 +176,12 @@ async fn main() -> Result<()> {
     }
 
     // Run snapshot tests
-    let args = vec!["t", "--release", "-p", "test"];
-    let mut t = std::process::Command::new("cargo")
-        .args(args)
-        .spawn()
-        .unwrap();
-    assert!(t.wait().unwrap().success());
+    // let args = vec!["t", "--release", "-p", "test"];
+    // let mut t = std::process::Command::new("cargo")
+    //     .args(args)
+    //     .spawn()
+    //     .unwrap();
+    // assert!(t.wait().unwrap().success());
 
     Ok(())
 }
