@@ -95,35 +95,35 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 .neighbors_directed(rover, petgraph::Direction::Outgoing)
                 .collect::<Vec<_>>();
 
-	    // The graph is supposed to be a single path, so at most one outgoing neighbor is allowed.
-	    assert!(neighbors.len() <= 1);
+            // The graph is supposed to be a single path, so at most one outgoing neighbor is allowed.
+            assert!(neighbors.len() <= 1);
 
             if neighbors.is_empty() {
-		if !return_ty.is_unit() {
-		    // A return is expected, but none is found. Report an error.
+                if !return_ty.is_unit() {
+                    // A return is expected, but none is found. Report an error.
                     let span = match &self.graph[rover] {
-			ControlFlowGraphNode::ProgramNode { node, .. } => node.span.clone(),
-			ControlFlowGraphNode::MethodDeclaration { span, .. } => span.clone(),
-			_ => {
+                        ControlFlowGraphNode::ProgramNode { node, .. } => node.span.clone(),
+                        ControlFlowGraphNode::MethodDeclaration { span, .. } => span.clone(),
+                        _ => {
                             errors.push(CompileError::Internal(
-				"Attempted to construct return path error \
+                                "Attempted to construct return path error \
 				 but no source span was found.",
-				Span::dummy(),
+                                Span::dummy(),
                             ));
                             return errors;
-			}
+                        }
                     };
                     let function_name: Ident = function_name.into();
                     errors.push(CompileError::PathDoesNotReturn {
-			span,
-			function_name: function_name.clone(),
-			ty: engines.help_out(return_ty).to_string(),
+                        span,
+                        function_name: function_name.clone(),
+                        ty: engines.help_out(return_ty).to_string(),
                     });
-		}
+                }
 
-		// No further neighbors, so we're done.
-		break;
-	    }
+                // No further neighbors, so we're done.
+                break;
+            }
 
             rover = neighbors[0];
         }
@@ -156,7 +156,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             ..
         }) => {
             let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));
-	    if let Some(leaf_ix) = leaf_opt {
+            if let Some(leaf_ix) = leaf_opt {
                 graph.add_edge(leaf_ix, this_index, "".into());
             }
             Ok(NodeConnection::Return(this_index))
@@ -169,7 +169,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             // since we don't really care about what the loop body contains when detecting
             // divergent paths
             let node = graph.add_node(ControlFlowGraphNode::from_node(node));
-	    if let Some(leaf) = leaf_opt {
+            if let Some(leaf) = leaf_opt {
                 graph.add_edge(leaf, node, "while loop entry".into());
             }
             Ok(NodeConnection::NextStep(Some(node)))
@@ -178,7 +178,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             let entry = graph.add_node(ControlFlowGraphNode::from_node(node));
             // insert organizational dominator node
             // connected to all current leaves
-	    if let Some(leaf) = leaf_opt {
+            if let Some(leaf) = leaf_opt {
                 graph.add_edge(leaf, entry, "".into());
             }
             Ok(NodeConnection::NextStep(Some(entry)))
@@ -213,7 +213,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | ty::TyDecl::ConstantDecl(_)
         | ty::TyDecl::ConfigurableDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
-	    if let Some(leaf) = leaf_opt {
+            if let Some(leaf) = leaf_opt {
                 graph.add_edge(leaf, entry_node, "".into());
             }
             Ok(Some(entry_node))
@@ -221,7 +221,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
-	    // Do not connect the leaves to the function entry point, since control cannot flow from them into the function.
+            // Do not connect the leaves to the function entry point, since control cannot flow from them into the function.
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node)?;
             Ok(leaf_opt)
         }
@@ -230,7 +230,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             let ty::TyImplSelfOrTrait {
                 trait_name, items, ..
             } = &*impl_trait;
-	    // Do not connect the leaves to the impl entry point, since control cannot flow from them into the impl.
+            // Do not connect the leaves to the impl entry point, since control cannot flow from them into the impl.
             connect_impl_trait(engines, trait_name, graph, items)?;
             Ok(leaf_opt)
         }
