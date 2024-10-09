@@ -498,7 +498,7 @@ where
 
     // The safest way would be to return a canonical fully qualified type path.
     // We do not have a way to do this at the moment, so the best way is to use
-    // exactly what was typed by the user, to accomodate aliased imports.
+    // exactly what was typed by the user, to accommodate aliased imports.
     fn generate_type(engines: &Engines, t: &TypeArgument) -> Option<String> {
         match &*engines.te().get(t.type_id) {
             // when a function does not define a return type, the span points to the whole signature.
