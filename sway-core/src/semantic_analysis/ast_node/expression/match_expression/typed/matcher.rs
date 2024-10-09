@@ -12,7 +12,7 @@ use crate::{
         },
         TypeCheckContext,
     },
-    Ident, TypeId, TypeInfo, UnifyCheck,
+    Ident, TypeId, UnifyCheck,
 };
 
 use sway_error::{
@@ -20,7 +20,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 
-use sway_types::{integer_bits::IntegerBits, span::Span, Named, Spanned};
+use sway_types::{span::Span, Named, Spanned};
 
 /// A single requirement in the form `<lhs> == <rhs>` that has to be
 /// fulfilled for the match arm to match.
@@ -492,20 +492,12 @@ fn match_enum(
             expression: ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
-            return_type: type_engine.insert(
-                ctx.engines,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                None,
-            ),
+            return_type: type_engine.id_of_u64(),
             span: exp.span.clone(),
         },
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
-            return_type: type_engine.insert(
-                ctx.engines,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                None,
-            ),
+            return_type: type_engine.id_of_u64(),
             span: exp.span.clone(),
         },
     );

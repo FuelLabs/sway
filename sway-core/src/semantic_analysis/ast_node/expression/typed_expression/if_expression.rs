@@ -22,7 +22,7 @@ pub(crate) fn instantiate_if_expression(
     let ty_to_check = if r#else.is_some() {
         ctx.type_annotation()
     } else {
-        type_engine.insert(engines, TypeInfo::Tuple(vec![]), then.span.source_id())
+        type_engine.id_of_unit()
     };
 
     // We check then_type_is_never and else_type_is_never before unifying to make sure we don't
@@ -62,9 +62,10 @@ pub(crate) fn instantiate_if_expression(
         Box::new(r#else)
     });
 
-    let r#else_ret_ty = r#else.as_ref().map(|x| x.return_type).unwrap_or_else(|| {
-        type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), span.source_id())
-    });
+    let r#else_ret_ty = r#else
+        .as_ref()
+        .map(|x| x.return_type)
+        .unwrap_or_else(|| type_engine.id_of_unit());
 
     // delay emitting the errors until we decide if this is a missing else branch or some other set of errors
     let h = Handler::default();

@@ -72,7 +72,7 @@ pub struct ImplSelfOrTrait {
     pub trait_decl_ref: Option<ParsedInterfaceDeclId>,
     pub implementing_for: TypeArgument,
     pub items: Vec<ImplItem>,
-    // the span of the whole impl trait and block
+    /// The [Span] of the whole impl trait and block.
     pub(crate) block_span: Span,
 }
 

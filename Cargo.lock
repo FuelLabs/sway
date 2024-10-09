@@ -7677,6 +7677,7 @@ dependencies = [
  "miden-core",
  "object",
  "parking_lot 0.12.3",
+ "paste",
  "pest",
  "pest_derive",
  "petgraph",

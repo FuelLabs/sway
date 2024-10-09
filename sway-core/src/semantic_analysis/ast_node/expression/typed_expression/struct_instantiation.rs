@@ -61,23 +61,18 @@ pub(crate) fn struct_instantiation(
 
     let type_arguments = type_arguments.to_vec();
 
-    let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
-        ("Self", true) => TypeInfo::new_self_type(suffix.span()),
+    // We first create a custom type and then resolve it to the struct type.
+    let custom_type_id = match (suffix.as_str(), type_arguments.is_empty()) {
+        ("Self", true) => type_engine.new_self_type(engines, suffix.span()),
         ("Self", false) => {
             return Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed {
                 span: suffix.span(),
             }));
         }
-        (_, true) => TypeInfo::Custom {
-            qualified_call_path: suffix.clone().into(),
-            type_arguments: None,
-            root_type_id: None,
-        },
-        (_, false) => TypeInfo::Custom {
-            qualified_call_path: suffix.clone().into(),
-            type_arguments: Some(type_arguments),
-            root_type_id: None,
-        },
+        (_, true) => type_engine.new_custom_from_name(engines, suffix.clone()),
+        (_, false) => {
+            type_engine.new_custom(engines, suffix.clone().into(), Some(type_arguments), None)
+        }
     };
 
     // find the module that the struct decl is in
@@ -89,12 +84,12 @@ pub(crate) fn struct_instantiation(
     let type_id = ctx
         .resolve_type(
             handler,
-            type_engine.insert(engines, type_info, suffix.span().source_id()),
+            custom_type_id,
             inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+        .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
@@ -393,7 +388,6 @@ fn type_check_field_arguments(
 ) -> Result<Vec<ty::TyStructExpressionField>, ErrorEmitted> {
     handler.scope(|handler| {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         let mut typed_fields = vec![];
         let mut missing_fields = vec![];
@@ -438,11 +432,7 @@ fn type_check_field_arguments(
                         name: struct_field.name.clone(),
                         value: ty::TyExpression {
                             expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                            return_type: type_engine.insert(
-                                engines,
-                                TypeInfo::ErrorRecovery(err),
-                                None,
-                            ),
+                            return_type: type_engine.id_of_error_recovery(err),
                             span: span.clone(),
                         },
                     });

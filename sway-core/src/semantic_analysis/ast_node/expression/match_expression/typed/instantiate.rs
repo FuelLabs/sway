@@ -1,5 +1,5 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{integer_bits::IntegerBits, Ident, Span};
+use sway_types::{Ident, Span};
 
 use crate::{
     language::{ty, LazyOp, Literal},
@@ -7,7 +7,7 @@ use crate::{
         typed_expression::{instantiate_lazy_operator, instantiate_tuple_index_access},
         TypeCheckContext,
     },
-    Engines, TypeId, TypeInfo,
+    Engines, TypeId,
 };
 
 /// Simplifies instantiation of desugared code in the match expression and match arms.
@@ -23,19 +23,11 @@ pub(super) struct Instantiate {
 impl Instantiate {
     pub(super) fn new(engines: &Engines, span: Span) -> Self {
         let type_engine = engines.te();
-        let u64_type = type_engine.insert(
-            engines,
-            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            None,
-        );
-        let boolean_type = type_engine.insert(engines, TypeInfo::Boolean, None);
-        let revert_type = type_engine.insert(engines, TypeInfo::Never, None);
-
         Self {
             span,
-            u64_type,
-            boolean_type,
-            revert_type,
+            u64_type: type_engine.id_of_u64(),
+            boolean_type: type_engine.id_of_bool(),
+            revert_type: type_engine.id_of_never(),
         }
     }
 

@@ -12,7 +12,7 @@ use crate::{
         ast_node::expression::typed_expression::instantiate_if_expression,
         expression::match_expression::typed::instantiate::Instantiate, TypeCheckContext,
     },
-    CompileError, TypeId, TypeInfo,
+    CompileError, TypeEngine, TypeId, TypeInfo,
 };
 use std::{collections::BTreeMap, ops::ControlFlow};
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -32,19 +32,19 @@ struct Trie {
     nodes: Vec<TrieNode>,
 }
 
-fn revert(never_type_id: TypeId, u64_type_id: TypeId) -> TyExpression {
+fn revert(type_engine: &TypeEngine) -> TyExpression {
     TyExpression {
         expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
             kind: sway_ast::Intrinsic::Revert,
             arguments: vec![TyExpression {
                 expression: TyExpressionVariant::Literal(crate::language::Literal::U64(17)),
-                return_type: u64_type_id,
+                return_type: type_engine.id_of_u64(),
                 span: Span::dummy(),
             }],
             type_arguments: vec![],
             span: Span::dummy(),
         }),
-        return_type: never_type_id,
+        return_type: type_engine.id_of_never(),
         span: Span::dummy(),
     }
 }
@@ -124,18 +124,7 @@ impl ty::TyMatchExpression {
         &self,
         mut ctx: TypeCheckContext<'_>,
     ) -> Result<TyExpression, ErrorEmitted> {
-        let never_type_id = ctx.engines.te().insert(ctx.engines, TypeInfo::Never, None);
-
-        let u64_type_id = ctx.engines.te().insert(
-            ctx.engines,
-            TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
-            None,
-        );
-
-        let bool_type_id = ctx
-            .engines
-            .te()
-            .insert(ctx.engines, TypeInfo::Boolean, None);
+        let type_engine = ctx.engines.te();
 
         let branch_return_type_id = self
             .branches
@@ -163,7 +152,7 @@ impl ty::TyMatchExpression {
             .filter(|x| x.condition.is_none())
             .map(|x| x.result.clone())
             .next()
-            .unwrap_or_else(|| revert(never_type_id, u64_type_id));
+            .unwrap_or_else(|| revert(type_engine));
 
         // All the match string slices, ignoring the wildcard
         let match_arms_string_slices = self
@@ -246,7 +235,7 @@ impl ty::TyMatchExpression {
                             expression: TyExpressionVariant::Literal(
                                 crate::language::Literal::U64(k as u64),
                             ),
-                            return_type: u64_type_id,
+                            return_type: type_engine.id_of_u64(),
                             span: Span::dummy(),
                         }),
                     },
@@ -285,7 +274,6 @@ impl ty::TyMatchExpression {
                 .generate_radix_tree_checks(
                     ctx.by_ref(),
                     matched_value,
-                    u64_type_id,
                     branch_return_type_id,
                     wildcard_return_expr.clone(),
                     trie,
@@ -297,7 +285,7 @@ impl ty::TyMatchExpression {
                 expression: TyExpressionVariant::IfExp {
                     condition: Box::new(TyExpression {
                         expression,
-                        return_type: bool_type_id,
+                        return_type: type_engine.id_of_bool(),
                         span: self.span.clone(),
                     }),
                     then: Box::new(then_node),
@@ -373,28 +361,18 @@ impl ty::TyMatchExpression {
         &self,
         ctx: TypeCheckContext<'_>,
         matched_value: &TyExpression,
-        u64_type_id: TypeId,
         branch_return_type_id: TypeId,
         wildcard_return_expr: TyExpression,
         trie: Trie,
         packed_strings: &str,
     ) -> Result<TyExpression, ErrorEmitted> {
-        //generate code
-        let bool_type_id = ctx
-            .engines
-            .te()
-            .insert(ctx.engines, TypeInfo::Boolean, None);
-
-        let string_slice_type_id =
-            ctx.engines
-                .te()
-                .insert(ctx.engines, TypeInfo::StringSlice, None);
+        let type_engine = ctx.engines.te();
 
         let packed_strings_expr = TyExpression {
             expression: TyExpressionVariant::Literal(crate::language::Literal::String(
                 Span::from_string(packed_strings.to_string()),
             )),
-            return_type: string_slice_type_id,
+            return_type: type_engine.id_of_string_slice(),
             span: Span::dummy(),
         };
 
@@ -405,8 +383,8 @@ impl ty::TyMatchExpression {
             &trie.nodes,
             0,
             0,
-            bool_type_id,
-            u64_type_id,
+            type_engine.id_of_bool(),
+            type_engine.id_of_u64(),
             branch_return_type_id,
             1,
             wildcard_return_expr,

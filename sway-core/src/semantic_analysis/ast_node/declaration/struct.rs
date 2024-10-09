@@ -93,9 +93,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| {
-                type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
-            });
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         let field = ty::TyStructField {
             visibility: field.visibility,
             name: field.name,
