@@ -1,6 +1,9 @@
 category = "fail"
 
+# check: $()Declaring nested functions is currently not implemented.
+# check: $()Could not find symbol "tester" in this scope.
 # check: $()This path must return a value of type "bool" from function "f", but it does not.
-# check: $()Aborting due to 1 error.
+# check: $()This path must return a value of type "bool" from function "eq", but it does not.
+# check: $()Aborting due to 4 errors.
 
 
