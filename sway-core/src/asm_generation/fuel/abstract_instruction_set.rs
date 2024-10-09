@@ -118,11 +118,13 @@ impl AbstractInstructionSet {
         self.ops.retain(|op| {
             // It is easier to think in terms of operations we want to remove
             // than the operations we want to retain ;-)
+            #[allow(clippy::match_like_matches_macro)]
+            // Keep the `match` for adding more ops in the future.
             let remove = match &op.opcode {
-                    Either::Left(VirtualOp::NOOP) => true,
-                    _ => false,
-                };
-            
+                Either::Left(VirtualOp::NOOP) => true,
+                _ => false,
+            };
+
             !remove
         });
 

@@ -44,15 +44,15 @@ impl AllocatedAbstractInstructionSet {
             // It is easier to think in terms of operations we want to remove
             // than the operations we want to retain ;-)
             let remove = match &op.opcode {
-                    // `cfei i0` and `cfsi i0` pairs.
-                    Either::Left(AllocatedOpcode::CFEI(imm))
-                    | Either::Left(AllocatedOpcode::CFSI(imm)) => imm.value == 0u32,
-                    // `cfe $zero` and `cfs $zero` pairs.
-                    Either::Left(AllocatedOpcode::CFE(reg))
-                    | Either::Left(AllocatedOpcode::CFS(reg)) => reg.is_zero(),
-                    _ => false,
-                };
-            
+                // `cfei i0` and `cfsi i0` pairs.
+                Either::Left(AllocatedOpcode::CFEI(imm))
+                | Either::Left(AllocatedOpcode::CFSI(imm)) => imm.value == 0u32,
+                // `cfe $zero` and `cfs $zero` pairs.
+                Either::Left(AllocatedOpcode::CFE(reg))
+                | Either::Left(AllocatedOpcode::CFS(reg)) => reg.is_zero(),
+                _ => false,
+            };
+
             !remove
         });
 
