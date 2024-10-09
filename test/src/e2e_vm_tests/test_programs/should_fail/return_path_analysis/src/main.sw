@@ -517,9 +517,34 @@ fn f() -> bool {
 	return false;
     };
 
-    // No value returned here, which is an error.
+    // No value returned here. The return path analysis should report an error, even though the 
+}
+
+
+// Check that return path analysis is applied to local impl methods.
+fn g() -> bool {
+
+    struct X {
+        y: bool,
+    }
+
+    impl core::ops::Eq for X {
+        fn eq(self, other: Self) -> bool {
+	    if true {
+		return true;
+	    } else {
+		return false;
+	    };
+        }
+    }
+
+    let x = X { y : false };
+    let y = X { y : true } ;
+
+    x == y
 }
 
 fn main() {
     let _ = f();
+    let _ = g();
 }

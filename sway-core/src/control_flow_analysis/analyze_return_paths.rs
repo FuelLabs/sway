@@ -114,6 +114,16 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
 
+		if neighbors.len() > 1 {
+		    let ns = neighbors.clone();
+		    dbg!(ns.len());
+		    //		    dbg!(&neighbors);
+		    for n in ns.into_iter() {
+			dbg!(engines.help_out(&self.graph[n]));
+		    }
+//		    panic!();
+		}
+		
                 if neighbors.is_empty() && !return_ty.is_unit() {
                     let span = match &self.graph[rover] {
                         ControlFlowGraphNode::ProgramNode { node, .. } => node.span.clone(),
@@ -235,9 +245,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
+	    // Do not connect the leaves to the function entry point, since control cannot flow from them into the function.
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
@@ -247,10 +255,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 trait_name, items, ..
             } = &*impl_trait;
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
-
+	    // Do not connect the leaves to the impl entry point, since control cannot flow from them into the impl.
             connect_impl_trait(engines, trait_name, graph, items, entry_node)?;
             Ok(leaves.to_vec())
         }
@@ -283,7 +288,6 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                     method_decl_ref: method_decl_ref.clone(),
                     engines,
                 });
-                graph.add_edge(entry_node, fn_decl_entry_node, "".into());
                 // connect the impl declaration node to the functions themselves, as all trait functions are
                 // public if the trait is in scope
                 connect_typed_fn_decl(engines, &fn_decl, graph, fn_decl_entry_node)?;
