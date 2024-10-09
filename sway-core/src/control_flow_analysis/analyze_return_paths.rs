@@ -10,7 +10,6 @@ use crate::{
     type_system::*,
     Engines,
 };
-use im::hashset::HashSet;
 use petgraph::prelude::NodeIndex;
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, IdentUnique};
@@ -73,6 +72,12 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         errors
     }
 
+    /// Traverses the spine of a function to ensure that it does return if a return value is
+    /// expected.  The spine of the function does not include branches such as if-then-elses and
+    /// loops. Those branches are ignored, and a branching expression is represented as a single
+    /// node in the graph. The analysis continues once the branches join again.  This means that the
+    /// spine is linear, so every node has at most one outgoing edge. The graph is assumed to have
+    /// been constructed this way.
     fn ensure_all_paths_reach_exit(
         &self,
         engines: &Engines,
@@ -81,75 +86,46 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         function_name: &IdentUnique,
         return_ty: &TypeInfo,
     ) -> Vec<CompileError> {
-        let mut rovers = vec![entry_point];
+        let mut rover = entry_point;
         let mut errors = vec![];
 
-        let mut visited = HashSet::<NodeIndex>::new();
-        // We don't need to visit the exit point, so for efficiency assume it has already been visited.
-        visited.insert(exit_point);
+        while rover != exit_point {
+            let neighbors = self
+                .graph
+                .neighbors_directed(rover, petgraph::Direction::Outgoing)
+                .collect::<Vec<_>>();
 
-        while !rovers.is_empty() {
-            let mut next_rovers = vec![];
-            for rover in rovers {
-                // Ignore this node if it has been visited before
-                if visited.contains(&rover) {
-                    continue;
-                }
-                // Ignore this node if it represents an inner method/function declaration - these
-                // have already been analyzed earlier, and do not represent legal control flow for
-                // the current method/function.
-                if rover != entry_point
-                    && matches!(
-                        self.graph[rover],
-                        ControlFlowGraphNode::MethodDeclaration { .. }
-                    )
-                {
-                    continue;
-                }
+	    // The graph is supposed to be a single path, so at most one outgoing neighbor is allowed.
+	    assert!(neighbors.len() <= 1);
 
-                visited.insert(rover);
-
-                let mut neighbors = self
-                    .graph
-                    .neighbors_directed(rover, petgraph::Direction::Outgoing)
-                    .collect::<Vec<_>>();
-
-		if neighbors.len() > 1 {
-		    let ns = neighbors.clone();
-		    dbg!(ns.len());
-		    //		    dbg!(&neighbors);
-		    for n in ns.into_iter() {
-			dbg!(engines.help_out(&self.graph[n]));
-		    }
-//		    panic!();
-		}
-		
-                if neighbors.is_empty() && !return_ty.is_unit() {
+            if neighbors.is_empty() {
+		if !return_ty.is_unit() {
+		    // A return is expected, but none is found. Report an error.
                     let span = match &self.graph[rover] {
-                        ControlFlowGraphNode::ProgramNode { node, .. } => node.span.clone(),
-                        ControlFlowGraphNode::MethodDeclaration { span, .. } => span.clone(),
-                        _ => {
+			ControlFlowGraphNode::ProgramNode { node, .. } => node.span.clone(),
+			ControlFlowGraphNode::MethodDeclaration { span, .. } => span.clone(),
+			_ => {
                             errors.push(CompileError::Internal(
-                                "Attempted to construct return path error \
-                                 but no source span was found.",
-                                Span::dummy(),
+				"Attempted to construct return path error \
+				 but no source span was found.",
+				Span::dummy(),
                             ));
                             return errors;
-                        }
+			}
                     };
                     let function_name: Ident = function_name.into();
                     errors.push(CompileError::PathDoesNotReturn {
-                        // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
-                        // different. To save some code duplication,
-                        span,
-                        function_name: function_name.clone(),
-                        ty: engines.help_out(return_ty).to_string(),
+			span,
+			function_name: function_name.clone(),
+			ty: engines.help_out(return_ty).to_string(),
                     });
-                }
+		}
 
-                next_rovers.append(&mut neighbors);
-            }
-            rovers = next_rovers;
+		// No further neighbors, so we're done.
+		break;
+	    }
+
+            rover = neighbors[0];
         }
 
         errors
