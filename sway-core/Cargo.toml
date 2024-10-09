@@ -29,6 +29,7 @@ lazy_static.workspace = true
 miden-core.workspace = true
 object = { workspace = true, features = ["write"] }
 parking_lot.workspace = true
+paste.workspace = true
 pest.workspace = true
 pest_derive.workspace = true
 petgraph.workspace = true

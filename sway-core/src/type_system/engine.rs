@@ -213,16 +213,18 @@ macro_rules! type_engine_shareable_built_in_types {
     (@step $_idx:expr,) => {};
 
     // The actual recursion step that generates the `id_of_<type>` functions.
-    (@step $idx:expr, ($fn_name:ident, $ti:expr, $ti_pat:pat), $(($tail_fn_name:ident, $tail_ti:expr, $tail_ti_pat:pat),)*) => {
-        pub(crate) const fn $fn_name(&self) -> TypeId {
-            TypeId::new($idx)
+    (@step $idx:expr, ($ty_name:ident, $ti:expr, $ti_pat:pat), $(($tail_ty_name:ident, $tail_ti:expr, $tail_ti_pat:pat),)*) => {
+        paste::paste! {
+            pub(crate) const fn [<id_of_ $ty_name>](&self) -> TypeId {
+                TypeId::new($idx)
+            }
         }
 
-        type_engine_shareable_built_in_types!(@step $idx + 1, $(($tail_fn_name, $tail_ti, $tail_ti_pat),)*);
+        type_engine_shareable_built_in_types!(@step $idx + 1, $(($tail_ty_name, $tail_ti, $tail_ti_pat),)*);
     };
 
     // The entry point. Invoking the macro matches this arm.
-    ($(($fn_name:ident, $ti:expr, $ti_pat:pat),)*) => {
+    ($(($ty_name:ident, $ti:expr, $ti_pat:pat),)*) => {
         // The `unit` type is a special case. It will be inserted in the slab as the first type.
         pub(crate) const fn id_of_unit(&self) -> TypeId {
             TypeId::new(0)
@@ -238,7 +240,7 @@ macro_rules! type_engine_shareable_built_in_types {
         }
 
         // Generate the remaining `id_of_<type>` methods. We start counting the indices from 2.
-        type_engine_shareable_built_in_types!(@step 2, $(($fn_name, $ti, $ti_pat),)*);
+        type_engine_shareable_built_in_types!(@step 2, $(($ty_name, $ti, $ti_pat),)*);
 
         // Generate the method that initially inserts the built-in shareable types into the `slab` in the right order.
         //
@@ -297,16 +299,18 @@ macro_rules! type_engine_shareable_built_in_types {
         /// For a particular shareable built-in type, the method guarantees to always
         /// return the same, existing [TypeId].
         fn get_shareable_built_in_type_id(&self, type_info: &TypeInfo) -> Option<TypeId> {
-            use TypeInfo::*;
-            match type_info {
-                Tuple(v) if v.is_empty() => Some(self.id_of_unit()),
-                // Here we also "pass" the dummy value obtained from `Handler::cancel` which will be
-                // optimized away.
-                ErrorRecovery(_) => Some(self.id_of_error_recovery(crate::Handler::default().cancel())),
-                $(
-                    $ti_pat => Some(self.$fn_name()),
-                )*
-                _ => None
+            paste::paste! {
+                use TypeInfo::*;
+                match type_info {
+                    Tuple(v) if v.is_empty() => Some(self.id_of_unit()),
+                    // Here we also "pass" the dummy value obtained from `Handler::cancel` which will be
+                    // optimized away.
+                    ErrorRecovery(_) => Some(self.id_of_error_recovery(crate::Handler::default().cancel())),
+                    $(
+                        $ti_pat => Some(self.[<id_of_ $ty_name>]()),
+                    )*
+                    _ => None
+                }
             }
         }
     }
@@ -314,38 +318,38 @@ macro_rules! type_engine_shareable_built_in_types {
 
 impl TypeEngine {
     type_engine_shareable_built_in_types!(
-        (id_of_never, Never, Never),
-        (id_of_string_slice, StringSlice, StringSlice),
+        (never, Never, Never),
+        (string_slice, StringSlice, StringSlice),
         (
-            id_of_u8,
+            u8,
             UnsignedInteger(IntegerBits::Eight),
             UnsignedInteger(IntegerBits::Eight)
         ),
         (
-            id_of_u16,
+            u16,
             UnsignedInteger(IntegerBits::Sixteen),
             UnsignedInteger(IntegerBits::Sixteen)
         ),
         (
-            id_of_u32,
+            u32,
             UnsignedInteger(IntegerBits::ThirtyTwo),
             UnsignedInteger(IntegerBits::ThirtyTwo)
         ),
         (
-            id_of_u64,
+            u64,
             UnsignedInteger(IntegerBits::SixtyFour),
             UnsignedInteger(IntegerBits::SixtyFour)
         ),
         (
-            id_of_u256,
+            u256,
             UnsignedInteger(IntegerBits::V256),
             UnsignedInteger(IntegerBits::V256)
         ),
-        (id_of_bool, Boolean, Boolean),
-        (id_of_b256, B256, B256),
-        (id_of_contract, Contract, Contract),
-        (id_of_raw_ptr, RawUntypedPtr, RawUntypedPtr),
-        (id_of_raw_slice, RawUntypedSlice, RawUntypedSlice),
+        (bool, Boolean, Boolean),
+        (b256, B256, B256),
+        (contract, Contract, Contract),
+        (raw_ptr, RawUntypedPtr, RawUntypedPtr),
+        (raw_slice, RawUntypedSlice, RawUntypedSlice),
     );
 
     /// Inserts a new [TypeInfo::Unknown] into the [TypeEngine] and returns its [TypeId].
