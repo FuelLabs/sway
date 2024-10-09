@@ -544,7 +544,24 @@ fn g() -> bool {
     x == y
 }
 
+// Check that return path analysis is applied to local functions.
+// Local functions are currently not supported, but once they are added this test should fail for
+// the same reason as for the local impl in the function g().
+fn h() -> bool {
+
+    fn tester(other: bool) -> bool {
+	if true {
+	    return true;
+	} else {
+	    return false;
+	};
+    }
+
+    tester(true)
+}
+
 fn main() {
     let _ = f();
     let _ = g();
+    let _ = h();
 }
