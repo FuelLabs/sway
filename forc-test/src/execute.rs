@@ -246,7 +246,7 @@ impl TestExecutor {
 /// The following is how the beginning of the bytecode is laid out:
 ///
 /// ```ignore
-/// [ 0] ji   i4                       ; Jumps to the data section setup.
+/// [ 0] ji   i(4 + 8)                 ; Jumps to the data section setup.
 /// [ 1] noop
 /// [ 2] DATA_SECTION_OFFSET[0..32]
 /// [ 3] DATA_SECTION_OFFSET[32..64]

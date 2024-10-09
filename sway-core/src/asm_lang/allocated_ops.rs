@@ -766,7 +766,6 @@ fn addr_of(
     data_section: &DataSection,
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-    dbg!(data_id, offset_bytes);
     vec![fuel_asm::Instruction::ADDI(ADDI::new(
         dest.to_reg_id(),
         fuel_asm::RegId::new(DATA_SECTION_REGISTER),
