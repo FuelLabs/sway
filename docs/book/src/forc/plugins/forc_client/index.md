@@ -92,15 +92,21 @@ By default `--default-signer` flag would sign your transactions with the followi
 0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c
 ```
 
-## Interacting with the testnet
+## Selecting a target network
 
-To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the latest `testnet`.
+By default, `local` is used for the target network. To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the latest `testnet`:
 
 ```sh
 forc-deploy --testnet
 ```
 
-It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
+The same can be done to target mainnet:
+
+```sh
+forc-deploy --mainnet
+```
+
+It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag:
 
 ```sh
 forc-deploy --node-url https://beta-3.fuel.network
