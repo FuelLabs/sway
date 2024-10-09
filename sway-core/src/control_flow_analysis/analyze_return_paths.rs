@@ -254,9 +254,8 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             let ty::TyImplSelfOrTrait {
                 trait_name, items, ..
             } = &*impl_trait;
-            let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
 	    // Do not connect the leaves to the impl entry point, since control cannot flow from them into the impl.
-            connect_impl_trait(engines, trait_name, graph, items, entry_node)?;
+            connect_impl_trait(engines, trait_name, graph, items)?;
             Ok(leaves.to_vec())
         }
         ty::TyDecl::ErrorRecovery(..) => Ok(leaves.to_vec()),
@@ -273,7 +272,6 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
     items: &[TyImplItem],
-    entry_node: NodeIndex,
 ) -> Result<(), Vec<CompileError>> {
     let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
