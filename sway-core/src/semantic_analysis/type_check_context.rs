@@ -679,7 +679,7 @@ impl<'a> TypeCheckContext<'a> {
         &self,
         handler: &Handler,
         call_path: &CallPath,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         resolve_call_path(
             handler,
             self.engines(),
@@ -694,7 +694,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         qualified_call_path: &QualifiedCallPath,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         resolve_qualified_call_path(
             handler,
             self.engines(),
