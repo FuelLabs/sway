@@ -252,7 +252,17 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "run_external_proxy_with_storage"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "run_external_target"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "run_external_target_with_storage"
 source = "member"
 dependencies = ["std"]
 

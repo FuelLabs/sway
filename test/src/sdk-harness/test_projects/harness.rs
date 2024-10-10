@@ -31,6 +31,7 @@ mod registers;
 mod result_in_abi;
 mod result_option_expect;
 mod run_external_proxy;
+mod run_external_proxy_with_storage;
 mod script_data;
 mod storage;
 mod storage_access;
