@@ -1,6 +1,6 @@
 [package]
 name = "forc-tx"
-version = "0.63.5"
+version.workspace = true
 description = "A `forc` plugin for constructing transactions."
 authors.workspace = true
 edition.workspace = true
@@ -16,12 +16,12 @@ name = "forc-tx"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = "1"
-clap = { version = "4.5.4", features = ["derive", "env"] }
-devault = "0.1"
-forc-util = { version = "0.63.5", path = "../../forc-util" }
-fuel-tx = { workspace = true, features = ["serde", "test-helpers", "random"] }
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+devault.workspace = true
+forc-util.workspace = true
+fuel-tx = { workspace = true, features = ["random", "test-helpers"] }
 fuel-types = { workspace = true, features = ["serde"] }
-serde = "1.0"
-serde_json = { version = "1" }
-thiserror = "1"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

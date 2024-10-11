@@ -34,7 +34,9 @@ impl ty::TyAstNode {
             }
             AstNodeContent::IncludeStatement(_i) => (),
             AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
-            AstNodeContent::Expression(_expr) => (),
+            AstNodeContent::Expression(expr) => {
+                ty::TyExpression::collect(handler, engines, ctx, &expr)?
+            }
             AstNodeContent::Error(_spans, _err) => (),
         };
 

@@ -119,6 +119,8 @@ pub enum ConvertParseTreeError {
     ExpectedCfgProgramTypeArgValue { span: Span },
     #[error("Expected \"true\" or \"false\" for experimental_new_encoding")]
     ExpectedExperimentalNewEncodingArgValue { span: Span },
+    #[error("Unexpected attribute value: \"{value}\" for attribute: \"cfg\"")]
+    InvalidCfgArg { span: Span, value: String },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -182,6 +184,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
             ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue { span } => span.clone(),
+            ConvertParseTreeError::InvalidCfgArg { span, .. } => span.clone(),
         }
     }
 }

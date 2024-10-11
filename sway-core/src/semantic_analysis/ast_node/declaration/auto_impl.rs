@@ -324,7 +324,18 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(|ctx| {
+        let _r = TyDecl::collect(
+            &handler,
+            engines,
+            ctx.collection_ctx,
+            Declaration::FunctionDeclaration(decl),
+        );
+        if handler.has_errors() {
+            return Err(handler);
+        }
+
+        let ctx = self.ctx.by_ref();
+        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
             TyDecl::type_check(
                 &handler,
                 ctx,
@@ -375,7 +386,17 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(|ctx| {
+        let _r = TyDecl::collect(
+            &handler,
+            engines,
+            ctx.collection_ctx,
+            Declaration::ImplSelfOrTrait(decl),
+        );
+        if handler.has_errors() {
+            return Err(handler);
+        }
+
+        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
             TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 

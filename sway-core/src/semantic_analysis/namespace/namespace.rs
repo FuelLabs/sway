@@ -25,7 +25,7 @@ pub enum TryInsertingTraitImplOnFailure {
 }
 
 /// The set of items that represent the namespace context passed throughout type checking.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, /*Default*/)]
 pub struct Namespace {
     /// The `root` of the project namespace.
     ///

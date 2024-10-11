@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
-    op::{deploy, run},
+    op::{deploy, run, DeployedPackage},
     NodeTarget,
 };
 use forc_pkg::{
@@ -67,7 +67,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
     println!(" Deploying {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    deploy(DeployCommand {
+    let deployed_packages = deploy(DeployCommand {
         pkg: forc_client::cmd::deploy::Pkg {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
@@ -85,13 +85,20 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         no_encoding_v1: !run_config.experimental.new_encoding,
         ..Default::default()
     })
-    .await
-    .map(|contract_ids| {
-        contract_ids
-            .first()
-            .map(|contract_id| contract_id.id)
-            .unwrap()
-    })
+    .await?;
+
+    deployed_packages
+        .into_iter()
+        .map(|deployed_pkg| {
+            if let DeployedPackage::Contract(deployed_contract) = deployed_pkg {
+                Some(deployed_contract.id)
+            } else {
+                None
+            }
+        })
+        .next()
+        .flatten()
+        .ok_or_else(|| anyhow!("expected to find at least one deployed contract."))
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
@@ -140,7 +147,7 @@ pub(crate) async fn runs_on_node(
 
 pub(crate) enum VMExecutionResult {
     Fuel(ProgramState, Vec<Receipt>),
-    Evm(revm::ExecutionResult),
+    Evm(revm::primitives::result::ExecutionResult),
     MidenVM(miden::ExecutionTrace),
 }
 
@@ -214,31 +221,38 @@ pub(crate) fn runs_in_vm(
             ))
         }
         BuildTarget::EVM => {
-            let mut evm = revm::new();
-            evm.database(revm::InMemoryDB::default());
-            evm.env = revm::Env::default();
+            let mut evm = revm::EvmBuilder::default()
+                .with_db(revm::InMemoryDB::default())
+                .with_clear_env()
+                .build();
 
             // Transaction to create the smart contract
-            evm.env.tx.transact_to = revm::TransactTo::create();
-            evm.env.tx.data = bytes::Bytes::from(script.bytecode.bytes.into_boxed_slice());
-            let result = evm.transact_commit();
+            let result = evm
+                .transact_commit()
+                .map_err(|e| anyhow::anyhow!("Could not create smart contract on EVM: {e:?}"))?;
 
-            match result.out {
-                revm::TransactOut::None => Err(anyhow!("Could not create smart contract")),
-                revm::TransactOut::Call(_) => todo!(),
-                revm::TransactOut::Create(ref _bytes, account_opt) => {
-                    match account_opt {
-                        Some(account) => {
-                            evm.env.tx.transact_to = revm::TransactTo::Call(account);
+            match result {
+                revm::primitives::ExecutionResult::Revert { .. }
+                | revm::primitives::ExecutionResult::Halt { .. } => todo!(),
+                revm::primitives::ExecutionResult::Success { ref output, .. } => match output {
+                    revm::primitives::result::Output::Call(_) => todo!(),
+                    revm::primitives::result::Output::Create(_bytes, address_opt) => {
+                        match address_opt {
+                            None => todo!(),
+                            Some(address) => {
+                                evm.tx_mut().data = script.bytecode.bytes.into();
+                                evm.tx_mut().transact_to =
+                                    revm::interpreter::primitives::TransactTo::Call(*address);
 
-                            // Now issue a call.
-                            //evm.env.tx. = bytes::Bytes::from(script.bytecode.into_boxed_slice());
-                            let result = evm.transact_commit();
-                            Ok(VMExecutionResult::Evm(result))
+                                let result = evm
+                                    .transact_commit()
+                                    .map_err(|e| anyhow::anyhow!("Failed call on EVM: {e:?}"))?;
+
+                                Ok(VMExecutionResult::Evm(result))
+                            }
                         }
-                        None => todo!(),
                     }
-                }
+                },
             }
         }
         BuildTarget::MidenVM => {

@@ -44,6 +44,7 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
+        collection_ctx: &mut SymbolCollectionContext,
         mut namespace: namespace::Namespace,
         package_name: &str,
         build_config: Option<&BuildConfig>,
@@ -55,8 +56,9 @@ impl TyProgram {
                     new_encoding: false,
                 });
 
-        let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
-            .with_kind(parsed.kind);
+        let mut ctx =
+            TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
+                .with_kind(parsed.kind);
 
         let ParseProgram { root, kind } = parsed;
 

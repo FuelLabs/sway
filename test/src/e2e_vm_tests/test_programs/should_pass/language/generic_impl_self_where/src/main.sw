@@ -65,6 +65,25 @@ impl MyEq for Data3 {
   }
 }
 
+// This tests it is still possible to call generic methods
+// where its parent has constraints
+// https://github.com/FuelLabs/sway/issues/6384
+
+trait MyTrait { }
+struct S<T> { }
+
+struct M1 {}
+impl MyTrait for M1 { }
+
+impl<T> S<T> where T: MyTrait {
+  fn bar<M>() {
+  }
+}
+
+fn issue_6384() {
+  let _x = S::<M1>::bar::<M1>();
+}
+
 fn main() -> u64 {
   let s = Data { x: 42 };
   assert(s.contains(42));
@@ -115,6 +134,8 @@ fn main() -> u64 {
   assert(!d4.contains5(Data2 { x: 42, y: Data3 { x: 41 } }));
   assert(!d4.contains5(Data2 { x: 41, y: Data3 { x: 42 } }));
   */
+
+  issue_6384();
 
   10
 }

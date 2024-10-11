@@ -87,4 +87,8 @@ pub struct Command {
     /// Disable the "new encoding" feature
     #[clap(long)]
     pub no_encoding_v1: bool,
+
+    /// AWS KMS signer arn. If present forc-deploy will automatically use AWS KMS signer instead of forc-wallet.
+    #[clap(long)]
+    pub aws_kms_signer: Option<String>,
 }

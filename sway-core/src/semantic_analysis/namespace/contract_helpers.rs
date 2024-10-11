@@ -11,7 +11,7 @@ use crate::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
     },
-    semantic_analysis::{TypeCheckContext, namespace::Root},
+    semantic_analysis::{symbol_collection_context::SymbolCollectionContext, TypeCheckContext, namespace::Root},
     transform::to_parsed_lang,
     Engines, Ident, Namespace,
 };
@@ -205,11 +205,12 @@ fn bind_contract_id_in_root_module(
         content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
         span: const_item_span.clone(),
     };
-
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
     // The root object 
     let mut namespace = Namespace::new(handler, engines, root, false)?;
-    let type_check_ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental);
+    // TODO: Eliminate this cloning step
+    let mut symbol_ctx = SymbolCollectionContext::new(namespace.clone());
+    let type_check_ctx = TypeCheckContext::from_namespace(&mut namespace, &mut symbol_ctx, engines, experimental);
     // Typecheck the const declaration. This will add the binding in the supplied namespace
     match TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap().content {
         TyAstNodeContent::Declaration(_) => Ok(namespace.root()),

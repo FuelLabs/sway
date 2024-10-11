@@ -6,7 +6,7 @@ use super::{
 };
 
 use rustc_hash::FxHasher;
-use std::hash::BuildHasherDefault;
+use std::{collections::HashMap, hash::BuildHasherDefault};
 use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_types::{span::Span, Spanned};
@@ -33,6 +33,8 @@ pub struct Module {
     pub lexical_scopes: Vec<LexicalScope>,
     /// Current lexical scope id in the lexical scope hierarchy stack.
     pub current_lexical_scope_id: LexicalScopeId,
+    /// Maps between a span and the corresponding lexical scope id.
+    pub lexical_scopes_spans: HashMap<Span, LexicalScopeId>,
     /// Name of the module, package name for root module, module name for other modules.
     /// Module name used is the same as declared in `mod name;`.
     name: Ident,
@@ -48,6 +50,12 @@ pub struct Module {
     mod_path: ModulePathBuf,
 }
 
+//impl Default for Module {
+//    fn default() -> Self {
+//        Self::new(Ident::dummy(), Visibility::Public, None)
+//    }
+//}
+
 impl Module {
     pub(super) fn new(name: Ident, visibility: Visibility, span: Option<Span>, parent_mod_path: &ModulePathBuf) -> Self {
 	let mut mod_path = parent_mod_path.clone();
@@ -56,6 +64,7 @@ impl Module {
             visibility,
             submodules: Default::default(),
             lexical_scopes: vec![LexicalScope::default()],
+            lexical_scopes_spans: Default::default(),
             current_lexical_scope_id: 0,
             name,
             span,
@@ -183,8 +192,27 @@ impl Module {
         self.current_lexical_scope_id
     }
 
+    /// Enters the scope with the given span in the module's lexical scope hierarchy.
+    pub fn enter_lexical_scope(
+        &mut self,
+        handler: &Handler,
+        span: Span,
+    ) -> Result<LexicalScopeId, ErrorEmitted> {
+        let id_opt = self.lexical_scopes_spans.get(&span);
+        match id_opt {
+            Some(id) => {
+                self.current_lexical_scope_id = *id;
+                Ok(*id)
+            }
+            None => Err(handler.emit_err(CompileError::Internal(
+                "Could not find a valid lexical scope for this source location.",
+                span.clone(),
+            ))),
+        }
+    }
+
     /// Pushes a new scope to the module's lexical scope hierarchy.
-    pub fn push_new_lexical_scope(&mut self) -> LexicalScopeId {
+    pub fn push_new_lexical_scope(&mut self, span: Span) -> LexicalScopeId {
         let previous_scope_id = self.current_lexical_scope_id();
         let new_scoped_id = {
             self.lexical_scopes.push(LexicalScope {
@@ -196,6 +224,7 @@ impl Module {
         let previous_scope = self.lexical_scopes.get_mut(previous_scope_id).unwrap();
         previous_scope.children.push(new_scoped_id);
         self.current_lexical_scope_id = new_scoped_id;
+        self.lexical_scopes_spans.insert(span, new_scoped_id);
         new_scoped_id
     }
 
