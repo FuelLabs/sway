@@ -571,7 +571,7 @@ pub fn parsed_to_ast(
     let collection_namespace = Namespace::new(handler, engines, initial_namespace.clone(), true)?;
     // Collect the program symbols.
 
-    let collection_ctx =
+    let mut collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, collection_namespace)?;
 
     // TODO: Eliminate this cloning step?

@@ -698,7 +698,7 @@ impl ty::TySubmodule {
 
     pub fn type_check(
         handler: &Handler,
-        parent_ctx: TypeCheckContext,
+        mut parent_ctx: TypeCheckContext,
         engines: &Engines,
         mod_name: ModName,
         kind: TreeType,

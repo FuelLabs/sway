@@ -344,7 +344,7 @@ impl<'a> TypeCheckContext<'a> {
     ///
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
-        mut self,
+        &mut self,
 	handler: &Handler,
         mod_name: Ident,
         visibility: Visibility,
@@ -356,8 +356,7 @@ impl<'a> TypeCheckContext<'a> {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
-	let mut ns = self.namespace_mut();
-	ns.enter_submodule(
+	self.namespace.enter_submodule(
 	    handler,
             engines,
             mod_name.clone(),
@@ -371,16 +370,16 @@ impl<'a> TypeCheckContext<'a> {
             mod_name,
             visibility,
             module_span,
-            |submod_collection_ctx| {
+	    |submod_collection_ctx| {
                 let submod_ctx = TypeCheckContext::from_namespace(
-                    &mut ns,
+                    &mut self.namespace,
                     submod_collection_ctx,
                     engines,
                     experimental,
                 );
                 let ret = with_submod_ctx(submod_ctx);
-		ns.pop_submodule();
-		ret
+		self.namespace.pop_submodule();
+ 	        ret
             },
         )
     }
@@ -1162,7 +1161,7 @@ impl<'a> TypeCheckContext<'a> {
         let type_engine = self.engines.te();
         let _decl_engine = self.engines.de();
 
-        let type_name = self.engines.help_out(type_id).to_string();
+//        let type_name = self.engines.help_out(type_id).to_string();
 //	let problem = type_name == "Bytes" && item_name.as_str() == "len";
 //	if problem { dbg!(&item_prefix); };
 
@@ -1266,7 +1265,7 @@ impl<'a> TypeCheckContext<'a> {
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
 
-        let type_name = self.engines.help_out(type_id).to_string();
+//        let type_name = self.engines.help_out(type_id).to_string();
 //	let problem = type_name == "Bytes" && method_name.as_str() == "len";
 //	if problem {
 //	    dbg!(&method_prefix);
