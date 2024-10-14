@@ -38,7 +38,6 @@ use crate::{
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use either::Either;
 use indexmap::IndexMap;
-use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use std::collections::{HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
@@ -49,6 +48,7 @@ use sway_error::{
     warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
+use symbol_collection_context::SymbolCollectionContext;
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -136,6 +136,143 @@ impl ty::TyExpression {
             span,
         };
         Ok(exp)
+    }
+
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        expr: &Expression,
+    ) -> Result<(), ErrorEmitted> {
+        match &expr.kind {
+            ExpressionKind::Error(_, _) => {}
+            ExpressionKind::Literal(_) => {}
+            ExpressionKind::AmbiguousPathExpression(expr) => {
+                expr.args
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::FunctionApplication(expr) => {
+                expr.arguments
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::LazyOperator(expr) => {
+                Self::collect(handler, engines, ctx, &expr.lhs)?;
+                Self::collect(handler, engines, ctx, &expr.rhs)?;
+            }
+            ExpressionKind::AmbiguousVariableExpression(_) => {}
+            ExpressionKind::Variable(_) => {}
+            ExpressionKind::Tuple(exprs) => {
+                exprs
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::TupleIndex(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+            }
+            ExpressionKind::Array(expr) => {
+                expr.contents
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Struct(expr) => {
+                expr.fields
+                    .iter()
+                    .map(|field| Self::collect(handler, engines, ctx, &field.value))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::CodeBlock(code_block) => {
+                TyCodeBlock::collect(handler, engines, ctx, code_block)?
+            }
+            ExpressionKind::If(if_expr) => {
+                Self::collect(handler, engines, ctx, &if_expr.condition)?;
+                Self::collect(handler, engines, ctx, &if_expr.then)?;
+                if let Some(r#else) = &if_expr.r#else {
+                    Self::collect(handler, engines, ctx, r#else)?
+                }
+            }
+            ExpressionKind::Match(expr) => {
+                Self::collect(handler, engines, ctx, &expr.value)?;
+                expr.branches
+                    .iter()
+                    .map(|branch| {
+                        // create a new namespace for this branch result
+                        ctx.scoped(engines, branch.span.clone(), |scoped_ctx| {
+                            Self::collect(handler, engines, scoped_ctx, &branch.result)
+                        })
+                        .0
+                    })
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Asm(_) => {}
+            ExpressionKind::MethodApplication(expr) => {
+                expr.arguments
+                    .iter()
+                    .map(|expr| Self::collect(handler, engines, ctx, expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Subfield(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+            }
+            ExpressionKind::DelineatedPath(expr) => {
+                if let Some(expr_args) = &expr.args {
+                    expr_args
+                        .iter()
+                        .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                        .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+                }
+            }
+            ExpressionKind::AbiCast(expr) => {
+                Self::collect(handler, engines, ctx, &expr.address)?;
+            }
+            ExpressionKind::ArrayIndex(expr) => {
+                Self::collect(handler, engines, ctx, &expr.prefix)?;
+                Self::collect(handler, engines, ctx, &expr.index)?;
+            }
+            ExpressionKind::StorageAccess(_) => {}
+            ExpressionKind::IntrinsicFunction(expr) => {
+                expr.arguments
+                    .iter()
+                    .map(|arg_expr| Self::collect(handler, engines, ctx, arg_expr))
+                    .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::WhileLoop(expr) => {
+                Self::collect(handler, engines, ctx, &expr.condition)?;
+                TyCodeBlock::collect(handler, engines, ctx, &expr.body)?
+            }
+            ExpressionKind::ForLoop(expr) => {
+                Self::collect(handler, engines, ctx, &expr.desugared)?;
+            }
+            ExpressionKind::Break => {}
+            ExpressionKind::Continue => {}
+            ExpressionKind::Reassignment(expr) => {
+                match &expr.lhs {
+                    ReassignmentTarget::ElementAccess(expr) => {
+                        Self::collect(handler, engines, ctx, expr)?;
+                    }
+                    ReassignmentTarget::Deref(expr) => {
+                        Self::collect(handler, engines, ctx, expr)?;
+                    }
+                }
+                Self::collect(handler, engines, ctx, &expr.rhs)?;
+            }
+            ExpressionKind::ImplicitReturn(expr) => Self::collect(handler, engines, ctx, expr)?,
+            ExpressionKind::Return(expr) => {
+                Self::collect(handler, engines, ctx, expr)?;
+            }
+            ExpressionKind::Ref(expr) => {
+                Self::collect(handler, engines, ctx, &expr.value)?;
+            }
+            ExpressionKind::Deref(expr) => {
+                Self::collect(handler, engines, ctx, expr)?;
+            }
+        }
+        Ok(())
     }
 
     pub(crate) fn type_check(
@@ -1809,7 +1946,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_array(
-        handler: &Handler,
+        _handler: &Handler,
         mut ctx: TypeCheckContext,
         contents: &[Expression],
         span: Span,
@@ -1841,8 +1978,8 @@ impl ty::TyExpression {
             });
         };
 
-        // start each element with the known array element type, or Unknown if it is to be inferred
-        // from the elements
+        // capture the expected array element type from context,
+        // otherwise, fallback to Unknown.
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
                 let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
@@ -1863,44 +2000,32 @@ impl ty::TyExpression {
                     .by_ref()
                     .with_help_text("")
                     .with_type_annotation(type_engine.insert(engines, initial_type.clone(), None));
-                Self::type_check(handler, ctx, expr)
+
+                // type_check_analyze unification will give the final error
+                let handler = Handler::default();
+                Self::type_check(&handler, ctx, expr)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
             })
             .collect();
 
-        // choose the best type to be the array elem type
-        use itertools::FoldWhile::{Continue, Done};
-        let elem_type = typed_contents
-            .iter()
-            .fold_while(None, |last, current| match last {
-                None => Continue(Some(current.return_type)),
-                Some(last) => {
-                    if last.is_concrete(engines, TreatNumericAs::Abstract) {
-                        return Done(Some(last));
-                    }
+        // if the element type is still unknown, and all elements are Never,
+        // fallback to unit
+        let initial_type = if matches!(initial_type, TypeInfo::Unknown) {
+            let is_all_elements_never = typed_contents
+                .iter()
+                .all(|expr| matches!(&*engines.te().get(expr.return_type), TypeInfo::Never));
+            if is_all_elements_never {
+                TypeInfo::Tuple(vec![])
+            } else {
+                initial_type
+            }
+        } else {
+            initial_type
+        };
 
-                    if current
-                        .return_type
-                        .is_concrete(engines, TreatNumericAs::Abstract)
-                    {
-                        return Done(Some(current.return_type));
-                    }
-
-                    let last_info = ctx.engines().te().get(last);
-                    let current_info = ctx.engines().te().get(current.return_type);
-                    match (&*last_info, &*current_info) {
-                        (TypeInfo::Numeric, TypeInfo::UnsignedInteger(_)) => {
-                            Done(Some(current.return_type))
-                        }
-                        _ => Continue(Some(last)),
-                    }
-                }
-            })
-            .into_inner();
-        let elem_type = elem_type.unwrap_or_else(|| typed_contents[0].return_type);
-
+        let elem_type = type_engine.insert(engines, initial_type.clone(), None);
         let array_count = typed_contents.len();
-        Ok(ty::TyExpression {
+        let expr = ty::TyExpression {
             expression: ty::TyExpressionVariant::Array {
                 elem_type,
                 contents: typed_contents,
@@ -1917,9 +2042,15 @@ impl ty::TyExpression {
                     Length::new(array_count, Span::dummy()),
                 ),
                 None,
-            ), // Maybe?
+            ),
             span,
-        })
+        };
+
+        // type_check_analyze unification will give the final error
+        let handler = Handler::default();
+        expr.as_array_unify_elements(&handler, ctx.engines);
+
+        Ok(expr)
     }
 
     fn type_check_array_index(
@@ -2768,6 +2899,7 @@ mod tests {
     use super::*;
     use crate::{Engines, ExperimentalFlags};
     use sway_error::type_error::TypeError;
+    use symbol_collection_context::SymbolCollectionContext;
 
     fn do_type_check(
         handler: &Handler,
@@ -2776,6 +2908,9 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let collection_ctx_ns = Namespace::new();
+        let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
+
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
         let mut root_module = namespace::Root::from(namespace::Module::new(
             root_module_name,
@@ -2783,8 +2918,13 @@ mod tests {
             None,
         ));
         let mut namespace = Namespace::init_root(&mut root_module);
-        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
-            .with_type_annotation(type_annotation);
+        let ctx = TypeCheckContext::from_namespace(
+            &mut namespace,
+            &mut collection_ctx,
+            engines,
+            experimental,
+        )
+        .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }
 
@@ -2793,7 +2933,7 @@ mod tests {
         expr: &Expression,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = Engines::default();
-        do_type_check(
+        let expr = do_type_check(
             handler,
             &engines,
             expr,
@@ -2813,7 +2953,9 @@ mod tests {
             ExperimentalFlags {
                 new_encoding: false,
             },
-        )
+        )?;
+        expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
+        Ok(expr)
     }
 
     #[test]
@@ -2874,7 +3016,7 @@ mod tests {
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
 
-        assert!(errors.len() == 2);
+        assert!(errors.len() == 1);
         assert!(matches!(&errors[0],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
@@ -2882,13 +3024,6 @@ mod tests {
                              ..
                          }) if expected == "bool"
                                 && received == "u64"));
-        assert!(matches!(&errors[1],
-                         CompileError::TypeError(TypeError::MismatchedType {
-                             expected,
-                             received,
-                             ..
-                         }) if expected == "[bool; 2]"
-                                && received == "[u64; 2]"));
     }
 
     #[test]

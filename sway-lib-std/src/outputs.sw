@@ -111,6 +111,10 @@ fn output_pointer(index: u64) -> Option<raw_ptr> {
     match tx_type() {
         Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
         Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_OUTPUT_AT_INDEX)),
+        Transaction::Upgrade => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        Transaction::Upload => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
+        _ => None,
     }
 }
 
@@ -139,6 +143,10 @@ pub fn output_count() -> u16 {
     match tx_type() {
         Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
         Transaction::Create => __gtf::<u16>(0, GTF_CREATE_OUTPUTS_COUNT),
+        Transaction::Upgrade => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
+        Transaction::Upload => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
+        Transaction::Blob => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
+        _ => revert(0),
     }
 }
 
@@ -192,7 +200,7 @@ pub fn output_amount(index: u64) -> Option<u64> {
     }
 }
 
-/// Gets the AssetId of the output if it is a `Output::Coin`.
+/// Gets the AssetId of the output.
 ///
 /// # Arguments
 ///
@@ -200,7 +208,7 @@ pub fn output_amount(index: u64) -> Option<u64> {
 ///
 /// # Returns
 ///
-/// * [Option<AssetId>] - The AssetId of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<AssetId>] - The AssetId of the output. None otherwise.
 ///
 /// # Reverts
 ///
@@ -219,11 +227,12 @@ pub fn output_amount(index: u64) -> Option<u64> {
 pub fn output_asset_id(index: u64) -> Option<AssetId> {
     match output_type(index) {
         Some(Output::Coin) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        Some(Output::Change) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         _ => None,
     }
 }
 
-/// Returns the receiver of the output if it is a `Output::Coin`.
+/// Returns the receiver of the output.
 ///
 /// # Arguments
 ///
@@ -231,7 +240,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 ///
 /// # Returns
 ///
-/// * [Option<Address>] - The receiver of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<Address>] - The receiver of the output. None otherwise.
 ///
 /// # Reverts
 ///
@@ -250,6 +259,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 pub fn output_asset_to(index: u64) -> Option<Address> {
     match output_type(index) {
         Some(Output::Coin) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
+        Some(Output::Change) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         _ => None,
     }
 }
