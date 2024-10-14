@@ -15,7 +15,9 @@ use forc_wallet::{
 };
 use fuel_crypto::SecretKey;
 use fuel_tx::{AssetId, ContractId};
-use fuels::{macros::abigen, programs::responses::CallResponse};
+use fuels::{
+    macros::abigen, programs::responses::CallResponse, types::checksum_address::checksum_encode,
+};
 use fuels_accounts::{
     provider::Provider,
     wallet::{Wallet, WalletUnlocked},
@@ -139,7 +141,7 @@ pub fn format_base_asset_account_balances(
     accounts_map: &AccountsMap,
     account_balances: &AccountBalances,
     base_asset_id: &AssetId,
-) -> Vec<String> {
+) -> Result<Vec<String>> {
     accounts_map
         .iter()
         .zip(account_balances)
@@ -148,10 +150,12 @@ pub fn format_base_asset_account_balances(
                 .get(&base_asset_id.to_string())
                 .copied()
                 .unwrap_or(0);
+            let raw_addr = format!("0x{address}");
+            let checksum_addr = checksum_encode(&raw_addr)?;
             let eth_amount = base_asset_amount as f64 / 1_000_000_000.0;
-            format!("[{ix}] {address} - {eth_amount} ETH")
+            Ok(format!("[{ix}] {checksum_addr} - {eth_amount} ETH"))
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()
 }
 
 // TODO: Simplify the function signature once https://github.com/FuelLabs/sway/issues/6071 is closed.
@@ -189,7 +193,7 @@ pub(crate) async fn select_account(
                                       \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
             }
             let selections =
-                format_base_asset_account_balances(&accounts, &account_balances, base_asset_id);
+                format_base_asset_account_balances(&accounts, &account_balances, base_asset_id)?;
 
             let mut account_index;
             loop {
@@ -203,7 +207,14 @@ pub(crate) async fn select_account(
                 if accounts.contains_key(&account_index) {
                     break;
                 }
-                let options: Vec<String> = accounts.keys().map(|key| key.to_string()).collect();
+                let options: Vec<String> = accounts
+                    .keys()
+                    .map(|key| {
+                        let raw_addr = format!("0x{key}");
+                        let checksum_addr = checksum_encode(&raw_addr)?;
+                        Ok(checksum_addr)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
                 println_warning(&format!(
                     "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
                     account_index,
