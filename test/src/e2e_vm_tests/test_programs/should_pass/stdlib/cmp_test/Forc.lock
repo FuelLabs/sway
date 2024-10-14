@@ -1,0 +1,13 @@
+[[package]]
+name = "cmp_test"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-CFA6E4A73D9B6556"
+
+[[package]]
+name = "std"
+source = "path+from-root-CFA6E4A73D9B6556"
+dependencies = ["core"]

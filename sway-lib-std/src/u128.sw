@@ -13,6 +13,7 @@ use ::registers::{flags, overflow};
 use ::math::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, None, Some};
+use ::cmp::*;
 
 /// The 128-bit unsigned integer type.
 ///
@@ -862,5 +863,15 @@ impl Logarithm for U128 {
         set_flags(flags);
 
         result
+    }
+}
+
+impl Cmp for U128 {
+    fn min(self, other: Self) -> Self {
+        if self < other { self } else { other }
+    }
+
+    fn max(self, other: Self) -> Self {
+        if self > other { self } else { other }
     }
 }
