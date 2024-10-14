@@ -634,6 +634,7 @@ impl Dependencies {
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     args,
                 } = &**delineated_path_expression;
                 // It's either a module path which we can ignore, or an enum variant path, in which
@@ -1031,6 +1032,8 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {abi_name}");
         }
+        TypeInfo::UntypedEnum(_) => todo!(),
+        TypeInfo::UntypedStruct(_) => todo!(),
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",

@@ -9,10 +9,10 @@ use crate::{
     decl_engine::DeclEngineGet,
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
-    semantic_analysis::type_check_context::EnforceTypeArguments,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
+    EnforceTypeArguments,
 };
 
 use std::{
@@ -228,6 +228,8 @@ impl TypeId {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
+            TypeInfo::UntypedEnum(_) => todo!(),
+            TypeInfo::UntypedStruct(_) => todo!(),
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in &enum_decl.type_parameters {

@@ -13,7 +13,7 @@ use crate::{
         ty::{self, TyIntrinsicFunctionKind},
         Literal,
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::TypeCheckContext,
     type_system::*,
 };
 

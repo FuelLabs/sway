@@ -93,6 +93,8 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         Numeric => "u64".into(), // u64 is the default
         Contract => "contract".into(),
         ErrorRecovery(_) => "unknown due to error".into(),
+        UntypedEnum(_) => todo!(),
+        UntypedStruct(_) => todo!(),
         Enum(decl_ref) => {
             let decl = decl_engine.get_enum(decl_ref);
             format!("enum {}", decl.call_path.suffix)

@@ -363,6 +363,8 @@ impl TypeSubstMap {
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::TypeParam(_) => None,
+            TypeInfo::UntypedEnum(_) => todo!(),
+            TypeInfo::UntypedStruct(_) => todo!(),
             TypeInfo::Struct(decl_id) => {
                 let mut decl = (*decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
