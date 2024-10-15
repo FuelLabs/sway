@@ -817,7 +817,7 @@ pub(crate) fn resolve_method_name(
 			}
 			path
 		    },
-		    CallPathType::Resolved => call_path.prefixes.clone(),
+		    CallPathType::Full => call_path.prefixes.clone(),
 		    CallPathType::Ambiguous => {
 			if ctx.namespace().current_module().submodules().contains_key(call_path.prefixes.first().unwrap().as_str()) {
 			    ctx.namespace().prepend_module_path(&call_path.prefixes)

@@ -89,7 +89,7 @@ impl ty::TyExpression {
                 span: span.clone(),
             }
             .to_var_name(),
-            callpath_type: CallPathType::Resolved,
+            callpath_type: CallPathType::Full,
         };
         let mut method_name_binding = TypeBinding {
             inner: MethodName::FromTrait {

@@ -2527,7 +2527,7 @@ fn op_call(
                     Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
                 suffix: Ident::new_with_override(name.into(), op_span.clone()),
-                callpath_type: CallPathType::Resolved,
+                callpath_type: CallPathType::Full,
             },
         },
         type_arguments: TypeArgs::Regular(vec![]),

@@ -155,7 +155,7 @@ pub struct StructAccessInfo {
 impl StructAccessInfo {
     pub fn get_info(engines: &Engines, struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
         assert!(
-            matches!(struct_decl.call_path.callpath_type, CallPathType::Resolved),
+            matches!(struct_decl.call_path.callpath_type, CallPathType::Full),
             "The call path of the struct declaration must always be fully resolved."
         );
 

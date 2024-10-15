@@ -179,14 +179,23 @@ impl DebugWithEngines for QualifiedCallPath {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum CallPathType {
-    // An unresolved path on the form `::X::Y`. The path must be resolved relative to the package
-    // root module.
+    /// An unresolved path on the form `::X::Y::Z`. The path must be resolved relative to the package
+    /// root module.
+    /// The path can be converted to a full path by prepending the package name, so if the path
+    /// `::X::Y::Z` occurs in package `A`, then the corresponding full path will be `A::X::Y::Z`.
     RelativeToPackageRoot,
-    // An unresolved path on the form `X::Y`. The path must either be resolved relative to the
-    // current module or as an absolute path.
+    /// An unresolved path on the form `X::Y::Z`. The path must either be resolved relative to the
+    /// current module, in which case `X` is either a submodule or a name bound in the current
+    /// module, or as a full path, in which case `X` is the name of the current package.
+    /// If the path is resolved relative to the current module, and the current module has a module
+    /// path `A::B::C`, then the corresponding full path is `A::B::C::X::Y::Z`.
+    /// If the path is resolved as a full path, then the full path is obviously `X::Y::Z`.
     Ambiguous,
-    // A fully resolved, absolute path 
-    Resolved,
+    /// A full path on the form `X::Y::Z`. The first identifier `X` refers to the current package
+    /// name. After that comes a (possibly empty) series of names of submodules. Then comes the name
+    /// of an item (a type, a trait, a function, or something else declared in that
+    /// module). Additionally, there may be additional names such as the name of an enum variant.
+    Full,
 }
 
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
@@ -306,7 +315,7 @@ impl CallPath {
                 .map(|&x| Ident::new_no_span(x.into()))
                 .collect(),
             suffix: path.last().map(|&x| Ident::new_no_span(x.into())).unwrap(),
-            callpath_type: CallPathType::Resolved,
+            callpath_type: CallPathType::Full,
         }
     }
 
@@ -332,7 +341,7 @@ impl CallPath {
 	    let new_callpath_type = match self.callpath_type {
 		CallPathType::RelativeToPackageRoot
                 | CallPathType::Ambiguous => CallPathType::Ambiguous,
-		CallPathType::Resolved => CallPathType::RelativeToPackageRoot,
+		CallPathType::Full => CallPathType::RelativeToPackageRoot,
 	    };
             CallPath {
                 prefixes: self.prefixes[1..self.prefixes.len()].to_vec(),
@@ -360,7 +369,7 @@ impl CallPath {
         for mod_path in namespace.current_mod_path() {
             res.prefixes.push(mod_path.clone())
         }
-        res.callpath_type = CallPathType::Resolved;
+        res.callpath_type = CallPathType::Full;
         res
     }
 
@@ -373,7 +382,7 @@ impl CallPath {
     /// and are left unchanged since `std` is a root of the package `std`.
     pub fn to_fullpath(&self, _engines: &Engines, namespace: &Namespace) -> CallPath {
 	match self.callpath_type {
-	    CallPathType::Resolved => self.clone(),
+	    CallPathType::Full => self.clone(),
 	    CallPathType::RelativeToPackageRoot => {
 		let mut prefixes = vec!();
 		for ident in self.prefixes.iter() {
@@ -382,7 +391,7 @@ impl CallPath {
 		Self {
 		    prefixes,
 		    suffix: self.suffix.clone(),
-		    callpath_type: CallPathType::Resolved,
+		    callpath_type: CallPathType::Full,
 		}
 	    },
 	    CallPathType::Ambiguous => {
@@ -429,7 +438,7 @@ impl CallPath {
 // 			CallPath {
 // 			    prefixes: mod_path.clone(),
 // 			    suffix: self.suffix.clone(),
-// 			    callpath_type: CallPathType::Resolved,
+// 			    callpath_type: CallPathType::Full,
 // 			}
 // //			synonym_prefixes.clone_from(&mod_path);
 // //			is_absolute = true;
@@ -439,7 +448,7 @@ impl CallPath {
 			CallPath {
 			    prefixes: namespace.current_mod_path.clone(),
 			    suffix: self.suffix.clone(),
-			    callpath_type: CallPathType::Resolved,
+			    callpath_type: CallPathType::Full,
 			}
 
 // //		    let mut prefixes: Vec<Ident> = vec![];
@@ -463,7 +472,7 @@ impl CallPath {
 // //		    CallPath {
 // //			prefixes,
 // //			suffix: self.suffix.clone(),
-// //			callpath_type: CallPathType::Resolved,
+// //			callpath_type: CallPathType::Full,
 // //		    }
 		} else if namespace.current_module_has_submodule(&self.prefixes[0])
 		{
@@ -482,14 +491,14 @@ impl CallPath {
 		    CallPath {
 			prefixes: namespace.prepend_module_path(&self.prefixes),
 			suffix: self.suffix.clone(),
-			callpath_type: CallPathType::Resolved,
+			callpath_type: CallPathType::Full,
 		    }
 		} else {
 		    // Fully qualified path 
 		    CallPath {
 			prefixes: self.prefixes.clone(),
 			suffix: self.suffix.clone(),
-			callpath_type: CallPathType::Resolved,
+			callpath_type: CallPathType::Full,
 		    }
 		}
 	    },

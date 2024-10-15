@@ -873,7 +873,7 @@ impl Root {
 //	    .chain(&call_path.prefixes)
 //	    .cloned()
 	//	    .collect();
-	assert!(matches!(call_path.callpath_type, CallPathType::Resolved));
+	assert!(matches!(call_path.callpath_type, CallPathType::Full));
         self.resolve_symbol_and_mod_path(
             handler,
             engines,
