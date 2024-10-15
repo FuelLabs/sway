@@ -60,18 +60,6 @@ fn test_get_node_url_mainnet() {
 }
 
 #[test]
-fn test_get_node_url_target_devnet() {
-    let input = NodeTarget {
-        target: Some(Target::Devnet),
-        node_url: None,
-        testnet: false,
-        mainnet: false,
-    };
-    let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://devnet.fuel.network", actual);
-}
-
-#[test]
 fn test_get_node_url_target_mainnet() {
     let input = NodeTarget {
         target: Some(Target::Mainnet),
@@ -97,46 +85,6 @@ fn test_get_node_url_target_testnet() {
 }
 
 #[test]
-fn test_get_node_url_beta5() {
-    let input = NodeTarget {
-        target: Some(Target::Beta5),
-        node_url: None,
-        testnet: false,
-        mainnet: false,
-    };
-    let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://beta-5.fuel.network", actual);
-}
-
-#[test]
-fn test_get_node_url_beta4() {
-    let input = NodeTarget {
-        target: None,
-        node_url: Some("https://beta-4.fuel.network".to_string()),
-        testnet: false,
-        mainnet: false,
-    };
-    let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://beta-4.fuel.network", actual);
-}
-
-#[test]
-fn test_get_node_url_url_beta4_manifest() {
-    let network = Network {
-        url: "https://beta-4.fuel.network".to_string(),
-    };
-    let input = NodeTarget {
-        target: None,
-        node_url: None,
-        testnet: false,
-        mainnet: false,
-    };
-
-    let actual = get_node_url(&input, &Some(network)).unwrap();
-    assert_eq!("https://beta-4.fuel.network", actual);
-}
-
-#[test]
 fn test_get_node_url_default() {
     let input = NodeTarget {
         target: None,
@@ -147,18 +95,6 @@ fn test_get_node_url_default() {
 
     let actual = get_node_url(&input, &None).unwrap();
     assert_eq!("http://127.0.0.1:4000", actual);
-}
-
-#[test]
-fn test_get_node_url_beta3() {
-    let input = NodeTarget {
-        target: Some(Target::Beta3),
-        node_url: None,
-        testnet: false,
-        mainnet: false,
-    };
-    let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://beta-3.fuel.network", actual);
 }
 
 #[test]
@@ -193,8 +129,8 @@ fn test_get_node_url_local_testnet() {
 )]
 fn test_get_node_url_same_url() {
     let input = NodeTarget {
-        target: Some(Target::Beta3),
-        node_url: Some("beta-3.fuel.network".to_string()),
+        target: Some(Target::Testnet),
+        node_url: Some("testnet.fuel.network".to_string()),
         testnet: false,
         mainnet: false,
     };
