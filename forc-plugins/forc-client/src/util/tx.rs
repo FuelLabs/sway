@@ -181,12 +181,19 @@ pub(crate) async fn select_account(
                 let first_account = accounts
                     .get(&0)
                     .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
-                let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
-                let faucet_link = format!("{}/?address={first_account}", target.faucet_url());
-                anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
-                                      \n\nIf you are interacting with a testnet consider using the faucet.\
-                                      \n-> {target} network faucet: {faucet_link}\
-                                      \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
+                let target = Target::from_str(&chain_info.name).unwrap_or_default();
+                let message = if let Some(faucet_url) = target.faucet_url() {
+                    format!(
+                        "Your wallet does not have any funds to pay for the transaction.\
+                        \n\nIf you are interacting with a testnet, consider using the faucet.\
+                        \n-> {target} network faucet: {}/?address={first_account}\
+                        \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.",
+                        faucet_url
+                    )
+                } else {
+                    "Your wallet does not have any funds to pay for the transaction.".to_string()
+                };
+                anyhow::bail!(message)
             }
             let selections =
                 format_base_asset_account_balances(&accounts, &account_balances, base_asset_id);
