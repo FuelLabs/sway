@@ -9,7 +9,7 @@ use test_fuel_coin_abi::*;
 #[cfg(experimental_new_encoding = false)]
 const FUEL_COIN_CONTRACT_ID = 0xec2277ebe007ade87e3d797c3b1e070dcd542d5ef8f038b471f262ef9cebc87c;
 #[cfg(experimental_new_encoding = true)]
-const FUEL_COIN_CONTRACT_ID = 0x19c0d374734bd8a92b776787e9dffa0f105a90e3c977626f93a1916de54dd714;
+const FUEL_COIN_CONTRACT_ID = 0x9cafeee355e6f683ca7505fd0278a374ae39249a19e2989f6b18295a448682c8; // AUTO-CONTRACT-ID ../../test_contracts/test_fuel_coin_contract --release
 
 #[cfg(experimental_new_encoding = false)]
 const BALANCE_CONTRACT_ID = 0xf6cd545152ac83225e8e7df2efb5c6fa6e37bc9b9e977b5ea8103d28668925df;
