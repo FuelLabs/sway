@@ -1,0 +1,7 @@
+[project]
+authors = ["James Snewin"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "cmp_test"
+
+[dependencies]

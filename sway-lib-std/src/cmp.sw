@@ -99,7 +99,7 @@ impl Cmp for U128 {
     }
 }
 
-impl Cmp for U256 {
+impl Cmp for u256 {
     pub fn min(self, other: Self) -> Self {
         if self < other {
             self
