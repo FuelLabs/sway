@@ -298,6 +298,7 @@ mod tests {
         )
         .expect("address1")
         .into();
+
         let address2: fuel_tx::Address = Bech32Address::from_str(
             "fuel1x9f3ysyk7fmey5ac23s2p4rwg4gjye2kke3nu3pvrs5p4qc4m4qqwx56k3",
         )
@@ -319,9 +320,13 @@ mod tests {
         balance2.insert("other_asset".to_string(), 3_000_000_000);
         account_balances.push(balance2);
 
+        let address1_expected =
+            "0x6B32DF5954e1BaDEAFFEFD2c0fc5E594dcff3713aaE3Dd18B7d966624B010027";
+        let address2_expected =
+            "0x3153124096f2779253B85460a0D46e4551226556b6633E442c1C281a8315dd40";
         let expected = vec![
-            format!("[0] {address1} - 1.5 ETH"),
-            format!("[1] {address2} - 0 ETH"),
+            format!("[0] {address1_expected} - 1.5 ETH"),
+            format!("[1] {address2_expected} - 0 ETH"),
         ];
 
         let result =
