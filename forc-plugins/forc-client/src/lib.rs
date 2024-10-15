@@ -22,7 +22,7 @@ pub struct NodeTarget {
     ///
     /// You can also use `--node-url`, `--testnet`, or `--mainnet` to specify the Fuel node.
     ///
-    /// Possible values are: [beta-1, beta-2, beta-3, beta-4, devnet, local, testnet, mainnet]
+    /// Possible values are: [local, testnet, mainnet]
     #[clap(long)]
     pub target: Option<Target>,
 

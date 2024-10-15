@@ -10,7 +10,7 @@ forc_util::cli_examples! {
    super::Command {
         [ Deploy a single contract => "forc deploy bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408" ]
         [ Deploy a single contract from a different path => "forc deploy bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408 --path {path}" ]
-        [ Deploy to a custom network => "forc deploy --node-url https://beta-5.fuel.network/graphql" ]
+        [ Deploy to a custom network => "forc deploy --node-url https://testnet.fuel.network/graphql" ]
     }
 }
 

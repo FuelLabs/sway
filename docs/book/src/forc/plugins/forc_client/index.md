@@ -109,13 +109,13 @@ forc-deploy --mainnet
 It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag:
 
 ```sh
-forc-deploy --node-url https://beta-3.fuel.network
+forc-deploy --node-url https://mainnet.fuel.network
 ```
 
-Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `beta-5` you can use:
+Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `testnet` you can use:
 
 ```sh
-forc-deploy --target beta-5
+forc-deploy --target testnet
 ```
 
 Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
