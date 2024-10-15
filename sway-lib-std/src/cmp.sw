@@ -10,7 +10,7 @@ pub trait Cmp {
 }
 
 impl Cmp for u8 {
-    pub fn min(self, other: Self) -> Self {
+    fn min(self, other: Self) -> Self {
         if self < other {
             self
         } else {
@@ -18,7 +18,7 @@ impl Cmp for u8 {
         }
     }
 
-    pub fn max(self, other: Self) -> Self {
+    fn max(self, other: Self) -> Self {
         if self > other {
             self
         } else {
@@ -28,7 +28,7 @@ impl Cmp for u8 {
 }
 
 impl Cmp for u16 {
-    pub fn min(self, other: Self) -> Self {
+    fn min(self, other: Self) -> Self {
         if self < other {
             self
         } else {
@@ -36,7 +36,7 @@ impl Cmp for u16 {
         }
     }
 
-    pub fn max(self, other: Self) -> Self {
+    fn max(self, other: Self) -> Self {
         if self > other {
             self
         } else {
@@ -46,7 +46,7 @@ impl Cmp for u16 {
 }
 
 impl Cmp for u32 {
-    pub fn min(self, other: Self) -> Self {
+    fn min(self, other: Self) -> Self {
         if self < other {
             self
         } else {
@@ -54,7 +54,7 @@ impl Cmp for u32 {
         }
     }
 
-    pub fn max(self, other: Self) -> Self {
+    fn max(self, other: Self) -> Self {
         if self > other {
             self
         } else {
@@ -64,7 +64,7 @@ impl Cmp for u32 {
 }
 
 impl Cmp for u64 {
-    pub fn min(self, other: Self) -> Self {
+    fn min(self, other: Self) -> Self {
         if self < other {
             self
         } else {
@@ -72,7 +72,7 @@ impl Cmp for u64 {
         }
     }
 
-    pub fn max(self, other: Self) -> Self {
+    fn max(self, other: Self) -> Self {
         if self > other {
             self
         } else {
@@ -81,26 +81,9 @@ impl Cmp for u64 {
     }
 }
 
-impl Cmp for U128 {
-    pub fn min(self, other: Self) -> Self {
-        if self < other {
-            self
-        } else {
-            other
-        }
-    }
-
-    pub fn max(self, other: Self) -> Self {
-        if self > other {
-            self
-        } else {
-            other
-        }
-    }
-}
 
 impl Cmp for u256 {
-    pub fn min(self, other: Self) -> Self {
+    fn min(self, other: Self) -> Self {
         if self < other {
             self
         } else {
@@ -108,7 +91,7 @@ impl Cmp for u256 {
         }
     }
 
-    pub fn max(self, other: Self) -> Self {
+    fn max(self, other: Self) -> Self {
         if self > other {
             self
         } else {
