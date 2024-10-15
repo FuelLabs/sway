@@ -73,8 +73,8 @@ impl FromStr for Target {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "testnet" => Ok(Target::Testnet),
-            "mainnet" => Ok(Target::Mainnet),
+            "Fuel Sepolia Testnet" => Ok(Target::Testnet),
+            "Ignition" => Ok(Target::Mainnet),
             "local" => Ok(Target::Local),
             _ => bail!(
                 "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}'",
@@ -89,8 +89,8 @@ impl FromStr for Target {
 impl std::fmt::Display for Target {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            Target::Testnet => "testnet",
-            Target::Mainnet => "mainnet",
+            Target::Testnet => "Fuel Sepolia Testnet",
+            Target::Mainnet => "Ignition",
             Target::Local => "local",
         };
         write!(f, "{}", s)
