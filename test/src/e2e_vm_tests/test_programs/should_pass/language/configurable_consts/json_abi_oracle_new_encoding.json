@@ -8,7 +8,7 @@
       "concreteTypeId": "c998ca9a5f221fe7b5c66ae70c8a9562b86d964408b00d17f883c906bc1fe4be",
       "metadataTypeId": 0,
       "type": "(bool, u64)"
-    },
+    }, 
     {
       "concreteTypeId": "4926d35d1a5157936b0a29bc126b8aace6d911209a5c130e9b716b0c73643ea6",
       "metadataTypeId": 1,
