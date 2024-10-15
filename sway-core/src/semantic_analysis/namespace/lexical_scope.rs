@@ -698,10 +698,12 @@ impl Items {
         self.symbols
             .get(name)
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
+            .ok_or_else(|| {
+//		dbg!("check_symbol");
+		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
-            })
+		}})
     }
 
     pub(crate) fn check_symbols_unique_while_collecting_unifications(
@@ -712,10 +714,12 @@ impl Items {
             .read()
             .get(&name.into())
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
+            .ok_or_else(|| {
+		//		dbg!("check_symbols_unique_while_collecting_unifications");
+		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
-            })
+		}})
     }
 
     pub(crate) fn clear_symbols_unique_while_collecting_unifications(&self) {

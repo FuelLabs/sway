@@ -306,7 +306,11 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
 	let full_path = call_path.to_fullpath(engines, &self);
-//	let problem = true; //call_path.suffix.as_str() == "Ord";
+//	let problem =
+//	    call_path.suffix.as_str() == "Some"
+//	    && self.current_mod_path.len() == 2
+//	    && self.current_mod_path[0].as_str() == "std"
+//	    && self.current_mod_path[1].as_str() == "vec";
 //	if problem {
 //	    dbg!(call_path);
 //	    dbg!(&full_path);

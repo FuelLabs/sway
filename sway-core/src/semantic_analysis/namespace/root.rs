@@ -573,8 +573,8 @@ impl Root {
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
 
-        let (decl, mut path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
-	path.push(enum_name.clone());
+        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+	//path.push(enum_name.clone());
 	
         match decl {
             ResolvedDeclaration::Parsed(decl) => {
@@ -741,8 +741,8 @@ impl Root {
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
 
-        let (decl, mut path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
-	path.push(enum_name.clone());
+        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+//	path.push(enum_name.clone());
 
         match decl {
             ResolvedDeclaration::Parsed(Declaration::EnumDeclaration(decl_id)) => {
@@ -1236,7 +1236,7 @@ impl Root {
             }
         }
         // Symbol not found
-	//	println!("resolve symbol helper");
+	// dbg!("resolve symbol helper");
         Err(handler.emit_err(CompileError::SymbolNotFound {
             name: symbol.clone(),
             span: symbol.span(),

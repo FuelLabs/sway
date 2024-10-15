@@ -371,7 +371,7 @@ impl CallPath {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
+    pub fn to_fullpath(&self, _engines: &Engines, namespace: &Namespace) -> CallPath {
 	match self.callpath_type {
 	    CallPathType::Resolved => self.clone(),
 	    CallPathType::RelativeToPackageRoot => {
@@ -389,82 +389,82 @@ impl CallPath {
 //		let problem = self.suffix.as_str() == "Ord" && matches!(self.callpath_type, CallPathType::Ambiguous);
 		
 		if self.prefixes.is_empty() {
-		    // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
-		    // combination of the package name in which the symbol is defined and the path to the
-		    // current submodule.
-//		    let mut synonym_prefixes = vec![];
-//		    let mut is_external = false;
-//		    let mut is_absolute = false;
-
-		    if let Some(mod_path) = namespace.current_module().read(engines, |m| {
-			if m.current_items().symbols().contains_key(&self.suffix) {
-//			    if problem { dbg!("In symbols"); };
-			    None
-			} else if let Some((_, path, _, _)) = m
-			    .current_items()
-			    .use_item_synonyms
-			    .get(&self.suffix)
-			    .cloned()
-			{
-//			    if problem { dbg!("In item synonyms"); };
-			    Some(path)
-			} else if let Some(paths_and_decls) = m
-			    .current_items()
-			    .use_glob_synonyms
-			    .get(&self.suffix)
-			    .cloned()
-			{
-//			    if problem { dbg!("In glob_synonyms"); };
-			    if paths_and_decls.len() == 1 {
-				Some(paths_and_decls[0].0.clone())
-			    } else {
-				None
-			    }
-			} else {
-//			    if problem { dbg!("Not bound"); };
-			    None
-			}
-		    }) {
-//			if problem { dbg!(&mod_path); };
-			CallPath {
-			    prefixes: mod_path.clone(),
-			    suffix: self.suffix.clone(),
-			    callpath_type: CallPathType::Resolved,
-			}
-//			synonym_prefixes.clone_from(&mod_path);
-//			is_absolute = true;
-//			is_external = namespace.module_is_external(&mod_path);
-		    }
-		    else {
+// 		    // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
+// 		    // combination of the package name in which the symbol is defined and the path to the
+// 		    // current submodule.
+// //		    let mut synonym_prefixes = vec![];
+// //		    let mut is_external = false;
+// //		    let mut is_absolute = false;
+// 
+// 		    if let Some(mod_path) = namespace.current_module().read(engines, |m| {
+// 			if m.current_items().symbols().contains_key(&self.suffix) {
+// //			    if problem { dbg!("In symbols"); };
+// 			    None
+// 			} else if let Some((_, path, _, _)) = m
+// 			    .current_items()
+// 			    .use_item_synonyms
+// 			    .get(&self.suffix)
+// 			    .cloned()
+// 			{
+// //			    if problem { dbg!("In item synonyms"); };
+// 			    Some(path)
+// 			} else if let Some(paths_and_decls) = m
+// 			    .current_items()
+// 			    .use_glob_synonyms
+// 			    .get(&self.suffix)
+// 			    .cloned()
+// 			{
+// //			    if problem { dbg!("In glob_synonyms"); };
+// 			    if paths_and_decls.len() == 1 {
+// 				Some(paths_and_decls[0].0.clone())
+// 			    } else {
+// 				None
+// 			    }
+// 			} else {
+// //			    if problem { dbg!("Not bound"); };
+// 			    None
+// 			}
+// 		    }) {
+// //			if problem { dbg!(&mod_path); };
+// 			CallPath {
+// 			    prefixes: mod_path.clone(),
+// 			    suffix: self.suffix.clone(),
+// 			    callpath_type: CallPathType::Resolved,
+// 			}
+// //			synonym_prefixes.clone_from(&mod_path);
+// //			is_absolute = true;
+// //			is_external = namespace.module_is_external(&mod_path);
+// 		    }
+// 		    else {
 			CallPath {
 			    prefixes: namespace.current_mod_path.clone(),
 			    suffix: self.suffix.clone(),
 			    callpath_type: CallPathType::Resolved,
 			}
 
-//		    let mut prefixes: Vec<Ident> = vec![];
-//		    
-//		    if !is_external {
-//			prefixes.push(namespace.current_package_name().clone());
-//			if problem { dbg!(&prefixes); };
-			
-//			if !is_absolute {
-//			    for mod_path in namespace.current_mod_path() {
-//				prefixes.push(mod_path.clone());
-//			    }
-//			}
-//			if problem { dbg!(&prefixes); };
-		    }
-		    
-//		    prefixes.extend(synonym_prefixes);
-
-//		    if problem { dbg!(&prefixes); };
-//
-//		    CallPath {
-//			prefixes,
-//			suffix: self.suffix.clone(),
-//			callpath_type: CallPathType::Resolved,
-//		    }
+// //		    let mut prefixes: Vec<Ident> = vec![];
+// //		    
+// //		    if !is_external {
+// //			prefixes.push(namespace.current_package_name().clone());
+// //			if problem { dbg!(&prefixes); };
+// 			
+// //			if !is_absolute {
+// //			    for mod_path in namespace.current_mod_path() {
+// //				prefixes.push(mod_path.clone());
+// //			    }
+// //			}
+// //			if problem { dbg!(&prefixes); };
+// 		    }
+// 		    
+// //		    prefixes.extend(synonym_prefixes);
+// 
+// //		    if problem { dbg!(&prefixes); };
+// //
+// //		    CallPath {
+// //			prefixes,
+// //			suffix: self.suffix.clone(),
+// //			callpath_type: CallPathType::Resolved,
+// //		    }
 		} else if namespace.current_module_has_submodule(&self.prefixes[0])
 		{
 		    // Qualified path relative to the current module

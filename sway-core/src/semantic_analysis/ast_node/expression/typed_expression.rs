@@ -306,7 +306,16 @@ impl ty::TyExpression {
 			prefixes: vec![],
 			suffix: name.clone(),
 			callpath_type: CallPathType::Ambiguous,
-                    }.to_fullpath(engines, ctx.namespace());
+                    };//.to_fullpath(engines, ctx.namespace());
+
+//		    let problem =
+//			name.as_str() == "None"
+//			&& ctx.namespace().current_mod_path().len() == 2
+//			&& ctx.namespace().current_mod_path()[0].as_str() == "std"
+//			&& ctx.namespace().current_mod_path()[1].as_str() == "vec";
+//		    if problem {
+//			dbg!(&call_path);
+//		    };
 		    
                     Self::type_check_delineated_path(
                         handler,
@@ -1408,6 +1417,14 @@ impl ty::TyExpression {
                 suffix,
 		callpath_type,
             };
+//	    let mod_path = ctx.namespace.current_mod_path();
+//	    let problem = call_path.suffix.as_str() == "Some"
+//		&& mod_path.len() == 2
+//		&& mod_path[0].as_str() == "std"
+//		&& mod_path[1].as_str() == "vec";
+//	    if problem {
+//		dbg!(&call_path);
+//	    }
             if matches!(
                 ctx.namespace().resolve_call_path_typed(
                     &Handler::default(),
@@ -1700,6 +1717,7 @@ impl ty::TyExpression {
                 instantiate_constant_expression(ctx, const_ref, call_path_binding)
             }
             (false, None, None, None) => {
+		//dbg!("typecheck delineated path");
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: unknown_call_path_binding.inner.call_path.suffix.clone(),
                     span: unknown_call_path_binding.inner.call_path.suffix.span(),

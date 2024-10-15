@@ -1318,10 +1318,12 @@ impl TraitMap {
                     span: symbol.span(),
                 },
             )),
-            Ordering::Less => Err(handler.emit_err(CompileError::SymbolNotFound {
+            Ordering::Less => {
+//		if symbol.as_str() == "Some" { panic!(); };
+		Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),
-            })),
+		}))},
             Ordering::Equal => Ok(candidates.values().next().unwrap().clone()),
         }
     }
