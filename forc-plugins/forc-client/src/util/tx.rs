@@ -318,7 +318,8 @@ mod tests {
         ];
 
         let result =
-            format_base_asset_account_balances(&accounts_map, &account_balances, &base_asset_id);
+            format_base_asset_account_balances(&accounts_map, &account_balances, &base_asset_id)
+                .unwrap();
         assert_eq!(result, expected);
     }
 }
