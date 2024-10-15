@@ -429,7 +429,7 @@ impl TraitMap {
                     name: trait_name.suffix,
                     args: trait_type_args,
                 },
-                is_absolute: trait_name.is_absolute,
+                callpath_type: trait_name.callpath_type,
             });
 
             // even if there is a conflicting definition, add the trait anyway
@@ -1088,8 +1088,8 @@ impl TraitMap {
                         let map_trait_name = CallPath {
                             prefixes: entry.key.name.prefixes.clone(),
                             suffix: entry.key.name.suffix.name.clone(),
-                            is_absolute: entry.key.name.is_absolute,
-                        };
+			    callpath_type: entry.key.name.callpath_type,
+			};
                         if &map_trait_name == trait_name {
                             Some(entry.value.impl_span.clone())
                         } else {
@@ -1131,7 +1131,7 @@ impl TraitMap {
             let map_trait_name = CallPath {
                 prefixes: e.key.name.prefixes.clone(),
                 suffix: e.key.name.suffix.name.clone(),
-                is_absolute: e.key.name.is_absolute,
+                callpath_type: e.key.name.callpath_type,
             };
             if &map_trait_name == trait_name
                 && unify_check.check(type_id, e.key.type_id)
@@ -1194,7 +1194,7 @@ impl TraitMap {
                 let trait_call_path = CallPath {
                     prefixes: entry.key.name.prefixes.clone(),
                     suffix: entry.key.name.suffix.name.clone(),
-                    is_absolute: entry.key.name.is_absolute,
+                    callpath_type: entry.key.name.callpath_type,
                 };
                 trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
             }
@@ -1318,10 +1318,12 @@ impl TraitMap {
                     span: symbol.span(),
                 },
             )),
-            Ordering::Less => Err(handler.emit_err(CompileError::SymbolNotFound {
+            Ordering::Less => {
+//		if symbol.as_str() == "Some" { panic!(); };
+		Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),
-            })),
+		}))},
             Ordering::Equal => Ok(candidates.values().next().unwrap().clone()),
         }
     }

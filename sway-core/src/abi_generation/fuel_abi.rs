@@ -21,14 +21,16 @@ pub struct AbiContext<'a> {
 }
 
 impl<'a> AbiContext<'a> {
-    fn to_str_context(&self, engines: &Engines, abi_full: bool) -> AbiStrContext {
+    fn to_str_context(
+        &self,
+        abi_full: bool,
+    ) -> AbiStrContext {
         AbiStrContext {
             program_name: self
                 .program
                 .root
                 .namespace
-                .program_id(engines)
-                .read(engines, |m| m.name().to_string()),
+		.current_package_name().to_string(),
             abi_with_callpaths: self.abi_with_callpaths,
             abi_with_fully_specified_types: abi_full,
             abi_root_type_without_generic_type_parameters: !abi_full,
@@ -50,8 +52,8 @@ impl TypeId {
                     .program
                     .root
                     .namespace
-                    .program_id(engines)
-                    .read(engines, |m| m.name().clone().as_str().to_string()),
+                    .current_package_name()
+		    .to_string(),
                 abi_with_callpaths: true,
                 abi_with_fully_specified_types: true,
                 abi_root_type_without_generic_type_parameters: false,
@@ -382,7 +384,7 @@ fn generate_concrete_type_declaration(
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
         type_field: type_id.get_abi_type_str(
-            &ctx.to_str_context(engines, false),
+            &ctx.to_str_context(false),
             engines,
             resolved_type_id,
         ),
@@ -476,7 +478,7 @@ fn generate_type_metadata_declaration(
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
         type_field: type_id.get_abi_type_str(
-            &ctx.to_str_context(engines, false),
+            &ctx.to_str_context(false),
             engines,
             resolved_type_id,
         ),
@@ -1249,7 +1251,7 @@ impl TypeParameter {
         let type_parameter = program_abi::TypeMetadataDeclaration {
             metadata_type_id: type_id.clone(),
             type_field: self.initial_type_id.get_abi_type_str(
-                &ctx.to_str_context(engines, false),
+                &ctx.to_str_context(false),
                 engines,
                 self.type_id,
             ),

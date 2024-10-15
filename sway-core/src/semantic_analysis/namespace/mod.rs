@@ -4,7 +4,6 @@ mod module;
 #[allow(clippy::module_inception)]
 mod namespace;
 mod root;
-mod submodule_namespace;
 mod trait_map;
 
 pub use contract_helpers::*;
