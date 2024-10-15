@@ -6,6 +6,7 @@ use ::convert::{From, Into};
 use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
 use ::result::Result::{self, *};
+use ::cmp::*;
 
 /// The 128-bit unsigned integer type.
 ///
@@ -729,5 +730,23 @@ impl Logarithm for U128 {
         let self_log2 = self.log2();
         let base_log2 = base.log2();
         self_log2 / base_log2
+    }
+}
+
+impl Cmp for U128 {
+    fn min(self, other: Self) -> Self {
+        if self < other {
+            self
+        } else {
+            other
+        }
+    }
+
+    fn max(self, other: Self) -> Self {
+        if self > other {
+            self
+        } else {
+            other
+        }
     }
 }
