@@ -26,11 +26,7 @@ members = [
     "swayfmt",
     "test",
 ]
-exclude = [
-    "examples/*",
-    "swayfmt/test_macros",
-    "forc-test/test_data"
-]
+exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
@@ -167,7 +163,6 @@ libp2p-identity = "0.2"
 libtest-mimic = "0.7"
 lsp-types = "0.94"
 mdbook = { version = "0.4", default-features = false }
-miden = "0.3"
 miden-core = "0.3"
 minifier = "0.3"
 notify = "6.1"

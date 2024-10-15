@@ -57,13 +57,6 @@ pub fn compile_ir_context_to_finalized_asm(
             build_config,
             EvmAsmBuilder::new(kind, ir),
         ),
-        BuildTarget::MidenVM => compile(
-            handler,
-            ir,
-            module,
-            build_config,
-            MidenVMAsmBuilder::new(kind, ir),
-        ),
     }?;
 
     check_invalid_opcodes(handler, &finalized_asm)?;
