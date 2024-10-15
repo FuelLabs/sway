@@ -92,24 +92,30 @@ By default `--default-signer` flag would sign your transactions with the followi
 0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c
 ```
 
-## Interacting with the testnet
+## Selecting a target network
 
-To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the latest `testnet`.
+By default, `local` is used for the target network. To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the latest `testnet`:
 
 ```sh
 forc-deploy --testnet
 ```
 
-It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
+The same can be done to target mainnet:
 
 ```sh
-forc-deploy --node-url https://beta-3.fuel.network
+forc-deploy --mainnet
 ```
 
-Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `beta-5` you can use:
+It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag:
 
 ```sh
-forc-deploy --target beta-5
+forc-deploy --node-url https://mainnet.fuel.network
+```
+
+Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `testnet` you can use:
+
+```sh
+forc-deploy --target testnet
 ```
 
 Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
