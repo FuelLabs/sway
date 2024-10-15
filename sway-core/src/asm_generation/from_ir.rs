@@ -7,7 +7,6 @@ use super::{
         fuel_asm_builder::FuelAsmBuilder,
         register_sequencer::RegisterSequencer,
     },
-    MidenVMAsmBuilder,
 };
 use crate::{asm_generation::ProgramKind, BuildConfig, BuildTarget};
 
