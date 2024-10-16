@@ -1,6 +1,6 @@
 library;
 
-use std::{u128::U128, registers::flags, flags::{set_flags, disable_panic_on_unsafe_math}};
+use std::{u128::U128, registers::flags, flags::{set_flags, disable_panic_on_unsafe_math, disable_panic_on_overflow}};
 
 #[test]
 fn u128_from_u8() {
@@ -1019,4 +1019,66 @@ fn parity_u128_log_with_ruint() {
     }
 
     assert(prior_flags == flags());
+}
+
+#[test]
+fn u128_overflowing_add() {
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::max();
+    let b = U128::from((0, 1));
+    let c = a + b;
+
+    assert(c == U128::from((0, 0)));
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_underflowing_sub() {
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::from((0, 1));
+    let b = U128::from((0, 2));
+    let c = a - b;
+
+    assert(c == U128::max());
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_overflowing_mul() {
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::max();
+    let b = U128::from((0, 2));
+    let c = a * b;
+
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE
+    assert(c == U128::from((0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFE)));
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_overflowing_pow() {
+    // Overflow on pow should return 0 if panic is disabled
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::max();
+
+    let res = a.pow(2);
+    
+    assert(res == U128::from((0, 0)));
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_unsafemath_log2() {
+    let prior_flags = disable_panic_on_unsafe_math();
+    // 0 is not a valid operand for log2
+    let a = U128::zero();
+    let res = a.log2();
+
+    assert(res == U128::zero());
+
+    set_flags(prior_flags);
 }

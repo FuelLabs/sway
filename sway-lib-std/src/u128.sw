@@ -12,6 +12,7 @@ use ::flags::{
 use ::registers::{flags, overflow};
 use ::math::*;
 use ::result::Result::{self, *};
+use ::option::Option::{self, None, Some};
 
 /// The 128-bit unsigned integer type.
 ///
@@ -663,6 +664,44 @@ impl core::ops::Divide for U128 {
     }
 }
 
+fn u64_checked_mul(a: u64, b: u64) -> Option<u64> {
+    let of = asm(a: a, b: b, res) {
+        mul res a b;
+        of: u64
+    };
+
+    if of != 0 {
+        return None;
+    }
+
+    Some(a * b)
+}
+
+fn u128_checked_mul(a: U128, b: U128) -> Option<U128> {
+    // in case both of the `U128` upper parts are bigger than zero,
+    // it automatically means overflow, as any `U128` value
+    // is upper part multiplied by 2 ^ 64 + lower part
+    if a.upper == 0 || b.upper == 0 {
+        return None
+    }
+
+    let mut result = a.lower.overflowing_mul(b.lower);
+
+    if a.upper == 0 {
+        match u64_checked_mul(a.lower, b.upper) {
+            None => return None,
+            Some(v) => { result.upper += v }
+        }
+    } else if b.upper == 0 {
+        match u64_checked_mul(a.upper, b.lower) {
+            None => return None,
+            Some(v) => { result.upper += v }
+        }
+    }
+
+    Some(result)
+}
+
 impl Power for U128 {
     fn pow(self, exponent: u32) -> Self {
         let mut value = self;
@@ -679,7 +718,10 @@ impl Power for U128 {
         }
 
         while exp & 1 == 0 {
-            value = value * value;
+            match u128_checked_mul(value, value) {
+                None => return U128::zero(),
+                Some(v) => value = v,
+            };
             exp >>= 1;
         }
 
@@ -690,9 +732,15 @@ impl Power for U128 {
         let mut acc = value;
         while exp > 1 {
             exp >>= 1;
-            value = value * value;
+            match u128_checked_mul(value, value) {
+                None => return U128::zero(),
+                Some(v) => value = v,
+            };
             if exp & 1 == 1 {
-                acc = acc * value;
+                match u128_checked_mul(acc, value) {
+                    None => return U128::zero(),
+                    Some(v) => acc = v,
+                };
             }
         }
         acc
@@ -734,6 +782,10 @@ impl BinaryLogarithm for U128 {
         // If panic on unsafe math is enabled, only then revert
         if panic_on_unsafe_math_enabled() {
             assert(self != zero);
+        } else {
+            if self == zero {
+                return zero;
+            }
         }
         if self.upper != 0 {
             res = Self::from((0, self.upper.log(2) + 64));
