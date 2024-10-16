@@ -677,25 +677,38 @@ fn u64_checked_mul(a: u64, b: u64) -> Option<u64> {
     Some(a * b)
 }
 
+fn u64_checked_add(a: u64, b: u64) -> Option<u64> {
+    let of = asm(a: a, b: b, res) {
+        add res a b;
+        of: u64
+    };
+
+    if of != 0 {
+        return None;
+    }
+
+    Some(a + b)
+}
+
 fn u128_checked_mul(a: U128, b: U128) -> Option<U128> {
     // in case both of the `U128` upper parts are bigger than zero,
     // it automatically means overflow, as any `U128` value
     // is upper part multiplied by 2 ^ 64 + lower part
-    if a.upper == 0 || b.upper == 0 {
+    if a.upper != 0 || b.upper != 0 {
         return None
     }
 
     let mut result = a.lower.overflowing_mul(b.lower);
 
     if a.upper == 0 {
-        match u64_checked_mul(a.lower, b.upper) {
+        match u64_checked_add(result.upper, a.lower * b.upper) {
             None => return None,
-            Some(v) => { result.upper += v }
+            Some(v) => { result.upper = v}
         }
     } else if b.upper == 0 {
-        match u64_checked_mul(a.upper, b.lower) {
+        match u64_checked_add(result.upper, a.upper * b.lower) {
             None => return None,
-            Some(v) => { result.upper += v }
+            Some(v) => { result.upper = v}
         }
     }
 
