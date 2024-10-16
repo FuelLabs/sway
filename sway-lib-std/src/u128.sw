@@ -664,19 +664,6 @@ impl core::ops::Divide for U128 {
     }
 }
 
-fn u64_checked_mul(a: u64, b: u64) -> Option<u64> {
-    let of = asm(a: a, b: b, res) {
-        mul res a b;
-        of: u64
-    };
-
-    if of != 0 {
-        return None;
-    }
-
-    Some(a * b)
-}
-
 fn u64_checked_add(a: u64, b: u64) -> Option<u64> {
     let of = asm(a: a, b: b, res) {
         add res a b;
