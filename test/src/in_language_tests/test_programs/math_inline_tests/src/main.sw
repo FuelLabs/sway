@@ -273,7 +273,6 @@ fn math_log_u8() {
 fn math_log_u256() {
     let max_u256 = u256::max();
     let prior_flags = flags();
-
     assert(0x2u256.log(0x2u256) == 0x1u256);
     assert(0x1u256.log(0x3u256) == 0);
     assert(0x8u256.log(0x2u256) == 0x3u256);
@@ -281,15 +280,12 @@ fn math_log_u256() {
     assert(0x64u256.log(0x2u256) == 0x6u256);
     assert(0x64u256.log(0x9u256) == 0x2u256);
     assert(max_u256.log(0x2u256) == 0xffu256);
-
     assert(prior_flags == flags());
 
     let prior_flags = disable_panic_on_unsafe_math();
-
     assert(0x1u256.log(0x1u256) == 0);
     assert(0x0u256.log(0x3u256) == 0);
-
-    set_flags(prior_flags);
+    assert(prior_flags == flags());
 }
 
 #[test]
