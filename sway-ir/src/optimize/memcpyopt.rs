@@ -655,7 +655,9 @@ fn local_copy_prop(
                                 FuelVmInstruction::WideBinaryOp { result, .. }
                                 | FuelVmInstruction::WideUnaryOp { result, .. }
                                 | FuelVmInstruction::WideModularOp { result, .. }
-                                | FuelVmInstruction::StateLoadQuadWord { load_val: result, ..}
+                                | FuelVmInstruction::StateLoadQuadWord {
+                                    load_val: result, ..
+                                },
                             ),
                         ..
                     } => {
