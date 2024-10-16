@@ -347,7 +347,6 @@ impl Logarithm for u256 {
                 return 0x00u256;
             }
         }
-        
 
         // Decimals rounded to 0
         if self < base {
