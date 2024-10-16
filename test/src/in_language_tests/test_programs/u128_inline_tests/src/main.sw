@@ -1,6 +1,6 @@
 library;
 
-use std::{u128::U128, registers::flags};
+use std::{u128::U128, registers::flags, flags::{set_flags, disable_panic_on_unsafe_math}};
 
 #[test]
 fn u128_from_u8() {
@@ -698,7 +698,7 @@ fn u128_log() {
     let u_128_8: U128 = U128::from((0, 8));
     let u_128_9: U128 = U128::from((0, 9));
     let u_128_10: U128 = U128::from((0, 10));
-    let u_128_21: U128 = U128::from((0, 21));
+    let u_128_20: U128 = U128::from((0, 20));
     let u_128_42: U128 = U128::from((0, 42));
     let u_128_64: U128 = U128::from((0, 64));
     let u_128_100: U128 = U128::from((0, 100));
@@ -715,7 +715,7 @@ fn u128_log() {
     assert(u_128_max.log(u_128_2) == u_128_127);
     assert(u_128_max.log(u_128_9) == u_128_42);
     assert(u_128_max_div_2.log(u_128_2) == u_128_64);
-    assert(u_128_max_div_2.log(u_128_9) == u_128_21);
+    assert(u_128_max_div_2.log(u_128_9) == u_128_20);
 
     assert(prior_flags == flags());
 
@@ -730,6 +730,18 @@ fn u128_log() {
 
     assert(prior_flags == flags());
     set_flags(prior_flags);
+}
+
+#[test(should_revert)]
+fn revert_unsafe_math_u128_1log1() {
+    let res = U128::from(1_u64).log(U128::from(1_u64));
+    log(res);
+}
+
+#[test(should_revert)]
+fn revert_unsafe_math_u128_0log_3() {
+    let res = U128::from(0_u64).log(U128::from(3_u64));
+    log(res);
 }
 
 #[test]

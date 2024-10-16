@@ -739,21 +739,22 @@ impl Logarithm for U128 {
         // If panic on unsafe math is enabled, only then revert
         if panic_on_unsafe_math_enabled() {
             // Logarithm is undefined for bases less than 2
-            assert(base >= 2);
+            assert(base >= U128::from(2_u64));
             // Logarithm is undefined for 0
-            assert(self != 0);
+            assert(self != U128::zero());
         } else {
             // Logarithm is undefined for bases less than 2
             // Logarithm is undefined for 0
-            if (base < 2) || (self == 0) {
+            if (base < U128::from(2_u64)) || (self == U128::zero()) {
                 set_flags(flags);
-                return 0x00u256;
+                return U128::zero();
             }
         }
 
         // Decimals rounded to 0
         if self < base {
-            return 0x00u256;
+            set_flags(flags);
+            return U128::zero();
         }
 
         // Estimating the result using change of base formula. Only an estimate because we are doing uint calculations.
@@ -774,7 +775,7 @@ impl Logarithm for U128 {
         // Adjusting the result until the power is less than or equal to self
         // If pow_res is > than self, then there is an overestimation. If there is an overflow then there is definitely an overestimation.
         while (pow_res > self) || (of > 0) {
-            result -= 1;
+            result -= U128::from(1_u64);
 
             // Converting u128 to u32, this cannot fail as the result will be atmost ~128
             let parts: (u64, u64) = result.into();
