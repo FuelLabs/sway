@@ -703,12 +703,16 @@ fn u128_checked_mul(a: U128, b: U128) -> Option<U128> {
     if a.upper == 0 {
         match u64_checked_add(result.upper, a.lower * b.upper) {
             None => return None,
-            Some(v) => { result.upper = v}
+            Some(v) => {
+                result.upper = v
+            }
         }
     } else if b.upper == 0 {
         match u64_checked_add(result.upper, a.upper * b.lower) {
             None => return None,
-            Some(v) => { result.upper = v}
+            Some(v) => {
+                result.upper = v
+            }
         }
     }
 
