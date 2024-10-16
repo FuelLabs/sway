@@ -7,9 +7,9 @@ use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
     get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils,
-    AnalysisResults, Block, Context, EscapedSymbols, Function, InstOp, Instruction,
-    InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass,
-    Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    AnalysisResults, Block, Context, EscapedSymbols, FuelVmInstruction, Function, InstOp,
+    Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols,
+    ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -648,6 +648,25 @@ fn local_copy_prop(
                             &mut src_to_copies,
                             &mut dest_to_copies,
                         );
+                    }
+                    Instruction {
+                        op: 
+                            InstOp::FuelVm(FuelVmInstruction::WideBinaryOp { result, .. })
+                            | InstOp::FuelVm(FuelVmInstruction::WideUnaryOp { result, .. })
+                            | InstOp::FuelVm(FuelVmInstruction::WideModularOp { result, .. })
+                            | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { load_val: result, .. }),
+                        ..
+                    } => {
+                        let available_copies_ = available_copies.clone();
+                        kill_defined_symbol(
+                            context,
+                            *result,
+                            memory_utils::pointee_size(context, *result),
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        );
+                        assert_eq!(available_copies, available_copies_, "We have an illegal memcpyopt");
                     }
                     _ => (),
                 }
