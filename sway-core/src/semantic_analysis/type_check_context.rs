@@ -1183,20 +1183,22 @@ impl<'a> TypeCheckContext<'a> {
                 type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
             });
 
-        // grab the module where the type itself is declared
-        let type_module = self.namespace().lookup_submodule_from_absolute_path(
-            handler,
-            self.engines(),
-            item_prefix,
-        )?;
-
-        // grab the items from where the type is declared
-        let mut type_items = type_module
-            .current_items()
-            .get_items_for_type(self.engines, type_id);
-
         let mut items = local_items;
-        items.append(&mut type_items);
+        if item_prefix != self.namespace().mod_path {
+            // grab the module where the type itself is declared
+            let type_module = self.namespace().lookup_submodule_from_absolute_path(
+                handler,
+                self.engines(),
+                item_prefix,
+            )?;
+
+            // grab the items from where the type is declared
+            let mut type_items = type_module
+                .current_items()
+                .get_items_for_type(self.engines, type_id);
+
+            items.append(&mut type_items);
+        }
 
         let mut matching_item_decl_refs: Vec<ty::TyTraitItem> = vec![];
 
