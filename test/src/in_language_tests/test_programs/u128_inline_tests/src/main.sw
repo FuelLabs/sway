@@ -703,7 +703,7 @@ fn u128_log() {
     let u_128_64: U128 = U128::from((0, 64));
     let u_128_100: U128 = U128::from((0, 100));
     let u_128_127: U128 = U128::from((0, 127));
-    let u_128_max_div_2: U128 = U128::from((1, 0));
+    let u64_max_times_two: U128 = U128::from((1, 0));
     let u_128_max: U128 = U128::max();
 
     assert(u_128_2.log(u_128_2) == u_128_1);
@@ -714,12 +714,14 @@ fn u128_log() {
     assert(u_128_100.log(u_128_9) == u_128_2);
     assert(u_128_max.log(u_128_2) == u_128_127);
     assert(u_128_max.log(u_128_9) == u_128_42);
-    assert(u_128_max_div_2.log(u_128_2) == u_128_64);
-    assert(u_128_max_div_2.log(u_128_9) == u_128_20);
+    assert(u64_max_times_two.log(u_128_2) == u_128_64);
+    assert(u64_max_times_two.log(u_128_9) == u_128_20);
 
     assert(prior_flags == flags());
 
     let prior_flags = disable_panic_on_unsafe_math();
+
+    let before_flags = flags();
 
     let zero = U128::from(0_u64);
     let one = U128::from(1_u64);
@@ -728,7 +730,8 @@ fn u128_log() {
     assert(one.log(one) == zero);
     assert(zero.log(three) == zero);
 
-    assert(prior_flags == flags());
+    assert(before_flags == flags());
+
     set_flags(prior_flags);
 }
 
