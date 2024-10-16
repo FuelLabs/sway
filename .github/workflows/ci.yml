@@ -384,18 +384,6 @@ jobs:
       - name: Cargo Run E2E Tests (EVM)
         run: cargo run --locked --release --bin test -- --target evm --locked --no-encoding-v1
 
-  cargo-run-e2e-test-midenvm:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-      - name: Cargo Run E2E Tests (EVM)
-        run: cargo run --locked --release --bin test -- --target midenvm --locked --no-encoding-v1
-
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
     runs-on: buildjet-8vcpu-ubuntu-2204
