@@ -333,10 +333,20 @@ impl Logarithm for u256 {
     fn log(self, base: Self) -> Self {
         let flags = disable_panic_on_overflow();
 
-        // Logarithm is undefined for bases less than 2
-        assert(base >= 2);
-        // Logarithm is undefined for 0
-        assert(self != 0);
+        // If panic on unsafe math is enabled, only then revert
+        if panic_on_unsafe_math_enabled() {
+            // Logarithm is undefined for bases less than 2
+            assert(base >= 2);
+            // Logarithm is undefined for 0
+            assert(self != 0);
+        } else {
+            // Logarithm is undefined for bases less than 2
+            // Logarithm is undefined for 0
+            if (base < 2) || (self == 0) {
+                set_flags(flags);
+                return 0x00u256;
+            }
+        }
         
 
         // Decimals rounded to 0
