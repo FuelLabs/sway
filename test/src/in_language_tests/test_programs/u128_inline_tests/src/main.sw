@@ -1,6 +1,6 @@
 library;
 
-use std::u128::U128;
+use std::{u128::U128, registers::flags};
 
 #[test]
 fn u128_from_u8() {
@@ -688,6 +688,8 @@ fn u128_root() {
 
 #[test]
 fn u128_log() {
+    let prior_flags = flags();
+
     let u_128_0: U128 = U128::from((0, 0));
     let u_128_1: U128 = U128::from((0, 1));
     let u_128_2: U128 = U128::from((0, 2));
@@ -714,6 +716,8 @@ fn u128_log() {
     assert(u_128_max.log(u_128_9) == u_128_42);
     assert(u_128_max_div_2.log(u_128_2) == u_128_64);
     assert(u_128_max_div_2.log(u_128_9) == u_128_21);
+
+    assert(prior_flags == flags());
 }
 
 #[test]
@@ -745,6 +749,8 @@ fn revert_u128_binary_log() {
 
 #[test]
 fn parity_u128_log_with_ruint() {
+    let prior_flags = flags();
+
     // Failure cases found by comparing parity with ruint implementation of U128
     // https://docs.rs/ruint/latest/src/ruint/log.rs.html#45-89
     let a = [
@@ -984,4 +990,6 @@ fn parity_u128_log_with_ruint() {
         assert_eq(result, U128::from(expected_val));
         i += 1;
     }
+
+    assert(prior_flags == flags());
 }
