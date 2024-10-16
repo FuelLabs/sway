@@ -3,7 +3,13 @@ library;
 
 use ::assert::assert;
 use ::convert::{From, Into};
-use ::flags::{disable_panic_on_overflow, set_flags};
+use ::flags::{
+    disable_panic_on_overflow,
+    panic_on_overflow_enabled,
+    panic_on_unsafe_math_enabled,
+    set_flags,
+};
+use ::registers::{flags, overflow};
 use ::math::*;
 use ::result::Result::{self, *};
 
@@ -713,8 +719,10 @@ impl BinaryLogarithm for U128 {
     fn log2(self) -> Self {
         let zero = Self::from((0, 0));
         let mut res = zero;
-        // If trying to get a log2(0), panic, as infinity is not a number.
-        assert(self != zero);
+        // If panic on unsafe math is enabled, only then revert
+        if panic_on_unsafe_math_enabled() {
+            assert(self != zero);
+        }
         if self.upper != 0 {
             res = Self::from((0, self.upper.log(2) + 64));
         } else if self.lower != 0 {
@@ -726,8 +734,53 @@ impl BinaryLogarithm for U128 {
 
 impl Logarithm for U128 {
     fn log(self, base: Self) -> Self {
+        let flags = disable_panic_on_overflow();
+
+        // If panic on unsafe math is enabled, only then revert
+        if panic_on_unsafe_math_enabled() {
+            // Logarithm is undefined for bases less than 2
+            assert(base >= 2);
+            // Logarithm is undefined for 0
+            assert(self != 0);
+        }
+
+        // Decimals rounded to 0
+        if self < base {
+            return 0x00u256;
+        }
+
+        // Estimating the result using change of base formula. Only an estimate because we are doing uint calculations.
         let self_log2 = self.log2();
         let base_log2 = base.log2();
-        self_log2 / base_log2
+        let mut result = (self_log2 / base_log2);
+
+        // Converting u128 to u32, this cannot fail as the result will be atmost ~128
+        let parts: (u64, u64) = result.into();
+        let res_u32 = asm(r1: parts.1) {
+            r1: u32
+        };
+
+        // Raising the base to the power of the result
+        let mut pow_res = base.pow(res_u32);
+        let mut of = overflow();
+
+        // Adjusting the result until the power is less than or equal to self
+        // If pow_res is > than self, then there is an overestimation. If there is an overflow then there is definitely an overestimation.
+        while (pow_res > self) || (of > 0) {
+            result -= 1;
+
+            // Converting u128 to u32, this cannot fail as the result will be atmost ~128
+            let parts: (u64, u64) = result.into();
+            let res_u32 = asm(r1: parts.1) {
+                r1: u32
+            };
+
+            pow_res = base.pow(res_u32);
+            of = overflow();
+        };
+
+        set_flags(flags);
+
+        result
     }
 }
