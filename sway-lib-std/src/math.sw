@@ -343,6 +343,7 @@ impl Logarithm for u256 {
 
         // Decimals rounded to 0
         if self < base {
+            set_flags(flags);
             return 0x00u256;
         }
 
