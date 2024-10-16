@@ -742,6 +742,13 @@ impl Logarithm for U128 {
             assert(base >= 2);
             // Logarithm is undefined for 0
             assert(self != 0);
+        } else {
+            // Logarithm is undefined for bases less than 2
+            // Logarithm is undefined for 0
+            if (base < 2) || (self == 0) {
+                set_flags(flags);
+                return 0x00u256;
+            }
         }
 
         // Decimals rounded to 0

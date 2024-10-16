@@ -718,6 +718,18 @@ fn u128_log() {
     assert(u_128_max_div_2.log(u_128_9) == u_128_21);
 
     assert(prior_flags == flags());
+
+    let prior_flags = disable_panic_on_unsafe_math();
+
+    let zero = U128::from(0_u64);
+    let one = U128::from(1_u64);
+    let three = U128::from(3_u64);
+
+    assert(one.log(one) == zero);
+    assert(zero.log(three) == zero);
+
+    assert(prior_flags == flags());
+    set_flags(prior_flags);
 }
 
 #[test]
