@@ -173,17 +173,38 @@ impl Subtract for u64 {
     }
 }
 
-// unlike addition, underflowing subtraction does not need special treatment
-// because VM handles underflow
 impl Subtract for u32 {
     fn subtract(self, other: Self) -> Self {
-        __sub(self, other)
+        // any non-64-bit value is compiled to a u64 value under-the-hood
+        // constants (like Self::max() below) are also automatically promoted to u64
+        let res = __sub(self, other);
+        // integer underflow
+        if __gt(res, Self::max()) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                __mod(res, __add(Self::max(), 1))
+            }
+        } else {
+            // no overflow
+            res
+        }
     }
 }
 
 impl Subtract for u16 {
     fn subtract(self, other: Self) -> Self {
-        __sub(self, other)
+        let res = __sub(self, other);
+        if __gt(res, Self::max()) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                __mod(res, __add(Self::max(), 1))
+            }
+        } else {
+            res
+        }
     }
 }
 

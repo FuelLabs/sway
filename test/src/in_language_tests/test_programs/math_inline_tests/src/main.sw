@@ -900,6 +900,22 @@ fn math_u256_overflow_mul_revert() {
     log(b);
 }
 
+#[test(should_revert)]
+fn math_u16_underflow_sub_revert() {
+    let a = 0u16;
+    let b = 1u16;
+    let c = a - b;
+    log(c);
+}
+
+#[test(should_revert)]
+fn math_u32_underflow_sub_revert() {
+    let a = 0u32;
+    let b = 1u32;
+    let c = a - b;
+    log(c);
+}
+
 #[test]
 fn math_u8_overflow_add() {
     let _ = disable_panic_on_overflow();
@@ -945,6 +961,26 @@ fn math_u16_overflow_add() {
 }
 
 #[test]
+fn math_u16_underflow_sub() {
+    assert((u16::max() - u16::max()) == 0u16);
+    assert((u16::min() - u16::min()) == 0u16);
+    assert((10u16 - 5u16) == 5u16);
+    
+    let _ = disable_panic_on_overflow();
+
+    let a = 0u16;
+    let b = 1u16;
+
+    let c = a - b;
+    assert(c == u16::max());
+
+    let d = u16::max();
+
+    let e = a - d;
+    assert(e == b);
+}
+
+#[test]
 fn math_u32_overflow_add() {
     let _ = disable_panic_on_overflow();
 
@@ -964,6 +1000,26 @@ fn math_u32_overflow_add() {
     let e = a + (u32::max() - 1);
 
     require(e == u32::max() - 2, e);
+}
+
+#[test]
+fn math_u32_underflow_sub() {
+    assert((u32::max() - u32::max()) == 0u32);
+    assert((u32::min() - u32::min()) == 0u32);
+    assert((10u32 - 5u32) == 5u32);
+
+    let _ = disable_panic_on_overflow();
+
+    let a = 0u32;
+    let b = 1u32;
+
+    let c = a - b;
+    assert(c == u32::max());
+
+    let d = u32::max();
+
+    let e = a - d;
+    assert(e == b);
 }
 
 #[test]
