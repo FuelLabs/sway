@@ -1,0 +1,33 @@
+script {
+    entry fn main() -> u64 {
+        local u64 x
+        local u64 y
+
+        entry():
+        v0 = get_local ptr u64, x
+        v1 = get_local ptr u64, y
+	
+        v2 = load v0
+        v3 = call escape(v0) // `v0` escapes here.
+        store v2 to v1
+        v4 = load v1
+
+        ret u64 v4
+    }
+
+    fn escape(a: ptr u64) -> u64 {
+        entry(a: ptr u64):
+        z = const u64 0
+        store z to a
+        ret u64 z
+    }
+}
+
+// The `store` instruction must not be optimized away.
+
+// check: v0 = get_local ptr u64, x
+// check: v1 = get_local ptr u64, y
+// check: v2 = load v0
+// check: v3 = call escape(v0)
+// check: store v2 to v1
+// check: v4 = load v1
