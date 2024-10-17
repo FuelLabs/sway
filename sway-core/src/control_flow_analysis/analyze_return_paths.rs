@@ -23,11 +23,11 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
         let mut graph = ControlFlowGraph::new(engines);
         // do a depth first traversal and cover individual inner ast nodes
-        let mut leaves = vec![];
+        let mut leaf_opt = None;
         for ast_entrypoint in module_nodes {
-            match connect_node(engines, ast_entrypoint, &mut graph, &leaves) {
-                Ok(NodeConnection::NextStep(nodes)) => {
-                    leaves = nodes;
+            match connect_node(engines, ast_entrypoint, &mut graph, leaf_opt) {
+                Ok(NodeConnection::NextStep(node_opt)) => {
+                    leaf_opt = node_opt;
                 }
                 Ok(_) => {}
                 Err(mut e) => {
@@ -72,6 +72,12 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         errors
     }
 
+    /// Traverses the spine of a function to ensure that it does return if a return value is
+    /// expected.  The spine of the function does not include branches such as if-then-elses and
+    /// loops. Those branches are ignored, and a branching expression is represented as a single
+    /// node in the graph. The analysis continues once the branches join again.  This means that the
+    /// spine is linear, so every node has at most one outgoing edge. The graph is assumed to have
+    /// been constructed this way.
     fn ensure_all_paths_reach_exit(
         &self,
         engines: &Engines,
@@ -80,32 +86,28 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         function_name: &IdentUnique,
         return_ty: &TypeInfo,
     ) -> Vec<CompileError> {
-        let mut rovers = vec![entry_point];
-        let mut visited = vec![];
+        let mut rover = entry_point;
         let mut errors = vec![];
-        while !rovers.is_empty() && rovers[0] != exit_point {
-            rovers.retain(|idx| *idx != exit_point);
-            let mut next_rovers = vec![];
-            let mut last_discovered_span;
-            for rover in rovers {
-                visited.push(rover);
-                last_discovered_span = match &self.graph[rover] {
-                    ControlFlowGraphNode::ProgramNode { node, .. } => Some(node.span.clone()),
-                    ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(span.clone()),
-                    _ => None,
-                };
 
-                let mut neighbors = self
-                    .graph
-                    .neighbors_directed(rover, petgraph::Direction::Outgoing)
-                    .collect::<Vec<_>>();
-                if neighbors.is_empty() && !return_ty.is_unit() {
-                    let span = match last_discovered_span {
-                        Some(ref o) => o.clone(),
-                        None => {
+        while rover != exit_point {
+            let neighbors = self
+                .graph
+                .neighbors_directed(rover, petgraph::Direction::Outgoing)
+                .collect::<Vec<_>>();
+
+            // The graph is supposed to be a single path, so at most one outgoing neighbor is allowed.
+            assert!(neighbors.len() <= 1);
+
+            if neighbors.is_empty() {
+                if !return_ty.is_unit() {
+                    // A return is expected, but none is found. Report an error.
+                    let span = match &self.graph[rover] {
+                        ControlFlowGraphNode::ProgramNode { node, .. } => node.span.clone(),
+                        ControlFlowGraphNode::MethodDeclaration { span, .. } => span.clone(),
+                        _ => {
                             errors.push(CompileError::Internal(
                                 "Attempted to construct return path error \
-                                    but no source span was found.",
+				 but no source span was found.",
                                 Span::dummy(),
                             ));
                             return errors;
@@ -113,17 +115,17 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     };
                     let function_name: Ident = function_name.into();
                     errors.push(CompileError::PathDoesNotReturn {
-                        // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
-                        // different. To save some code duplication,
                         span,
                         function_name: function_name.clone(),
                         ty: engines.help_out(return_ty).to_string(),
                     });
                 }
-                next_rovers.append(&mut neighbors);
+
+                // No further neighbors, so we're done.
+                break;
             }
-            next_rovers.retain(|idx| !visited.contains(idx));
-            rovers = next_rovers;
+
+            rover = neighbors[0];
         }
 
         errors
@@ -133,7 +135,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 /// The resulting edges from connecting a node to the graph.
 enum NodeConnection {
     /// This represents a node that steps on to the next node.
-    NextStep(Vec<NodeIndex>),
+    NextStep(Option<NodeIndex>),
     /// This represents a return or implicit return node, which aborts the stepwise flow.
     Return(NodeIndex),
 }
@@ -142,7 +144,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
     engines: &'eng Engines,
     node: &ty::TyAstNode,
     graph: &mut ControlFlowGraph<'cfg>,
-    leaves: &[NodeIndex],
+    leaf_opt: Option<NodeIndex>,
 ) -> Result<NodeConnection, Vec<CompileError>> {
     match &node.content {
         ty::TyAstNodeContent::Expression(ty::TyExpression {
@@ -154,8 +156,8 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             ..
         }) => {
             let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));
-            for leaf_ix in leaves {
-                graph.add_edge(*leaf_ix, this_index, "".into());
+            if let Some(leaf_ix) = leaf_opt {
+                graph.add_edge(leaf_ix, this_index, "".into());
             }
             Ok(NodeConnection::Return(this_index))
         }
@@ -167,25 +169,25 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             // since we don't really care about what the loop body contains when detecting
             // divergent paths
             let node = graph.add_node(ControlFlowGraphNode::from_node(node));
-            for leaf in leaves {
-                graph.add_edge(*leaf, node, "while loop entry".into());
+            if let Some(leaf) = leaf_opt {
+                graph.add_edge(leaf, node, "while loop entry".into());
             }
-            Ok(NodeConnection::NextStep(vec![node]))
+            Ok(NodeConnection::NextStep(Some(node)))
         }
         ty::TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
             let entry = graph.add_node(ControlFlowGraphNode::from_node(node));
             // insert organizational dominator node
             // connected to all current leaves
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry, "".into());
+            if let Some(leaf) = leaf_opt {
+                graph.add_edge(leaf, entry, "".into());
             }
-            Ok(NodeConnection::NextStep(vec![entry]))
+            Ok(NodeConnection::NextStep(Some(entry)))
         }
-        ty::TyAstNodeContent::SideEffect(_) => Ok(NodeConnection::NextStep(leaves.to_vec())),
+        ty::TyAstNodeContent::SideEffect(_) => Ok(NodeConnection::NextStep(leaf_opt)),
         ty::TyAstNodeContent::Declaration(decl) => Ok(NodeConnection::NextStep(
-            connect_declaration(engines, node, decl, graph, leaves)?,
+            connect_declaration(engines, node, decl, graph, leaf_opt)?,
         )),
-        ty::TyAstNodeContent::Error(_, _) => Ok(NodeConnection::NextStep(vec![])),
+        ty::TyAstNodeContent::Error(_, _) => Ok(NodeConnection::NextStep(None)),
     }
 }
 
@@ -194,8 +196,8 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     node: &ty::TyAstNode,
     decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
-    leaves: &[NodeIndex],
-) -> Result<Vec<NodeIndex>, Vec<CompileError>> {
+    leaf_opt: Option<NodeIndex>,
+) -> Result<Option<NodeIndex>, Vec<CompileError>> {
     let decl_engine = engines.de();
     match decl {
         ty::TyDecl::TraitDecl(_)
@@ -206,39 +208,33 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | ty::TyDecl::StorageDecl(_)
         | ty::TyDecl::TypeAliasDecl(_)
         | ty::TyDecl::TraitTypeDecl(_)
-        | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaves.to_vec()),
+        | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaf_opt),
         ty::TyDecl::VariableDecl(_)
         | ty::TyDecl::ConstantDecl(_)
         | ty::TyDecl::ConfigurableDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
+            if let Some(leaf) = leaf_opt {
+                graph.add_edge(leaf, entry_node, "".into());
             }
-            Ok(vec![entry_node])
+            Ok(Some(entry_node))
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
+            // Do not connect the leaves to the function entry point, since control cannot flow from them into the function.
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node)?;
-            Ok(leaves.to_vec())
+            Ok(leaf_opt)
         }
         ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. }) => {
             let impl_trait = decl_engine.get_impl_self_or_trait(decl_id);
             let ty::TyImplSelfOrTrait {
                 trait_name, items, ..
             } = &*impl_trait;
-            let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
-
-            connect_impl_trait(engines, trait_name, graph, items, entry_node)?;
-            Ok(leaves.to_vec())
+            // Do not connect the leaves to the impl entry point, since control cannot flow from them into the impl.
+            connect_impl_trait(engines, trait_name, graph, items)?;
+            Ok(leaf_opt)
         }
-        ty::TyDecl::ErrorRecovery(..) => Ok(leaves.to_vec()),
+        ty::TyDecl::ErrorRecovery(..) => Ok(leaf_opt),
     }
 }
 
@@ -252,7 +248,6 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
     items: &[TyImplItem],
-    entry_node: NodeIndex,
 ) -> Result<(), Vec<CompileError>> {
     let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
@@ -267,7 +262,6 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                     method_decl_ref: method_decl_ref.clone(),
                     engines,
                 });
-                graph.add_edge(entry_node, fn_decl_entry_node, "".into());
                 // connect the impl declaration node to the functions themselves, as all trait functions are
                 // public if the trait is in scope
                 connect_typed_fn_decl(engines, &fn_decl, graph, fn_decl_entry_node)?;
@@ -306,7 +300,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     let type_engine = engines.te();
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let return_nodes =
-        depth_first_insertion_code_block(engines, &fn_decl.body, graph, &[entry_node])?;
+        depth_first_insertion_code_block(engines, &fn_decl.body, graph, Some(entry_node))?;
     for node in return_nodes {
         graph.add_edge(node, fn_exit_node, "return".into());
     }
@@ -328,16 +322,15 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
     engines: &'eng Engines,
     node_content: &ty::TyCodeBlock,
     graph: &mut ControlFlowGraph<'cfg>,
-    leaves: &[NodeIndex],
+    init_leaf_opt: Option<NodeIndex>,
 ) -> Result<ReturnStatementNodes, Vec<CompileError>> {
     let mut errors = vec![];
-
-    let mut leaves = leaves.to_vec();
+    let mut leaf_opt = init_leaf_opt;
     let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
-        match connect_node(engines, node, graph, &leaves) {
+        match connect_node(engines, node, graph, leaf_opt) {
             Ok(this_node) => match this_node {
-                NodeConnection::NextStep(nodes) => leaves = nodes,
+                NodeConnection::NextStep(node_opt) => leaf_opt = node_opt,
                 NodeConnection::Return(node) => {
                     return_nodes.push(node);
                 }
