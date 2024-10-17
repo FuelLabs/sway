@@ -59,6 +59,10 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
                     parsed_raw
                 )
             }
+            Err(fuel_asm::InvalidOpcode) if (4..12).contains(&word_ix) => {
+                let parsed_raw = u32::from_be_bytes([raw[0], raw[1], raw[2], raw[3]]);
+                format!("Metadata[{}] ({})", word_ix - 4, parsed_raw)
+            }
             Ok(_) | Err(fuel_asm::InvalidOpcode) => "".into(),
         };
         table.add_row(Row::new(vec![
