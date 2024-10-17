@@ -360,7 +360,7 @@ pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Res
     // config decode fns
     for config in context.modules[module.0].configs.iter() {
         if let crate::ConfigContent::V1 { decode_fn, .. } = config.1 {
-            grow_called_function_set(context, *decode_fn, &mut called_fns);
+            grow_called_function_set(context, decode_fn.get(), &mut called_fns);
         }
     }
 

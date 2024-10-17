@@ -1,0 +1,13 @@
+[[package]]
+name = "configurable_dedup_decode"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-5BADD42D3D8D8FF8"
+
+[[package]]
+name = "std"
+source = "path+from-root-5BADD42D3D8D8FF8"
+dependencies = ["core"]

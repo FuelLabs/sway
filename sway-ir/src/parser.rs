@@ -953,6 +953,7 @@ mod ir_builder {
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     use std::{
+        cell::Cell,
         collections::{BTreeMap, HashMap},
         iter::FromIterator,
     };
@@ -1465,7 +1466,7 @@ mod ir_builder {
                     .configs
                     .get_mut(&configurable_name)
                 {
-                    *decode_fn = f;
+                    decode_fn.replace(f);
                 }
             }
 
@@ -1521,7 +1522,7 @@ mod ir_builder {
                     ptr_ty: Type::new_ptr(context, ty),
                     encoded_bytes: config.encoded_bytes,
                     // this will point to the correct function after all functions are compiled
-                    decode_fn: Function(KeyData::default().into()),
+                    decode_fn: Cell::new(Function(KeyData::default().into())),
                     opt_metadata,
                 };
 
