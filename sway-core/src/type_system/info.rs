@@ -668,7 +668,22 @@ impl DebugWithEngines for TypeInfo {
         let s = match self {
             Unknown => "unknown".into(),
             Never => "!".into(),
-            UnknownGeneric { name, .. } => name.to_string(),
+            UnknownGeneric {
+                name,
+                trait_constraints,
+                ..
+            } => {
+                let tc_str = trait_constraints
+                    .iter()
+                    .map(|tc| engines.help_out(tc).to_string())
+                    .collect::<Vec<_>>()
+                    .join("+");
+                if tc_str.is_empty() {
+                    name.to_string()
+                } else {
+                    format!("{}:{}", name, tc_str)
+                }
+            }
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
             TypeParam(n) => format!("typeparam({n})"),
             StringSlice => "str".into(),

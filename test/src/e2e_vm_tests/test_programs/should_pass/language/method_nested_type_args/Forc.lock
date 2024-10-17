@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-765123F2C684AE5A"
+
+[[package]]
+name = "method_nested_type_args"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-765123F2C684AE5A"
+dependencies = ["core"]
