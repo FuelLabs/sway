@@ -7,9 +7,9 @@ use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
     get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils,
-    AnalysisResults, Block, Context, EscapedSymbols, Function, InstOp, Instruction,
-    InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass,
-    Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    AnalysisResults, Block, Context, EscapedSymbols, FuelVmInstruction, Function, InstOp,
+    Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols,
+    ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -644,6 +644,27 @@ fn local_copy_prop(
                             context,
                             *dst_val_ptr,
                             memory_utils::pointee_size(context, *dst_val_ptr),
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        );
+                    }
+                    Instruction {
+                        op:
+                            InstOp::FuelVm(
+                                FuelVmInstruction::WideBinaryOp { result, .. }
+                                | FuelVmInstruction::WideUnaryOp { result, .. }
+                                | FuelVmInstruction::WideModularOp { result, .. }
+                                | FuelVmInstruction::StateLoadQuadWord {
+                                    load_val: result, ..
+                                },
+                            ),
+                        ..
+                    } => {
+                        kill_defined_symbol(
+                            context,
+                            *result,
+                            memory_utils::pointee_size(context, *result),
                             &mut available_copies,
                             &mut src_to_copies,
                             &mut dest_to_copies,

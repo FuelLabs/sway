@@ -12,12 +12,12 @@ fn main() -> bool {
     let u_128_8: U128 = U128::from((0, 8));
     let u_128_9: U128 = U128::from((0, 9));
     let u_128_10: U128 = U128::from((0, 10));
-    let u_128_21: U128 = U128::from((0, 21));
+    let u_128_20: U128 = U128::from((0, 20));
     let u_128_42: U128 = U128::from((0, 42));
     let u_128_64: U128 = U128::from((0, 64));
     let u_128_100: U128 = U128::from((0, 100));
     let u_128_127: U128 = U128::from((0, 127));
-    let u_128_max_div_2: U128 = U128::from((1, 0));
+    let u64_max_times_two: U128 = U128::from((1, 0));
     let u_128_max: U128 = U128::max();
 
 
@@ -29,8 +29,8 @@ fn main() -> bool {
     assert(u_128_100.log(u_128_9) == u_128_2);
     assert(u_128_max.log(u_128_2) == u_128_127);
     assert(u_128_max.log(u_128_9) == u_128_42);
-    assert(u_128_max_div_2.log(u_128_2) == u_128_64);
-    assert(u_128_max_div_2.log(u_128_9) == u_128_21);
+    assert(u64_max_times_two.log(u_128_2) == u_128_64);
+    assert(u64_max_times_two.log(u_128_9) == u_128_20);
 
     true
 }
