@@ -20,7 +20,7 @@ anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 devault.workspace = true
 forc-util.workspace = true
-fuel-tx = { workspace = true, features = ["random", "serde", "test-helpers"] }
+fuel-tx = { workspace = true, features = ["random", "test-helpers"] }
 fuel-types = { workspace = true, features = ["serde"] }
 serde.workspace = true
 serde_json.workspace = true
