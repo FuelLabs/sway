@@ -635,6 +635,10 @@ impl core::ops::Divide for U128 {
 
         if panic_on_unsafe_math_enabled() {
             assert(divisor != zero);
+        } else {
+            if divisor == zero {
+                return zero;
+            }
         }
 
         if self.upper == 0 && divisor.upper == 0 {
