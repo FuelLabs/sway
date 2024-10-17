@@ -15,7 +15,6 @@ use crate::{
         type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext,
     },
-    type_system::*,
     Engines,
 };
 
@@ -59,9 +58,7 @@ impl ty::TyTraitType {
                     EnforceTypeArguments::No,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
             Some(ty)
         } else {
             None
@@ -93,11 +90,7 @@ impl ty::TyTraitType {
             name,
             attributes,
             ty: ty_opt,
-            implementing_type: engines.te().insert(
-                engines,
-                TypeInfo::new_self_type(Span::dummy()),
-                None,
-            ),
+            implementing_type: engines.te().new_self_type(engines, Span::dummy()),
             span,
         }
     }

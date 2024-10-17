@@ -119,8 +119,8 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             engines,
             collection_ctx,
-            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
-            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            type_annotation: engines.te().new_unknown(),
+            function_type_annotation: engines.te().new_unknown(),
             unify_generic: false,
             self_type: None,
             type_subst: TypeSubstMap::new(),
@@ -163,8 +163,8 @@ impl<'a> TypeCheckContext<'a> {
             collection_ctx,
             namespace,
             engines,
-            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
-            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            type_annotation: engines.te().new_unknown(),
+            function_type_annotation: engines.te().new_unknown(),
             unify_generic: false,
             self_type: None,
             type_subst: TypeSubstMap::new(),
@@ -692,27 +692,21 @@ impl<'a> TypeCheckContext<'a> {
                     type_arguments.clone(),
                 )?
             }
-            TypeInfo::Array(mut elem_ty, n) => {
-                elem_ty.type_id = self
+            TypeInfo::Array(mut elem_type, length) => {
+                elem_type.type_id = self
                     .resolve(
                         handler,
-                        elem_ty.type_id,
+                        elem_type.type_id,
                         span,
                         enforce_type_arguments,
                         None,
                         mod_path,
                     )
-                    .unwrap_or_else(|err| {
-                        self.engines
-                            .te()
-                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                    .unwrap_or_else(|err| self.engines.te().id_of_error_recovery(err));
 
-                self.engines.te().insert(
-                    self.engines,
-                    TypeInfo::Array(elem_ty.clone(), n.clone()),
-                    elem_ty.span.source_id(),
-                )
+                self.engines
+                    .te()
+                    .insert_array(self.engines, elem_type, length)
             }
             TypeInfo::Slice(mut elem_ty) => {
                 elem_ty.type_id = self
@@ -724,17 +718,9 @@ impl<'a> TypeCheckContext<'a> {
                         None,
                         mod_path,
                     )
-                    .unwrap_or_else(|err| {
-                        self.engines
-                            .te()
-                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                    .unwrap_or_else(|err| self.engines.te().id_of_error_recovery(err));
 
-                self.engines.te().insert(
-                    self.engines,
-                    TypeInfo::Slice(elem_ty.clone()),
-                    elem_ty.span.source_id(),
-                )
+                self.engines.te().insert_slice(self.engines, elem_ty)
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -747,20 +733,10 @@ impl<'a> TypeCheckContext<'a> {
                             None,
                             mod_path,
                         )
-                        .unwrap_or_else(|err| {
-                            self.engines.te().insert(
-                                self.engines,
-                                TypeInfo::ErrorRecovery(err),
-                                None,
-                            )
-                        });
+                        .unwrap_or_else(|err| self.engines.te().id_of_error_recovery(err));
                 }
 
-                self.engines.te().insert(
-                    self.engines,
-                    TypeInfo::Tuple(type_arguments),
-                    span.source_id(),
-                )
+                self.engines.te().insert_tuple(self.engines, type_arguments)
             }
             TypeInfo::TraitType {
                 name,
@@ -800,20 +776,11 @@ impl<'a> TypeCheckContext<'a> {
                         None,
                         mod_path,
                     )
-                    .unwrap_or_else(|err| {
-                        self.engines
-                            .te()
-                            .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                    .unwrap_or_else(|err| self.engines.te().id_of_error_recovery(err));
 
-                self.engines.te().insert(
-                    self.engines,
-                    TypeInfo::Ref {
-                        to_mutable_value,
-                        referenced_type: ty.clone(),
-                    },
-                    None,
-                )
+                self.engines
+                    .te()
+                    .insert_ref(self.engines, to_mutable_value, ty)
             }
             _ => type_id,
         };
@@ -1056,11 +1023,7 @@ impl<'a> TypeCheckContext<'a> {
                 );
 
                 // create the type id from the copy
-                type_engine.insert(
-                    self.engines,
-                    TypeInfo::Struct(*new_decl_ref.id()),
-                    new_decl_ref.span().source_id(),
-                )
+                type_engine.insert_struct(self.engines, *new_decl_ref.id())
             }
             Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
                 decl_id: original_id,
@@ -1086,11 +1049,7 @@ impl<'a> TypeCheckContext<'a> {
                 );
 
                 // create the type id from the copy
-                type_engine.insert(
-                    self.engines,
-                    TypeInfo::Enum(*new_decl_ref.id()),
-                    new_decl_ref.span().source_id(),
-                )
+                type_engine.insert_enum(self.engines, *new_decl_ref.id())
             }
             Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
                 decl_id: original_id,
@@ -1113,13 +1072,10 @@ impl<'a> TypeCheckContext<'a> {
                 if let Some(ty) = &decl_type.ty {
                     ty.type_id
                 } else if let Some(implementing_type) = self.self_type() {
-                    type_engine.insert(
+                    type_engine.insert_trait_type(
                         self.engines,
-                        TypeInfo::TraitType {
-                            name: decl_type.name.clone(),
-                            trait_type_id: implementing_type,
-                        },
-                        decl_type.name.span().source_id(),
+                        decl_type.name.clone(),
+                        implementing_type,
                     )
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(
@@ -1133,7 +1089,7 @@ impl<'a> TypeCheckContext<'a> {
                     name: call_path.to_string(),
                     span: call_path.span(),
                 });
-                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+                type_engine.id_of_error_recovery(err)
             }
         })
     }
@@ -1179,9 +1135,7 @@ impl<'a> TypeCheckContext<'a> {
                 None,
                 item_prefix,
             )
-            .unwrap_or_else(|err| {
-                type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
-            });
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // grab the module where the type itself is declared
         let type_module = self.namespace().lookup_submodule_from_absolute_path(
@@ -1836,13 +1790,7 @@ impl<'a> TypeCheckContext<'a> {
                             None,
                             mod_path,
                         )
-                        .unwrap_or_else(|err| {
-                            self.engines.te().insert(
-                                self.engines,
-                                TypeInfo::ErrorRecovery(err),
-                                None,
-                            )
-                        });
+                        .unwrap_or_else(|err| self.engines.te().id_of_error_recovery(err));
                 }
                 let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                     value

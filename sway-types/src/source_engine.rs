@@ -81,7 +81,7 @@ impl SourceEngine {
             }
         }
 
-        let source_id = SourceId::new(program_id.id, *self.next_source_id.read());
+        let source_id = SourceId::new(program_id.0, *self.next_source_id.read());
         {
             let mut next_id = self.next_source_id.write();
             *next_id += 1;

@@ -48,7 +48,7 @@ impl ty::TyVariableDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         let mut ctx = ctx
             .with_type_annotation(type_ascription.type_id)
             .with_help_text(

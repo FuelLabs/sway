@@ -61,15 +61,11 @@ impl<'a> Unifier<'a> {
         expected_type_info: &TypeInfo,
         span: &Span,
     ) {
-        let type_engine = self.engines.te();
-        let source_id = span.source_id().copied();
-        type_engine.replace(
+        self.engines.te().replace_with_new_source_id(
             self.engines,
             received,
-            TypeSourceInfo {
-                type_info: expected_type_info.clone().into(),
-                source_id,
-            },
+            expected_type_info.clone(),
+            span.source_id().copied(),
         );
     }
 
@@ -80,15 +76,11 @@ impl<'a> Unifier<'a> {
         received_type_info: &TypeInfo,
         span: &Span,
     ) {
-        let type_engine = self.engines.te();
-        let source_id = span.source_id().copied();
-        type_engine.replace(
+        self.engines.te().replace_with_new_source_id(
             self.engines,
             expected,
-            TypeSourceInfo {
-                type_info: received_type_info.clone().into(),
-                source_id,
-            },
+            received_type_info.clone(),
+            span.source_id().copied(),
         );
     }
 

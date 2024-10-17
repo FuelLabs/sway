@@ -740,31 +740,9 @@ impl TyDecl {
                 decl.return_type.type_id
             }
             TyDecl::StructDecl(StructDecl { decl_id }) => {
-                let decl = decl_engine.get_struct(decl_id);
-                type_engine.insert(
-                    engines,
-                    TypeInfo::Struct(*decl_id),
-                    decl.name().span().source_id(),
-                )
+                type_engine.insert_struct(engines, *decl_id)
             }
-            TyDecl::EnumDecl(EnumDecl { decl_id }) => {
-                let decl = decl_engine.get_enum(decl_id);
-                type_engine.insert(
-                    engines,
-                    TypeInfo::Enum(*decl_id),
-                    decl.name().span().source_id(),
-                )
-            }
-            TyDecl::StorageDecl(StorageDecl { decl_id, .. }) => {
-                let storage_decl = decl_engine.get_storage(decl_id);
-                type_engine.insert(
-                    engines,
-                    TypeInfo::Storage {
-                        fields: storage_decl.fields_as_typed_struct_fields(),
-                    },
-                    storage_decl.span().source_id(),
-                )
-            }
+            TyDecl::EnumDecl(EnumDecl { decl_id }) => type_engine.insert_enum(engines, *decl_id),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_type_alias(decl_id);
                 decl.create_type_id(engines)

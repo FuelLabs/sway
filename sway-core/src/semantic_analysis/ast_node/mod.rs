@@ -91,11 +91,7 @@ impl ty::TyAstNode {
                         _ => {
                             ctx = ctx
                                 .with_help_text("")
-                                .with_type_annotation(type_engine.insert(
-                                    engines,
-                                    TypeInfo::Unknown,
-                                    None,
-                                ));
+                                .with_type_annotation(type_engine.new_unknown());
                         }
                     }
                     let inner = ty::TyExpression::type_check(handler, ctx, &expr)

@@ -100,7 +100,9 @@ impl TyTraitDecl {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        // Create a new type parameter for the "self type".
+        // Create a new type parameter for the self type.
+        // The span of the `trait_decl` `name` points to the file (use site) in which
+        // the trait is getting declared, so we can use it as the `use_site_span`.
         let self_type_param = TypeParameter::new_self_type(engines, name.span());
         let self_type = self_type_param.type_id;
 
