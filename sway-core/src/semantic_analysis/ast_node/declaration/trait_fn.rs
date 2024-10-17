@@ -6,10 +6,7 @@ use crate::{
         parsed::{self, Declaration, TraitFn},
         ty, CallPath, Visibility,
     },
-    semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext,
-        type_check_context::EnforceTypeArguments,
-    },
+    semantic_analysis::symbol_collection_context::SymbolCollectionContext,
     Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
