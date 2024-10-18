@@ -900,12 +900,13 @@ impl<'a> TypeCheckContext<'a> {
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
 	let full_path = call_path.to_fullpath(&self.engines, &self.namespace);
-//	let problem = call_path.suffix.as_str() == "AbiEncode";
-//	if problem {
-//	    dbg!(mod_path);
-//	    dbg!(call_path);
-//	    dbg!(&full_path);
-//	}
+	let problem = call_path.suffix.as_str() == "from_parts"
+	    ;
+	if problem {
+	    dbg!(mod_path);
+	    dbg!(call_path);
+	    dbg!(&full_path);
+	}
         let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
             handler,
             self.engines,
@@ -915,15 +916,21 @@ impl<'a> TypeCheckContext<'a> {
         )?;
         let decl = decl.expect_typed();
 
-        // In case there is no mod path we don't need to check visibility
-        if mod_path.is_empty() {
-            return Ok(decl);
-        }
+//        // In case there is no mod path we don't need to check visibility
+//        if mod_path.is_empty() {
+//            return Ok(decl);
+//        }
+//
+//        // In case there are no prefixes we don't need to check visibility
+//        if call_path.prefixes.is_empty() {
+//            return Ok(decl);
+	//        }
 
-        // In case there are no prefixes we don't need to check visibility
-        if call_path.prefixes.is_empty() {
-            return Ok(decl);
-        }
+	// Private declarations are visibile within their own module, so no need to check for
+	// visibility in that case
+	if mod_path == full_path.prefixes {
+	    return Ok(decl);
+	}
 
         // check the visibility of the call path elements
         // we don't check the first prefix because direct children are always accessible
