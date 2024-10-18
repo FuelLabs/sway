@@ -373,6 +373,25 @@ impl CallPath {
         res
     }
 
+    /// Convert a given [CallPath] into a call path suitable for a `use` statement.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ library of a package named
+    /// `my_project`, the corresponding call path is `pkga::SOME_CONST`.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are left unchanged.
+    pub fn to_import_path(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
+        let converted = self.to_fullpath(engines, namespace);
+
+        if let Some(first) = converted.prefixes.first() {
+            if namespace.current_package_name() == first {
+                return converted.lshift();
+            }
+        }
+        converted
+    }
+}
+
+impl<T: Clone> CallPath<T> {
     /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
@@ -380,7 +399,7 @@ impl CallPath {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, _engines: &Engines, namespace: &Namespace) -> CallPath {
+    pub fn to_fullpath(&self, _engines: &Engines, namespace: &Namespace) -> CallPath<T> {
 	match self.callpath_type {
 	    CallPathType::Full => self.clone(),
 	    CallPathType::RelativeToPackageRoot => {
@@ -503,22 +522,5 @@ impl CallPath {
 		}
 	    },
 	}
-    }
-
-    /// Convert a given [CallPath] into a call path suitable for a `use` statement.
-    ///
-    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ library of a package named
-    /// `my_project`, the corresponding call path is `pkga::SOME_CONST`.
-    ///
-    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are left unchanged.
-    pub fn to_import_path(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
-        let converted = self.to_fullpath(engines, namespace);
-
-        if let Some(first) = converted.prefixes.first() {
-            if namespace.current_package_name() == first {
-                return converted.lshift();
-            }
-        }
-        converted
     }
 }
