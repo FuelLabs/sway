@@ -679,7 +679,7 @@ impl<'a> TypeCheckContext<'a> {
         &self,
         handler: &Handler,
         call_path: &CallPath,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         resolve_call_path(
             handler,
             self.engines(),
@@ -694,7 +694,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         qualified_call_path: &QualifiedCallPath,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         resolve_qualified_call_path(
             handler,
             self.engines(),
@@ -821,7 +821,7 @@ impl<'a> TypeCheckContext<'a> {
         let coercion_check = UnifyCheck::coercion(self.engines);
 
         // default numeric types to u64
-        if type_engine.contains_numeric(decl_engine, type_id) {
+        if type_engine.contains_numeric(self.engines, type_id) {
             // While collecting unification we don't decay numeric and will ignore this error.
             if self.collecting_unifications {
                 return Err(handler.emit_err(CompileError::MethodNotFound {

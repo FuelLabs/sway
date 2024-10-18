@@ -23,7 +23,7 @@ pub use method_name::MethodName;
 pub use scrutinee::*;
 use sway_ast::intrinsics::Intrinsic;
 
-use super::{FunctionDeclaration, StructDeclaration};
+use super::{Declaration, FunctionDeclaration, StructDeclaration};
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
@@ -295,6 +295,8 @@ impl PartialEqWithEngines for AmbiguousPathExpression {
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
     pub call_path_binding: TypeBinding<QualifiedCallPath>,
+    pub resolved_call_path_binding: Option<TypeBinding<ResolvedCallPath<Declaration>>>,
+
     /// When args is equal to Option::None then it means that the
     /// [DelineatedPathExpression] was initialized from an expression
     /// that does not end with parenthesis.

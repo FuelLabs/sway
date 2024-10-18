@@ -876,7 +876,7 @@ impl TraitMap {
                     },
             } in impls.iter()
             {
-                if !type_info.can_change(decl_engine) && *type_id == *map_type_id {
+                if !type_info.can_change(engines) && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
@@ -1542,6 +1542,8 @@ impl TraitMap {
             Contract => TypeRootFilter::Contract,
             ErrorRecovery(_) => TypeRootFilter::ErrorRecovery,
             Tuple(fields) => TypeRootFilter::Tuple(fields.len()),
+            UntypedEnum(decl_id) => TypeRootFilter::Enum(*decl_id),
+            UntypedStruct(decl_id) => TypeRootFilter::Struct(*decl_id),
             Enum(decl_id) => {
                 // TODO Remove unwrap once #6475 is fixed
                 TypeRootFilter::Enum(engines.de().get_parsed_decl_id(decl_id).unwrap())

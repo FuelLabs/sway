@@ -7,6 +7,8 @@ use crate::{
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
+use super::ImplSelfOrTrait;
+
 #[derive(Debug, Clone)]
 pub struct StructDeclaration {
     pub name: Ident,
@@ -15,6 +17,8 @@ pub struct StructDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
+    // the impl blocks implementing this struct
+    pub impls: Vec<ImplSelfOrTrait>,
 }
 
 impl EqWithEngines for StructDeclaration {}

@@ -2,8 +2,14 @@ use std::hash::{DefaultHasher, Hasher};
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
 
-use crate::engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext};
+use sway_types::{Named, Spanned};
 
+use crate::engine_threading::{
+    EqWithEngines, HashWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
+};
+use crate::Engines;
+
+use super::parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet, ParsedDeclEngineIndex};
 use super::DeclUniqueId;
 
 pub type ParsedDeclIdIndexType = usize;
@@ -58,6 +64,19 @@ impl<T> PartialEqWithEngines for ParsedDeclId<T> {
 impl<T> Hash for ParsedDeclId<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state)
+    }
+}
+
+impl<T> HashWithEngines for ParsedDeclId<T>
+where
+    ParsedDeclEngine: ParsedDeclEngineIndex<T>,
+    T: Named + Spanned + HashWithEngines,
+{
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let decl_engine = engines.pe();
+        let decl = decl_engine.get(self);
+        decl.name().hash(state);
+        decl.hash(state, engines);
     }
 }
 

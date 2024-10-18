@@ -6,12 +6,9 @@ use sway_types::{Span, Spanned};
 use sway_utils::iter_prefixes;
 
 use crate::{
-    language::{
-        ty::{self, TyTraitItem},
-        CallPath, QualifiedCallPath,
-    },
+    language::{ty::TyTraitItem, CallPath, QualifiedCallPath},
     monomorphization::type_decl_opt_to_type_id,
-    namespace::{ModulePath, ResolvedTraitImplItem},
+    namespace::{ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
     type_system::SubstTypes,
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
@@ -52,7 +49,6 @@ pub fn resolve_type(
                         &qualified_call_path.clone().to_call_path(handler)?,
                         self_type,
                     )
-                    .map(|decl| decl.expect_typed())
                     .ok()
             } else {
                 resolve_qualified_call_path(
@@ -228,7 +224,7 @@ pub fn resolve_qualified_call_path(
     qualified_call_path: &QualifiedCallPath,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
-) -> Result<ty::TyDecl, ErrorEmitted> {
+) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let type_engine = engines.te();
     if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
         let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
@@ -275,18 +271,15 @@ pub fn resolve_qualified_call_path(
             _ => None,
         };
 
-        namespace
-            .root
-            .resolve_call_path_and_root_type_id(
-                handler,
-                engines,
-                &namespace.root.module,
-                root_type_id,
-                as_trait_opt,
-                &qualified_call_path.call_path,
-                self_type,
-            )
-            .map(|decl| decl.expect_typed())
+        namespace.root.resolve_call_path_and_root_type_id(
+            handler,
+            engines,
+            &namespace.root.module,
+            root_type_id,
+            as_trait_opt,
+            &qualified_call_path.call_path,
+            self_type,
+        )
     } else {
         resolve_call_path(
             handler,
@@ -314,11 +307,10 @@ pub fn resolve_call_path(
     mod_path: &ModulePath,
     call_path: &CallPath,
     self_type: Option<TypeId>,
-) -> Result<ty::TyDecl, ErrorEmitted> {
+) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let (decl, mod_path) = namespace
         .root
         .resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
-    let decl = decl.expect_typed();
 
     // In case there is no mod path we don't need to check visibility
     if mod_path.is_empty() {
@@ -344,7 +336,7 @@ pub fn resolve_call_path(
     }
 
     // check the visibility of the symbol itself
-    if !decl.visibility(engines.de()).is_public() {
+    if !decl.visibility(engines).is_public() {
         handler.emit_err(CompileError::ImportPrivateSymbol {
             name: call_path.suffix.clone(),
             span: call_path.suffix.span(),
