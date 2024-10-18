@@ -821,7 +821,7 @@ impl<'a> TypeCheckContext<'a> {
         let coercion_check = UnifyCheck::coercion(self.engines);
 
         // default numeric types to u64
-        if type_engine.contains_numeric(decl_engine, type_id) {
+        if type_engine.contains_numeric(self.engines, type_id) {
             // While collecting unification we don't decay numeric and will ignore this error.
             if self.collecting_unifications {
                 return Err(handler.emit_err(CompileError::MethodNotFound {
