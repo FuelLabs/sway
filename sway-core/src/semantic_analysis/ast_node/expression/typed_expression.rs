@@ -1410,13 +1410,62 @@ impl ty::TyExpression {
 
         // is it a singleton?
         let before = if let Some(b) = before {
+	    // TODO:
+	    // b : TypeBinding<CallPath<AmbiguousSuffix>>
+	    // b.inner : CallPath<AmbiguousSuffix>
+	    // b.inner.suffix : AmbiguousSuffix
+	    // b.inner.suffix.before : Option<TypeBindign<Ident>>
+	    // b.inner.suffix.before.unwrap : TypeBinding<Ident>
+	    // b.inner.suffix.before.unwrap.inner : Ident
+	    
             b
+	    // Probably replace with this:
+//		TypeBinding {
+//		    inner: b.inner.to_fullpath(engines, ctx.namespace()),
+//		    type_arguments: b.type_arguments.clone(),
+//		    span: b.span.clone(),
+//		}
+	    // TODO: What do we do if prefixes is empty, but AmbiguousSuffix is a pair where the first name refers to a package name? Is it allowed to refer to X::my_item if X is a package name, and my_item is defined at the top-level in X?
+
+	    // Add to to_fullpath:
+	    // if suffix.is_ambiguous && suffix.before.is_some() && suffix.before.unwrap().type_arguments.is_empty() {
+	    //   Check if suffix.before.unwrap.inner exists as a submodule. If it does, then split the suffix and add the submodule identifier to the prefix.
+	    // }
+
+	    // Resolve b to a full path
+	    // Special case: Prefixes is empty and the suffix consists of two names, the first of which has no type arguments.
+	    // In this case the first name may refer to a submodule of the current module or to an external package name.
+	    // Move the name out of the suffix and use it as the prefix.
+//	    if prefixes.is_empty()
+//		&& b.type_arguments.is_empty()
+//		&& (ctx.namespace().current_module_has_submodule(&b.inner)
+//		    || ctx.namespace().package_exists(&b.inner)) {
+//		    TypeBinding {
+//			inner: CallPath {
+//			    prefixes: prefixes.clone().append(b.inner),
+//			    suffix: b.suffix.clone(),
+//			    callpath_type: CallPathType::Ambiguous,
+//			}.to_fullpath(engines, ctx.namespace()),
+//			type_arguments: b.type_arguments.clone(),
+//			span: b.span.clone(),
+//		    }
+//		}
+//	    else {
+//		// to_fullpath is sufficient to convert
+//		TypeBinding {
+//		    inner: b.inner.to_fullpath(engines, ctx.namespace()),
+//		    type_arguments: b.type_arguments.clone(),
+//		    span: b.span.clone(),
+//		}
+//	    }
+//	    
+//	    
         } else {
             let call_path = CallPath {
                 prefixes,
                 suffix,
 		callpath_type,
-            };
+            }.to_fullpath(&engines, ctx.namespace());
 //	    let mod_path = ctx.namespace.current_mod_path();
 //	    let problem = call_path.suffix.as_str() == "Some"
 //		&& mod_path.len() == 2
@@ -1476,6 +1525,7 @@ impl ty::TyExpression {
             ctx.namespace()
                 .current_module()
                 .read(engines, |m| m.lookup_submodule(&h, &path).is_err())
+		|| ctx.namespace().module_from_absolute_path(&path).is_none()
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1520,7 +1570,7 @@ impl ty::TyExpression {
                             prefixes,
                             suffix: (type_info, type_name),
                             callpath_type,
-                        },
+                        }.to_fullpath(engines, ctx.namespace()),
                     },
                     method_name: suffix,
                 },

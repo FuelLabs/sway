@@ -214,6 +214,7 @@ impl PartialEqWithEngines for CallPath {
             && self.suffix == other.suffix
             && self.callpath_type  == other.callpath_type
     }
+
 }
 
 impl<T: EqWithEngines> EqWithEngines for CallPath<T> {}

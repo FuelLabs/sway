@@ -779,6 +779,13 @@ pub(crate) fn resolve_method_name(
         } => {
 //	    dbg!("FromType");
             // type check the call path
+//	    let mod_path = ctx.namespace().current_mod_path(); 
+//	    let problem = mod_path.len() == 2
+//		&& mod_path[0].as_str() == "std"
+//		&& mod_path[1].as_str() == "inputs";
+//	    if problem {
+//		dbg!(&call_path_binding);
+//	    }
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
                 .unwrap_or_else(|err| {

@@ -236,7 +236,13 @@ impl Module {
 }
 
 pub(super) fn module_not_found(path: &[Ident]) -> CompileError {
-//    panic!();
+//    let problem = path.len() == 3
+//	&& path[0].as_str() == "std"
+//	&& path[1].as_str() == "inputs"
+//	&& path[2].as_str() == "core";
+//    if problem {
+//	panic!();
+//    }
     CompileError::ModuleNotFound {
         span: path.iter().fold(path[0].span(), |acc, this_one| {
             if acc.source_id() == this_one.span().source_id() {

@@ -234,6 +234,10 @@ impl Namespace {
         self.root.current_package_name() != &absolute_module_path[0]
     }
 
+    pub fn package_exists(&self, name: &Ident) -> bool {
+	self.module_from_absolute_path(&vec![name.clone()]).is_some()
+    }
+    
     pub fn get_root_trait_item_for_type(
         &self,
         handler: &Handler,
