@@ -3,13 +3,13 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
     has_changes,
     language::{parsed::TraitFn, ty::*, Purity},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };
@@ -122,10 +122,10 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.parameters.subst(type_mapping, ctx);
-            self.return_type.subst(type_mapping, ctx);
+            self.parameters.subst(ctx);
+            self.return_type.subst(ctx);
         }
     }
 }

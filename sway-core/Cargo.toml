@@ -26,7 +26,6 @@ im.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 lazy_static.workspace = true
-miden-core.workspace = true
 object = { workspace = true, features = ["write"] }
 parking_lot.workspace = true
 pest.workspace = true

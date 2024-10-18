@@ -34,7 +34,7 @@ In the meantime, if it's too slow, you can disable the LSP server entirely with 
 
 ## Server Logs
 
-You can you enable verbose logging of the LSP server.
+You can enable verbose logging of the LSP server.
 
 In VSCode, this is under the setting:
 

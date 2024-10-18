@@ -716,7 +716,7 @@ fn bytes_append() {
 
     assert(bytes2.len() == second_length);
     assert(!bytes2.is_empty());
-    
+
     assert(bytes2.get(0).unwrap() == d);
     assert(bytes2.get(1).unwrap() == e);
     assert(bytes2.get(2).unwrap() == f);

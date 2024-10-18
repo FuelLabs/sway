@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
@@ -10,7 +11,6 @@ use crate::{
     error::module_can_be_changed,
     has_changes,
     language::{parsed::StructDeclaration, CallPath, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
     Namespace,
@@ -68,10 +68,10 @@ impl HashWithEngines for TyStructDecl {
 }
 
 impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.fields.subst(type_mapping, ctx);
-            self.type_parameters.subst(type_mapping, ctx);
+            self.fields.subst(ctx);
+            self.type_parameters.subst(ctx);
         }
     }
 }
@@ -279,7 +279,7 @@ impl OrdWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.subst_inner(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(ctx)
     }
 }

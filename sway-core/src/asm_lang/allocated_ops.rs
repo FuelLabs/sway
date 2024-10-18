@@ -50,6 +50,10 @@ impl AllocatedRegister {
             AllocatedRegister::Constant(constant) => constant.to_reg_id(),
         }
     }
+
+    pub fn is_zero(&self) -> bool {
+        matches!(self, Self::Constant(ConstantRegister::Zero))
+    }
 }
 
 /// This enum is unfortunately a redundancy of the [fuel_asm::Opcode] and [crate::VirtualOp] enums. This variant, however,

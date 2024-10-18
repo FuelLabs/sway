@@ -5,7 +5,7 @@ use crate::{
         ty::{self, TyExpression, TyVariableDecl},
     },
     namespace::ResolvedDeclaration,
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
     Engines,
 };

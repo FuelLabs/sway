@@ -385,10 +385,11 @@ impl InstOp {
                 vals
             }
             InstOp::GetLocal(_local_var) => {
-                // TODO: Not sure.
+                // `GetLocal` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::GetConfig(_, _) => {
+                // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::IntToPtr(v, _) => vec![*v],

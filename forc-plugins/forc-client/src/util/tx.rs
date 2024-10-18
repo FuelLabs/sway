@@ -15,7 +15,9 @@ use forc_wallet::{
 };
 use fuel_crypto::SecretKey;
 use fuel_tx::{AssetId, ContractId};
-use fuels::{macros::abigen, programs::responses::CallResponse};
+use fuels::{
+    macros::abigen, programs::responses::CallResponse, types::checksum_address::checksum_encode,
+};
 use fuels_accounts::{
     provider::Provider,
     wallet::{Wallet, WalletUnlocked},
@@ -139,7 +141,7 @@ pub fn format_base_asset_account_balances(
     accounts_map: &AccountsMap,
     account_balances: &AccountBalances,
     base_asset_id: &AssetId,
-) -> Vec<String> {
+) -> Result<Vec<String>> {
     accounts_map
         .iter()
         .zip(account_balances)
@@ -148,10 +150,12 @@ pub fn format_base_asset_account_balances(
                 .get(&base_asset_id.to_string())
                 .copied()
                 .unwrap_or(0);
+            let raw_addr = format!("0x{address}");
+            let checksum_addr = checksum_encode(&raw_addr)?;
             let eth_amount = base_asset_amount as f64 / 1_000_000_000.0;
-            format!("[{ix}] {address} - {eth_amount} ETH")
+            Ok(format!("[{ix}] {checksum_addr} - {eth_amount} ETH"))
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()
 }
 
 // TODO: Simplify the function signature once https://github.com/FuelLabs/sway/issues/6071 is closed.
@@ -181,15 +185,22 @@ pub(crate) async fn select_account(
                 let first_account = accounts
                     .get(&0)
                     .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
-                let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
-                let faucet_link = format!("{}/?address={first_account}", target.faucet_url());
-                anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
-                                      \n\nIf you are interacting with a testnet consider using the faucet.\
-                                      \n-> {target} network faucet: {faucet_link}\
-                                      \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
+                let target = Target::from_str(&chain_info.name).unwrap_or_default();
+                let message = if let Some(faucet_url) = target.faucet_url() {
+                    format!(
+                        "Your wallet does not have any funds to pay for the transaction.\
+                        \n\nIf you are interacting with a testnet, consider using the faucet.\
+                        \n-> {target} network faucet: {}/?address={first_account}\
+                        \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.",
+                        faucet_url
+                    )
+                } else {
+                    "Your wallet does not have any funds to pay for the transaction.".to_string()
+                };
+                anyhow::bail!(message)
             }
             let selections =
-                format_base_asset_account_balances(&accounts, &account_balances, base_asset_id);
+                format_base_asset_account_balances(&accounts, &account_balances, base_asset_id)?;
 
             let mut account_index;
             loop {
@@ -203,7 +214,14 @@ pub(crate) async fn select_account(
                 if accounts.contains_key(&account_index) {
                     break;
                 }
-                let options: Vec<String> = accounts.keys().map(|key| key.to_string()).collect();
+                let options: Vec<String> = accounts
+                    .keys()
+                    .map(|key| {
+                        let raw_addr = format!("0x{key}");
+                        let checksum_addr = checksum_encode(&raw_addr)?;
+                        Ok(checksum_addr)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
                 println_warning(&format!(
                     "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
                     account_index,
@@ -280,6 +298,7 @@ mod tests {
         )
         .expect("address1")
         .into();
+
         let address2: fuel_tx::Address = Bech32Address::from_str(
             "fuel1x9f3ysyk7fmey5ac23s2p4rwg4gjye2kke3nu3pvrs5p4qc4m4qqwx56k3",
         )
@@ -301,13 +320,18 @@ mod tests {
         balance2.insert("other_asset".to_string(), 3_000_000_000);
         account_balances.push(balance2);
 
+        let address1_expected =
+            "0x6B32DF5954e1BaDEAFFEFD2c0fc5E594dcff3713aaE3Dd18B7d966624B010027";
+        let address2_expected =
+            "0x3153124096f2779253B85460a0D46e4551226556b6633E442c1C281a8315dd40";
         let expected = vec![
-            format!("[0] {address1} - 1.5 ETH"),
-            format!("[1] {address2} - 0 ETH"),
+            format!("[0] {address1_expected} - 1.5 ETH"),
+            format!("[1] {address2_expected} - 0 ETH"),
         ];
 
         let result =
-            format_base_asset_account_balances(&accounts_map, &account_balances, &base_asset_id);
+            format_base_asset_account_balances(&accounts_map, &account_balances, &base_asset_id)
+                .unwrap();
         assert_eq!(result, expected);
     }
 }

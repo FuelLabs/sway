@@ -203,6 +203,18 @@ impl Module {
         }
     }
 
+    /// Returns the root lexical scope id associated with this module.
+    pub fn root_lexical_scope_id(&self) -> LexicalScopeId {
+        0
+    }
+
+    /// Returns the root lexical scope associated with this module.
+    pub fn root_lexical_scope(&self) -> &LexicalScope {
+        self.lexical_scopes
+            .get(self.root_lexical_scope_id())
+            .unwrap()
+    }
+
     /// Returns the current lexical scope associated with this module.
     pub fn current_lexical_scope(&self) -> &LexicalScope {
         self.lexical_scopes

@@ -360,6 +360,7 @@ async fn test_simple_deploy() {
         node_url: Some(node_url),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -401,6 +402,7 @@ async fn test_deploy_submit_only() {
         node_url: Some(node_url),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -447,6 +449,7 @@ async fn test_deploy_fresh_proxy() {
         node_url: Some(node_url),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -498,6 +501,7 @@ async fn test_proxy_contract_re_routes_call() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -555,6 +559,7 @@ async fn test_proxy_contract_re_routes_call() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let pkg = Pkg {
         path: Some(tmp_dir.path().display().to_string()),
@@ -629,6 +634,7 @@ async fn test_non_owner_fails_to_set_target() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -732,6 +738,7 @@ async fn chunked_deploy() {
         node_url: Some(node_url),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -764,6 +771,7 @@ async fn chunked_deploy_re_routes_calls() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -806,6 +814,7 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -838,6 +847,7 @@ async fn can_deploy_script() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let pkg = Pkg {
         path: Some(tmp_dir.path().display().to_string()),
@@ -868,6 +878,7 @@ async fn deploy_script_calls() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let pkg = Pkg {
         path: Some(tmp_dir.path().display().to_string()),
@@ -899,6 +910,7 @@ async fn deploy_script_calls() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,
@@ -989,6 +1001,7 @@ async fn can_deploy_predicates() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let pkg = Pkg {
         path: Some(tmp_dir.path().display().to_string()),
@@ -1019,6 +1032,7 @@ async fn deployed_predicate_call() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let pkg = Pkg {
         path: Some(tmp_dir.path().display().to_string()),
@@ -1164,6 +1178,7 @@ async fn call_with_forc_generated_overrides(node_url: &str, contract_id: Contrac
         node_url: Some(node_url.to_string()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let pkg = Pkg {
         path: Some(tmp_dir.path().display().to_string()),
@@ -1273,6 +1288,7 @@ async fn offset_shifted_abi_works() {
         node_url: Some(node_url.clone()),
         target: None,
         testnet: false,
+        mainnet: false,
     };
     let cmd = cmd::Deploy {
         pkg,

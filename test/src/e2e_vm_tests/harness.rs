@@ -148,7 +148,6 @@ pub(crate) async fn runs_on_node(
 pub(crate) enum VMExecutionResult {
     Fuel(ProgramState, Vec<Receipt>),
     Evm(revm::primitives::result::ExecutionResult),
-    MidenVM(miden::ExecutionTrace),
 }
 
 /// Very basic check that code does indeed run in the VM.
@@ -254,25 +253,6 @@ pub(crate) fn runs_in_vm(
                     }
                 },
             }
-        }
-        BuildTarget::MidenVM => {
-            use miden::{Assembler, ProgramInputs};
-
-            // instantiate the assembler
-            let assembler = Assembler::default();
-
-            let bytecode_str = std::str::from_utf8(&script.bytecode.bytes)?;
-
-            // compile Miden assembly source code into a program
-            let program = assembler.compile(bytecode_str).unwrap();
-
-            // execute the program with no inputs
-            let _trace = miden::execute(&program, &ProgramInputs::none()).unwrap();
-
-            let execution_trace = miden::execute(&program, &ProgramInputs::none())
-                .map_err(|e| anyhow::anyhow!("Failed to execute on MidenVM: {e:?}"))?;
-
-            Ok(VMExecutionResult::MidenVM(execution_trace))
         }
     }
 }

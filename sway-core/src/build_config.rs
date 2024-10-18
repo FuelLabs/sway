@@ -32,10 +32,6 @@ pub enum BuildTarget {
     #[clap(name = "evm")]
     #[strum(serialize = "evm")]
     EVM,
-    #[serde(rename = "midenvm")]
-    #[clap(name = "midenvm")]
-    #[strum(serialize = "midenvm")]
-    MidenVM,
 }
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]

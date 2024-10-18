@@ -192,7 +192,7 @@ async fn deploy_chunked(
 
     let storage_slots = resolve_storage_slots(command, compiled)?;
     let chain_info = provider.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let contract_url = match target.explorer_url() {
         Some(explorer_url) => format!("{explorer_url}/contract/0x"),
         None => "".to_string(),
@@ -257,7 +257,7 @@ async fn deploy_new_proxy(
     .into();
 
     let chain_info = provider.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let contract_url = match target.explorer_url() {
         Some(explorer_url) => format!("{explorer_url}/contract/0x"),
         None => "".to_string(),
@@ -948,7 +948,7 @@ fn create_deployment_artifact(
     let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
     let pkg_name = manifest.project_name();
 
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let (contract_url, block_url) = match target.explorer_url() {
         Some(explorer_url) => (
             format!("{explorer_url}/contract/0x"),
