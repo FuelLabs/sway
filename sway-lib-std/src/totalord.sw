@@ -2,7 +2,6 @@
 library;
 
 /// A common trait for comparing values.
-/// This roughly maps to `std::cmp::Ord` in Rust.
 pub trait TotalOrd {
     /// Compares and returns the minimum of two values.
     fn min(self, other: Self) -> Self;
