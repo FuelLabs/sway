@@ -2,7 +2,7 @@ script;
 
 use std::u128::*;
 
-fn test_cmp_u8() {
+fn test_totalord_u8() {
     let a = 10u8;
     let b = 20u8;
 
@@ -22,7 +22,7 @@ fn test_cmp_u8() {
     assert_eq(min, 30u8);
 }
 
-fn test_cmp_u16() {
+fn test_totalord_u16() {
     let a = 10u16;
     let b = 20u16;
 
@@ -42,7 +42,7 @@ fn test_cmp_u16() {
     assert_eq(min, 30);
 }
 
-fn test_cmp_u32() {
+fn test_totalord_u32() {
     let a = 10u32;
     let b = 20u32;
 
@@ -62,7 +62,7 @@ fn test_cmp_u32() {
     assert_eq(min, 30u32);
 }
 
-fn test_cmp_u64() {
+fn test_totalord_u64() {
     let a = 10;
     let b = 20;
 
@@ -82,7 +82,7 @@ fn test_cmp_u64() {
     assert_eq(min, 30);
 }
 
-fn test_cmp_u128() {
+fn test_totalord_u128() {
     let a = U128::from((0, 0));
     let b = U128::from((0, 1));
 
@@ -106,7 +106,7 @@ fn test_cmp_u128() {
     assert(min.lower() == 2);
 }
 
-fn test_cmp_u256() {
+fn test_totalord_u256() {
     let a = 0x01u256;
     let b = 0x02u256;
 
@@ -127,12 +127,12 @@ fn test_cmp_u256() {
 }
 
 fn main() -> bool {
-    test_cmp_u8();
-    test_cmp_u16();
-    test_cmp_u32();
-    test_cmp_u64();
-    test_cmp_u128();
-    test_cmp_u256();
+    test_totalord_u8();
+    test_totalord_u16();
+    test_totalord_u32();
+    test_totalord_u64();
+    test_totalord_u128();
+    test_totalord_u256();
 
     true
 }
