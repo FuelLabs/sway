@@ -80,7 +80,6 @@ fn test_cmp_u64() {
 
     let min = c.min(d);
     assert_eq(min, 30);
-
 }
 
 fn test_cmp_u128() {

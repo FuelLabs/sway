@@ -16,6 +16,7 @@ pub mod vec;
 pub mod bytes;
 pub mod flags;
 pub mod math;
+pub mod u128;
 pub mod b512;
 pub mod primitive_conversions;
 pub mod alias;
