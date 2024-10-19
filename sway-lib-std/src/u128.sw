@@ -11,9 +11,9 @@ use ::flags::{
 };
 use ::registers::{flags, overflow};
 use ::math::*;
+use ::totalord::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, None, Some};
-use ::cmp::*;
 
 /// The 128-bit unsigned integer type.
 ///
@@ -866,7 +866,7 @@ impl Logarithm for U128 {
     }
 }
 
-impl Cmp for U128 {
+impl TotalOrd for U128 {
     fn min(self, other: Self) -> Self {
         if self < other { self } else { other }
     }
