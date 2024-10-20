@@ -2,7 +2,7 @@
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-name = "totalord_test"
+name = "totalord"
 
 [dependencies]
 std = { path = "../../../../../../../sway-lib-std" }

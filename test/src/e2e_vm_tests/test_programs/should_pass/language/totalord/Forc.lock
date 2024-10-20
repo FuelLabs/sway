@@ -1,13 +1,13 @@
 [[package]]
 name = "core"
-source = "path+from-root-36AEC2A470D585EB"
+source = "path+from-root-AA6BA29B6C5ED809"
 
 [[package]]
 name = "std"
-source = "path+from-root-36AEC2A470D585EB"
+source = "path+from-root-AA6BA29B6C5ED809"
 dependencies = ["core"]
 
 [[package]]
-name = "totalord_test"
+name = "totalord"
 source = "member"
 dependencies = ["std"]
