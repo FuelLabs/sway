@@ -1247,6 +1247,7 @@ pub trait TotalOrd {
     ///     assert(min.val == struct1.val);
     /// }
     /// ```
+
     fn min(self, other: Self) -> Self;
     /// Finds the maximum value of two values of the same type.
     ///
@@ -1274,8 +1275,8 @@ pub trait TotalOrd {
     /// fn foo() {
     ///     let struct1 = MyStruct { val: 10 };
     ///     let struct2 = MyStruct { val: 20 };
-    ///     let min = struct1.max(struct2);
-    ///     assert(min.val == struct2.val);
+    ///     let max = struct1.max(struct2);
+    ///     assert(max.val == struct2.val);
     /// }
     /// ```
     fn max(self, other: Self) -> Self;
