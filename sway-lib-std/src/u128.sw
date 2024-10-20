@@ -11,7 +11,6 @@ use ::flags::{
 };
 use ::registers::{flags, overflow};
 use ::math::*;
-use ::totalord::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, None, Some};
 
@@ -866,7 +865,7 @@ impl Logarithm for U128 {
     }
 }
 
-impl TotalOrd for U128 {
+impl core::ops::TotalOrd for U128 {
     fn min(self, other: Self) -> Self {
         if self < other { self } else { other }
     }
