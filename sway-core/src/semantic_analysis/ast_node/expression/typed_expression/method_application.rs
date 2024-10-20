@@ -793,9 +793,10 @@ pub(crate) fn resolve_method_name(
                 });
 
             // find the module that the symbol is in
-            let type_info_prefix = ctx
-                .namespace()
-                .prepend_module_path(&call_path_binding.inner.prefixes);
+//            let type_info_prefix = ctx
+//                .namespace()
+	    //                .prepend_module_path(&call_path_binding.inner.prefixes);
+	    let type_info_prefix = call_path_binding.inner.to_fullpath(engines, ctx.namespace()).prefixes.clone();
             ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method

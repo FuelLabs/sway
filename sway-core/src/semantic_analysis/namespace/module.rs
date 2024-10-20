@@ -236,10 +236,12 @@ impl Module {
 }
 
 pub(super) fn module_not_found(path: &[Ident]) -> CompileError {
-//    let problem = path.len() == 3
-//	&& path[0].as_str() == "std"
-//	&& path[1].as_str() == "inputs"
-//	&& path[2].as_str() == "core";
+//    let problem = path.len() == 4
+//	&& path[0].as_str() == "core"
+//	&& path[1].as_str() == "ops"
+//	&& path[2].as_str() == "core"
+//	&& path[3].as_str() == "ops"
+//	;
 //    if problem {
 //	panic!();
 //    }
