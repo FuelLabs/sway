@@ -328,6 +328,19 @@ impl Namespace {
         )
     }
 
+    /// Short-hand for calling [Root::resolve_call_and_root_type_id] on `root` with the `mod_path`.
+    pub fn resolve_call_path_and_root_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+	root_type_id: TypeId,
+	as_trait: Option<CallPath>,
+	call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.root.resolve_call_path_and_root_type_id(handler, engines, self.current_module(), root_type_id, as_trait, call_path, self_type).map(|decl| decl.expect_typed())
+    }
+
     // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
     fn import_implicits(
         &mut self,

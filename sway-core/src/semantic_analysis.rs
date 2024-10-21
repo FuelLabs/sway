@@ -12,6 +12,7 @@ pub mod symbol_resolve_context;
 mod type_check_analysis;
 pub(crate) mod type_check_context;
 mod type_check_finalization;
+pub(crate) mod type_resolve;
 pub use ast_node::*;
 pub use namespace::Namespace;
 pub(crate) use type_check_analysis::*;

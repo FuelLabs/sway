@@ -1849,8 +1849,6 @@ pub fn compile(
 
             ProgramABI::Evm(ops)
         }
-
-        BuildTarget::MidenVM => ProgramABI::MidenVM(()),
     };
 
     let entries = asm_res
