@@ -302,8 +302,8 @@ impl Root {
                 (decl.clone(), path.clone(), *reexport)
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
-			"The name {symbol} was bound in a star import, but no corresponding module paths were found",
-			item.span(),
+            "The name {symbol} was bound in a star import, but no corresponding module paths were found",
+            item.span(),
                     )));
             } else {
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
