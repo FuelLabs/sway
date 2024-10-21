@@ -1,16 +1,17 @@
 use std::fmt;
 
-use super::{module::Module, trait_map::TraitMap, Ident, ResolvedTraitImplItem};
+use super::{module::Module, trait_map::TraitMap, Ident};
 use crate::{
     decl_engine::{DeclEngine, DeclRef},
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, StructDecl, TyDecl, TyTraitItem},
+        ty::{self, StructDecl, TyDecl},
         CallPath, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    TypeId, TypeInfo,
+    semantic_analysis::type_resolve::{decl_to_type_info, resolve_associated_item_from_type_id},
+    TypeId,
 };
 use sway_error::{
     error::CompileError,
@@ -895,7 +896,7 @@ impl Root {
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
         let type_id = engines
             .te()
             .insert(engines, type_info, symbol.span().source_id());
@@ -916,46 +917,14 @@ impl Root {
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
         let type_id = engines
             .te()
             .insert(engines, type_info, symbol.span().source_id());
 
-        self.resolve_associated_item_from_type_id(
+        resolve_associated_item_from_type_id(
             handler, engines, module, symbol, type_id, as_trait, self_type,
         )
-    }
-
-    fn decl_to_type_info(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-    ) -> Result<TypeInfo, ErrorEmitted> {
-        match decl {
-            ResolvedDeclaration::Parsed(_decl) => todo!(),
-            ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
-                ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
-                ty::TyDecl::TraitTypeDecl(type_decl) => {
-                    let type_decl = engines.de().get_type(&type_decl.decl_id);
-                    if type_decl.ty.is_none() {
-                        return Err(handler.emit_err(CompileError::Internal(
-                            "Trait type declaration has no type",
-                            symbol.span(),
-                        )));
-                    }
-                    (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
-                }
-                _ => {
-                    return Err(handler.emit_err(CompileError::SymbolNotFound {
-                        name: symbol.clone(),
-                        span: symbol.span(),
-                    }))
-                }
-            }),
-        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -969,49 +938,10 @@ impl Root {
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let item_decl = self.resolve_associated_item_from_type_id(
+        let item_decl = resolve_associated_item_from_type_id(
             handler, engines, module, symbol, type_id, as_trait, self_type,
         )?;
         Ok(item_decl)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_item_from_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        type_id: TypeId,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_id = if engines.te().get(type_id).is_self_type() {
-            if let Some(self_type) = self_type {
-                self_type
-            } else {
-                return Err(handler.emit_err(CompileError::Internal(
-                    "Self type not provided.",
-                    symbol.span(),
-                )));
-            }
-        } else {
-            type_id
-        };
-        let item_ref = module
-            .current_items()
-            .implemented_traits
-            .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
-        match item_ref {
-            ResolvedTraitImplItem::Parsed(_item) => todo!(),
-            ResolvedTraitImplItem::Typed(item) => match item {
-                TyTraitItem::Fn(fn_ref) => Ok(ResolvedDeclaration::Typed(fn_ref.into())),
-                TyTraitItem::Constant(const_ref) => {
-                    Ok(ResolvedDeclaration::Typed(const_ref.into()))
-                }
-                TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
-            },
-        }
     }
 }
 
