@@ -1,8 +1,6 @@
 use std::fmt;
 
-use super::{
-    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
-};
+use super::{module::Module, trait_map::TraitMap, Ident, ResolvedTraitImplItem};
 use crate::{
     decl_engine::{DeclEngine, DeclRef},
     engine_threading::*,
@@ -1020,12 +1018,6 @@ impl Root {
 impl From<Module> for Root {
     fn from(module: Module) -> Self {
         Root { module }
-    }
-}
-
-impl From<Namespace> for Root {
-    fn from(namespace: Namespace) -> Self {
-        namespace.root
     }
 }
 
