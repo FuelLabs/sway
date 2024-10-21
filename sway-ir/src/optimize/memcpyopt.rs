@@ -166,6 +166,7 @@ fn local_copy_prop_prememcpy(
                         })
                         // We don't deal with symbols that escape.
                         || escaped_symbols.contains(&dst_local)
+                        || escaped_symbols.contains(&src_local)
                         // We don't deal part copies.
                         || dst_local.get_type(context) != src_local.get_type(context)
                         // We don't replace the destination when it's an arg.
