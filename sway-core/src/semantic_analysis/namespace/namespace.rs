@@ -116,11 +116,6 @@ impl Namespace {
         &self.root.module
     }
 
-    /// The name of the root module
-    pub fn root_module_name(&self) -> &Ident {
-        self.root.module.name()
-    }
-
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
     pub fn module(&self, engines: &Engines) -> &Module {
         self.root

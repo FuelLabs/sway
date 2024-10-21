@@ -818,7 +818,7 @@ pub(crate) fn resolve_method_name(
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), root_name) = (
                     module_path.first().cloned(),
-                    ctx.namespace().root_module_name().clone(),
+                    ctx.namespace().root_module().name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);
