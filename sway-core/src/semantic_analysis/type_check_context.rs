@@ -1,7 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
