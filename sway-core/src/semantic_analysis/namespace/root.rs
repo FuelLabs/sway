@@ -765,7 +765,7 @@ impl Root {
         for ident in call_path.prefixes.iter() {
             if let Some(type_id) = type_id_opt {
                 type_id_opt = None;
-                decl_opt = Some(self.resolve_associated_type_from_type_id(
+                decl_opt = Some(resolve_associated_item_from_type_id(
                     handler,
                     engines,
                     module,
@@ -789,7 +789,7 @@ impl Root {
             }
         }
         if let Some(type_id) = type_id_opt {
-            let decl = self.resolve_associated_type_from_type_id(
+            let decl = resolve_associated_item_from_type_id(
                 handler,
                 engines,
                 module,
@@ -901,7 +901,7 @@ impl Root {
             .te()
             .insert(engines, type_info, symbol.span().source_id());
 
-        self.resolve_associated_type_from_type_id(
+        resolve_associated_item_from_type_id(
             handler, engines, module, symbol, type_id, as_trait, self_type,
         )
     }
@@ -925,23 +925,6 @@ impl Root {
         resolve_associated_item_from_type_id(
             handler, engines, module, symbol, type_id, as_trait, self_type,
         )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_type_from_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        type_id: TypeId,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let item_decl = resolve_associated_item_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )?;
-        Ok(item_decl)
     }
 }
 
