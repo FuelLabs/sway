@@ -415,3 +415,43 @@ pub fn resolve_associated_item_from_type_id(
         },
     }
 }
+
+#[allow(clippy::too_many_arguments)]
+pub fn resolve_associated_type(
+    handler: &Handler,
+    engines: &Engines,
+    module: &Module,
+    symbol: &Ident,
+    decl: ResolvedDeclaration,
+    as_trait: Option<CallPath>,
+    self_type: Option<TypeId>,
+) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
+    let type_id = engines
+        .te()
+        .insert(engines, type_info, symbol.span().source_id());
+
+    resolve_associated_item_from_type_id(
+        handler, engines, module, symbol, type_id, as_trait, self_type,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn resolve_associated_item(
+    handler: &Handler,
+    engines: &Engines,
+    module: &Module,
+    symbol: &Ident,
+    decl: ResolvedDeclaration,
+    as_trait: Option<CallPath>,
+    self_type: Option<TypeId>,
+) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
+    let type_id = engines
+        .te()
+        .insert(engines, type_info, symbol.span().source_id());
+
+    resolve_associated_item_from_type_id(
+        handler, engines, module, symbol, type_id, as_trait, self_type,
+    )
+}

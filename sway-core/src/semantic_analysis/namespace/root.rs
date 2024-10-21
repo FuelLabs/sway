@@ -10,7 +10,9 @@ use crate::{
         CallPath, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    semantic_analysis::type_resolve::{decl_to_type_info, resolve_associated_item_from_type_id},
+    semantic_analysis::type_resolve::{
+        resolve_associated_item, resolve_associated_item_from_type_id, resolve_associated_type,
+    },
     TypeId,
 };
 use sway_error::{
@@ -776,7 +778,7 @@ impl Root {
                 )?);
                 as_trait = None;
             } else if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(
+                decl_opt = Some(resolve_associated_type(
                     handler,
                     engines,
                     module,
@@ -801,7 +803,7 @@ impl Root {
             return Ok(decl);
         }
         if let Some(decl) = decl_opt {
-            let decl = self.resolve_associated_item(
+            let decl = resolve_associated_item(
                 handler,
                 engines,
                 module,
@@ -848,7 +850,7 @@ impl Root {
         let mut decl_opt = None;
         for ident in mod_path.iter() {
             if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(
+                decl_opt = Some(resolve_associated_type(
                     handler, engines, module, ident, decl, None, self_type,
                 )?);
             } else {
@@ -869,8 +871,8 @@ impl Root {
             }
         }
         if let Some(decl) = decl_opt {
-            let decl = self
-                .resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
+            let decl =
+                resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
             return Ok((decl, current_mod_path));
         }
 
@@ -883,48 +885,6 @@ impl Root {
                     .resolve_symbol(handler, engines, symbol)?;
                 Ok((decl, mod_path.to_vec()))
             })
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_type(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
-        let type_id = engines
-            .te()
-            .insert(engines, type_info, symbol.span().source_id());
-
-        resolve_associated_item_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_item(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
-        let type_id = engines
-            .te()
-            .insert(engines, type_info, symbol.span().source_id());
-
-        resolve_associated_item_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )
     }
 }
 
