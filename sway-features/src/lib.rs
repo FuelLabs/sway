@@ -226,7 +226,9 @@ mod tests {
         let _old = RollbackEnvVar::new("FORC_EXPERIMENTAL");
         let _old = RollbackEnvVar::new("FORC_NO_EXPERIMENTAL");
 
-        let mut features = ExperimentalFeatures::default();
+        let mut features = ExperimentalFeatures {
+            new_encoding: false,
+        };
 
         std::env::set_var("FORC_EXPERIMENTAL", "new_encoding");
         std::env::set_var("FORC_NO_EXPERIMENTAL", "");
