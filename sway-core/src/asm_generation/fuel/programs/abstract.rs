@@ -78,7 +78,7 @@ impl AbstractProgram {
             && self.data_section.iter_all_entries().next().is_none()
     }
 
-    /// Adds prologue, globals allocation, before entries, contract method switch, and allocates virtual register
+    /// Adds prologue, globals allocation, before entries, contract method switch, and allocates virtual register.
     pub(crate) fn into_allocated_program(
         mut self,
         fallback_fn: Option<crate::asm_lang::Label>,
@@ -111,21 +111,21 @@ impl AbstractProgram {
             })
             .collect();
 
-        // Gather all functions
+        // Gather all functions.
         let all_functions = self
             .entries
             .into_iter()
             .map(|entry| entry.ops)
             .chain(self.non_entries);
 
-        // optimise and then verify these functions.
+        // Optimize and then verify abstract functions.
         let abstract_functions = all_functions
             .map(|instruction_set| instruction_set.optimize(&self.data_section))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
         // Allocate the registers for each function.
-        let functions = abstract_functions
+        let allocated_functions = abstract_functions
             .into_iter()
             .map(|abstract_instruction_set| {
                 let allocated = abstract_instruction_set.allocate_registers()?;
@@ -133,7 +133,12 @@ impl AbstractProgram {
             })
             .collect::<Result<Vec<AllocatedAbstractInstructionSet>, CompileError>>()?;
 
-        // XXX need to verify that the stack use for each function is balanced.
+        // Optimize allocated functions.
+        // TODO: Add verification. E.g., verify that the stack use for each function is balanced.
+        let functions = allocated_functions
+            .into_iter()
+            .map(|instruction_set| instruction_set.optimize())
+            .collect::<Vec<AllocatedAbstractInstructionSet>>();
 
         Ok(AllocatedProgram {
             kind: self.kind,
