@@ -10,4 +10,4 @@ repository.workspace = true
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-paste = "1.0.15"
+paste.workspace = true

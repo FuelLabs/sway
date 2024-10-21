@@ -29,7 +29,6 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
 
         let experimental = ExperimentalFeatures {
             new_encoding: false,
-            ..Default::default()
         };
 
         let mut ir = sway_ir::parser::parse(&input, &source_engine, experimental).unwrap_or_else(

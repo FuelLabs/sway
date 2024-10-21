@@ -4937,7 +4937,7 @@ pub fn cfg_eval(
                                 let is_true =
                                     matches!(v.kind, sway_ast::literal::LitBoolType::True);
                                 return Ok(experimental
-                                    .is_enabled_by_cfg(cfg_experimental)
+                                    .is_enabled_for_cfg(cfg_experimental)
                                     .unwrap()
                                     == is_true);
                             }

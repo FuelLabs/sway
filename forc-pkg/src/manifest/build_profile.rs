@@ -57,7 +57,6 @@ impl BuildProfile {
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt0,
-            // experimental: ExperimentalFeatures::default(),
         }
     }
 
@@ -78,7 +77,6 @@ impl BuildProfile {
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt1,
-            // experimental: ExperimentalFeatures::default(),
         }
     }
 }
