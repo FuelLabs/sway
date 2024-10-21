@@ -13,14 +13,6 @@ use super::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 
-/// Enum used to pass a value asking for insertion of type into trait map when an implementation
-/// of the trait cannot be found.
-#[derive(Debug)]
-pub enum TryInsertingTraitImplOnFailure {
-    Yes,
-    No,
-}
-
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug, Default)]
 pub struct Namespace {
