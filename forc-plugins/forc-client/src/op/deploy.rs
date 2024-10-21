@@ -48,7 +48,6 @@ use std::{
     time::Duration,
 };
 use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget};
-use sway_features::ExperimentalFeatures;
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
