@@ -77,13 +77,13 @@ Options:
       --error-on-warnings
           Treat warnings as errors
       --build-target <BUILD_TARGET>
-          Build target to use for code generation [default: fuel] [possible values: fuel, evm, midenvm]
+          Build target to use for code generation [default: fuel] [possible values: fuel, evm]
       --tests
           Also build all tests within the project
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding]
   -h, --help
           Print help (see more with '--help')
   -V, --version
@@ -107,7 +107,7 @@ Check the current or target project and all of its dependencies for errors
 Usage: forc check [OPTIONS] [BUILD_TARGET]
 
 Arguments:
-  [BUILD_TARGET]  Build target to use for code generation [default: fuel] [possible values: fuel, evm, midenvm]
+  [BUILD_TARGET]  Build target to use for code generation [default: fuel] [possible values: fuel, evm]
 
 Options:
   -p, --path <PATH>
@@ -123,9 +123,9 @@ Options:
       --ipfs-node <IPFS_NODE>
           The IPFS Node to use for fetching IPFS sources
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding]
   -v, --verbose...
           Use verbose output
   -s, --silent
@@ -336,7 +336,7 @@ Options:
       --error-on-warnings
           Treat warnings as errors
       --build-target <BUILD_TARGET>
-          Build target to use for code generation [default: fuel] [possible values: fuel, evm, midenvm]
+          Build target to use for code generation [default: fuel] [possible values: fuel, evm]
       --pretty
           Pretty-print the logs emitted from tests
   -l, --logs
@@ -348,9 +348,9 @@ Options:
       --test-threads <TEST_THREADS>
           Number of threads to utilize when running the tests. By default, this is the number of threads available in your system
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding]
   -h, --help
           Print help (see more with '--help')
   -V, --version
@@ -510,9 +510,9 @@ Options:
       --salt <SALT>
           Added salt used to derive the contract ID
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding]
   -h, --help
           Print help (see more with '--help')
   -V, --version
@@ -584,9 +584,9 @@ Options:
       --error-on-warnings
           Treat warnings as errors
       --experimental <EXPERIMENTAL>
-          Comma separated list of all experimental features that will be enabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
       --no-experimental <NO_EXPERIMENTAL>
-          Comma separated list of all experimental features that will be disabled [possible values: new_encoding, storage_domains]
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding]
   -h, --help
           Print help (see more with '--help')
   -V, --version
