@@ -650,10 +650,9 @@ impl<'a> TypeCheckContext<'a> {
             )
     }
 
-    /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
-    #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
+    /// Short-hand for calling [resolve_type] on `root` with the `mod_path`.
     pub(crate) fn resolve_type(
-        &mut self,
+        &self,
         handler: &Handler,
         type_id: TypeId,
         span: &Span,
