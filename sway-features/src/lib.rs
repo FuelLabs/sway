@@ -1,11 +1,11 @@
+use std::collections::HashMap;
+
 use clap::{Parser, ValueEnum};
 
 macro_rules! features {
-    (count; ) => {0};
-    (count; $name:ident $($rest:tt)?) => {1 + features!{count; $($rest)*}};
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
         paste::paste! {
-            pub const CFG: [&str; features!{count; $($name)*}] = [
+            pub const CFG: &[&str] = &[
                 $(
                     stringify!([<experimental_ $name:snake>]),
                 )*
@@ -52,7 +52,7 @@ macro_rules! features {
             }
 
             impl ExperimentalFeatures {
-                pub fn set_enabled(&mut self, feature: &str, enabled: bool) -> Result<(), Error> {
+                pub fn set_enabled_by_name(&mut self, feature: &str, enabled: bool) -> Result<(), Error> {
                     let feature = feature.trim();
                     match feature {
                         $(
@@ -66,7 +66,7 @@ macro_rules! features {
                     }
                 }
 
-                pub fn enable_feature(&mut self, feature: Features, enabled: bool) {
+                pub fn set_enabled(&mut self, feature: Features, enabled: bool) {
                     match feature {
                         $(
                             Features::[<$name:camel>] => {
@@ -76,7 +76,9 @@ macro_rules! features {
                     }
                 }
 
-                pub fn is_enabled_by_cfg(&self, cfg: &str) -> Result<bool, Error> {
+                /// Used for testing if a `#[cfg(...)]` feature is enabled.
+                /// Already prepends "experimental_" to the feature name.
+                pub fn is_enabled_for_cfg(&self, cfg: &str) -> Result<bool, Error> {
                     match cfg {
                         $(
                             stringify!([<experimental_ $name:snake>]) => Ok(self.[<$name:snake>]),
@@ -92,35 +94,43 @@ macro_rules! features {
                 }
                 )*
             }
-
-            // enum ExperimentalFeatureError {
-            //     $(
-            //         [<$name:camel Enabled>],
-            //         [<$name:camel Disabled>],
-            //     )*
-            // }
-
-            // impl std::fmt::Display for ExperimentalFeatureError {
-            //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            //         let error = match self {
-            //             $(
-            //                 Self::[<$name:camel Enabled>] => stringify!(Feature [<$name:snake>] needs to be enabled),
-            //                 Self::[<$name:camel Disabled>] => stringify!(Feature [<$name:snake>] needs to be disabled),
-            //             )*
-            //         };
-            //         f.write_str(error)
-            //     }
-            // }
         }
     };
+}
+
+impl ExperimentalFeatures {
+    /// Experimental features will be applied in the following order:
+    /// 1 - manifest (no specific order)
+    /// 2 - cli_no_experimental
+    /// 3 - cli_experimental
+    /// 4 - FORC_NO_EXPERIMENTAL (env var)
+    /// 5 - FORC_EXPERIMENTAL (env var)
+    pub fn new(
+        manifest: &HashMap<String, bool>,
+        cli_experimental: &[Features],
+        cli_no_experimental: &[Features],
+    ) -> Result<ExperimentalFeatures, Error> {
+        let mut experimental = ExperimentalFeatures::default();
+
+        experimental.parse_from_package_manifest(manifest)?;
+
+        for f in cli_no_experimental {
+            experimental.set_enabled(*f, false);
+        }
+
+        for f in cli_experimental {
+            experimental.set_enabled(*f, true);
+        }
+
+        experimental.parse_from_environment_variables()?;
+
+        Ok(experimental)
+    }
 }
 
 features! {
     new_encoding = true,
     "https://github.com/FuelLabs/sway/issues/5727",
-
-    storage_domains = false,
-    "https://github.com/FuelLabs/sway/pull/6466",
 }
 
 #[derive(Clone, Debug, Default, Parser)]
@@ -143,9 +153,11 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::ParseError(_) => f.write_str("ParserError"),
+            Error::ParseError(feature) => f.write_fmt(format_args!(
+                "Experimental feature \"{feature}\" cannot be parsed."
+            )),
             Error::UnknownFeature(feature) => {
-                f.write_fmt(format_args!("UnknownFeature: {feature}"))
+                f.write_fmt(format_args!("Unknown experimental feature: \"{feature}\"."))
             }
         }
     }
@@ -157,7 +169,7 @@ impl ExperimentalFeatures {
         experimental: &std::collections::HashMap<String, bool>,
     ) -> Result<(), Error> {
         for (feature, enabled) in experimental {
-            self.set_enabled(feature, *enabled)?;
+            self.set_enabled_by_name(feature, *enabled)?;
         }
         Ok(())
     }
@@ -182,7 +194,7 @@ impl ExperimentalFeatures {
         enabled: bool,
     ) -> Result<(), Error> {
         for feature in features.as_ref().split(',') {
-            self.set_enabled(feature, enabled)?;
+            self.set_enabled_by_name(feature, enabled)?;
         }
         Ok(())
     }
@@ -216,16 +228,16 @@ mod tests {
 
         let mut features = ExperimentalFeatures::default();
 
-        std::env::set_var("FORC_EXPERIMENTAL", "storage_domains");
+        std::env::set_var("FORC_EXPERIMENTAL", "new_encoding");
         std::env::set_var("FORC_NO_EXPERIMENTAL", "");
-        assert!(!features.storage_domains);
+        assert!(!features.new_encoding);
         let _ = features.parse_from_environment_variables();
-        assert!(features.storage_domains);
+        assert!(features.new_encoding);
 
         std::env::set_var("FORC_EXPERIMENTAL", "");
-        std::env::set_var("FORC_NO_EXPERIMENTAL", "storage_domains");
-        assert!(features.storage_domains);
+        std::env::set_var("FORC_NO_EXPERIMENTAL", "new_encoding");
+        assert!(features.new_encoding);
         let _ = features.parse_from_environment_variables();
-        assert!(!features.storage_domains);
+        assert!(!features.new_encoding);
     }
 }

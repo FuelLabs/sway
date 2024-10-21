@@ -189,7 +189,6 @@ pub struct BuildConfig {
     pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
-    // pub experimental: ExperimentalFeatures,
     pub lsp_mode: Option<LspConfig>,
 }
 
@@ -306,13 +305,6 @@ impl BuildConfig {
             ..self
         }
     }
-
-    // pub fn with_experimental(self, experimental: ExperimentalFeatures) -> Self {
-    //     Self {
-    //         experimental,
-    //         ..self
-    //     }
-    // }
 
     pub fn with_lsp_mode(self, lsp_mode: Option<LspConfig>) -> Self {
         Self { lsp_mode, ..self }

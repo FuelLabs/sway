@@ -971,7 +971,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
             let mut experimental = ExperimentalFeatures::default();
             for (k, v) in toml_experimental.as_table().unwrap() {
                 let v = v.as_bool().unwrap();
-                experimental.set_enabled(k, v).unwrap();
+                experimental.set_enabled_by_name(k, v).unwrap();
 
                 if v {
                     run_config
@@ -989,10 +989,10 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         } else {
             let mut experimental = ExperimentalFeatures::default();
             for f in &run_config.experimental.no_experimental {
-                experimental.enable_feature(*f, false);
+                experimental.set_enabled(*f, false);
             }
             for f in &run_config.experimental.experimental {
-                experimental.enable_feature(*f, true);
+                experimental.set_enabled(*f, true);
             }
             (false, experimental)
         };

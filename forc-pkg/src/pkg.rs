@@ -2343,23 +2343,12 @@ pub fn build(
             &pkg.source.display_compiling(manifest.dir()),
         );
 
-        // Setup experimental features
-        let cli_experimental = experimental;
-        let cli_no_experimental = no_experimental;
-
-        let mut experimental = ExperimentalFeatures::default();
-        experimental
-            .parse_from_package_manifest(&manifest.project.experimental)
-            .map_err(|err| anyhow!("{err}"))?;
-        for f in cli_no_experimental {
-            experimental.enable_feature(*f, false);
-        }
-        for f in cli_experimental {
-            experimental.enable_feature(*f, true);
-        }
-        experimental
-            .parse_from_environment_variables()
-            .map_err(|err| anyhow!("{err}"))?;
+        let experimental = ExperimentalFeatures::new(
+            &manifest.project.experimental,
+            experimental,
+            no_experimental,
+        )
+        .map_err(|err| anyhow!("{err}"))?;
 
         let descriptor = PackageDescriptor {
             name: pkg.name.clone(),
@@ -2551,23 +2540,12 @@ pub fn check(
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
 
-        // Setup experimental features
-        let cli_experimental = experimental;
-        let cli_no_experimental = no_experimental;
-
-        let mut experimental = ExperimentalFeatures::default();
-        experimental
-            .parse_from_package_manifest(&manifest.project.experimental)
-            .map_err(|err| anyhow!("{err}"))?;
-        for f in cli_no_experimental {
-            experimental.enable_feature(*f, false);
-        }
-        for f in cli_experimental {
-            experimental.enable_feature(*f, true);
-        }
-        experimental
-            .parse_from_environment_variables()
-            .map_err(|err| anyhow!("{err}"))?;
+        let experimental = ExperimentalFeatures::new(
+            &manifest.project.experimental,
+            experimental,
+            no_experimental,
+        )
+        .map_err(|err| anyhow!("{err}"))?;
 
         // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
         // compiler's namespace. Although we only know the contract id during building, we are

@@ -224,7 +224,6 @@ pub(super) async fn run(
 
                 let experimental = ExperimentalFeatures {
                     new_encoding: false, // IR tests still need encoding v1 off
-                    ..Default::default()
                 };
 
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
