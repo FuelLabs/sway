@@ -1247,7 +1247,6 @@ pub trait TotalOrd {
     ///     assert(min.val == struct1.val);
     /// }
     /// ```
-
     fn min(self, other: Self) -> Self;
     /// Finds the maximum value of two values of the same type.
     ///
