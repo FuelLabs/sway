@@ -41,18 +41,16 @@ pub fn resolve_type(
             root_type_id,
         } => {
             let type_decl_opt = if let Some(root_type_id) = root_type_id {
-                namespace
-                    .root()
-                    .resolve_call_path_and_root_type_id(
-                        handler,
-                        engines,
-                        namespace.module(engines),
-                        root_type_id,
-                        None,
-                        &qualified_call_path.clone().to_call_path(handler)?,
-                        self_type,
-                    )
-                    .ok()
+                resolve_call_path_and_root_type_id(
+                    handler,
+                    engines,
+                    namespace.module(engines),
+                    root_type_id,
+                    None,
+                    &qualified_call_path.clone().to_call_path(handler)?,
+                    self_type,
+                )
+                .ok()
             } else {
                 resolve_qualified_call_path(
                     handler,
@@ -274,7 +272,7 @@ pub fn resolve_qualified_call_path(
             _ => None,
         };
 
-        namespace.root.resolve_call_path_and_root_type_id(
+        resolve_call_path_and_root_type_id(
             handler,
             engines,
             &namespace.root.module,
@@ -454,4 +452,71 @@ pub fn resolve_associated_item(
     resolve_associated_item_from_type_id(
         handler, engines, module, symbol, type_id, as_trait, self_type,
     )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn resolve_call_path_and_root_type_id(
+    handler: &Handler,
+    engines: &Engines,
+    module: &Module,
+    root_type_id: TypeId,
+    mut as_trait: Option<CallPath>,
+    call_path: &CallPath,
+    self_type: Option<TypeId>,
+) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    // This block tries to resolve associated types
+    let mut decl_opt = None;
+    let mut type_id_opt = Some(root_type_id);
+    for ident in call_path.prefixes.iter() {
+        if let Some(type_id) = type_id_opt {
+            type_id_opt = None;
+            decl_opt = Some(resolve_associated_item_from_type_id(
+                handler,
+                engines,
+                module,
+                ident,
+                type_id,
+                as_trait.clone(),
+                self_type,
+            )?);
+            as_trait = None;
+        } else if let Some(decl) = decl_opt {
+            decl_opt = Some(resolve_associated_type(
+                handler,
+                engines,
+                module,
+                ident,
+                decl,
+                as_trait.clone(),
+                self_type,
+            )?);
+            as_trait = None;
+        }
+    }
+    if let Some(type_id) = type_id_opt {
+        let decl = resolve_associated_item_from_type_id(
+            handler,
+            engines,
+            module,
+            &call_path.suffix,
+            type_id,
+            as_trait,
+            self_type,
+        )?;
+        return Ok(decl);
+    }
+    if let Some(decl) = decl_opt {
+        let decl = resolve_associated_item(
+            handler,
+            engines,
+            module,
+            &call_path.suffix,
+            decl,
+            as_trait,
+            self_type,
+        )?;
+        Ok(decl)
+    } else {
+        Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
+    }
 }

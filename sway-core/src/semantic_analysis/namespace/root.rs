@@ -10,9 +10,7 @@ use crate::{
         CallPath, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    semantic_analysis::type_resolve::{
-        resolve_associated_item, resolve_associated_item_from_type_id, resolve_associated_type,
-    },
+    semantic_analysis::type_resolve::{resolve_associated_item, resolve_associated_type},
     TypeId,
 };
 use sway_error::{
@@ -748,74 +746,6 @@ impl Root {
             &call_path.suffix,
             self_type,
         )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_call_path_and_root_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        root_type_id: TypeId,
-        mut as_trait: Option<CallPath>,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        // This block tries to resolve associated types
-        let mut decl_opt = None;
-        let mut type_id_opt = Some(root_type_id);
-        for ident in call_path.prefixes.iter() {
-            if let Some(type_id) = type_id_opt {
-                type_id_opt = None;
-                decl_opt = Some(resolve_associated_item_from_type_id(
-                    handler,
-                    engines,
-                    module,
-                    ident,
-                    type_id,
-                    as_trait.clone(),
-                    self_type,
-                )?);
-                as_trait = None;
-            } else if let Some(decl) = decl_opt {
-                decl_opt = Some(resolve_associated_type(
-                    handler,
-                    engines,
-                    module,
-                    ident,
-                    decl,
-                    as_trait.clone(),
-                    self_type,
-                )?);
-                as_trait = None;
-            }
-        }
-        if let Some(type_id) = type_id_opt {
-            let decl = resolve_associated_item_from_type_id(
-                handler,
-                engines,
-                module,
-                &call_path.suffix,
-                type_id,
-                as_trait,
-                self_type,
-            )?;
-            return Ok(decl);
-        }
-        if let Some(decl) = decl_opt {
-            let decl = resolve_associated_item(
-                handler,
-                engines,
-                module,
-                &call_path.suffix,
-                decl,
-                as_trait,
-                self_type,
-            )?;
-            Ok(decl)
-        } else {
-            Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
-        }
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its
