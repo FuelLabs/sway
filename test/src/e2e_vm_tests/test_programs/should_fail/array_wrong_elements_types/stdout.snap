@@ -39,6 +39,17 @@ help: Variable declaration's type annotation does not match up with the assigned
 ____
 
 error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:51:26
+   |
+49 | 
+50 |     // Literal too big
+51 |     let mut a = [8u8, 8, 18446744073709551615];
+   |                          ^^^^^^^^^^^^^^^^^^^^ Literal value is too large for type u8.
+52 | }
+   |
+____
+
+error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:9:22
    |
  7 | fn main() {
@@ -293,5 +304,5 @@ found:    u8.
    |
 ____
 
-  Aborting due to 19 errors.
+  Aborting due to 20 errors.
 error: Failed to compile array_wrong_elements_types
