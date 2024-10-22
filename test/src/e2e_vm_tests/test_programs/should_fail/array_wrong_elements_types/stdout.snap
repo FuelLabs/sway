@@ -10,36 +10,6 @@ stdout:
 
 stderr:
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:41:27
-   |
-39 |     // unexpected Option<u8>
-40 |     let a = [None, Some(1), Some(1u8)];
-41 |     let _b: Option<u16> = a[1];
-   |                           ^^^^ Mismatched types.
-expected: Option<u16>
-found:    Option<u8>.
-help: Variable declaration's type annotation does not match up with the assigned expression's type.
-42 | 
-43 |     // unexpected u8
-   |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:45:18
-   |
-43 |     // unexpected u8
-44 |     let a = [8, 256u16, 8u8];
-45 |     let b: u32 = a[2];
-   |                  ^^^^ Mismatched types.
-expected: u32
-found:    u16.
-help: Variable declaration's type annotation does not match up with the assigned expression's type.
-46 | 
-47 |     // Should not warn or error
-   |
-____
-
-error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:9:22
    |
  7 | fn main() {
@@ -270,12 +240,42 @@ error
 35 | 
 36 |     // unexpected Vec<u16>
 37 |     let _ = [Vec::new(), vec::<u8>(), vec::<u16>()];
+   |                                       ^^^^^^^^^^ Mismatched types.
+expected: Vec<u8>
+found:    Vec<u16>.
+help: Function return type does not match up with local type annotation.
+38 |     
+39 |     // unexpected Option<u8>
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:37:39
+   |
+35 | 
+36 |     // unexpected Vec<u16>
+37 |     let _ = [Vec::new(), vec::<u8>(), vec::<u16>()];
    |                                       ^^^^^^^^^^^^ Mismatched types.
 expected: Vec<u8>
 found:    Vec<u16>.
 
 38 |     
 39 |     // unexpected Option<u8>
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:41:27
+   |
+39 |     // unexpected Option<u8>
+40 |     let a = [None, Some(1), Some(1u8)];
+41 |     let _b: Option<u16> = a[1];
+   |                           ^^^^ Mismatched types.
+expected: Option<u16>
+found:    Option<u8>.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+42 | 
+43 |     // unexpected u8
    |
 ____
 
@@ -294,5 +294,31 @@ found:    u8.
    |
 ____
 
-  Aborting due to 19 errors.
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:45:18
+   |
+43 |     // unexpected u8
+44 |     let a = [8, 256u16, 8u8];
+45 |     let b: u32 = a[2];
+   |                  ^^^^ Mismatched types.
+expected: u32
+found:    u16.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+46 | 
+47 |     // Should not warn or error
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:51:26
+   |
+49 | 
+50 |     // Literal too big
+51 |     let mut a = [8u8, 8, 18446744073709551615];
+   |                          ^^^^^^^^^^^^^^^^^^^^ Literal value is too large for type u8.
+52 | }
+   |
+____
+
+  Aborting due to 21 errors.
 error: Failed to compile array_wrong_elements_types

@@ -1946,7 +1946,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_array(
-        _handler: &Handler,
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         contents: &[Expression],
         span: Span,
@@ -2001,10 +2001,15 @@ impl ty::TyExpression {
                     .with_help_text("")
                     .with_type_annotation(type_engine.insert(engines, initial_type.clone(), None));
 
-                // type_check_analyze unification will give the final error
-                let handler = Handler::default();
-                Self::type_check(&handler, ctx, expr)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
+                if let TypeInfo::Unknown = initial_type {
+                    // type_check_analyze unification will give the final error
+                    let handler = Handler::default();
+                    Self::type_check(&handler, ctx, expr)
+                        .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
+                } else {
+                    Self::type_check(&handler, ctx, expr)
+                        .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
+                }
             })
             .collect();
 
