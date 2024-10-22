@@ -10,42 +10,6 @@ use std::{
 };
 use termion::screen::IntoAlternateScreen;
 
-mod address;
-mod args;
-mod keccak256;
-mod keys;
-mod sha256;
-
-fn help() -> &'static str {
-    Box::leak(
-        format!(
-            "EXAMPLES:\n{}{}{}{}{}",
-            args::examples(),
-            address::examples(),
-            keys::new_key::examples(),
-            keys::parse_secret::examples(),
-            keys::get_public_key::examples(),
-        )
-        .into_boxed_str(),
-    )
-}
-
-/// Forc plugin for hashing arbitrary data
-#[derive(Debug, Parser)]
-#[clap(
-    name = "forc-crypto",
-    after_help = help(),
-    version
-)]
-pub enum Command {
-    Keccak256(args::HashArgs),
-    Sha256(args::HashArgs),
-    Address(address::Args),
-    GetPublicKey(keys::get_public_key::Arg),
-    NewKey(keys::new_key::Arg),
-    ParseSecret(keys::parse_secret::Arg),
-}
-
 fn main() {
     init_tracing_subscriber(Default::default());
     if let Err(err) = run() {
@@ -83,7 +47,7 @@ where
     }
 }
 
-pub(crate) fn display_output<T>(message: T) -> anyhow::Result<()>
+pub fn display_output<T>(message: T) -> anyhow::Result<()>
 where
     T: serde::Serialize,
 {
