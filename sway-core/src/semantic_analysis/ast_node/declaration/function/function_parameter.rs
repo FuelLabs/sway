@@ -1,6 +1,7 @@
 use crate::{
     language::{parsed::FunctionParameter, ty},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::TypeCheckContext,
+    type_system::*,
 };
 
 use sway_error::{

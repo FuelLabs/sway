@@ -57,8 +57,8 @@ impl HashWithEngines for TyTypeAliasDecl {
 }
 
 impl SubstTypes for TyTypeAliasDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.ty.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.ty.subst(ctx)
     }
 }
 

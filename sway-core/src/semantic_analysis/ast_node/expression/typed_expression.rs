@@ -29,7 +29,7 @@ use crate::{
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
-    semantic_analysis::{expression::ReachableReport, type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
     Engines,

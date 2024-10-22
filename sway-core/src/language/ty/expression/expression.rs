@@ -56,10 +56,10 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, ctx);
-            self.expression.subst(type_mapping, ctx);
+            self.return_type.subst(ctx);
+            self.expression.subst(ctx);
         }
     }
 }

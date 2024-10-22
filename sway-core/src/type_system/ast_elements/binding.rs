@@ -13,10 +13,10 @@ use crate::{
     },
     semantic_analysis::{
         symbol_resolve::ResolveSymbols, symbol_resolve_context::SymbolResolveContext,
-        type_check_context::EnforceTypeArguments, TypeCheckContext,
+        TypeCheckContext,
     },
     type_system::priv_prelude::*,
-    Ident,
+    EnforceTypeArguments, Ident,
 };
 
 /// A `TypeBinding` is the result of using turbofish to bind types to

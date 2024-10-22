@@ -9,7 +9,7 @@ use crate::{
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
@@ -644,10 +644,11 @@ pub(crate) fn type_check_method_application(
                             vec![t.initial_type_id],
                             vec![call_path_typeid],
                         );
-                        method.subst(
+                        method.subst(&SubstTypesContext::new(
+                            engines,
                             &type_subst,
-                            &SubstTypesContext::new(engines, !ctx.code_block_first_pass()),
-                        );
+                            !ctx.code_block_first_pass(),
+                        ));
                     }
                 }
             }
