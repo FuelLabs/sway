@@ -32,3 +32,8 @@ sha3.workspace = true
 termion.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process"] }
 tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+criterion = "0.5"
+

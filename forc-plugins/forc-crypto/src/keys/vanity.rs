@@ -298,3 +298,143 @@ fn parse_pattern(pattern: &str, is_start: bool) -> Result<Either<Vec<u8>, Regex>
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_no_start_or_end() {
+        let args = Arg {
+            starts_with: None,
+            ends_with: None,
+            mnemonic: false,
+            save_path: None,
+        };
+        let result = handler(args);
+        assert!(
+            result.is_err(),
+            "Handler should not fail with no start or end"
+        );
+    }
+
+    #[test]
+    fn test_find_simple_vanity_start() {
+        let args = Arg {
+            starts_with: Some("00".to_string()),
+            ends_with: None,
+            mnemonic: false,
+            save_path: None,
+        };
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap();
+        assert!(address.starts_with("00"), "Address should start with '00'");
+    }
+
+    #[test]
+    fn test_find_simple_vanity_end() {
+        let args = Arg {
+            starts_with: None,
+            ends_with: Some("00".to_string()),
+            mnemonic: false,
+            save_path: None,
+        };
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap();
+        assert!(address.ends_with("00"), "Address should end with '00'");
+    }
+
+    #[test]
+    fn test_both_start_and_end() {
+        let args = Arg {
+            starts_with: Some("a".to_string()),
+            ends_with: Some("b".to_string()),
+            mnemonic: false,
+            save_path: None,
+        };
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap();
+        assert!(address.starts_with("a"), "Address should start with 'a'");
+        assert!(address.ends_with("b"), "Address should end with 'b'");
+    }
+
+    #[test]
+    fn test_both_start_and_end_case_insensitive() {
+        // checksummed addresses cannot start or end with capital letters
+        let args = Arg {
+            starts_with: Some("A".to_string()),
+            ends_with: Some("B".to_string()),
+            mnemonic: false,
+            save_path: None,
+        };
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap();
+        assert!(address.starts_with("a"), "Address should start with 'a'");
+        assert!(address.ends_with("b"), "Address should end with 'b'");
+    }
+
+    #[test]
+    fn test_mnemonic_generation() {
+        let args = Arg {
+            starts_with: Some("a".to_string()),
+            ends_with: None,
+            mnemonic: true,
+            save_path: None,
+        };
+        let result = handler(args).unwrap();
+        assert!(
+            result.get("Mnemonic").is_some(),
+            "Mnemonic should be present"
+        );
+        assert_eq!(
+            result["Mnemonic"]
+                .as_str()
+                .unwrap()
+                .split_whitespace()
+                .count(),
+            24,
+            "Mnemonic should have 24 words"
+        );
+
+        let address = result["Address"].as_str().unwrap();
+        assert!(address.starts_with("a"), "Address should start with 'a'");
+    }
+
+    #[test]
+    fn test_save_path() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let args = Arg {
+            starts_with: Some("00".to_string()),
+            ends_with: None,
+            mnemonic: false,
+            save_path: Some(tmp.path().to_path_buf()),
+        };
+        handler(args).unwrap();
+        assert!(tmp.path().exists(), "File should exist");
+        let content = fs::read_to_string(tmp.path()).unwrap();
+        let saved_result: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert!(
+            saved_result["Address"].is_string(),
+            "Saved result should contain an Address"
+        );
+        assert!(
+            saved_result["PrivateKey"].is_string(),
+            "Saved result should contain a PrivateKey"
+        );
+    }
+
+    #[test]
+    fn test_invalid_hex_pattern() {
+        let args = Arg {
+            starts_with: Some("X".to_string()),
+            ends_with: None,
+            mnemonic: false,
+            save_path: None,
+        };
+        let result = handler(args);
+        assert!(
+            result.is_err(),
+            "Handler should fail with invalid hex pattern"
+        );
+        assert_eq!(result.unwrap_err().to_string(), "Invalid hex pattern: X");
+    }
+}
