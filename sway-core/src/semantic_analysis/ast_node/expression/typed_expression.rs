@@ -1476,6 +1476,8 @@ impl ty::TyExpression {
 
         let not_module = {
             let h = Handler::default();
+	    // The path may be relative to the current module,
+	    // or may be a full path
             ctx.namespace()
                 .current_module()
                 .read(engines, |m| m.lookup_submodule(&h, &path).is_err())
