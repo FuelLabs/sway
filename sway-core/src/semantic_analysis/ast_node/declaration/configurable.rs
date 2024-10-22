@@ -18,8 +18,7 @@ use crate::{
         CallPath,
     },
     semantic_analysis::*,
-    EnforceTypeArguments, Engines, SubstTypes, SubstTypesContext, TypeArgument, TypeBinding, TypeCheckTypeBinding,
-    TypeInfo,
+    EnforceTypeArguments, Engines, SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding,
 };
 
 impl ty::TyConfigurableDecl {

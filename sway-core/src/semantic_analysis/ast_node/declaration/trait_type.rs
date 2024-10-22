@@ -5,16 +5,13 @@ use sway_error::{
 use sway_types::Span;
 
 use crate::{
-    decl_engine::parsed_id::ParsedDeclId,
-    language::{
+    decl_engine::parsed_id::ParsedDeclId, language::{
         parsed::{self, Declaration, TraitTypeDeclaration},
         ty::{self, TyTraitType},
-    },
-    semantic_analysis::{
+    }, semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
         TypeCheckAnalysisContext, TypeCheckContext,
-    },
-    Engines,
+    }, EnforceTypeArguments, Engines
 };
 
 impl ty::TyTraitType {

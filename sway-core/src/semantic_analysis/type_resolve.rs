@@ -80,7 +80,7 @@ pub fn resolve_type(
                 subst_ctx,
             )?
         }
-        TypeInfo::Array(mut elem_ty, n) => {
+        TypeInfo::Array(mut elem_ty, length) => {
             elem_ty.type_id = resolve_type(
                 handler,
                 engines,
@@ -93,17 +93,11 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
             )
-            .unwrap_or_else(|err| {
-                engines
-                    .te()
-                    .insert(engines, TypeInfo::ErrorRecovery(err), None)
-            });
+            .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines.te().insert(
-                engines,
-                TypeInfo::Array(elem_ty.clone(), n.clone()),
-                elem_ty.span.source_id(),
-            )
+            engines
+                .te()
+                .insert_array(engines, elem_ty, length)
         }
         TypeInfo::Slice(mut elem_ty) => {
             elem_ty.type_id = resolve_type(
@@ -118,17 +112,9 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
             )
-            .unwrap_or_else(|err| {
-                engines
-                    .te()
-                    .insert(engines, TypeInfo::ErrorRecovery(err), None)
-            });
+            .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines.te().insert(
-                engines,
-                TypeInfo::Slice(elem_ty.clone()),
-                elem_ty.span.source_id(),
-            )
+            engines.te().insert_slice(engines, elem_ty)
         }
         TypeInfo::Tuple(mut type_arguments) => {
             for type_argument in type_arguments.iter_mut() {
@@ -144,16 +130,10 @@ pub fn resolve_type(
                     self_type,
                     subst_ctx,
                 )
-                .unwrap_or_else(|err| {
-                    engines
-                        .te()
-                        .insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
 
-            engines
-                .te()
-                .insert(engines, TypeInfo::Tuple(type_arguments), span.source_id())
+            engines.te().insert_tuple(engines, type_arguments)
         }
         TypeInfo::TraitType {
             name,
@@ -196,20 +176,11 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
             )
-            .unwrap_or_else(|err| {
-                engines
-                    .te()
-                    .insert(engines, TypeInfo::ErrorRecovery(err), None)
-            });
+            .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines.te().insert(
-                engines,
-                TypeInfo::Ref {
-                    to_mutable_value,
-                    referenced_type: ty.clone(),
-                },
-                None,
-            )
+            engines
+                .te()
+                .insert_ref(engines, to_mutable_value, ty)
         }
         _ => type_id,
     };
