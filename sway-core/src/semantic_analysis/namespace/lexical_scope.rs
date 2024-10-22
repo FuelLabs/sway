@@ -194,6 +194,8 @@ impl Items {
         }
 
         // Symbol not found
+//	dbg!("resolve symbol");
+//	dbg!(&symbol);
         Err(handler.emit_err(CompileError::SymbolNotFound {
             name: symbol.clone(),
             span: symbol.span(),
@@ -743,7 +745,8 @@ impl Items {
             .get(name)
             .cloned()
             .ok_or_else(|| {
-//		dbg!("check_symbol");
+//		dbg!("check symbol");
+//		dbg!(&name);
 		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
@@ -759,7 +762,8 @@ impl Items {
             .get(&name.into())
             .cloned()
             .ok_or_else(|| {
-		//		dbg!("check_symbols_unique_while_collecting_unifications");
+//		dbg!("check symbols unique while collecting unifications");
+//		dbg!(&name);
 		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),

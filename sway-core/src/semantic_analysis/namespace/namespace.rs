@@ -238,6 +238,11 @@ impl Namespace {
 	self.module_from_absolute_path(&vec![name.clone()]).is_some()
     }
     
+    pub(crate) fn current_module_has_binding(&self, engines: &Engines, symbol: &Ident) -> bool {
+	let dummy_handler = Handler::default();
+	self.root.item_lookup(&dummy_handler, engines, symbol, &self.current_mod_path, &self.current_mod_path, true).is_ok()
+    }
+
     pub fn get_root_trait_item_for_type(
         &self,
         handler: &Handler,

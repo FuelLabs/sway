@@ -400,7 +400,7 @@ impl<T: Clone> CallPath<T> {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, _engines: &Engines, namespace: &Namespace) -> CallPath<T> {
+    pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath<T> {
 	match self.callpath_type {
 	    CallPathType::Full => self.clone(),
 	    CallPathType::RelativeToPackageRoot => {
@@ -495,8 +495,13 @@ impl<T: Clone> CallPath<T> {
 // //			callpath_type: CallPathType::Full,
 // //		    }
 		} else if namespace.current_module_has_submodule(&self.prefixes[0])
+		    || namespace.current_module_has_binding(engines, &self.prefixes[0])
 		{
-		    // Qualified path relative to the current module
+		    // The first identifier in the prefix is either a submodule of the current
+		    // module, or is bound in the current module (typically as an enum name, where
+		    // the suffix is a variant of the enum).
+		    //
+		    // The path is a qualified path relative to the current module
 		    //
 		    // Complete the path by prepending the package name and the path to the current module.
 //		    let mut prefixes: Vec<Ident> = vec![];

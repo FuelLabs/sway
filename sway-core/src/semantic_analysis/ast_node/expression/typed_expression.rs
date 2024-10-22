@@ -1628,11 +1628,13 @@ impl ty::TyExpression {
 
         let mut is_module = false;
         let mut maybe_function: Option<(DeclRefFunction, _)> = None;
-        let mut maybe_enum: Option<(DeclRefEnum, _, _, _)> = None;
+        let mut maybe_enum_variant_with_enum_name: Option<(DeclRefEnum, _, _, _)> = None;
+        let mut maybe_enum_variant_without_enum_name: Option<(DeclRefEnum, _, _, _)> = None;
 
         let module_probe_handler = Handler::default();
         let function_probe_handler = Handler::default();
-        let enum_probe_handler = Handler::default();
+        let variant_with_enum_probe_handler = Handler::default();
+        let variant_without_enum_probe_handler = Handler::default();
         let const_probe_handler = Handler::default();
 
         if unknown_call_path_binding
@@ -1678,18 +1680,70 @@ impl ty::TyExpression {
                 .map(|(fn_ref, _, _)| (fn_ref, call_path_binding))
             };
 
-            // Check if this could be an enum
-            maybe_enum = {
+            // Check if this could be an enum variant preceeded by its enum name.
+	    // For instance, the enum `Option` contains two variants, `None` and `Some`.
+	    // The full path for `None` would be current_mod_path::Option::None.
+            maybe_enum_variant_with_enum_name = {
                 let call_path_binding = unknown_call_path_binding.clone();
                 let variant_name = call_path_binding.inner.call_path.suffix.clone();
-                let enum_call_path = call_path_binding.inner.call_path.rshift();
+                let enum_call_path = call_path_binding.inner.call_path.to_fullpath(ctx.engines(), ctx.namespace()).rshift();
+
+//		let mod_path = ctx.namespace().current_mod_path();
+//		let problem = variant_name.as_str() == "Ok"
+//		    && mod_path.len() == 2
+//		    && mod_path[0].as_str() == "std"
+//		    && mod_path[1].as_str() == "option"
+//		    ;
+//		if problem {
+//		    dbg!("maybe enum");
+//		    dbg!(&unknown_call_path_binding);
+//		    dbg!(&enum_call_path);
+//		}
 
                 let mut call_path_binding = TypeBinding {
                     inner: enum_call_path,
                     type_arguments: call_path_binding.type_arguments,
                     span: call_path_binding.span,
                 };
-                TypeBinding::type_check(&mut call_path_binding, &enum_probe_handler, ctx.by_ref())
+                TypeBinding::type_check(&mut call_path_binding, &variant_with_enum_probe_handler, ctx.by_ref())
+                    .ok()
+                    .map(|(enum_ref, _, ty_decl)| {
+                        (
+                            enum_ref,
+                            variant_name,
+                            call_path_binding,
+                            ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                        )
+                    })
+            };
+
+            // Check if this could be an enum variant without the enum name. This can happen when
+            // the variants are imported using a star import
+	    // For instance, `use Option::*` binds the name `None` in the current module, so the
+	    // full path would be current_mod_path::None rather than current_mod_path::Option::None.
+            maybe_enum_variant_without_enum_name = {
+                let call_path_binding = unknown_call_path_binding.clone();
+                let variant_name = call_path_binding.inner.call_path.suffix.clone();
+                let enum_call_path = call_path_binding.inner.call_path.to_fullpath(ctx.engines(), ctx.namespace());
+
+//		let mod_path = ctx.namespace().current_mod_path();
+//		let problem = variant_name.as_str() == "Ok"
+//		    && mod_path.len() == 2
+//		    && mod_path[0].as_str() == "std"
+//		    && mod_path[1].as_str() == "option"
+//		    ;
+//		if problem {
+//		    dbg!("maybe enum");
+//		    dbg!(&unknown_call_path_binding);
+//		    dbg!(&enum_call_path);
+//		}
+
+                let mut call_path_binding = TypeBinding {
+                    inner: enum_call_path,
+                    type_arguments: call_path_binding.type_arguments,
+                    span: call_path_binding.span,
+                };
+                TypeBinding::type_check(&mut call_path_binding, &variant_without_enum_probe_handler, ctx.by_ref())
                     .ok()
                     .map(|(enum_ref, _, ty_decl)| {
                         (
@@ -1707,14 +1761,15 @@ impl ty::TyExpression {
             { Self::probe_const_decl(&unknown_call_path_binding, &mut ctx, &const_probe_handler) };
 
         // compare the results of the checks
-        let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
+        let exp = match (is_module, maybe_function, maybe_enum_variant_with_enum_name, maybe_enum_variant_without_enum_name, maybe_const) {
             (
                 false,
                 None,
                 Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
+		None,
                 None,
             ) => {
-                handler.append(enum_probe_handler);
+                handler.append(variant_with_enum_probe_handler);
                 instantiate_enum(
                     handler,
                     ctx,
@@ -1725,7 +1780,25 @@ impl ty::TyExpression {
                     call_path_decl,
                 )?
             }
-            (false, Some((fn_ref, call_path_binding)), None, None) => {
+            (
+                false,
+                None,
+		None,
+                Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
+                None,
+            ) => {
+                handler.append(variant_without_enum_probe_handler);
+                instantiate_enum(
+                    handler,
+                    ctx,
+                    enum_ref,
+                    variant_name,
+                    args,
+                    call_path_binding,
+                    call_path_decl,
+                )?
+            }
+            (false, Some((fn_ref, call_path_binding)), None, None, None) => {
                 handler.append(function_probe_handler);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
                 if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
@@ -1745,14 +1818,14 @@ impl ty::TyExpression {
                     span,
                 )?
             }
-            (true, None, None, None) => {
+            (true, None, None, None, None) => {
                 handler.append(module_probe_handler);
                 return Err(handler.emit_err(CompileError::ModulePathIsNotAnExpression {
                     module_path: unknown_call_path_binding.inner.call_path.to_string(),
                     span,
                 }));
             }
-            (false, None, None, Some((const_ref, call_path_binding))) => {
+            (false, None, None, None, Some((const_ref, call_path_binding))) => {
                 handler.append(const_probe_handler);
                 if !call_path_binding.type_arguments.to_vec().is_empty() {
                     // In case `foo::bar::CONST::<TyArgs>` throw an error.
@@ -1766,8 +1839,17 @@ impl ty::TyExpression {
                 }
                 instantiate_constant_expression(ctx, const_ref, call_path_binding)
             }
-            (false, None, None, None) => {
-		//dbg!("typecheck delineated path");
+            (false, None, None, None, None) => {
+//		let mod_path = ctx.namespace().current_mod_path();
+//		let problem = unknown_call_path_binding.inner.call_path.suffix.as_str() == "codec"
+//		    && mod_path.len() == 2
+//		    && mod_path[0].as_str() == "std"
+//		    && mod_path[1].as_str() == "inputs"
+//		    ;
+//		if problem {
+//		    dbg!("typecheck delineated path");
+//		    dbg!(&unknown_call_path_binding);
+//		}
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: unknown_call_path_binding.inner.call_path.suffix.clone(),
                     span: unknown_call_path_binding.inner.call_path.suffix.span(),

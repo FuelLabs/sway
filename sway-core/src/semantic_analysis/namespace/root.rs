@@ -399,13 +399,14 @@ impl Root {
         self.item_import(handler, engines, src, last_item, dst, alias, visibility)
     }
 
-    fn item_lookup(
+    pub(super) fn item_lookup(
         &self,
         handler: &Handler,
         engines: &Engines,
         item: &Ident,
         src: &ModulePath,
         dst: &ModulePath,
+	ignore_visibility: bool,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let src_mod = self.require_module(handler, &src.to_vec())?;
         let src_items = src_mod.current_items();
@@ -450,14 +451,15 @@ impl Root {
             }
         } else {
             // Symbol not found
-//	    println!("item lookup");
+//	    dbg!("item lookup");
+//	    dbg!(&item);
             return Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: item.clone(),
                 span: item.span(),
             }));
         };
 
-        if !src_visibility.is_public() {
+        if !ignore_visibility && !src_visibility.is_public() {
             handler.emit_err(CompileError::ImportPrivateSymbol {
                 name: item.clone(),
                 span: item.span(),
@@ -484,7 +486,7 @@ impl Root {
         self.check_module_privacy(handler, src)?;
         let src_mod = self.require_module(handler, &src.to_vec())?;
 
-        let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
+        let (decl, path) = self.item_lookup(handler, engines, item, src, dst, false)?;
 
         let mut impls_to_insert = TraitMap::default();
         if decl.is_typed() {
@@ -573,7 +575,7 @@ impl Root {
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
 
-        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst, false)?;
 	//path.push(enum_name.clone());
 	
         match decl {
@@ -637,7 +639,8 @@ impl Root {
                             }
                         };
                     } else {
-//			println!("variant import");
+//			dbg!("variant import parsed");
+//			dbg!(&variant_name);
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
@@ -706,7 +709,8 @@ impl Root {
                             }
                         };
                     } else {
-//			println!("variant import 2");
+//			dbg!("variant import typed");
+//			dbg!(&variant_name);
                             return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
@@ -741,7 +745,7 @@ impl Root {
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
 
-        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst, false)?;
 //	path.push(enum_name.clone());
 
         match decl {
@@ -1119,7 +1123,8 @@ impl Root {
                     (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
                 }
                 _ => {
-//		    println!("decl_to_type_info");
+//		    dbg!("decl_to_type_info");
+//		    dbg!(&symbol);
                     return Err(handler.emit_err(CompileError::SymbolNotFound {
                         name: symbol.clone(),
                         span: symbol.span(),

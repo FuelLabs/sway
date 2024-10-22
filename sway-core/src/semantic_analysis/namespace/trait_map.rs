@@ -1308,7 +1308,8 @@ impl TraitMap {
                 },
             )),
             Ordering::Less => {
-//		if symbol.as_str() == "Some" { panic!(); };
+//		dbg!("get_trait_item_for_type");
+//		dbg!(&symbol);
 		Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),
