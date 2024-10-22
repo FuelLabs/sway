@@ -2007,7 +2007,7 @@ impl ty::TyExpression {
                     Self::type_check(&handler, ctx, expr)
                         .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
                 } else {
-                    Self::type_check(&handler, ctx, expr)
+                    Self::type_check(handler, ctx, expr)
                         .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
                 }
             })
