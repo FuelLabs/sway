@@ -353,8 +353,8 @@ mod tests {
         };
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with("a"), "Address should start with 'a'");
-        assert!(address.ends_with("b"), "Address should end with 'b'");
+        assert!(address.starts_with('a'), "Address should start with 'a'");
+        assert!(address.ends_with('b'), "Address should end with 'b'");
     }
 
     #[test]
@@ -368,8 +368,8 @@ mod tests {
         };
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with("a"), "Address should start with 'a'");
-        assert!(address.ends_with("b"), "Address should end with 'b'");
+        assert!(address.starts_with('a'), "Address should start with 'a'");
+        assert!(address.ends_with('b'), "Address should end with 'b'");
     }
 
     #[test]
@@ -396,7 +396,7 @@ mod tests {
         );
 
         let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with("a"), "Address should start with 'a'");
+        assert!(address.starts_with('a'), "Address should start with 'a'");
     }
 
     #[test]
