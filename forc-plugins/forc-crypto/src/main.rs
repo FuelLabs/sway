@@ -3,6 +3,7 @@
 use anyhow::Result;
 use atty::Stream;
 use clap::Parser;
+use forc_crypto::{address, keccak256, keys, sha256, Command};
 use forc_tracing::{init_tracing_subscriber, println_error};
 use std::{
     default::Default,
@@ -23,6 +24,7 @@ fn run() -> Result<()> {
     let content = match app {
         Command::Keccak256(arg) => keccak256::hash(arg)?,
         Command::GetPublicKey(arg) => keys::get_public_key::handler(arg)?,
+        Command::Vanity(arg) => keys::vanity::handler(arg)?,
         Command::Sha256(arg) => sha256::hash(arg)?,
         Command::Address(arg) => address::dump_address(arg.address)?,
         Command::NewKey(arg) => keys::new_key::handler(arg)?,
