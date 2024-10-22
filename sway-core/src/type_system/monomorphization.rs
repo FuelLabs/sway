@@ -308,11 +308,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             if let Some(ty) = &decl_type.ty {
                 ty.type_id
             } else if let Some(implementing_type) = self_type {
-                type_engine.insert_trait_type(
-                    engines,
-                    decl_type.name.clone(),
-                    implementing_type,
-                )
+                type_engine.insert_trait_type(engines, decl_type.name.clone(), implementing_type)
             } else {
                 return Err(handler.emit_err(CompileError::Internal(
                     "Self type not provided.",

@@ -95,9 +95,7 @@ pub fn resolve_type(
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines
-                .te()
-                .insert_array(engines, elem_ty, length)
+            engines.te().insert_array(engines, elem_ty, length)
         }
         TypeInfo::Slice(mut elem_ty) => {
             elem_ty.type_id = resolve_type(
@@ -178,9 +176,7 @@ pub fn resolve_type(
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines
-                .te()
-                .insert_ref(engines, to_mutable_value, ty)
+            engines.te().insert_ref(engines, to_mutable_value, ty)
         }
         _ => type_id,
     };

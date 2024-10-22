@@ -332,16 +332,7 @@ impl PartialEqWithEngines for TypeInfo {
                     && l_decl.fields.eq(&r_decl.fields, ctx)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, ctx)
             }
-            (Self::Tuple(l), Self::Tuple(r)) => l
-                .iter()
-                .zip(r.iter())
-                .map(|(l, r)| {
-                    (l.type_id == r.type_id)
-                        || type_engine
-                            .get(l.type_id)
-                            .eq(&type_engine.get(r.type_id), ctx)
-                })
-                .all(|x| x),
+            (Self::Tuple(l), Self::Tuple(r)) => l.eq(r, ctx),
             (
                 Self::ContractCaller {
                     abi_name: l_abi_name,

@@ -389,10 +389,11 @@ impl TypeSubstMap {
                     type_engine.insert_array(engines, elem_type, length)
                 })
             }
-            TypeInfo::Slice(mut elem_ty) => {
-                let type_id = self.find_match(elem_ty.type_id, engines)?;
-                elem_ty.type_id = type_id;
-                Some(type_engine.insert_slice(engines, elem_ty))
+            TypeInfo::Slice(mut elem_type) => {
+                self.find_match(elem_type.type_id, engines).map(|type_id| {
+                    elem_type.type_id = type_id;
+                    type_engine.insert_slice(engines, elem_type)
+                })
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
