@@ -37,3 +37,6 @@ tracing.workspace = true
 tempfile.workspace = true
 criterion = "0.5"
 
+[[bench]]
+name = "bench_main"
+harness = false
