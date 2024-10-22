@@ -46,4 +46,7 @@ fn main() {
 
     // Should not warn or error
     let _ : [u8 ; 0] = [];
+
+    // Literal too big
+    let mut a = [8u8, 8, 18446744073709551615];
 }
