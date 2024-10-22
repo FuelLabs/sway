@@ -194,8 +194,12 @@ impl Items {
         }
 
         // Symbol not found
-//	dbg!("resolve symbol");
-//	dbg!(&symbol);
+//	let problem = symbol.as_str() == "codec";
+//	if problem {
+//	    dbg!("resolve symbol");
+//	    dbg!(&symbol);
+//	    panic!();
+//	}
         Err(handler.emit_err(CompileError::SymbolNotFound {
             name: symbol.clone(),
             span: symbol.span(),
