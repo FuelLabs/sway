@@ -23,8 +23,8 @@ futures.workspace = true
 hex.workspace = true
 libp2p-identity = { workspace = true, features = ["peerid", "secp256k1"] }
 rand.workspace = true
-regex.workspace = true
 rayon.workspace = true
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
