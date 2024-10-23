@@ -328,13 +328,14 @@ impl VanityMatcher for RegexMatcher {
 }
 
 fn parse_pattern(pattern: &str, is_start: bool) -> anyhow::Result<Either<Vec<u8>, Regex>> {
+    if pattern.len() > 64 {
+        return Err(VanityAddressError::InvalidPattern(
+            "Pattern too long: max 64 characters".to_string(),
+        )
+        .into());
+    }
+
     if let Ok(decoded) = hex::decode(pattern) {
-        if decoded.len() > 32 {
-            return Err(VanityAddressError::InvalidPattern(
-                "Hex pattern must be less than 32 bytes".to_string(),
-            )
-            .into());
-        }
         Ok(Either::Left(decoded))
     } else {
         // Check if the pattern contains only valid hex characters
@@ -395,9 +396,25 @@ mod tests {
             timeout: None,
         };
         let result = handler(args);
-        assert!(
-            result.is_err(),
-            "Handler should not fail with no start or end"
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Invalid pattern: Invalid pattern combination",
+        );
+    }
+
+    #[test]
+    fn test_pattern_too_long() {
+        let args = Arg {
+            starts_with: Some("a".repeat(65)),
+            ends_with: None,
+            mnemonic: false,
+            save_path: None,
+            timeout: None,
+        };
+        let result = handler(args);
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Invalid pattern: Pattern too long: max 64 characters",
         );
     }
 
