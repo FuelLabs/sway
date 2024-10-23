@@ -893,22 +893,19 @@ fn validate_version(member_manifests: &MemberManifestFiles) -> Result<()> {
 /// If required minimum forc version is higher than current forc version return an error with
 /// upgrade instructions
 fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
-    match &pkg_manifest.project.forc_version {
-        Some(min_forc_version) => {
-            // Get the current version of the toolchain
-            let crate_version = env!("CARGO_PKG_VERSION");
-            let toolchain_version = semver::Version::parse(crate_version)?;
-            if toolchain_version < *min_forc_version {
-                bail!(
-                    "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
-                    pkg_manifest.project.name,
-                    min_forc_version,
-                    crate_version,
-                    crate_version
-                );
-            }
+    if let Some(min_forc_version) = &pkg_manifest.project.forc_version {
+        // Get the current version of the toolchain
+        let crate_version = env!("CARGO_PKG_VERSION");
+        let toolchain_version = semver::Version::parse(crate_version)?;
+        if toolchain_version < *min_forc_version {
+            bail!(
+                "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
+                pkg_manifest.project.name,
+                min_forc_version,
+                crate_version,
+                crate_version
+            );
         }
-        None => {}
     };
     Ok(())
 }
