@@ -720,7 +720,12 @@ mod tx {
             num_coins,
             DEFAULT_COIN_AMOUNT,
         );
-        let provider = setup_test_provider(coins, vec![], None, None)
+        let mut chain_config = ChainConfig::local_testnet();
+        chain_config
+            .consensus_parameters
+            .set_privileged_address(wallet.address().into());
+
+        let provider = setup_test_provider(coins, vec![], None, Some(chain_config))
             .await
             .unwrap();
         wallet.set_provider(provider.clone());
@@ -830,7 +835,12 @@ mod tx {
             num_coins,
             DEFAULT_COIN_AMOUNT,
         );
-        let provider = setup_test_provider(coins, vec![], None, None)
+        let mut chain_config = ChainConfig::local_testnet();
+        chain_config
+            .consensus_parameters
+            .set_privileged_address(wallet.address().into());
+
+        let provider = setup_test_provider(coins, vec![], None, Some(chain_config))
             .await
             .unwrap();
         wallet.set_provider(provider.clone());
@@ -1167,7 +1177,12 @@ mod inputs {
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
             );
-            let provider = setup_test_provider(coins, vec![], None, None)
+            let mut chain_config = ChainConfig::local_testnet();
+            chain_config
+                .consensus_parameters
+                .set_privileged_address(wallet.address().into());
+
+            let provider = setup_test_provider(coins, vec![], None, Some(chain_config))
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
@@ -2031,7 +2046,12 @@ mod outputs {
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
             );
-            let provider = setup_test_provider(coins, vec![], None, None)
+            let mut chain_config = ChainConfig::local_testnet();
+            chain_config
+                .consensus_parameters
+                .set_privileged_address(wallet.address().into());
+
+            let provider = setup_test_provider(coins, vec![], None, Some(chain_config))
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
