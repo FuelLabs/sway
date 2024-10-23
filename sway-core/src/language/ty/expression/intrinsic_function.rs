@@ -73,10 +73,10 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.arguments.subst(type_mapping, ctx);
-            self.type_arguments.subst(type_mapping, ctx);
+            self.arguments.subst(ctx);
+            self.type_arguments.subst(ctx);
         }
     }
 }

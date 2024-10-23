@@ -23,7 +23,6 @@ glob.workspace = true
 hex.workspace = true
 insta.workspace = true
 libtest-mimic.workspace = true
-miden.workspace = true
 prettydiff.workspace = true
 rand.workspace = true
 regex.workspace = true
