@@ -172,7 +172,7 @@ pub fn find_vanity_address_with_timeout<T: VanityMatcher>(
                     false
                 }
             })
-            .ok_or_else(|| VanityAddressError::GenerationFailed)?
+            .ok_or(VanityAddressError::GenerationFailed)?
     };
 
     let Some(secs) = timeout_secs else {
@@ -181,7 +181,7 @@ pub fn find_vanity_address_with_timeout<T: VanityMatcher>(
 
     // Run the async timeout logic in the runtime
     Runtime::new()?.block_on(async {
-        let generation_task = tokio::task::spawn_blocking(move || generate_wallet());
+        let generation_task = tokio::task::spawn_blocking(generate_wallet);
 
         let abort_handle = generation_task.abort_handle();
         let timeout_duration = Duration::from_secs(secs);
