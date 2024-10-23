@@ -767,11 +767,11 @@ impl TypeInfo {
     /// Creates a new [TypeInfo::Custom] that represents a Self type.
     ///
     /// The `span` must either be a [Span::dummy] or a span pointing
-    /// to text "Span" or "span", otherwise the method panics.
+    /// to text "Self" or "self", otherwise the method panics.
     pub(crate) fn new_self_type(span: Span) -> TypeInfo {
         assert!(
             span.is_dummy() || span.as_str() == "Self" || span.as_str() == "self",
-            "The Self type span must either be a dummy span, or a span pointing to text \"Span\" or \"span\". The span was pointing to text: \"{}\".",
+            "The Self type span must either be a dummy span, or a span pointing to text \"Self\" or \"self\". The span was pointing to text: \"{}\".",
             span.as_str()
         );
         TypeInfo::Custom {

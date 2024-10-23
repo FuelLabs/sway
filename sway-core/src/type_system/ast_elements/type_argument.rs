@@ -31,7 +31,7 @@ pub struct TypeArgument {
     /// let b: [u64;2] = [1, 1];
     /// ```
     ///
-    /// the type arguments if the [TypeInfo::Array]s of `a` and `b` will
+    /// the type arguments of the [TypeInfo::Array]s of `a` and `b` will
     /// have two different spans pointing to two different strings "u64".
     /// On the other hand, the two [TypeInfo::Array]s describing the
     /// two instances `[0, 0]`, and `[1, 1]` will have neither the array
@@ -42,7 +42,7 @@ pub struct TypeArgument {
 }
 
 impl TypeArgument {
-    /// Returns true if `self` is annotated by heaving either
+    /// Returns true if `self` is annotated by having either
     /// its [Self::initial_type_id] different from [Self::type_id],
     /// or [Self::span] different from [Span::dummy]
     /// or [Self::call_path_tree] different from `None`.

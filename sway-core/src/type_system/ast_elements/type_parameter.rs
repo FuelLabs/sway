@@ -194,7 +194,7 @@ impl TypeParameter {
     /// and its [TypeParameter::type_id]s set to the `type_id`.
     ///
     /// Note that in the user written code, the span will always point to the place in
-    /// the source code where "_" is located. In the compiler generated code that must not
+    /// the source code where "_" is located. In the compiler generated code that is not always the case
     /// be the case. For cases when the span does not point to "_" see the comments
     /// in the usages of this method.
     ///
