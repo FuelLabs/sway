@@ -995,11 +995,11 @@ pub fn compile_to_bytecode(
 }
 
 /// Size of the prelude's METADATA section, in bytes.
-pub const PRELUDE_METADATA_SIZE_IN_BYTES: usize = 32;
+pub const PRELUDE_METADATA_SIZE_IN_BYTES: usize = 8;
 /// Offset (in bytes) of the METADATA section in the prelude.
 pub const PRELUDE_METADATA_OFFSET_IN_BYTES: usize = 16;
 /// Total size of the prelude in bytes. Instructions start right after.
-pub const PRELUDE_SIZE_IN_BYTES: usize = 56;
+pub const PRELUDE_SIZE_IN_BYTES: usize = 32;
 
 /// Given bytecode, overwrite the existing Metadata in the prelude with the given one.
 pub fn set_bytecode_metadata(

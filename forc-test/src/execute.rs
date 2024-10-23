@@ -246,21 +246,15 @@ impl TestExecutor {
 /// The following is how the beginning of the bytecode is laid out:
 ///
 /// ```ignore
-/// [ 0] ji   i(4 + 8)                 ; Jumps to the data section setup.
+/// [ 0] ji   i(4 + 2)                 ; Jumps to the data section setup.
 /// [ 1] noop
 /// [ 2] DATA_SECTION_OFFSET[0..32]
 /// [ 3] DATA_SECTION_OFFSET[32..64]
 /// [ 4] METADATA (0-32)
 /// [ 5] METADATA (32-64)
-/// [ 6] METADATA (64-96)
-/// [ 7] METADATA (96-128)
-/// [ 8] METADATA (128-160)
-/// [ 9] METADATA (160-192)
-/// [10] METADATA (192-224)
-/// [11] METADATA (224-256)
-/// [12] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
-/// [13] add  $$ds $$ds $is
-/// [14] <first-entry-point>           ; This is where we want to jump from to our test code!
+/// [ 6] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
+/// [ 7] add  $$ds $$ds $is
+/// [ 8] <first-entry-point>           ; This is where we want to jump from to our test code!
 /// ```
 fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
     // Each instruction is 4 bytes,

@@ -116,7 +116,7 @@ fn to_bytecode_mut(
             {
                 8
             }
-            AllocatedOpcode::Metadata => 32,
+            AllocatedOpcode::ConfigurablesOffsetPlaceholder => 8,
             AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
             AllocatedOpcode::BLOB(count) => count.value as u64 * 4,
             AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value == 0 => 0,
@@ -210,7 +210,7 @@ fn to_bytecode_mut(
                 bytecode.extend(data.iter().cloned());
                 half_word_ix += 2;
             }
-            FuelAsmData::Metadata(data) => {
+            FuelAsmData::ConfigurablesOffset(data) => {
                 if build_config.print_bytecode {
                     print!("{}{:#010x} ", " ".repeat(indentation), bytecode.len());
                     println!(
@@ -219,9 +219,9 @@ fn to_bytecode_mut(
                     );
                 }
 
-                // Static assert to ensure that we're only dealing with Metadata,
-                // a 4-word (32 bytes) data within the code. No other uses are known.
-                let _: [u8; 32] = data;
+                // Static assert to ensure that we're only dealing with ConfigurablesOffsetPlaceholder,
+                // a 1-word (8 bytes) data within the code. No other uses are known.
+                let _: [u8; 8] = data;
 
                 bytecode.extend(data.iter().cloned());
                 half_word_ix += 8;

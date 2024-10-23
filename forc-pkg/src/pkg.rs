@@ -1924,10 +1924,7 @@ pub fn compile(
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
     // Metadata to be placed into the binary.
-    let mut md = [
-        0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0,
-    ];
+    let mut md = [0u8, 0, 0, 0, 0, 0, 0, 0];
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
@@ -1950,12 +1947,7 @@ pub fn compile(
             }
         }
 
-        let configurables_offset: [u8; 8] = configurables_offset.to_be_bytes();
-        let zeroes = 0u64.to_be_bytes();
-        let metadata = [configurables_offset, zeroes, zeroes, zeroes].concat();
-        for (index, byte) in md.iter_mut().enumerate() {
-            *byte = metadata[index];
-        }
+        md = configurables_offset.to_be_bytes();
     }
 
     // We know to set the metadata only for fuelvm right now.

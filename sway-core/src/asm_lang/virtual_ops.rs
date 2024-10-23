@@ -1750,7 +1750,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
-            Metadata => AllocatedOpcode::Metadata,
+            Metadata => AllocatedOpcode::ConfigurablesOffsetPlaceholder,
             LoadDataId(reg1, label) => {
                 AllocatedOpcode::LoadDataId(map_reg(&mapping, reg1), label.clone())
             }

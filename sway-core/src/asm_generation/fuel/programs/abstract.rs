@@ -165,26 +165,20 @@ impl AbstractProgram {
     /// -    DATA_START (32-64)
     /// 3    METADATA (0-32)
     /// -    METADATA (32-64)
-    /// 4    METADATA (64-96)
-    /// -    METADATA (96-128)
-    /// 5    METADATA (128-160)
-    /// -    METADATA (160-192)
-    /// 6    METADATA (192-224)
-    /// -    METADATA (224-256)
-    /// 7    LW $ds $scratch 1
+    /// 4    LW $ds $scratch 1
     /// -    ADD $ds $ds $scratch
-    /// 8    .program_start:
+    /// 5    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         const _: () = assert!(
             crate::PRELUDE_METADATA_OFFSET_IN_BYTES == 16,
             "Inconsistency in the assumption of prelude organisation"
         );
         const _: () = assert!(
-            crate::PRELUDE_METADATA_SIZE_IN_BYTES == 32,
+            crate::PRELUDE_METADATA_SIZE_IN_BYTES == 8,
             "Inconsistency in the assumption of prelude organisation"
         );
         const _: () = assert!(
-            crate::PRELUDE_SIZE_IN_BYTES == 56,
+            crate::PRELUDE_SIZE_IN_BYTES == 32,
             "Inconsistency in the assumption of prelude organisation"
         );
         let label = self.reg_seqr.get_label();
@@ -210,9 +204,9 @@ impl AbstractProgram {
                     comment: "data section offset".into(),
                     owning_span: None,
                 },
-                // word 3 -- 32 bytes placeholder
+                // word 3 -- full word u64 placeholder
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Metadata),
+                    opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
                     comment: "metadata".into(),
                     owning_span: None,
                 },
@@ -221,7 +215,7 @@ impl AbstractProgram {
                     comment: "end of metadata".into(),
                     owning_span: None,
                 },
-                // word 7 -- load the data offset into $ds
+                // word 4 -- load the data offset into $ds
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::LW(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
@@ -231,7 +225,7 @@ impl AbstractProgram {
                     comment: "".into(),
                     owning_span: None,
                 },
-                // word 7.5 -- add $ds $ds $is
+                // word 4.5 -- add $ds $ds $is
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),

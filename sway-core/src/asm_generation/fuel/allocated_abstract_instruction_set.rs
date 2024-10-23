@@ -327,9 +327,9 @@ impl AllocatedAbstractInstructionSet {
                             comment: String::new(),
                         });
                     }
-                    ControlFlowOp::Metadata => {
+                    ControlFlowOp::ConfigurablesOffsetPlaceholder => {
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::Metadata,
+                            opcode: AllocatedOpcode::ConfigurablesOffsetPlaceholder,
                             owning_span: None,
                             comment: String::new(),
                         });
@@ -462,7 +462,7 @@ impl AllocatedAbstractInstructionSet {
                 2
             }
 
-            Either::Right(Metadata) => 8,
+            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
 
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
                 "fix me, pushall and popall don't really belong in control flow ops \

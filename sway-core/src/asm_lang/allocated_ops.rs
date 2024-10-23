@@ -268,7 +268,7 @@ pub(crate) enum AllocatedOpcode {
 
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
-    Metadata,
+    ConfigurablesOffsetPlaceholder,
     DataSectionOffsetPlaceholder,
     LoadDataId(AllocatedRegister, DataId),
     AddrDataId(AllocatedRegister, DataId),
@@ -393,7 +393,7 @@ impl AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
-            Metadata => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             DataSectionOffsetPlaceholder => vec![],
             LoadDataId(r1, _i) => vec![r1],
             AddrDataId(r1, _i) => vec![r1],
@@ -522,7 +522,7 @@ impl fmt::Display for AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
-            Metadata => write!(fmtr, "Metadata"),
+            ConfigurablesOffsetPlaceholder => write!(fmtr, "Metadata"),
             DataSectionOffsetPlaceholder => {
                 write!(
                     fmtr,
@@ -561,7 +561,7 @@ impl fmt::Display for AllocatedOp {
 }
 
 pub(crate) enum FuelAsmData {
-    Metadata([u8; 32]),
+    ConfigurablesOffset([u8; 8]),
     DatasectionOffset([u8; 8]),
     Instructions(Vec<fuel_asm::Instruction>),
 }
@@ -735,11 +735,8 @@ impl AllocatedOp {
                         .collect(),
                 )
             }
-            Metadata => {
-                return FuelAsmData::Metadata([
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0,
-                ])
+            ConfigurablesOffsetPlaceholder => {
+                return FuelAsmData::ConfigurablesOffset([0, 0, 0, 0, 0, 0, 0, 0])
             }
             DataSectionOffsetPlaceholder => {
                 return FuelAsmData::DatasectionOffset(offset_to_data_section.to_be_bytes())
