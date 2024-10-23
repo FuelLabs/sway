@@ -939,6 +939,26 @@ fn math_u8_overflow_add() {
 }
 
 #[test]
+fn math_u8_underflow_sub() {
+    assert((u8::max() - u8::max()) == 0u8);
+    assert((u8::min() - u8::min()) == 0u8);
+    assert((10u8 - 5u8) == 5u8);
+    
+    let _ = disable_panic_on_overflow();
+
+    let a = 0u8;
+    let b = 1u8;
+
+    let c = a - b;
+    assert(c == u8::max());
+
+    let d = u8::max();
+
+    let e = a - d;
+    assert(e == b);
+}
+
+#[test]
 fn math_u16_overflow_add() {
     let _ = disable_panic_on_overflow();
 
