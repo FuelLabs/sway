@@ -2213,7 +2213,7 @@ fn garbage_collection_minimal_script() {
 #[test]
 fn run_all_garbage_collection_tests() {
     let base_dir = sway_workspace_dir().join(e2e_language_dir());
-    let entries: Vec<_> = std::fs::read_dir(&base_dir)
+    let entries: Vec<_> = std::fs::read_dir(base_dir)
         .unwrap()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
@@ -2271,11 +2271,7 @@ fn run_all_garbage_collection_tests() {
             println!("- {} (Error: {})", name, error.as_ref().unwrap());
         }
 
-        assert!(
-            false,
-            "{} projects failed garbage collection testing",
-            failed
-        );
+        panic!("{} projects failed garbage collection testing", failed);
     }
 }
 
