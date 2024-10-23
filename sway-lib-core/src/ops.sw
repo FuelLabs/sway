@@ -199,20 +199,31 @@ impl Subtract for u64 {
 
 impl Subtract for u32 {
     fn subtract(self, other: Self) -> Self {
-        // any non-64-bit value is compiled to a u64 value under-the-hood
-        // constants (like Self::max() below) are also automatically promoted to u64
-        let res = __sub(self, other);
-        // integer underflow
-        if __gt(res, Self::max()) {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __sub(self_u64, other_u64);
+        let max_u32_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u32_u64) {
             if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
-                __mod(res, __add(Self::max(), 1))
+                // res % (Self::max() + 1)
+                let res_u64 = __mod(res_u64, __add(max_u32_u64, 1));
+                asm(input: res_u64) {
+                    input: u32
+                }
             }
         } else {
-            // no overflow
-            res
+            asm(input: res_u64) {
+                input: u32
+            }
         }
     }
 }
