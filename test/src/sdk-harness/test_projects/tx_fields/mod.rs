@@ -871,6 +871,9 @@ mod tx {
             TxPolicies::default(),
         );
 
+        wallet.add_witnesses(&mut builder).unwrap();
+        wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+
         // Prepare the predicate
         let witnesses = builder.witnesses().clone();
         let predicate_data = TestTxWitnessPredicateEncoder::new(EncoderConfig {
@@ -931,6 +934,10 @@ mod tx {
         builder
             .outputs
             .push(predicate_output.get(0).unwrap().clone());
+
+        let tx = builder.build(provider.clone()).await.unwrap();
+
+        provider.send_transaction(tx).await.unwrap();
 
         // The predicate has spent it's funds
         let predicate_balance = predicate
