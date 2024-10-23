@@ -95,7 +95,7 @@ struct SingletonTypeSourceInfos {
 /// Inserting [TypeInfo]s into the type engine returns a [TypeId] that can later be used
 /// to get the same [TypeInfo] by using the [TypeEngine::get] method.
 ///
-/// Properly using various inserting methods is crucial for the optimal work of the type engine.
+/// Properly using the various inserting methods is crucial for the optimal work of the type engine.
 ///
 /// These methods are grouped by the following convention and are intended to be used in the
 /// order of precedence given below:
@@ -616,7 +616,7 @@ impl TypeEngine {
 
     /// Inserts a new [TypeInfo::Alias] into the [TypeEngine] and returns its [TypeId].
     ///
-    /// [TypeInfo::ContractCaller] is not a shareable type and the method
+    /// [TypeInfo::Alias] is not a shareable type and the method
     /// guarantees that a new (or unused) [TypeId] will be returned on every
     /// call.
     pub(crate) fn new_alias(&self, engines: &Engines, name: Ident, ty: TypeArgument) -> TypeId {
