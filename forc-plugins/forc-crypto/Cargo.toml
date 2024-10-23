@@ -34,8 +34,8 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process"] 
 tracing.workspace = true
 
 [dev-dependencies]
-tempfile.workspace = true
 criterion = "0.5"
+tempfile.workspace = true
 
 [[bench]]
 name = "bench_main"
