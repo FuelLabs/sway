@@ -121,7 +121,7 @@ pub fn handler(args: Arg) -> anyhow::Result<serde_json::Value> {
 
     let duration = start_time.elapsed();
     println!(
-        "Successfully found vanity address in {:.3} seconds.",
+        "Successfully found vanity address in {:.3} seconds.\n",
         duration.as_secs_f64()
     );
 
@@ -150,31 +150,38 @@ pub fn find_vanity_address_with_timeout<T: VanityMatcher>(
     use_mnemonic: bool,
     timeout_secs: Option<u64>,
 ) -> anyhow::Result<(Address, SecretKey, Option<String>)> {
-    let Some(secs) = timeout_secs else {
-        return wallet_generator(use_mnemonic)
+    let generate_wallet = move || {
+        let breakpoint = if use_mnemonic { 1_000 } else { 100_000 };
+        let start = Instant::now();
+        let attempts = std::sync::atomic::AtomicUsize::new(0); // atomic for parallel iteration
+        wallet_generator(use_mnemonic)
             .find_any(|result| {
+                let current = attempts.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                if current != 0 && current % breakpoint == 0 {
+                    let elapsed = start.elapsed().as_secs_f64();
+                    let rate = current as f64 / elapsed;
+                    println!(
+                        "└─ tried {} addresses ({:.2} addresses/sec)...",
+                        current, rate
+                    );
+                }
+
                 if let Ok((addr, _, _)) = result {
                     matcher.is_match(addr)
                 } else {
                     false
                 }
             })
-            .ok_or_else(|| VanityAddressError::GenerationFailed)?;
+            .ok_or_else(|| VanityAddressError::GenerationFailed)?
+    };
+
+    let Some(secs) = timeout_secs else {
+        return generate_wallet();
     };
 
     // Run the async timeout logic in the runtime
     Runtime::new()?.block_on(async {
-        let generation_task = tokio::task::spawn_blocking(move || {
-            wallet_generator(use_mnemonic)
-                .find_any(|result| {
-                    if let Ok((addr, _, _)) = result {
-                        matcher.is_match(addr)
-                    } else {
-                        false
-                    }
-                })
-                .ok_or_else(|| VanityAddressError::GenerationFailed)
-        });
+        let generation_task = tokio::task::spawn_blocking(move || generate_wallet());
 
         let abort_handle = generation_task.abort_handle();
         let timeout_duration = Duration::from_secs(secs);
@@ -191,7 +198,7 @@ pub fn find_vanity_address_with_timeout<T: VanityMatcher>(
                 Err(VanityAddressError::Timeout(secs).into())
             }
         }
-    })?
+    })
 }
 
 /// Returns an infinite parallel iterator which yields addresses.
