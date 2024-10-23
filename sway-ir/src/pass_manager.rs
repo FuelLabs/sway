@@ -427,6 +427,7 @@ pub fn create_o1_pass_group() -> PassGroup {
     o1.append_pass(SIMPLIFY_CFG_NAME);
     o1.append_pass(FN_DCE_NAME);
     o1.append_pass(DCE_NAME);
+    o1.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
 
     o1
 }
