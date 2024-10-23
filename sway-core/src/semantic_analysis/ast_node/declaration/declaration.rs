@@ -157,8 +157,7 @@ impl TyDecl {
                 let fn_decl = engines.pe().get_function(&decl_id);
                 let span = fn_decl.span.clone();
 
-                let mut ctx =
-                    ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+                let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
                 let fn_decl = match ty::TyFunctionDecl::type_check(
                     handler,
                     ctx.by_ref(),
@@ -444,11 +443,8 @@ impl TyDecl {
 
                             let mut key_ty_expression = None;
                             if let Some(key_expression) = key_expression {
-                                let mut key_ctx = ctx.with_type_annotation(engines.te().insert(
-                                    engines,
-                                    TypeInfo::B256,
-                                    None,
-                                ));
+                                let mut key_ctx =
+                                    ctx.with_type_annotation(engines.te().id_of_b256());
 
                                 key_ty_expression = Some(ty::TyExpression::type_check(
                                     handler,
@@ -522,9 +518,7 @@ impl TyDecl {
                 // Resolve the type that the type alias replaces
                 let new_ty = ctx
                     .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
-                    .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                    .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
                 // create the type alias decl using the resolved type above
                 let decl = ty::TyTypeAliasDecl {

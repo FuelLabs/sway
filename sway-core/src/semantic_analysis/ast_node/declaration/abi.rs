@@ -79,6 +79,8 @@ impl ty::TyAbiDecl {
         // so we don't support the case of calling a contract's own interface
         // from itself. This is by design.
 
+        // The span of the `abi_decl` `name` points to the file (use site) in which
+        // the ABI is getting declared, so we can use it as the `use_site_span`.
         let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
         let self_type_id = self_type_param.type_id;
 

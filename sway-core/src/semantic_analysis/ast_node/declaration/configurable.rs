@@ -19,7 +19,6 @@ use crate::{
     },
     semantic_analysis::*,
     EnforceTypeArguments, Engines, SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding,
-    TypeInfo,
 };
 
 impl ty::TyConfigurableDecl {
@@ -68,7 +67,7 @@ impl ty::TyConfigurableDecl {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         type_ascription.type_id.subst(&ctx.subst_ctx());
@@ -84,7 +83,7 @@ impl ty::TyConfigurableDecl {
         let (value, decode_fn) = if ctx.experimental.new_encoding {
             let mut ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::RawUntypedSlice, None))
+                .with_type_annotation(type_engine.id_of_raw_slice())
                 .with_help_text("Configurables must evaluate to slices.");
 
             let value = value.map(|value| {
@@ -93,21 +92,9 @@ impl ty::TyConfigurableDecl {
             });
 
             let mut arguments = VecDeque::default();
-            arguments.push_back(
-                engines
-                    .te()
-                    .insert(engines, TypeInfo::RawUntypedSlice, None),
-            );
-            arguments.push_back(engines.te().insert(
-                engines,
-                TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
-                None,
-            ));
-            arguments.push_back(
-                engines
-                    .te()
-                    .insert(engines, TypeInfo::RawUntypedSlice, None),
-            );
+            arguments.push_back(engines.te().id_of_raw_slice());
+            arguments.push_back(engines.te().id_of_u64());
+            arguments.push_back(engines.te().id_of_raw_slice());
 
             let value_span = value
                 .as_ref()

@@ -17,7 +17,6 @@ impl ty::TyFunctionParameter {
         parameter: FunctionParameter,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         let FunctionParameter {
             name,
@@ -35,7 +34,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         type_argument.type_id.check_type_parameter_bounds(
             handler,
@@ -71,7 +70,6 @@ impl ty::TyFunctionParameter {
         parameter: &FunctionParameter,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         let FunctionParameter {
             name,
@@ -90,7 +88,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         let typed_parameter = ty::TyFunctionParameter {
             name: name.clone(),

@@ -170,11 +170,7 @@ impl TraitConstraint {
                     EnforceTypeArguments::Yes,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    ctx.engines
-                        .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
         }
 
         Ok(())
