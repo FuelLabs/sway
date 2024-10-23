@@ -70,7 +70,7 @@ async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathB
     uri
 }
 
-async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
+pub async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
     let _ = lsp::shutdown_request(service).await;
     lsp::exit_notification(service).await;
 }
@@ -255,56 +255,6 @@ fn did_change_stress_test_random_wait() {
                 "did_change_stress_test_random_wait did not complete within the timeout period."
             );
         }
-    });
-}
-
-async fn garbage_collection_runner(path: PathBuf) {
-    setup_panic_hook();
-    let (mut service, _) = LspService::new(ServerState::new);
-    let uri = init_and_open(&mut service, path).await;
-    let times = 20;
-
-    // Initialize cursor position
-    let mut cursor_line = 1;
-
-    for version in 1..times {
-        //eprintln!("version: {}", version);
-        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
-        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
-        if version == 0 {
-            service.inner().wait_for_parsing().await;
-        }
-        // wait for a random amount of time to simulate typing
-        random_delay().await;
-    }
-    shutdown_and_exit(&mut service).await;
-}
-
-#[test]
-fn garbage_collection_storage() {
-    let p = sway_workspace_dir()
-        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
-        .join("src/main.sw");
-    run_async!({
-        garbage_collection_runner(p).await;
-    });
-}
-
-#[test]
-fn garbage_collection_paths() {
-    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
-    run_async!({
-        garbage_collection_runner(p).await;
-    });
-}
-
-#[test]
-fn garbage_collection_minimal_script() {
-    let p = sway_workspace_dir()
-        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
-        .join("src/main.sw");
-    run_async!({
-        garbage_collection_runner(p).await;
     });
 }
 
@@ -2187,11 +2137,63 @@ fn test_url_to_session_existing_session() {
     });
 }
 
+//------------------- GARBAGE COLLECTION TESTS -------------------//
+
+async fn garbage_collection_runner(path: PathBuf) {
+    setup_panic_hook();
+    let (mut service, _) = LspService::new(ServerState::new);
+    let uri = init_and_open(&mut service, path).await;
+    let times = 20;
+
+    // Initialize cursor position
+    let mut cursor_line = 1;
+
+    for version in 1..times {
+        //eprintln!("version: {}", version);
+        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
+        }
+        // wait for a random amount of time to simulate typing
+        random_delay().await;
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+#[test]
+fn garbage_collection_storage() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_paths() {
+    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_minimal_script() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
 /// Tests garbage collection across all language test examples in parallel.
-/// 
+///
 /// # Overview
 /// This test suite takes a unique approach to handling test isolation and error reporting:
-/// 
+///
 /// 1. Process Isolation: Each test is run in its own process to ensure complete isolation
 ///    between test runs. This allows us to catch all failures rather than stopping at
 ///    the first panic or error.
@@ -2278,7 +2280,7 @@ fn run_all_garbage_collection_tests() {
 }
 
 /// Individual test runner executed in a separate process for each test.
-/// 
+///
 /// This function is called by the main test runner through a new process invocation
 /// for each test file. The file path is passed via the TEST_FILE environment
 /// variable to maintain process isolation.
