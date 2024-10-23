@@ -1,11 +1,16 @@
-use anyhow::{anyhow, Result};
 use fuel_crypto::{fuel_types::Address, PublicKey, SecretKey};
 use fuels_accounts::wallet::{generate_mnemonic_phrase, DEFAULT_DERIVATION_PATH_PREFIX};
 use fuels_core::types::bech32::{Bech32Address, FUEL_BECH32_HRP};
 use rayon::iter::{self, Either, ParallelIterator};
 use regex::Regex;
 use serde_json::json;
-use std::{fs, path::PathBuf, time::Instant};
+use std::{
+    error::Error,
+    fmt, fs,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
+use tokio::runtime::Runtime;
 
 forc_util::cli_examples! {
     crate::Command {
@@ -28,6 +33,10 @@ pub struct Arg {
     #[arg(long, value_name = "PATTERN")]
     pub ends_with: Option<String>,
 
+    /// Timeout in seconds for address generation
+    #[arg(long, value_name = "SECONDS")]
+    pub timeout: Option<u64>,
+
     /// Return mnemonic with address (default false)
     #[arg(long)]
     pub mnemonic: bool,
@@ -37,12 +46,13 @@ pub struct Arg {
     pub save_path: Option<PathBuf>,
 }
 
-pub fn handler(args: Arg) -> Result<serde_json::Value> {
+pub fn handler(args: Arg) -> anyhow::Result<serde_json::Value> {
     let Arg {
         starts_with,
         ends_with,
         mnemonic,
         save_path,
+        timeout,
     } = args;
 
     let mut left_exact_hex = None;
@@ -66,42 +76,48 @@ pub fn handler(args: Arg) -> Result<serde_json::Value> {
     println!("Starting to generate vanity address...");
     let start_time = Instant::now();
 
-    let (address, secret_key, mnemonic) =
-        match (left_exact_hex, left_regex, right_exact_hex, right_regex) {
-            (Some(left), _, Some(right), _) => {
-                let matcher = HexMatcher { left, right };
-                find_vanity_address(matcher, mnemonic)
-            }
-            (Some(left), _, _, Some(right)) => {
-                let matcher = LeftExactRightRegexMatcher { left, right };
-                find_vanity_address(matcher, mnemonic)
-            }
-            (_, Some(left), _, Some(right)) => {
-                let matcher = RegexMatcher { left, right };
-                find_vanity_address(matcher, mnemonic)
-            }
-            (_, Some(left), Some(right), _) => {
-                let matcher = LeftRegexRightExactMatcher { left, right };
-                find_vanity_address(matcher, mnemonic)
-            }
-            (Some(left), None, None, None) => {
-                let matcher = LeftHexMatcher { left };
-                find_vanity_address(matcher, mnemonic)
-            }
-            (None, None, Some(right), None) => {
-                let matcher = RightHexMatcher { right };
-                find_vanity_address(matcher, mnemonic)
-            }
-            (None, Some(re), None, None) => {
-                let matcher = SingleRegexMatcher { re };
-                find_vanity_address(matcher, mnemonic)
-            }
-            (None, None, None, Some(re)) => {
-                let matcher = SingleRegexMatcher { re };
-                find_vanity_address(matcher, mnemonic)
-            }
-            _ => return Err(anyhow!("Invalid pattern combination")),
-        }?;
+    let result = match (left_exact_hex, left_regex, right_exact_hex, right_regex) {
+        (Some(left), _, Some(right), _) => {
+            let matcher = HexMatcher { left, right };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        (Some(left), _, _, Some(right)) => {
+            let matcher = LeftExactRightRegexMatcher { left, right };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        (_, Some(left), _, Some(right)) => {
+            let matcher = RegexMatcher { left, right };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        (_, Some(left), Some(right), _) => {
+            let matcher = LeftRegexRightExactMatcher { left, right };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        (Some(left), None, None, None) => {
+            let matcher = LeftHexMatcher { left };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        (None, None, Some(right), None) => {
+            let matcher = RightHexMatcher { right };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        (None, Some(re), None, None) => {
+            let matcher = SingleRegexMatcher { re };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        (None, None, None, Some(re)) => {
+            let matcher = SingleRegexMatcher { re };
+            find_vanity_address_with_timeout(matcher, mnemonic, timeout)
+        }
+        _ => {
+            return Err(VanityAddressError::InvalidPattern(
+                "Invalid pattern combination".to_string(),
+            )
+            .into())
+        }
+    };
+
+    let (address, secret_key, mnemonic) = result?;
 
     let duration = start_time.elapsed();
     println!(
@@ -129,32 +145,65 @@ pub fn handler(args: Arg) -> Result<serde_json::Value> {
     Ok(result)
 }
 
-/// Generates random wallets until `matcher` matches the wallet address, returning the wallet.
-pub fn find_vanity_address<T: VanityMatcher>(
+pub fn find_vanity_address_with_timeout<T: VanityMatcher>(
     matcher: T,
     use_mnemonic: bool,
-) -> Result<(Address, SecretKey, Option<String>)> {
-    wallet_generator(use_mnemonic)
-        .find_any(|result| {
-            if let Ok((addr, _, _)) = result {
-                matcher.is_match(addr)
-            } else {
-                false
+    timeout_secs: Option<u64>,
+) -> anyhow::Result<(Address, SecretKey, Option<String>)> {
+    let Some(secs) = timeout_secs else {
+        return wallet_generator(use_mnemonic)
+            .find_any(|result| {
+                if let Ok((addr, _, _)) = result {
+                    matcher.is_match(addr)
+                } else {
+                    false
+                }
+            })
+            .ok_or_else(|| VanityAddressError::GenerationFailed)?;
+    };
+
+    // Run the async timeout logic in the runtime
+    Runtime::new()?.block_on(async {
+        let generation_task = tokio::task::spawn_blocking(move || {
+            wallet_generator(use_mnemonic)
+                .find_any(|result| {
+                    if let Ok((addr, _, _)) = result {
+                        matcher.is_match(addr)
+                    } else {
+                        false
+                    }
+                })
+                .ok_or_else(|| VanityAddressError::GenerationFailed)
+        });
+
+        let abort_handle = generation_task.abort_handle();
+        let timeout_duration = Duration::from_secs(secs);
+
+        tokio::select! {
+            result = generation_task => {
+                match result {
+                    Ok(wallet_result) => wallet_result.map_err(Into::<anyhow::Error>::into),
+                    Err(_e) => Err(VanityAddressError::GenerationFailed.into()),
+                }
             }
-        })
-        .ok_or_else(|| anyhow!("Failed to generate a matching address"))?
+            _ = tokio::time::sleep(timeout_duration) => {
+                abort_handle.abort();
+                Err(VanityAddressError::Timeout(secs).into())
+            }
+        }
+    })?
 }
 
 /// Returns an infinite parallel iterator which yields addresses.
 #[inline]
 fn wallet_generator(
     use_mnemonic: bool,
-) -> impl ParallelIterator<Item = Result<(Address, SecretKey, Option<String>)>> {
+) -> impl ParallelIterator<Item = anyhow::Result<(Address, SecretKey, Option<String>)>> {
     iter::repeat(()).map(move |()| generate_wallet(use_mnemonic))
 }
 
 /// Generates an address, secret key, and optionally a mnemonic.
-fn generate_wallet(use_mnemonic: bool) -> Result<(Address, SecretKey, Option<String>)> {
+fn generate_wallet(use_mnemonic: bool) -> anyhow::Result<(Address, SecretKey, Option<String>)> {
     let mut rng = rand::thread_rng();
 
     let (private_key, mnemonic) = if use_mnemonic {
@@ -175,7 +224,7 @@ fn generate_wallet(use_mnemonic: bool) -> Result<(Address, SecretKey, Option<Str
     Ok((address.into(), private_key, mnemonic))
 }
 
-pub trait VanityMatcher: Send + Sync {
+pub trait VanityMatcher: Send + Sync + 'static {
     fn is_match(&self, addr: &Address) -> bool;
 }
 
@@ -271,10 +320,13 @@ impl VanityMatcher for RegexMatcher {
     }
 }
 
-fn parse_pattern(pattern: &str, is_start: bool) -> Result<Either<Vec<u8>, Regex>> {
+fn parse_pattern(pattern: &str, is_start: bool) -> anyhow::Result<Either<Vec<u8>, Regex>> {
     if let Ok(decoded) = hex::decode(pattern) {
         if decoded.len() > 32 {
-            return Err(anyhow!("Hex pattern must be less than 32 bytes"));
+            return Err(VanityAddressError::InvalidPattern(
+                "Hex pattern must be less than 32 bytes".to_string(),
+            )
+            .into());
         }
         Ok(Either::Left(decoded))
     } else {
@@ -283,7 +335,7 @@ fn parse_pattern(pattern: &str, is_start: bool) -> Result<Either<Vec<u8>, Regex>
             .chars()
             .all(|c| c.is_ascii_hexdigit() || c == '^' || c == '$')
         {
-            return Err(anyhow!("Invalid hex pattern: {}", pattern));
+            return Err(VanityAddressError::InvalidPattern(format!("pattern: {}", pattern)).into());
         }
 
         // Case-insensitive regex pattern
@@ -298,6 +350,30 @@ fn parse_pattern(pattern: &str, is_start: bool) -> Result<Either<Vec<u8>, Regex>
     }
 }
 
+// Custom error type for vanity address generation
+#[derive(Debug)]
+pub enum VanityAddressError {
+    Timeout(u64),
+    GenerationFailed,
+    InvalidPattern(String),
+}
+
+impl fmt::Display for VanityAddressError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Timeout(secs) => write!(
+                f,
+                "Vanity address generation timed out after {} seconds",
+                secs
+            ),
+            Self::GenerationFailed => write!(f, "No matching address found"),
+            Self::InvalidPattern(msg) => write!(f, "Invalid pattern: {}", msg),
+        }
+    }
+}
+
+impl Error for VanityAddressError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,6 +385,7 @@ mod tests {
             ends_with: None,
             mnemonic: false,
             save_path: None,
+            timeout: None,
         };
         let result = handler(args);
         assert!(
@@ -324,6 +401,7 @@ mod tests {
             ends_with: None,
             mnemonic: false,
             save_path: None,
+            timeout: None,
         };
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap();
@@ -337,6 +415,7 @@ mod tests {
             ends_with: Some("00".to_string()),
             mnemonic: false,
             save_path: None,
+            timeout: None,
         };
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap();
@@ -350,6 +429,7 @@ mod tests {
             ends_with: Some("b".to_string()),
             mnemonic: false,
             save_path: None,
+            timeout: None,
         };
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap();
@@ -365,6 +445,7 @@ mod tests {
             ends_with: Some("B".to_string()),
             mnemonic: false,
             save_path: None,
+            timeout: None,
         };
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap();
@@ -379,6 +460,7 @@ mod tests {
             ends_with: None,
             mnemonic: true,
             save_path: None,
+            timeout: None,
         };
         let result = handler(args).unwrap();
         assert!(
@@ -407,6 +489,7 @@ mod tests {
             ends_with: None,
             mnemonic: false,
             save_path: Some(tmp.path().to_path_buf()),
+            timeout: None,
         };
         handler(args).unwrap();
         assert!(tmp.path().exists(), "File should exist");
@@ -429,12 +512,16 @@ mod tests {
             ends_with: None,
             mnemonic: false,
             save_path: None,
+            timeout: None,
         };
         let result = handler(args);
         assert!(
             result.is_err(),
             "Handler should fail with invalid hex pattern"
         );
-        assert_eq!(result.unwrap_err().to_string(), "Invalid hex pattern: X");
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid pattern: pattern: X"
+        );
     }
 }

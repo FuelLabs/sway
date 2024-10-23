@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use forc_crypto::keys::vanity::{find_vanity_address, VanityMatcher};
+use forc_crypto::keys::vanity::{find_vanity_address_with_timeout, VanityMatcher};
 use fuel_crypto::fuel_types::Address;
 
 struct SimpleMatcher;
@@ -17,14 +17,14 @@ fn benchmark_vanity_address(c: &mut Criterion) {
     group.bench_function("Vanity Address (first byte 0xff)", |b| {
         b.iter(|| {
             let matcher = SimpleMatcher;
-            find_vanity_address(black_box(matcher), false)
+            find_vanity_address_with_timeout(black_box(matcher), false, None)
         })
     });
 
     group.bench_function("Vanity Address with Mnemonic (first byte 0xff)", |b| {
         b.iter(|| {
             let matcher = SimpleMatcher;
-            find_vanity_address(black_box(matcher), true)
+            find_vanity_address_with_timeout(black_box(matcher), true, None)
         })
     });
 
