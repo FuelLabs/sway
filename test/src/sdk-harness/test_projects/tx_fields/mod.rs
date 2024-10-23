@@ -2055,13 +2055,6 @@ mod outputs {
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
                 provider.send_transaction(tx).await.unwrap();
-
-                // The predicate has spent it's funds
-                let predicate_balance = predicate
-                    .get_asset_balance(&provider.base_asset_id())
-                    .await
-                    .unwrap();
-                assert_eq!(predicate_balance, 0);
             }
             let mut builder = UpgradeTransactionBuilder::prepare_state_transition_upgrade(
                 root,
@@ -2129,6 +2122,13 @@ mod outputs {
             let tx = builder.build(provider.clone()).await.unwrap();
 
             provider.send_transaction(tx).await.unwrap();
+
+            // The predicate has spent it's funds
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
+            assert_eq!(predicate_balance, 0);
         }
 
         #[tokio::test]
