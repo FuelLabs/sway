@@ -28,8 +28,8 @@ const TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH: &str =
 const TX_OUTPUT_COUNT_PREDICATE_BYTECODE_PATH: &str =
     "test_artifacts/tx_output_count_predicate/out/release/tx_output_count_predicate.bin";
 
-use crate::tx_fields::Transaction as SwayTransaction;
 use crate::tx_fields::Output as SwayOutput;
+use crate::tx_fields::Transaction as SwayTransaction;
 
 abigen!(
     Contract(
@@ -172,7 +172,10 @@ async fn generate_predicate_inputs(
     (predicate_code, predicate_input, predicate_message)
 }
 
-async fn setup_output_predicate(index: u64, expected_output_type: SwayOutput) -> (WalletUnlocked, WalletUnlocked, Predicate, AssetId, AssetId) {
+async fn setup_output_predicate(
+    index: u64,
+    expected_output_type: SwayOutput,
+) -> (WalletUnlocked, WalletUnlocked, Predicate, AssetId, AssetId) {
     let asset_id1 = AssetId::default();
     let asset_id2 = AssetId::new([2u8; 32]);
     let wallets_config = WalletsConfig::new_multiple_assets(
@@ -201,7 +204,12 @@ async fn setup_output_predicate(index: u64, expected_output_type: SwayOutput) ->
     let wallet2 = wallets.pop().unwrap();
 
     let predicate_data = TestOutputPredicateEncoder::default()
-        .encode_data(index, Bits256([0u8; 32]), Bits256(*wallet1.address().hash()), expected_output_type)
+        .encode_data(
+            index,
+            Bits256([0u8; 32]),
+            Bits256(*wallet1.address().hash()),
+            expected_output_type,
+        )
         .unwrap();
 
     let predicate = Predicate::load_from(TX_OUTPUT_PREDICATE_BYTECODE_PATH)
@@ -778,19 +786,18 @@ mod tx {
 
         // Inputs for predicate
         let predicate_input = predicate
-        .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
-        .await
-        .unwrap();
+            .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+            .await
+            .unwrap();
 
         // Outputs for predicate
-        let predicate_output = wallet.get_asset_outputs_for_amount(
-            &wallet.address(),
-            *provider.base_asset_id(),
-            1,
-        );
+        let predicate_output =
+            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
 
-        let mut builder =
-        UpgradeTransactionBuilder::prepare_state_transition_upgrade(root, TxPolicies::default());
+        let mut builder = UpgradeTransactionBuilder::prepare_state_transition_upgrade(
+            root,
+            TxPolicies::default(),
+        );
 
         // Append the predicate to the transaction
         builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -849,8 +856,10 @@ mod tx {
             provider.send_transaction(tx).await.unwrap();
         }
 
-        let mut builder =
-            UpgradeTransactionBuilder::prepare_state_transition_upgrade(root, TxPolicies::default());
+        let mut builder = UpgradeTransactionBuilder::prepare_state_transition_upgrade(
+            root,
+            TxPolicies::default(),
+        );
 
         // Prepare the predicate
         let witnesses = builder.witnesses().clone();
@@ -904,18 +913,14 @@ mod tx {
             .unwrap();
 
         // Outputs for predicate
-        let predicate_output = wallet.get_asset_outputs_for_amount(
-            &wallet.address(),
-            *provider.base_asset_id(),
-            1,
-        );
+        let predicate_output =
+            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
 
         // Append the predicate to the transaction
         builder.inputs.push(predicate_input.get(0).unwrap().clone());
         builder
             .outputs
             .push(predicate_output.get(0).unwrap().clone());
-
 
         // The predicate has spent it's funds
         let predicate_balance = predicate
@@ -1152,7 +1157,7 @@ mod inputs {
         }
 
         #[tokio::test]
-        async fn can_get_input_count_in_tx_uprade() {
+        async fn can_get_input_count_in_tx_upgrade() {
             // Prepare wallet and provider
             let mut wallet = WalletUnlocked::new_random(None);
             let num_coins = 100;
@@ -1188,18 +1193,19 @@ mod inputs {
                 provider.send_transaction(tx).await.unwrap();
             }
 
-            let mut builder =
-            UpgradeTransactionBuilder::prepare_state_transition_upgrade(root, TxPolicies::default());
+            let mut builder = UpgradeTransactionBuilder::prepare_state_transition_upgrade(
+                root,
+                TxPolicies::default(),
+            );
 
             // Prepare the predicate
             let predicate_data = TestTxInputCountPredicateEncoder::default()
-            .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
-            .unwrap();
-            let predicate: Predicate =
-                Predicate::load_from(TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH)
-                    .unwrap()
-                    .with_provider(provider.clone())
-                    .with_data(predicate_data);
+                .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
+                .unwrap();
+            let predicate: Predicate = Predicate::load_from(TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH)
+                .unwrap()
+                .with_provider(provider.clone())
+                .with_data(predicate_data);
             let predicate_coin_amount = 100;
 
             // Predicate has no funds
@@ -1250,7 +1256,7 @@ mod inputs {
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
             let tx = builder.build(provider.clone()).await.unwrap();
-        
+
             provider.send_transaction(tx).await.unwrap();
 
             // The predicate has spent it's funds
@@ -1881,7 +1887,8 @@ mod outputs {
 
         #[tokio::test]
         async fn can_get_tx_output_details() {
-            let (wallet, _, predicate, asset_id, _) = setup_output_predicate(0, SwayOutput::Coin).await;
+            let (wallet, _, predicate, asset_id, _) =
+                setup_output_predicate(0, SwayOutput::Coin).await;
 
             let balance = predicate.get_asset_balance(&asset_id).await.unwrap();
 
@@ -2042,8 +2049,6 @@ mod outputs {
                     TxPolicies::default(),
                 );
 
-
-
                 wallet.add_witnesses(&mut builder).unwrap();
                 wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
 
@@ -2058,13 +2063,15 @@ mod outputs {
                     .unwrap();
                 assert_eq!(predicate_balance, 0);
             }
-            let mut builder =
-                UpgradeTransactionBuilder::prepare_state_transition_upgrade(root, TxPolicies::default());
-            
+            let mut builder = UpgradeTransactionBuilder::prepare_state_transition_upgrade(
+                root,
+                TxPolicies::default(),
+            );
+
             // Prepare the predicate
             let predicate_data = TestTxOutputCountPredicateEncoder::default()
-            .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
-            .unwrap();
+                .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
+                .unwrap();
             let predicate: Predicate =
                 Predicate::load_from(TX_OUTPUT_COUNT_PREDICATE_BYTECODE_PATH)
                     .unwrap()
@@ -2120,35 +2127,42 @@ mod outputs {
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
             let tx = builder.build(provider.clone()).await.unwrap();
-        
+
             provider.send_transaction(tx).await.unwrap();
         }
-    
+
         #[tokio::test]
         async fn can_get_tx_output_change_details() {
             // Prepare predicate
-            let (wallet, _, predicate, asset_id, _) = setup_output_predicate(2, SwayOutput::Change).await;
+            let (wallet, _, predicate, asset_id, _) =
+                setup_output_predicate(2, SwayOutput::Change).await;
             let provider = wallet.try_provider().unwrap().clone();
 
             let balance = predicate.get_asset_balance(&asset_id).await.unwrap();
 
             // Deploy contract
-            let contract_id = Contract::load_from(TX_OUTPUT_CHANGE_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
-                .unwrap()
-                .deploy(&wallet, TxPolicies::default())
-                .await
-                .unwrap();
-    
+            let contract_id = Contract::load_from(
+                TX_OUTPUT_CHANGE_CONTRACT_BYTECODE_PATH,
+                LoadConfiguration::default(),
+            )
+            .unwrap()
+            .deploy(&wallet, TxPolicies::default())
+            .await
+            .unwrap();
+
             let instance = TxOutputChangeContract::new(contract_id.clone(), wallet.clone());
 
             // Send tokens to the contract
             let _ = wallet
                 .force_transfer_to_contract(&contract_id, 10, asset_id, TxPolicies::default())
-               .await
-               .unwrap();
+                .await
+                .unwrap();
 
             // Build transaction
-            let call_handler = instance.methods().send_assets(wallet.clone().address(), asset_id, 10);
+            let call_handler =
+                instance
+                    .methods()
+                    .send_assets(wallet.clone().address(), asset_id, 10);
             let mut tb = call_handler.transaction_builder().await.unwrap();
 
             // Inputs for predicate
@@ -2159,20 +2173,21 @@ mod outputs {
                 .unwrap();
 
             // Outputs for predicate
-            let predicate_output = wallet.get_asset_outputs_for_amount(
-                &wallet.address(),
-                asset_id,
-                transfer_amount,
-            );
+            let predicate_output =
+                wallet.get_asset_outputs_for_amount(&wallet.address(), asset_id, transfer_amount);
 
             // Append the inputs and outputs to the transaction
             tb.inputs.push(predicate_input.get(0).unwrap().clone());
             tb.outputs.push(predicate_output.get(0).unwrap().clone());
-            tb.outputs.push(SdkOutput::Change{to: wallet.address().into(), amount: 0, asset_id});
+            tb.outputs.push(SdkOutput::Change {
+                to: wallet.address().into(),
+                amount: 0,
+                asset_id,
+            });
 
             wallet.adjust_for_fee(&mut tb, 0).await.unwrap();
             tb.add_signer(wallet.clone()).unwrap();
-    
+
             let tx = tb.build(provider.clone()).await.unwrap();
             let _tx_id = provider.send_transaction(tx).await.unwrap();
 
@@ -2188,7 +2203,8 @@ mod outputs {
         #[tokio::test]
         #[should_panic]
         async fn fails_output_predicate_when_incorrect_asset() {
-            let (wallet1, _, predicate, _, asset_id2) = setup_output_predicate(0, SwayOutput::Coin).await;
+            let (wallet1, _, predicate, _, asset_id2) =
+                setup_output_predicate(0, SwayOutput::Coin).await;
 
             let transfer_amount = 10;
             predicate
@@ -2205,7 +2221,8 @@ mod outputs {
         #[tokio::test]
         #[should_panic]
         async fn fails_output_predicate_when_incorrect_to() {
-            let (_, wallet2, predicate, asset_id1, _) = setup_output_predicate(0, SwayOutput::Coin).await;
+            let (_, wallet2, predicate, asset_id1, _) =
+                setup_output_predicate(0, SwayOutput::Coin).await;
 
             let transfer_amount = 10;
             predicate
