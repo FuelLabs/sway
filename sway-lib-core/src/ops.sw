@@ -56,21 +56,31 @@ impl Add for u64 {
 // Emulate overflowing arithmetic for non-64-bit integer types
 impl Add for u32 {
     fn add(self, other: Self) -> Self {
-        // any non-64-bit value is compiled to a u64 value under-the-hood
-        // constants (like Self::max() below) are also automatically promoted to u64
-        let res = __add(self, other);
-        // integer overflow
-        if __gt(res, Self::max()) {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __add(self_u64, other_u64);
+        let max_u8_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u8_u64) {
             if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                __mod(res, __add(Self::max(), 1))
+                let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
+                asm(input: res_u64) {
+                    input: u32
+                }
             }
         } else {
-            // no overflow
-            res
+            asm(input: res_u64) {
+                input: u32
+            }
         }
     }
 }
