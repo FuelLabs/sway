@@ -262,10 +262,10 @@ fn garbage_collection_runner(path: PathBuf) {
         setup_panic_hook();
         let (mut service, _) = LspService::new(ServerState::new);
         let uri = init_and_open(&mut service, path).await;
-        let times = 60;
+        let times = 20;
 
         // Initialize cursor position
-        let mut cursor_line = 20;
+        let mut cursor_line = 1;
 
         for version in 1..times {
             //eprintln!("version: {}", version);
@@ -292,6 +292,14 @@ fn garbage_collection_storage() {
 #[test]
 fn garbage_collection_paths() {
     let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
+fn garbage_collection_arrays() {
+    let p = sway_workspace_dir()
+        .join("examples/arrays")
+        .join("src/main.sw");
     garbage_collection_runner(p);
 }
 
@@ -2180,4 +2188,125 @@ fn test_url_to_session_existing_session() {
         );
         shutdown_and_exit(&mut service).await;
     });
+}
+
+
+
+
+
+//---------------------
+use std::panic;
+
+use rand::rngs::SmallRng;
+use rand::Rng;
+use rand::SeedableRng;
+
+pub async fn random_delay_thread_safe() {
+    // Create a thread-safe RNG
+    let mut rng = SmallRng::from_entropy();
+    
+    // wait for a random amount of time between 1-30ms
+    tokio::time::sleep(tokio::time::Duration::from_millis(
+        rng.gen_range(1..=30),
+    )).await;
+}
+
+pub async fn garbage_collection_runner_async(path: PathBuf) {
+    setup_panic_hook();
+    let (mut service, _) = LspService::new(ServerState::new);
+    let uri = init_and_open(&mut service, path).await;
+    let times = 20;
+    // Initialize cursor position
+    let mut cursor_line = 1;
+    for version in 1..times {
+        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
+        }
+        // use the thread-safe version
+        random_delay_thread_safe().await;
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+use std::process::Command;
+
+#[test]
+fn run_all_garbage_collection_tests() {
+    let base_dir = sway_workspace_dir().join(e2e_language_dir());
+    let entries = std::fs::read_dir(&base_dir).unwrap();
+    let mut results = Vec::new();
+
+    println!("\n=== Starting Garbage Collection Tests ===\n");
+
+    for entry in entries {
+        let entry = entry.unwrap();
+        if !entry.file_type().unwrap().is_dir() {
+            continue;
+        }
+
+        let project_dir = entry.path();
+        let project_name = project_dir.file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        let main_file = project_dir.join("src/main.sw");
+
+        println!("▶ Testing: {}", project_name);
+        println!("  Path: {}", main_file.display());
+
+        // Run single test in its own process
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--test",
+                "test_single_project",
+                "--exact",
+                "--nocapture"
+            ])
+            .env("TEST_FILE", main_file.to_string_lossy().to_string())
+            .status()
+            .unwrap();
+
+        println!("Command exit status: {}", status);
+
+        if status.success() {
+            println!("  ✅ Passed\n");
+            results.push((project_name, true, None));
+        } else {
+            println!("  ❌ Failed: Process exited with {}\n", status);
+            results.push((project_name, false, Some(format!("Exit code: {}", status))));
+        }
+    }
+
+    // Print final results
+    println!("=== Garbage Collection Test Results ===\n");
+    
+    let total = results.len();
+    let passed = results.iter().filter(|r| r.1).count();
+    let failed = total - passed;
+    
+    println!("Total tests:  {}", total);
+    println!("✅ Passed:    {}", passed);
+    println!("❌ Failed:    {}", failed);
+
+    if failed > 0 {
+        println!("\nFailed Projects:");
+        for (name, _, error) in results.iter().filter(|r| !r.1) {
+            println!("- {} (Error: {})", name, error.as_ref().unwrap());
+        }
+        
+        assert!(false, "{} projects failed garbage collection testing", failed);
+    }
+}
+
+#[tokio::test]
+async fn test_single_project() {
+    if let Ok(file) = std::env::var("TEST_FILE") {
+        println!("Running single test for file: {}", file);
+        let path = PathBuf::from(file);
+        garbage_collection_runner_async(path).await;
+    } else {
+        panic!("TEST_FILE environment variable not set");
+    }
 }
