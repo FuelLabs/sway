@@ -3954,7 +3954,7 @@ fn statement_let_to_ast_nodes_unfold(
                             // necessarily point to a "_" string in code. E.g., in this example:
                             //   let (a, _) = (0, 0);
                             // The first `pat.span()` will point to "a", while the second one will indeed point to "_".
-                            // However, they `pat.span()` will always be in the source file in which the placeholder
+                            // However, their `pat.span()`s will always be in the source file in which the placeholder
                             // is logically situated.
                             engines.te().new_placeholder(
                                 engines,
