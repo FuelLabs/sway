@@ -59,9 +59,13 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
                     parsed_raw
                 )
             }
-            Err(fuel_asm::InvalidOpcode) if (4..12).contains(&word_ix) => {
+            Err(fuel_asm::InvalidOpcode) if word_ix == 4 || word_ix == 5 => {
                 let parsed_raw = u32::from_be_bytes([raw[0], raw[1], raw[2], raw[3]]);
-                format!("Metadata[{}] ({})", word_ix - 4, parsed_raw)
+                format!(
+                    "configurables offset {} ({})",
+                    if word_ix == 4 { "lo" } else { "hi" },
+                    parsed_raw
+                )
             }
             Ok(_) | Err(fuel_asm::InvalidOpcode) => "".into(),
         };

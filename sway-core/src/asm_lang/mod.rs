@@ -1307,7 +1307,8 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
-                ConfigurablesOffsetPlaceholder => "METADATA[0..32]\nMETADATA[32..64]".into(),
+                ConfigurablesOffsetPlaceholder =>
+                    "CONFIGURABLES_OFFSET[0..32]\nCONFIGURABLES_OFFSET[32..64]".into(),
                 LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),

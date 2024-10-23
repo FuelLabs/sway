@@ -168,18 +168,18 @@ impl AbstractProgram {
     /// -    JMPF $zero i10
     /// 2    DATA_START (0-32) (in bytes, offset from $is)
     /// -    DATA_START (32-64)
-    /// 3    METADATA (0-32)
-    /// -    METADATA (32-64)
+    /// 3    CONFIGURABLES_OFFSET (0-32)
+    /// -    CONFIGURABLES_OFFSET (32-64)
     /// 4    LW $ds $scratch 1
     /// -    ADD $ds $ds $scratch
     /// 5    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         const _: () = assert!(
-            crate::PRELUDE_METADATA_OFFSET_IN_BYTES == 16,
+            crate::PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES == 16,
             "Inconsistency in the assumption of prelude organisation"
         );
         const _: () = assert!(
-            crate::PRELUDE_METADATA_SIZE_IN_BYTES == 8,
+            crate::PRELUDE_CONFIGURABLES_SIZE_IN_BYTES == 8,
             "Inconsistency in the assumption of prelude organisation"
         );
         const _: () = assert!(
