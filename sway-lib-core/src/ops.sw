@@ -230,15 +230,31 @@ impl Subtract for u32 {
 
 impl Subtract for u16 {
     fn subtract(self, other: Self) -> Self {
-        let res = __sub(self, other);
-        if __gt(res, Self::max()) {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __sub(self_u64, other_u64);
+        let max_u16_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u16_u64) {
             if panic_on_overflow_is_enabled() {
                 __revert(0)
             } else {
-                __mod(res, __add(Self::max(), 1))
+                // overflow enabled
+                // res % (Self::max() + 1)
+                let res_u64 = __mod(res_u64, __add(max_u16_u64, 1));
+                asm(input: res_u64) {
+                    input: u16
+                }
             }
         } else {
-            res
+            asm(input: res_u64) {
+                input: u16
+            }
         }
     }
 }
