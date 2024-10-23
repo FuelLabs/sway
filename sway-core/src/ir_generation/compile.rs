@@ -20,7 +20,7 @@ use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{Ident, Spanned};
 
-use std::{collections::HashMap, sync::Arc};
+use std::{cell::Cell, collections::HashMap, sync::Arc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -359,7 +359,7 @@ pub(crate) fn compile_configurables(
                         ty,
                         ptr_ty,
                         encoded_bytes,
-                        decode_fn,
+                        decode_fn: Cell::new(decode_fn),
                         opt_metadata,
                     },
                 );
