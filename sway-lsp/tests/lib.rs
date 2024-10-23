@@ -2187,6 +2187,27 @@ fn test_url_to_session_existing_session() {
     });
 }
 
+/// Tests garbage collection across all language test examples in parallel.
+/// 
+/// # Overview
+/// This test suite takes a unique approach to handling test isolation and error reporting:
+/// 
+/// 1. Process Isolation: Each test is run in its own process to ensure complete isolation
+///    between test runs. This allows us to catch all failures rather than stopping at
+///    the first panic or error.
+///
+/// 2. Parallel Execution: Uses rayon to run tests concurrently, significantly reducing
+///    total test time from several minutes to under a minute.
+///
+/// 3. Full Coverage: Unlike traditional test approaches that stop at the first failure,
+///    this runner continues through all tests, providing a complete picture of which
+///    examples need garbage collection fixes.
+///
+/// # Implementation Details
+/// - Uses std::process::Command to spawn each test in isolation
+/// - Collects results through a thread-safe Mutex
+/// - Provides detailed error reporting for failed tests
+/// - Categorizes different types of failures (exit codes vs signals)
 #[test]
 fn run_all_garbage_collection_tests() {
     let base_dir = sway_workspace_dir().join(e2e_language_dir());
@@ -2256,6 +2277,17 @@ fn run_all_garbage_collection_tests() {
     }
 }
 
+/// Individual test runner executed in a separate process for each test.
+/// 
+/// This function is called by the main test runner through a new process invocation
+/// for each test file. The file path is passed via the TEST_FILE environment
+/// variable to maintain process isolation.
+///
+/// # Process Isolation
+/// Running each test in its own process ensures that:
+/// 1. Tests are completely isolated from each other
+/// 2. Panics in one test don't affect others
+/// 3. Resource cleanup happens automatically on process exit
 #[tokio::test]
 async fn test_single_project() {
     if let Ok(file) = std::env::var("TEST_FILE") {
