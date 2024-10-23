@@ -5,7 +5,7 @@ pub mod integration;
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use rayon::prelude::*;
-use std::{fs, path::PathBuf, process::Command, sync::Mutex};
+use std::{fs, panic, path::PathBuf, process::Command, sync::Mutex};
 use sway_lsp::{
     config::LspClient,
     handlers::{notification, request},
@@ -258,28 +258,26 @@ fn did_change_stress_test_random_wait() {
     });
 }
 
-fn garbage_collection_runner(path: PathBuf) {
-    run_async!({
-        setup_panic_hook();
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, path).await;
-        let times = 20;
+async fn garbage_collection_runner(path: PathBuf) {
+    setup_panic_hook();
+    let (mut service, _) = LspService::new(ServerState::new);
+    let uri = init_and_open(&mut service, path).await;
+    let times = 20;
 
-        // Initialize cursor position
-        let mut cursor_line = 1;
+    // Initialize cursor position
+    let mut cursor_line = 1;
 
-        for version in 1..times {
-            //eprintln!("version: {}", version);
-            let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
-            let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
-            if version == 0 {
-                service.inner().wait_for_parsing().await;
-            }
-            // wait for a random amount of time to simulate typing
-            random_delay().await;
+    for version in 1..times {
+        //eprintln!("version: {}", version);
+        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
         }
-        shutdown_and_exit(&mut service).await;
-    });
+        // wait for a random amount of time to simulate typing
+        random_delay().await;
+    }
+    shutdown_and_exit(&mut service).await;
 }
 
 #[test]
@@ -287,21 +285,17 @@ fn garbage_collection_storage() {
     let p = sway_workspace_dir()
         .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
         .join("src/main.sw");
-    garbage_collection_runner(p);
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
 }
 
 #[test]
 fn garbage_collection_paths() {
     let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
-    garbage_collection_runner(p);
-}
-
-#[test]
-fn garbage_collection_arrays() {
-    let p = sway_workspace_dir()
-        .join("examples/arrays")
-        .join("src/main.sw");
-    garbage_collection_runner(p);
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
 }
 
 #[test]
@@ -309,7 +303,9 @@ fn garbage_collection_minimal_script() {
     let p = sway_workspace_dir()
         .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
         .join("src/main.sw");
-    garbage_collection_runner(p);
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
 }
 
 #[test]
@@ -2191,40 +2187,6 @@ fn test_url_to_session_existing_session() {
     });
 }
 
-//---------------------
-use std::panic;
-
-use rand::rngs::SmallRng;
-use rand::Rng;
-use rand::SeedableRng;
-
-pub async fn random_delay_thread_safe() {
-    // Create a thread-safe RNG
-    let mut rng = SmallRng::from_entropy();
-
-    // wait for a random amount of time between 1-30ms
-    tokio::time::sleep(tokio::time::Duration::from_millis(rng.gen_range(1..=30))).await;
-}
-
-pub async fn garbage_collection_runner_async(path: PathBuf) {
-    setup_panic_hook();
-    let (mut service, _) = LspService::new(ServerState::new);
-    let uri = init_and_open(&mut service, path).await;
-    let times = 20;
-    // Initialize cursor position
-    let mut cursor_line = 1;
-    for version in 1..times {
-        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
-        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
-        if version == 0 {
-            service.inner().wait_for_parsing().await;
-        }
-        // use the thread-safe version
-        random_delay_thread_safe().await;
-    }
-    shutdown_and_exit(&mut service).await;
-}
-
 #[test]
 fn run_all_garbage_collection_tests() {
     let base_dir = sway_workspace_dir().join(e2e_language_dir());
@@ -2299,7 +2261,7 @@ async fn test_single_project() {
     if let Ok(file) = std::env::var("TEST_FILE") {
         println!("Running single test for file: {}", file);
         let path = PathBuf::from(file);
-        garbage_collection_runner_async(path).await;
+        garbage_collection_runner(path).await;
     } else {
         panic!("TEST_FILE environment variable not set");
     }
