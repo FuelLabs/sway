@@ -2231,21 +2231,23 @@ pub async fn garbage_collection_runner_async(path: PathBuf) {
 }
 
 use std::process::Command;
+use rayon::prelude::*;
+use std::sync::Mutex;
 
 #[test]
 fn run_all_garbage_collection_tests() {
     let base_dir = sway_workspace_dir().join(e2e_language_dir());
-    let entries = std::fs::read_dir(&base_dir).unwrap();
-    let mut results = Vec::new();
+    let entries: Vec<_> = std::fs::read_dir(&base_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .collect();
+
+    let results = Mutex::new(Vec::new());
 
     println!("\n=== Starting Garbage Collection Tests ===\n");
 
-    for entry in entries {
-        let entry = entry.unwrap();
-        if !entry.file_type().unwrap().is_dir() {
-            continue;
-        }
-
+    entries.par_iter().for_each(|entry| {
         let project_dir = entry.path();
         let project_name = project_dir.file_name()
             .unwrap()
@@ -2256,7 +2258,6 @@ fn run_all_garbage_collection_tests() {
         println!("▶ Testing: {}", project_name);
         println!("  Path: {}", main_file.display());
 
-        // Run single test in its own process
         let status = Command::new(std::env::current_exe().unwrap())
             .args([
                 "--test",
@@ -2268,16 +2269,18 @@ fn run_all_garbage_collection_tests() {
             .status()
             .unwrap();
 
-        println!("Command exit status: {}", status);
-
-        if status.success() {
-            println!("  ✅ Passed\n");
-            results.push((project_name, true, None));
+        let test_result = if status.success() {
+            println!("  ✅ Passed: {}\n", project_name);
+            (project_name, true, None)
         } else {
-            println!("  ❌ Failed: Process exited with {}\n", status);
-            results.push((project_name, false, Some(format!("Exit code: {}", status))));
-        }
-    }
+            println!("  ❌ Failed: {} ({})\n", project_name, status);
+            (project_name, false, Some(format!("Exit code: {}", status)))
+        };
+
+        results.lock().unwrap().push(test_result);
+    });
+
+    let results = results.into_inner().unwrap();
 
     // Print final results
     println!("=== Garbage Collection Test Results ===\n");
