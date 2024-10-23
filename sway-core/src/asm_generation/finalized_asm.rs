@@ -219,7 +219,7 @@ fn to_bytecode_mut(
                 let _: [u8; 8] = data;
 
                 bytecode.extend(data.iter().cloned());
-                half_word_ix += 8;
+                half_word_ix += 2;
             }
             FuelAsmData::Instructions(instructions) => {
                 for instruction in instructions {
