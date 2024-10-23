@@ -943,7 +943,7 @@ fn math_u8_underflow_sub() {
     assert((u8::max() - u8::max()) == 0u8);
     assert((u8::min() - u8::min()) == 0u8);
     assert((10u8 - 5u8) == 5u8);
-    
+
     let _ = disable_panic_on_overflow();
 
     let a = 0u8;
@@ -985,7 +985,7 @@ fn math_u16_underflow_sub() {
     assert((u16::max() - u16::max()) == 0u16);
     assert((u16::min() - u16::min()) == 0u16);
     assert((10u16 - 5u16) == 5u16);
-    
+
     let _ = disable_panic_on_overflow();
 
     let a = 0u16;
