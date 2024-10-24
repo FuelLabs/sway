@@ -644,28 +644,65 @@ pub(crate) fn type_check_method_application(
     {
         fn_ref = cached_fn_ref;
     } else {
-        // This handles the case of substituting the generic blanket type by call_path_typeid.
         if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
-                type_arguments: _,
+                type_arguments,
                 root_type_id: _,
             } = &*type_engine.get(t.initial_type_id)
             {
-                for p in method.type_parameters.clone() {
-                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
-                        let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![t.initial_type_id],
-                            vec![call_path_typeid],
-                        );
-                        method.subst(&SubstTypesContext::new(
-                            engines,
-                            &type_subst,
-                            !ctx.code_block_first_pass(),
-                        ));
+                let mut subst_type_parameters = vec![];
+                let mut subst_type_arguments = vec![];
+
+                let mut names_type_ids = HashMap::<Ident, TypeId>::new();
+                if let Some(type_arguments) = type_arguments {
+                    for t_arg in type_arguments.iter() {
+                        if let TypeInfo::Custom {
+                            qualified_call_path,
+                            ..
+                        } = &*type_engine.get(t_arg.initial_type_id)
+                        {
+                            names_type_ids.insert(
+                                qualified_call_path.call_path.suffix.clone(),
+                                t_arg.type_id,
+                            );
+                        }
                     }
                 }
+
+                // This handles the case of substituting the generic blanket type by call_path_typeid.
+                for p in method.type_parameters.clone() {
+                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                        subst_type_parameters.push(t.initial_type_id);
+                        subst_type_arguments.push(call_path_typeid);
+                        break;
+                    }
+                }
+
+                // This will subst inner method_application placeholders with the already resolved
+                // current method application type parameter
+                for p in method.type_parameters.clone() {
+                    if names_type_ids.contains_key(&p.name_ident) {
+                        subst_type_parameters.push(engines.te().insert(
+                            engines,
+                            TypeInfo::Placeholder(p.clone()),
+                            p.span().source_id(),
+                        ));
+                        subst_type_arguments.push(p.type_id);
+                    }
+                }
+
+                let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
+                    subst_type_parameters,
+                    subst_type_arguments,
+                );
+
+                method.subst(&SubstTypesContext::new(
+                    engines,
+                    &type_subst,
+                    !ctx.code_block_first_pass(),
+                ));
             }
         }
 
