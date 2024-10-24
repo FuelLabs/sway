@@ -195,12 +195,17 @@ impl VanityMatcher for RegexMatcher {
     }
 }
 
-/// Continuously generates wallets until a matching address is found or the timeout is reached.
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 pub fn find_vanity_address_with_timeout(
     matcher: Either<RegexMatcher, HexMatcher>,
     use_mnemonic: bool,
     timeout_secs: Option<u64>,
 ) -> anyhow::Result<(Address, SecretKey, Option<String>)> {
+    let should_stop = Arc::new(AtomicBool::new(false));
+    let should_stop_clone = should_stop.clone();
+
     let generate_wallet = move || {
         let breakpoint = if use_mnemonic { 1_000 } else { 100_000 };
         let start = Instant::now();
@@ -208,6 +213,11 @@ pub fn find_vanity_address_with_timeout(
 
         wallet_generator(use_mnemonic)
             .find_any(|result| {
+                // Check if we should stop due to timeout
+                if should_stop.load(Ordering::Relaxed) {
+                    return true; // This will cause find_any to return the current result
+                }
+
                 let current = attempts.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 if current != 0 && current % breakpoint == 0 {
                     let elapsed = start.elapsed().as_secs_f64();
@@ -236,7 +246,6 @@ pub fn find_vanity_address_with_timeout(
 
     Runtime::new()?.block_on(async {
         let generation_task = tokio::task::spawn_blocking(generate_wallet);
-        let abort_handle = generation_task.abort_handle();
 
         tokio::select! {
             result = generation_task => {
@@ -246,7 +255,10 @@ pub fn find_vanity_address_with_timeout(
                 }
             }
             _ = tokio::time::sleep(Duration::from_secs(secs)) => {
-                abort_handle.abort();
+                // Signal all threads to stop
+                should_stop_clone.store(true, Ordering::Relaxed);
+                // Wait a short time for threads to notice the stop signal
+                tokio::time::sleep(Duration::from_millis(100)).await;
                 Err(anyhow::anyhow!("Vanity address generation timed out after {} seconds", secs))
             }
         }
@@ -346,6 +358,19 @@ mod tests {
         let result = parse_args(vec!["--starts-with", "aa", "--regex", "^aa"]);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "error: the argument '--starts-with <HEX_STRING>' cannot be used with '--regex <PATTERN>'\n\nUsage: test --starts-with <HEX_STRING>\n\nFor more information, try '--help'.\n");
+    }
+
+    #[test]
+    fn test_timeout_respected() {
+        // This pattern should take a long time to generate
+        let args = parse_args(vec!["--starts-with", "fffffffffffff", "--timeout", "1"]).unwrap();
+
+        let result = handler(args);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Vanity address generation timed out after 1 seconds"
+        );
     }
 
     // Test actual functionality with minimal patterns
