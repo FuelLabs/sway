@@ -34,16 +34,6 @@ fn validate_regex_pattern(s: &str) -> Result<String, String> {
         return Err("Regex pattern too long: max 128 characters".to_string());
     }
 
-    if s.chars()
-        .any(|c| c.is_ascii() && c.to_ascii_lowercase() >= 'h' && c.to_ascii_lowercase() <= 'z')
-    {
-        return Err(
-            "Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed"
-                .to_string(),
-        );
-    }
-
-    // Verify the regex is valid
     if let Err(e) = Regex::new(&format!("(?i){}", s)) {
         return Err(format!("Invalid regex pattern: {}", e));
     }
@@ -318,13 +308,6 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_regex_pattern() {
-        let result = parse_args(vec!["--regex", "^X"]);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "error: invalid value '^X' for '--regex <PATTERN>': Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed\n\nFor more information, try '--help'.\n");
-    }
-
-    #[test]
     fn test_pattern_too_long() {
         let result = parse_args(vec![
             "--starts-with",
@@ -343,11 +326,7 @@ mod tests {
     fn test_invalid_regex_syntax() {
         let result = parse_args(vec!["--regex", "["]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid regex pattern"));
-
-        let result = parse_args(vec!["--regex", "i"]);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "error: invalid value 'i' for '--regex <PATTERN>': Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed\n\nFor more information, try '--help'.\n");
+        assert_eq!(result.unwrap_err(), "error: invalid value '[' for '--regex <PATTERN>': Invalid regex pattern: regex parse error:\n    (?i)[\n        ^\nerror: unclosed character class\n\nFor more information, try '--help'.\n");
     }
 
     #[test]
@@ -412,6 +391,15 @@ mod tests {
     #[test]
     fn test_simple_regex() {
         let args = parse_args(vec!["--regex", "^a.*b$"]).unwrap();
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap().to_lowercase();
+        assert!(address.starts_with("0xa"), "Address should start with 'a'");
+        assert!(address.ends_with('b'), "Address should end with 'b'");
+    }
+
+    #[test]
+    fn test_simple_regex_uppercase() {
+        let args = parse_args(vec!["--regex", "^A.*B$"]).unwrap();
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap().to_lowercase();
         assert!(address.starts_with("0xa"), "Address should start with 'a'");
