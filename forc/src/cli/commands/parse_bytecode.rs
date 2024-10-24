@@ -59,6 +59,14 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
                     parsed_raw
                 )
             }
+            Err(fuel_asm::InvalidOpcode) if word_ix == 4 || word_ix == 5 => {
+                let parsed_raw = u32::from_be_bytes([raw[0], raw[1], raw[2], raw[3]]);
+                format!(
+                    "configurables offset {} ({})",
+                    if word_ix == 4 { "lo" } else { "hi" },
+                    parsed_raw
+                )
+            }
             Ok(_) | Err(fuel_asm::InvalidOpcode) => "".into(),
         };
         table.add_row(Row::new(vec![
