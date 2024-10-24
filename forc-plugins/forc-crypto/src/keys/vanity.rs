@@ -5,8 +5,6 @@ use rayon::iter::{self, Either, ParallelIterator};
 use regex::Regex;
 use serde_json::json;
 use std::{
-    error::Error,
-    fmt, fs,
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -19,6 +17,35 @@ forc_util::cli_examples! {
         [ Generate a checksummed vanity address with a given prefix and suffix => "forc crypto vanity --starts-with \"00\" --ends-with \"ff\"" ]
         [ Generate a checksummed vanity address with a given regex pattern => "forc crypto vanity --regex \"^00.*ff$\"" ]
     }
+}
+
+fn validate_hex_string(s: &str) -> Result<String, String> {
+    if !s.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err("Pattern must contain only hex characters (0-9, a-f)".to_string());
+    }
+    Ok(s.to_string())
+}
+
+fn validate_regex_pattern(s: &str) -> Result<String, String> {
+    if s.len() > 128 {
+        return Err("Regex pattern too long: max 128 characters".to_string());
+    }
+
+    if s.chars()
+        .any(|c| c.is_ascii() && c.to_ascii_lowercase() >= 'h' && c.to_ascii_lowercase() <= 'z')
+    {
+        return Err(
+            "Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed"
+                .to_string(),
+        );
+    }
+
+    // Verify the regex is valid
+    if let Err(e) = Regex::new(&format!("(?i){}", s)) {
+        return Err(format!("Invalid regex pattern: {}", e));
+    }
+
+    Ok(s.to_string())
 }
 
 #[derive(Debug, clap::Parser)]
@@ -34,16 +61,17 @@ pub struct Arg {
         value_name = "HEX_STRING",
         required_unless_present = "ends_with",
         required_unless_present = "regex",
-        conflicts_with = "regex"
+        conflicts_with = "regex",
+        value_parser = validate_hex_string,
     )]
     pub starts_with: Option<String>,
 
     /// Desired hex string suffix for the address
-    #[arg(long, value_name = "HEX_STRING", conflicts_with = "regex")]
+    #[arg(long, value_name = "HEX_STRING", conflicts_with = "regex", value_parser = validate_hex_string)]
     pub ends_with: Option<String>,
 
     /// Desired regex pattern to match the entire address (case-insensitive)
-    #[arg(long, value_name = "PATTERN", conflicts_with = "starts_with")]
+    #[arg(long, value_name = "PATTERN", conflicts_with = "starts_with", value_parser = validate_regex_pattern)]
     pub regex: Option<String>,
 
     /// Timeout in seconds for address generation
@@ -59,14 +87,29 @@ pub struct Arg {
     pub save_path: Option<PathBuf>,
 }
 
+impl Arg {
+    pub fn validate(&self) -> anyhow::Result<()> {
+        let total_length = self.starts_with.as_ref().map_or(0, |s| s.len())
+            + self.ends_with.as_ref().map_or(0, |s| s.len());
+        if total_length > 64 {
+            return Err(anyhow::anyhow!(
+                "Combined pattern length exceeds 64 characters"
+            ));
+        }
+        Ok(())
+    }
+}
+
 pub fn handler(args: Arg) -> anyhow::Result<serde_json::Value> {
+    args.validate()?;
+
     let Arg {
         starts_with,
         ends_with,
         regex,
         mnemonic,
-        save_path,
         timeout,
+        save_path,
     } = args;
 
     let matcher = if let Some(pattern) = regex {
@@ -103,7 +146,7 @@ pub fn handler(args: Arg) -> anyhow::Result<serde_json::Value> {
     };
 
     if let Some(path) = save_path {
-        fs::write(path, serde_json::to_string_pretty(&result)?)?;
+        std::fs::write(path, serde_json::to_string_pretty(&result)?)?;
     }
 
     Ok(result)
@@ -120,23 +163,6 @@ pub struct HexMatcher {
 
 impl HexMatcher {
     pub fn new(prefix: &str, suffix: &str) -> anyhow::Result<Self> {
-        let total_length = prefix.len() + suffix.len();
-        if total_length > 64 {
-            return Err(VanityAddressError::InvalidHexPattern(
-                "Combined pattern length exceeds 64 characters".to_string(),
-            )
-            .into());
-        }
-
-        if !prefix.chars().all(|c| c.is_ascii_hexdigit())
-            || !suffix.chars().all(|c| c.is_ascii_hexdigit())
-        {
-            return Err(VanityAddressError::InvalidHexPattern(
-                "Patterns must contain only hex characters (0-9, a-f)".to_string(),
-            )
-            .into());
-        }
-
         Ok(Self {
             prefix: prefix.to_lowercase(),
             suffix: suffix.to_lowercase(),
@@ -157,23 +183,6 @@ pub struct RegexMatcher {
 
 impl RegexMatcher {
     pub fn new(pattern: &str) -> anyhow::Result<Self> {
-        if pattern.len() > 128 {
-            return Err(VanityAddressError::InvalidRegexPattern(
-                "Regex pattern too long: max 128 characters".to_string(),
-            )
-            .into());
-        }
-
-        if pattern
-            .chars()
-            .any(|c| c.is_ascii() && c.to_ascii_lowercase() >= 'h' && c.to_ascii_lowercase() <= 'z')
-        {
-            return Err(VanityAddressError::InvalidRegexPattern(
-                "Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed".to_string(),
-            )
-            .into());
-        }
-
         let re = Regex::new(&format!("(?i){}", pattern))?;
         Ok(Self { re })
     }
@@ -186,7 +195,7 @@ impl VanityMatcher for RegexMatcher {
     }
 }
 
-// Update the function signature to use Either
+/// Continuously generates wallets until a matching address is found or the timeout is reached.
 pub fn find_vanity_address_with_timeout(
     matcher: Either<RegexMatcher, HexMatcher>,
     use_mnemonic: bool,
@@ -218,7 +227,7 @@ pub fn find_vanity_address_with_timeout(
                     false
                 }
             })
-            .ok_or(VanityAddressError::GenerationFailed)?
+            .ok_or_else(|| anyhow::anyhow!("No matching address found"))?
     };
 
     let Some(secs) = timeout_secs else {
@@ -232,13 +241,13 @@ pub fn find_vanity_address_with_timeout(
         tokio::select! {
             result = generation_task => {
                 match result {
-                    Ok(wallet_result) => wallet_result.map_err(Into::<anyhow::Error>::into),
-                    Err(_) => Err(VanityAddressError::GenerationFailed.into()),
+                    Ok(wallet_result) => wallet_result,
+                    Err(_) => Err(anyhow::anyhow!("No matching address found")),
                 }
             }
             _ = tokio::time::sleep(Duration::from_secs(secs)) => {
                 abort_handle.abort();
-                Err(VanityAddressError::Timeout(secs).into())
+                Err(anyhow::anyhow!("Vanity address generation timed out after {} seconds", secs))
             }
         }
     })
@@ -271,31 +280,6 @@ fn generate_wallet(use_mnemonic: bool) -> anyhow::Result<(Address, SecretKey, Op
 
     Ok((address.into(), private_key, mnemonic))
 }
-
-#[derive(Debug)]
-pub enum VanityAddressError {
-    Timeout(u64),
-    GenerationFailed,
-    InvalidHexPattern(String),
-    InvalidRegexPattern(String),
-}
-
-impl fmt::Display for VanityAddressError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Timeout(secs) => write!(
-                f,
-                "Vanity address generation timed out after {} seconds",
-                secs
-            ),
-            Self::GenerationFailed => write!(f, "No matching address found"),
-            Self::InvalidHexPattern(msg) => write!(f, "Invalid hex pattern: {}", msg),
-            Self::InvalidRegexPattern(msg) => write!(f, "Invalid regex pattern: {}", msg),
-        }
-    }
-}
-
-impl Error for VanityAddressError {}
 
 #[cfg(test)]
 mod tests {
