@@ -379,7 +379,11 @@ impl PartialEqWithEngines for TypeInfo {
                     abi_name: r_abi_name,
                     address: r_address,
                 },
-            ) => l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), ctx),
+            ) => {
+                let l_address_span = l_address.as_ref().map(|x| x.span.clone());
+                let r_address_span = r_address.as_ref().map(|x| x.span.clone());
+                l_abi_name == r_abi_name && l_address_span == r_address_span
+            }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 ((l0.type_id == r0.type_id)
                     || type_engine
@@ -668,7 +672,22 @@ impl DebugWithEngines for TypeInfo {
         let s = match self {
             Unknown => "unknown".into(),
             Never => "!".into(),
-            UnknownGeneric { name, .. } => name.to_string(),
+            UnknownGeneric {
+                name,
+                trait_constraints,
+                ..
+            } => {
+                let tc_str = trait_constraints
+                    .iter()
+                    .map(|tc| engines.help_out(tc).to_string())
+                    .collect::<Vec<_>>()
+                    .join("+");
+                if tc_str.is_empty() {
+                    name.to_string()
+                } else {
+                    format!("{}:{}", name, tc_str)
+                }
+            }
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
             TypeParam(n) => format!("typeparam({n})"),
             StringSlice => "str".into(),

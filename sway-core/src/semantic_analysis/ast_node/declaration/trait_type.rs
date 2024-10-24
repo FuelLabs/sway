@@ -11,9 +11,8 @@ use crate::{
         ty::{self, TyTraitType},
     },
     semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext,
-        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckContext,
     },
     type_system::*,
     Engines,
