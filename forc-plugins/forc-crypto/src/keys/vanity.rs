@@ -25,21 +25,21 @@ forc_util::cli_examples! {
     after_help = "Generate vanity addresses for the Fuel blockchain"
 )]
 pub struct Arg {
-    /// Hex string prefix for the address
+    /// Desired hex string prefix for the address
     #[arg(
         long,
-        value_name = "HEX",
+        value_name = "HEX_STRING",
         required_unless_present = "ends_with",
         required_unless_present = "regex",
         conflicts_with = "regex"
     )]
     pub starts_with: Option<String>,
 
-    /// Hex string suffix for the address
-    #[arg(long, value_name = "HEX", conflicts_with = "regex")]
+    /// Desired hex string suffix for the address
+    #[arg(long, value_name = "HEX_STRING", conflicts_with = "regex")]
     pub ends_with: Option<String>,
 
-    /// Regex pattern to match the entire address (case-insensitive)
+    /// Desired regex pattern to match the entire address (case-insensitive)
     #[arg(long, value_name = "PATTERN", conflicts_with = "starts_with")]
     pub regex: Option<String>,
 
