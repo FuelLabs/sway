@@ -181,7 +181,7 @@ impl Root {
         dst: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
@@ -358,7 +358,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
@@ -445,7 +445,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
 
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
@@ -610,7 +610,7 @@ impl Root {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
 
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
@@ -689,8 +689,8 @@ impl Root {
         handler: &Handler,
         engines: &Engines,
         src: &ModulePath,
+        dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let dst = self.module.mod_path();
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
             // we don't check the first prefix because direct children are always accessible

@@ -597,13 +597,34 @@ fn iter_for_match(
     type_info: &TypeInfo,
 ) -> Option<TypeId> {
     let type_engine = engines.te();
+
     for (source_type, dest_type) in &type_mapping.mapping {
-        if type_engine
-            .get(*source_type)
-            .eq(type_info, &PartialEqWithEnginesContext::new(engines))
+        let source_type_info = type_engine.get(*source_type);
+
+        // Allows current placeholder(T:T1+T2) to match source placeholder(T:T1)
+        if let (
+            TypeInfo::Placeholder(source_type_param),
+            TypeInfo::Placeholder(current_type_param),
+        ) = ((*source_type_info).clone(), type_info)
         {
+            if source_type_param.name_ident.as_str() == current_type_param.name_ident.as_str()
+                && current_type_param
+                    .trait_constraints
+                    .iter()
+                    .all(|current_tc| {
+                        source_type_param.trait_constraints.iter().any(|source_tc| {
+                            source_tc.eq(current_tc, &PartialEqWithEnginesContext::new(engines))
+                        })
+                    })
+            {
+                return Some(*dest_type);
+            }
+        }
+
+        if source_type_info.eq(type_info, &PartialEqWithEnginesContext::new(engines)) {
             return Some(*dest_type);
         }
     }
+
     None
 }
