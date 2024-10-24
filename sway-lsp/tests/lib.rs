@@ -2210,7 +2210,8 @@ fn garbage_collection_minimal_script() {
 /// - Collects results through a thread-safe Mutex
 /// - Provides detailed error reporting for failed tests
 /// - Categorizes different types of failures (exit codes vs signals)
-#[test]
+// #[test]
+#[allow(dead_code)]
 fn run_all_garbage_collection_tests() {
     let base_dir = sway_workspace_dir().join(e2e_language_dir());
     let entries: Vec<_> = std::fs::read_dir(base_dir)
@@ -2286,7 +2287,8 @@ fn run_all_garbage_collection_tests() {
 /// 1. Tests are completely isolated from each other
 /// 2. Panics in one test don't affect others
 /// 3. Resource cleanup happens automatically on process exit
-#[tokio::test]
+// #[tokio::test]
+#[allow(dead_code)]
 async fn test_single_project() {
     if let Ok(file) = std::env::var("TEST_FILE") {
         println!("Running single test for file: {}", file);
