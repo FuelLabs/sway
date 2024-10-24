@@ -116,7 +116,7 @@ pub struct HexMatcher {
 }
 
 impl HexMatcher {
-    fn new(prefix: &str, suffix: &str) -> anyhow::Result<Self> {
+    pub fn new(prefix: &str, suffix: &str) -> anyhow::Result<Self> {
         let total_length = prefix.len() + suffix.len();
         if total_length > 64 {
             return Err(VanityAddressError::InvalidHexPattern(
@@ -153,7 +153,7 @@ pub struct RegexMatcher {
 }
 
 impl RegexMatcher {
-    fn new(pattern: &str) -> anyhow::Result<Self> {
+    pub fn new(pattern: &str) -> anyhow::Result<Self> {
         if pattern.len() > 128 {
             return Err(VanityAddressError::InvalidRegexPattern(
                 "Regex pattern too long: max 128 characters".to_string(),
