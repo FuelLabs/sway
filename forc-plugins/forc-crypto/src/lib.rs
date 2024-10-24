@@ -7,12 +7,13 @@ pub mod sha256;
 pub(crate) fn help() -> &'static str {
     Box::leak(
         format!(
-            "EXAMPLES:\n{}{}{}{}{}",
+            "EXAMPLES:\n{}{}{}{}{}{}",
             args::examples(),
             address::examples(),
             keys::new_key::examples(),
             keys::parse_secret::examples(),
             keys::get_public_key::examples(),
+            keys::vanity::examples(),
         )
         .into_boxed_str(),
     )
