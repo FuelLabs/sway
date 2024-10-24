@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-044245A29CAD6C26"
+
+[[package]]
+name = "import_from_private_ancestor"
+source = "member"
+dependencies = ["core"]
