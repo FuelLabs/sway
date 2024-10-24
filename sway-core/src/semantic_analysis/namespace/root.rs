@@ -319,7 +319,7 @@ impl Root {
         dst: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, src, dst)?;
 
         let src_mod = self.require_module(handler, &src.to_vec())?;
 
@@ -483,7 +483,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, src, dst)?;
         let src_mod = self.require_module(handler, &src.to_vec())?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, dst, false)?;
@@ -570,7 +570,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, src, dst)?;
 
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
@@ -740,7 +740,7 @@ impl Root {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, src, dst)?;
 
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
@@ -817,8 +817,8 @@ impl Root {
         &self,
         handler: &Handler,
         src: &ModulePath,
+        dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let dst = self.current_package.mod_path();
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
             for prefix in iter_prefixes(src) {

@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-AA6BA29B6C5ED809"
+
+[[package]]
+name = "std"
+source = "path+from-root-AA6BA29B6C5ED809"
+dependencies = ["core"]
+
+[[package]]
+name = "totalord"
+source = "member"
+dependencies = ["std"]
