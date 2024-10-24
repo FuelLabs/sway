@@ -7,6 +7,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert},
     language::{
+        parsed::Declaration,
         ty::{self},
         CallPath,
     },
@@ -231,6 +232,15 @@ pub(crate) fn type_decl_opt_to_type_id(
     let decl_engine = engines.de();
     let type_engine = engines.te();
     Ok(match type_decl_opt {
+        Some(ResolvedDeclaration::Parsed(Declaration::StructDeclaration(decl_id))) => {
+            type_engine.insert(engines, TypeInfo::UntypedStruct(decl_id), span.source_id())
+        }
+        Some(ResolvedDeclaration::Parsed(Declaration::EnumDeclaration(decl_id))) => {
+            todo!();
+        }
+        Some(ResolvedDeclaration::Parsed(Declaration::TypeAliasDeclaration(decl_id))) => {
+            todo!();
+        }
         Some(ResolvedDeclaration::Typed(ty::TyDecl::StructDecl(ty::StructDecl {
             decl_id: original_id,
             ..

@@ -413,6 +413,7 @@ impl Parse for DelineatedPathExpression {
         let DelineatedPathExpression {
             call_path_binding,
             args,
+            resolved_call_path_binding: _,
         } = self;
         adaptive_iter(&call_path_binding.inner.call_path.prefixes, |ident| {
             ctx.tokens.insert(

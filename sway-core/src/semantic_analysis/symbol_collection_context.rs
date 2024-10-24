@@ -1,7 +1,6 @@
 use crate::{
     language::{parsed::Declaration, Visibility},
-    namespace::LexicalScopeId,
-    namespace::ModulePath,
+    namespace::{LexicalScopeId, ModulePath},
     semantic_analysis::Namespace,
     Engines,
 };
@@ -10,7 +9,7 @@ use sway_types::{span::Span, Ident};
 
 use super::{ConstShadowingMode, GenericShadowingMode};
 
-#[derive(Clone)]
+//#[derive(Clone)]
 /// Contextual state tracked and accumulated throughout symbol collecting.
 pub struct SymbolCollectionContext {
     /// The namespace context accumulated throughout symbol collecting.
