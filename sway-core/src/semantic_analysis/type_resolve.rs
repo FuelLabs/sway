@@ -44,7 +44,7 @@ pub fn resolve_type(
                 resolve_call_path_and_root_type_id(
                     handler,
                     engines,
-                    namespace.module(engines),
+                    namespace.current_module(),
                     root_type_id,
                     None,
                     &qualified_call_path.clone().to_call_path(handler)?,
@@ -157,8 +157,7 @@ pub fn resolve_type(
             trait_type_id,
         } => {
             let trait_item_ref = namespace
-                .root
-                .module
+                .current_package_root_module()
                 .current_items()
                 .implemented_traits
                 .get_trait_item_for_type(handler, engines, &name, trait_type_id, None)?;
@@ -275,7 +274,7 @@ pub fn resolve_qualified_call_path(
         resolve_call_path_and_root_type_id(
             handler,
             engines,
-            &namespace.root.module,
+            &namespace.current_package_root_module(),
             root_type_id,
             as_trait_opt,
             &qualified_call_path.call_path,
@@ -309,24 +308,21 @@ pub fn resolve_call_path(
     call_path: &CallPath,
     self_type: Option<TypeId>,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    let full_path = call_path.to_fullpath(engines, namespace);
     let (decl, mod_path) = namespace
         .root
-        .resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
+        .resolve_call_path_and_mod_path(handler, engines, mod_path, &full_path, self_type)?;
 
-    // In case there is no mod path we don't need to check visibility
-    if mod_path.is_empty() {
-        return Ok(decl);
-    }
-
-    // In case there are no prefixes we don't need to check visibility
-    if call_path.prefixes.is_empty() {
-        return Ok(decl);
+    // Private declarations are visibile within their own module, so no need to check for
+    // visibility in that case
+    if mod_path == full_path.prefixes {
+	return Ok(decl);
     }
 
     // check the visibility of the call path elements
     // we don't check the first prefix because direct children are always accessible
     for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-        let module = namespace.lookup_submodule_from_absolute_path(handler, engines, prefix)?;
+        let module = namespace.require_module_from_absolute_path(handler, &prefix.to_vec())?;
         if module.visibility().is_private() {
             let prefix_last = prefix[prefix.len() - 1].clone();
             handler.emit_err(CompileError::ImportPrivateModule {
@@ -369,6 +365,8 @@ pub fn decl_to_type_info(
                 (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
             }
             _ => {
+//		    dbg!("decl_to_type_info");
+//		    dbg!(&symbol);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),

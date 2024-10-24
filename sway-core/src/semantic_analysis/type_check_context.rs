@@ -348,37 +348,42 @@ impl<'a> TypeCheckContext<'a> {
     ///
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
-        self,
+        &mut self,
+	handler: &Handler,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
-    ) -> T {
+    ) -> Result<T, ErrorEmitted> {
         let experimental = self.experimental;
 
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
-        let mut submod_ns = self.namespace.enter_submodule(
+	self.namespace.enter_submodule(
+	    handler,
             engines,
             mod_name.clone(),
             visibility,
             module_span.clone(),
-        );
+        )?;
 
         self.collection_ctx.enter_submodule(
+	    handler,
             engines,
             mod_name,
             visibility,
             module_span,
-            |submod_collection_ctx| {
+	    |submod_collection_ctx| {
                 let submod_ctx = TypeCheckContext::from_namespace(
-                    &mut submod_ns,
+                    &mut self.namespace,
                     submod_collection_ctx,
                     engines,
                     experimental,
                 );
-                with_submod_ctx(submod_ctx)
+                let ret = with_submod_ctx(submod_ctx);
+		self.namespace.pop_submodule();
+ 	        ret
             },
         )
     }
@@ -583,7 +588,7 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().current_mod_path().clone();
         monomorphize_with_modpath(
             handler,
             self.engines(),
@@ -637,7 +642,7 @@ impl<'a> TypeCheckContext<'a> {
         let collecting_unifications = self.collecting_unifications;
         let engines = self.engines();
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -659,11 +664,12 @@ impl<'a> TypeCheckContext<'a> {
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&ModulePath>,
     ) -> Result<TypeId, ErrorEmitted> {
+        let mod_path = self.namespace().current_mod_path().clone();
         resolve_type(
             handler,
             self.engines(),
             self.namespace(),
-            &self.namespace().mod_path,
+            &mod_path,
             type_id,
             span,
             enforce_type_arguments,
@@ -683,7 +689,7 @@ impl<'a> TypeCheckContext<'a> {
             handler,
             self.engines(),
             self.namespace(),
-            &self.namespace().mod_path,
+            &self.namespace().current_mod_path(),
             call_path,
             self.self_type(),
         )
@@ -698,7 +704,7 @@ impl<'a> TypeCheckContext<'a> {
             handler,
             self.engines(),
             self.namespace(),
-            &self.namespace().mod_path.clone(),
+            &self.namespace().current_mod_path().clone(),
             qualified_call_path,
             self.self_type(),
             &self.subst_ctx(),
@@ -717,6 +723,10 @@ impl<'a> TypeCheckContext<'a> {
         let type_engine = self.engines.te();
         let _decl_engine = self.engines.de();
 
+//        let type_name = self.engines.help_out(type_id).to_string();
+//	let problem = type_name == "Bytes" && item_name.as_str() == "len";
+//	if problem { dbg!(&item_prefix); };
+
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
         // message.
@@ -725,16 +735,17 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // grab the local module
-        let local_module = self.namespace().lookup_submodule_from_absolute_path(
+        let local_module = self.namespace().require_module_from_absolute_path(
             handler,
-            self.engines(),
-            &self.namespace().mod_path,
+            &self.namespace().current_mod_path,
         )?;
 
         // grab the local items from the local module
         let local_items = local_module
             .current_items()
             .get_items_for_type(self.engines, type_id);
+
+//	if problem { dbg!(&local_items); };
 
         // resolve the type
         let type_id = resolve_type(
@@ -752,10 +763,9 @@ impl<'a> TypeCheckContext<'a> {
         .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None));
 
         // grab the module where the type itself is declared
-        let type_module = self.namespace().lookup_submodule_from_absolute_path(
+        let type_module = self.namespace().require_module_from_absolute_path(
             handler,
-            self.engines(),
-            item_prefix,
+            &item_prefix.to_vec(),
         )?;
 
         // grab the items from where the type is declared
@@ -763,6 +773,8 @@ impl<'a> TypeCheckContext<'a> {
             .current_items()
             .get_items_for_type(self.engines, type_id);
 
+//	if problem { dbg!(&type_items); };
+	
         let mut items = local_items;
         items.append(&mut type_items);
 
@@ -816,11 +828,18 @@ impl<'a> TypeCheckContext<'a> {
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
 
+//        let type_name = self.engines.help_out(type_id).to_string();
+//	let problem = type_name == "Bytes" && method_name.as_str() == "len";
+//	if problem {
+//	    dbg!(&method_prefix);
+//	}
+	
         let eq_check = UnifyCheck::non_dynamic_equality(self.engines);
         let coercion_check = UnifyCheck::coercion(self.engines);
 
         // default numeric types to u64
         if type_engine.contains_numeric(decl_engine, type_id) {
+//	    if problem { dbg!("contains numeric"); };
             // While collecting unification we don't decay numeric and will ignore this error.
             if self.collecting_unifications {
                 return Err(handler.emit_err(CompileError::MethodNotFound {
@@ -835,6 +854,8 @@ impl<'a> TypeCheckContext<'a> {
         let matching_item_decl_refs =
             self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
 
+//	if problem { dbg!(&matching_item_decl_refs); }
+
         let matching_method_decl_refs = matching_item_decl_refs
             .into_iter()
             .flat_map(|item| match item {
@@ -843,6 +864,8 @@ impl<'a> TypeCheckContext<'a> {
                 ty::TyTraitItem::Type(_) => None,
             })
             .collect::<Vec<_>>();
+
+//	if problem { dbg!(&matching_method_decl_refs); }
 
         let mut qualified_call_path = None;
         let matching_method_decl_ref = {
@@ -864,6 +887,8 @@ impl<'a> TypeCheckContext<'a> {
                     maybe_method_decl_refs.push(decl_ref);
                 }
             }
+
+//	    if problem { dbg!(&maybe_method_decl_refs); }
 
             if !maybe_method_decl_refs.is_empty() {
                 let mut trait_methods =
@@ -1054,6 +1079,8 @@ impl<'a> TypeCheckContext<'a> {
             } else {
                 self.engines.help_out(type_id).to_string()
             };
+	    //	    dbg!("end");
+//	    if problem { panic!(); };
             Err(handler.emit_err(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
                 type_name,
@@ -1069,11 +1096,8 @@ impl<'a> TypeCheckContext<'a> {
         src: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .star_import(handler, engines, src, &mod_path, visibility)
+	let engines = self.engines;
+        self.namespace_mut().star_import_to_current_module(handler, engines, src, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -1084,11 +1108,8 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .variant_star_import(handler, engines, src, &mod_path, enum_name, visibility)
+	let engines = self.engines;
+        self.namespace_mut().variant_star_import_to_current_module(handler, engines, src, enum_name, visibility)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -1099,15 +1120,12 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .self_import(handler, engines, src, &mod_path, alias, visibility)
+	let engines = self.engines;
+        self.namespace_mut().self_import_to_current_module(handler, engines, src, alias, visibility)
     }
 
     // Import all impls for a struct/enum. Do nothing for other types.
-    pub(crate) fn impls_import(&mut self, handler: &Handler, engines: &Engines, type_id: TypeId) {
+    pub(crate) fn impls_import(&mut self, engines: &Engines, type_id: TypeId) {
         let type_info = engines.te().get(type_id);
 
         let decl_call_path = match &*type_info {
@@ -1124,8 +1142,8 @@ impl<'a> TypeCheckContext<'a> {
 
         let mut impls_to_insert = TraitMap::default();
 
-        let root_mod = &self.namespace().root().module;
-        let Ok(src_mod) = root_mod.lookup_submodule(handler, engines, &decl_call_path.prefixes)
+	// TODO: prepend current package name?
+	let Some(src_mod) = &self.namespace().module_from_absolute_path(&decl_call_path.prefixes)
         else {
             return;
         };
@@ -1138,7 +1156,7 @@ impl<'a> TypeCheckContext<'a> {
             engines,
         );
 
-        let dst_mod = self.namespace_mut().module_mut(engines);
+        let dst_mod = self.namespace_mut().current_module_mut();
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -1154,11 +1172,8 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .item_import(handler, engines, src, item, &mod_path, alias, visibility)
+	let engines = self.engines;
+        self.namespace_mut().item_import_to_current_module(handler, engines, src, item, alias, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -1172,15 +1187,13 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.variant_import(
+	let engines = self.engines;
+        self.namespace_mut().variant_import_to_current_module(
             handler,
             engines,
             src,
             enum_name,
             variant_name,
-            &mod_path,
             alias,
             visibility,
         )
@@ -1208,7 +1221,7 @@ impl<'a> TypeCheckContext<'a> {
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
             .collect::<Vec<_>>();
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .implemented_traits
             .insert(
@@ -1244,7 +1257,7 @@ impl<'a> TypeCheckContext<'a> {
         let trait_name = trait_name.to_fullpath(self.engines(), self.namespace());
 
         self.namespace()
-            .module(self.engines())
+            .current_module()
             .current_items()
             .implemented_traits
             .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
@@ -1259,7 +1272,7 @@ impl<'a> TypeCheckContext<'a> {
         let engines = self.engines;
         let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .implemented_traits
             .insert_for_type(engines, type_id, code_block_first_pass.into());
@@ -1274,7 +1287,7 @@ impl<'a> TypeCheckContext<'a> {
         let engines = self.engines;
         let code_block_first_pass = self.code_block_first_pass();
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .implemented_traits
             .check_if_trait_constraints_are_satisfied_for_type(

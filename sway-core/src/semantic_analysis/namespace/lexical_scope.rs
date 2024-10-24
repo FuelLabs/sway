@@ -194,6 +194,12 @@ impl Items {
         }
 
         // Symbol not found
+//	let problem = symbol.as_str() == "codec";
+//	if problem {
+//	    dbg!("resolve symbol");
+//	    dbg!(&symbol);
+//	    panic!();
+//	}
         Err(handler.emit_err(CompileError::SymbolNotFound {
             name: symbol.clone(),
             span: symbol.span(),
@@ -742,10 +748,13 @@ impl Items {
         self.symbols
             .get(name)
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
+            .ok_or_else(|| {
+//		dbg!("check symbol");
+//		dbg!(&name);
+		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
-            })
+		}})
     }
 
     pub(crate) fn check_symbols_unique_while_collecting_unifications(
@@ -756,10 +765,13 @@ impl Items {
             .read()
             .get(&name.into())
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
+            .ok_or_else(|| {
+//		dbg!("check symbols unique while collecting unifications");
+//		dbg!(&name);
+		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
-            })
+		}})
     }
 
     pub(crate) fn clear_symbols_unique_while_collecting_unifications(&self) {
