@@ -2899,7 +2899,7 @@ fn check_asm_block_validity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Engines, ExperimentalFlags};
+    use crate::{Engines, ExperimentalFeatures};
     use sway_error::type_error::TypeError;
     use symbol_collection_context::SymbolCollectionContext;
 
@@ -2908,7 +2908,7 @@ mod tests {
         engines: &Engines,
         expr: &Expression,
         type_annotation: TypeId,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let collection_ctx_ns = Namespace::new();
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
@@ -2952,9 +2952,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         )?;
         expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
         Ok(expr)
@@ -3094,9 +3092,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

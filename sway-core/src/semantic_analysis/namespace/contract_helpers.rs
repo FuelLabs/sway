@@ -29,7 +29,7 @@ pub fn default_with_contract_id(
     name: Ident,
     visibility: Visibility,
     contract_id_value: String,
-    experimental: crate::ExperimentalFlags,
+    experimental: crate::ExperimentalFeatures,
 ) -> Result<Module, vec1::Vec1<CompileError>> {
     let handler = <_>::default();
     default_with_contract_id_inner(
@@ -55,7 +55,7 @@ fn default_with_contract_id_inner(
     ns_name: Ident,
     visibility: Visibility,
     contract_id_value: String,
-    experimental: crate::ExperimentalFlags,
+    experimental: crate::ExperimentalFeatures,
 ) -> Result<Module, ErrorEmitted> {
     // it would be nice to one day maintain a span from the manifest file, but
     // we don't keep that around so we just use the span from the generated const decl instead.

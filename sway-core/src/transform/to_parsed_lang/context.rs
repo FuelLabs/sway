@@ -1,11 +1,12 @@
+use sway_features::ExperimentalFeatures;
+
 use crate::{
-    build_config::ExperimentalFlags,
     language::parsed::{Declaration, TreeType},
     BuildTarget,
 };
 
 pub struct Context {
-    pub experimental: ExperimentalFlags,
+    pub experimental: ExperimentalFeatures,
 
     /// Indicates whether the module being parsed has a `configurable` block.
     module_has_configurable_block: bool,
@@ -35,7 +36,7 @@ pub struct Context {
 
 impl Context {
     /// Create a new context.
-    pub fn new(build_target: BuildTarget, experimental: ExperimentalFlags) -> Self {
+    pub fn new(build_target: BuildTarget, experimental: ExperimentalFeatures) -> Self {
         Self {
             build_target,
             experimental,

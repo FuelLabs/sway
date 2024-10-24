@@ -24,8 +24,7 @@ use indexmap::IndexMap;
 use sway_ast::Literal;
 use sway_types::{
     constants::{
-        ALLOW_DEAD_CODE_NAME, ALLOW_DEPRECATED_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
-        CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
+        ALLOW_DEAD_CODE_NAME, ALLOW_DEPRECATED_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
     },
     Ident, Span, Spanned,
 };
@@ -92,11 +91,14 @@ impl AttributeKind {
                 ALLOW_DEAD_CODE_NAME.to_string(),
                 ALLOW_DEPRECATED_NAME.to_string(),
             ]),
-            Cfg => Some(vec![
-                CFG_TARGET_ARG_NAME.to_string(),
-                CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
-                CFG_EXPERIMENTAL_NEW_ENCODING.to_string(),
-            ]),
+            Cfg => {
+                let mut cfgs = vec![
+                    CFG_TARGET_ARG_NAME.to_string(),
+                    CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
+                ];
+                cfgs.extend(sway_features::CFG.iter().map(|x| x.to_string()));
+                Some(cfgs)
+            }
         }
     }
 }

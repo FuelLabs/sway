@@ -8,7 +8,7 @@ use clap::Parser;
 use forc::cli::shared::{PrintAsmCliOpt, PrintIrCliOpt};
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
-use sway_core::{BuildTarget, ExperimentalFlags, PrintAsm, PrintIr};
+use sway_core::{BuildTarget, PrintAsm, PrintIr};
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -61,10 +61,6 @@ struct Cli {
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
 
-    /// Disable the "new encoding" feature
-    #[arg(long)]
-    no_encoding_v1: bool,
-
     /// Update all output files
     #[arg(long)]
     update_output_files: bool,
@@ -80,6 +76,9 @@ struct Cli {
     /// Print out the final bytecode, if the verbose option is on
     #[arg(long)]
     print_bytecode: bool,
+
+    #[command(flatten)]
+    experimental: sway_features::CliFields,
 }
 
 #[derive(Debug, Clone)]
@@ -100,11 +99,11 @@ pub struct RunConfig {
     pub locked: bool,
     pub verbose: bool,
     pub release: bool,
-    pub experimental: ExperimentalFlags,
     pub update_output_files: bool,
     pub print_ir: PrintIr,
     pub print_asm: PrintAsm,
     pub print_bytecode: bool,
+    pub experimental: sway_features::CliFields,
 }
 
 #[tokio::main]
@@ -114,7 +113,7 @@ async fn main() -> Result<()> {
     // Parse args
     let cli = Cli::parse();
     let filter_config = FilterConfig {
-        include: cli.include,
+        include: cli.include.clone(),
         exclude: cli.exclude,
         skip_until: cli.skip_until,
         abi_only: cli.abi_only,
@@ -135,9 +134,7 @@ async fn main() -> Result<()> {
         verbose: cli.verbose,
         release: cli.release,
         build_target,
-        experimental: sway_core::ExperimentalFlags {
-            new_encoding: !cli.no_encoding_v1,
-        },
+        experimental: cli.experimental.clone(),
         update_output_files: cli.update_output_files,
         print_ir: cli
             .print_ir
@@ -164,19 +161,17 @@ async fn main() -> Result<()> {
     // Run IR tests
     if !filter_config.first_only {
         println!("\n");
-        ir_generation::run(
-            filter_config.include.as_ref(),
-            cli.verbose,
-            sway_ir::ExperimentalFlags {
-                new_encoding: run_config.experimental.new_encoding,
-            },
-        )
-        .instrument(tracing::trace_span!("IR"))
-        .await?;
+        ir_generation::run(filter_config.include.as_ref(), cli.verbose, &run_config)
+            .instrument(tracing::trace_span!("IR"))
+            .await?;
     }
 
     // Run snapshot tests
-    let args = vec!["t", "--release", "-p", "test"];
+    let mut args = vec!["t", "--release", "-p", "test", "--"];
+    if let Some(include) = cli.include.as_ref().map(|x| x.as_str()) {
+        args.push(include);
+    }
+
     let mut t = std::process::Command::new("cargo")
         .args(args)
         .spawn()

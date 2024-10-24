@@ -1,0 +1,13 @@
+[package]
+name = "sway-features"
+description = "Sway's experimental features"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+paste.workspace = true

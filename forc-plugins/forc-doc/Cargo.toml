@@ -23,6 +23,7 @@ serde.workspace = true
 serde_json.workspace = true
 sway-ast.workspace = true
 sway-core.workspace = true
+sway-features.workspace = true
 sway-lsp.workspace = true
 sway-types.workspace = true
 swayfmt.workspace = true

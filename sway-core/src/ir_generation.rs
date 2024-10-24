@@ -13,6 +13,7 @@ use std::{
 };
 
 use sway_error::error::CompileError;
+use sway_features::ExperimentalFeatures;
 use sway_ir::{Context, Function, Kind, Module};
 use sway_types::{span::Span, Ident};
 
@@ -23,7 +24,7 @@ use crate::{
     language::ty,
     metadata::MetadataManager,
     types::{LogId, MessageId},
-    Engines, ExperimentalFlags, TypeId,
+    Engines, TypeId,
 };
 
 type FnKey = u64;
@@ -120,7 +121,7 @@ pub fn compile_program<'eng>(
     program: &ty::TyProgram,
     include_tests: bool,
     engines: &'eng Engines,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<Context<'eng>, Vec<CompileError>> {
     let declaration_engine = engines.de();
 
@@ -148,12 +149,7 @@ pub fn compile_program<'eng>(
         .map(|(message_id, type_id)| (*type_id, *message_id))
         .collect();
 
-    let mut ctx = Context::new(
-        engines.se(),
-        sway_ir::ExperimentalFlags {
-            new_encoding: experimental.new_encoding,
-        },
-    );
+    let mut ctx = Context::new(engines.se(), experimental);
     ctx.program_kind = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,

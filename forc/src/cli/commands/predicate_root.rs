@@ -26,9 +26,8 @@ pub struct Command {
     #[clap(flatten)]
     pub build_profile: BuildProfile,
 
-    /// Disable the "new encoding" feature
-    #[clap(long)]
-    pub no_encoding_v1: bool,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
