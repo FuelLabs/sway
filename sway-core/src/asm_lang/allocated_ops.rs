@@ -526,7 +526,10 @@ impl fmt::Display for AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
-            ConfigurablesOffsetPlaceholder => write!(fmtr, "Metadata"),
+            ConfigurablesOffsetPlaceholder => write!(
+                fmtr,
+                "CONFIGURABLES_OFFSET[0..32]\nCONFIGURABLES_OFFSET[32..64]"
+            ),
             DataSectionOffsetPlaceholder => {
                 write!(
                     fmtr,
