@@ -226,7 +226,7 @@ pub(crate) enum VirtualOp {
 
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
-    Metadata,
+    ConfigurablesOffsetPlaceholder,
     DataSectionOffsetPlaceholder,
     // LoadDataId takes a virtual register and a DataId, which points to a labeled piece
     // of data in the data section. Note that the ASM op corresponding to a LW is
@@ -348,7 +348,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            Metadata => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             LoadDataId(r1, _i) => vec![r1],
             AddrDataId(r1, _) => vec![r1],
 
@@ -467,7 +467,7 @@ impl VirtualOp {
             // Virtual OPs
             | BLOB(_)
             | DataSectionOffsetPlaceholder
-            | Metadata
+            | ConfigurablesOffsetPlaceholder
             | Undefined => true
         }
     }
@@ -574,7 +574,7 @@ impl VirtualOp {
             | GTF(_, _, _)
             | BLOB(_)
             | DataSectionOffsetPlaceholder
-            | Metadata
+            | ConfigurablesOffsetPlaceholder
             | LoadDataId(_, _)
             | AddrDataId(_, _)
             | Undefined => vec![],
@@ -696,7 +696,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            Metadata => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             LoadDataId(_r1, _i) => vec![],
             AddrDataId(_r1, _i) => vec![],
 
@@ -820,7 +820,7 @@ impl VirtualOp {
             LoadDataId(r1, _i) => vec![r1],
             AddrDataId(r1, _i) => vec![r1],
             DataSectionOffsetPlaceholder => vec![],
-            Metadata => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             Undefined => vec![],
         })
         .into_iter()
@@ -1269,7 +1269,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
-            Metadata => Self::Metadata,
+            ConfigurablesOffsetPlaceholder => Self::ConfigurablesOffsetPlaceholder,
             LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
@@ -1750,7 +1750,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
-            Metadata => AllocatedOpcode::ConfigurablesOffsetPlaceholder,
+            ConfigurablesOffsetPlaceholder => AllocatedOpcode::ConfigurablesOffsetPlaceholder,
             LoadDataId(reg1, label) => {
                 AllocatedOpcode::LoadDataId(map_reg(&mapping, reg1), label.clone())
             }

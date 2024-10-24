@@ -250,8 +250,8 @@ impl TestExecutor {
 /// [ 1] noop
 /// [ 2] DATA_SECTION_OFFSET[0..32]
 /// [ 3] DATA_SECTION_OFFSET[32..64]
-/// [ 4] METADATA (0-32)
-/// [ 5] METADATA (32-64)
+/// [ 4] CONFIGURABLES_OFFSET[0..32]
+/// [ 5] CONFIGURABLES_OFFSET[32..64]
 /// [ 6] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
 /// [ 7] add  $$ds $$ds $is
 /// [ 8] <first-entry-point>           ; This is where we want to jump from to our test code!

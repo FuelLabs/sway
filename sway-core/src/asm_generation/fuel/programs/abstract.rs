@@ -212,12 +212,12 @@ impl AbstractProgram {
                 // word 3 -- full word u64 placeholder
                 AllocatedAbstractOp {
                     opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
-                    comment: "metadata".into(),
+                    comment: "configurables offset".into(),
                     owning_span: None,
                 },
                 AllocatedAbstractOp {
                     opcode: Either::Right(ControlFlowOp::Label(label)),
-                    comment: "end of metadata".into(),
+                    comment: "end of configurables offset".into(),
                     owning_span: None,
                 },
                 // word 4 -- load the data offset into $ds
