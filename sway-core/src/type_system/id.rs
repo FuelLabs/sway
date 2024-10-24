@@ -613,7 +613,7 @@ impl TypeId {
     fn check_trait_constraints_errors(
         self,
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         structure_type_id: &TypeId,
         structure_trait_constraints: &Vec<TraitConstraint>,
         f: impl Fn(&TraitConstraint),
