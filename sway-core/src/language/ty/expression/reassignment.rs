@@ -47,6 +47,7 @@ pub enum TyReassignmentTarget {
     /// E.g.:
     ///  - *my_ref
     ///  - **if x > 0 { &mut &mut a } else { &mut &mut b }
+    ///
     /// The [TyExpression] is guaranteed to be of [TyExpressionVariant::Deref].
     Deref(Box<TyExpression>),
 }

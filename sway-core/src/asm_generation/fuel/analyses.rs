@@ -17,9 +17,9 @@ use crate::asm_lang::{ControlFlowOp, Label, Op, VirtualRegister};
 /// Two tables are generated: `live_in` and `live_out`. Each row in the tables corresponds to an
 /// instruction in the program.
 /// * A virtual register is in the `live_out` table for a given instruction if it is live on any
-/// of that node's out-edges
+///   of that node's out-edges
 /// * A virtual register is in the `live_in` table for a given instruction if it is live on any
-/// of that node's in-edges
+///   of that node's in-edges
 ///
 ///
 /// Algorithm:

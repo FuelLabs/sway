@@ -103,7 +103,7 @@ pub fn write_comments(
 
         // If the already formatted code ends with some pattern and doesn't already end with a newline,
         // we want to add a newline here.
-        if formatted_code.ends_with(&['{', '}']) && !formatted_code.ends_with('\n') {
+        if formatted_code.ends_with(['{', '}']) && !formatted_code.ends_with('\n') {
             writeln!(formatted_code)?;
         }
 

@@ -121,8 +121,8 @@ impl RegisterPool {
 ///        add edges (v, b_1), ..., (v, b_n) for any b_i different from c.
 /// 3. for non-MOVE def of virtual register v with live_out virtual registers b_1, ..., b_n:
 ///        add edges (v, b_1), ..., (v, b_n)
-/// ===============================================================================================
 ///
+/// ===============================================================================================
 pub(crate) fn create_interference_graph(
     ops: &[Op],
     live_out: &[BTreeSet<VirtualRegister>],
@@ -191,8 +191,8 @@ pub(crate) fn create_interference_graph(
 /// * When two registers are coalesced, a new node with a new virtual register (generated using the
 ///   register sequencer) is created in the interference graph.
 /// * When a MOVE instruction is removed, the offset of each subsequent instruction has to be
-/// updated, as well as the immediate values for some or all jump instructions (`ji`, `jnei`, and
-/// `jnzi for now).
+///   updated, as well as the immediate values for some or all jump instructions (`ji`, `jnei`, and
+///   `jnzi for now).
 ///
 pub(crate) fn coalesce_registers(
     ops: &[Op],
@@ -386,6 +386,7 @@ fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>,
 /// 3. If some vertex n still has k or more neighbors, then the graph may not be k colorable.
 ///     We still add it to the stack as is, as a potential spill. When popping, if we still
 ///     can't colour it, then it becomes an actual spill.
+///
 /// ===============================================================================================
 ///
 pub(crate) fn color_interference_graph(
