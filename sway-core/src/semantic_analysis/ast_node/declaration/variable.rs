@@ -32,7 +32,7 @@ impl ty::TyVariableDecl {
 
     pub fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         var_decl: VariableDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let engines = &ctx.engines();

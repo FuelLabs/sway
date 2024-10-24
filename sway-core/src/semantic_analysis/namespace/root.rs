@@ -1,18 +1,19 @@
 use std::fmt;
 
 use super::{
-    module::Module, trait_map::TraitMap, Ident, ModuleName, ResolvedTraitImplItem,
+    module::Module, trait_map::TraitMap, Ident, ModuleName,
 };
 use crate::{
     decl_engine::{DeclEngine, DeclRef},
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, StructDecl, TyDecl, TyTraitItem},
+        ty::{self, StructDecl, TyDecl, },
         CallPath, CallPathType, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    TypeId, TypeInfo,
+    semantic_analysis::type_resolve::{resolve_associated_item, resolve_associated_type},
+    TypeId,
 };
 use sway_error::{
     error::CompileError,
@@ -426,8 +427,8 @@ impl Root {
                 (decl.clone(), path.clone(), *reexport)
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
-			"The name {symbol} was bound in a star import, but no corresponding module paths were found",
-			item.span(),
+            "The name {symbol} was bound in a star import, but no corresponding module paths were found",
+            item.span(),
                     )));
             } else {
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
@@ -863,7 +864,7 @@ impl Root {
         _mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+    ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
 //	if call_path.prefixes.len() > 1 && call_path.prefixes[0].as_str() == "core" && call_path.prefixes[1].as_str() == "core" {
 //	    panic!();
 //	}
@@ -886,74 +887,6 @@ impl Root {
             &call_path.suffix,
             self_type,
         )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_call_path_and_root_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        root_type_id: TypeId,
-        mut as_trait: Option<CallPath>,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        // This block tries to resolve associated types
-        let mut decl_opt = None;
-        let mut type_id_opt = Some(root_type_id);
-        for ident in call_path.prefixes.iter() {
-            if let Some(type_id) = type_id_opt {
-                type_id_opt = None;
-                decl_opt = Some(self.resolve_associated_type_from_type_id(
-                    handler,
-                    engines,
-                    module,
-                    ident,
-                    type_id,
-                    as_trait.clone(),
-                    self_type,
-                )?);
-                as_trait = None;
-            } else if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(
-                    handler,
-                    engines,
-                    module,
-                    ident,
-                    decl,
-                    as_trait.clone(),
-                    self_type,
-                )?);
-                as_trait = None;
-            }
-        }
-        if let Some(type_id) = type_id_opt {
-            let decl = self.resolve_associated_type_from_type_id(
-                handler,
-                engines,
-                module,
-                &call_path.suffix,
-                type_id,
-                as_trait,
-                self_type,
-            )?;
-            return Ok(decl);
-        }
-        if let Some(decl) = decl_opt {
-            let decl = self.resolve_associated_item(
-                handler,
-                engines,
-                module,
-                &call_path.suffix,
-                decl,
-                as_trait,
-                self_type,
-            )?;
-            Ok(decl)
-        } else {
-            Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
-        }
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its
@@ -1022,7 +955,7 @@ impl Root {
         let mut decl_opt = None;
         for ident in mod_path.iter().skip(1) {
             if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(
+                decl_opt = Some(resolve_associated_type(
                     handler, engines, module, ident, decl, None, self_type,
                 )?);
             } else {
@@ -1043,8 +976,8 @@ impl Root {
             }
         }
         if let Some(decl) = decl_opt {
-            let decl = self
-                .resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
+            let decl =
+                resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
             return Ok((decl, current_mod_path));
         }
 
@@ -1056,138 +989,6 @@ impl Root {
                     .resolve_symbol(handler, engines, symbol)?;
                 Ok((decl, mod_path.to_vec()))
             })
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_type(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
-        let type_id = engines
-            .te()
-            .insert(engines, type_info, symbol.span().source_id());
-
-        self.resolve_associated_type_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_item(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
-        let type_id = engines
-            .te()
-            .insert(engines, type_info, symbol.span().source_id());
-
-        self.resolve_associated_item_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )
-    }
-
-    fn decl_to_type_info(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-    ) -> Result<TypeInfo, ErrorEmitted> {
-        match decl {
-            ResolvedDeclaration::Parsed(_decl) => todo!(),
-            ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
-                ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
-                ty::TyDecl::TraitTypeDecl(type_decl) => {
-                    let type_decl = engines.de().get_type(&type_decl.decl_id);
-                    if type_decl.ty.is_none() {
-                        return Err(handler.emit_err(CompileError::Internal(
-                            "Trait type declaration has no type",
-                            symbol.span(),
-                        )));
-                    }
-                    (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
-                }
-                _ => {
-//		    dbg!("decl_to_type_info");
-//		    dbg!(&symbol);
-                    return Err(handler.emit_err(CompileError::SymbolNotFound {
-                        name: symbol.clone(),
-                        span: symbol.span(),
-                    }))
-                }
-            }),
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_type_from_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        type_id: TypeId,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let item_decl = self.resolve_associated_item_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )?;
-        Ok(item_decl)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_item_from_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        type_id: TypeId,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_id = if engines.te().get(type_id).is_self_type() {
-            if let Some(self_type) = self_type {
-                self_type
-            } else {
-                return Err(handler.emit_err(CompileError::Internal(
-                    "Self type not provided.",
-                    symbol.span(),
-                )));
-            }
-        } else {
-            type_id
-        };
-        let item_ref = module
-            .current_items()
-            .implemented_traits
-            .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
-        match item_ref {
-            ResolvedTraitImplItem::Parsed(_item) => todo!(),
-            ResolvedTraitImplItem::Typed(item) => match item {
-                TyTraitItem::Fn(fn_ref) => Ok(ResolvedDeclaration::Typed(fn_ref.into())),
-                TyTraitItem::Constant(const_ref) => {
-                    Ok(ResolvedDeclaration::Typed(const_ref.into()))
-                }
-                TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
-            },
-        }
     }
 }
 
