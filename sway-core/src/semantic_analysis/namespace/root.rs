@@ -739,13 +739,81 @@ impl Root {
             .chain(&call_path.prefixes)
             .cloned()
             .collect();
-        self.resolve_symbol_and_mod_path(
+        let res = self.resolve_symbol_and_mod_path(
             handler,
             engines,
             &symbol_path,
             &call_path.suffix,
             self_type,
-        )
+        );
+
+        if res.is_ok() {
+            return res;
+        }
+
+        // First lets get the submodule and then hierarchically lookup the call path,
+        // starting from the module's root scope.
+        let submodule = self.module.lookup_submodule(handler, engines, mod_path)?;
+        let mut scope_id_opt = Some(submodule.root_lexical_scope_id());
+        let mut item;
+
+        for ident in call_path.prefixes.iter() {
+            // println!("checking for ident {:?}", ident);
+            if scope_id_opt.is_none() {
+                break;
+            }
+
+            let scope = submodule.lexical_scopes.get(scope_id_opt.unwrap()).unwrap();
+            item = scope.items.symbols().get(ident);
+            // println!("new item looked up {:?}", engines.help_out(item));
+            if item.is_none() {
+                break;
+            }
+
+            match item.unwrap() {
+                ResolvedDeclaration::Parsed(decl_id) => {
+                    let span = decl_id.span(engines);
+                    scope_id_opt = submodule.lexical_scopes_spans.get(&span).copied();
+                    // println!("new scope from item span {:?}", scope_id_opt);
+                }
+                ResolvedDeclaration::Typed(decl_id) => {
+                    let span = decl_id.span(engines);
+                    scope_id_opt = submodule.lexical_scopes_spans.get(&span).copied();
+                }
+            };
+        }
+
+        // If we matched a struct or enum, then lets look through its impls for
+        // resolving our suffix. We have to take care to fetch the correct scope
+        // if we have a binding.
+
+        if let Some(scope_id) = scope_id_opt {
+            let scope = submodule.lexical_scopes.get(scope_id).unwrap();
+
+            // match item.unwrap() {
+            //     ResolvedDeclaration::Parsed(decl_id) => {
+            //         let span = decl_id.span(engines);
+            //         scope_id_opt = submodule.lexical_scopes_spans.get(&span).copied();
+            //         // println!("new scope from item span {:?}", scope_id_opt);
+            //     }
+            //     ResolvedDeclaration::Typed(decl_id) => {
+            //         let span = decl_id.span(engines);
+            //         scope_id_opt = submodule.lexical_scopes_spans.get(&span).copied();
+            //     },
+            // };
+
+            // scope.items.reso
+            // let r = self
+            //     .resolve_symbol(handler, engines, scope, &call_path.suffix, self_type)
+            //     .map(|rd| (rd, mod_path.to_vec()));
+            // println!(
+            //     "resolve_symbol_from_scope symbol {:?} {:?}",
+            //     call_path.suffix, r
+            // );
+            // return r;
+        }
+
+        res
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its

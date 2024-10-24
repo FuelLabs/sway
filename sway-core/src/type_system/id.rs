@@ -93,7 +93,10 @@ impl CollectTypesMetadata for TypeId {
 impl SubstTypes for TypeId {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let type_engine = ctx.engines.te();
-        if let Some(matching_id) = ctx.type_subst_map.find_match(*self, ctx.engines) {
+        if let Some(matching_id) = ctx
+            .type_subst_map
+            .and_then(|tsm| tsm.find_match(*self, ctx.engines))
+        {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
                 HasChanges::Yes
@@ -228,6 +231,56 @@ impl TypeId {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
+            TypeInfo::UntypedEnum(decl_id) => {
+                let enum_decl = engines.pe().get_enum(decl_id);
+                for type_param in &enum_decl.type_parameters {
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                            depth + 1,
+                        ),
+                    );
+                }
+                for variant in &enum_decl.variants {
+                    extend(
+                        &mut found,
+                        variant.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
+                    );
+                }
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                let struct_decl = engines.pe().get_struct(decl_id);
+                for type_param in &struct_decl.type_parameters {
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                            depth + 1,
+                        ),
+                    );
+                }
+                for field in &struct_decl.fields {
+                    extend(
+                        &mut found,
+                        field.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
+                    );
+                }
+            }
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in &enum_decl.type_parameters {

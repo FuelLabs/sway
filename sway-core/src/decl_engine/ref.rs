@@ -103,7 +103,7 @@ where
         let decl_engine = ctx.engines.de();
         if ctx
             .type_subst_map
-            .source_ids_contains_concrete_type(ctx.engines)
+            .is_some_and(|tsm| tsm.source_ids_contains_concrete_type(ctx.engines))
             || !decl_engine.get(&self.id).is_concrete(ctx.engines)
         {
             let mut decl = (*decl_engine.get(&self.id)).clone();

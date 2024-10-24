@@ -24,22 +24,30 @@ impl std::ops::BitOr for HasChanges {
     }
 }
 
-pub struct SubstTypesContext<'a, 'b> {
-    pub engines: &'a Engines,
-    pub type_subst_map: &'b TypeSubstMap,
+pub struct SubstTypesContext<'eng, 'tsm> {
+    pub engines: &'eng Engines,
+    pub type_subst_map: Option<&'tsm TypeSubstMap>,
     pub subst_function_body: bool,
 }
 
-impl<'a, 'b> SubstTypesContext<'a, 'b> {
+impl<'eng, 'tsm> SubstTypesContext<'eng, 'tsm> {
     pub fn new(
-        engines: &'a Engines,
-        type_subst_map: &'b TypeSubstMap,
+        engines: &'eng Engines,
+        type_subst_map: &'tsm TypeSubstMap,
         subst_function_body: bool,
-    ) -> SubstTypesContext<'a, 'b> {
+    ) -> SubstTypesContext<'eng, 'tsm> {
         SubstTypesContext {
             engines,
-            type_subst_map,
+            type_subst_map: Some(type_subst_map),
             subst_function_body,
+        }
+    }
+
+    pub fn dummy(engines: &'eng Engines) -> SubstTypesContext<'eng, 'tsm> {
+        SubstTypesContext {
+            engines,
+            type_subst_map: None,
+            subst_function_body: false,
         }
     }
 }
@@ -48,7 +56,7 @@ pub trait SubstTypes {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges;
 
     fn subst(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        if ctx.type_subst_map.is_empty() {
+        if ctx.type_subst_map.is_some_and(|tsm| tsm.is_empty()) {
             HasChanges::No
         } else {
             self.subst_inner(ctx)

@@ -1,9 +1,9 @@
 use crate::{
     engine_threading::*,
-    language::{CallPath, Visibility},
+    language::{CallPath, QualifiedCallPath, Visibility},
     namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::{ast_node::ConstShadowingMode, Namespace},
-    type_system::TypeId,
+    type_system::TypeId, SubstTypesContext,
 };
 use sway_error::{
     error::CompileError,
@@ -12,7 +12,10 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
-use super::{symbol_collection_context::SymbolCollectionContext, GenericShadowingMode};
+use super::{
+    symbol_collection_context::SymbolCollectionContext, type_resolve::resolve_qualified_call_path,
+    GenericShadowingMode,
+};
 
 /// Contextual state tracked and accumulated throughout symbol resolving.
 pub struct SymbolResolveContext<'a> {
@@ -249,5 +252,21 @@ impl<'a> SymbolResolveContext<'a> {
         }
 
         Ok(decl)
+    }
+
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+        &mut self,
+        handler: &Handler,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        resolve_qualified_call_path(
+            handler,
+            self.engines(),
+            self.namespace(),
+            &self.namespace().mod_path.clone(),
+            qualified_call_path,
+            self.self_type(),
+            &SubstTypesContext::dummy(self.engines()),
+        )
     }
 }
