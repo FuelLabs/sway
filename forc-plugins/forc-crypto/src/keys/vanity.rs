@@ -284,154 +284,117 @@ fn generate_wallet(use_mnemonic: bool) -> anyhow::Result<(Address, SecretKey, Op
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
 
-    #[test]
-    fn test_no_start_or_end_or_regex() {
-        let args = Arg {
-            starts_with: None,
-            ends_with: None,
-            regex: None,
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args);
-        assert!(!result.is_err()); // since clap will not allow this combination of args
+    // Helper function to parse args and get validation errors
+    fn parse_args(args: Vec<&str>) -> Result<Arg, String> {
+        let args =
+            Arg::try_parse_from(std::iter::once("test").chain(args)).map_err(|e| e.to_string())?;
+        args.validate().map_err(|e| e.to_string())?;
+        Ok(args)
     }
 
     #[test]
-    fn test_pattern_too_long() {
-        let args = Arg {
-            starts_with: Some("a".repeat(65)),
-            ends_with: None,
-            regex: None,
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args);
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Invalid hex pattern: Combined pattern length exceeds 64 characters",
-        );
-    }
-
-    #[test]
-    fn test_find_simple_vanity_start() {
-        let args = Arg {
-            starts_with: Some("00".to_string()),
-            ends_with: None,
-            regex: None,
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args).unwrap();
-        let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with("00"), "Address should start with '00'");
-    }
-
-    #[test]
-    fn test_find_simple_vanity_end() {
-        let args = Arg {
-            starts_with: None,
-            ends_with: Some("00".to_string()),
-            regex: None,
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args).unwrap();
-        let address = result["Address"].as_str().unwrap();
-        assert!(address.ends_with("00"), "Address should end with '00'");
-    }
-
-    #[test]
-    fn test_both_start_and_end() {
-        let args = Arg {
-            starts_with: Some("a".to_string()),
-            ends_with: Some("b".to_string()),
-            regex: None,
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args).unwrap();
-        let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with('a'), "Address should start with 'a'");
-        assert!(address.ends_with('b'), "Address should end with 'b'");
-    }
-
-    #[test]
-    fn test_both_start_and_end_case_insensitive() {
-        // checksummed addresses cannot start or end with capital letters
-        let args = Arg {
-            starts_with: Some("A".to_string()),
-            ends_with: Some("B".to_string()),
-            regex: None,
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args).unwrap();
-        let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with('a'), "Address should start with 'a'");
-        assert!(address.ends_with('b'), "Address should end with 'b'");
-    }
-
-    #[test]
-    fn test_regex_pattern() {
-        // checksummed addresses cannot start or end with capital letters
-        let args = Arg {
-            starts_with: None,
-            ends_with: None,
-            regex: Some("^A.*B$".to_string()),
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args).unwrap();
-        let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with('a'), "Address should start with 'a'");
-        assert!(address.ends_with('b'), "Address should end with 'b'");
+    fn test_invalid_hex_characters() {
+        let result = parse_args(vec!["--starts-with", "xyz"]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "error: invalid value 'xyz' for '--starts-with <HEX_STRING>': Pattern must contain only hex characters (0-9, a-f)\n\nFor more information, try '--help'.\n");
     }
 
     #[test]
     fn test_invalid_regex_pattern() {
-        let args = Arg {
-            starts_with: None,
-            ends_with: None,
-            regex: Some("^X".to_string()),
-            mnemonic: false,
-            save_path: None,
-            timeout: None,
-        };
-        let result = handler(args);
-        assert!(
-            result.is_err(),
-            "Handler should fail with invalid hex pattern"
-        );
+        let result = parse_args(vec!["--regex", "^X"]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "error: invalid value '^X' for '--regex <PATTERN>': Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed\n\nFor more information, try '--help'.\n");
+    }
+
+    #[test]
+    fn test_pattern_too_long() {
+        let result = parse_args(vec![
+            "--starts-with",
+            &"a".repeat(32),
+            "--ends-with",
+            &"b".repeat(33),
+        ]);
+        assert!(result.is_err());
         assert_eq!(
-            result.unwrap_err().to_string(),
-            "Invalid regex pattern: Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed"
+            result.unwrap_err(),
+            "Combined pattern length exceeds 64 characters"
         );
     }
 
     #[test]
-    fn test_mnemonic_generation() {
-        let args = Arg {
-            starts_with: Some("a".to_string()),
-            ends_with: None,
-            regex: None,
-            mnemonic: true,
-            save_path: None,
-            timeout: None,
-        };
+    fn test_invalid_regex_syntax() {
+        let result = parse_args(vec!["--regex", "["]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid regex pattern"));
+
+        let result = parse_args(vec!["--regex", "i"]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "error: invalid value 'i' for '--regex <PATTERN>': Regex pattern contains invalid characters: only hex characters (0-9, a-f) are allowed\n\nFor more information, try '--help'.\n");
+    }
+
+    #[test]
+    fn test_regex_too_long() {
+        let result = parse_args(vec!["--regex", &"a".repeat(129)]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "error: invalid value 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' for '--regex <PATTERN>': Regex pattern too long: max 128 characters\n\nFor more information, try '--help'.\n");
+    }
+
+    #[test]
+    fn test_conflicting_args() {
+        let result = parse_args(vec!["--starts-with", "aa", "--regex", "^aa"]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "error: the argument '--starts-with <HEX_STRING>' cannot be used with '--regex <PATTERN>'\n\nUsage: test --starts-with <HEX_STRING>\n\nFor more information, try '--help'.\n");
+    }
+
+    // Test actual functionality with minimal patterns
+    #[test]
+    fn test_valid_short_prefix() {
+        let args = parse_args(vec!["--starts-with", "a"]).unwrap();
         let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap();
         assert!(
-            result.get("Mnemonic").is_some(),
-            "Mnemonic should be present"
+            address.to_lowercase().starts_with('a'),
+            "Address should start with 'a'"
         );
+    }
+
+    #[test]
+    fn test_valid_short_suffix() {
+        let args = parse_args(vec!["--ends-with", "a"]).unwrap();
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap();
+        assert!(
+            address.to_lowercase().ends_with('a'),
+            "Address should end with 'a'"
+        );
+    }
+
+    #[test]
+    fn test_both_prefix_and_suffix() {
+        let args = parse_args(vec!["--starts-with", "a", "--ends-with", "b"]).unwrap();
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap().to_lowercase();
+        assert!(address.starts_with('a'), "Address should start with 'a'");
+        assert!(address.ends_with('b'), "Address should end with 'b'");
+    }
+
+    #[test]
+    fn test_simple_regex() {
+        let args = parse_args(vec!["--regex", "^a.*b$"]).unwrap();
+        let result = handler(args).unwrap();
+        let address = result["Address"].as_str().unwrap().to_lowercase();
+        assert!(address.starts_with('a'), "Address should start with 'a'");
+        assert!(address.ends_with('b'), "Address should end with 'b'");
+    }
+
+    #[test]
+    fn test_mnemonic_generation() {
+        let args = parse_args(vec!["--starts-with", "a", "--mnemonic"]).unwrap();
+        let result = handler(args).unwrap();
+
+        assert!(result["Mnemonic"].is_string(), "Mnemonic should be present");
         assert_eq!(
             result["Mnemonic"]
                 .as_str()
@@ -443,23 +406,27 @@ mod tests {
         );
 
         let address = result["Address"].as_str().unwrap();
-        assert!(address.starts_with('a'), "Address should start with 'a'");
+        assert!(
+            address.to_lowercase().starts_with('a'),
+            "Address should start with 'a'"
+        );
     }
 
     #[test]
     fn test_save_path() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
-        let args = Arg {
-            starts_with: Some("00".to_string()),
-            ends_with: None,
-            regex: None,
-            mnemonic: false,
-            save_path: Some(tmp.path().to_path_buf()),
-            timeout: None,
-        };
+        let args = parse_args(vec![
+            "--starts-with",
+            "a",
+            "--save-path",
+            tmp.path().to_str().unwrap(),
+        ])
+        .unwrap();
+
         handler(args).unwrap();
+
         assert!(tmp.path().exists(), "File should exist");
-        let content = fs::read_to_string(tmp.path()).unwrap();
+        let content = std::fs::read_to_string(tmp.path()).unwrap();
         let saved_result: serde_json::Value = serde_json::from_str(&content).unwrap();
         assert!(
             saved_result["Address"].is_string(),
