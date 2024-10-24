@@ -379,7 +379,11 @@ impl PartialEqWithEngines for TypeInfo {
                     abi_name: r_abi_name,
                     address: r_address,
                 },
-            ) => l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), ctx),
+            ) => {
+                let l_address_span = l_address.as_ref().map(|x| x.span.clone());
+                let r_address_span = r_address.as_ref().map(|x| x.span.clone());
+                l_abi_name == r_abi_name && l_address_span == r_address_span
+            }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 ((l0.type_id == r0.type_id)
                     || type_engine
