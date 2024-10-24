@@ -1,6 +1,9 @@
 use fuel_crypto::{fuel_types::Address, PublicKey, SecretKey};
 use fuels_accounts::wallet::{generate_mnemonic_phrase, DEFAULT_DERIVATION_PATH_PREFIX};
-use fuels_core::types::bech32::{Bech32Address, FUEL_BECH32_HRP};
+use fuels_core::types::{
+    bech32::{Bech32Address, FUEL_BECH32_HRP},
+    checksum_address::checksum_encode,
+};
 use rayon::iter::{self, Either, ParallelIterator};
 use regex::Regex;
 use serde_json::json;
@@ -132,15 +135,16 @@ pub fn handler(args: Arg) -> anyhow::Result<serde_json::Value> {
         duration.as_secs_f64()
     );
 
+    let checksum_address = checksum_encode(&address.to_string())?;
     let result = if let Some(mnemonic) = mnemonic {
         json!({
-            "Address": address.to_string(),
+            "Address": checksum_address,
             "PrivateKey": hex::encode(secret_key.as_ref()),
             "Mnemonic": mnemonic,
         })
     } else {
         json!({
-            "Address": address.to_string(),
+            "Address": checksum_address,
             "PrivateKey": hex::encode(secret_key.as_ref()),
         })
     };
@@ -380,7 +384,7 @@ mod tests {
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap();
         assert!(
-            address.to_lowercase().starts_with('a'),
+            address.to_lowercase().starts_with("0xa"),
             "Address should start with 'a'"
         );
     }
@@ -401,7 +405,7 @@ mod tests {
         let args = parse_args(vec!["--starts-with", "a", "--ends-with", "b"]).unwrap();
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap().to_lowercase();
-        assert!(address.starts_with('a'), "Address should start with 'a'");
+        assert!(address.starts_with("0xa"), "Address should start with 'a'");
         assert!(address.ends_with('b'), "Address should end with 'b'");
     }
 
@@ -410,7 +414,7 @@ mod tests {
         let args = parse_args(vec!["--regex", "^a.*b$"]).unwrap();
         let result = handler(args).unwrap();
         let address = result["Address"].as_str().unwrap().to_lowercase();
-        assert!(address.starts_with('a'), "Address should start with 'a'");
+        assert!(address.starts_with("0xa"), "Address should start with 'a'");
         assert!(address.ends_with('b'), "Address should end with 'b'");
     }
 
@@ -432,7 +436,7 @@ mod tests {
 
         let address = result["Address"].as_str().unwrap();
         assert!(
-            address.to_lowercase().starts_with('a'),
+            address.to_lowercase().starts_with("0xa"),
             "Address should start with 'a'"
         );
     }
