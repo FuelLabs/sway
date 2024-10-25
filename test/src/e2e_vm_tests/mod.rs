@@ -283,9 +283,16 @@ impl TestContext {
         run_config: &RunConfig,
         contract_path: String,
     ) -> Result<ContractId> {
+        let experimental = ExperimentalFeatures::new(
+            &HashMap::default(),
+            &run_config.experimental.experimental,
+            &run_config.experimental.no_experimental,
+        )
+        .unwrap();
+
         let key = DeployedContractKey {
             contract_path: contract_path.clone(),
-            new_encoding: true, // TODO
+            new_encoding: experimental.new_encoding,
         };
 
         let mut deployed_contracts = self.deployed_contracts.lock().await;
@@ -953,7 +960,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
                         let _ = toml_content_map.entry(&k).or_insert(v);
                     }
                 }
-                _ => todo!(),
+                _ => bail!("Malformed base test description (see test.toml)."),
             }
         };
     }
@@ -963,7 +970,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     // To keep the current test.toml compatible we check if a field named "experimental" exists
     // or not. If it does not, we keep the current behaviour.
     // If it does, we ignore the experimental flags from the CLI and use the one from the toml file.
-    // TODO: this backwards compatilibty can be removed after all tests migrate to new version
+    // TODO: this backwards compatibility can be removed after all tests migrate to new version
     let (has_experimental_field, experimental) =
         if let Some(toml_experimental) = toml_content.get("experimental") {
             run_config.experimental = CliFields::default();

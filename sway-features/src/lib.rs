@@ -13,13 +13,13 @@ macro_rules! features {
 
             #[derive(Copy, Clone, Debug, ValueEnum)]
             #[value(rename_all = "snake")]
-            pub enum Features {
+            pub enum Feature {
                 $(
                     [<$name:camel>],
                 )*
             }
 
-            impl std::str::FromStr for Features {
+            impl std::str::FromStr for Feature {
                 type Err = Error;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -66,10 +66,10 @@ macro_rules! features {
                     }
                 }
 
-                pub fn set_enabled(&mut self, feature: Features, enabled: bool) {
+                pub fn set_enabled(&mut self, feature: Feature, enabled: bool) {
                     match feature {
                         $(
-                            Features::[<$name:camel>] => {
+                            Feature::[<$name:camel>] => {
                                 self.[<$name:snake>] = enabled
                             },
                         )*
@@ -107,8 +107,8 @@ impl ExperimentalFeatures {
     /// 5 - FORC_EXPERIMENTAL (env var)
     pub fn new(
         manifest: &HashMap<String, bool>,
-        cli_experimental: &[Features],
-        cli_no_experimental: &[Features],
+        cli_experimental: &[Feature],
+        cli_no_experimental: &[Feature],
     ) -> Result<ExperimentalFeatures, Error> {
         let mut experimental = ExperimentalFeatures::default();
 
@@ -137,11 +137,11 @@ features! {
 pub struct CliFields {
     /// Comma separated list of all experimental features that will be enabled
     #[clap(long, value_delimiter = ',')]
-    pub experimental: Vec<Features>,
+    pub experimental: Vec<Feature>,
 
     /// Comma separated list of all experimental features that will be disabled
     #[clap(long, value_delimiter = ',')]
-    pub no_experimental: Vec<Features>,
+    pub no_experimental: Vec<Feature>,
 }
 
 #[derive(Debug)]

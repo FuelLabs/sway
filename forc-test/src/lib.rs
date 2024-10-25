@@ -154,9 +154,9 @@ pub struct TestOpts {
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
     /// Set of enabled experimental flags
-    pub experimental: Vec<sway_features::Features>,
+    pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
-    pub no_experimental: Vec<sway_features::Features>,
+    pub no_experimental: Vec<sway_features::Feature>,
 }
 
 /// The set of options provided for controlling logs printed for each test.

@@ -309,9 +309,9 @@ pub struct BuildOpts {
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
     /// Set of enabled experimental flags
-    pub experimental: Vec<sway_features::Features>,
+    pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
-    pub no_experimental: Vec<sway_features::Features>,
+    pub no_experimental: Vec<sway_features::Feature>,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -2307,8 +2307,8 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    experimental: &[sway_features::Features],
-    no_experimental: &[sway_features::Features],
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2527,8 +2527,8 @@ pub fn check(
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    experimental: &[sway_features::Features],
-    no_experimental: &[sway_features::Features],
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
