@@ -23,6 +23,7 @@ use sway_error::{
 use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
 
+pub mod bytecode;
 pub mod fs_locking;
 pub mod restricted;
 
