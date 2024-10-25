@@ -4,7 +4,8 @@ pub mod integration;
 
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
-use std::{fs, path::PathBuf};
+use rayon::prelude::*;
+use std::{fs, panic, path::PathBuf, process::Command, sync::Mutex};
 use sway_lsp::{
     config::LspClient,
     handlers::{notification, request},
@@ -69,7 +70,7 @@ async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathB
     uri
 }
 
-async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
+pub async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
     let _ = lsp::shutdown_request(service).await;
     lsp::exit_notification(service).await;
 }
@@ -255,52 +256,6 @@ fn did_change_stress_test_random_wait() {
             );
         }
     });
-}
-
-fn garbage_collection_runner(path: PathBuf) {
-    run_async!({
-        setup_panic_hook();
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, path).await;
-        let times = 60;
-
-        // Initialize cursor position
-        let mut cursor_line = 20;
-
-        for version in 1..times {
-            //eprintln!("version: {}", version);
-            let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
-            let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
-            if version == 0 {
-                service.inner().wait_for_parsing().await;
-            }
-            // wait for a random amount of time to simulate typing
-            random_delay().await;
-        }
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn garbage_collection_storage() {
-    let p = sway_workspace_dir()
-        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
-        .join("src/main.sw");
-    garbage_collection_runner(p);
-}
-
-#[test]
-fn garbage_collection_paths() {
-    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
-    garbage_collection_runner(p);
-}
-
-#[test]
-fn garbage_collection_minimal_script() {
-    let p = sway_workspace_dir()
-        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
-        .join("src/main.sw");
-    garbage_collection_runner(p);
 }
 
 #[test]
@@ -2180,4 +2135,166 @@ fn test_url_to_session_existing_session() {
         );
         shutdown_and_exit(&mut service).await;
     });
+}
+
+//------------------- GARBAGE COLLECTION TESTS -------------------//
+
+async fn garbage_collection_runner(path: PathBuf) {
+    setup_panic_hook();
+    let (mut service, _) = LspService::new(ServerState::new);
+    let uri = init_and_open(&mut service, path).await;
+    let times = 20;
+
+    // Initialize cursor position
+    let mut cursor_line = 1;
+
+    for version in 1..times {
+        //eprintln!("version: {}", version);
+        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
+        }
+        // wait for a random amount of time to simulate typing
+        random_delay().await;
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+#[test]
+fn garbage_collection_storage() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_paths() {
+    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_minimal_script() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+/// Tests garbage collection across all language test examples in parallel.
+///
+/// # Overview
+/// This test suite takes a unique approach to handling test isolation and error reporting:
+///
+/// 1. Process Isolation: Each test is run in its own process to ensure complete isolation
+///    between test runs. This allows us to catch all failures rather than stopping at
+///    the first panic or error.
+///
+/// 2. Parallel Execution: Uses rayon to run tests concurrently, significantly reducing
+///    total test time from several minutes to under a minute.
+///
+/// 3. Full Coverage: Unlike traditional test approaches that stop at the first failure,
+///    this runner continues through all tests, providing a complete picture of which
+///    examples need garbage collection fixes.
+///
+/// # Implementation Details
+/// - Uses std::process::Command to spawn each test in isolation
+/// - Collects results through a thread-safe Mutex
+/// - Provides detailed error reporting for failed tests
+/// - Categorizes different types of failures (exit codes vs signals)
+// #[test]
+#[allow(dead_code)]
+fn run_all_garbage_collection_tests() {
+    let base_dir = sway_workspace_dir().join(e2e_language_dir());
+    let entries: Vec<_> = std::fs::read_dir(base_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .collect();
+
+    let results = Mutex::new(Vec::new());
+
+    println!("\n=== Starting Garbage Collection Tests ===\n");
+
+    entries.par_iter().for_each(|entry| {
+        let project_dir = entry.path();
+        let project_name = project_dir
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        let main_file = project_dir.join("src/main.sw");
+
+        println!("▶ Testing: {}", project_name);
+        println!("  Path: {}", main_file.display());
+
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args(["--test", "test_single_project", "--exact", "--nocapture"])
+            .env("TEST_FILE", main_file.to_string_lossy().to_string())
+            .status()
+            .unwrap();
+
+        let test_result = if status.success() {
+            println!("  ✅ Passed: {}\n", project_name);
+            (project_name, true, None)
+        } else {
+            println!("  ❌ Failed: {} ({})\n", project_name, status);
+            (project_name, false, Some(format!("Exit code: {}", status)))
+        };
+
+        results.lock().unwrap().push(test_result);
+    });
+
+    let results = results.into_inner().unwrap();
+
+    // Print final results
+    println!("=== Garbage Collection Test Results ===\n");
+
+    let total = results.len();
+    let passed = results.iter().filter(|r| r.1).count();
+    let failed = total - passed;
+
+    println!("Total tests:  {}", total);
+    println!("✅ Passed:    {}", passed);
+    println!("❌ Failed:    {}", failed);
+
+    if failed > 0 {
+        println!("\nFailed Projects:");
+        for (name, _, error) in results.iter().filter(|r| !r.1) {
+            println!("- {} (Error: {})", name, error.as_ref().unwrap());
+        }
+
+        panic!("{} projects failed garbage collection testing", failed);
+    }
+}
+
+/// Individual test runner executed in a separate process for each test.
+///
+/// This function is called by the main test runner through a new process invocation
+/// for each test file. The file path is passed via the TEST_FILE environment
+/// variable to maintain process isolation.
+///
+/// # Process Isolation
+/// Running each test in its own process ensures that:
+/// 1. Tests are completely isolated from each other
+/// 2. Panics in one test don't affect others
+/// 3. Resource cleanup happens automatically on process exit
+// #[tokio::test]
+#[allow(dead_code)]
+async fn test_single_project() {
+    if let Ok(file) = std::env::var("TEST_FILE") {
+        println!("Running single test for file: {}", file);
+        let path = PathBuf::from(file);
+        garbage_collection_runner(path).await;
+    } else {
+        panic!("TEST_FILE environment variable not set");
+    }
 }

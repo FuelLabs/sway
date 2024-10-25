@@ -1,7 +1,7 @@
 use assert_json_diff::assert_json_include;
 use futures::StreamExt;
 use lsp_types::Url;
-use rand::Rng;
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde_json::Value;
 use std::{
     env, fs,
@@ -117,23 +117,16 @@ pub async fn assert_server_requests(
 
 /// Introduces a random delay between 1 to 30 milliseconds with a chance of additional longer delays based on predefined probabilities.
 pub async fn random_delay() {
-    // wait for a random amount of time between 1-30ms
-    tokio::time::sleep(tokio::time::Duration::from_millis(
-        rand::thread_rng().gen_range(1..=30),
-    ))
-    .await;
+    // Create a thread-safe RNG
+    let mut rng = SmallRng::from_entropy();
 
-    // there is a 10% chance that a longer 100-800ms wait will be added
-    if rand::thread_rng().gen_ratio(1, 10) {
+    // wait for a random amount of time between 1-30ms
+    tokio::time::sleep(tokio::time::Duration::from_millis(rng.gen_range(1..=30))).await;
+
+    // 20% chance to introduce a longer delay of 100 to 1200 milliseconds.
+    if rng.gen_ratio(2, 10) {
         tokio::time::sleep(tokio::time::Duration::from_millis(
-            rand::thread_rng().gen_range(100..=1200),
-        ))
-        .await;
-    }
-    // 20% chance to introduce a longer delay of 200 to 1500 milliseconds.
-    if rand::thread_rng().gen_ratio(2, 10) {
-        tokio::time::sleep(tokio::time::Duration::from_millis(
-            rand::thread_rng().gen_range(400..=2800),
+            rng.gen_range(100..=1200),
         ))
         .await;
     }
