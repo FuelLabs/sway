@@ -871,9 +871,6 @@ mod tx {
             TxPolicies::default(),
         );
 
-        wallet.add_witnesses(&mut builder).unwrap();
-        wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
-
         // Prepare the predicate
         let witnesses = builder.witnesses().clone();
         let predicate_data = TestTxWitnessPredicateEncoder::new(EncoderConfig {
@@ -935,6 +932,217 @@ mod tx {
             .outputs
             .push(predicate_output.get(0).unwrap().clone());
 
+        wallet.add_witnesses(&mut builder).unwrap();
+        wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+
+        let tx = builder.build(provider.clone()).await.unwrap();
+
+        provider.send_transaction(tx).await.unwrap();
+
+        // The predicate has spent it's funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(predicate_balance, 0);
+    }
+
+    #[tokio::test]
+    async fn can_get_tx_blob() {
+        // Prepare wallet and provider
+        let mut wallet = WalletUnlocked::new_random(None);
+        let num_coins = 100;
+        let coins = setup_single_asset_coins(
+            wallet.address(),
+            AssetId::zeroed(),
+            num_coins,
+            DEFAULT_COIN_AMOUNT,
+        );
+
+        let provider = setup_test_provider(coins, vec![], None, None)
+            .await
+            .unwrap();
+        wallet.set_provider(provider.clone());
+
+        // Get the predicate
+        let predicate_data = TestTxTypePredicateEncoder::default()
+            .encode_data(SwayTransaction::Blob)
+            .unwrap();
+        let predicate: Predicate = Predicate::load_from(TX_TYPE_PREDICATE_BYTECODE_PATH)
+            .unwrap()
+            .with_provider(provider.clone())
+            .with_data(predicate_data);
+        let predicate_coin_amount = 100;
+
+        // Predicate has no funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(predicate_balance, 0);
+
+        // Transfer enough funds to the predicate
+        wallet
+            .transfer(
+                predicate.address(),
+                predicate_coin_amount,
+                *provider.base_asset_id(),
+                TxPolicies::default(),
+            )
+            .await
+            .unwrap();
+
+        // Predicate has funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(
+            predicate_balance as usize,
+            predicate_coin_amount as usize
+        );
+
+        // Prepare blobs
+        let max_words_per_blob = 10_000;
+        let blobs = Contract::load_from(
+            TX_CONTRACT_BYTECODE_PATH,
+            LoadConfiguration::default(),
+        ).unwrap()
+        .convert_to_loader(max_words_per_blob).unwrap()
+        .blobs()
+        .to_vec();
+
+        let blob = blobs[0].clone();
+        // Inputs for predicate
+        let predicate_input = predicate
+            .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+            .await
+            .unwrap();
+
+        // Outputs for predicate
+        let predicate_output =
+            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
+
+        let mut builder = BlobTransactionBuilder::default().with_blob(blob);
+
+        // Append the predicate to the transaction
+        builder.inputs.push(predicate_input.get(0).unwrap().clone());
+        builder
+            .outputs
+            .push(predicate_output.get(0).unwrap().clone());
+
+        wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+        wallet.add_witnesses(&mut builder).unwrap();
+
+        let tx = builder.build(&provider).await.unwrap();
+        provider
+            .send_transaction_and_await_commit(tx)
+            .await.unwrap()
+            .check(None).unwrap();
+
+        // The predicate has spent it's funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(predicate_balance, 0);
+    }
+
+    #[tokio::test]
+    async fn can_get_witness_in_tx_blob() {
+        // Prepare wallet and provider
+        let mut wallet = WalletUnlocked::new_random(None);
+        let num_coins = 100;
+        let coins = setup_single_asset_coins(
+            wallet.address(),
+            AssetId::zeroed(),
+            num_coins,
+            DEFAULT_COIN_AMOUNT,
+        );
+
+        let provider = setup_test_provider(coins, vec![], None, None)
+            .await
+            .unwrap();
+        wallet.set_provider(provider.clone());
+
+        // Prepare blobs
+        let max_words_per_blob = 10_000;
+        let blobs = Contract::load_from(
+            TX_CONTRACT_BYTECODE_PATH,
+            LoadConfiguration::default(),
+        ).unwrap()
+        .convert_to_loader(max_words_per_blob).unwrap()
+        .blobs()
+        .to_vec();
+
+        let blob = blobs[0].clone();
+
+        let mut builder = BlobTransactionBuilder::default().with_blob(blob);
+
+        // Prepare the predicate
+        let witnesses = builder.witnesses().clone();
+        let predicate_data = TestTxWitnessPredicateEncoder::new(EncoderConfig {
+            max_depth: 10,
+            max_tokens: 100_000,
+        })
+        .encode_data(
+            0,
+            witnesses.len() as u64 + 1,
+            witnesses[0].as_vec().len() as u64,
+            witnesses[0].as_vec().as_slice()[0..64].try_into().unwrap(),
+        )
+        .unwrap();
+        let predicate: Predicate = Predicate::load_from(TX_WITNESS_PREDICATE_BYTECODE_PATH)
+            .unwrap()
+            .with_provider(provider.clone())
+            .with_data(predicate_data);
+        let predicate_coin_amount = 100;
+
+        // Predicate has no funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(predicate_balance, 0);
+        wallet
+            .transfer(
+                predicate.address(),
+                predicate_coin_amount,
+                *provider.base_asset_id(),
+                TxPolicies::default(),
+            )
+            .await
+            .unwrap();
+
+        // Predicate has funds
+        let predicate_balance = predicate
+            .get_asset_balance(&provider.base_asset_id())
+            .await
+            .unwrap();
+        assert_eq!(
+            predicate_balance as usize,
+            predicate_coin_amount as usize
+        );
+
+        // Inputs for predicate
+        let predicate_input = predicate
+            .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+            .await
+            .unwrap();
+
+        // Outputs for predicate
+        let predicate_output =
+            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
+
+        // Append the predicate to the transaction
+        builder.inputs.push(predicate_input.get(0).unwrap().clone());
+        builder
+            .outputs
+            .push(predicate_output.get(0).unwrap().clone());
+
+        wallet.add_witnesses(&mut builder).unwrap();
+        wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+    
         let tx = builder.build(provider.clone()).await.unwrap();
 
         provider.send_transaction(tx).await.unwrap();
@@ -1279,6 +1487,107 @@ mod inputs {
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
             let tx = builder.build(provider.clone()).await.unwrap();
 
+            provider.send_transaction(tx).await.unwrap();
+
+            // The predicate has spent it's funds
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
+            assert_eq!(predicate_balance, 0);
+        }
+
+        #[tokio::test]
+        async fn can_get_input_count_in_tx_blob() {
+            // Prepare wallet and provider
+            let mut wallet = WalletUnlocked::new_random(None);
+            let num_coins = 100;
+            let coins = setup_single_asset_coins(
+                wallet.address(),
+                AssetId::zeroed(),
+                num_coins,
+                DEFAULT_COIN_AMOUNT,
+            );
+            let provider = setup_test_provider(coins, vec![], None, None)
+                .await
+                .unwrap();
+            wallet.set_provider(provider.clone());
+
+            // Prepare blobs
+            let max_words_per_blob = 10_000;
+            let blobs = Contract::load_from(
+                TX_CONTRACT_BYTECODE_PATH,
+                LoadConfiguration::default(),
+            ).unwrap()
+            .convert_to_loader(max_words_per_blob).unwrap()
+            .blobs()
+            .to_vec();
+
+            let blob = blobs[0].clone();
+
+            let mut builder = BlobTransactionBuilder::default().with_blob(blob);
+
+            // Prepare the predicate
+            let predicate_data = TestTxInputCountPredicateEncoder::default()
+                .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
+                .unwrap();
+            let predicate: Predicate =
+                Predicate::load_from(TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH)
+                    .unwrap()
+                    .with_provider(provider.clone())
+                    .with_data(predicate_data);
+            let predicate_coin_amount = 100;
+
+            // Predicate has no funds
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
+            assert_eq!(predicate_balance, 0);
+            wallet
+                .transfer(
+                    predicate.address(),
+                    predicate_coin_amount,
+                    *provider.base_asset_id(),
+                    TxPolicies::default(),
+                )
+                .await
+                .unwrap();
+
+            // Predicate has funds
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
+            assert_eq!(
+                predicate_balance as usize,
+                predicate_coin_amount as usize
+            );
+
+            // Inputs for predicate
+            let predicate_input = predicate
+                .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                .await
+                .unwrap();
+
+            // Outputs for predicate
+            let predicate_output = wallet.get_asset_outputs_for_amount(
+                &wallet.address(),
+                *provider.base_asset_id(),
+                1,
+            );
+
+            // Append the predicate to the transaction
+            builder.inputs.push(predicate_input.get(0).unwrap().clone());
+            builder
+                .outputs
+                .push(predicate_output.get(0).unwrap().clone());
+
+            wallet.add_witnesses(&mut builder).unwrap();
+            wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+
+            // Submit the transaction
+            let tx = builder.build(&provider).await.unwrap();
             provider.send_transaction(tx).await.unwrap();
 
             // The predicate has spent it's funds
@@ -2148,6 +2457,107 @@ mod outputs {
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
             let tx = builder.build(provider.clone()).await.unwrap();
 
+            provider.send_transaction(tx).await.unwrap();
+
+            // The predicate has spent it's funds
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
+            assert_eq!(predicate_balance, 0);
+        }
+
+        #[tokio::test]
+        async fn can_get_output_count_in_tx_blob() {
+            // Prepare wallet and provider
+            let mut wallet = WalletUnlocked::new_random(None);
+            let num_coins = 100;
+            let coins = setup_single_asset_coins(
+                wallet.address(),
+                AssetId::zeroed(),
+                num_coins,
+                DEFAULT_COIN_AMOUNT,
+            );
+            let provider = setup_test_provider(coins, vec![], None, None)
+                .await
+                .unwrap();
+            wallet.set_provider(provider.clone());
+
+            // Prepare blobs
+            let max_words_per_blob = 10_000;
+            let blobs = Contract::load_from(
+                TX_CONTRACT_BYTECODE_PATH,
+                LoadConfiguration::default(),
+            ).unwrap()
+            .convert_to_loader(max_words_per_blob).unwrap()
+            .blobs()
+            .to_vec();
+
+            let blob = blobs[0].clone();
+
+            let mut builder = BlobTransactionBuilder::default().with_blob(blob);
+
+            // Prepare the predicate
+            let predicate_data = TestTxOutputCountPredicateEncoder::default()
+                .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
+                .unwrap();
+            let predicate: Predicate =
+                Predicate::load_from(TX_OUTPUT_COUNT_PREDICATE_BYTECODE_PATH)
+                    .unwrap()
+                    .with_provider(provider.clone())
+                    .with_data(predicate_data);
+            let predicate_coin_amount = 100;
+
+            // Predicate has no funds
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
+            assert_eq!(predicate_balance, 0);
+            wallet
+                .transfer(
+                    predicate.address(),
+                    predicate_coin_amount,
+                    *provider.base_asset_id(),
+                    TxPolicies::default(),
+                )
+                .await
+                .unwrap();
+
+            // Predicate has funds
+            let predicate_balance = predicate
+                .get_asset_balance(&provider.base_asset_id())
+                .await
+                .unwrap();
+            assert_eq!(
+                predicate_balance as usize,
+                predicate_coin_amount as usize
+            );
+
+            // Inputs for predicate
+            let predicate_input = predicate
+                .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                .await
+                .unwrap();
+
+            // Outputs for predicate
+            let predicate_output = wallet.get_asset_outputs_for_amount(
+                &wallet.address(),
+                *provider.base_asset_id(),
+                1,
+            );
+
+            // Append the predicate to the transaction
+            builder.inputs.push(predicate_input.get(0).unwrap().clone());
+            builder
+                .outputs
+                .push(predicate_output.get(0).unwrap().clone());
+
+            wallet.add_witnesses(&mut builder).unwrap();
+            wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+
+            // Submit the transaction
+            let tx = builder.build(&provider).await.unwrap();
             provider.send_transaction(tx).await.unwrap();
 
             // The predicate has spent it's funds
