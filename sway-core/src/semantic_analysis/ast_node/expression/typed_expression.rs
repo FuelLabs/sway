@@ -1244,19 +1244,19 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx
-            .namespace()
-            .resolve_root_symbol(
-                handler,
-                engines,
-                &storage_key_mod_path,
-                &storage_key_ident,
-                None,
-            )?
-            .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
+        let storage_key_decl = ctx.namespace().root().resolve_symbol(
+            handler,
+            engines,
+            &storage_key_mod_path,
+            &storage_key_ident,
+            None,
+        )?;
+
+        let storage_key_struct_decl_id = storage_key_decl
+            .expect_typed()
+            .to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
-            (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
+            (*decl_engine.get_struct(&storage_key_struct_decl_id)).clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1282,7 +1282,7 @@ impl ty::TyExpression {
         let storage_key_struct_decl_ref = decl_engine.insert(
             storage_key_struct_decl,
             decl_engine
-                .get_parsed_decl_id(&storage_key_struct_decl_ref)
+                .get_parsed_decl_id(&storage_key_struct_decl_id)
                 .as_ref(),
         );
         access_type = type_engine.insert(
@@ -1781,14 +1781,10 @@ impl ty::TyExpression {
         // type check the address and make sure it is
         let err_span = address.span().clone();
         let address_expr = {
-            // We want to type check the address expression as we do in the second pass, otherwise we get
-            // mismatched types while comparing TypeInfo::ContractCaller which is the return type of
-            // TyExpressionVariant::AbiCast.
             let ctx = ctx
                 .by_ref()
                 .with_help_text("An address that is being ABI cast must be of type b256")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None))
-                .with_code_block_first_pass(false);
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None));
             ty::TyExpression::type_check(handler, ctx, address)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, err_span, engines))
         };
@@ -1947,7 +1943,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_array(
-        _handler: &Handler,
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         contents: &[Expression],
         span: Span,
@@ -2003,9 +1999,15 @@ impl ty::TyExpression {
                     .with_type_annotation(type_engine.insert(engines, initial_type.clone(), None));
 
                 // type_check_analyze unification will give the final error
-                let handler = Handler::default();
-                Self::type_check(&handler, ctx, expr)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
+                let type_check_handler = Handler::default();
+                let result = Self::type_check(&type_check_handler, ctx, expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines));
+
+                if let TypeInfo::ErrorRecovery(_) = &*engines.te().get(result.return_type) {
+                    handler.append(type_check_handler);
+                }
+
+                result
             })
             .collect();
 
@@ -2983,7 +2985,7 @@ mod tests {
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
 
-        assert!(errors.len() == 1);
+        assert_eq!(errors.len(), 1);
         assert!(matches!(&errors[0],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,

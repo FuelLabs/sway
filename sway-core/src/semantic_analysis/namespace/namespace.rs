@@ -7,20 +7,11 @@ use super::{
     module::Module,
     root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
-    trait_map::ResolvedTraitImplItem,
     ModulePath, ModulePathBuf,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
-
-/// Enum used to pass a value asking for insertion of type into trait map when an implementation
-/// of the trait cannot be found.
-#[derive(Debug)]
-pub enum TryInsertingTraitImplOnFailure {
-    Yes,
-    No,
-}
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug, Default)]
@@ -117,11 +108,6 @@ impl Namespace {
         &self.root.module
     }
 
-    /// The name of the root module
-    pub fn root_module_name(&self) -> &Ident {
-        self.root.module.name()
-    }
-
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
     pub fn module(&self, engines: &Engines) -> &Module {
         self.root
@@ -142,7 +128,7 @@ impl Namespace {
         &self,
         handler: &Handler,
         engines: &Engines,
-        path: &[Ident],
+        path: &ModulePath,
     ) -> Result<&Module, ErrorEmitted> {
         self.root.module.lookup_submodule(handler, engines, path)
     }
@@ -203,34 +189,6 @@ impl Namespace {
 
         root_name != &absolute_module_path[0]
     }
-
-    pub fn get_root_trait_item_for_type(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        name: &Ident,
-        type_id: TypeId,
-        as_trait: Option<CallPath>,
-    ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
-        self.root
-            .module
-            .current_items()
-            .implemented_traits
-            .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
-    }
-
-    pub fn resolve_root_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .resolve_symbol(handler, engines, mod_path, symbol, self_type)
-    }
-
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
     pub(crate) fn resolve_symbol(
         &self,
