@@ -52,7 +52,7 @@ pub fn inlay_hints(
         .tokens_for_file(uri)
         .filter_map(|item| {
             let token = item.value();
-            token.typed.as_ref().and_then(|t| match t {
+            token.as_typed().as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
                     let var_range = get_range_from_span(&var_decl.name.span());
                     if var_range.start >= range.start && var_range.end <= range.end {

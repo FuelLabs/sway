@@ -143,7 +143,7 @@ fn hover_format(
     let mut hover_link_contents = HoverLinkContents::new(session, engines);
 
     let sway_block = token
-        .typed
+        .as_typed()
         .as_ref()
         .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {

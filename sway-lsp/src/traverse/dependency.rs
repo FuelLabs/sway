@@ -1,5 +1,5 @@
 use crate::{
-    core::token::{AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken},
+    core::token::{ParsedAstToken, SymbolKind, Token, TokenAstNode, TypeDefinition, TypedAstToken},
     traverse::ParseContext,
 };
 use sway_core::language::{
@@ -11,7 +11,7 @@ use sway_types::Named;
 /// Insert Declaration tokens into the TokenMap.
 pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
     if let AstNodeContent::Declaration(declaration) = &node.content {
-        let parsed_token = AstToken::Declaration(declaration.clone());
+        let parsed_token = ParsedAstToken::Declaration(declaration.clone());
 
         let (ident, symbol_kind) = match declaration {
             Declaration::VariableDeclaration(decl_id) => {
@@ -73,7 +73,7 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
 
         let token_ident = ctx.ident(&ident);
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&token_ident) {
-            token.typed = Some(typed_token);
+            token.ast_node = TokenAstNode::Typed(typed_token);
             token.type_def = Some(TypeDefinition::Ident(ident));
         }
     }
