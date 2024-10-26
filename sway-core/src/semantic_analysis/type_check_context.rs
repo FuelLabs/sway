@@ -675,7 +675,7 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_with_visibility_check(
+    pub(crate) fn resolve_call_path(
         &self,
         handler: &Handler,
         call_path: &CallPath,
@@ -690,7 +690,7 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+    pub(crate) fn resolve_qualified_call_path(
         &mut self,
         handler: &Handler,
         qualified_call_path: &QualifiedCallPath,
