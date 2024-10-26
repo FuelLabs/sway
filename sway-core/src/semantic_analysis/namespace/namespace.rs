@@ -7,10 +7,7 @@ use crate::{
 };
 
 use super::{
-    module::Module,
-    root::{ResolvedDeclaration, Root},
-    submodule_namespace::SubmoduleNamespace,
-    ModulePath, ModulePathBuf,
+    module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, ModulePathBuf,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -220,18 +217,6 @@ impl Namespace {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_call_path(handler, engines, call_path, self_type)
-            .map(|resolved_decl| resolved_decl.expect_typed())
-    }
-
-    /// Short-hand for calling [resolve_call_path_and_mod_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         resolve_call_path_and_mod_path(
             handler,
             engines,
@@ -240,7 +225,7 @@ impl Namespace {
             call_path,
             self_type,
         )
-        .map(|d| d.0)
+        .map(|d| d.0.expect_typed())
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
