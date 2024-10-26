@@ -44,8 +44,6 @@ pub fn main() {
 
             let repo_root = repo_root.clone();
             Trial::test(name, move || {
-                
-
                 let snapshot_toml =
                     std::fs::read_to_string(format!("{}/snapshot.toml", dir.display()))?;
                 let snapshot_toml = toml::from_str::<toml::Value>(&snapshot_toml)?;
