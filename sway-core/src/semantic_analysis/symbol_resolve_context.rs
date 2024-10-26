@@ -12,7 +12,10 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
-use super::{symbol_collection_context::SymbolCollectionContext, GenericShadowingMode};
+use super::{
+    symbol_collection_context::SymbolCollectionContext,
+    type_resolve::resolve_call_path_and_mod_path, GenericShadowingMode,
+};
 
 /// Contextual state tracked and accumulated throughout symbol resolving.
 pub struct SymbolResolveContext<'a> {
@@ -205,9 +208,10 @@ impl<'a> SymbolResolveContext<'a> {
         mod_path: &ModulePath,
         call_path: &CallPath,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
+        let (decl, mod_path) = resolve_call_path_and_mod_path(
             handler,
             self.engines,
+            self.namespace().root_module(),
             mod_path,
             call_path,
             self.self_type,

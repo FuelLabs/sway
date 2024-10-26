@@ -7,7 +7,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructDecl, TyDecl},
-        CallPath, Visibility,
+        Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
     semantic_analysis::type_resolve::resolve_symbol_and_mod_path,
@@ -725,29 +725,6 @@ impl Root {
     }
 
     ////// NAME RESOLUTION //////
-
-    pub(crate) fn resolve_call_path_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let symbol_path: Vec<_> = mod_path
-            .iter()
-            .chain(&call_path.prefixes)
-            .cloned()
-            .collect();
-        resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            &self.module,
-            &symbol_path,
-            &call_path.suffix,
-            self_type,
-        )
-    }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its
     /// declaration.

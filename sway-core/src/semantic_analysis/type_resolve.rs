@@ -11,7 +11,7 @@ use crate::{
         CallPath, QualifiedCallPath,
     },
     monomorphization::type_decl_opt_to_type_id,
-    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
+    namespace::{Module, ModulePath, ModulePathBuf, ResolvedDeclaration, ResolvedTraitImplItem},
     type_system::SubstTypes,
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
@@ -246,6 +246,29 @@ pub fn resolve_qualified_call_path(
     }
 }
 
+pub fn resolve_call_path_and_mod_path(
+    handler: &Handler,
+    engines: &Engines,
+    module: &Module,
+    mod_path: &ModulePath,
+    call_path: &CallPath,
+    self_type: Option<TypeId>,
+) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
+    let symbol_path: Vec<_> = mod_path
+        .iter()
+        .chain(&call_path.prefixes)
+        .cloned()
+        .collect();
+    resolve_symbol_and_mod_path(
+        handler,
+        engines,
+        module,
+        &symbol_path,
+        &call_path.suffix,
+        self_type,
+    )
+}
+
 /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
 ///
 /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
@@ -262,9 +285,14 @@ pub fn resolve_call_path(
     call_path: &CallPath,
     self_type: Option<TypeId>,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-    let (decl, mod_path) = namespace
-        .root
-        .resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
+    let (decl, mod_path) = resolve_call_path_and_mod_path(
+        handler,
+        engines,
+        namespace.root_module(),
+        mod_path,
+        call_path,
+        self_type,
+    )?;
 
     // In case there is no mod path we don't need to check visibility
     if mod_path.is_empty() {
