@@ -677,23 +677,6 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        call_path: &CallPath,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        resolve_call_path(
-            handler,
-            self.engines(),
-            self.namespace(),
-            &self.namespace().mod_path,
-            call_path,
-            self.self_type(),
-        )
-        .map(|d| d.expect_typed())
-    }
-
     pub(crate) fn resolve_qualified_call_path(
         &mut self,
         handler: &Handler,
@@ -726,6 +709,23 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
         )
         .map(|d| d.0.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        handler: &Handler,
+        call_path: &CallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path(
+            handler,
+            self.engines(),
+            self.namespace(),
+            &self.namespace().mod_path,
+            call_path,
+            self.self_type(),
+        )
+        .map(|d| d.expect_typed())
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
