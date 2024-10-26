@@ -10,7 +10,7 @@ use crate::{
         CallPath, Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    semantic_analysis::type_resolve::{resolve_associated_item, resolve_associated_type},
+    semantic_analysis::type_resolve::resolve_symbol_and_mod_path,
     TypeId,
 };
 use sway_error::{
@@ -756,9 +756,10 @@ impl Root {
             .chain(&call_path.prefixes)
             .cloned()
             .collect();
-        self.resolve_symbol_and_mod_path(
+        resolve_symbol_and_mod_path(
             handler,
             engines,
+            &self.module,
             &symbol_path,
             &call_path.suffix,
             self_type,
@@ -778,60 +779,15 @@ impl Root {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
+        let (decl, _) = resolve_symbol_and_mod_path(
+            handler,
+            engines,
+            &self.module,
+            mod_path,
+            symbol,
+            self_type,
+        )?;
         Ok(decl)
-    }
-
-    fn resolve_symbol_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-        // This block tries to resolve associated types
-        let mut module = &self.module;
-        let mut current_mod_path = vec![];
-        let mut decl_opt = None;
-        for ident in mod_path.iter() {
-            if let Some(decl) = decl_opt {
-                decl_opt = Some(resolve_associated_type(
-                    handler, engines, module, ident, decl, None, self_type,
-                )?);
-            } else {
-                match module.submodules.get(ident.as_str()) {
-                    Some(ns) => {
-                        module = ns;
-                        current_mod_path.push(ident.clone());
-                    }
-                    None => {
-                        decl_opt = Some(
-                            module
-                                .current_lexical_scope()
-                                .items
-                                .resolve_symbol(handler, engines, ident)?,
-                        );
-                    }
-                }
-            }
-        }
-        if let Some(decl) = decl_opt {
-            let decl =
-                resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
-            return Ok((decl, current_mod_path));
-        }
-
-        self.module
-            .lookup_submodule(handler, engines, mod_path)
-            .and_then(|module| {
-                let decl = module
-                    .current_lexical_scope()
-                    .items
-                    .resolve_symbol(handler, engines, symbol)?;
-                Ok((decl, mod_path.to_vec()))
-            })
     }
 }
 

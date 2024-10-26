@@ -300,6 +300,70 @@ pub fn resolve_call_path(
     Ok(decl)
 }
 
+pub fn resolve_symbol_and_mod_path(
+    handler: &Handler,
+    engines: &Engines,
+    module: &Module,
+    mod_path: &ModulePath,
+    symbol: &Ident,
+    self_type: Option<TypeId>,
+) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+    let mut current_module = module;
+    // This block tries to resolve associated types
+    let mut current_mod_path = vec![];
+    let mut decl_opt = None;
+    for ident in mod_path.iter() {
+        if let Some(decl) = decl_opt {
+            decl_opt = Some(resolve_associated_type(
+                handler,
+                engines,
+                current_module,
+                ident,
+                decl,
+                None,
+                self_type,
+            )?);
+        } else {
+            match current_module.submodules.get(ident.as_str()) {
+                Some(ns) => {
+                    current_module = ns;
+                    current_mod_path.push(ident.clone());
+                }
+                None => {
+                    decl_opt = Some(
+                        current_module
+                            .current_lexical_scope()
+                            .items
+                            .resolve_symbol(handler, engines, ident)?,
+                    );
+                }
+            }
+        }
+    }
+    if let Some(decl) = decl_opt {
+        let decl = resolve_associated_item(
+            handler,
+            engines,
+            current_module,
+            symbol,
+            decl,
+            None,
+            self_type,
+        )?;
+        return Ok((decl, current_mod_path));
+    }
+
+    module
+        .lookup_submodule(handler, engines, mod_path)
+        .and_then(|module| {
+            let decl = module
+                .current_lexical_scope()
+                .items
+                .resolve_symbol(handler, engines, symbol)?;
+            Ok((decl, mod_path.to_vec()))
+        })
+}
+
 pub fn decl_to_type_info(
     handler: &Handler,
     engines: &Engines,
