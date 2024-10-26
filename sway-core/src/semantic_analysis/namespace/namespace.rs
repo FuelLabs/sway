@@ -225,7 +225,7 @@ impl Namespace {
             .map(|resolved_decl| resolved_decl.expect_typed())
     }
 
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
+    /// Short-hand for calling [resolve_call_path_and_mod_path] on `root` with the `mod_path`.
     pub(crate) fn resolve_call_path(
         &self,
         handler: &Handler,
@@ -234,7 +234,8 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
+            .resolve_call_path_and_mod_path(handler, engines, &self.mod_path, call_path, self_type)
+            .map(|d| d.0)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
