@@ -187,7 +187,7 @@ impl<'a> SymbolResolveContext<'a> {
         resolve_call_path(
             handler,
             self.engines(),
-            self.namespace(),
+            self.namespace().root(),
             &self.namespace().mod_path,
             call_path,
             self.self_type(),

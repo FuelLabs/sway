@@ -11,7 +11,7 @@ use crate::{
         CallPath, QualifiedCallPath,
     },
     monomorphization::type_decl_opt_to_type_id,
-    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
+    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem, Root},
     type_system::SubstTypes,
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
@@ -205,7 +205,7 @@ pub fn resolve_qualified_call_path(
                 let type_decl = resolve_call_path(
                     handler,
                     engines,
-                    namespace,
+                    namespace.root(),
                     mod_path,
                     &qualified_call_path.clone().to_call_path(handler)?,
                     self_type,
@@ -254,7 +254,7 @@ pub fn resolve_qualified_call_path(
         resolve_call_path(
             handler,
             engines,
-            namespace,
+            namespace.root(),
             mod_path,
             &qualified_call_path.call_path,
             self_type,
@@ -274,7 +274,7 @@ pub fn resolve_qualified_call_path(
 pub fn resolve_call_path(
     handler: &Handler,
     engines: &Engines,
-    namespace: &Namespace,
+    root: &Root,
     mod_path: &ModulePath,
     call_path: &CallPath,
     self_type: Option<TypeId>,
@@ -289,7 +289,7 @@ pub fn resolve_call_path(
     let (decl, mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
-        namespace.root_module(),
+        &root.module,
         &symbol_path,
         &call_path.suffix,
         self_type,
@@ -312,7 +312,7 @@ pub fn resolve_call_path(
     // check the visibility of the call path elements
     // we don't check the first prefix because direct children are always accessible
     for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-        let module = namespace.lookup_submodule_from_absolute_path(handler, engines, prefix)?;
+        let module = root.module.lookup_submodule(handler, engines, prefix)?;
         if module.visibility().is_private() {
             let prefix_last = prefix[prefix.len() - 1].clone();
             handler.emit_err(CompileError::ImportPrivateModule {

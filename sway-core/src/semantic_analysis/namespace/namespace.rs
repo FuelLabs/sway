@@ -4,7 +4,7 @@ use super::{
     module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, ModulePathBuf,
 };
 
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::handler::Handler;
 use sway_types::span::Span;
 
 /// The set of items that represent the namespace context passed throughout type checking.
@@ -116,15 +116,6 @@ impl Namespace {
             .module
             .lookup_submodule_mut(&Handler::default(), engines, &self.mod_path)
             .unwrap()
-    }
-
-    pub fn lookup_submodule_from_absolute_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        path: &ModulePath,
-    ) -> Result<&Module, ErrorEmitted> {
-        self.root.module.lookup_submodule(handler, engines, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of

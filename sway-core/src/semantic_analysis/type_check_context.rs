@@ -722,7 +722,7 @@ impl<'a> TypeCheckContext<'a> {
         resolve_call_path(
             handler,
             self.engines(),
-            self.namespace(),
+            self.namespace().root(),
             &self.namespace().mod_path,
             call_path,
             self.self_type(),
@@ -740,7 +740,7 @@ impl<'a> TypeCheckContext<'a> {
         resolve_call_path(
             handler,
             self.engines(),
-            self.namespace(),
+            self.namespace().root(),
             self.namespace().mod_path(),
             call_path,
             self.self_type(),
@@ -769,7 +769,7 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // grab the local module
-        let local_module = self.namespace().lookup_submodule_from_absolute_path(
+        let local_module = self.namespace().root_module().lookup_submodule(
             handler,
             self.engines(),
             &self.namespace().mod_path,
@@ -797,7 +797,7 @@ impl<'a> TypeCheckContext<'a> {
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // grab the module where the type itself is declared
-        let type_module = self.namespace().lookup_submodule_from_absolute_path(
+        let type_module = self.namespace().root_module().lookup_submodule(
             handler,
             self.engines(),
             item_prefix,

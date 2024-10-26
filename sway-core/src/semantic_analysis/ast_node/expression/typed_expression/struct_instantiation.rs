@@ -74,7 +74,8 @@ pub(crate) fn struct_instantiation(
     // find the module that the struct decl is in
     let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
     ctx.namespace()
-        .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
+        .root_module()
+        .lookup_submodule(handler, engines, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
