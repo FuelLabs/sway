@@ -193,25 +193,6 @@ impl Namespace {
         root_name != &absolute_module_path[0]
     }
 
-    /// Short-hand for calling [resolve_symbol_and_mod_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            self.root_module(),
-            &self.mod_path,
-            symbol,
-            self_type,
-        )
-        .map(|d| d.0)
-    }
-
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
     pub(crate) fn resolve_symbol_typed(
         &self,
@@ -220,8 +201,15 @@ impl Namespace {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_symbol(handler, engines, symbol, self_type)
-            .map(|resolved_decl| resolved_decl.expect_typed())
+        resolve_symbol_and_mod_path(
+            handler,
+            engines,
+            self.root_module(),
+            &self.mod_path,
+            symbol,
+            self_type,
+        )
+        .map(|d| d.0.expect_typed())
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
