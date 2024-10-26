@@ -397,7 +397,7 @@ fn resolve_symbol_and_mod_path(
         })
 }
 
-pub fn decl_to_type_info(
+fn decl_to_type_info(
     handler: &Handler,
     engines: &Engines,
     symbol: &Ident,
@@ -432,7 +432,7 @@ pub fn decl_to_type_info(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn resolve_associated_item_from_type_id(
+fn resolve_associated_item_from_type_id(
     handler: &Handler,
     engines: &Engines,
     module: &Module,
@@ -468,7 +468,7 @@ pub fn resolve_associated_item_from_type_id(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn resolve_associated_type_or_item(
+fn resolve_associated_type_or_item(
     handler: &Handler,
     engines: &Engines,
     module: &Module,
@@ -488,7 +488,7 @@ pub fn resolve_associated_type_or_item(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn resolve_call_path_and_root_type_id(
+fn resolve_call_path_and_root_type_id(
     handler: &Handler,
     engines: &Engines,
     module: &Module,
