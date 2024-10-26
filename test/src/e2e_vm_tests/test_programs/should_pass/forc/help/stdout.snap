@@ -604,15 +604,15 @@ Forc plugin for building a Sway package's documentation
 Usage: forc-doc [OPTIONS]
 
 Options:
-      --manifest-path <MANIFEST_PATH>      Path to the Forc.toml file. By default, forc-doc searches for the Forc.toml file in the current directory or
-                                           any parent directory
+      --manifest-path <MANIFEST_PATH>      Path to the Forc.toml file. By default, forc-doc searches for the Forc.toml file in the current directory
+                                           or any parent directory
       --document-private-items             Include non-public items in the documentation
       --open                               Open the docs in a browser after building them
       --offline                            Offline mode, prevents Forc from using the network when managing dependencies. Meaning it will only try to
                                            use previously downloaded dependencies
   -s, --silent                             Silent mode. Don't output any warnings or errors to the command line
-      --locked                             Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs to be updated, Forc
-                                           will exit with an error
+      --locked                             Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs to be updated,
+                                           Forc will exit with an error
       --no-deps                            Do not build documentation for dependencies
       --ipfs-node <IPFS_NODE>              The IPFS Node to use for fetching IPFS sources
       --experimental <EXPERIMENTAL>        Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
