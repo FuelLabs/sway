@@ -808,11 +808,9 @@ pub(crate) fn resolve_method_name(
             let type_info_prefix = ctx
                 .namespace()
                 .prepend_module_path(&call_path_binding.inner.prefixes);
-            ctx.namespace().root_module().lookup_submodule(
-                handler,
-                engines,
-                &type_info_prefix,
-            )?;
+            ctx.namespace()
+                .root_module()
+                .lookup_submodule(handler, engines, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(

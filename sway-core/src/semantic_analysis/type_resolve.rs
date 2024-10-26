@@ -333,7 +333,7 @@ pub fn resolve_call_path(
     Ok(decl)
 }
 
-pub fn resolve_symbol_and_mod_path(
+fn resolve_symbol_and_mod_path(
     handler: &Handler,
     engines: &Engines,
     module: &Module,

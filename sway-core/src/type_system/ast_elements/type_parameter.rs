@@ -275,10 +275,7 @@ impl TypeParameter {
         ctx: &TypeCheckContext,
         tc: &TraitConstraint,
     ) -> Vec<TraitConstraint> {
-        match ctx
-            .resolve_call_path(handler, &tc.trait_name)
-            .ok()
-        {
+        match ctx.resolve_call_path(handler, &tc.trait_name).ok() {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let trait_decl = ctx.engines.de().get_trait(&decl_id);
                 let mut result = trait_decl

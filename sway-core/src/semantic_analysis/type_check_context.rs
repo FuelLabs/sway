@@ -30,10 +30,7 @@ use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
     symbol_collection_context::SymbolCollectionContext,
-    type_resolve::{
-        resolve_call_path, resolve_qualified_call_path, resolve_symbol_and_mod_path, resolve_type,
-        VisibilityCheck,
-    },
+    type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
     GenericShadowingMode,
 };
 
@@ -702,15 +699,16 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         symbol: &Ident,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        resolve_symbol_and_mod_path(
+        resolve_call_path(
             handler,
             self.engines(),
-            self.namespace().root_module(),
+            self.namespace().root(),
             self.namespace().mod_path(),
-            symbol,
+            &symbol.clone().into(),
             self.self_type(),
+            VisibilityCheck::No,
         )
-        .map(|d| d.0.expect_typed())
+        .map(|d| d.expect_typed())
     }
 
     /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.

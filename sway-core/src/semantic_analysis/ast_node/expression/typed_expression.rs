@@ -49,7 +49,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
-use type_resolve::resolve_symbol_and_mod_path;
+use type_resolve::{resolve_call_path, VisibilityCheck};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -310,8 +310,7 @@ impl ty::TyExpression {
                     is_absolute: false,
                 };
                 if matches!(
-                    ctx.resolve_call_path(&Handler::default(), &call_path,)
-                        .ok(),
+                    ctx.resolve_call_path(&Handler::default(), &call_path,).ok(),
                     Some(ty::TyDecl::EnumVariantDecl { .. })
                 ) {
                     Self::type_check_delineated_path(
@@ -1251,13 +1250,14 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let (storage_key_decl, _) = resolve_symbol_and_mod_path(
+        let storage_key_decl = resolve_call_path(
             handler,
             engines,
-            ctx.namespace().root_module(),
+            ctx.namespace().root(),
             &storage_key_mod_path,
-            &storage_key_ident,
+            &storage_key_ident.into(),
             None,
+            VisibilityCheck::No,
         )?;
 
         let storage_key_struct_decl_id = storage_key_decl
@@ -1801,7 +1801,7 @@ impl ty::TyExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let unknown_decl = ctx.resolve_call_path(handler,  abi_name)?;
+                        let unknown_decl = ctx.resolve_call_path(handler, abi_name)?;
                         unknown_decl.to_abi_ref(handler, engines)?
                     }
                     AbiName::Deferred => {
