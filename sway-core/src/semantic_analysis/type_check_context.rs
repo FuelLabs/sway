@@ -716,7 +716,6 @@ impl<'a> TypeCheckContext<'a> {
         &self,
         handler: &Handler,
         symbol: &Ident,
-        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         resolve_symbol_and_mod_path(
             handler,
@@ -724,7 +723,7 @@ impl<'a> TypeCheckContext<'a> {
             self.namespace().root_module(),
             self.namespace().mod_path(),
             symbol,
-            self_type,
+            self.self_type(),
         )
         .map(|d| d.0.expect_typed())
     }
@@ -735,7 +734,6 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         engines: &Engines,
         call_path: &CallPath,
-        self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         resolve_call_path_and_mod_path(
             handler,
@@ -743,7 +741,7 @@ impl<'a> TypeCheckContext<'a> {
             self.namespace().root_module(),
             self.namespace().mod_path(),
             call_path,
-            self_type,
+            self.self_type(),
         )
         .map(|d| d.0.expect_typed())
     }

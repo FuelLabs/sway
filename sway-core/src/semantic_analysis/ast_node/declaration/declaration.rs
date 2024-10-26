@@ -188,12 +188,7 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .resolve_call_path_typed(
-                            handler,
-                            engines,
-                            &supertrait.name,
-                            ctx.self_type(),
-                        )
+                        .resolve_call_path_typed(handler, engines, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 decl_id: supertrait_decl_id,
@@ -304,7 +299,6 @@ impl TyDecl {
                     &Handler::default(),
                     engines,
                     &impl_trait.trait_name,
-                    ctx.self_type(),
                 );
 
                 let empty_vec = vec![];
@@ -369,12 +363,7 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .resolve_call_path_typed(
-                            handler,
-                            engines,
-                            &supertrait.name,
-                            ctx.self_type(),
-                        )
+                        .resolve_call_path_typed(handler, engines, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 decl_id: supertrait_decl_id,

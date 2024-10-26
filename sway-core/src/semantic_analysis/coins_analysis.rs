@@ -24,10 +24,7 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
             None => false,
         },
         VariableExpression { name, .. } => {
-            match ctx
-                .resolve_symbol_typed(&Handler::default(), name, None)
-                .ok()
-            {
+            match ctx.resolve_symbol_typed(&Handler::default(), name).ok() {
                 Some(ty_decl) => {
                     match ty_decl {
                         ty::TyDecl::VariableDecl(var_decl) => {

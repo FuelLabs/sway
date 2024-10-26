@@ -285,8 +285,7 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl =
-                    ctx.resolve_symbol_typed(&Handler::default(), name, ctx.self_type())?;
+                let unknown_decl = ctx.resolve_symbol_typed(&Handler::default(), name)?;
 
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,

@@ -310,13 +310,8 @@ impl ty::TyExpression {
                     is_absolute: false,
                 };
                 if matches!(
-                    ctx.resolve_call_path_typed(
-                        &Handler::default(),
-                        engines,
-                        &call_path,
-                        ctx.self_type()
-                    )
-                    .ok(),
+                    ctx.resolve_call_path_typed(&Handler::default(), engines, &call_path,)
+                        .ok(),
                     Some(ty::TyDecl::EnumVariantDecl { .. })
                 ) {
                     Self::type_check_delineated_path(
@@ -651,10 +646,7 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        let exp = match ctx
-            .resolve_symbol_typed(&Handler::default(), &name, ctx.self_type())
-            .ok()
-        {
+        let exp = match ctx.resolve_symbol_typed(&Handler::default(), &name).ok() {
             Some(ty::TyDecl::VariableDecl(decl)) => {
                 let ty::TyVariableDecl {
                     name: decl_name,
@@ -1420,12 +1412,7 @@ impl ty::TyExpression {
                 is_absolute,
             };
             if matches!(
-                ctx.resolve_call_path_typed(
-                    &Handler::default(),
-                    engines,
-                    &call_path,
-                    ctx.self_type()
-                ),
+                ctx.resolve_call_path_typed(&Handler::default(), engines, &call_path,),
                 Ok(ty::TyDecl::EnumVariantDecl { .. })
             ) {
                 // if it's a singleton it's either an enum variant or a function
@@ -1480,19 +1467,14 @@ impl ty::TyExpression {
                 suffix: before.inner.clone(),
                 is_absolute,
             };
-            ctx.resolve_call_path_typed(
-                &Handler::default(),
-                engines,
-                &probe_call_path,
-                ctx.self_type(),
-            )
-            .and_then(|decl| decl.to_enum_id(&Handler::default(), ctx.engines()))
-            .map(|decl_ref| decl_engine.get_enum(&decl_ref))
-            .and_then(|decl| {
-                decl.expect_variant_from_name(&Handler::default(), &suffix)
-                    .map(drop)
-            })
-            .is_err()
+            ctx.resolve_call_path_typed(&Handler::default(), engines, &probe_call_path)
+                .and_then(|decl| decl.to_enum_id(&Handler::default(), ctx.engines()))
+                .map(|decl_ref| decl_engine.get_enum(&decl_ref))
+                .and_then(|decl| {
+                    decl.expect_variant_from_name(&Handler::default(), &suffix)
+                        .map(drop)
+                })
+                .is_err()
         };
 
         if is_associated_call {
@@ -1798,7 +1780,7 @@ impl ty::TyExpression {
         };
 
         // look up the call path and get the declaration it references
-        let abi = ctx.resolve_call_path_typed(handler, engines, &abi_name, ctx.self_type())?;
+        let abi = ctx.resolve_call_path_typed(handler, engines, &abi_name)?;
         let abi_ref = match abi {
             ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id }) => {
                 let abi_decl = engines.de().get(&decl_id);
@@ -1819,12 +1801,8 @@ impl ty::TyExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let unknown_decl = ctx.resolve_call_path_typed(
-                            handler,
-                            engines,
-                            abi_name,
-                            ctx.self_type(),
-                        )?;
+                        let unknown_decl =
+                            ctx.resolve_call_path_typed(handler, engines, abi_name)?;
                         unknown_decl.to_abi_ref(handler, engines)?
                     }
                     AbiName::Deferred => {
@@ -2238,8 +2216,7 @@ impl ty::TyExpression {
                     let (decl_reference_name, decl_reference_rhs, decl_reference_type) =
                         match &reference_exp.expression {
                             TyExpressionVariant::VariableExpression { name, .. } => {
-                                let var_decl =
-                                    ctx.resolve_symbol_typed(handler, name, ctx.self_type())?;
+                                let var_decl = ctx.resolve_symbol_typed(handler, name)?;
 
                                 let TyDecl::VariableDecl(var_decl) = var_decl else {
                                     return Err(handler.emit_err(CompileError::Internal(
@@ -2299,8 +2276,7 @@ impl ty::TyExpression {
                     match expr.kind {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
-                            let unknown_decl =
-                                ctx.resolve_symbol_typed(handler, &name, ctx.self_type())?;
+                            let unknown_decl = ctx.resolve_symbol_typed(handler, &name)?;
 
                             match unknown_decl {
                                 TyDecl::VariableDecl(variable_decl) => {
@@ -2797,7 +2773,6 @@ fn check_asm_block_validity(
                         suffix: sway_types::BaseIdent::new(span.clone()),
                         is_absolute: true,
                     },
-                    None,
                 );
 
                 let shadowing_item = match decl {
