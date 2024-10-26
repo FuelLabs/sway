@@ -1260,7 +1260,6 @@ fn generic_params_opt_to_type_parameters_with_parent(
                     TypeInfo::Custom {
                         qualified_call_path: ident.clone().into(),
                         type_arguments: None,
-                        root_type_id: None,
                     },
                     ident.span().source_id(),
                 );
@@ -4341,7 +4340,6 @@ fn ty_to_type_parameter(
         TypeInfo::Custom {
             qualified_call_path: name_ident.clone().into(),
             type_arguments: None,
-            root_type_id: None,
         },
         name_ident.span().source_id(),
     );
@@ -4625,23 +4623,12 @@ fn path_type_to_type_info(
             }
 
             if !suffix.is_empty() {
-                let (mut call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
+                let (call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
                     context, handler, engines, path_type,
                 )?;
-
-                let mut root_type_id = None;
-                if name.as_str() == "Self" {
-                    call_path.call_path.prefixes.remove(0);
-                    root_type_id = Some(engines.te().insert(
-                        engines,
-                        type_info,
-                        name.span().source_id(),
-                    ));
-                }
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     type_arguments: Some(type_arguments),
-                    root_type_id,
                 }
             } else {
                 type_info
@@ -4686,7 +4673,6 @@ fn path_type_to_type_info(
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     type_arguments: Some(type_arguments),
-                    root_type_id: None,
                 }
             }
         }

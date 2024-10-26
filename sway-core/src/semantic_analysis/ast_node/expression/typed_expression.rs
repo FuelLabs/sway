@@ -1357,7 +1357,6 @@ impl ty::TyExpression {
                 let type_info = TypeInfo::Custom {
                     qualified_call_path: qualified_call_path.clone(),
                     type_arguments: None,
-                    root_type_id: None,
                 };
 
                 TypeBinding {
@@ -1490,7 +1489,6 @@ impl ty::TyExpression {
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
                 qualified_call_path: type_name.clone().into(),
                 type_arguments: None,
-                root_type_id: None,
             });
 
             let method_name_binding = TypeBinding {
@@ -1732,7 +1730,6 @@ impl ty::TyExpression {
                 type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
                     qualified_call_path: type_name.clone().into(),
                     type_arguments: None,
-                    root_type_id: None,
                 })
             });
 

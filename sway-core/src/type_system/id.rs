@@ -360,7 +360,6 @@ impl TypeId {
             TypeInfo::Custom {
                 qualified_call_path: _,
                 type_arguments,
-                root_type_id: _,
             } => {
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
