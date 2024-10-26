@@ -11,7 +11,7 @@ use crate::{
         CallPath, QualifiedCallPath,
     },
     monomorphization::type_decl_opt_to_type_id,
-    namespace::{Module, ModulePath, ModulePathBuf, ResolvedDeclaration, ResolvedTraitImplItem},
+    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
     type_system::SubstTypes,
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
@@ -271,29 +271,6 @@ pub fn resolve_qualified_call_path(
 /// The `mod_path` is significant here as we assume the resolution is done within the
 /// context of the module pointed to by `mod_path` and will only check the call path prefixes
 /// and the symbol's own visibility.
-pub fn resolve_call_path_and_mod_path(
-    handler: &Handler,
-    engines: &Engines,
-    module: &Module,
-    mod_path: &ModulePath,
-    call_path: &CallPath,
-    self_type: Option<TypeId>,
-) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-    let symbol_path: Vec<_> = mod_path
-        .iter()
-        .chain(&call_path.prefixes)
-        .cloned()
-        .collect();
-    resolve_symbol_and_mod_path(
-        handler,
-        engines,
-        module,
-        &symbol_path,
-        &call_path.suffix,
-        self_type,
-    )
-}
-
 pub fn resolve_call_path(
     handler: &Handler,
     engines: &Engines,
@@ -303,12 +280,18 @@ pub fn resolve_call_path(
     self_type: Option<TypeId>,
     check_visibility: VisibilityCheck,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-    let (decl, mod_path) = resolve_call_path_and_mod_path(
+    let symbol_path: Vec<_> = mod_path
+        .iter()
+        .chain(&call_path.prefixes)
+        .cloned()
+        .collect();
+
+    let (decl, mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
         namespace.root_module(),
-        mod_path,
-        call_path,
+        &symbol_path,
+        &call_path.suffix,
         self_type,
     )?;
 
