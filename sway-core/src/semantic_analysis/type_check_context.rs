@@ -682,7 +682,7 @@ impl<'a> TypeCheckContext<'a> {
         &self,
         handler: &Handler,
         call_path: &CallPath,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         resolve_call_path(
             handler,
             self.engines(),
@@ -691,13 +691,14 @@ impl<'a> TypeCheckContext<'a> {
             call_path,
             self.self_type(),
         )
+        .map(|d| d.expect_typed())
     }
 
     pub(crate) fn resolve_qualified_call_path(
         &mut self,
         handler: &Handler,
         qualified_call_path: &QualifiedCallPath,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         resolve_qualified_call_path(
             handler,
             self.engines(),
@@ -707,6 +708,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
         )
+        .map(|d| d.expect_typed())
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
