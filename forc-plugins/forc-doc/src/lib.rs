@@ -107,8 +107,8 @@ pub fn compile_html(
         tests_enabled,
         &engines,
         None,
-        &[],
-        &[],
+        &build_instructions.experimental.experimental,
+        &build_instructions.experimental.no_experimental,
     )?;
 
     let raw_docs = if build_instructions.no_deps {

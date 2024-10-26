@@ -13,4 +13,5 @@ cmds = [
     "forc template -h",
     "forc contract-id -h",
     "forc predicate-root -h",
+    "forc doc -h",
 ]

@@ -4,9 +4,19 @@ use regex::Regex;
 use std::{path::PathBuf, str::FromStr, sync::Once};
 
 static FORC_COMPILATION: Once = Once::new();
+static FORC_DOC_COMPILATION: Once = Once::new();
 
 fn compile_forc() {
     let args = vec!["b", "--release", "-p", "forc"];
+    let o = std::process::Command::new("cargo")
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(o.status.success());
+}
+
+fn compile_forc_doc() {
+    let args = vec!["b", "--release", "-p", "forc-doc"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -34,9 +44,7 @@ pub fn main() {
 
             let repo_root = repo_root.clone();
             Trial::test(name, move || {
-                FORC_COMPILATION.call_once(|| {
-                    compile_forc();
-                });
+                
 
                 let snapshot_toml =
                     std::fs::read_to_string(format!("{}/snapshot.toml", dir.display()))?;
@@ -61,7 +69,16 @@ pub fn main() {
 
                     let _ = writeln!(&mut snapshot, "> {}", cmd);
 
-                    let cmd = if let Some(cmd) = cmd.strip_prefix("forc ") {
+                    // known commands
+                    let cmd = if let Some(cmd) = cmd.strip_prefix("forc doc ") {
+                        FORC_DOC_COMPILATION.call_once(|| {
+                            compile_forc_doc();
+                        });
+                        format!("target/release/forc-doc {cmd} 1>&2")
+                    } else if let Some(cmd) = cmd.strip_prefix("forc ") {
+                        FORC_COMPILATION.call_once(|| {
+                            compile_forc();
+                        });
                         format!("target/release/forc {cmd} 1>&2")
                     } else {
                         panic!("Not supported. Possible commands: forc")
