@@ -1,6 +1,8 @@
 use crate::{
     language::{ty, CallPath, Visibility},
-    semantic_analysis::type_resolve::resolve_call_path_and_mod_path,
+    semantic_analysis::type_resolve::{
+        resolve_call_path_and_mod_path, resolve_symbol_and_mod_path,
+    },
     Engines, Ident, TypeId,
 };
 
@@ -190,7 +192,8 @@ impl Namespace {
 
         root_name != &absolute_module_path[0]
     }
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
+
+    /// Short-hand for calling [resolve_symbol_and_mod_path] on `root` with the `mod_path`.
     pub(crate) fn resolve_symbol(
         &self,
         handler: &Handler,
@@ -198,8 +201,15 @@ impl Namespace {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
+        resolve_symbol_and_mod_path(
+            handler,
+            engines,
+            self.root_module(),
+            &self.mod_path,
+            symbol,
+            self_type,
+        )
+        .map(|d| d.0)
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.

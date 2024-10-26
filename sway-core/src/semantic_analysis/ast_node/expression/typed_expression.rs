@@ -49,6 +49,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
+use type_resolve::resolve_symbol_and_mod_path;
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
@@ -1260,9 +1261,10 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl = ctx.namespace().root().resolve_symbol(
+        let (storage_key_decl, _) = resolve_symbol_and_mod_path(
             handler,
             engines,
+            ctx.namespace().root_module(),
             &storage_key_mod_path,
             &storage_key_ident,
             None,

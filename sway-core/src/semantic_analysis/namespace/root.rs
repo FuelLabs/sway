@@ -10,7 +10,6 @@ use crate::{
         Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    semantic_analysis::type_resolve::resolve_symbol_and_mod_path,
     TypeId,
 };
 use sway_error::{
@@ -722,32 +721,6 @@ impl Root {
         }
 
         Ok(())
-    }
-
-    ////// NAME RESOLUTION //////
-
-    /// Given a path to a module and the identifier of a symbol within that module, resolve its
-    /// declaration.
-    ///
-    /// If the symbol is within the given module's namespace via import, we recursively traverse
-    /// imports until we find the original declaration.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) = resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            &self.module,
-            mod_path,
-            symbol,
-            self_type,
-        )?;
-        Ok(decl)
     }
 }
 
