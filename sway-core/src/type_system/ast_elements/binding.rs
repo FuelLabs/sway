@@ -286,6 +286,7 @@ impl SymbolResolveTypeBinding<FunctionDeclaration> for TypeBinding<CallPath> {
         let engines = ctx.engines();
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+
         // Check to see if this is a function declaration.
         let fn_decl = unknown_decl
             .resolve_parsed(engines.de())

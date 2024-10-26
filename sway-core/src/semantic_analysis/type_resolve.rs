@@ -342,7 +342,7 @@ pub fn resolve_symbol_and_mod_path(
     let mut decl_opt = None;
     for ident in mod_path.iter() {
         if let Some(decl) = decl_opt {
-            decl_opt = Some(resolve_associated_type(
+            decl_opt = Some(resolve_associated_type_or_item(
                 handler,
                 engines,
                 current_module,
@@ -369,7 +369,7 @@ pub fn resolve_symbol_and_mod_path(
         }
     }
     if let Some(decl) = decl_opt {
-        let decl = resolve_associated_item(
+        let decl = resolve_associated_type_or_item(
             handler,
             engines,
             current_module,
@@ -463,27 +463,7 @@ pub fn resolve_associated_item_from_type_id(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn resolve_associated_type(
-    handler: &Handler,
-    engines: &Engines,
-    module: &Module,
-    symbol: &Ident,
-    decl: ResolvedDeclaration,
-    as_trait: Option<CallPath>,
-    self_type: Option<TypeId>,
-) -> Result<ResolvedDeclaration, ErrorEmitted> {
-    let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
-    let type_id = engines
-        .te()
-        .insert(engines, type_info, symbol.span().source_id());
-
-    resolve_associated_item_from_type_id(
-        handler, engines, module, symbol, type_id, as_trait, self_type,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn resolve_associated_item(
+pub fn resolve_associated_type_or_item(
     handler: &Handler,
     engines: &Engines,
     module: &Module,
@@ -529,7 +509,7 @@ pub(crate) fn resolve_call_path_and_root_type_id(
             )?);
             as_trait = None;
         } else if let Some(decl) = decl_opt {
-            decl_opt = Some(resolve_associated_type(
+            decl_opt = Some(resolve_associated_type_or_item(
                 handler,
                 engines,
                 module,
@@ -554,7 +534,7 @@ pub(crate) fn resolve_call_path_and_root_type_id(
         return Ok(decl);
     }
     if let Some(decl) = decl_opt {
-        let decl = resolve_associated_item(
+        let decl = resolve_associated_type_or_item(
             handler,
             engines,
             module,
