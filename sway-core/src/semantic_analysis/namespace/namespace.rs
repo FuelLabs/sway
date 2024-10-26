@@ -1,10 +1,4 @@
-use crate::{
-    language::{ty, CallPath, Visibility},
-    semantic_analysis::type_resolve::{
-        resolve_call_path_and_mod_path, resolve_symbol_and_mod_path,
-    },
-    Engines, Ident, TypeId,
-};
+use crate::{language::Visibility, Engines, Ident};
 
 use super::{
     module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, ModulePathBuf,
@@ -188,44 +182,6 @@ impl Namespace {
         assert!(!absolute_module_path.is_empty(), "Absolute module path must have at least one element, because it always contains the package name.");
 
         root_name != &absolute_module_path[0]
-    }
-
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol_typed(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            self.root_module(),
-            &self.mod_path,
-            symbol,
-            self_type,
-        )
-        .map(|d| d.0.expect_typed())
-    }
-
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_typed(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        resolve_call_path_and_mod_path(
-            handler,
-            engines,
-            self.root_module(),
-            &self.mod_path,
-            call_path,
-            self_type,
-        )
-        .map(|d| d.0.expect_typed())
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

@@ -92,9 +92,8 @@ impl ty::TyMatchBranch {
             for (ident, is_struct_field) in variables {
                 let default_handler = &Handler::default();
                 // If there exist a configurable with the same name as the pattern variable.
-                if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) = ctx
-                    .namespace()
-                    .resolve_symbol_typed(default_handler, engines, &ident, ctx.self_type())
+                if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) =
+                    ctx.resolve_symbol_typed(default_handler, &ident, ctx.self_type())
                 {
                     let name = (&ident).into();
                     let configurable_span = engines

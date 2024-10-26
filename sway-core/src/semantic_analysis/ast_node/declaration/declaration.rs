@@ -188,7 +188,6 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .namespace()
                         .resolve_call_path_typed(
                             handler,
                             engines,
@@ -301,7 +300,7 @@ impl TyDecl {
 
                 // Choose which items are going to be visible depending if this is an abi impl
                 // or trait impl
-                let t = ctx.namespace().resolve_call_path_typed(
+                let t = ctx.resolve_call_path_typed(
                     &Handler::default(),
                     engines,
                     &impl_trait.trait_name,
@@ -370,7 +369,6 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .namespace()
                         .resolve_call_path_typed(
                             handler,
                             engines,

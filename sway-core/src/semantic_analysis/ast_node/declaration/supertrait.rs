@@ -53,7 +53,6 @@ pub(crate) fn insert_supertraits_into_namespace(
             }
 
             let decl = ctx
-                .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
                 .resolve_call_path_typed(
                     &Handler::default(),

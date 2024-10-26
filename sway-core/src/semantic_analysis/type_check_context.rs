@@ -30,7 +30,10 @@ use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
     symbol_collection_context::SymbolCollectionContext,
-    type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type},
+    type_resolve::{
+        resolve_call_path, resolve_call_path_and_mod_path, resolve_qualified_call_path,
+        resolve_symbol_and_mod_path, resolve_type,
+    },
     GenericShadowingMode,
 };
 
@@ -704,6 +707,43 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
         )
+    }
+
+    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol_typed(
+        &self,
+        handler: &Handler,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_symbol_and_mod_path(
+            handler,
+            self.engines(),
+            self.namespace().root_module(),
+            self.namespace().mod_path(),
+            symbol,
+            self_type,
+        )
+        .map(|d| d.0.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_typed(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path_and_mod_path(
+            handler,
+            engines,
+            self.namespace().root_module(),
+            self.namespace().mod_path(),
+            call_path,
+            self_type,
+        )
+        .map(|d| d.0.expect_typed())
     }
 
     /// Given a name and a type (plus a `self_type` to potentially

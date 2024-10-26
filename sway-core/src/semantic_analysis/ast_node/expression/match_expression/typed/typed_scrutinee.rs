@@ -156,8 +156,7 @@ fn type_check_variable(
     let decl_engine = engines.de();
 
     let typed_scrutinee = match ctx
-        .namespace()
-        .resolve_symbol_typed(&Handler::default(), engines, &name, ctx.self_type())
+        .resolve_symbol_typed(&Handler::default(), &name, ctx.self_type())
         .ok()
     {
         // If the name represents a constant, then we turn it into a [ty::TyScrutineeVariant::Constant].
@@ -219,9 +218,7 @@ fn type_check_struct(
     let decl_engine = engines.de();
 
     // find the struct definition from the name
-    let unknown_decl =
-        ctx.namespace()
-            .resolve_symbol_typed(handler, engines, &struct_name, ctx.self_type())?;
+    let unknown_decl = ctx.resolve_symbol_typed(handler, &struct_name, ctx.self_type())?;
     let struct_id = unknown_decl.to_struct_decl(handler, ctx.engines())?;
     let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
@@ -484,23 +481,15 @@ fn type_check_enum(
                 is_absolute: call_path.is_absolute,
             };
             // find the enum definition from the name
-            let unknown_decl = ctx.namespace().resolve_call_path_typed(
-                handler,
-                engines,
-                &enum_callpath,
-                ctx.self_type(),
-            )?;
+            let unknown_decl =
+                ctx.resolve_call_path_typed(handler, engines, &enum_callpath, ctx.self_type())?;
             let enum_id = unknown_decl.to_enum_id(handler, ctx.engines())?;
             (enum_callpath.span(), enum_id, unknown_decl)
         }
         None => {
             // we may have an imported variant
-            let decl = ctx.namespace().resolve_call_path_typed(
-                handler,
-                engines,
-                &call_path,
-                ctx.self_type(),
-            )?;
+            let decl =
+                ctx.resolve_call_path_typed(handler, engines, &call_path, ctx.self_type())?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (call_path.suffix.span(), *enum_ref.id(), decl)
             } else {

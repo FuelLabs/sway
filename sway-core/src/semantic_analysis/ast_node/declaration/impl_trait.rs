@@ -166,7 +166,6 @@ impl TyImplSelfOrTrait {
                     .with_self_type(Some(implementing_for.type_id));
 
                 let impl_trait = match ctx
-                    .namespace()
                     .resolve_call_path_typed(handler, engines, &trait_name, ctx.self_type())
                     .ok()
                 {
@@ -1567,7 +1566,6 @@ fn handle_supertraits(
             }
 
             match ctx
-                .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
                 .resolve_call_path_typed(
                     &Handler::default(),

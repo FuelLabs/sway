@@ -1,16 +1,14 @@
 use sway_error::handler::Handler;
 
-use crate::{language::ty, Engines, Namespace};
+use crate::language::ty;
+
+use super::TypeCheckContext;
 
 // This analysis checks if an expression is known statically to evaluate
 // to a non-zero value at runtime.
 // It's intended to be used in the payability analysis to check if a non-payable
 // method gets called with a non-zero amount of `coins`
-pub fn possibly_nonzero_u64_expression(
-    namespace: &Namespace,
-    engines: &Engines,
-    expr: &ty::TyExpression,
-) -> bool {
+pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpression) -> bool {
     use ty::TyExpressionVariant::*;
     match &expr.expression {
         Literal(crate::language::Literal::U64(value)) => *value != 0,
@@ -18,29 +16,27 @@ pub fn possibly_nonzero_u64_expression(
         // not a u64 literal, hence we return true to be on the safe side
         Literal(_) => true,
         ConstantExpression { decl, .. } => match &decl.value {
-            Some(expr) => possibly_nonzero_u64_expression(namespace, engines, expr),
+            Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
             None => false,
         },
         ConfigurableExpression { decl, .. } => match &decl.value {
-            Some(expr) => possibly_nonzero_u64_expression(namespace, engines, expr),
+            Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
             None => false,
         },
         VariableExpression { name, .. } => {
-            match namespace
-                .resolve_symbol_typed(&Handler::default(), engines, name, None)
+            match ctx
+                .resolve_symbol_typed(&Handler::default(), name, None)
                 .ok()
             {
                 Some(ty_decl) => {
                     match ty_decl {
                         ty::TyDecl::VariableDecl(var_decl) => {
-                            possibly_nonzero_u64_expression(namespace, engines, &var_decl.body)
+                            possibly_nonzero_u64_expression(ctx, &var_decl.body)
                         }
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                            let const_decl = engines.de().get_constant(&decl_id);
+                            let const_decl = ctx.engines.de().get_constant(&decl_id);
                             match &const_decl.value {
-                                Some(value) => {
-                                    possibly_nonzero_u64_expression(namespace, engines, value)
-                                }
+                                Some(value) => possibly_nonzero_u64_expression(ctx, value),
                                 None => true,
                             }
                         }
