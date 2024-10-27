@@ -3,7 +3,9 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{
-        parsed::{EnumDeclaration, StructDeclaration}, ty::{TyEnumDecl, TyExpression, TyStructDecl}, QualifiedCallPath
+        parsed::{EnumDeclaration, StructDeclaration},
+        ty::{TyEnumDecl, TyExpression, TyStructDecl},
+        QualifiedCallPath,
     },
     type_system::priv_prelude::*,
 };
@@ -965,8 +967,7 @@ impl TypeEngine {
     ///
     /// A shareable type instance can be reused by the engine and is put into the [Self::shareable_types].
     fn is_type_shareable(&self, engines: &Engines, ty: &TypeInfo) -> bool {
-        !(self.is_type_changeable(engines, ty)
-            || self.is_type_distinguishable_by_annotations(ty))
+        !(self.is_type_changeable(engines, ty) || self.is_type_distinguishable_by_annotations(ty))
     }
 
     /// Returns true if the `ty` is a changeable type. A changeable type is either:
@@ -1290,7 +1291,11 @@ impl TypeEngine {
         }
     }
 
-    fn are_changeable_type_parameters(&self, engines: &Engines, type_parameters: &[TypeParameter]) -> bool {
+    fn are_changeable_type_parameters(
+        &self,
+        engines: &Engines,
+        type_parameters: &[TypeParameter],
+    ) -> bool {
         if type_parameters.is_empty() {
             false
         } else {
@@ -1342,8 +1347,7 @@ impl TypeEngine {
     }
 
     fn is_shareable_ptr(&self, engines: &Engines, pointee_type: &TypeArgument) -> bool {
-        !(self.is_changeable_type_argument(engines, pointee_type)
-            || pointee_type.is_annotated())
+        !(self.is_changeable_type_argument(engines, pointee_type) || pointee_type.is_annotated())
     }
 
     fn is_shareable_ref(&self, engines: &Engines, referenced_type: &TypeArgument) -> bool {
@@ -1361,11 +1365,7 @@ impl TypeEngine {
     //       fallbacks, which corresponds to the current usage, and eventually rename them accordingly
     //       once we optimize the `TypeEngine` for garbage collection (#6603).
 
-    fn get_type_fallback_source_id(
-        &self,
-        engines: &Engines,
-        ty: &TypeInfo,
-    ) -> Option<SourceId> {
+    fn get_type_fallback_source_id(&self, engines: &Engines, ty: &TypeInfo) -> Option<SourceId> {
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
         match ty {
@@ -1410,9 +1410,7 @@ impl TypeEngine {
                 Self::get_contract_caller_fallback_source_id(abi_name, address)
             }
 
-            TypeInfo::Alias { name, ty } => {
-                self.get_alias_fallback_source_id(engines, name, ty)
-            }
+            TypeInfo::Alias { name, ty } => self.get_alias_fallback_source_id(engines, name, ty),
 
             TypeInfo::Ptr(ta)
             | TypeInfo::Slice(ta)
@@ -1451,10 +1449,7 @@ impl TypeEngine {
         // If the `ta` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
         ta.span.source_id().copied().or_else(|| {
-            self.get_type_fallback_source_id(
-                engines,
-                &self.slab.get(ta.type_id.index()).type_info,
-            )
+            self.get_type_fallback_source_id(engines, &self.slab.get(ta.type_id.index()).type_info)
         })
     }
 
@@ -1497,10 +1492,7 @@ impl TypeEngine {
         // If the `ta` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
         tp.name.span().source_id().copied().or_else(|| {
-            self.get_type_fallback_source_id(
-                engines,
-                &self.slab.get(tp.type_id.index()).type_info,
-            )
+            self.get_type_fallback_source_id(engines, &self.slab.get(tp.type_id.index()).type_info)
         })
     }
 

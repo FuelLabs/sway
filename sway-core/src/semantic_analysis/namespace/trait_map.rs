@@ -881,8 +881,7 @@ impl TraitMap {
                     },
             } in impls.iter()
             {
-                if !type_engine.is_type_changeable(engines, &type_info)
-                    && *type_id == *map_type_id
+                if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
                 {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
