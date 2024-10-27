@@ -17,11 +17,14 @@ forc-tracing.workspace = true
 forc-util.workspace = true
 fuel-core-types.workspace = true
 fuel-crypto = { workspace = true, features = ["random"] }
+fuels-accounts.workspace = true
 fuels-core.workspace = true
 futures.workspace = true
 hex.workspace = true
 libp2p-identity = { workspace = true, features = ["peerid", "secp256k1"] }
 rand.workspace = true
+rayon.workspace = true
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
@@ -29,3 +32,11 @@ sha3.workspace = true
 termion.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process"] }
 tracing.workspace = true
+
+[dev-dependencies]
+criterion = "0.5"
+tempfile.workspace = true
+
+[[bench]]
+name = "bench_main"
+harness = false

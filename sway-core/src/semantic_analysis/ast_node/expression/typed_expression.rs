@@ -1238,19 +1238,19 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx
-            .namespace()
-            .resolve_root_symbol(
-                handler,
-                engines,
-                &storage_key_mod_path,
-                &storage_key_ident,
-                None,
-            )?
-            .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
+        let storage_key_decl = ctx.namespace().root().resolve_symbol(
+            handler,
+            engines,
+            &storage_key_mod_path,
+            &storage_key_ident,
+            None,
+        )?;
+
+        let storage_key_struct_decl_id = storage_key_decl
+            .expect_typed()
+            .to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
-            (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
+            (*decl_engine.get_struct(&storage_key_struct_decl_id)).clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1276,7 +1276,7 @@ impl ty::TyExpression {
         let storage_key_struct_decl_ref = decl_engine.insert(
             storage_key_struct_decl,
             decl_engine
-                .get_parsed_decl_id(&storage_key_struct_decl_ref)
+                .get_parsed_decl_id(&storage_key_struct_decl_id)
                 .as_ref(),
         );
         access_type = type_engine.insert_struct(engines, *storage_key_struct_decl_ref.id());

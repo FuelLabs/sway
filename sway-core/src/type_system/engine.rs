@@ -3,8 +3,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{
-        ty::{TyEnumDecl, TyExpression, TyStructDecl},
-        QualifiedCallPath,
+        parsed::{EnumDeclaration, StructDeclaration}, ty::{TyEnumDecl, TyExpression, TyStructDecl}, QualifiedCallPath
     },
     type_system::priv_prelude::*,
 };
@@ -386,11 +385,11 @@ impl TypeEngine {
         engines: &Engines,
         type_parameter: TypeParameter,
     ) -> TypeId {
-        self.new_placeholder_impl(engines.de(), TypeInfo::Placeholder(type_parameter))
+        self.new_placeholder_impl(engines, TypeInfo::Placeholder(type_parameter))
     }
 
-    fn new_placeholder_impl(&self, decl_engine: &DeclEngine, placeholder: TypeInfo) -> TypeId {
-        let source_id = self.get_placeholder_fallback_source_id(decl_engine, &placeholder);
+    fn new_placeholder_impl(&self, engines: &Engines, placeholder: TypeInfo) -> TypeId {
+        let source_id = self.get_placeholder_fallback_source_id(engines, &placeholder);
         let tsi = TypeSourceInfo {
             type_info: placeholder.into(),
             source_id,
@@ -467,7 +466,7 @@ impl TypeEngine {
     pub(crate) fn insert_enum(&self, engines: &Engines, decl_id: DeclId<TyEnumDecl>) -> TypeId {
         let decl = engines.de().get_enum(&decl_id);
         let source_id = Self::get_enum_fallback_source_id(&decl);
-        let is_shareable_type = self.is_shareable_enum(engines.de(), &decl);
+        let is_shareable_type = self.is_shareable_enum(engines, &decl);
         let type_info = TypeInfo::Enum(decl_id);
         self.insert_or_replace_type_source_info(
             engines,
@@ -484,7 +483,7 @@ impl TypeEngine {
     pub(crate) fn insert_struct(&self, engines: &Engines, decl_id: DeclId<TyStructDecl>) -> TypeId {
         let decl = engines.de().get_struct(&decl_id);
         let source_id = Self::get_struct_fallback_source_id(&decl);
-        let is_shareable_type = self.is_shareable_struct(engines.de(), &decl);
+        let is_shareable_type = self.is_shareable_struct(engines, &decl);
         let type_info = TypeInfo::Struct(decl_id);
         self.insert_or_replace_type_source_info(
             engines,
@@ -499,8 +498,8 @@ impl TypeEngine {
     /// its [TypeId], or returns a [TypeId] of an existing shareable tuple type
     /// that corresponds to the tuple given by the `elements`.
     pub(crate) fn insert_tuple(&self, engines: &Engines, elements: Vec<TypeArgument>) -> TypeId {
-        let source_id = self.get_tuple_fallback_source_id(engines.de(), &elements);
-        let is_shareable_type = self.is_shareable_tuple(engines.de(), &elements);
+        let source_id = self.get_tuple_fallback_source_id(engines, &elements);
+        let is_shareable_type = self.is_shareable_tuple(engines, &elements);
         let type_info = TypeInfo::Tuple(elements);
         self.insert_or_replace_type_source_info(
             engines,
@@ -534,8 +533,8 @@ impl TypeEngine {
         elem_type: TypeArgument,
         length: Length,
     ) -> TypeId {
-        let source_id = self.get_array_fallback_source_id(engines.de(), &elem_type, &length);
-        let is_shareable_type = self.is_shareable_array(engines.de(), &elem_type, &length);
+        let source_id = self.get_array_fallback_source_id(engines, &elem_type, &length);
+        let is_shareable_type = self.is_shareable_array(engines, &elem_type, &length);
         let type_info = TypeInfo::Array(elem_type, length);
         self.insert_or_replace_type_source_info(
             engines,
@@ -621,7 +620,7 @@ impl TypeEngine {
     /// call.
     pub(crate) fn new_alias(&self, engines: &Engines, name: Ident, ty: TypeArgument) -> TypeId {
         // The alias type shareability would be calculated as `!(false || true) ==>> false`.
-        let source_id = self.get_alias_fallback_source_id(engines.de(), &name, &ty);
+        let source_id = self.get_alias_fallback_source_id(engines, &name, &ty);
         let type_info = TypeInfo::Alias { name, ty };
         self.insert_or_replace_type_source_info(engines, type_info, source_id, false, None)
     }
@@ -639,7 +638,7 @@ impl TypeEngine {
         root_type_id: Option<TypeId>,
     ) -> TypeId {
         let source_id = self.get_custom_fallback_source_id(
-            engines.de(),
+            engines,
             &qualified_call_path,
             &type_arguments,
             &root_type_id,
@@ -706,8 +705,8 @@ impl TypeEngine {
     /// its [TypeId], or returns a [TypeId] of an existing shareable slice type
     /// that corresponds to the slice given by the `elem_type`.
     pub(crate) fn insert_slice(&self, engines: &Engines, elem_type: TypeArgument) -> TypeId {
-        let source_id = self.get_slice_fallback_source_id(engines.de(), &elem_type);
-        let is_shareable_type = self.is_shareable_slice(engines.de(), &elem_type);
+        let source_id = self.get_slice_fallback_source_id(engines, &elem_type);
+        let is_shareable_type = self.is_shareable_slice(engines, &elem_type);
         let type_info = TypeInfo::Slice(elem_type);
         self.insert_or_replace_type_source_info(
             engines,
@@ -722,8 +721,8 @@ impl TypeEngine {
     /// its [TypeId], or returns a [TypeId] of an existing shareable pointer type
     /// that corresponds to the pointer given by the `pointee_type`.
     pub(crate) fn insert_ptr(&self, engines: &Engines, pointee_type: TypeArgument) -> TypeId {
-        let source_id = self.get_ptr_fallback_source_id(engines.de(), &pointee_type);
-        let is_shareable_type = self.is_shareable_ptr(engines.de(), &pointee_type);
+        let source_id = self.get_ptr_fallback_source_id(engines, &pointee_type);
+        let is_shareable_type = self.is_shareable_ptr(engines, &pointee_type);
         let type_info = TypeInfo::Ptr(pointee_type);
         self.insert_or_replace_type_source_info(
             engines,
@@ -743,8 +742,8 @@ impl TypeEngine {
         to_mutable_value: bool,
         referenced_type: TypeArgument,
     ) -> TypeId {
-        let source_id = self.get_ref_fallback_source_id(engines.de(), &referenced_type);
-        let is_shareable_type = self.is_shareable_ref(engines.de(), &referenced_type);
+        let source_id = self.get_ref_fallback_source_id(engines, &referenced_type);
+        let is_shareable_type = self.is_shareable_ref(engines, &referenced_type);
         let type_info = TypeInfo::Ref {
             to_mutable_value,
             referenced_type,
@@ -767,7 +766,7 @@ impl TypeEngine {
         name: Ident,
         trait_type_id: TypeId,
     ) -> TypeId {
-        let source_id = self.get_trait_type_fallback_source_id(engines.de(), &name, &trait_type_id);
+        let source_id = self.get_trait_type_fallback_source_id(engines, &name, &trait_type_id);
         // The trait type type shareability would be calculated as `!(false || false) ==>> true`.
         // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
         //       https://github.com/FuelLabs/sway/issues/6601
@@ -829,15 +828,15 @@ impl TypeEngine {
         match ty {
             TypeInfo::Unknown => return self.new_unknown(),
             TypeInfo::Numeric => return self.new_numeric(),
-            TypeInfo::Placeholder(_) => return self.new_placeholder_impl(engines.de(), ty),
+            TypeInfo::Placeholder(_) => return self.new_placeholder_impl(engines, ty),
             TypeInfo::UnknownGeneric { .. } => return self.new_unknown_generic_impl(ty),
             _ => (),
         }
 
-        let is_shareable_type = self.is_type_shareable(engines.de(), &ty);
+        let is_shareable_type = self.is_type_shareable(engines, &ty);
         let source_id = source_id
             .copied()
-            .or_else(|| self.get_type_fallback_source_id(engines.de(), &ty));
+            .or_else(|| self.get_type_fallback_source_id(engines, &ty));
 
         self.insert_or_replace_type_source_info(engines, ty, source_id, is_shareable_type, None)
     }
@@ -965,8 +964,8 @@ impl TypeEngine {
     /// Returns true if the `ty` is a shareable type.
     ///
     /// A shareable type instance can be reused by the engine and is put into the [Self::shareable_types].
-    fn is_type_shareable(&self, decl_engine: &DeclEngine, ty: &TypeInfo) -> bool {
-        !(self.is_type_changeable(decl_engine, ty)
+    fn is_type_shareable(&self, engines: &Engines, ty: &TypeInfo) -> bool {
+        !(self.is_type_changeable(engines, ty)
             || self.is_type_distinguishable_by_annotations(ty))
     }
 
@@ -983,7 +982,9 @@ impl TypeEngine {
     /// seen as a property of a type itself, but rather as an information on how the [TypeEngine]
     /// treats the type. That's why the definition of the changeability of a type resides
     /// inside of the [TypeEngine].
-    pub(crate) fn is_type_changeable(&self, decl_engine: &DeclEngine, ty: &TypeInfo) -> bool {
+    pub(crate) fn is_type_changeable(&self, engines: &Engines, ty: &TypeInfo) -> bool {
+        let decl_engine = engines.de();
+        let parsed_decl_engine = engines.pe();
         match ty {
             // Shareable built-in types are unchangeable by definition.
             // These type have only one shared `TypeInfo` instance per type
@@ -1023,13 +1024,21 @@ impl TypeEngine {
             // For the types are defined over other types, inspect recursively their constituting types.
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
-                self.is_changeable_enum(decl_engine, &decl)
+                self.is_changeable_enum(engines, &decl)
+            }
+            TypeInfo::UntypedEnum(decl_id) => {
+                let decl = parsed_decl_engine.get_enum(decl_id);
+                self.is_changeable_untyped_enum(engines, &decl)
             }
             TypeInfo::Struct(decl_id) => {
                 let decl = decl_engine.get_struct(decl_id);
-                self.is_changeable_struct(decl_engine, &decl)
+                self.is_changeable_struct(engines, &decl)
             }
-            TypeInfo::Tuple(elements) => self.is_changeable_tuple(decl_engine, elements),
+            TypeInfo::UntypedStruct(decl_id) => {
+                let decl = parsed_decl_engine.get_struct(decl_id);
+                self.is_changeable_untyped_struct(engines, &decl)
+            }
+            TypeInfo::Tuple(elements) => self.is_changeable_tuple(engines, elements),
 
             // Currently, we support only non-generic aliases. Which means the alias
             // will never be changeable.
@@ -1043,7 +1052,7 @@ impl TypeEngine {
             | TypeInfo::Ref {
                 referenced_type: ta,
                 ..
-            } => self.is_changeable_type_argument(decl_engine, ta),
+            } => self.is_changeable_type_argument(engines, ta),
 
             // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
             //       https://github.com/FuelLabs/sway/issues/6601
@@ -1178,6 +1187,14 @@ impl TypeEngine {
             // The same argument as above applies to struct and `TyStructDecl`s.
             TypeInfo::Struct(_) => false,
 
+            // TODO: (UNTYPED-TYPES) Reassess this once `UntypedEnum` and `UntypedStruct`
+            //       start getting logic.
+            TypeInfo::UntypedEnum(_) => false,
+
+            // TODO: (UNTYPED-TYPES) Reassess this once `UntypedEnum` and `UntypedStruct`
+            //       start getting logic.
+            TypeInfo::UntypedStruct(_) => false,
+
             // Equal (with engines) tuple types can have different annotations and are in that case
             // distinguishable by those annotations. E.g., in the example below, the two
             // `(u64, u8)` tuples will have different spans for two "u64"s and two "u8"s.
@@ -1239,41 +1256,47 @@ impl TypeEngine {
 
     /// Returns true if the `type_id` represents a changeable type.
     /// For the type changeability see [Self::is_type_changeable].
-    fn is_type_id_of_changeable_type(&self, decl_engine: &DeclEngine, type_id: TypeId) -> bool {
-        self.is_type_changeable(decl_engine, &self.slab.get(type_id.index()).type_info)
+    fn is_type_id_of_changeable_type(&self, engines: &Engines, type_id: TypeId) -> bool {
+        self.is_type_changeable(engines, &self.slab.get(type_id.index()).type_info)
     }
 
-    fn is_changeable_type_argument(&self, decl_engine: &DeclEngine, ta: &TypeArgument) -> bool {
-        self.is_type_id_of_changeable_type(decl_engine, ta.type_id)
+    fn is_changeable_type_argument(&self, engines: &Engines, ta: &TypeArgument) -> bool {
+        self.is_type_id_of_changeable_type(engines, ta.type_id)
     }
 
-    fn is_changeable_enum(&self, decl_engine: &DeclEngine, decl: &TyEnumDecl) -> bool {
-        if decl.type_parameters.is_empty() {
-            false
-        } else {
-            decl.type_parameters
-                .iter()
-                .any(|tp| self.is_type_id_of_changeable_type(decl_engine, tp.type_id))
-        }
+    fn is_changeable_enum(&self, engines: &Engines, decl: &TyEnumDecl) -> bool {
+        self.are_changeable_type_parameters(engines, &decl.type_parameters)
     }
 
-    fn is_changeable_struct(&self, decl_engine: &DeclEngine, decl: &TyStructDecl) -> bool {
-        if decl.type_parameters.is_empty() {
-            false
-        } else {
-            decl.type_parameters
-                .iter()
-                .any(|tp| self.is_type_id_of_changeable_type(decl_engine, tp.type_id))
-        }
+    fn is_changeable_untyped_enum(&self, engines: &Engines, decl: &EnumDeclaration) -> bool {
+        self.are_changeable_type_parameters(engines, &decl.type_parameters)
     }
 
-    fn is_changeable_tuple(&self, decl_engine: &DeclEngine, elements: &[TypeArgument]) -> bool {
+    fn is_changeable_struct(&self, engines: &Engines, decl: &TyStructDecl) -> bool {
+        self.are_changeable_type_parameters(engines, &decl.type_parameters)
+    }
+
+    fn is_changeable_untyped_struct(&self, engines: &Engines, decl: &StructDeclaration) -> bool {
+        self.are_changeable_type_parameters(engines, &decl.type_parameters)
+    }
+
+    fn is_changeable_tuple(&self, engines: &Engines, elements: &[TypeArgument]) -> bool {
         if elements.is_empty() {
             false
         } else {
             elements
                 .iter()
-                .any(|ta| self.is_type_id_of_changeable_type(decl_engine, ta.type_id))
+                .any(|ta| self.is_type_id_of_changeable_type(engines, ta.type_id))
+        }
+    }
+
+    fn are_changeable_type_parameters(&self, engines: &Engines, type_parameters: &[TypeParameter]) -> bool {
+        if type_parameters.is_empty() {
+            false
+        } else {
+            type_parameters
+                .iter()
+                .any(|tp| self.is_type_id_of_changeable_type(engines, tp.type_id))
         }
     }
 
@@ -1283,28 +1306,28 @@ impl TypeEngine {
     // (Inlining, no additional fetching from the `DeclEngine`, no intensive function
     // calls, etc. Don't forget that this is all on a *very* hot path.)
 
-    fn is_shareable_enum(&self, decl_engine: &DeclEngine, decl: &TyEnumDecl) -> bool {
+    fn is_shareable_enum(&self, engines: &Engines, decl: &TyEnumDecl) -> bool {
         // !(self.is_changeable_enum(decl_engine, decl) || false)
-        !self.is_changeable_enum(decl_engine, decl)
+        !self.is_changeable_enum(engines, decl)
     }
 
-    fn is_shareable_struct(&self, decl_engine: &DeclEngine, decl: &TyStructDecl) -> bool {
+    fn is_shareable_struct(&self, engines: &Engines, decl: &TyStructDecl) -> bool {
         // !(self.is_changeable_struct(decl_engine, decl) || false)
-        !self.is_changeable_struct(decl_engine, decl)
+        !self.is_changeable_struct(engines, decl)
     }
 
-    fn is_shareable_tuple(&self, decl_engine: &DeclEngine, elements: &[TypeArgument]) -> bool {
-        !(self.is_changeable_tuple(decl_engine, elements)
+    fn is_shareable_tuple(&self, engines: &Engines, elements: &[TypeArgument]) -> bool {
+        !(self.is_changeable_tuple(engines, elements)
             || self.is_tuple_distinguishable_by_annotations(elements))
     }
 
     fn is_shareable_array(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         elem_type: &TypeArgument,
         length: &Length,
     ) -> bool {
-        !(self.is_changeable_type_argument(decl_engine, elem_type)
+        !(self.is_changeable_type_argument(engines, elem_type)
             || elem_type.is_annotated()
             || length.is_annotated())
     }
@@ -1314,17 +1337,17 @@ impl TypeEngine {
         !length.is_annotated()
     }
 
-    fn is_shareable_slice(&self, decl_engine: &DeclEngine, elem_type: &TypeArgument) -> bool {
-        !(self.is_changeable_type_argument(decl_engine, elem_type) || elem_type.is_annotated())
+    fn is_shareable_slice(&self, engines: &Engines, elem_type: &TypeArgument) -> bool {
+        !(self.is_changeable_type_argument(engines, elem_type) || elem_type.is_annotated())
     }
 
-    fn is_shareable_ptr(&self, decl_engine: &DeclEngine, pointee_type: &TypeArgument) -> bool {
-        !(self.is_changeable_type_argument(decl_engine, pointee_type)
+    fn is_shareable_ptr(&self, engines: &Engines, pointee_type: &TypeArgument) -> bool {
+        !(self.is_changeable_type_argument(engines, pointee_type)
             || pointee_type.is_annotated())
     }
 
-    fn is_shareable_ref(&self, decl_engine: &DeclEngine, referenced_type: &TypeArgument) -> bool {
-        !(self.is_changeable_type_argument(decl_engine, referenced_type)
+    fn is_shareable_ref(&self, engines: &Engines, referenced_type: &TypeArgument) -> bool {
+        !(self.is_changeable_type_argument(engines, referenced_type)
             || referenced_type.is_annotated())
     }
 
@@ -1340,9 +1363,11 @@ impl TypeEngine {
 
     fn get_type_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         ty: &TypeInfo,
     ) -> Option<SourceId> {
+        let decl_engine = engines.de();
+        let parsed_decl_engine = engines.pe();
         match ty {
             TypeInfo::Unknown
             | TypeInfo::Never
@@ -1358,19 +1383,27 @@ impl TypeEngine {
             | TypeInfo::StringSlice => None,
 
             TypeInfo::UnknownGeneric { .. } => Self::get_unknown_generic_fallback_source_id(ty),
-            TypeInfo::Placeholder(_) => self.get_placeholder_fallback_source_id(decl_engine, ty),
+            TypeInfo::Placeholder(_) => self.get_placeholder_fallback_source_id(engines, ty),
             TypeInfo::StringArray(length) => Self::get_source_id_from_length(length),
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
                 Self::get_enum_fallback_source_id(&decl)
             }
+            TypeInfo::UntypedEnum(decl_id) => {
+                let decl = parsed_decl_engine.get_enum(decl_id);
+                Self::get_untyped_enum_fallback_source_id(&decl)
+            }
             TypeInfo::Struct(decl_id) => {
                 let decl = decl_engine.get_struct(decl_id);
                 Self::get_struct_fallback_source_id(&decl)
             }
-            TypeInfo::Tuple(elements) => self.get_tuple_fallback_source_id(decl_engine, elements),
+            TypeInfo::UntypedStruct(decl_id) => {
+                let decl = parsed_decl_engine.get_struct(decl_id);
+                Self::get_untyped_struct_fallback_source_id(&decl)
+            }
+            TypeInfo::Tuple(elements) => self.get_tuple_fallback_source_id(engines, elements),
             TypeInfo::Array(elem_type, length) => {
-                self.get_array_fallback_source_id(decl_engine, elem_type, length)
+                self.get_array_fallback_source_id(engines, elem_type, length)
             }
 
             TypeInfo::ContractCaller { abi_name, address } => {
@@ -1378,7 +1411,7 @@ impl TypeEngine {
             }
 
             TypeInfo::Alias { name, ty } => {
-                self.get_alias_fallback_source_id(decl_engine, name, ty)
+                self.get_alias_fallback_source_id(engines, name, ty)
             }
 
             TypeInfo::Ptr(ta)
@@ -1386,14 +1419,14 @@ impl TypeEngine {
             | TypeInfo::Ref {
                 referenced_type: ta,
                 ..
-            } => self.get_source_id_from_type_argument(decl_engine, ta),
+            } => self.get_source_id_from_type_argument(engines, ta),
 
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
                 root_type_id,
             } => self.get_custom_fallback_source_id(
-                decl_engine,
+                engines,
                 qualified_call_path,
                 type_arguments,
                 root_type_id,
@@ -1402,7 +1435,7 @@ impl TypeEngine {
             TypeInfo::TraitType {
                 name,
                 trait_type_id,
-            } => self.get_trait_type_fallback_source_id(decl_engine, name, trait_type_id),
+            } => self.get_trait_type_fallback_source_id(engines, name, trait_type_id),
         }
     }
 
@@ -1412,14 +1445,14 @@ impl TypeEngine {
 
     fn get_source_id_from_type_argument(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         ta: &TypeArgument,
     ) -> Option<SourceId> {
         // If the `ta` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
         ta.span.source_id().copied().or_else(|| {
             self.get_type_fallback_source_id(
-                decl_engine,
+                engines,
                 &self.slab.get(ta.type_id.index()).type_info,
             )
         })
@@ -1427,7 +1460,7 @@ impl TypeEngine {
 
     fn get_source_id_from_type_arguments(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         type_arguments: &[TypeArgument],
     ) -> Option<SourceId> {
         // For type arguments, if they are annotated, we take the use site source file.
@@ -1448,7 +1481,7 @@ impl TypeEngine {
                 .or_else(|| {
                     type_arguments.iter().find_map(|ta| {
                         self.get_type_fallback_source_id(
-                            decl_engine,
+                            engines,
                             &self.slab.get(ta.type_id.index()).type_info,
                         )
                     })
@@ -1458,14 +1491,14 @@ impl TypeEngine {
 
     fn get_source_id_from_type_parameter(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         tp: &TypeParameter,
     ) -> Option<SourceId> {
         // If the `ta` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
         tp.name.span().source_id().copied().or_else(|| {
             self.get_type_fallback_source_id(
-                decl_engine,
+                engines,
                 &self.slab.get(tp.type_id.index()).type_info,
             )
         })
@@ -1473,7 +1506,7 @@ impl TypeEngine {
 
     fn get_placeholder_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         placeholder: &TypeInfo,
     ) -> Option<SourceId> {
         // `TypeInfo::Placeholder` is an always replaceable type and we know we will
@@ -1488,7 +1521,7 @@ impl TypeEngine {
             unreachable!("The `placeholder` is checked to be of variant `TypeInfo::Placeholder`.");
         };
 
-        self.get_source_id_from_type_parameter(decl_engine, tp)
+        self.get_source_id_from_type_parameter(engines, tp)
     }
 
     fn get_unknown_generic_fallback_source_id(unknown_generic: &TypeInfo) -> Option<SourceId> {
@@ -1513,22 +1546,32 @@ impl TypeEngine {
         decl.span.source_id().copied()
     }
 
+    fn get_untyped_enum_fallback_source_id(decl: &EnumDeclaration) -> Option<SourceId> {
+        // For `TypeInfo::UntypedEnum`, we are taking the source file in which the enum is declared.
+        decl.span.source_id().copied()
+    }
+
     fn get_struct_fallback_source_id(decl: &TyStructDecl) -> Option<SourceId> {
         // For `TypeInfo::Struct`, we are taking the source file in which the struct is declared.
         decl.span.source_id().copied()
     }
 
+    fn get_untyped_struct_fallback_source_id(decl: &StructDeclaration) -> Option<SourceId> {
+        // For `TypeInfo::UntypedStruct`, we are taking the source file in which the struct is declared.
+        decl.span.source_id().copied()
+    }
+
     fn get_tuple_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         elements: &[TypeArgument],
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_arguments(decl_engine, elements)
+        self.get_source_id_from_type_arguments(engines, elements)
     }
 
     fn get_array_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         elem_type: &TypeArgument,
         length: &Length,
     ) -> Option<SourceId> {
@@ -1542,7 +1585,7 @@ impl TypeEngine {
             "If an array is annotated, the type argument and the length spans must have the same source id."
         );
 
-        self.get_source_id_from_type_argument(decl_engine, elem_type)
+        self.get_source_id_from_type_argument(engines, elem_type)
     }
 
     fn get_string_array_fallback_source_id(length: &Length) -> Option<SourceId> {
@@ -1570,7 +1613,7 @@ impl TypeEngine {
 
     fn get_alias_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         name: &Ident,
         ty: &TypeArgument,
     ) -> Option<SourceId> {
@@ -1579,36 +1622,36 @@ impl TypeEngine {
         name.span()
             .source_id()
             .copied()
-            .or_else(|| self.get_source_id_from_type_argument(decl_engine, ty))
+            .or_else(|| self.get_source_id_from_type_argument(engines, ty))
     }
 
     fn get_slice_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         elem_type: &TypeArgument,
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_argument(decl_engine, elem_type)
+        self.get_source_id_from_type_argument(engines, elem_type)
     }
 
     fn get_ptr_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         pointee_type: &TypeArgument,
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_argument(decl_engine, pointee_type)
+        self.get_source_id_from_type_argument(engines, pointee_type)
     }
 
     fn get_ref_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         referenced_type: &TypeArgument,
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_argument(decl_engine, referenced_type)
+        self.get_source_id_from_type_argument(engines, referenced_type)
     }
 
     fn get_custom_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         qualified_call_path: &QualifiedCallPath,
         type_arguments: &Option<Vec<TypeArgument>>,
         root_type_id: &Option<TypeId>,
@@ -1626,12 +1669,12 @@ impl TypeEngine {
             .or_else(|| {
                 type_arguments
                     .as_ref()
-                    .and_then(|tas| self.get_source_id_from_type_arguments(decl_engine, tas))
+                    .and_then(|tas| self.get_source_id_from_type_arguments(engines, tas))
             })
             .or_else(|| {
                 root_type_id.and_then(|root_ty| {
                     self.get_type_fallback_source_id(
-                        decl_engine,
+                        engines,
                         &self.slab.get(root_ty.index()).type_info,
                     )
                 })
@@ -1640,7 +1683,7 @@ impl TypeEngine {
 
     fn get_trait_type_fallback_source_id(
         &self,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         name: &Ident,
         trait_type_id: &TypeId,
     ) -> Option<SourceId> {
@@ -1650,7 +1693,7 @@ impl TypeEngine {
         // extract the source id from the `trait_type_id`.
         name.span().source_id().copied().or_else(|| {
             self.get_type_fallback_source_id(
-                decl_engine,
+                engines,
                 &self.slab.get(trait_type_id.index()).type_info,
             )
         })
@@ -1716,7 +1759,7 @@ impl TypeEngine {
         ) {
             self.touch_last_replace();
         }
-        let is_shareable_type = self.is_type_shareable(engines.de(), &new_value);
+        let is_shareable_type = self.is_type_shareable(engines, &new_value);
         self.insert_or_replace_type_source_info(
             engines,
             new_value,
@@ -1934,33 +1977,48 @@ impl TypeEngine {
     }
 
     /// Return whether a given type still contains undecayed references to [TypeInfo::Numeric]
-    pub(crate) fn contains_numeric(&self, decl_engine: &DeclEngine, type_id: TypeId) -> bool {
+    pub(crate) fn contains_numeric(&self, engines: &Engines, type_id: TypeId) -> bool {
+        let decl_engine = engines.de();
         match &&*self.get(type_id) {
+            TypeInfo::UntypedEnum(decl_id) => {
+                engines
+                    .pe()
+                    .get_enum(decl_id)
+                    .variants
+                    .iter()
+                    .all(|variant_type| {
+                        self.contains_numeric(engines, variant_type.type_argument.type_id)
+                    })
+            }
+            TypeInfo::UntypedStruct(decl_id) => engines
+                .pe()
+                .get_struct(decl_id)
+                .fields
+                .iter()
+                .any(|field| self.contains_numeric(engines, field.type_argument.type_id)),
             TypeInfo::Enum(decl_ref) => {
                 decl_engine
                     .get_enum(decl_ref)
                     .variants
                     .iter()
                     .all(|variant_type| {
-                        self.contains_numeric(decl_engine, variant_type.type_argument.type_id)
+                        self.contains_numeric(engines, variant_type.type_argument.type_id)
                     })
             }
             TypeInfo::Struct(decl_ref) => decl_engine
                 .get_struct(decl_ref)
                 .fields
                 .iter()
-                .any(|field| self.contains_numeric(decl_engine, field.type_argument.type_id)),
+                .any(|field| self.contains_numeric(engines, field.type_argument.type_id)),
             TypeInfo::Tuple(fields) => fields
                 .iter()
-                .any(|field_type| self.contains_numeric(decl_engine, field_type.type_id)),
-            TypeInfo::Array(elem_ty, _length) => {
-                self.contains_numeric(decl_engine, elem_ty.type_id)
-            }
-            TypeInfo::Ptr(targ) => self.contains_numeric(decl_engine, targ.type_id),
-            TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
+                .any(|field_type| self.contains_numeric(engines, field_type.type_id)),
+            TypeInfo::Array(elem_ty, _length) => self.contains_numeric(engines, elem_ty.type_id),
+            TypeInfo::Ptr(targ) => self.contains_numeric(engines, targ.type_id),
+            TypeInfo::Slice(targ) => self.contains_numeric(engines, targ.type_id),
             TypeInfo::Ref {
                 referenced_type, ..
-            } => self.contains_numeric(decl_engine, referenced_type.type_id),
+            } => self.contains_numeric(engines, referenced_type.type_id),
             TypeInfo::Unknown
             | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
@@ -1994,6 +2052,16 @@ impl TypeEngine {
         let decl_engine = engines.de();
 
         match &&*self.get(type_id) {
+            TypeInfo::UntypedEnum(decl_id) => {
+                for variant_type in &engines.pe().get_enum(decl_id).variants {
+                    self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
+                }
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                for field in &engines.pe().get_struct(decl_id).fields {
+                    self.decay_numeric(handler, engines, field.type_argument.type_id, span)?;
+                }
+            }
             TypeInfo::Enum(decl_ref) => {
                 for variant_type in &decl_engine.get_enum(decl_ref).variants {
                     self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;

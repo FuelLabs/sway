@@ -83,7 +83,7 @@ impl ty::TyEnumDecl {
 impl ty::TyEnumVariant {
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         variant: EnumVariant,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();

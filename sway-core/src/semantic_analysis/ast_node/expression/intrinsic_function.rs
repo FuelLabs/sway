@@ -556,7 +556,7 @@ fn type_check_size_of_val(
 /// Constraints: None.
 fn type_check_size_of_type(
     handler: &Handler,
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
     type_arguments: &[TypeArgument],
@@ -613,7 +613,7 @@ fn type_check_size_of_type(
 /// Constraints: None.
 fn type_check_is_reference_type(
     handler: &Handler,
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     _arguments: &[Expression],
     type_arguments: &[TypeArgument],
@@ -663,7 +663,7 @@ fn type_check_is_reference_type(
 /// Constraints: None.
 fn type_check_assert_is_str_array(
     handler: &Handler,
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     _arguments: &[Expression],
     type_arguments: &[TypeArgument],
@@ -1083,7 +1083,7 @@ fn type_check_state_store_word(
     let val_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
     let ctx = ctx.with_type_annotation(type_engine.id_of_u64());
     let type_argument = type_arguments.first().map(|targ| {
-        let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
+        let ctx = ctx.with_type_annotation(type_engine.new_unknown());
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
             .map_err(|e| handler.emit_err(e.into()))
@@ -1173,7 +1173,7 @@ fn type_check_state_quad(
     let mut ctx = ctx.with_type_annotation(type_engine.id_of_u64());
     let number_of_slots_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[2])?;
     let type_argument = type_arguments.first().map(|targ| {
-        let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
+        let ctx = ctx.with_type_annotation(type_engine.new_unknown());
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
             .map_err(|e| handler.emit_err(e.into()))
@@ -1650,7 +1650,7 @@ fn type_check_smo(
 
     // Type check the type argument
     let type_argument = type_arguments.first().map(|targ| {
-        let mut ctx = ctx
+        let ctx = ctx
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.new_unknown());

@@ -79,7 +79,7 @@ impl ty::TyStructDecl {
 impl ty::TyStructField {
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         field: StructField,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();

@@ -7,10 +7,10 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert},
     language::{
-        ty::{self, TyDecl},
+        ty::{self},
         CallPath,
     },
-    namespace::ModulePath,
+    namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::type_resolve::resolve_type,
     type_system::ast_elements::create_type_id::CreateTypeId,
     EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
@@ -215,7 +215,7 @@ pub(crate) fn type_decl_opt_to_type_id(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
-    type_decl_opt: Option<TyDecl>,
+    type_decl_opt: Option<ResolvedDeclaration>,
     call_path: &CallPath,
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
@@ -227,10 +227,10 @@ pub(crate) fn type_decl_opt_to_type_id(
     let decl_engine = engines.de();
     let type_engine = engines.te();
     Ok(match type_decl_opt {
-        Some(ty::TyDecl::StructDecl(ty::StructDecl {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::StructDecl(ty::StructDecl {
             decl_id: original_id,
             ..
-        })) => {
+        }))) => {
             // get the copy from the declaration engine
             let mut new_copy = (*decl_engine.get_struct(&original_id)).clone();
 
@@ -257,10 +257,10 @@ pub(crate) fn type_decl_opt_to_type_id(
             // create the type id from the copy
             type_engine.insert_struct(engines, *new_decl_ref.id())
         }
-        Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::EnumDecl(ty::EnumDecl {
             decl_id: original_id,
             ..
-        })) => {
+        }))) => {
             // get the copy from the declaration engine
             let mut new_copy = (*decl_engine.get_enum(&original_id)).clone();
 
@@ -287,10 +287,10 @@ pub(crate) fn type_decl_opt_to_type_id(
             // create the type id from the copy
             type_engine.insert_enum(engines, *new_decl_ref.id())
         }
-        Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
             decl_id: original_id,
             ..
-        })) => {
+        }))) => {
             let new_copy = decl_engine.get_type_alias(&original_id);
 
             // TODO: (GENERIC-TYPE-ALIASES) Monomorphize the copy, in place, once generic type aliases are
@@ -298,11 +298,12 @@ pub(crate) fn type_decl_opt_to_type_id(
 
             new_copy.create_type_id(engines)
         }
-        Some(ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-            type_id,
-            ..
-        })) => type_id,
-        Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id })) => {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::GenericTypeForFunctionScope(
+            ty::GenericTypeForFunctionScope { type_id, .. },
+        ))) => type_id,
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
+            decl_id,
+        }))) => {
             let decl_type = decl_engine.get_type(&decl_id);
 
             if let Some(ty) = &decl_type.ty {
