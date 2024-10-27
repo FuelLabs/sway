@@ -47,15 +47,6 @@ pub(crate) fn execute_external_subcommand(args: &[String]) -> Result<process::Ou
 /// Find an exe called `forc-<cmd>` and return its path.
 fn find_external_subcommand(cmd: &str) -> Option<PathBuf> {
     let command_exe = format!("forc-{}{}", cmd, env::consts::EXE_SUFFIX);
-
-    let current_exe = std::env::current_exe().unwrap();
-    let current_exe_dir = current_exe.parent().unwrap();
-
-    let candidate = current_exe_dir.join(&command_exe);
-    if is_executable(&candidate) {
-        return Some(candidate);
-    }
-
     search_directories()
         .iter()
         .map(|dir| dir.join(&command_exe))

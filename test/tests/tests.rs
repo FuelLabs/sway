@@ -86,6 +86,7 @@ pub fn main() {
                         .dir(repo_root.clone())
                         .stderr_to_stdout()
                         .stdout_capture()
+                        .env("COLUMNS", "10")
                         .unchecked()
                         .start()
                         .unwrap();
