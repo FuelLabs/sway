@@ -38,7 +38,7 @@ use fuels::{
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
-use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
+use pkg::{BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -47,8 +47,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sway_core::BuildTarget;
-use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget};
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -927,9 +926,8 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
         build_target: BuildTarget::default(),
         tests: false,
         member_filter,
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }
 

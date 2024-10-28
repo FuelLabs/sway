@@ -4,9 +4,10 @@ use std::{
 };
 
 use anyhow::anyhow;
+use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    insert_after_each, register_known_passes, ExperimentalFlags, PassGroup, PassManager,
-    MODULE_PRINTER_NAME, MODULE_VERIFIER_NAME,
+    insert_after_each, register_known_passes, PassGroup, PassManager, MODULE_PRINTER_NAME,
+    MODULE_VERIFIER_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -26,13 +27,8 @@ fn main() -> Result<(), anyhow::Error> {
     let source_engine = SourceEngine::default();
 
     // Parse it. XXX Improve this error message too.
-    let mut ir = sway_ir::parser::parse(
-        &input_str,
-        &source_engine,
-        ExperimentalFlags {
-            new_encoding: false,
-        },
-    )?;
+    let mut ir =
+        sway_ir::parser::parse(&input_str, &source_engine, ExperimentalFeatures::default())?;
 
     // Perform optimisation passes in order.
     let mut passes = PassGroup::default();
