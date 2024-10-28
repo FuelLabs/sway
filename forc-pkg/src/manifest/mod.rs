@@ -200,6 +200,8 @@ pub struct Project {
     pub entry: String,
     pub implicit_std: Option<bool>,
     pub forc_version: Option<semver::Version>,
+    #[serde(default)]
+    pub experimental: HashMap<String, bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

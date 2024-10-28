@@ -244,9 +244,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
             entries,
             non_entries,
             reg_seqr,
-            crate::ExperimentalFlags {
-                new_encoding: context.experimental.new_encoding,
-            },
+            context.experimental,
         );
 
         // Compiled dependencies will not have any content and we
