@@ -1916,6 +1916,7 @@ impl ty::TyExpression {
             handler,
             abi_name.clone(),
             vec![],
+            vec![],
             return_type,
             &abi_items,
             span,

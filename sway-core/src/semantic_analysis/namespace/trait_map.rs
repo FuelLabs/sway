@@ -24,7 +24,7 @@ use crate::{
     },
     type_system::{SubstTypes, TypeId},
     IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
-    TypeSubstMap, UnifyCheck,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
@@ -100,6 +100,7 @@ type TraitName = Arc<CallPath<TraitSuffix>>;
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
+    type_id_type_parameters: Vec<TypeParameter>,
     trait_decl_span: Option<Span>,
 }
 
@@ -108,6 +109,10 @@ impl OrdWithEngines for TraitKey {
         self.name
             .cmp(&other.name, ctx)
             .then_with(|| self.type_id.cmp(&other.type_id))
+            .then_with(|| {
+                self.type_id_type_parameters
+                    .cmp(&other.type_id_type_parameters, ctx)
+            })
     }
 }
 
@@ -218,6 +223,7 @@ impl TraitMap {
         handler: &Handler,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
+        impl_type_parameters: Vec<TypeParameter>,
         type_id: TypeId,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
@@ -226,6 +232,23 @@ impl TraitMap {
         is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
+        let mut type_id_type_parameters = match &*engines.te().get(type_id) {
+            TypeInfo::Enum(decl_id) => engines.de().get_enum(decl_id).type_parameters.clone(),
+            TypeInfo::Struct(decl_id) => engines.de().get_struct(decl_id).type_parameters.clone(),
+            _ => vec![],
+        };
+
+        // Copy impl type parameter trait constraint to type_id_type_parameters
+        for type_id_type_parameter in type_id_type_parameters.iter_mut() {
+            let impl_type_parameter = impl_type_parameters
+                .iter()
+                .filter(|t| t.type_id == type_id_type_parameter.type_id)
+                .last();
+            if let Some(impl_type_parameter) = impl_type_parameter {
+                type_id_type_parameter.trait_constraints =
+                    impl_type_parameter.trait_constraints.clone();
+            }
+        }
         handler.scope(|handler| {
             let mut trait_items: TraitItems = im::HashMap::new();
             for item in items.iter() {
@@ -254,7 +277,7 @@ impl TraitMap {
                 }
             }
 
-            let trait_impls = self.get_impls_mut(engines, type_id);
+            let trait_impls = self.get_impls_mut(engines, type_id).clone();
 
             // check to see if adding this trait will produce a conflicting definition
             for TraitEntry {
@@ -262,6 +285,7 @@ impl TraitMap {
                     TraitKey {
                         name: map_trait_name,
                         type_id: map_type_id,
+                        type_id_type_parameters: map_type_id_type_parameters,
                         trait_decl_span: _,
                     },
                 value:
@@ -345,6 +369,36 @@ impl TraitMap {
                             traits_are_subset = false;
                         }
                     }
+                }
+
+                let mut trait_constraints_safified = true;
+                for (map_type_id_type_parameter, type_id_type_parameter) in
+                    map_type_id_type_parameters
+                        .iter()
+                        .zip(type_id_type_parameters.iter())
+                {
+                    // Check that type_id_type_parameter satisfies all trait constraints in map_type_id_type_parameter.
+                    if type_id_type_parameter
+                        .type_id
+                        .is_concrete(engines, crate::TreatNumericAs::Abstract)
+                        && !self
+                            .check_if_trait_constraints_are_satisfied_for_type(
+                                &Handler::default(),
+                                type_id_type_parameter.type_id,
+                                &map_type_id_type_parameter.trait_constraints,
+                                impl_span,
+                                engines,
+                                TryInsertingTraitImplOnFailure::Yes,
+                                CodeBlockFirstPass::No,
+                            )
+                            .is_ok()
+                    {
+                        trait_constraints_safified = false;
+                    }
+                }
+
+                if !trait_constraints_safified {
+                    continue;
                 }
 
                 if matches!(is_extending_existing_impl, IsExtendingExistingImpl::No)
@@ -443,6 +497,7 @@ impl TraitMap {
                 impl_span.clone(),
                 trait_decl_span,
                 type_id,
+                type_id_type_parameters,
                 trait_items,
                 engines,
             );
@@ -457,12 +512,14 @@ impl TraitMap {
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
+        type_id_type_parameters: Vec<TypeParameter>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
         let key = TraitKey {
             name: trait_name,
             type_id,
+            type_id_type_parameters,
             trait_decl_span,
         };
         let value = TraitValue {
@@ -872,6 +929,7 @@ impl TraitMap {
                     TraitKey {
                         name: map_trait_name,
                         type_id: map_type_id,
+                        type_id_type_parameters: map_type_id_constraints,
                         trait_decl_span: map_trait_decl_span,
                     },
                 value:
@@ -888,6 +946,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_type_id_constraints.clone(),
                         map_trait_items.clone(),
                         engines,
                     );
@@ -985,6 +1044,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_type_id_constraints.clone(),
                         trait_items,
                         engines,
                     );
