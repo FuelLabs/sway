@@ -85,13 +85,18 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = is_public:is_public() _ is_entry:is_entry() _  is_fallback:is_fallback() _ "fn" _
+                = is_public:is_public() _ is_entry:is_entry() _  is_original_entry:is_original_entry() _ is_fallback:is_fallback() _ "fn" _
                         name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
                         locals:fn_local()*
                         blocks:block_decl()*
                     "}" _ {
+                    // TODO: Remove once old decoding is removed.
+                    //       In the case of old decoding, every entry is at the same time an original entry, but in the IR
+                    //       we mark them only as `entry`s so there is a bit of information lost at the roundtrip.
+                    //       Remove this hack to recognize the new encoding once it becomes the only encoding.
+                    let is_original_entry = is_original_entry || (is_entry && !name.starts_with("__entry"));
                     IrAstFnDecl {
                         name,
                         args,
@@ -102,6 +107,7 @@ mod ir_builder {
                         blocks,
                         selector,
                         is_entry,
+                        is_original_entry,
                         is_fallback,
                     }
                 }
@@ -112,6 +118,10 @@ mod ir_builder {
 
             rule is_entry() -> bool
                 = "entry" _ { true }
+                / "" _ { false }
+
+            rule is_original_entry() -> bool
+                = "entry_orig" _ { true }
                 / "" _ { false }
 
             rule is_fallback() -> bool
@@ -225,13 +235,13 @@ mod ir_builder {
                 / op_store()
 
             rule op_asm() -> IrAstOperation
-                = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret()? meta_idx:comma_metadata_idx()? "{" _
+                = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret() meta_idx:comma_metadata_idx()? "{" _
                     ops:asm_op()*
                 "}" _ {
                     IrAstOperation::Asm(
                         args,
-                        ret.clone().map(|(ty, _)| ty).unwrap_or(IrAstTy::Unit),
-                        ret.map(|(_, nm)| nm),
+                        ret.0,
+                        ret.1,
                         ops,
                         meta_idx
                     )
@@ -445,8 +455,8 @@ mod ir_builder {
                     IrAstAsmArgInit::Var(var)
                 }
 
-            rule asm_ret() -> (IrAstTy, Ident)
-                = "->" _ ty:ast_ty() ret:id_id() {
+            rule asm_ret() -> (IrAstTy, Option<Ident>)
+                = "->" _ ty:ast_ty() ret:id_id()? {
                     (ty, ret)
                 }
 
@@ -699,6 +709,7 @@ mod ir_builder {
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
+        is_original_entry: bool,
         is_fallback: bool,
     }
 
@@ -942,6 +953,7 @@ mod ir_builder {
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     use std::{
+        cell::Cell,
         collections::{BTreeMap, HashMap},
         iter::FromIterator,
     };
@@ -1008,6 +1020,7 @@ mod ir_builder {
                 fn_decl.selector,
                 fn_decl.is_public,
                 fn_decl.is_entry,
+                fn_decl.is_original_entry,
                 fn_decl.is_fallback,
                 convert_md_idx(&fn_decl.metadata),
             );
@@ -1453,7 +1466,7 @@ mod ir_builder {
                     .configs
                     .get_mut(&configurable_name)
                 {
-                    *decode_fn = f;
+                    decode_fn.replace(f);
                 }
             }
 
@@ -1509,7 +1522,7 @@ mod ir_builder {
                     ptr_ty: Type::new_ptr(context, ty),
                     encoded_bytes: config.encoded_bytes,
                     // this will point to the correct function after all functions are compiled
-                    decode_fn: Function(KeyData::default().into()),
+                    decode_fn: Cell::new(Function(KeyData::default().into())),
                     opt_metadata,
                 };
 

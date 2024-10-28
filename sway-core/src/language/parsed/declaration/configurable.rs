@@ -13,6 +13,7 @@ pub struct ConfigurableDeclaration {
     pub value: Option<Expression>,
     pub visibility: Visibility,
     pub span: Span,
+    pub block_keyword_span: Span,
 }
 
 impl Named for ConfigurableDeclaration {

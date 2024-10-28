@@ -137,8 +137,9 @@ pub enum FuelVmInstruction {
     ReadRegister(Register),
     /// Revert VM execution.
     Revert(Value),
-    /// - Sends a message to an output via the `smo` FuelVM instruction. The first operand must be
-    /// a `B256` representing the recipient. The second operand is the message data being sent.
+    /// - Sends a message to an output via the `smo` FuelVM instruction.
+    /// - The first operand must be a `B256` representing the recipient.
+    /// - The second operand is the message data being sent.
     /// - `message_size` and `coins` must be of type `U64`.
     Smo {
         recipient: Value,
@@ -204,19 +205,19 @@ pub enum FuelVmInstruction {
 }
 
 /// Comparison operations.
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Predicate {
     Equal,
     LessThan,
     GreaterThan,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum UnaryOpKind {
     Not,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -283,7 +284,6 @@ impl InstOp {
             InstOp::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::get_unit(context)),
             InstOp::FuelVm(FuelVmInstruction::ReadRegister(_)) => Some(Type::get_uint64(context)),
             InstOp::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::get_unit(context)),
-            InstOp::FuelVm(FuelVmInstruction::Retd { .. }) => None,
 
             // Load needs to strip the pointer from the source type.
             InstOp::Load(ptr_val) => match &context.values[ptr_val.0].value {
@@ -309,7 +309,11 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
+            | InstOp::FuelVm(
+                FuelVmInstruction::Revert(..)
+                | FuelVmInstruction::JmpMem
+                | FuelVmInstruction::Retd { .. },
+            )
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -381,10 +385,11 @@ impl InstOp {
                 vals
             }
             InstOp::GetLocal(_local_var) => {
-                // TODO: Not sure.
+                // `GetLocal` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::GetConfig(_, _) => {
+                // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::IntToPtr(v, _) => vec![*v],
@@ -644,8 +649,8 @@ impl InstOp {
 
     pub fn may_have_side_effect(&self) -> bool {
         match self {
-            InstOp::AsmBlock(_, _)
-            | InstOp::Call(..)
+            InstOp::AsmBlock(asm, _) => !asm.body.is_empty(),
+            InstOp::Call(..)
             | InstOp::ContractCall { .. }
             | InstOp::FuelVm(FuelVmInstruction::Log { .. })
             | InstOp::FuelVm(FuelVmInstruction::Smo { .. })
@@ -691,7 +696,11 @@ impl InstOp {
             InstOp::Branch(_)
                 | InstOp::ConditionalBranch { .. }
                 | InstOp::Ret(..)
-                | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
+                | InstOp::FuelVm(
+                    FuelVmInstruction::Revert(..)
+                        | FuelVmInstruction::JmpMem
+                        | FuelVmInstruction::Retd { .. }
+                )
         )
     }
 }
@@ -831,7 +840,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     // XXX Maybe these should return result, in case they get bad args?
     //
 
-    /// Append a new [`Instruction::AsmBlock`] from `args` and a `body`.
+    /// Append a new [InstOp::AsmBlock] from `args` and a `body`.
     pub fn asm_block(
         self,
         args: Vec<AsmArg>,

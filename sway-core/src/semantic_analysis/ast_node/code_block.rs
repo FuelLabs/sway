@@ -5,23 +5,86 @@ use crate::language::{
 };
 
 impl ty::TyCodeBlock {
-    pub(crate) fn type_check(
+    pub(crate) fn collect(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
         code_block: &CodeBlock,
-    ) -> Result<Self, ErrorEmitted> {
-        ctx.scoped(|mut ctx| {
-            let evaluated_contents = code_block
+    ) -> Result<(), ErrorEmitted> {
+        let _ = ctx.scoped(engines, code_block.whole_block_span.clone(), |scoped_ctx| {
+            let _ = code_block
                 .contents
                 .iter()
-                .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
-                .collect::<Vec<ty::TyAstNode>>();
+                .map(|node| ty::TyAstNode::collect(handler, engines, scoped_ctx, node))
+                .filter_map(|res| res.ok())
+                .collect::<Vec<_>>();
+            Ok(())
+        });
+        Ok(())
+    }
 
-            Ok(ty::TyCodeBlock {
-                contents: evaluated_contents,
-                whole_block_span: code_block.whole_block_span.clone(),
+    pub(crate) fn type_check(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        code_block: &CodeBlock,
+        is_root: bool,
+    ) -> Result<Self, ErrorEmitted> {
+        if !is_root {
+            let code_block_result =
+                ctx.by_ref()
+                    .scoped(handler, Some(code_block.span()), |mut ctx| {
+                        let evaluated_contents = code_block
+                            .contents
+                            .iter()
+                            .filter_map(|node| {
+                                ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok()
+                            })
+                            .collect::<Vec<ty::TyAstNode>>();
+                        Ok(ty::TyCodeBlock {
+                            contents: evaluated_contents,
+                            whole_block_span: code_block.whole_block_span.clone(),
+                        })
+                    })?;
+
+            return Ok(code_block_result);
+        }
+
+        ctx.engines.te().clear_unifications();
+        ctx.namespace()
+            .module(ctx.engines)
+            .current_lexical_scope()
+            .items
+            .clear_symbols_unique_while_collecting_unifications();
+
+        // We are typechecking the code block AST nodes twice.
+        // The first pass does all the unifications to the variables types.
+        // In the second pass we use the previous_namespace on variable declaration to unify directly with the result of the first pass.
+        // This is required to fix the test case numeric_type_propagation and issue #6371
+        ctx.by_ref()
+            .with_collecting_unifications()
+            .with_code_block_first_pass(true)
+            .scoped(handler, Some(code_block.span()), |mut ctx| {
+                code_block.contents.iter().for_each(|node| {
+                    ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
+                });
+                Ok(())
+            })?;
+
+        ctx.engines.te().reapply_unifications(ctx.engines());
+
+        ctx.by_ref()
+            .scoped(handler, Some(code_block.span()), |mut ctx| {
+                let evaluated_contents = code_block
+                    .contents
+                    .iter()
+                    .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
+                    .collect::<Vec<ty::TyAstNode>>();
+
+                Ok(ty::TyCodeBlock {
+                    contents: evaluated_contents,
+                    whole_block_span: code_block.whole_block_span.clone(),
+                })
             })
-        })
     }
 
     pub fn compute_return_type_and_span(

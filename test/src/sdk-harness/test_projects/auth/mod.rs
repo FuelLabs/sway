@@ -4,7 +4,14 @@ use fuels::{
         wallet::{Wallet, WalletUnlocked},
     },
     prelude::*,
-    types::ContractId,
+    tx::UtxoId,
+    types::{
+        coin::{Coin, CoinStatus},
+        coin_type::CoinType,
+        input::Input,
+        message::{Message, MessageStatus},
+        Bytes32, ContractId,
+    },
 };
 use std::str::FromStr;
 
@@ -64,6 +71,498 @@ async fn msg_sender_from_contract() {
     assert!(result.value);
 }
 
+#[tokio::test]
+async fn input_message_msg_sender_from_contract() {
+    // Wallet
+    let mut wallet = WalletUnlocked::new_random(None);
+
+    // Setup coins and messages
+    let coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
+    let msg = setup_single_message(
+        &Bech32Address {
+            hrp: "".to_string(),
+            hash: Default::default(),
+        },
+        wallet.address(),
+        DEFAULT_COIN_AMOUNT,
+        10.into(),
+        vec![],
+    );
+
+    let provider = setup_test_provider(coins.clone(), vec![msg.clone()], None, None)
+        .await
+        .unwrap();
+    wallet.set_provider(provider.clone());
+
+    // Setup contract
+    let id = Contract::load_from(
+        "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
+        LoadConfiguration::default(),
+    )
+    .unwrap()
+    .deploy(&wallet, TxPolicies::default())
+    .await
+    .unwrap();
+    let instance = AuthContract::new(id.clone(), wallet.clone());
+
+    // Start building transactions
+    let call_handler = instance
+        .methods()
+        .returns_msg_sender_address(Address::from(*msg.recipient.hash()));
+    let mut tb = call_handler.transaction_builder().await.unwrap();
+
+    // Inputs
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            wallet
+                .get_messages()
+                .await
+                .unwrap()
+                .first()
+                .unwrap()
+                .clone(),
+        ),
+    });
+
+    // Build transaction
+    tb.add_signer(wallet.clone()).unwrap();
+    let tx = tb.build(provider.clone()).await.unwrap();
+
+    // Send and verify
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let response = call_handler.get_response_from(tx_status).unwrap();
+    assert!(response.value);
+}
+
+#[tokio::test]
+async fn caller_addresses_from_messages() {
+    let mut wallet1 = WalletUnlocked::new_random(None);
+    let mut wallet2 = WalletUnlocked::new_random(None);
+    let mut wallet3 = WalletUnlocked::new_random(None);
+    let mut wallet4 = WalletUnlocked::new_random(None);
+
+    // Setup message
+    let message_amount = 10;
+    let message1 = Message {
+        sender: wallet1.address().clone(),
+        recipient: wallet1.address().clone(),
+        nonce: 0.into(),
+        amount: message_amount,
+        data: vec![],
+        da_height: 0,
+        status: MessageStatus::Unspent,
+    };
+    let message2 = Message {
+        sender: wallet2.address().clone(),
+        recipient: wallet2.address().clone(),
+        nonce: 1.into(),
+        amount: message_amount,
+        data: vec![],
+        da_height: 0,
+        status: MessageStatus::Unspent,
+    };
+    let message3 = Message {
+        sender: wallet3.address().clone(),
+        recipient: wallet3.address().clone(),
+        nonce: 2.into(),
+        amount: message_amount,
+        data: vec![],
+        da_height: 0,
+        status: MessageStatus::Unspent,
+    };
+    let mut message_vec: Vec<Message> = Vec::new();
+    message_vec.push(message1);
+    message_vec.push(message2);
+    message_vec.push(message3);
+
+    // Setup Coin
+    let coin_amount = 10;
+    let coin = Coin {
+        owner: wallet4.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+
+    let mut node_config = NodeConfig::default();
+    node_config.starting_gas_price = 0;
+    let provider = setup_test_provider(vec![coin], message_vec, Some(node_config), None)
+        .await
+        .unwrap();
+
+    wallet1.set_provider(provider.clone());
+    wallet2.set_provider(provider.clone());
+    wallet3.set_provider(provider.clone());
+
+    wallet4.set_provider(provider.clone());
+
+    let id_1 = Contract::load_from(
+        "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
+        LoadConfiguration::default(),
+    )
+    .unwrap()
+    .deploy(&wallet4, TxPolicies::default())
+    .await
+    .unwrap();
+    
+    let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
+    
+    let result = auth_instance
+        .methods()
+        .returns_caller_addresses()
+        .call()
+        .await
+        .unwrap();
+    
+    assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
+
+    // Start building transactions
+    let call_handler = auth_instance
+        .methods()
+        .returns_caller_addresses();
+    let mut tb = call_handler.transaction_builder().await.unwrap();
+
+    // Inputs
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &wallet1.address().clone(),
+                &wallet1.address().clone(),
+                message_amount,
+                0.into(),
+                vec![],
+            )
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &wallet2.address().clone(),
+                &wallet2.address().clone(),
+                message_amount,
+                1.into(),
+                vec![],
+            )
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &wallet3.address().clone(),
+                &wallet3.address().clone(),
+                message_amount,
+                2.into(),
+                vec![],
+            )
+        ),
+    });
+
+    // Build transaction
+    tb.add_signer(wallet1.clone()).unwrap();
+    tb.add_signer(wallet2.clone()).unwrap();
+    tb.add_signer(wallet3.clone()).unwrap();
+    
+    let provider = wallet1.provider().unwrap();
+    let tx = tb.build(provider.clone()).await.unwrap();
+
+    // Send and verify
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let result = call_handler.get_response_from(tx_status).unwrap();
+
+    assert!(result.value.contains(&Address::from(wallet1.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet2.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet3.address().clone())));
+}
+
+#[tokio::test]
+async fn caller_addresses_from_coins() {
+    let mut wallet1 = WalletUnlocked::new_random(None);
+    let mut wallet2 = WalletUnlocked::new_random(None);
+    let mut wallet3 = WalletUnlocked::new_random(None);
+    let mut wallet4 = WalletUnlocked::new_random(None);
+
+    // Setup Coin
+    let coin_amount = 10;
+    let coin1 = Coin {
+        owner: wallet1.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+    let coin2 = Coin {
+        owner: wallet2.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+    let coin3 = Coin {
+        owner: wallet3.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+    let coin4 = Coin {
+        owner: wallet4.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 3),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+
+    let mut coin_vec: Vec<Coin> = Vec::new();
+    coin_vec.push(coin1);
+    coin_vec.push(coin2);
+    coin_vec.push(coin3);
+    coin_vec.push(coin4);
+
+    let mut node_config = NodeConfig::default();
+    node_config.starting_gas_price = 0;
+    let provider = setup_test_provider(coin_vec, vec![], Some(node_config), None)
+        .await
+        .unwrap();
+
+    wallet1.set_provider(provider.clone());
+    wallet2.set_provider(provider.clone());
+    wallet3.set_provider(provider.clone());
+
+    wallet4.set_provider(provider.clone());
+
+    let id_1 = Contract::load_from(
+        "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
+        LoadConfiguration::default(),
+    )
+    .unwrap()
+    .deploy(&wallet4, TxPolicies::default())
+    .await
+    .unwrap();
+    
+    let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
+    
+    let result = auth_instance
+        .methods()
+        .returns_caller_addresses()
+        .call()
+        .await
+        .unwrap();
+    
+    assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
+
+    // Start building transactions
+    let call_handler = auth_instance
+        .methods()
+        .returns_caller_addresses();
+    let mut tb = call_handler.transaction_builder().await.unwrap();
+
+    // Inputs
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Coin(
+            Coin {
+                owner: wallet1.address().clone(),
+                utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
+                amount: coin_amount,
+                asset_id: AssetId::default(),
+                status: CoinStatus::Unspent,
+                block_created: Default::default(),
+            }
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Coin(
+            Coin {
+                owner: wallet2.address().clone(),
+                utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
+                amount: coin_amount,
+                asset_id: AssetId::default(),
+                status: CoinStatus::Unspent,
+                block_created: Default::default(),
+            }
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Coin(
+            Coin {
+                owner: wallet3.address().clone(),
+                utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
+                amount: coin_amount,
+                asset_id: AssetId::default(),
+                status: CoinStatus::Unspent,
+                block_created: Default::default(),
+            }
+        ),
+    });
+
+    // Build transaction
+    tb.add_signer(wallet1.clone()).unwrap();
+    tb.add_signer(wallet2.clone()).unwrap();
+    tb.add_signer(wallet3.clone()).unwrap();
+    
+    let provider = wallet1.provider().unwrap();
+    let tx = tb.build(provider.clone()).await.unwrap();
+
+    // Send and verify
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let result = call_handler.get_response_from(tx_status).unwrap();
+
+    assert!(result.value.contains(&Address::from(wallet1.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet2.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet3.address().clone())));
+}
+
+#[tokio::test]
+async fn caller_addresses_from_coins_and_messages() {
+    let mut wallet1 = WalletUnlocked::new_random(None);
+    let mut wallet2 = WalletUnlocked::new_random(None);
+    let mut wallet3 = WalletUnlocked::new_random(None);
+    let mut wallet4 = WalletUnlocked::new_random(None);
+
+    let message_amount = 10;
+    let message1 = Message {
+        sender: wallet1.address().clone(),
+        recipient: wallet1.address().clone(),
+        nonce: 0.into(),
+        amount: message_amount,
+        data: vec![],
+        da_height: 0,
+        status: MessageStatus::Unspent,
+    };
+
+    // Setup Coin
+    let coin_amount = 10;
+    let coin2 = Coin {
+        owner: wallet2.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+    let coin3 = Coin {
+        owner: wallet3.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+    let coin4 = Coin {
+        owner: wallet4.address().clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 3),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+
+    let mut coin_vec: Vec<Coin> = Vec::new();
+    coin_vec.push(coin2);
+    coin_vec.push(coin3);
+    coin_vec.push(coin4);
+
+    let mut node_config = NodeConfig::default();
+    node_config.starting_gas_price = 0;
+    let provider = setup_test_provider(coin_vec, vec![message1], Some(node_config), None)
+        .await
+        .unwrap();
+
+    wallet1.set_provider(provider.clone());
+    wallet2.set_provider(provider.clone());
+    wallet3.set_provider(provider.clone());
+
+    wallet4.set_provider(provider.clone());
+
+    let id_1 = Contract::load_from(
+        "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
+        LoadConfiguration::default(),
+    )
+    .unwrap()
+    .deploy(&wallet4, TxPolicies::default())
+    .await
+    .unwrap();
+    
+    let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
+    
+    let result = auth_instance
+        .methods()
+        .returns_caller_addresses()
+        .call()
+        .await
+        .unwrap();
+    
+    assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
+
+    // Start building transactions
+    let call_handler = auth_instance
+        .methods()
+        .returns_caller_addresses();
+    let mut tb = call_handler.transaction_builder().await.unwrap();
+
+    // Inputs
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(
+            setup_single_message(
+                &wallet1.address().clone(),
+                &wallet1.address().clone(),
+                message_amount,
+                0.into(),
+                vec![],
+            )
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Coin(
+            Coin {
+                owner: wallet2.address().clone(),
+                utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
+                amount: coin_amount,
+                asset_id: AssetId::default(),
+                status: CoinStatus::Unspent,
+                block_created: Default::default(),
+            }
+        ),
+    });
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Coin(
+            Coin {
+                owner: wallet3.address().clone(),
+                utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
+                amount: coin_amount,
+                asset_id: AssetId::default(),
+                status: CoinStatus::Unspent,
+                block_created: Default::default(),
+            }
+        ),
+    });
+
+    // Build transaction
+    tb.add_signer(wallet1.clone()).unwrap();
+    tb.add_signer(wallet2.clone()).unwrap();
+    tb.add_signer(wallet3.clone()).unwrap();
+    
+    let provider = wallet1.provider().unwrap();
+    let tx = tb.build(provider.clone()).await.unwrap();
+
+    // Send and verify
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let result = call_handler.get_response_from(tx_status).unwrap();
+
+    assert!(result.value.contains(&Address::from(wallet1.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet2.address().clone())));
+    assert!(result.value.contains(&Address::from(wallet3.address().clone())));
+}
+
 async fn get_contracts() -> (
     AuthContract<WalletUnlocked>,
     ContractId,
@@ -115,15 +614,17 @@ async fn can_get_predicate_address() {
             coin_amount: 1_000,
         }],
     );
-    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, None, None)
+    let mut node_config = NodeConfig::default();
+    node_config.starting_gas_price = 0;
+    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
         .await
         .unwrap();
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
-    // Setup Predciate
+    // Setup predicate.
     let hex_predicate_address: &str =
-        "0xf868533e744aeda1df2fcd5589d822db7087e61702662356961029622b6b75f2";
+        "0x5dcc82a88eebb07fb628db93d11ec38f085cbf36453a7135fea41b93cc44e118";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -135,6 +636,10 @@ async fn can_get_predicate_address() {
             .unwrap()
             .with_provider(first_wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);
+
+    // If this test fails, it can be the predicate address
+    // Uncomment the next line, get the predicate address and update above.
+    // dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -198,7 +703,7 @@ async fn when_incorrect_predicate_address_passed() {
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
-    // Setup Predciate with incorrect address
+    // Setup predicate with incorrect address.
     let hex_predicate_address: &str =
         "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
     let predicate_address =
@@ -239,4 +744,92 @@ async fn when_incorrect_predicate_address_passed() {
         )
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn can_get_predicate_address_in_message() {
+    // Setup predicate address.
+    let hex_predicate_address: &str =
+        "0x5dcc82a88eebb07fb628db93d11ec38f085cbf36453a7135fea41b93cc44e118";
+    let predicate_address =
+        Address::from_str(hex_predicate_address).expect("failed to create Address from string");
+    let predicate_bech32_address = Bech32Address::from(predicate_address);
+
+    // Setup message
+    let message_amount = 1;
+    let message = Message {
+        sender: Bech32Address::default(),
+        recipient: predicate_bech32_address.clone(),
+        nonce: 0.into(),
+        amount: message_amount,
+        data: vec![],
+        da_height: 0,
+        status: MessageStatus::Unspent,
+    };
+    let mut message_vec: Vec<Message> = Vec::new();
+    message_vec.push(message);
+
+    // Setup Coin
+    let coin_amount = 0;
+    let coin = Coin {
+        owner: predicate_bech32_address.clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+    let mut coin_vec: Vec<Coin> = Vec::new();
+    coin_vec.push(coin);
+
+    let mut wallet = WalletUnlocked::new_random(None);
+    let mut node_config = NodeConfig::default();
+    node_config.starting_gas_price = 0;
+    let provider = setup_test_provider(coin_vec, message_vec, Some(node_config), None)
+        .await
+        .unwrap();
+    wallet.set_provider(provider.clone());
+
+    // Setup predicate.
+    let predicate_data = AuthPredicateEncoder::default()
+        .encode_data(predicate_bech32_address)
+        .unwrap();
+    let predicate: Predicate =
+        Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
+            .unwrap()
+            .with_provider(wallet.try_provider().unwrap().clone())
+            .with_data(predicate_data);
+
+    // If this test fails, it can be the predicate address
+    // Uncomment the next line, get the predicate address and update above.
+    // dbg!(&predicate);
+
+    // Check predicate balance.
+    let balance = predicate
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
+    assert_eq!(balance, message_amount);
+
+    // Spend the message
+    predicate
+        .transfer(
+            wallet.address(),
+            message_amount,
+            AssetId::default(),
+            TxPolicies::default(),
+        )
+        .await
+        .unwrap();
+
+    // The predicate has spent the funds
+    let predicate_balance = predicate
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
+    assert_eq!(predicate_balance, 0);
+
+    // Funds were transferred
+    let wallet_balance = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
+    assert_eq!(wallet_balance, message_amount);
 }

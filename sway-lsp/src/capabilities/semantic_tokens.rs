@@ -27,6 +27,7 @@ pub fn semantic_tokens_range(
     url: &Url,
     range: &Range,
 ) -> Option<SemanticTokensRangeResult> {
+    let _p = tracing::trace_span!("semantic_tokens_range").entered();
     let tokens: Vec<_> = session
         .token_map()
         .tokens_for_file(url)

@@ -9,12 +9,12 @@ use crate::{
     BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
-use forc_tracing::println_warning;
+use byte_unit::{Byte, UnitType};
+use forc_tracing::{println_action_green, println_warning};
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
 };
-use fuel_abi_types::abi::program as program_abi;
 use petgraph::{
     self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -241,8 +241,6 @@ pub struct PkgOpts {
     ///
     /// By default, this is `<project-root>/out`.
     pub output_directory: Option<String>,
-    /// Outputs json abi with callpath instead of struct and enum names.
-    pub json_abi_with_callpaths: bool,
     /// The IPFS node to be used for fetching IPFS sources.
     pub ipfs_node: IPFSNode,
 }
@@ -262,6 +260,8 @@ pub struct PrintOpts {
     pub asm: PrintAsm,
     /// Print the bytecode. This is the final output of the compiler.
     pub bytecode: bool,
+    /// Print the original source code together with bytecode.
+    pub bytecode_spans: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
@@ -282,7 +282,7 @@ pub struct MinifyOpts {
 type ContractIdConst = String;
 
 /// The set of options provided to the `build` functions.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
@@ -315,6 +315,7 @@ pub struct BuildOpts {
 }
 
 /// The set of options to filter type of projects to build in a workspace.
+#[derive(Clone)]
 pub struct MemberFilter {
     pub build_contracts: bool,
     pub build_scripts: bool,
@@ -497,7 +498,11 @@ impl BuiltPackage {
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify)?;
 
-        info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
+        debug!(
+            "      Bytecode size: {} bytes ({})",
+            self.bytecode.bytes.len(),
+            format_bytecode_size(self.bytecode.bytes.len())
+        );
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -531,7 +536,7 @@ impl BuiltPackage {
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
-                info!("      Bytecode hash: {}", bytecode_hash);
+                debug!("      Bytecode hash: {}", bytecode_hash);
             }
             _ => (),
         }
@@ -575,8 +580,8 @@ impl BuildPlan {
     ///
     /// To do so, it tries to read the manifet file at the target path and creates the plan with
     /// `BuildPlan::from_lock_and_manifest`.
-    pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self> {
-        let path = &build_options.pkg.path;
+    pub fn from_pkg_opts(pkg_options: &PkgOpts) -> Result<Self> {
+        let path = &pkg_options.path;
 
         let manifest_dir = if let Some(ref path) = path {
             PathBuf::from(path)
@@ -594,9 +599,9 @@ impl BuildPlan {
         Self::from_lock_and_manifests(
             &lock_path,
             &member_manifests,
-            build_options.pkg.locked,
-            build_options.pkg.offline,
-            &build_options.pkg.ipfs_node,
+            pkg_options.locked,
+            pkg_options.offline,
+            &pkg_options.ipfs_node,
         )
     }
 
@@ -713,7 +718,10 @@ impl BuildPlan {
                     cause,
                 );
             }
-            info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+            println_action_green(
+                "Creating",
+                &format!("a new `Forc.lock` file. (Cause: {})", cause),
+            );
             let member_names = manifests
                 .iter()
                 .map(|(_, manifest)| manifest.project.name.to_string())
@@ -723,7 +731,7 @@ impl BuildPlan {
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(lock_path, string)
                 .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-            info!("   Created new lock file at {}", lock_path.display());
+            debug!("   Created new lock file at {}", lock_path.display());
         }
 
         Ok(plan)
@@ -1549,7 +1557,10 @@ pub fn sway_build_config(
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .with_print_asm(build_profile.print_asm)
-    .with_print_bytecode(build_profile.print_bytecode)
+    .with_print_bytecode(
+        build_profile.print_bytecode,
+        build_profile.print_bytecode_spans,
+    )
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
@@ -1587,17 +1598,18 @@ pub fn dependency_namespace(
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
-    let name = Some(Ident::new_no_span(node_idx.name.clone()));
+    let name = Ident::new_no_span(node_idx.name.clone());
     let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::default_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
+        namespace::default_with_contract_id(
+            engines,
+            name.clone(),
+            Visibility::Public,
+            contract_id_value,
+            experimental,
+        )?
     } else {
-        namespace::Module::default()
+        namespace::Module::new(name, Visibility::Public, None)
     };
-
-    root_module.write(engines, |root_module| {
-        root_module.name.clone_from(&name);
-        root_module.visibility = Visibility::Public;
-    });
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1620,16 +1632,14 @@ pub fn dependency_namespace(
                 // Construct namespace with contract id
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
-                let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut module = namespace::default_with_contract_id(
+                let name = Ident::new_no_span(node_idx.name.clone());
+                namespace::default_with_contract_id(
                     engines,
                     name.clone(),
+                    Visibility::Private,
                     contract_id_value,
                     experimental,
-                )?;
-                module.name = name;
-                module.visibility = Visibility::Public;
-                module
+                )?
             }
         };
         dep_namespace.is_external = true;
@@ -1652,20 +1662,22 @@ pub fn dependency_namespace(
     let mut root = namespace::Root::from(root_module);
 
     if core_added {
-        let _ = root.star_import_with_reexports(
+        let _ = root.star_import(
             &Handler::default(),
             engines,
             &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
+            Visibility::Private,
         );
     }
 
     if has_std_dep(graph, node) {
-        let _ = root.star_import_with_reexports(
+        let _ = root.star_import(
             &Handler::default(),
             engines,
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
+            Visibility::Private,
         );
     }
 
@@ -1746,7 +1758,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: namespace::Root,
+    namespace: &mut namespace::Root,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
@@ -1818,29 +1830,38 @@ pub fn compile(
         metrics
     );
 
+    const OLD_ENCODING_VERSION: &str = "0";
     const NEW_ENCODING_VERSION: &str = "1";
+    const SPEC_VERSION: &str = "1";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
-            let mut types = vec![];
-            ProgramABI::Fuel(time_expr!(
+            let program_abi_res = time_expr!(
                 "generate JSON ABI program",
                 "generate_json_abi",
                 fuel_abi::generate_program_abi(
+                    &handler,
                     &mut AbiContext {
                         program: typed_program,
-                        abi_with_callpaths: profile.json_abi_with_callpaths,
+                        abi_with_callpaths: true,
+                        type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
-                    &mut types,
                     profile
                         .experimental
                         .new_encoding
-                        .then(|| NEW_ENCODING_VERSION.into()),
+                        .then(|| NEW_ENCODING_VERSION.into())
+                        .unwrap_or(OLD_ENCODING_VERSION.into()),
+                    SPEC_VERSION.into(),
                 ),
                 Some(sway_build_config.clone()),
                 metrics
-            ))
+            );
+            let program_abi = match program_abi_res {
+                Err(_) => return fail(handler),
+                Ok(program_abi) => program_abi,
+            };
+            ProgramABI::Fuel(program_abi)
         }
         BuildTarget::EVM => {
             // Merge the ABI output of ASM gen with ABI gen to handle internal constructors
@@ -1865,8 +1886,6 @@ pub fn compile(
 
             ProgramABI::Evm(ops)
         }
-
-        BuildTarget::MidenVM => ProgramABI::MidenVM(()),
     };
 
     let entries = asm_res
@@ -2079,13 +2098,13 @@ fn build_profile_from_opts(
     profile.print_ir |= print.ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
+    profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     if profile.metrics_outfile.is_none() {
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
-    profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
     profile.experimental = ExperimentalFlags {
         new_encoding: experimental.new_encoding,
@@ -2103,6 +2122,12 @@ fn profile_target_string(profile_name: &str, build_target: &BuildTarget) -> Stri
         _ => {}
     };
     format!("{profile_name} [{}] target(s)", targets.join(" + "))
+}
+/// Returns the size of the bytecode in a human-readable format.
+pub fn format_bytecode_size(bytes_len: usize) -> String {
+    let size = Byte::from_u64(bytes_len as u64);
+    let adjusted_byte = size.get_appropriate_unit(UnitType::Decimal);
+    adjusted_byte.to_string()
 }
 
 /// Check if the given node is a contract dependency of any node in the graph.
@@ -2132,7 +2157,9 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         .as_ref()
         .map_or_else(|| current_dir, PathBuf::from);
 
-    let build_plan = BuildPlan::from_build_opts(build_options)?;
+    println_action_green("Building", &path.display().to_string());
+
+    let build_plan = BuildPlan::from_pkg_opts(&build_options.pkg)?;
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
 
@@ -2170,12 +2197,19 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         },
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+    let total_size = built_packages
+        .iter()
+        .map(|(_, pkg)| pkg.bytecode.bytes.len())
+        .sum::<usize>();
 
-    let finished = ansi_term::Colour::Green.bold().paint("Finished");
-    info!(
-        "  {finished} {} in {:.2}s",
-        profile_target_string(&build_profile.name, build_target),
-        build_start.elapsed().as_secs_f32()
+    println_action_green(
+        "Finished",
+        &format!(
+            "{} [{}] in {:.2}s",
+            profile_target_string(&build_profile.name, build_target),
+            format_bytecode_size(total_size),
+            build_start.elapsed().as_secs_f32()
+        ),
     );
     for (node_ix, built_package) in built_packages {
         print_pkg_summary_header(&built_package);
@@ -2289,6 +2323,7 @@ pub fn build(
 
     let mut lib_namespace_map = HashMap::default();
     let mut compiled_contract_deps = HashMap::new();
+
     for &node in plan
         .compilation_order
         .iter()
@@ -2343,7 +2378,7 @@ pub fn build(
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let dep_namespace = match dependency_namespace(
+            let mut dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
@@ -2360,7 +2395,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                dep_namespace,
+                &mut dep_namespace,
                 &mut source_map,
             )?;
 
@@ -2407,7 +2442,7 @@ pub fn build(
         };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let dep_namespace = match dependency_namespace(
+        let mut dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
@@ -2429,11 +2464,11 @@ pub fn build(
             }
         };
 
-        let mut compiled = compile(
+        let compiled = compile(
             &descriptor,
             &profile,
             &engines,
-            dep_namespace,
+            &mut dep_namespace,
             &mut source_map,
         )?;
 
@@ -2445,17 +2480,9 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            compiled.root_module.write(&engines, |root_module| {
-                root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
-            });
             lib_namespace_map.insert(node, compiled.root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
-
-        // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
-        if let ProgramABI::Fuel(ref mut program_abi) = compiled.program_abi {
-            standardize_json_abi_types(program_abi);
-        }
 
         let built_pkg = BuiltPackage {
             descriptor,
@@ -2474,136 +2501,6 @@ pub fn build(
     }
 
     Ok(built_packages)
-}
-
-/// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
-/// process because every time two types are merged, new opportunities for more merging arise.
-fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
-    loop {
-        // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
-        // between id_1 and id_2 in the HashMap below.
-        let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
-
-        // A vector containing unique `program_abi::TypeDeclaration`s.
-        //
-        // Two `program_abi::TypeDeclaration` are deemed the same if the have the same
-        // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
-        // different).
-        let mut deduped_types: Vec<program_abi::TypeDeclaration> = Vec::new();
-
-        // Insert values in `deduped_types` if they haven't been inserted before. Otherwise, create
-        // an appropriate mapping between type IDs in the HashMap `old_to_new_id`.
-        for decl in &json_abi_program.types {
-            if let Some(ty) = deduped_types.iter().find(|d| {
-                d.type_field == decl.type_field
-                    && d.components == decl.components
-                    && d.type_parameters == decl.type_parameters
-            }) {
-                old_to_new_id.insert(decl.type_id, ty.type_id);
-            } else {
-                deduped_types.push(decl.clone());
-            }
-        }
-
-        // Nothing to do if the hash map is empty as there are not merge opportunities. We can now
-        // exit the loop.
-        if old_to_new_id.is_empty() {
-            break;
-        }
-
-        json_abi_program.types = deduped_types;
-
-        // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
-        update_all_types(json_abi_program, &old_to_new_id);
-    }
-
-    // Sort the `program_abi::TypeDeclaration`s
-    json_abi_program
-        .types
-        .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
-
-    // Standardize IDs (i.e. change them to 0,1,2,... according to the alphabetical order above
-    let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
-    for (ix, decl) in json_abi_program.types.iter_mut().enumerate() {
-        old_to_new_id.insert(decl.type_id, ix);
-        decl.type_id = ix;
-    }
-
-    // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
-    update_all_types(json_abi_program, &old_to_new_id);
-}
-
-/// Recursively updates the type IDs used in a program_abi::ProgramABI
-fn update_all_types(
-    json_abi_program: &mut program_abi::ProgramABI,
-    old_to_new_id: &HashMap<usize, usize>,
-) {
-    // Update all `program_abi::TypeApplication`s in every function
-    for func in &mut json_abi_program.functions {
-        for input in &mut func.inputs {
-            update_json_type_application(input, old_to_new_id);
-        }
-
-        update_json_type_application(&mut func.output, old_to_new_id);
-    }
-
-    // Update all `program_abi::TypeDeclaration`
-    for decl in &mut json_abi_program.types {
-        update_json_type_declaration(decl, old_to_new_id);
-    }
-    if let Some(logged_types) = &mut json_abi_program.logged_types {
-        for logged_type in logged_types {
-            update_json_type_application(&mut logged_type.application, old_to_new_id);
-        }
-    }
-    if let Some(messages_types) = &mut json_abi_program.messages_types {
-        for logged_type in messages_types {
-            update_json_type_application(&mut logged_type.application, old_to_new_id);
-        }
-    }
-    if let Some(configurables) = &mut json_abi_program.configurables {
-        for logged_type in configurables {
-            update_json_type_application(&mut logged_type.application, old_to_new_id);
-        }
-    }
-}
-
-/// Recursively updates the type IDs used in a `program_abi::TypeApplication` given a HashMap from
-/// old to new IDs
-fn update_json_type_application(
-    type_application: &mut program_abi::TypeApplication,
-    old_to_new_id: &HashMap<usize, usize>,
-) {
-    if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
-        type_application.type_id = *new_id;
-    }
-
-    if let Some(args) = &mut type_application.type_arguments {
-        for arg in args.iter_mut() {
-            update_json_type_application(arg, old_to_new_id);
-        }
-    }
-}
-
-/// Recursively updates the type IDs used in a `program_abi::TypeDeclaration` given a HashMap from
-/// old to new IDs
-fn update_json_type_declaration(
-    type_declaration: &mut program_abi::TypeDeclaration,
-    old_to_new_id: &HashMap<usize, usize>,
-) {
-    if let Some(params) = &mut type_declaration.type_parameters {
-        for param in params.iter_mut() {
-            if let Some(new_id) = old_to_new_id.get(param) {
-                *param = *new_id;
-            }
-        }
-    }
-
-    if let Some(components) = &mut type_declaration.components {
-        for component in components.iter_mut() {
-            update_json_type_application(component, old_to_new_id);
-        }
-    }
 }
 
 /// Compile the entire forc package and return the lexed, parsed and typed programs
@@ -2642,7 +2539,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let dep_namespace = dependency_namespace(
+        let mut dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
@@ -2673,7 +2570,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            dep_namespace,
+            &mut dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
@@ -2701,8 +2598,7 @@ pub fn check(
                     .namespace
                     .program_id(engines)
                     .read(engines, |m| m.clone());
-                module.name = Some(Ident::new_no_span(pkg.name.clone()));
-                module.span = Some(
+                module.set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,

@@ -1,8 +1,0 @@
-[[package]]
-name = "core"
-source = "path+from-root-D8328229BADFFAD9"
-
-[[package]]
-name = "str_slice"
-source = "member"
-dependencies = ["core"]

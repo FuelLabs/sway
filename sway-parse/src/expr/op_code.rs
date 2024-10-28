@@ -6,6 +6,10 @@ use sway_types::{Ident, Spanned};
 
 macro_rules! define_op_codes (
     ( $(($op_name:ident, $ty_name:ident, $s:literal, ($($arg_name:ident),*)),)* ) => {
+        pub const OP_CODES: &'static [&'static str] = &[
+            $($s),*
+        ];
+
         pub fn parse_instruction(ident: Ident, parser: &mut Parser) -> ParseResult<Instruction> {
             match ident.as_str() {
                 $($s => {
@@ -16,7 +20,9 @@ macro_rules! define_op_codes (
                 },)*
                 _ => {
                     let span = ident.span().clone();
-                    Err(parser.emit_error_with_span(ParseErrorKind::UnrecognizedOpCode, span))
+                    Err(parser.emit_error_with_span(ParseErrorKind::UnrecognizedOpCode {
+                        known_op_codes: OP_CODES,
+                    }, span))
                 },
             }
         }
@@ -54,6 +60,13 @@ define_op_codes!(
     (Srli, SrliOpcode, "srli", (ret, lhs, rhs)),
     (Sub, SubOpcode, "sub", (ret, lhs, rhs)),
     (Subi, SubiOpcode, "subi", (ret, lhs, rhs)),
+    (Wqcm, WqcmOpcode, "wqcm", (ret, lhs, rhs, op_mode)),
+    (Wqop, WqopOpcode, "wqop", (ret, lhs, rhs, op_mode)),
+    (Wqml, WqmlOpcode, "wqml", (ret, lhs, rhs, indirect)),
+    (Wqdv, WqdvOpcode, "wqdv", (ret, lhs, rhs, indirect)),
+    (Wqmd, WqmdOpcode, "wqmd", (ret, lhs_a, lhs_b, rhs)),
+    (Wqam, WqamOpcode, "wqam", (ret, lhs_a, lhs_b, rhs)),
+    (Wqmm, WqmmOpcode, "wqmm", (ret, lhs_a, lhs_b, rhs)),
     (Xor, XorOpcode, "xor", (ret, lhs, rhs)),
     (Xori, XoriOpcode, "xori", (ret, lhs, rhs)),
     /* Control Flow Instructions */
@@ -88,7 +101,9 @@ define_op_codes!(
     (Ccp, CcpOpcode, "ccp", (dst_addr, contract, src_addr, size)),
     (Croo, CrooOpcode, "croo", (addr, contract)),
     (Csiz, CsizOpcode, "csiz", (ret, contract)),
-    (Ldc, LdcOpcode, "ldc", (contract, addr, size)),
+    (Bsiz, BsizOpcode, "bsiz", (ret, contract)),
+    (Ldc, LdcOpcode, "ldc", (contract, addr, size, imm)),
+    (Bldd, BlddOpcode, "bldd", (dst_ptr, addr, offset, len)),
     (Log, LogOpcode, "log", (reg_a, reg_b, reg_c, reg_d)),
     (Logd, LogdOpcode, "logd", (reg_a, reg_b, addr, size)),
     (Mint, MintOpcode, "mint", (coins, sub_id)),
@@ -106,7 +121,7 @@ define_op_codes!(
     /* Cryptographic Instructions */
     (Eck1, Eck1Opcode, "eck1", (addr, sig, hash)),
     (Ecr1, Ecr1Opcode, "ecr1", (addr, sig, hash)),
-    (Ed19, Ed19Opcode, "ed19", (addr, sig, hash)),
+    (Ed19, Ed19Opcode, "ed19", (addr, sig, hash, len)),
     (K256, K256Opcode, "k256", (addr, data, size)),
     (S256, S256Opcode, "s256", (addr, data, size)),
     /* Other Instructions */

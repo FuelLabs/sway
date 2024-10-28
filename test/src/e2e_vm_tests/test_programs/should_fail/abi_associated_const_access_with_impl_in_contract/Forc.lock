@@ -1,0 +1,3 @@
+[[package]]
+name = "abi_associated_const_access_with_impl_in_contract"
+source = "member"

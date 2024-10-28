@@ -10,7 +10,7 @@ use crate::{
     decl_engine::{DeclId, DeclMapping, DeclRef, ReplaceDecls},
     engine_threading::*,
     has_changes,
-    language::{ty::*, CallPath, Visibility},
+    language::{parsed::ConfigurableDeclaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
@@ -27,6 +27,10 @@ pub struct TyConfigurableDecl {
     pub span: Span,
     // Only encoding v1 has a decode_fn
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
+}
+
+impl TyDeclParsedType for TyConfigurableDecl {
+    type ParsedType = ConfigurableDeclaration;
 }
 
 impl DebugWithEngines for TyConfigurableDecl {
@@ -85,11 +89,11 @@ impl Spanned for TyConfigurableDecl {
 }
 
 impl SubstTypes for TyConfigurableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, engines);
-            self.type_ascription.subst(type_mapping, engines);
-            self.value.subst(type_mapping, engines);
+            self.return_type.subst(ctx);
+            self.type_ascription.subst(ctx);
+            self.value.subst(ctx);
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        engine::{DeclEngineGet, DeclEngineReplace},
+        engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
         DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
     },
     language::{
@@ -9,7 +9,7 @@ use crate::{
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
@@ -46,11 +46,14 @@ pub(crate) fn type_check_method_application(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+
         // Ignore errors in method parameters
         // On the second pass we will throw the errors if they persist.
         let arg_handler = Handler::default();
         let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg).ok();
-        let has_errors = arg_handler.has_errors();
+
+        let needs_second_pass = arg_handler.has_errors();
+
         if index == 0 {
             // We want to emit errors in the self parameter and ignore TraitConstraintNotSatisfied with Placeholder
             // which may be recoverable on the second pass.
@@ -66,7 +69,8 @@ pub(crate) fn type_check_method_application(
             });
             handler.append(arg_handler);
         }
-        args_opt_buf.push_back((arg_opt, has_errors));
+
+        args_opt_buf.push_back((arg_opt, needs_second_pass));
     }
 
     // resolve the method name to a typed function declaration and type_check
@@ -109,26 +113,26 @@ pub(crate) fn type_check_method_application(
         if let (Some(arg), false) = arg_opt {
             args_buf.push_back(arg);
         } else {
+            // We type check the argument expression again this time throwing out the error.
             let param_index = if method.is_contract_call {
                 index - 1 //contract call methods don't have self parameter.
             } else {
                 index
             };
-            // This arg_opt is None because it failed in the first pass.
-            // We now try to type check it again, this time with the type annotation.
-            let ctx = ctx
-                .by_ref()
-                .with_help_text(
-                    "Function application argument type must match function parameter type.",
-                )
-                .with_type_annotation(
-                    method
-                        .parameters
-                        .get(param_index)
-                        .unwrap()
-                        .type_argument
-                        .type_id,
-                );
+
+            let ctx = if let Some(param) = method.parameters.get(param_index) {
+                // We now try to type check it again, this time with the type annotation.
+                ctx.by_ref()
+                    .with_help_text(
+                        "Function application argument type must match function parameter type.",
+                    )
+                    .with_type_annotation(param.type_argument.type_id)
+            } else {
+                ctx.by_ref()
+                    .with_help_text("")
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            };
+
             args_buf.push_back(
                 ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
@@ -144,20 +148,10 @@ pub(crate) fn type_check_method_application(
         }));
     }
 
-    // check the function storage purity
-    if !method.is_contract_call {
-        // 'method.purity' is that of the callee, 'opts.purity' of the caller.
-        if !ctx.purity().can_call(method.purity) {
-            handler.emit_err(CompileError::StorageAccessMismatch {
-                attrs: promote_purity(ctx.purity(), method.purity).to_attribute_syntax(),
-                span: method_name_binding.inner.easy_name().span(),
-            });
-        }
-        if !contract_call_params.is_empty() {
-            handler.emit_err(CompileError::CallParamForNonContractCallMethod {
-                span: contract_call_params[0].name.span(),
-            });
-        }
+    if !method.is_contract_call && !contract_call_params.is_empty() {
+        handler.emit_err(CompileError::CallParamForNonContractCallMethod {
+            span: contract_call_params[0].name.span(),
+        });
     }
 
     // generate the map of the contract call params
@@ -396,14 +390,19 @@ pub(crate) fn type_check_method_application(
                 )));
             }
         };
-        let func_selector = method
-            .to_fn_selector_value(handler, engines)
-            .unwrap_or([0; 4]);
-        let contract_caller = contract_caller.unwrap();
+        let func_selector = if ctx.experimental.new_encoding {
+            None
+        } else {
+            Some(
+                method
+                    .to_fn_selector_value(handler, engines)
+                    .unwrap_or([0; 4]),
+            )
+        };
         Some(ty::ContractCallParams {
             func_selector,
             contract_address: contract_address.clone(),
-            contract_caller: Box::new(contract_caller),
+            contract_caller: Box::new(contract_caller.unwrap()),
         })
     } else {
         None
@@ -484,6 +483,7 @@ pub(crate) fn type_check_method_application(
                             ]),
                             span: Span::dummy(),
                         },
+                        resolved_call_path_binding: None,
                         arguments: vec![
                             Expression {
                                 kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
@@ -581,7 +581,7 @@ pub(crate) fn type_check_method_application(
 
     // Unify method type parameters with implementing type type parameters.
     if let Some(implementing_for_typeid) = method.implementing_for_typeid {
-        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
@@ -644,41 +644,82 @@ pub(crate) fn type_check_method_application(
     {
         fn_ref = cached_fn_ref;
     } else {
-        // This handles the case of substituting the generic blanket type by call_path_typeid.
-        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
-                type_arguments: _,
+                type_arguments,
                 root_type_id: _,
             } = &*type_engine.get(t.initial_type_id)
             {
-                for p in method.type_parameters.clone() {
-                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
-                        let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![t.initial_type_id],
-                            vec![call_path_typeid],
-                        );
-                        method.subst(&type_subst, engines);
+                let mut subst_type_parameters = vec![];
+                let mut subst_type_arguments = vec![];
+
+                let mut names_type_ids = HashMap::<Ident, TypeId>::new();
+                if let Some(type_arguments) = type_arguments {
+                    for t_arg in type_arguments.iter() {
+                        if let TypeInfo::Custom {
+                            qualified_call_path,
+                            ..
+                        } = &*type_engine.get(t_arg.initial_type_id)
+                        {
+                            names_type_ids.insert(
+                                qualified_call_path.call_path.suffix.clone(),
+                                t_arg.type_id,
+                            );
+                        }
                     }
                 }
+
+                // This handles the case of substituting the generic blanket type by call_path_typeid.
+                for p in method.type_parameters.clone() {
+                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                        subst_type_parameters.push(t.initial_type_id);
+                        subst_type_arguments.push(call_path_typeid);
+                        break;
+                    }
+                }
+
+                // This will subst inner method_application placeholders with the already resolved
+                // current method application type parameter
+                for p in method.type_parameters.clone() {
+                    if names_type_ids.contains_key(&p.name_ident) {
+                        subst_type_parameters.push(engines.te().insert(
+                            engines,
+                            TypeInfo::Placeholder(p.clone()),
+                            p.span().source_id(),
+                        ));
+                        subst_type_arguments.push(p.type_id);
+                    }
+                }
+
+                let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
+                    subst_type_parameters,
+                    subst_type_arguments,
+                );
+
+                method.subst(&SubstTypesContext::new(
+                    engines,
+                    &type_subst,
+                    !ctx.code_block_first_pass(),
+                ));
             }
         }
 
-        // Handle the trait constraints. This includes checking to see if the trait
-        // constraints are satisfied and replacing old decl ids based on the
-        // constraint with new decl ids based on the new type.
-        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-            handler,
-            ctx.by_ref(),
-            &method.type_parameters,
-            method.name.as_str(),
-            &call_path.span(),
-        )
-        .ok();
+        if !ctx.code_block_first_pass() {
+            // Handle the trait constraints. This includes checking to see if the trait
+            // constraints are satisfied and replacing old decl ids based on the
+            // constraint with new decl ids based on the new type.
+            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+                handler,
+                ctx.by_ref(),
+                &method.type_parameters,
+                method.name.as_str(),
+                &call_path.span(),
+            )
+            .ok();
 
-        if let Some(decl_mapping) = decl_mapping {
-            if !ctx.defer_monomorphization() {
+            if let Some(decl_mapping) = decl_mapping {
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
             }
         }
@@ -688,10 +729,10 @@ pub(crate) fn type_check_method_application(
         method_return_type_id = method.return_type.type_id;
         decl_engine.replace(*fn_ref.id(), method.clone());
 
-        if method_sig.is_concrete(engines)
+        if !ctx.code_block_first_pass()
+            && method_sig.is_concrete(engines)
             && method.is_type_check_finalized
             && !method.is_trait_method_dummy
-            && !ctx.defer_monomorphization()
         {
             ctx.engines()
                 .qe()
@@ -706,7 +747,6 @@ pub(crate) fn type_check_method_application(
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
-        deferred_monomorphization: ctx.defer_monomorphization(),
         contract_call_params: contract_call_params_map,
         contract_caller: None,
     };
@@ -813,9 +853,9 @@ pub(crate) fn resolve_method_name(
                 ctx.namespace().prepend_module_path(&call_path.prefixes)
             } else {
                 let mut module_path = call_path.prefixes.clone();
-                if let (Some(root_mod), Some(root_name)) = (
+                if let (Some(root_mod), root_name) = (
                     module_path.first().cloned(),
-                    ctx.namespace().root_module_name().clone(),
+                    ctx.namespace().root_module().name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);
@@ -924,7 +964,10 @@ pub(crate) fn monomorphize_method(
     }
 
     let decl_ref = decl_engine
-        .insert(func_decl)
+        .insert(
+            func_decl,
+            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+        )
         .with_parent(decl_engine, (*decl_ref.id()).into());
 
     Ok(decl_ref)

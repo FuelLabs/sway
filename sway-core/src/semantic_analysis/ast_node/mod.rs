@@ -7,12 +7,7 @@ pub(crate) use expression::*;
 pub(crate) use modes::*;
 
 use crate::{
-    engine_threading::SpannedWithEngines,
-    language::{
-        parsed::*,
-        ty::{self, TyDecl},
-    },
-    namespace::TraitMap,
+    language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
     Engines, Ident,
@@ -24,7 +19,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
-use super::collection_context::SymbolCollectionContext;
+use super::symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyAstNode {
     pub(crate) fn collect(
@@ -39,7 +34,9 @@ impl ty::TyAstNode {
             }
             AstNodeContent::IncludeStatement(_i) => (),
             AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
-            AstNodeContent::Expression(_expr) => (),
+            AstNodeContent::Expression(expr) => {
+                ty::TyExpression::collect(handler, engines, ctx, &expr)?
+            }
             AstNodeContent::Error(_spans, _err) => (),
         };
 
@@ -59,7 +56,6 @@ impl ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(stmt) => {
                     handle_use_statement(&mut ctx, engines, &stmt, handler);
-                    handle_item_trait_imports(&mut ctx, engines, handler)?;
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: stmt.alias,
@@ -138,56 +134,6 @@ impl ty::TyAstNode {
     }
 }
 
-fn handle_item_trait_imports(
-    ctx: &mut TypeCheckContext<'_>,
-    engines: &Engines,
-    handler: &Handler,
-) -> Result<(), ErrorEmitted> {
-    let mut impls_to_insert = TraitMap::default();
-
-    let root_mod = &ctx.namespace().root().module;
-    let dst_mod = ctx.namespace.module(engines);
-
-    for (_, (_, src, decl)) in dst_mod.current_items().use_item_synonyms.iter() {
-        let decl = decl.expect_typed_ref();
-
-        let src_mod = root_mod.lookup_submodule(handler, engines, src)?;
-
-        //  if this is an enum or struct or function, import its implementations
-        if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
-            impls_to_insert.extend(
-                src_mod
-                    .current_items()
-                    .implemented_traits
-                    .filter_by_type_item_import(type_id, engines),
-                engines,
-            );
-        }
-        // if this is a trait, import its implementations
-        let decl_span = decl.span(engines);
-        if matches!(decl, TyDecl::TraitDecl(_)) {
-            // TODO: we only import local impls from the source namespace
-            // this is okay for now but we'll need to device some mechanism to collect all
-            // available trait impls
-            impls_to_insert.extend(
-                src_mod
-                    .current_items()
-                    .implemented_traits
-                    .filter_by_trait_decl_span(decl_span),
-                engines,
-            );
-        }
-    }
-
-    let dst_mod = ctx.namespace_mut().module_mut(engines);
-    dst_mod
-        .current_items_mut()
-        .implemented_traits
-        .extend(impls_to_insert, engines);
-
-    Ok(())
-}
-
 fn collect_use_statement(
     handler: &Handler,
     engines: &Engines,
@@ -223,7 +169,7 @@ fn collect_use_statement(
         ImportType::Star => {
             // try a standard starimport first
             let star_import_handler = Handler::default();
-            let import = ctx.star_import(&star_import_handler, engines, &path);
+            let import = ctx.star_import(&star_import_handler, engines, &path, stmt.reexport);
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
@@ -231,8 +177,13 @@ fn collect_use_statement(
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
-                    let variant_import =
-                        ctx.variant_star_import(&variant_import_handler, engines, path, enum_name);
+                    let variant_import = ctx.variant_star_import(
+                        &variant_import_handler,
+                        engines,
+                        path,
+                        enum_name,
+                        stmt.reexport,
+                    );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -246,12 +197,20 @@ fn collect_use_statement(
                 }
             }
         }
-        ImportType::SelfImport(_) => ctx.self_import(handler, engines, &path, stmt.alias.clone()),
+        ImportType::SelfImport(_) => {
+            ctx.self_import(handler, engines, &path, stmt.alias.clone(), stmt.reexport)
+        }
         ImportType::Item(ref s) => {
             // try a standard item import first
             let item_import_handler = Handler::default();
-            let import =
-                ctx.item_import(&item_import_handler, engines, &path, s, stmt.alias.clone());
+            let import = ctx.item_import(
+                &item_import_handler,
+                engines,
+                &path,
+                s,
+                stmt.alias.clone(),
+                stmt.reexport,
+            );
 
             if import.is_ok() {
                 handler.append(item_import_handler);
@@ -267,6 +226,7 @@ fn collect_use_statement(
                         enum_name,
                         s,
                         stmt.alias.clone(),
+                        stmt.reexport,
                     );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
@@ -308,7 +268,7 @@ fn handle_use_statement(
         ImportType::Star => {
             // try a standard starimport first
             let star_import_handler = Handler::default();
-            let import = ctx.star_import(&star_import_handler, &path);
+            let import = ctx.star_import(&star_import_handler, &path, stmt.reexport);
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
@@ -316,8 +276,12 @@ fn handle_use_statement(
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
-                    let variant_import =
-                        ctx.variant_star_import(&variant_import_handler, path, enum_name);
+                    let variant_import = ctx.variant_star_import(
+                        &variant_import_handler,
+                        path,
+                        enum_name,
+                        stmt.reexport,
+                    );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -331,11 +295,19 @@ fn handle_use_statement(
                 }
             }
         }
-        ImportType::SelfImport(_) => ctx.self_import(handler, &path, stmt.alias.clone()),
+        ImportType::SelfImport(_) => {
+            ctx.self_import(handler, &path, stmt.alias.clone(), stmt.reexport)
+        }
         ImportType::Item(ref s) => {
             // try a standard item import first
             let item_import_handler = Handler::default();
-            let import = ctx.item_import(&item_import_handler, &path, s, stmt.alias.clone());
+            let import = ctx.item_import(
+                &item_import_handler,
+                &path,
+                s,
+                stmt.alias.clone(),
+                stmt.reexport,
+            );
 
             if import.is_ok() {
                 handler.append(item_import_handler);
@@ -350,6 +322,7 @@ fn handle_use_statement(
                         enum_name,
                         s,
                         stmt.alias.clone(),
+                        stmt.reexport,
                     );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);

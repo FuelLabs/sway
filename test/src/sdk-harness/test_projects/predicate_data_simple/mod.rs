@@ -15,7 +15,16 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
             .unwrap();
     let predicate_address = fuel_tx::Input::predicate_owner(&predicate_code);
 
-    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let mut node_config = NodeConfig::default();
+    node_config.starting_gas_price = 0;
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(Some(1), None, None),
+        Some(node_config),
+        None,
+    )
+    .await
+    .unwrap();
+    let wallet = wallets.pop().unwrap();
     (
         predicate_code,
         predicate_address,
@@ -33,7 +42,11 @@ async fn create_predicate(
 ) {
     let provider = wallet.provider().unwrap();
     let wallet_coins = wallet
-        .get_asset_inputs_for_amount(asset_id, wallet.get_asset_balance(&asset_id).await.unwrap())
+        .get_asset_inputs_for_amount(
+            asset_id,
+            wallet.get_asset_balance(&asset_id).await.unwrap(),
+            None,
+        )
         .await
         .unwrap();
 

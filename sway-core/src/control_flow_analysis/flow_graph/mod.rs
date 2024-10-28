@@ -90,7 +90,6 @@ pub enum ControlFlowGraphNode<'cfg> {
         struct_decl_id: DeclId<ty::TyStructDecl>,
         struct_field_name: Ident,
         attributes: transform::AttributesMap,
-        span: Span,
     },
     StorageField {
         field_name: Ident,

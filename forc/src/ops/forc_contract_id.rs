@@ -8,7 +8,7 @@ use tracing::info;
 
 pub fn contract_id(command: ContractIdCommand) -> Result<()> {
     let build_options = build_opts_from_cmd(&command);
-    let build_plan = pkg::BuildPlan::from_build_opts(&build_options)?;
+    let build_plan = pkg::BuildPlan::from_pkg_opts(&build_options.pkg)?;
     // If a salt was specified but we have more than one member to build, there
     // may be ambiguity in how the salt should be applied, especially if the
     // workspace contains multiple contracts, and especially if one contract
@@ -52,7 +52,6 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
-            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
             ipfs_node: cmd.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
@@ -61,6 +60,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             asm: cmd.print.asm(),
             bytecode: cmd.print.bytecode,
+            bytecode_spans: false,
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },

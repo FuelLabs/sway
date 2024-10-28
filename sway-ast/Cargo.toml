@@ -1,6 +1,6 @@
 [package]
 name = "sway-ast"
-version = "0.60.0"
+version.workspace = true
 description = "Sway's AST"
 authors.workspace = true
 edition.workspace = true
@@ -9,12 +9,12 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-extension-trait = "1.0.1"
-num-bigint = { version = "0.4.3", features = ["serde"] }
-num-traits = "0.2.14"
-serde = { version = "1.0", features = ["derive"] }
-sway-error = { version = "0.60.0", path = "../sway-error" }
-sway-types = { version = "0.60.0", path = "../sway-types" }
+extension-trait.workspace = true
+num-bigint = { workspace = true, features = ["serde"] }
+num-traits.workspace = true
+serde = { workspace = true, features = ["derive"] }
+sway-error.workspace = true
+sway-types.workspace = true
 
 [lints.clippy]
 iter_over_hash_type = "deny"

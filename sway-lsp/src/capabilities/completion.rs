@@ -30,8 +30,8 @@ fn completion_items_for_type_id(
 ) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
-    if let TypeInfo::Struct(decl_ref) = &*type_info {
-        let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
+    if let TypeInfo::Struct(decl_id) = &*type_info {
+        let struct_decl = engines.de().get_struct(&decl_id.clone());
         for field in &struct_decl.fields {
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::FIELD),
@@ -167,8 +167,8 @@ fn type_id_of_raw_ident(
                     }
                     None
                 });
-        } else if let TypeInfo::Struct(decl_ref) = &*engines.te().get(curr_type_id.unwrap()) {
-            let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
+        } else if let TypeInfo::Struct(decl_id) = &*engines.te().get(curr_type_id.unwrap()) {
+            let struct_decl = engines.de().get_struct(&decl_id.clone());
             curr_type_id = struct_decl
                 .fields
                 .iter()

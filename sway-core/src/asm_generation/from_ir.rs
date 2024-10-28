@@ -7,7 +7,6 @@ use super::{
         fuel_asm_builder::FuelAsmBuilder,
         register_sequencer::RegisterSequencer,
     },
-    MidenVMAsmBuilder,
 };
 use crate::{asm_generation::ProgramKind, BuildConfig, BuildTarget};
 
@@ -56,13 +55,6 @@ pub fn compile_ir_context_to_finalized_asm(
             module,
             build_config,
             EvmAsmBuilder::new(kind, ir),
-        ),
-        BuildTarget::MidenVM => compile(
-            handler,
-            ir,
-            module,
-            build_config,
-            MidenVMAsmBuilder::new(kind, ir),
         ),
     }?;
 

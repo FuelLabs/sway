@@ -43,6 +43,7 @@ mod storage_vec;
 mod storage_vec_nested;
 mod storage_vec_of_storage_string;
 mod storage_vec_to_vec;
+mod string_slice;
 mod superabi;
 mod superabi_supertrait;
 mod tx_fields;

@@ -3,9 +3,8 @@ use annotate_snippets::{
     renderer::{AnsiColor, Style},
     Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
-use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
-use forc_tracing::{println_error, println_red_err, println_yellow_err};
+use forc_tracing::{println_action_green, println_error, println_red_err, println_yellow_err};
 use std::{
     collections::{hash_map, HashSet},
     fmt::Display,
@@ -346,10 +345,9 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
         Some(ty) => format!("{} ", program_type_str(ty)),
         None => "".to_string(),
     };
-    tracing::debug!(
-        " {} {ty}{} ({src})",
-        Colour::Green.bold().paint("Compiling"),
-        ansi_term::Style::new().bold().paint(name)
+    println_action_green(
+        "Compiling",
+        &format!("{ty}{} ({src})", ansi_term::Style::new().bold().paint(name)),
     );
 }
 
@@ -718,43 +716,104 @@ fn construct_window<'a>(
     let total_lines_of_highlight = end.line - start.line;
     debug_assert!(total_lines_in_input >= total_lines_of_highlight);
 
-    let mut current_line = 0;
-    let mut lines_to_start_of_snippet = 0;
-    let mut calculated_start_ix = None;
-    let mut calculated_end_ix = None;
-    let mut pos = 0;
-    for character in input.chars() {
+    let mut current_line = 1usize;
+
+    let mut chars = input.char_indices().map(|(char_offset, character)| {
+        let r = (current_line, char_offset);
         if character == '\n' {
-            current_line += 1
+            current_line += 1;
         }
+        r
+    });
 
-        if current_line + NUM_LINES_BUFFER >= start.line && calculated_start_ix.is_none() {
-            calculated_start_ix = Some(pos);
-            lines_to_start_of_snippet = current_line;
-        }
+    // Find the first char of the first line
+    let first_char = chars
+        .by_ref()
+        .find(|(current_line, _)| current_line + NUM_LINES_BUFFER >= start.line);
 
-        if current_line >= end.line + NUM_LINES_BUFFER && calculated_end_ix.is_none() {
-            calculated_end_ix = Some(pos);
-        }
+    // Find the last char of the last line
+    let last_char = chars
+        .by_ref()
+        .find(|(current_line, _)| *current_line > end.line + NUM_LINES_BUFFER)
+        .map(|x| x.1);
 
-        if calculated_start_ix.is_some() && calculated_end_ix.is_some() {
-            break;
+    // this releases the borrow of `current_line`
+    drop(chars);
+
+    let (first_char_line, first_char_offset, last_char_offset) = match (first_char, last_char) {
+        // has first and last
+        (Some((first_char_line, first_char_offset)), Some(last_char_offset)) => {
+            (first_char_line, first_char_offset, last_char_offset)
         }
-        pos += character.len_utf8();
+        // has first and no last
+        (Some((first_char_line, first_char_offset)), None) => {
+            (first_char_line, first_char_offset, input.len())
+        }
+        // others
+        _ => (current_line, input.len(), input.len()),
+    };
+
+    // adjust indices to be inside the returned window
+    start.line = first_char_line;
+    *start_ix = start_ix.saturating_sub(first_char_offset);
+    *end_ix = end_ix.saturating_sub(first_char_offset);
+
+    &input[first_char_offset..last_char_offset]
+}
+
+#[test]
+fn ok_construct_window() {
+    fn t(
+        start_line: usize,
+        start_col: usize,
+        end_line: usize,
+        end_col: usize,
+        start_char: usize,
+        end_char: usize,
+        input: &str,
+    ) -> (usize, usize, &str) {
+        let mut s = LineCol {
+            line: start_line,
+            col: start_col,
+        };
+        let mut start = start_char;
+        let mut end = end_char;
+        let r = construct_window(
+            &mut s,
+            LineCol {
+                line: end_line,
+                col: end_col,
+            },
+            &mut start,
+            &mut end,
+            input,
+        );
+        (start, end, r)
     }
-    let calculated_start_ix = calculated_start_ix.unwrap_or(0);
-    let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
-    let start_ix_bytes = *start_ix - std::cmp::min(calculated_start_ix, *start_ix);
-    let end_ix_bytes = *end_ix - std::cmp::min(calculated_start_ix, *end_ix);
-    // We want the start_ix and end_ix in terms of chars and not bytes, so translate.
-    *start_ix = input[calculated_start_ix..(calculated_start_ix + start_ix_bytes)]
-        .chars()
-        .count();
-    *end_ix = input[calculated_start_ix..(calculated_start_ix + end_ix_bytes)]
-        .chars()
-        .count();
+    // Invalid Empty file
+    assert_eq!(t(0, 0, 0, 0, 0, 0, ""), (0, 0, ""));
 
-    start.line = lines_to_start_of_snippet;
-    &input[calculated_start_ix..calculated_end_ix]
+    // Valid Empty File
+    assert_eq!(t(1, 1, 1, 1, 0, 0, ""), (0, 0, ""));
+
+    // One line, error after the last char
+    assert_eq!(t(1, 7, 1, 7, 6, 6, "script"), (6, 6, "script"));
+
+    //                       01 23 45 67 89 AB CD E
+    let eight_lines = "1\n2\n3\n4\n5\n6\n7\n8";
+
+    assert_eq!(t(1, 1, 1, 1, 0, 1, eight_lines), (0, 1, "1\n2\n3\n"));
+    assert_eq!(t(2, 1, 2, 1, 2, 3, eight_lines), (2, 3, "1\n2\n3\n4\n"));
+    assert_eq!(t(3, 1, 3, 1, 4, 5, eight_lines), (4, 5, "1\n2\n3\n4\n5\n"));
+    assert_eq!(t(4, 1, 4, 1, 6, 7, eight_lines), (4, 5, "2\n3\n4\n5\n6\n"));
+    assert_eq!(t(5, 1, 5, 1, 8, 9, eight_lines), (4, 5, "3\n4\n5\n6\n7\n"));
+    assert_eq!(t(6, 1, 6, 1, 10, 11, eight_lines), (4, 5, "4\n5\n6\n7\n8"));
+    assert_eq!(t(7, 1, 7, 1, 12, 13, eight_lines), (4, 5, "5\n6\n7\n8"));
+    assert_eq!(t(8, 1, 8, 1, 14, 15, eight_lines), (4, 5, "6\n7\n8"));
+
+    // Invalid lines
+    assert_eq!(t(9, 1, 9, 1, 14, 15, eight_lines), (2, 3, "7\n8"));
+    assert_eq!(t(10, 1, 10, 1, 14, 15, eight_lines), (0, 1, "8"));
+    assert_eq!(t(11, 1, 11, 1, 14, 15, eight_lines), (0, 0, ""));
 }

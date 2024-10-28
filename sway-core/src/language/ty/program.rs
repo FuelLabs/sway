@@ -72,7 +72,6 @@ impl TyProgram {
         let decl_engine = engines.de();
 
         // Validate all submodules
-        let mut non_configurables_constants = vec![];
         let mut configurables = vec![];
         for (_, submodule) in &root.submodules {
             match Self::validate_root(
@@ -114,13 +113,6 @@ impl TyProgram {
 
                     declarations.push(TyDecl::FunctionDecl(FunctionDecl { decl_id: *decl_id }));
                 }
-                TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
-                    decl_id,
-                    ..
-                })) => {
-                    let decl = (*decl_engine.get_constant(decl_id)).clone();
-                    non_configurables_constants.push(decl);
-                }
                 TyAstNodeContent::Declaration(TyDecl::ConfigurableDecl(ConfigurableDecl {
                     decl_id,
                     ..
@@ -131,9 +123,12 @@ impl TyProgram {
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself, except for ABI supertraits, which do not expose their methods to
                 // the user
-                TyAstNodeContent::Declaration(TyDecl::ImplTrait(ImplTrait { decl_id, .. })) => {
-                    let impl_trait_decl = decl_engine.get_impl_trait(decl_id);
-                    let TyImplTrait {
+                TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(ImplSelfOrTrait {
+                    decl_id,
+                    ..
+                })) => {
+                    let impl_trait_decl = decl_engine.get_impl_self_or_trait(decl_id);
+                    let TyImplSelfOrTrait {
                         items,
                         implementing_for,
                         trait_decl_ref,
@@ -339,18 +334,36 @@ impl TyProgram {
                     (mains[0], mains[0])
                 };
 
-                // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
-                // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
-                // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
-                let main_fn = decl_engine.get(&main_fn_id);
-                for p in main_fn.parameters() {
+                // On encoding v0, we cannot accept/return ptrs, slices etc...
+                if !experimental.new_encoding {
+                    let main_fn = decl_engine.get(&main_fn_id);
+                    for p in main_fn.parameters() {
+                        if let Some(error) = get_type_not_allowed_error(
+                            engines,
+                            p.type_argument.type_id,
+                            &p.type_argument,
+                            |t| match t {
+                                TypeInfo::StringSlice => {
+                                    Some(TypeNotAllowedReason::StringSliceInMainParameters)
+                                }
+                                TypeInfo::RawUntypedSlice => {
+                                    Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
+                                }
+                                _ => None,
+                            },
+                        ) {
+                            handler.emit_err(error);
+                        }
+                    }
+
+                    // Check main return type is valid
                     if let Some(error) = get_type_not_allowed_error(
                         engines,
-                        p.type_argument.type_id,
-                        &p.type_argument,
+                        main_fn.return_type.type_id,
+                        &main_fn.return_type,
                         |t| match t {
                             TypeInfo::StringSlice => {
-                                Some(TypeNotAllowedReason::StringSliceInMainParameters)
+                                Some(TypeNotAllowedReason::StringSliceInMainReturn)
                             }
                             TypeInfo::RawUntypedSlice => {
                                 Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
@@ -358,31 +371,13 @@ impl TyProgram {
                             _ => None,
                         },
                     ) {
-                        handler.emit_err(error);
-                    }
-                }
-
-                // Check main return type is valid
-                if let Some(error) = get_type_not_allowed_error(
-                    engines,
-                    main_fn.return_type.type_id,
-                    &main_fn.return_type,
-                    |t| match t {
-                        TypeInfo::StringSlice => {
-                            Some(TypeNotAllowedReason::StringSliceInMainReturn)
+                        // Let main return `raw_slice` directly
+                        if !matches!(
+                            &*engines.te().get(main_fn.return_type.type_id),
+                            TypeInfo::RawUntypedSlice
+                        ) {
+                            handler.emit_err(error);
                         }
-                        TypeInfo::RawUntypedSlice => {
-                            Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
-                        }
-                        _ => None,
-                    },
-                ) {
-                    // Let main return `raw_slice` directly
-                    if !matches!(
-                        &*engines.te().get(main_fn.return_type.type_id),
-                        TypeInfo::RawUntypedSlice
-                    ) {
-                        handler.emit_err(error);
                     }
                 }
 
@@ -401,6 +396,7 @@ impl TyProgram {
                 &c.type_ascription,
                 |t| match t {
                     TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConfigurables),
+                    TypeInfo::Slice(_) => Some(TypeNotAllowedReason::SliceInConst),
                     _ => None,
                 },
             ) {
@@ -408,16 +404,18 @@ impl TyProgram {
             }
         }
 
-        for c in non_configurables_constants.iter() {
-            if let Some(error) = get_type_not_allowed_error(
-                engines,
-                c.return_type,
-                &c.type_ascription,
-                |t| match t {
-                    TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConst),
-                    _ => None,
-                },
-            ) {
+        // verify all constants
+        for decl in root.iter_constants(decl_engine).iter() {
+            let decl = decl_engine.get_constant(&decl.decl_id);
+            let e =
+                get_type_not_allowed_error(engines, decl.return_type, &decl.type_ascription, |t| {
+                    match t {
+                        TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConst),
+                        TypeInfo::Slice(_) => Some(TypeNotAllowedReason::SliceInConst),
+                        _ => None,
+                    }
+                });
+            if let Some(error) = e {
                 handler.emit_err(error);
             }
         }
@@ -499,7 +497,7 @@ impl CollectTypesMetadata for TyProgram {
                 for module in std::iter::once(&self.root).chain(
                     self.root
                         .submodules_recursive()
-                        .map(|(_, submod)| &submod.module),
+                        .map(|(_, submod)| &*submod.module),
                 ) {
                     for node in module.all_nodes.iter() {
                         let is_generic_function = node.is_generic_function(decl_engine);
@@ -528,7 +526,7 @@ impl CollectTypesMetadata for TyProgram {
         for module in std::iter::once(&self.root).chain(
             self.root
                 .submodules_recursive()
-                .map(|(_, submod)| &submod.module),
+                .map(|(_, submod)| &*submod.module),
         ) {
             for node in module.all_nodes.iter() {
                 if node.is_test_function(decl_engine) {

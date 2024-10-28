@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use clap::{Command as ClapCommand, CommandFactory, Parser};
 use clap_complete::{generate, Generator, Shell};
 use forc_util::ForcResult;
@@ -18,16 +20,20 @@ enum Target {
     Fig,
 }
 
-impl ToString for Target {
-    fn to_string(&self) -> String {
-        match self {
-            Target::Bash => "bash".to_string(),
-            Target::Elvish => "elvish".to_string(),
-            Target::Fish => "fish".to_string(),
-            Target::PowerShell => "powershell".to_string(),
-            Target::Zsh => "zsh".to_string(),
-            Target::Fig => "fig".to_string(),
-        }
+impl Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Target::Bash => "bash".to_string(),
+                Target::Elvish => "elvish".to_string(),
+                Target::Fish => "fish".to_string(),
+                Target::PowerShell => "powershell".to_string(),
+                Target::Zsh => "zsh".to_string(),
+                Target::Fig => "fig".to_string(),
+            }
+        )
     }
 }
 

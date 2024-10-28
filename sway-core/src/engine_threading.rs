@@ -46,6 +46,16 @@ impl Engines {
         self.type_engine.clear_program(program_id);
         self.decl_engine.clear_program(program_id);
         self.parsed_decl_engine.clear_program(program_id);
+        self.query_engine.clear_program(program_id);
+    }
+
+    /// Removes all data associated with `source_id` from the declaration and type engines.
+    /// It is intended to be used during garbage collection to remove any data that is no longer needed.
+    pub fn clear_module(&mut self, source_id: &sway_types::SourceId) {
+        self.type_engine.clear_module(source_id);
+        self.decl_engine.clear_module(source_id);
+        self.parsed_decl_engine.clear_module(source_id);
+        self.query_engine.clear_module(source_id);
     }
 
     /// Helps out some `thing: T` by adding `self` as context.
@@ -206,6 +216,12 @@ impl<T: DebugWithEngines> DebugWithEngines for Vec<T> {
             .join(", ")
             .to_string();
         f.write_str(&text)
+    }
+}
+
+impl DebugWithEngines for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        DisplayWithEngines::fmt(self, f, engines)
     }
 }
 

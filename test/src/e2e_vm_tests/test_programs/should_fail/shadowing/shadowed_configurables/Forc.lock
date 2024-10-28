@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-64A912F71AFE52EA"
+
+[[package]]
+name = "shadowed_configurables"
+source = "member"
+dependencies = ["core"]

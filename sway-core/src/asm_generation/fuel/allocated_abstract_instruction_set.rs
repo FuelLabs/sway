@@ -35,6 +35,30 @@ pub struct AllocatedAbstractInstructionSet {
 }
 
 impl AllocatedAbstractInstructionSet {
+    pub(crate) fn optimize(self) -> AllocatedAbstractInstructionSet {
+        self.remove_redundant_ops()
+    }
+
+    fn remove_redundant_ops(mut self) -> AllocatedAbstractInstructionSet {
+        self.ops.retain(|op| {
+            // It is easier to think in terms of operations we want to remove
+            // than the operations we want to retain ;-)
+            let remove = match &op.opcode {
+                // `cfei i0` and `cfsi i0` pairs.
+                Either::Left(AllocatedOpcode::CFEI(imm))
+                | Either::Left(AllocatedOpcode::CFSI(imm)) => imm.value == 0u32,
+                // `cfe $zero` and `cfs $zero` pairs.
+                Either::Left(AllocatedOpcode::CFE(reg))
+                | Either::Left(AllocatedOpcode::CFS(reg)) => reg.is_zero(),
+                _ => false,
+            };
+
+            !remove
+        });
+
+        self
+    }
+
     /// Replace each PUSHA instruction with stores of all used registers to the stack, and each
     /// POPA with respective loads from the stack.
     ///
@@ -120,15 +144,15 @@ impl AllocatedAbstractInstructionSet {
                     if mask_l.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::PSHL(mask_l)),
-                            comment: "Save registers 16..40".into(),
-                            owning_span: None,
+                            comment: "save registers 16..40".into(),
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_h.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::PSHH(mask_h)),
-                            comment: "Save registers 40..64".into(),
-                            owning_span: None,
+                            comment: "save registers 40..64".into(),
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                 }
@@ -146,15 +170,15 @@ impl AllocatedAbstractInstructionSet {
                     if mask_h.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::POPH(mask_h)),
-                            comment: "Restore registers 40..64".into(),
-                            owning_span: None,
+                            comment: "restore registers 40..64".into(),
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_l.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
-                            comment: "Restore registers 16..40".into(),
-                            owning_span: None,
+                            comment: "restore registers 16..40".into(),
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                 }
@@ -299,7 +323,8 @@ impl AllocatedAbstractInstructionSet {
                                 AllocatedRegister::Constant(ConstantRegister::InstructionStart),
                             ),
                             owning_span: owning_span.clone(),
-                            comment: "Get current instruction offset from Instruction start".into(),
+                            comment: "get current instruction offset from instructions start ($is)"
+                                .into(),
                         });
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::SRLI(
@@ -308,7 +333,7 @@ impl AllocatedAbstractInstructionSet {
                                 VirtualImmediate12 { value: 2 },
                             ),
                             owning_span: owning_span.clone(),
-                            comment: "Current instruction offset in 32b words".into(),
+                            comment: "get current instruction offset in 32-bit words".into(),
                         });
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::ADDI(r1.clone(), r1, imm),
@@ -540,7 +565,7 @@ impl AllocatedAbstractInstructionSet {
                         if rel_offset(lab) == 0 {
                             new_ops.push(AllocatedAbstractOp {
                                 opcode: Either::Left(AllocatedOpcode::NOOP),
-                                comment: "NOP for self loop".into(),
+                                comment: "emit noop for self loop".into(),
                                 owning_span: None,
                             });
                             new_ops.push(op);
@@ -583,7 +608,7 @@ impl AllocatedAbstractInstructionSet {
                         if rel_offset(lab) == 0 {
                             new_ops.push(AllocatedAbstractOp {
                                 opcode: Either::Left(AllocatedOpcode::NOOP),
-                                comment: "NOP for self loop".into(),
+                                comment: "emit noop for self loop".into(),
                                 owning_span: None,
                             });
                             new_ops.push(op);
@@ -628,7 +653,7 @@ impl AllocatedAbstractInstructionSet {
                         if rel_offset(lab) <= consts::TWELVE_BITS {
                             new_ops.push(op)
                         } else {
-                            panic!("Return to address must be right after the call for which we saved this addr.");
+                            panic!("Return to address must be right after the call for which we saved this address.");
                         }
                     }
 

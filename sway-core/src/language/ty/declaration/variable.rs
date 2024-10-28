@@ -1,15 +1,10 @@
 use std::hash::{Hash, Hasher};
 
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Ident;
+use sway_types::{Ident, Named, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::ty::*,
-    semantic_analysis::{
-        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
-        TypeCheckFinalizationContext,
-    },
+    language::{parsed::VariableDeclaration, ty::*},
     type_system::*,
 };
 
@@ -20,6 +15,22 @@ pub struct TyVariableDecl {
     pub mutability: VariableMutability,
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
+}
+
+impl TyDeclParsedType for TyVariableDecl {
+    type ParsedType = VariableDeclaration;
+}
+
+impl Named for TyVariableDecl {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for TyVariableDecl {
+    fn span(&self) -> sway_types::Span {
+        self.name.span()
+    }
 }
 
 impl EqWithEngines for TyVariableDecl {}
@@ -55,30 +66,9 @@ impl HashWithEngines for TyVariableDecl {
 }
 
 impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines)
-    }
-}
-
-impl TypeCheckAnalysis for TyVariableDecl {
-    fn type_check_analyze(
-        &self,
-        handler: &Handler,
-        ctx: &mut TypeCheckAnalysisContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.body.type_check_analyze(handler, ctx)?;
-        Ok(())
-    }
-}
-
-impl TypeCheckFinalization for TyVariableDecl {
-    fn type_check_finalize(
-        &mut self,
-        handler: &Handler,
-        ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.body.type_check_finalize(handler, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.return_type.subst(ctx);
+        self.type_ascription.subst(ctx);
+        self.body.subst(ctx)
     }
 }

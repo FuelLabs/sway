@@ -2,7 +2,6 @@
 //! It provides an interface between the LSP protocol and the sway-lsp internals.
 
 use crate::{
-    core::document,
     handlers::{notification, request},
     lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
@@ -13,10 +12,10 @@ use lsp_types::{
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
     DocumentFormattingParams, DocumentHighlight, DocumentHighlightParams, DocumentSymbolParams,
     DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
-    InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
-    PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextEdit, WorkspaceEdit,
+    InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams, Location,
+    PrepareRenameResponse, ReferenceParams, RenameParams, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult,
+    TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
 use sway_utils::PerformanceData;
 use tower_lsp::{jsonrpc::Result, LanguageServer};
@@ -28,6 +27,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        let _p = tracing::trace_span!("parse_text").entered();
         tracing::info!("Sway Language Server Initialized");
     }
 
@@ -42,7 +42,10 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri) {
+        if let Err(err) = self
+            .pid_locked_files
+            .remove_dirty_flag(&params.text_document.uri)
+        {
             tracing::error!("{}", err.to_string());
         }
     }
@@ -133,6 +136,10 @@ impl LanguageServer for ServerState {
 
     async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
         request::handle_inlay_hints(self, params).await
+    }
+
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        request::handle_references(self, params).await
     }
 }
 

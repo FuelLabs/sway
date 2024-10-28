@@ -1,8 +1,13 @@
 [[package]]
 name = "associated_const_abi"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
 name = "core"
 source = "path+from-root-A4B13C912574D35A"
+
+[[package]]
+name = "std"
+source = "path+from-root-A4B13C912574D35A"
+dependencies = ["core"]

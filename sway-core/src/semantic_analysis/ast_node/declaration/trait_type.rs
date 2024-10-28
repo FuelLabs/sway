@@ -5,22 +5,38 @@ use sway_error::{
 use sway_types::Span;
 
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
-        parsed,
+        parsed::{self, Declaration, TraitTypeDeclaration},
         ty::{self, TyTraitType},
     },
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckContext,
     },
     type_system::*,
     Engines,
 };
 
 impl ty::TyTraitType {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<TraitTypeDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let trait_type_decl = engines.pe().get_trait_type(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            trait_type_decl.name.clone(),
+            Declaration::TraitTypeDeclaration(*decl_id),
+        )
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         trait_type: parsed::TraitTypeDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let parsed::TraitTypeDeclaration {

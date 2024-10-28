@@ -1,0 +1,13 @@
+[[package]]
+name = "aliases"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-D05BA88A39195D06"
+
+[[package]]
+name = "std"
+source = "path+from-root-D05BA88A39195D06"
+dependencies = ["core"]

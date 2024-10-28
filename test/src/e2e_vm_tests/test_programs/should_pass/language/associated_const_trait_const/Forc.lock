@@ -1,8 +1,0 @@
-[[package]]
-name = "associated_const_trait_const"
-source = "member"
-dependencies = ["core"]
-
-[[package]]
-name = "core"
-source = "path+from-root-D50E1F3A87CBFC67"

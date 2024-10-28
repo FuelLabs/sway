@@ -27,9 +27,10 @@ impl AbstractInstructionSet {
     pub(crate) fn optimize(self, data_section: &DataSection) -> AbstractInstructionSet {
         self.const_indexing_aggregates_function(data_section)
             .dce()
+            .simplify_cfg()
             .remove_sequential_jumps()
             .remove_redundant_moves()
-            .remove_unused_ops()
+            .remove_redundant_ops()
     }
 
     /// Removes any jumps to the subsequent line.
@@ -51,7 +52,7 @@ impl AbstractInstructionSet {
         for idx in dead_jumps {
             self.ops[idx] = Op {
                 opcode: Either::Left(VirtualOp::NOOP),
-                comment: "removed redundant JUMP".into(),
+                comment: "remove redundant jump operation".into(),
                 owning_span: None,
             };
         }
@@ -104,7 +105,7 @@ impl AbstractInstructionSet {
             for idx in dead_moves {
                 self.ops[idx] = Op {
                     opcode: Either::Left(VirtualOp::NOOP),
-                    comment: "removed redundant MOVE".into(),
+                    comment: "remove redundant move operation".into(),
                     owning_span: None,
                 };
             }
@@ -113,11 +114,18 @@ impl AbstractInstructionSet {
         self
     }
 
-    fn remove_unused_ops(mut self) -> AbstractInstructionSet {
-        // Just remove NOPs for now.
-        self.ops.retain(|op| match &op.opcode {
-            Either::Left(VirtualOp::NOOP) => false,
-            _otherwise => true,
+    fn remove_redundant_ops(mut self) -> AbstractInstructionSet {
+        self.ops.retain(|op| {
+            // It is easier to think in terms of operations we want to remove
+            // than the operations we want to retain ;-)
+            #[allow(clippy::match_like_matches_macro)]
+            // Keep the `match` for adding more ops in the future.
+            let remove = match &op.opcode {
+                Either::Left(VirtualOp::NOOP) => true,
+                _ => false,
+            };
+
+            !remove
         });
 
         self

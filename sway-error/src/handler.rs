@@ -1,5 +1,4 @@
 use crate::{error::CompileError, warning::CompileWarning};
-use std::collections::HashMap;
 
 use core::cell::RefCell;
 
@@ -106,6 +105,25 @@ impl Handler {
     {
         self.inner.borrow_mut().errors.retain(f)
     }
+
+    // Map all errors from `other` into this handler. If any mapping returns `None` it is ignored. This
+    // method returns if any error was mapped or not.
+    pub fn map_and_emit_errors_from(
+        &self,
+        other: Handler,
+        mut f: impl FnMut(CompileError) -> Option<CompileError>,
+    ) -> Result<(), ErrorEmitted> {
+        let mut emitted = Ok(());
+
+        let (errs, _) = other.consume();
+        for err in errs {
+            if let Some(err) = (f)(err) {
+                emitted = Err(self.emit_err(err));
+            }
+        }
+
+        emitted
+    }
 }
 
 /// Proof that an error was emitted through a `Handler`.
@@ -119,37 +137,10 @@ pub struct ErrorEmitted {
 /// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
 /// A hash set would also mess up the order, so this is just a brute force way of doing it
 /// with a vector.
-fn dedup_unsorted<T: PartialEq + std::hash::Hash>(mut data: Vec<T>) -> Vec<T> {
-    // TODO(Centril): Consider using `IndexSet` instead for readability.
-    use smallvec::SmallVec;
-    use std::collections::hash_map::{DefaultHasher, Entry};
-    use std::hash::Hasher;
+fn dedup_unsorted<T: PartialEq + std::hash::Hash + Clone + Eq>(mut data: Vec<T>) -> Vec<T> {
+    use std::collections::HashSet;
 
-    let mut write_index = 0;
-    let mut indexes: HashMap<u64, SmallVec<[usize; 1]>> = HashMap::with_capacity(data.len());
-    for read_index in 0..data.len() {
-        let hash = {
-            let mut hasher = DefaultHasher::new();
-            data[read_index].hash(&mut hasher);
-            hasher.finish()
-        };
-        let index_vec = match indexes.entry(hash) {
-            Entry::Occupied(oe) => {
-                if oe
-                    .get()
-                    .iter()
-                    .any(|index| data[*index] == data[read_index])
-                {
-                    continue;
-                }
-                oe.into_mut()
-            }
-            Entry::Vacant(ve) => ve.insert(SmallVec::new()),
-        };
-        data.swap(write_index, read_index);
-        index_vec.push(write_index);
-        write_index += 1;
-    }
-    data.truncate(write_index);
+    let mut seen = HashSet::new();
+    data.retain(|item| seen.insert(item.clone()));
     data
 }

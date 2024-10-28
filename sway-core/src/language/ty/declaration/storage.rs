@@ -8,7 +8,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{ty::*, Visibility},
+    language::{parsed::StorageDeclaration, ty::*, Visibility},
     transform::{self},
     type_system::*,
     Namespace,
@@ -20,6 +20,10 @@ pub struct TyStorageDecl {
     pub span: Span,
     pub attributes: transform::AttributesMap,
     pub storage_keyword: Ident,
+}
+
+impl TyDeclParsedType for TyStorageDecl {
+    type ParsedType = StorageDeclaration;
 }
 
 impl Named for TyStorageDecl {
@@ -108,7 +112,10 @@ impl TyStorageDecl {
                 None => {
                     return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
                         field_name: first_field.into(),
-                        available_fields: storage_fields.iter().map(|sf| sf.name.clone()).collect(),
+                        available_fields: storage_fields
+                            .iter()
+                            .map(|sf| (sf.namespace_names.clone(), sf.name.clone()))
+                            .collect(),
                         storage_decl_span: self.span(),
                     }));
                 }

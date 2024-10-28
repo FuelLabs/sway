@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-FF18DE8D9DD80114"
+
+[[package]]
+name = "slice_contract"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-FF18DE8D9DD80114"
+dependencies = ["core"]

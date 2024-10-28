@@ -24,43 +24,60 @@ impl std::ops::BitOr for HasChanges {
     }
 }
 
-pub trait SubstTypes {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges;
+pub struct SubstTypesContext<'a, 'b> {
+    pub engines: &'a Engines,
+    pub type_subst_map: &'b TypeSubstMap,
+    pub subst_function_body: bool,
+}
 
-    fn subst(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        if type_mapping.is_empty() {
+impl<'a, 'b> SubstTypesContext<'a, 'b> {
+    pub fn new(
+        engines: &'a Engines,
+        type_subst_map: &'b TypeSubstMap,
+        subst_function_body: bool,
+    ) -> SubstTypesContext<'a, 'b> {
+        SubstTypesContext {
+            engines,
+            type_subst_map,
+            subst_function_body,
+        }
+    }
+}
+
+pub trait SubstTypes {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges;
+
+    fn subst(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        if ctx.type_subst_map.is_empty() {
             HasChanges::No
         } else {
-            self.subst_inner(type_mapping, engines)
+            self.subst_inner(ctx)
         }
     }
 }
 
 impl<A, B: SubstTypes> SubstTypes for (A, B) {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.1.subst(type_mapping, engines)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.1.subst(ctx)
     }
 }
 
 impl<T: SubstTypes> SubstTypes for Box<T> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.as_mut().subst(type_mapping, engines)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.as_mut().subst(ctx)
     }
 }
 
 impl<T: SubstTypes> SubstTypes for Option<T> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.as_mut()
-            .map(|x| x.subst(type_mapping, engines))
-            .unwrap_or_default()
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.as_mut().map(|x| x.subst(ctx)).unwrap_or_default()
     }
 }
 
 impl<T: SubstTypes> SubstTypes for Vec<T> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.iter_mut().fold(HasChanges::No, |has_change, x| {
-            x.subst(type_mapping, engines) | has_change
-        })
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.iter_mut()
+            .fold(HasChanges::No, |has_change, x| x.subst(ctx) | has_change)
     }
 }
 

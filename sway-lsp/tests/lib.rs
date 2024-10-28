@@ -1,9 +1,13 @@
+#![recursion_limit = "256"]
+
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
-use std::{fs, path::PathBuf};
+use rayon::prelude::*;
+use std::{fs, panic, path::PathBuf, process::Command, sync::Mutex};
 use sway_lsp::{
+    config::LspClient,
     handlers::{notification, request},
     server_state::ServerState,
 };
@@ -66,7 +70,7 @@ async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathB
     uri
 }
 
-async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
+pub async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
     let _ = lsp::shutdown_request(service).await;
     lsp::exit_notification(service).await;
 }
@@ -219,9 +223,12 @@ fn did_change_stress_test_random_wait() {
                 .join("generics_in_contract");
             let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
             let times = 60;
+
+            // Initialize cursor position
+            let mut cursor_line = 29;
             for version in 0..times {
-                //eprintln!("version: {}", version);
-                let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
+                let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+                let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
                 if version == 0 {
                     service.inner().wait_for_parsing().await;
                 }
@@ -249,77 +256,6 @@ fn did_change_stress_test_random_wait() {
             );
         }
     });
-}
-
-fn garbage_collection_runner(path: PathBuf) {
-    run_async!({
-        setup_panic_hook();
-        let (mut service, _) = LspService::new(ServerState::new);
-        // set the garbage collection frequency to 1
-        service
-            .inner()
-            .config
-            .write()
-            .garbage_collection
-            .gc_frequency = 1;
-        let uri = init_and_open(&mut service, path).await;
-        let times = 60;
-        for version in 1..times {
-            //eprintln!("version: {}", version);
-            let params = if rand::random::<u64>() % 3 < 1 {
-                // enter keypress at line 20
-                lsp::create_did_change_params(
-                    &uri,
-                    version,
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    0,
-                )
-            } else {
-                // backspace keypress at line 21
-                lsp::create_did_change_params(
-                    &uri,
-                    version,
-                    Position {
-                        line: 20,
-                        character: 0,
-                    },
-                    Position {
-                        line: 21,
-                        character: 0,
-                    },
-                    1,
-                )
-            };
-            let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
-            if version == 0 {
-                service.inner().wait_for_parsing().await;
-            }
-            // wait for a random amount of time to simulate typing
-            random_delay().await;
-        }
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn garbage_collection_storage() {
-    let p = sway_workspace_dir()
-        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
-        .join("src/main.sw");
-    garbage_collection_runner(p);
-}
-
-#[test]
-fn garbage_collection_paths() {
-    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
-    garbage_collection_runner(p);
 }
 
 #[test]
@@ -413,7 +349,7 @@ fn go_to_definition_for_fields() {
             req_uri: &uri,
             req_line: 5,
             req_char: 8,
-            def_line: 81,
+            def_line: 82,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -470,7 +406,7 @@ fn go_to_definition_inside_turbofish() {
             req_uri: &uri,
             req_line: 15,
             req_char: 12,
-            def_line: 81,
+            def_line: 82,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -490,7 +426,7 @@ fn go_to_definition_inside_turbofish() {
             req_uri: &uri,
             req_line: 20,
             req_char: 19,
-            def_line: 61,
+            def_line: 62,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/result.sw",
@@ -550,7 +486,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 25,
             req_char: 19,
-            def_line: 81,
+            def_line: 82,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -568,7 +504,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 25,
             req_char: 27,
-            def_line: 85,
+            def_line: 86,
             def_start_char: 4,
             def_end_char: 8,
             def_path: "sway-lib-std/src/option.sw",
@@ -583,7 +519,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 26,
             req_char: 17,
-            def_line: 83,
+            def_line: 84,
             def_start_char: 4,
             def_end_char: 8,
             def_path: "sway-lib-std/src/option.sw",
@@ -685,8 +621,8 @@ fn go_to_definition_for_paths() {
         // std
         lsp::definition_check(&server, &go_to).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 14).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 18, 5).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 24, 13).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 16, 5).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 13).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 7, 5).await;
 
         let go_to = GotoDefinition {
@@ -705,7 +641,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 10,
             req_char: 27,
-            def_line: 81,
+            def_line: 82,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -754,7 +690,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 12,
             req_char: 42,
-            def_line: 7,
+            def_line: 8,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
@@ -764,7 +700,7 @@ fn go_to_definition_for_paths() {
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 16,
+            req_line: 14,
             req_char: 6,
             def_line: 0,
             def_start_char: 0,
@@ -773,12 +709,12 @@ fn go_to_definition_for_paths() {
         };
         // test_mod
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 7).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 20, 7).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 5, 5).await;
 
         let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 16,
+            req_line: 14,
             req_char: 16,
             def_line: 2,
             def_start_char: 7,
@@ -790,7 +726,7 @@ fn go_to_definition_for_paths() {
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 15,
             req_char: 8,
             def_line: 0,
             def_start_char: 0,
@@ -800,16 +736,16 @@ fn go_to_definition_for_paths() {
         // deep_mod
         lsp::definition_check(&server, &go_to).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 6).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 16).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 16).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 16).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 16).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 16).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 16).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 15,
             req_char: 18,
             def_line: 0,
             def_start_char: 0,
@@ -819,16 +755,16 @@ fn go_to_definition_for_paths() {
         // deeper_mod
         lsp::definition_check(&server, &go_to).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 6, 16).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 28).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 28).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 28).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 32, 28).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 28).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 28).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 27,
+            req_line: 25,
             req_char: 38,
             def_line: 4,
             def_start_char: 9,
@@ -837,13 +773,13 @@ fn go_to_definition_for_paths() {
         };
         // DeepEnum
         lsp::definition_check(&server, &go_to).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 38).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 27, 38).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 38).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 29, 38).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 38).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 32,
+            req_line: 30,
             req_char: 37,
             def_line: 9,
             def_start_char: 11,
@@ -852,11 +788,11 @@ fn go_to_definition_for_paths() {
         };
         // DeepStruct
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 33, 37).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 31, 37).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 27,
+            req_line: 25,
             req_char: 48,
             def_line: 5,
             def_start_char: 4,
@@ -865,11 +801,11 @@ fn go_to_definition_for_paths() {
         };
         // DeepEnum::Variant
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 48).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 26, 48).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 29,
+            req_line: 27,
             req_char: 48,
             def_line: 6,
             def_start_char: 4,
@@ -878,11 +814,11 @@ fn go_to_definition_for_paths() {
         };
         // DeepEnum::Number
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 30, 48).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 28, 48).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 15,
             req_char: 29,
             def_line: 2,
             def_start_char: 7,
@@ -895,7 +831,7 @@ fn go_to_definition_for_paths() {
 
         let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 18,
+            req_line: 16,
             req_char: 11,
             def_line: 0,
             def_start_char: 0,
@@ -907,20 +843,32 @@ fn go_to_definition_for_paths() {
 
         let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 19,
+            req_line: 31,
             req_char: 13,
             def_line: 0,
             def_start_char: 0,
             def_end_char: 0,
-            def_path: "sway-lib-core/src/lib.sw",
+            def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw",
         };
         // core
         lsp::definition_check(&server, &go_to).await;
 
-        let mut go_to = GotoDefinition {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 19,
-            req_char: 21,
+            req_line: 31,
+            req_char: 26,
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        };
+        // primitives
+        lsp::definition_check(&server, &go_to).await;
+
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 23,
+            req_char: 20,
             def_line: 0,
             def_start_char: 0,
             def_end_char: 0,
@@ -928,7 +876,6 @@ fn go_to_definition_for_paths() {
         };
         // primitives
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 20).await;
 
         let go_to = GotoDefinition {
             req_uri: &uri,
@@ -944,7 +891,7 @@ fn go_to_definition_for_paths() {
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 21,
+            req_line: 19,
             req_char: 4,
             def_line: 4,
             def_start_char: 11,
@@ -953,11 +900,11 @@ fn go_to_definition_for_paths() {
         };
         // A impl
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 14).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 20, 14).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 21,
+            req_line: 19,
             req_char: 7,
             def_line: 7,
             def_start_char: 11,
@@ -966,11 +913,11 @@ fn go_to_definition_for_paths() {
         };
         // fun
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 22, 18).await;
+        lsp::definition_check_with_req_offset(&server, &mut go_to, 20, 18).await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 24,
+            req_line: 22,
             req_char: 20,
             def_line: 0,
             def_start_char: 0,
@@ -984,9 +931,9 @@ fn go_to_definition_for_paths() {
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 24,
+            req_line: 22,
             req_char: 31,
-            def_line: 33,
+            def_line: 19,
             def_start_char: 10,
             def_end_char: 19,
             def_path: "sway-lib-std/src/constants.sw",
@@ -997,9 +944,9 @@ fn go_to_definition_for_paths() {
 
         let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 19,
+            req_line: 17,
             req_char: 37,
-            def_line: 74,
+            def_line: 92,
             def_start_char: 11,
             def_end_char: 14,
             def_path: "sway-lib-core/src/primitives.sw",
@@ -1007,31 +954,29 @@ fn go_to_definition_for_paths() {
         // u64::min()
         lsp::definition_check(&server, &go_to).await;
 
-        let mut go_to = GotoDefinition {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 13,
-            req_char: 22,
-            def_line: 304,
+            req_line: 23,
+            req_char: 37,
+            def_line: 392,
             def_start_char: 11,
             def_end_char: 14,
             def_path: "sway-lib-core/src/primitives.sw",
         };
         // b256::min()
         lsp::definition_check(&server, &go_to).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 25, 38).await;
 
-        // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/4211 is fixed.
-        // let go_to = GotoDefinition {
-        //     req_uri: &uri,
-        //     req_line: 6,
-        //     req_char: 39,
-        //     def_line: 2,
-        //     def_start_char: 7,
-        //     def_end_char: 15,
-        //     def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
-        // };
+        let go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 6,
+            req_char: 39,
+            def_line: 2,
+            def_start_char: 7,
+            def_end_char: 15,
+            def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        };
         // dfun
-        // lsp::definition_check(&server, &go_to).await;
+        lsp::definition_check(&server, &go_to).await;
 
         let _ = server.shutdown_server();
     });
@@ -1135,14 +1080,14 @@ fn go_to_definition_for_variables() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 53, 21).await;
 
         // Complex type ascriptions
-        go_to.def_line = 61;
+        go_to.def_line = 62;
         go_to.def_start_char = 9;
         go_to.def_end_char = 15;
         go_to.def_path = "sway-lib-std/src/result.sw";
         lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 22).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 31).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 60).await;
-        go_to.def_line = 81;
+        go_to.def_line = 82;
         go_to.def_path = "sway-lib-std/src/option.sw";
         lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 39).await;
@@ -1176,7 +1121,7 @@ fn go_to_definition_for_consts() {
             req_uri: &uri,
             req_line: 9,
             req_char: 24,
-            def_line: 8,
+            def_line: 7,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/contract_id.sw",
@@ -1184,7 +1129,7 @@ fn go_to_definition_for_consts() {
         lsp::definition_check(&server, &contract_go_to).await;
 
         contract_go_to.req_char = 34;
-        contract_go_to.def_line = 40;
+        contract_go_to.def_line = 56;
         contract_go_to.def_start_char = 7;
         contract_go_to.def_end_char = 11;
         lsp::definition_check(&server, &contract_go_to).await;
@@ -1228,7 +1173,7 @@ fn go_to_definition_for_consts() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 10, 17).await;
 
         // Complex type ascriptions
-        go_to.def_line = 81;
+        go_to.def_line = 82;
         go_to.def_start_char = 9;
         go_to.def_end_char = 15;
         go_to.def_path = "sway-lib-std/src/option.sw";
@@ -1323,7 +1268,7 @@ fn go_to_definition_for_structs() {
             req_uri: &uri,
             req_line: 16,
             req_char: 11,
-            def_line: 81,
+            def_line: 82,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -1635,9 +1580,10 @@ fn hover_docs_for_consts() {
 }
 
 #[test]
-fn hover_docs_for_functions() {
+fn hover_docs_for_functions_vscode() {
     run_async!({
         let server = ServerState::default();
+        server.config.write().client = LspClient::VsCode;
         let uri = open(
             &server,
             test_fixtures_dir().join("tokens/functions/src/main.sw"),
@@ -1779,21 +1725,40 @@ fn hover_docs_with_code_examples() {
 }
 
 #[test]
+fn hover_docs_for_self_keywords_vscode() {
+    run_async!({
+        let server = ServerState::default();
+        server.config.write().client = LspClient::VsCode;
+        let uri = open(&server, test_fixtures_dir().join("completion/src/main.sw")).await;
+
+        let mut hover = HoverDocumentation {
+            req_uri: &uri,
+            req_line: 11,
+            req_char: 13,
+            documentation: vec!["\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```"],
+        };
+
+        lsp::hover_request(&server, &hover).await;
+        hover.req_char = 24;
+        hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
+        lsp::hover_request(&server, &hover).await;
+        let _ = server.shutdown_server();
+    });
+}
+
+#[test]
 fn hover_docs_for_self_keywords() {
     run_async!({
         let server = ServerState::default();
         let uri = open(&server, test_fixtures_dir().join("completion/src/main.sw")).await;
 
-        let mut hover = HoverDocumentation {
-        req_uri: &uri,
-        req_line: 11,
-        req_char: 13,
-        documentation: vec!["\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```"],
-    };
+        let hover = HoverDocumentation {
+            req_uri: &uri,
+            req_line: 11,
+            req_char: 13,
+            documentation: vec!["\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```"],
+        };
 
-        lsp::hover_request(&server, &hover).await;
-        hover.req_char = 24;
-        hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
         lsp::hover_request(&server, &hover).await;
         let _ = server.shutdown_server();
     });
@@ -2001,6 +1966,11 @@ lsp_capability_test!(
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
+    references,
+    lsp::references_request,
+    test_fixtures_dir().join("tokens/structs/src/main.sw")
+);
+lsp_capability_test!(
     code_action_abi,
     code_actions::code_action_abi_request,
     doc_comments_dir().join("src/main.sw")
@@ -2075,6 +2045,11 @@ lsp_capability_test!(
     lsp::completion_request,
     test_fixtures_dir().join("completion/src/main.sw")
 );
+lsp_capability_test!(
+    inlay_hints_function_params,
+    lsp::inlay_hints_request,
+    test_fixtures_dir().join("inlay_hints/src/main.sw")
+);
 
 // This method iterates over all of the examples in the e2e language should_pass dir
 // and saves the lexed, parsed, and typed ASTs to the users home directory.
@@ -2127,4 +2102,199 @@ async fn write_all_example_asts() {
         }
     }
     let _ = server.shutdown_server();
+}
+
+#[test]
+fn test_url_to_session_existing_session() {
+    use std::sync::Arc;
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+
+        // First call to uri_and_session_from_workspace
+        let (first_uri, first_session) = service
+            .inner()
+            .uri_and_session_from_workspace(&uri)
+            .await
+            .unwrap();
+
+        // Second call to uri_and_session_from_workspace
+        let (second_uri, second_session) = service
+            .inner()
+            .uri_and_session_from_workspace(&uri)
+            .await
+            .unwrap();
+
+        // Assert that the URIs are the same
+        assert_eq!(first_uri, second_uri, "URIs should be identical");
+
+        // Assert that the sessions are the same (they should point to the same Arc)
+        assert!(
+            Arc::ptr_eq(&first_session, &second_session),
+            "Sessions should be identical"
+        );
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+//------------------- GARBAGE COLLECTION TESTS -------------------//
+
+async fn garbage_collection_runner(path: PathBuf) {
+    setup_panic_hook();
+    let (mut service, _) = LspService::new(ServerState::new);
+    let uri = init_and_open(&mut service, path).await;
+    let times = 20;
+
+    // Initialize cursor position
+    let mut cursor_line = 1;
+
+    for version in 1..times {
+        //eprintln!("version: {}", version);
+        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
+        }
+        // wait for a random amount of time to simulate typing
+        random_delay().await;
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+#[test]
+fn garbage_collection_storage() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_paths() {
+    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_minimal_script() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+/// Tests garbage collection across all language test examples in parallel.
+///
+/// # Overview
+/// This test suite takes a unique approach to handling test isolation and error reporting:
+///
+/// 1. Process Isolation: Each test is run in its own process to ensure complete isolation
+///    between test runs. This allows us to catch all failures rather than stopping at
+///    the first panic or error.
+///
+/// 2. Parallel Execution: Uses rayon to run tests concurrently, significantly reducing
+///    total test time from several minutes to under a minute.
+///
+/// 3. Full Coverage: Unlike traditional test approaches that stop at the first failure,
+///    this runner continues through all tests, providing a complete picture of which
+///    examples need garbage collection fixes.
+///
+/// # Implementation Details
+/// - Uses std::process::Command to spawn each test in isolation
+/// - Collects results through a thread-safe Mutex
+/// - Provides detailed error reporting for failed tests
+/// - Categorizes different types of failures (exit codes vs signals)
+// #[test]
+#[allow(dead_code)]
+fn run_all_garbage_collection_tests() {
+    let base_dir = sway_workspace_dir().join(e2e_language_dir());
+    let entries: Vec<_> = std::fs::read_dir(base_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .collect();
+
+    let results = Mutex::new(Vec::new());
+
+    println!("\n=== Starting Garbage Collection Tests ===\n");
+
+    entries.par_iter().for_each(|entry| {
+        let project_dir = entry.path();
+        let project_name = project_dir
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        let main_file = project_dir.join("src/main.sw");
+
+        println!("▶ Testing: {}", project_name);
+        println!("  Path: {}", main_file.display());
+
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args(["--test", "test_single_project", "--exact", "--nocapture"])
+            .env("TEST_FILE", main_file.to_string_lossy().to_string())
+            .status()
+            .unwrap();
+
+        let test_result = if status.success() {
+            println!("  ✅ Passed: {}\n", project_name);
+            (project_name, true, None)
+        } else {
+            println!("  ❌ Failed: {} ({})\n", project_name, status);
+            (project_name, false, Some(format!("Exit code: {}", status)))
+        };
+
+        results.lock().unwrap().push(test_result);
+    });
+
+    let results = results.into_inner().unwrap();
+
+    // Print final results
+    println!("=== Garbage Collection Test Results ===\n");
+
+    let total = results.len();
+    let passed = results.iter().filter(|r| r.1).count();
+    let failed = total - passed;
+
+    println!("Total tests:  {}", total);
+    println!("✅ Passed:    {}", passed);
+    println!("❌ Failed:    {}", failed);
+
+    if failed > 0 {
+        println!("\nFailed Projects:");
+        for (name, _, error) in results.iter().filter(|r| !r.1) {
+            println!("- {} (Error: {})", name, error.as_ref().unwrap());
+        }
+
+        panic!("{} projects failed garbage collection testing", failed);
+    }
+}
+
+/// Individual test runner executed in a separate process for each test.
+///
+/// This function is called by the main test runner through a new process invocation
+/// for each test file. The file path is passed via the TEST_FILE environment
+/// variable to maintain process isolation.
+///
+/// # Process Isolation
+/// Running each test in its own process ensures that:
+/// 1. Tests are completely isolated from each other
+/// 2. Panics in one test don't affect others
+/// 3. Resource cleanup happens automatically on process exit
+// #[tokio::test]
+#[allow(dead_code)]
+async fn test_single_project() {
+    if let Ok(file) = std::env::var("TEST_FILE") {
+        println!("Running single test for file: {}", file);
+        let path = PathBuf::from(file);
+        garbage_collection_runner(path).await;
+    } else {
+        panic!("TEST_FILE environment variable not set");
+    }
 }

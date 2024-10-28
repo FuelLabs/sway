@@ -14,12 +14,12 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
 use super::{
-    collection_context::SymbolCollectionContext, TypeCheckAnalysis, TypeCheckAnalysisContext,
-    TypeCheckFinalization, TypeCheckFinalizationContext,
+    symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+    TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
 };
 
 impl TyProgram {
-    /// Collects the given parsed program to produce a symbol map and module evaluation order.
+    /// Collects the given parsed program to produce a symbol maps.
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
@@ -44,6 +44,7 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
+        collection_ctx: &mut SymbolCollectionContext,
         mut namespace: namespace::Namespace,
         package_name: &str,
         build_config: Option<&BuildConfig>,
@@ -55,12 +56,20 @@ impl TyProgram {
                     new_encoding: false,
                 });
 
-        let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
-            .with_kind(parsed.kind);
+        let mut ctx =
+            TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
+                .with_kind(parsed.kind);
 
         let ParseProgram { root, kind } = parsed;
 
-        let root = ty::TyModule::type_check(handler, ctx.by_ref(), engines, parsed.kind, root)?;
+        let root = ty::TyModule::type_check(
+            handler,
+            ctx.by_ref(),
+            engines,
+            parsed.kind,
+            root,
+            build_config,
+        )?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
@@ -73,7 +82,7 @@ impl TyProgram {
 
         let program = TyProgram {
             kind,
-            root,
+            root: (*root).clone(),
             declarations,
             configurables,
             storage_slots: vec![],

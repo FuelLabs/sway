@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -13,9 +15,7 @@ use crate::{
         CallPath, Visibility,
     },
     namespace::ResolvedTraitImplItem,
-    semantic_analysis::{
-        type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
-    },
+    semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::*,
     Engines, Namespace,
 };
@@ -96,8 +96,8 @@ pub(crate) fn struct_instantiation(
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
-    let struct_ref = type_info.expect_struct(handler, engines, &span)?;
-    let struct_decl = decl_engine.get_struct(&struct_ref);
+    let struct_id = type_info.expect_struct(handler, engines, &span)?;
+    let struct_decl = decl_engine.get_struct(&struct_id);
 
     let (struct_can_be_changed, is_public_struct_access) =
         StructAccessInfo::get_info(engines, &struct_decl, ctx.namespace()).into();
@@ -138,6 +138,18 @@ pub(crate) fn struct_instantiation(
             is_in_storage_declaration: ctx.storage_declaration(),
             struct_can_be_changed,
         });
+    }
+
+    // Check that there are no duplicate fields.
+    let mut seen_fields: BTreeSet<Ident> = BTreeSet::new();
+    for field in fields.iter() {
+        if let Some(duplicate) = seen_fields.get(&field.name) {
+            handler.emit_err(CompileError::StructFieldDuplicated {
+                field_name: field.name.clone(),
+                duplicate: duplicate.clone(),
+            });
+        }
+        seen_fields.insert(field.name.clone());
     }
 
     // Check that there are no extra fields.
@@ -228,8 +240,8 @@ pub(crate) fn struct_instantiation(
     let context_expected_type_id = type_engine.get_unaliased_type_id(ctx.type_annotation());
     let (is_context_type_used, type_check_struct_decl, help_text) =
         match &*type_engine.get(context_expected_type_id) {
-            TypeInfo::Struct(s) => {
-                let context_expected_struct_decl = decl_engine.get_struct(s.id());
+            TypeInfo::Struct(decl_id) => {
+                let context_expected_struct_decl = decl_engine.get_struct(decl_id);
                 if UnifyCheck::coercion(engines)
                     .check_structs(&context_expected_struct_decl, &struct_decl)
                 {
@@ -291,7 +303,7 @@ pub(crate) fn struct_instantiation(
 
     let instantiation_span = inner_span.clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(|mut scoped_ctx| {
+        .scoped(handler, None, |mut scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
             for type_parameter in struct_decl.type_parameters.iter() {
@@ -302,7 +314,7 @@ pub(crate) fn struct_instantiation(
 
             let exp = ty::TyExpression {
                 expression: ty::TyExpressionVariant::StructExpression {
-                    struct_ref,
+                    struct_id,
                     fields: typed_fields,
                     instantiation_span,
                     call_path_binding,

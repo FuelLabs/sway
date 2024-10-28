@@ -713,7 +713,14 @@ fn bytes_append() {
     bytes.append(bytes2);
     assert(bytes.len() == first_length + second_length);
     assert(bytes.capacity() == first_length + first_length);
-    assert(bytes2.is_empty());
+
+    assert(bytes2.len() == second_length);
+    assert(!bytes2.is_empty());
+
+    assert(bytes2.get(0).unwrap() == d);
+    assert(bytes2.get(1).unwrap() == e);
+    assert(bytes2.get(2).unwrap() == f);
+
     let values = [a, b, c, d, e, f];
     let mut i = 0;
     while i < 6 {
@@ -757,7 +764,12 @@ fn bytes_append_to_empty() {
     empty_bytes.append(bytes);
     assert(empty_bytes.len() == bytes_length);
     assert(empty_bytes.capacity() == bytes_original_capacity);
-    assert(bytes.is_empty());
+
+    assert(bytes.len() == bytes_length);
+    assert(!bytes.is_empty());
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
 
     let values = [a, b, c];
     let mut i = 0;
@@ -765,6 +777,32 @@ fn bytes_append_to_empty() {
         assert(empty_bytes.get(i).unwrap() == values[i]);
         i += 1;
     };
+}
+
+fn bytes_append_self() {
+    let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+
+    bytes.append(bytes);
+
+    assert(bytes.len() == 6);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+    assert(bytes.get(3).unwrap() == a);
+    assert(bytes.get(4).unwrap() == b);
+    assert(bytes.get(5).unwrap() == c);
+}
+
+fn bytes_append_empty_self() {
+    let mut empty_bytes = Bytes::new();
+
+    empty_bytes.append(empty_bytes);
+
+    assert(empty_bytes.len() == 0);
 }
 
 #[test()]
@@ -888,7 +926,7 @@ fn bytes_from_raw_slice() {
     };
 
     let mut bytes = Bytes::from(slice);
-    assert(bytes.ptr() == slice.ptr());
+    assert(bytes.ptr() != slice.ptr()); // Bytes should own its buffer
     assert(bytes.len() == slice.number_of_bytes());
 }
 
@@ -921,7 +959,7 @@ fn bytes_raw_slice_into() {
 
     let bytes: Bytes = slice.into();
 
-    assert(bytes.ptr() == slice.ptr());
+    assert(bytes.ptr() != slice.ptr()); // Bytes should own its buffer
     assert(bytes.len() == slice.number_of_bytes());
 }
 

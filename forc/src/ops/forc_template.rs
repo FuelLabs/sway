@@ -4,6 +4,7 @@ use forc_pkg::{
     manifest::{self, PackageManifest},
     source::{self, git::Url},
 };
+use forc_tracing::println_action_green;
 use forc_util::validate_project_name;
 use fs_extra::dir::{copy, CopyOptions};
 use std::fs::File;
@@ -11,7 +12,6 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::{env, str::FromStr};
 use sway_utils::constants;
-use tracing::info;
 
 pub fn init(command: TemplateCommand) -> Result<()> {
     validate_project_name(&command.project_name)?;
@@ -31,7 +31,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     let fetch_ts = std::time::Instant::now();
     let fetch_id = source::fetch_id(current_dir, fetch_ts);
 
-    info!("Resolving the HEAD of {}", source.repo);
+    println_action_green("Resolving", &format!("the HEAD of {}", source.repo));
     let git_source = source::git::pin(fetch_id, &local_repo_name, source)?;
 
     let repo_path = source::git::commit_path(
@@ -40,7 +40,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         &git_source.commit_hash,
     );
     if !repo_path.exists() {
-        info!("  Fetching {}", git_source.to_string());
+        println_action_green("Fetching", git_source.to_string().as_str());
         source::git::fetch(fetch_id, &local_repo_name, &git_source)?;
     }
 
@@ -65,7 +65,10 @@ pub fn init(command: TemplateCommand) -> Result<()> {
     // Create the target dir
     let target_dir = current_dir.join(&command.project_name);
 
-    info!("Creating {} from template", &command.project_name);
+    println_action_green(
+        "Creating",
+        &format!("{} from template", &command.project_name),
+    );
     // Copy contents from template to target dir
     copy_template_to_target(&from_path, &target_dir)?;
 
@@ -81,7 +84,7 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
     let mut file = File::open(out_dir.join(constants::MANIFEST_FILE_NAME))?;
     let mut toml = String::new();
     file.read_to_string(&mut toml)?;
-    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
+    let mut manifest_toml = toml.parse::<toml_edit::DocumentMut>()?;
 
     let mut authors = Vec::new();
     let forc_toml: toml::Value = toml::de::from_str(&toml)?;
@@ -141,7 +144,7 @@ fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Resul
     }
     updated_authors.push(real_name);
 
-    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
+    let mut manifest_toml = toml.parse::<toml_edit::DocumentMut>()?;
     manifest_toml["package"]["authors"] = toml_edit::value(updated_authors);
     manifest_toml["package"]["name"] = toml_edit::value(project_name);
 

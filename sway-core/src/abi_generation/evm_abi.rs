@@ -49,6 +49,7 @@ fn get_type_str(type_id: &TypeId, engines: &Engines, resolved_type_id: TypeId) -
                 assert_eq!(count.val(), resolved_count.val());
                 format!("[_; {}]", count.val())
             }
+            (TypeInfo::Slice(_), TypeInfo::Slice(_)) => "__slice[_]".into(),
             (TypeInfo::Custom { .. }, _) => {
                 format!("generic {}", abi_str(&type_engine.get(*type_id), engines))
             }
@@ -92,6 +93,14 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         Numeric => "u64".into(), // u64 is the default
         Contract => "contract".into(),
         ErrorRecovery(_) => "unknown due to error".into(),
+        UntypedEnum(decl_id) => {
+            let decl = engines.pe().get_enum(decl_id);
+            format!("untyped enum {}", decl.name)
+        }
+        UntypedStruct(decl_id) => {
+            let decl = engines.pe().get_struct(decl_id);
+            format!("untyped struct {}", decl.name)
+        }
         Enum(decl_ref) => {
             let decl = decl_engine.get_enum(decl_ref);
             format!("enum {}", decl.call_path.suffix)

@@ -1,16 +1,18 @@
 use std::{
-    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     has_changes,
-    language::{parsed::FunctionDeclarationKind, CallPath},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
+    language::{
+        parsed::{FunctionDeclaration, FunctionDeclarationKind},
+        CallPath,
+    },
     transform::AttributeKind,
 };
 
@@ -57,6 +59,10 @@ pub struct TyFunctionDecl {
     pub is_trait_method_dummy: bool,
     pub is_type_check_finalized: bool,
     pub kind: TyFunctionDeclKind,
+}
+
+impl TyDeclParsedType for TyFunctionDecl {
+    type ParsedType = FunctionDeclaration;
 }
 
 impl DebugWithEngines for TyFunctionDecl {
@@ -139,6 +145,22 @@ impl Named for TyFunctionDecl {
     }
 }
 
+impl IsConcrete for TyFunctionDecl {
+    fn is_concrete(&self, engines: &Engines) -> bool {
+        self.type_parameters
+            .iter()
+            .all(|tp| tp.is_concrete(engines))
+            && self
+                .return_type
+                .type_id
+                .is_concrete(engines, TreatNumericAs::Concrete)
+            && self.parameters().iter().all(|t| {
+                t.type_argument
+                    .type_id
+                    .is_concrete(engines, TreatNumericAs::Concrete)
+            })
+    }
+}
 impl declaration::FunctionSignature for TyFunctionDecl {
     fn parameters(&self) -> &Vec<TyFunctionParameter> {
         &self.parameters
@@ -198,13 +220,22 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        has_changes! {
-            self.type_parameters.subst(type_mapping, engines);
-            self.parameters.subst(type_mapping, engines);
-            self.return_type.subst(type_mapping, engines);
-            self.body.subst(type_mapping, engines);
-            self.implementing_for_typeid.subst(type_mapping, engines);
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        if ctx.subst_function_body {
+            has_changes! {
+                self.type_parameters.subst(ctx);
+                self.parameters.subst(ctx);
+                self.return_type.subst(ctx);
+                self.body.subst(ctx);
+                self.implementing_for_typeid.subst(ctx);
+            }
+        } else {
+            has_changes! {
+                self.type_parameters.subst(ctx);
+                self.parameters.subst(ctx);
+                self.return_type.subst(ctx);
+                self.implementing_for_typeid.subst(ctx);
+            }
         }
     }
 }
@@ -239,42 +270,6 @@ impl MonomorphizeHelper for TyFunctionDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
-    }
-}
-
-impl UnconstrainedTypeParameters for TyFunctionDecl {
-    fn type_parameter_is_unconstrained(
-        &self,
-        engines: &Engines,
-        type_parameter: &TypeParameter,
-    ) -> bool {
-        let type_engine = engines.te();
-        let mut all_types: HashSet<TypeId> = self
-            .type_parameters
-            .iter()
-            .map(|type_param| type_param.type_id)
-            .collect();
-        all_types.extend(self.parameters.iter().flat_map(|param| {
-            let mut inner = param
-                .type_argument
-                .type_id
-                .extract_inner_types(engines, IncludeSelf::No);
-            inner.insert(param.type_argument.type_id);
-            inner
-        }));
-        all_types.extend(
-            self.return_type
-                .type_id
-                .extract_inner_types(engines, IncludeSelf::No),
-        );
-        all_types.insert(self.return_type.type_id);
-        let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types.iter().any(|type_id| {
-            type_engine.get(*type_id).eq(
-                &type_parameter_info,
-                &PartialEqWithEnginesContext::new(engines),
-            )
-        })
     }
 }
 
@@ -471,7 +466,7 @@ impl TyFunctionDecl {
         };
 
         match &self.implementing_type {
-            Some(TyDecl::ImplTrait(t)) => {
+            Some(TyDecl::ImplSelfOrTrait(t)) => {
                 let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
                 let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id;
@@ -532,8 +527,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        self.type_argument.type_id.subst(type_mapping, engines)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.type_id.subst(ctx)
     }
 }
 
@@ -602,9 +597,16 @@ impl TyFunctionSig {
     }
 
     pub fn is_concrete(&self, engines: &Engines) -> bool {
-        self.return_type.is_concrete(engines)
-            && self.parameters.iter().all(|p| p.is_concrete(engines))
-            && self.type_parameters.iter().all(|p| p.is_concrete(engines))
+        self.return_type
+            .is_concrete(engines, TreatNumericAs::Concrete)
+            && self
+                .parameters
+                .iter()
+                .all(|p| p.is_concrete(engines, TreatNumericAs::Concrete))
+            && self
+                .type_parameters
+                .iter()
+                .all(|p| p.is_concrete(engines, TreatNumericAs::Concrete))
     }
 
     /// Returns a String representing the function.

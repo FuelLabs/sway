@@ -4,7 +4,7 @@
 use crate::{
     capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
 };
-use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
+use forc_tracing::{tracing_subscriber, FmtSpan, StdioTracingWriter, TracingWriterMode};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
@@ -40,12 +40,14 @@ pub fn handle_initialize(
     // Initializing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
-        let tracing_options = TracingSubscriberOptions {
-            log_level: Some(config.logging.level),
-            writer_mode: Some(TracingWriterMode::Stderr),
-            ..Default::default()
-        };
-        init_tracing_subscriber(tracing_options);
+        tracing_subscriber::fmt::Subscriber::builder()
+            .with_ansi(false)
+            .with_max_level(config.logging.level)
+            .with_span_events(FmtSpan::CLOSE)
+            .with_writer(StdioTracingWriter {
+                writer_mode: TracingWriterMode::Stderr,
+            })
+            .init();
     }
     tracing::info!("Initializing the Sway Language Server");
     Ok(InitializeResult {
@@ -132,6 +134,7 @@ pub async fn handle_hover(
                 &state.keyword_docs,
                 &uri,
                 position,
+                state.config.read().client.clone(),
             ))
         }
         Err(err) => {
@@ -205,6 +208,26 @@ pub async fn handle_document_highlight(
             Ok(capabilities::highlight::get_highlights(
                 session, &uri, position,
             ))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}
+
+pub async fn handle_references(
+    state: &ServerState,
+    params: lsp_types::ReferenceParams,
+) -> Result<Option<Vec<lsp_types::Location>>> {
+    let _ = state.wait_for_parsing().await;
+    match state
+        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
+        .await
+    {
+        Ok((uri, session)) => {
+            let position = params.text_document_position.position;
+            Ok(session.token_references(&uri, position))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -310,7 +333,7 @@ pub async fn handle_semantic_tokens_full(
     }
 }
 
-pub(crate) async fn handle_inlay_hints(
+pub async fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {

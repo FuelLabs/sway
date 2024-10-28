@@ -32,10 +32,6 @@ pub enum BuildTarget {
     #[clap(name = "evm")]
     #[strum(serialize = "evm")]
     EVM,
-    #[serde(rename = "midenvm")]
-    #[clap(name = "midenvm")]
-    #[strum(serialize = "midenvm")]
-    MidenVM,
 }
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -187,6 +183,7 @@ pub struct BuildConfig {
     pub(crate) print_dca_graph_url_format: Option<String>,
     pub(crate) print_asm: PrintAsm,
     pub(crate) print_bytecode: bool,
+    pub(crate) print_bytecode_spans: bool,
     pub(crate) print_ir: PrintIr,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
@@ -234,6 +231,7 @@ impl BuildConfig {
             print_dca_graph_url_format: None,
             print_asm: PrintAsm::default(),
             print_bytecode: false,
+            print_bytecode_spans: false,
             print_ir: PrintIr::default(),
             include_tests: false,
             time_phases: false,
@@ -264,9 +262,10 @@ impl BuildConfig {
         Self { print_asm, ..self }
     }
 
-    pub fn with_print_bytecode(self, a: bool) -> Self {
+    pub fn with_print_bytecode(self, bytecode: bool, bytecode_spans: bool) -> Self {
         Self {
-            print_bytecode: a,
+            print_bytecode: bytecode,
+            print_bytecode_spans: bytecode_spans,
             ..self
         }
     }

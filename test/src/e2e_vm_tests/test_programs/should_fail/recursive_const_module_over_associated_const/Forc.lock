@@ -1,0 +1,3 @@
+[[package]]
+name = "recursive_const_module_over_associated_const"
+source = "member"

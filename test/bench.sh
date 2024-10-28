@@ -83,7 +83,7 @@ if [[ $CLEAN = "all" ]]; then
     exit 0
 fi
 
-PROJ_NAME="$(basename $PROJ_PATH)"
+
 
 # install dependencies
 if ! command -v hyperfine &>> "$LOG_FILE"
@@ -122,20 +122,25 @@ if [ -n "$QUANTITY" ]; then
             cp target/release/forc "$CACHE/$COMMIT" &>> "$LOG_FILE"
         fi
 
-        # run test if needed
-        if [ ! -f "$CACHE/$COMMIT-$PROJ_NAME.csv" ]; then
-            echo -e -n " [benchmark]"
-            hyperfine -n "$COMMIT-$PROJ_NAME" --export-csv "$CACHE/$COMMIT-$PROJ_NAME.csv" "$CACHE/$COMMIT build -p $PROJ_PATH --release" &>> "$LOG_FILE"
-        fi
+        # for each project specified
+        for CURRENT_PROJECT_PATH in ${PROJ_PATH//,/ }
+        do
+            PROJ_NAME="$(basename $CURRENT_PROJECT_PATH)"
 
-        # get binary size if needed
-        if [ ! -f "$CACHE/$COMMIT-$PROJ_NAME-size.txt" ]; then
-            echo -e -n " [bin size]"
-            rm "$PROJ_PATH/out" -rf &>> "$LOG_FILE"
-            bash -c "$CACHE/$COMMIT build -p $PROJ_PATH --release" &>> "$LOG_FILE"
-            stat --printf="%s" "$PROJ_PATH/out/release/$PROJ_NAME.bin" > "$CACHE/$COMMIT-$PROJ_NAME-size.txt"
-        fi
+            # run test if needed
+            if [ ! -f "$CACHE/$COMMIT-$PROJ_NAME.csv" ]; then
+                echo -e -n " [$PROJ_NAME bench]"
+                hyperfine -n "$COMMIT-$PROJ_NAME" --export-csv "$CACHE/$COMMIT-$PROJ_NAME.csv" "$CACHE/$COMMIT build -p $CURRENT_PROJECT_PATH --release" &>> "$LOG_FILE"
+            fi
 
+            # get binary size if needed
+            if [ ! -f "$CACHE/$COMMIT-$PROJ_NAME-size.txt" ]; then
+                echo -e -n " [$PROJ_NAME size]"
+                rm "$CURRENT_PROJECT_PATH/out" -rf &>> "$LOG_FILE"
+                bash -c "$CACHE/$COMMIT build -p $CURRENT_PROJECT_PATH --release" &>> "$LOG_FILE"
+                stat --printf="%s" "$CURRENT_PROJECT_PATH/out/release/$PROJ_NAME.bin" > "$CACHE/$COMMIT-$PROJ_NAME-size.txt"
+            fi
+        done
         echo -e " ${BOLD_GREEN}ok${NC}"
     done
 fi

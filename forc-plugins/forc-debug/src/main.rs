@@ -4,6 +4,7 @@ use forc_debug::{
     server::DapServer,
     ContractId, FuelClient, RunResult, Transaction,
 };
+use forc_tracing::{init_tracing_subscriber, println_error};
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
 use shellfish::{async_fn, Command as ShCommand, Shell};
 use std::error::Error;
@@ -21,9 +22,17 @@ pub struct Opt {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
+    init_tracing_subscriber(Default::default());
     let config = Opt::parse();
 
+    if let Err(err) = run(&config).await {
+        println_error(&format!("{}", err));
+        std::process::exit(1);
+    }
+}
+
+async fn run(config: &Opt) -> Result<(), Box<dyn std::error::Error>> {
     if config.serve {
         return DapServer::default().start();
     }
@@ -123,7 +132,7 @@ async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<(), Bo
     }
 
     let tx_json = std::fs::read(path_to_tx_json)?;
-    let tx: Transaction = serde_json::from_slice(&tx_json).unwrap();
+    let tx: Transaction = serde_json::from_slice(&tx_json)?;
     let status = state.client.start_tx(&state.session_id, &tx).await?;
     pretty_print_run_result(&status);
 

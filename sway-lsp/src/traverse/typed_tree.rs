@@ -82,7 +82,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::StructDecl(decl) => decl.parse(ctx),
             ty::TyDecl::EnumDecl(decl) => collect_enum(ctx, &decl.decl_id, self),
             ty::TyDecl::EnumVariantDecl(decl) => collect_enum(ctx, decl.enum_ref.id(), self),
-            ty::TyDecl::ImplTrait(decl) => decl.parse(ctx),
+            ty::TyDecl::ImplSelfOrTrait(decl) => decl.parse(ctx),
             ty::TyDecl::AbiDecl(decl) => decl.parse(ctx),
             ty::TyDecl::GenericTypeForFunctionScope(decl) => decl.parse(ctx),
             ty::TyDecl::ErrorRecovery(_, _) => {}
@@ -113,7 +113,7 @@ impl Parse for ty::TySideEffect {
                         if let Some(span) = ctx
                             .namespace
                             .submodule(ctx.engines, mod_path)
-                            .and_then(|tgt_submod| tgt_submod.span.clone())
+                            .and_then(|tgt_submod| tgt_submod.span().clone())
                         {
                             token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                         }
@@ -169,7 +169,7 @@ impl Parse for ty::TySideEffect {
                             if let Some(span) = ctx
                                 .namespace
                                 .submodule(ctx.engines, call_path)
-                                .and_then(|tgt_submod| tgt_submod.span.clone())
+                                .and_then(|tgt_submod| tgt_submod.span().clone())
                             {
                                 token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                             }
@@ -192,7 +192,7 @@ impl Parse for ty::TySideEffect {
                     if let Some(span) = ctx
                         .namespace
                         .submodule(ctx.engines, &[mod_name.clone()])
-                        .and_then(|tgt_submod| tgt_submod.span.clone())
+                        .and_then(|tgt_submod| tgt_submod.span().clone())
                     {
                         token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                     }
@@ -719,10 +719,10 @@ impl Parse for ty::StructDecl {
     }
 }
 
-impl Parse for ty::ImplTrait {
+impl Parse for ty::ImplSelfOrTrait {
     fn parse(&self, ctx: &ParseContext) {
-        let impl_trait_decl = ctx.engines.de().get_impl_trait(&self.decl_id);
-        let ty::TyImplTrait {
+        let impl_trait_decl = ctx.engines.de().get_impl_self_or_trait(&self.decl_id);
+        let ty::TyImplSelfOrTrait {
             impl_type_parameters,
             trait_name,
             trait_type_arguments,
@@ -754,9 +754,9 @@ impl Parse for ty::ImplTrait {
             .tokens
             .try_get_mut_with_retry(&ctx.ident(&trait_name.suffix))
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
-                self.clone(),
-            )));
+            token.typed = Some(TypedAstToken::TypedDeclaration(
+                ty::TyDecl::ImplSelfOrTrait(self.clone()),
+            ));
             token.type_def = if let Some(decl_ref) = &trait_decl_ref {
                 typed_token = Some(TypedAstToken::TypedArgument(implementing_for.clone()));
                 match &decl_ref.id().clone() {
@@ -981,18 +981,11 @@ impl Parse for ty::TyIntrinsicFunctionKind {
 impl Parse for ty::TyScrutinee {
     fn parse(&self, ctx: &ParseContext) {
         use ty::TyScrutineeVariant::{
-            CatchAll, Configurable, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple,
-            Variable,
+            CatchAll, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple, Variable,
         };
         match &self.variant {
             CatchAll => {}
             Constant(name, _, decl) => {
-                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
-                }
-            }
-            Configurable(name, _, decl) => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
                     token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
@@ -1209,7 +1202,7 @@ fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
             if let Some(span) = ctx
                 .namespace
                 .submodule(ctx.engines, mod_path)
-                .and_then(|tgt_submod| tgt_submod.span.clone())
+                .and_then(|tgt_submod| tgt_submod.span().clone())
             {
                 token.kind = SymbolKind::Module;
                 token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
@@ -1275,6 +1268,9 @@ fn collect_type_id(
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, Some(&type_span));
     match &*type_info {
         TypeInfo::Array(type_arg, ..) => {
+            collect_type_argument(ctx, type_arg);
+        }
+        TypeInfo::Slice(type_arg, ..) => {
             collect_type_argument(ctx, type_arg);
         }
         TypeInfo::Tuple(type_arguments) => {

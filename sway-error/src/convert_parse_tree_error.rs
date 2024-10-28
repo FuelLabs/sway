@@ -3,8 +3,6 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConvertParseTreeError {
-    #[error("pub use imports are not supported")]
-    PubUseNotSupported { span: Span },
     #[error("Imports without items are not supported")]
     ImportsWithoutItemsNotSupported { span: Span },
     #[error("functions used in applications may not be arbitrary expressions")]
@@ -121,12 +119,13 @@ pub enum ConvertParseTreeError {
     ExpectedCfgProgramTypeArgValue { span: Span },
     #[error("Expected \"true\" or \"false\" for experimental_new_encoding")]
     ExpectedExperimentalNewEncodingArgValue { span: Span },
+    #[error("Unexpected attribute value: \"{value}\" for attribute: \"cfg\"")]
+    InvalidCfgArg { span: Span, value: String },
 }
 
 impl Spanned for ConvertParseTreeError {
     fn span(&self) -> Span {
         match self {
-            ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::ImportsWithoutItemsNotSupported { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
@@ -185,6 +184,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
             ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue { span } => span.clone(),
+            ConvertParseTreeError::InvalidCfgArg { span, .. } => span.clone(),
         }
     }
 }

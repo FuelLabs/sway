@@ -1,23 +1,47 @@
 use std::collections::VecDeque;
 
 use sway_error::{
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
 use sway_types::{style::is_screaming_snake_case, Spanned};
+use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
-    decl_engine::{DeclEngineInsert, ReplaceDecls},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, ReplaceDecls,
+    },
     language::{
         parsed::*,
-        ty::{self, TyConfigurableDecl},
+        ty::{self, TyConfigurableDecl, TyExpression},
         CallPath,
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
+    semantic_analysis::*,
+    EnforceTypeArguments, Engines, SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding,
+    TypeInfo,
 };
 
 impl ty::TyConfigurableDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<ConfigurableDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let configurable_decl = engines.pe().get_configurable(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            configurable_decl.name.clone(),
+            Declaration::ConfigurableDeclaration(*decl_id),
+        )?;
+        if let Some(value) = &configurable_decl.value {
+            TyExpression::collect(handler, engines, ctx, value)?;
+        }
+        Ok(())
+    }
+
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -33,6 +57,7 @@ impl ty::TyConfigurableDecl {
             value,
             attributes,
             visibility,
+            block_keyword_span,
         } = decl;
 
         type_ascription.type_id = ctx
@@ -46,7 +71,7 @@ impl ty::TyConfigurableDecl {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.type_subst(), engines);
+        type_ascription.type_id.subst(&ctx.subst_ctx());
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
@@ -84,28 +109,46 @@ impl ty::TyConfigurableDecl {
                     .insert(engines, TypeInfo::RawUntypedSlice, None),
             );
 
-            let (decode_fn_ref, _, _): (crate::decl_engine::DeclRefFunction, _, _) =
-                crate::TypeBinding::type_check(
-                    &mut TypeBinding::<CallPath> {
-                        inner: CallPath {
-                            prefixes: vec![],
-                            suffix: sway_types::Ident::new_no_span("abi_decode_in_place".into()),
-                            is_absolute: false,
-                        },
-                        type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
-                            type_id: type_ascription.type_id,
-                            initial_type_id: type_ascription.type_id,
-                            span: sway_types::Span::dummy(),
-                            call_path_tree: None,
-                        }]),
-                        span: sway_types::Span::dummy(),
+            let value_span = value
+                .as_ref()
+                .map(|x| x.span.clone())
+                .unwrap_or_else(|| span.clone());
+            let abi_decode_in_place_handler = Handler::default();
+            let r = crate::TypeBinding::type_check(
+                &mut TypeBinding::<CallPath> {
+                    inner: CallPath {
+                        prefixes: vec![],
+                        suffix: sway_types::Ident::new_with_override(
+                            "abi_decode_in_place".into(),
+                            value_span.clone(),
+                        ),
+                        is_absolute: false,
                     },
-                    handler,
-                    ctx.by_ref(),
-                )
-                .unwrap();
+                    type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
+                        type_id: type_ascription.type_id,
+                        initial_type_id: type_ascription.type_id,
+                        span: sway_types::Span::dummy(),
+                        call_path_tree: None,
+                    }]),
+                    span: value_span.clone(),
+                },
+                &abi_decode_in_place_handler,
+                ctx.by_ref(),
+            );
 
-            let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_ref)).clone();
+            // Map expected errors to more understandable ones
+            handler.map_and_emit_errors_from(abi_decode_in_place_handler, |e| match e {
+                CompileError::SymbolNotFound { .. } => {
+                    Some(CompileError::ConfigurableMissingAbiDecodeInPlace {
+                        span: block_keyword_span.clone(),
+                    })
+                }
+                e => Some(e),
+            })?;
+            let (decode_fn_ref, _, _): (crate::decl_engine::DeclRefFunction, _, _) = r?;
+
+            let decode_fn_id = *decode_fn_ref.id();
+            let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_id)).clone();
             let decl_mapping = crate::TypeParameter::gather_decl_mapping_from_trait_constraints(
                 handler,
                 ctx.by_ref(),
@@ -116,8 +159,11 @@ impl ty::TyConfigurableDecl {
             decode_fn_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
             let decode_fn_ref = engines
                 .de()
-                .insert(decode_fn_decl)
-                .with_parent(engines.de(), (*decode_fn_ref.id()).into());
+                .insert(
+                    decode_fn_decl,
+                    engines.de().get_parsed_decl_id(&decode_fn_id).as_ref(),
+                )
+                .with_parent(engines.de(), decode_fn_id.into());
 
             (value, Some(decode_fn_ref))
         } else {

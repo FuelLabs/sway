@@ -1,13 +1,16 @@
-mod ast_elements;
+pub(crate) mod ast_elements;
 mod engine;
 mod id;
 mod info;
+pub(crate) mod monomorphization;
 mod priv_prelude;
 mod substitute;
-mod unify;
+pub(crate) mod unify;
 
 #[allow(unused)]
 use std::ops::Deref;
+
+pub use substitute::subst_types::SubstTypesContext;
 
 #[cfg(test)]
 use crate::language::CallPath;
@@ -20,6 +23,41 @@ use sway_error::handler::Handler;
 use sway_types::BaseIdent;
 #[cfg(test)]
 use sway_types::{integer_bits::IntegerBits, Span};
+
+/// This type is used to denote if, during monomorphization, the compiler
+/// should enforce that type arguments be provided. An example of that
+/// might be this:
+///
+/// ```ignore
+/// struct Point<T> {
+///   x: u64,
+///   y: u64
+/// }
+///
+/// fn add<T>(p1: Point<T>, p2: Point<T>) -> Point<T> {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+///
+/// `EnforceTypeArguments` would require that the type annotations
+/// for `p1` and `p2` contain `<...>`. This is to avoid ambiguous definitions:
+///
+/// ```ignore
+/// fn add(p1: Point, p2: Point) -> Point {
+///   Point {
+///     x: p1.x + p2.x,
+///     y: p1.y + p2.y
+///   }
+/// }
+/// ```
+#[derive(Clone, Copy)]
+pub(crate) enum EnforceTypeArguments {
+    Yes,
+    No,
+}
 
 #[test]
 fn generic_enum_resolution() {
@@ -84,17 +122,20 @@ fn generic_enum_resolution() {
 
     let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
     call_path.is_absolute = true;
-    let decl_ref_1 = engines.de().insert(TyEnumDecl {
-        call_path,
-        type_parameters: vec![placeholder_type_param],
-        variants: variant_types,
-        span: sp.clone(),
-        visibility: crate::language::Visibility::Public,
-        attributes: AttributesMap::default(),
-    });
+    let decl_ref_1 = engines.de().insert(
+        TyEnumDecl {
+            call_path,
+            type_parameters: vec![placeholder_type_param],
+            variants: variant_types,
+            span: sp.clone(),
+            visibility: crate::language::Visibility::Public,
+            attributes: AttributesMap::default(),
+        },
+        None,
+    );
     let ty_1 = engines
         .te()
-        .insert(&engines, TypeInfo::Enum(decl_ref_1), None);
+        .insert(&engines, TypeInfo::Enum(*decl_ref_1.id()), None);
 
     /*
     Result<bool> {
@@ -125,17 +166,20 @@ fn generic_enum_resolution() {
 
     let mut call_path: CallPath<BaseIdent> = result_name.into();
     call_path.is_absolute = true;
-    let decl_ref_2 = engines.de().insert(TyEnumDecl {
-        call_path,
-        type_parameters: vec![type_param],
-        variants: variant_types.clone(),
-        span: sp.clone(),
-        visibility: crate::language::Visibility::Public,
-        attributes: AttributesMap::default(),
-    });
+    let decl_ref_2 = engines.de().insert(
+        TyEnumDecl {
+            call_path,
+            type_parameters: vec![type_param],
+            variants: variant_types.clone(),
+            span: sp.clone(),
+            visibility: crate::language::Visibility::Public,
+            attributes: AttributesMap::default(),
+        },
+        None,
+    );
     let ty_2 = engines
         .te()
-        .insert(&engines, TypeInfo::Enum(decl_ref_2), None);
+        .insert(&engines, TypeInfo::Enum(*decl_ref_2.id()), None);
 
     // Unify them together...
     let h = Handler::default();

@@ -1,38 +1,83 @@
 use crate::{
     cmd,
+    constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
-        gas::get_estimated_max_fee,
+        account::ForcClientAccount,
         node_url::get_node_url,
-        pkg::built_pkgs,
-        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
+        pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
+        target::Target,
+        tx::{
+            prompt_forc_wallet_password, select_account, update_proxy_contract_target,
+            SignerSelectionMode,
+        },
     },
 };
 use anyhow::{bail, Context, Result};
-use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
-use forc_tracing::println_warning;
+use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
+use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
-use fuel_core_client::client::types::TransactionStatus;
+use forc_wallet::utils::default_wallet_path;
+use fuel_abi_types::abi::program::Configurable;
+use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
-use fuel_tx::{Output, Salt, TransactionBuilder};
-use fuel_vm::prelude::*;
-use fuels_accounts::provider::Provider;
+use fuel_tx::{Salt, Transaction};
+use fuel_vm::{consts::WORD_SIZE, fuel_asm::op, prelude::*};
+use fuels::{
+    macros::abigen,
+    programs::{
+        contract::{LoadConfiguration, StorageConfiguration},
+        executable::Executable,
+    },
+    types::{
+        bech32::Bech32ContractId,
+        transaction_builders::{Blob, BlobId},
+    },
+};
+use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
+use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
 };
-use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use tracing::info;
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
 
-#[derive(Debug)]
+/// Default maximum contract size allowed for a single contract. If the target
+/// contract size is bigger than this amount, forc-deploy will automatically
+/// starts dividing the contract and deploy them in chunks automatically.
+/// The value is in bytes
+const MAX_CONTRACT_SIZE: usize = 100_000;
+
+/// Represents a deployed instance of a forc package.
+/// Packages other than libraries are deployable through different mechanisms.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DeployedPackage {
+    Contract(DeployedContract),
+    Script(DeployedExecutable),
+    Predicate(DeployedExecutable),
+}
+
+/// Represents a deployed contract on the Fuel network.
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
+    pub proxy: Option<fuel_tx::ContractId>,
+    pub chunked: bool,
+}
+
+/// Represents a deployed executable (script or predicate) on the Fuel network.
+/// Executables are deployed as blobs with generated loaders for efficiency.
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
+pub struct DeployedExecutable {
+    pub bytecode: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +88,7 @@ pub struct DeploymentArtifact {
     chain_id: ChainId,
     contract_id: String,
     deployment_size: usize,
-    deployed_block_height: u32,
+    deployed_block_height: Option<u32>,
 }
 
 impl DeploymentArtifact {
@@ -113,39 +158,424 @@ fn validate_and_parse_salts<'a>(
     Ok(contract_salt_map)
 }
 
+/// Depending on the cli options user passed, either returns storage slots from
+/// compiled package, or the ones user provided as overrides.
+fn resolve_storage_slots(
+    command: &cmd::Deploy,
+    compiled: &BuiltPackage,
+) -> Result<Vec<fuel_tx::StorageSlot>> {
+    let mut storage_slots =
+        if let Some(storage_slot_override_file) = &command.override_storage_slots {
+            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
+            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
+            storage_slots
+        } else {
+            compiled.storage_slots.clone()
+        };
+    storage_slots.sort();
+    Ok(storage_slots)
+}
+
+/// Creates blobs from the contract to deploy contracts that are larger than
+/// maximum contract size. Created blobs are deployed, and a loader contract is
+/// generated such that it loads all the deployed blobs, and provides the user
+/// a single contract (loader contract that loads the blobs) to call into.
+async fn deploy_chunked(
+    command: &cmd::Deploy,
+    compiled: &BuiltPackage,
+    salt: Salt,
+    account: &ForcClientAccount,
+    provider: &Provider,
+    pkg_name: &str,
+) -> anyhow::Result<ContractId> {
+    println_action_green("Deploying", &format!("contract {pkg_name} chunks"));
+
+    let storage_slots = resolve_storage_slots(command, compiled)?;
+    let chain_info = provider.chain_info().await?;
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+
+    let blobs = compiled
+        .bytecode
+        .bytes
+        .chunks(MAX_CONTRACT_SIZE)
+        .map(|chunk| Blob::new(chunk.to_vec()))
+        .collect();
+
+    let tx_policies = tx_policies_from_cmd(command);
+    let contract_id =
+        fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
+            .deploy(account, tx_policies)
+            .await?
+            .into();
+
+    println_action_green(
+        "Finished",
+        &format!("deploying loader contract for {pkg_name} {contract_url}{contract_id}"),
+    );
+
+    Ok(contract_id)
+}
+
+/// Deploys a new proxy contract for the given package.
+async fn deploy_new_proxy(
+    command: &cmd::Deploy,
+    pkg_name: &str,
+    pkg_storage_slots: &[StorageSlot],
+    impl_contract: &fuel_tx::ContractId,
+    provider: &Provider,
+    account: &ForcClientAccount,
+) -> Result<ContractId> {
+    abigen!(Contract(name = "ProxyContract", abi = "{\"programType\":\"contract\",\"specVersion\":\"1\",\"encodingVersion\":\"1\",\"concreteTypes\":[{\"type\":\"()\",\"concreteTypeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"},{\"type\":\"enum standards::src5::AccessError\",\"concreteTypeId\":\"3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d\",\"metadataTypeId\":1},{\"type\":\"enum standards::src5::State\",\"concreteTypeId\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\",\"metadataTypeId\":2},{\"type\":\"enum std::option::Option<struct std::contract_id::ContractId>\",\"concreteTypeId\":\"0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8\",\"metadataTypeId\":4,\"typeArguments\":[\"29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54\"]},{\"type\":\"enum sway_libs::ownership::errors::InitializationError\",\"concreteTypeId\":\"1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893\",\"metadataTypeId\":5},{\"type\":\"enum sway_libs::upgradability::errors::SetProxyOwnerError\",\"concreteTypeId\":\"3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74\",\"metadataTypeId\":6},{\"type\":\"str\",\"concreteTypeId\":\"8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a\"},{\"type\":\"struct std::contract_id::ContractId\",\"concreteTypeId\":\"29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54\",\"metadataTypeId\":9},{\"type\":\"struct sway_libs::upgradability::events::ProxyOwnerSet\",\"concreteTypeId\":\"96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247\",\"metadataTypeId\":10},{\"type\":\"struct sway_libs::upgradability::events::ProxyTargetSet\",\"concreteTypeId\":\"1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8\",\"metadataTypeId\":11}],\"metadataTypes\":[{\"type\":\"b256\",\"metadataTypeId\":0},{\"type\":\"enum standards::src5::AccessError\",\"metadataTypeId\":1,\"components\":[{\"name\":\"NotOwner\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"enum standards::src5::State\",\"metadataTypeId\":2,\"components\":[{\"name\":\"Uninitialized\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"},{\"name\":\"Initialized\",\"typeId\":3},{\"name\":\"Revoked\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"enum std::identity::Identity\",\"metadataTypeId\":3,\"components\":[{\"name\":\"Address\",\"typeId\":8},{\"name\":\"ContractId\",\"typeId\":9}]},{\"type\":\"enum std::option::Option\",\"metadataTypeId\":4,\"components\":[{\"name\":\"None\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"},{\"name\":\"Some\",\"typeId\":7}],\"typeParameters\":[7]},{\"type\":\"enum sway_libs::ownership::errors::InitializationError\",\"metadataTypeId\":5,\"components\":[{\"name\":\"CannotReinitialized\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"enum sway_libs::upgradability::errors::SetProxyOwnerError\",\"metadataTypeId\":6,\"components\":[{\"name\":\"CannotUninitialize\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"generic T\",\"metadataTypeId\":7},{\"type\":\"struct std::address::Address\",\"metadataTypeId\":8,\"components\":[{\"name\":\"bits\",\"typeId\":0}]},{\"type\":\"struct std::contract_id::ContractId\",\"metadataTypeId\":9,\"components\":[{\"name\":\"bits\",\"typeId\":0}]},{\"type\":\"struct sway_libs::upgradability::events::ProxyOwnerSet\",\"metadataTypeId\":10,\"components\":[{\"name\":\"new_proxy_owner\",\"typeId\":2}]},{\"type\":\"struct sway_libs::upgradability::events::ProxyTargetSet\",\"metadataTypeId\":11,\"components\":[{\"name\":\"new_target\",\"typeId\":9}]}],\"functions\":[{\"inputs\":[],\"name\":\"proxy_target\",\"output\":\"0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Returns the target contract of the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Returns\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * [Option<ContractId>] - The new proxy contract to which all fallback calls will be passed or `None`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"read\"]}]},{\"inputs\":[{\"name\":\"new_target\",\"concreteTypeId\":\"29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54\"}],\"name\":\"set_proxy_target\",\"output\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Change the target contract of the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Additional Information\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method can only be called by the `proxy_owner`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Arguments\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * `new_target`: [ContractId] - The new proxy contract to which all fallback calls will be passed.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Reverts\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When not called by `proxy_owner`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Write: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"read\",\"write\"]}]},{\"inputs\":[],\"name\":\"proxy_owner\",\"output\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Returns the owner of the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Returns\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * [State] - Represents the state of ownership for this contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"read\"]}]},{\"inputs\":[],\"name\":\"initialize_proxy\",\"output\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Initializes the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Additional Information\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method sets the storage values using the values of the configurable constants `INITIAL_TARGET` and `INITIAL_OWNER`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This then allows methods that write to storage to be called.\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method can only be called once.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Reverts\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When `storage::SRC14.proxy_owner` is not [State::Uninitialized].\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Writes: `2`\"]},{\"name\":\"storage\",\"arguments\":[\"write\"]}]},{\"inputs\":[{\"name\":\"new_proxy_owner\",\"concreteTypeId\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\"}],\"name\":\"set_proxy_owner\",\"output\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Changes proxy ownership to the passed State.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Additional Information\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method can be used to transfer ownership between Identities or to revoke ownership.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Arguments\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * `new_proxy_owner`: [State] - The new state of the proxy ownership.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Reverts\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When the sender is not the current proxy owner.\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When the new state of the proxy ownership is [State::Uninitialized].\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Writes: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"write\"]}]}],\"loggedTypes\":[{\"logId\":\"4571204900286667806\",\"concreteTypeId\":\"3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d\"},{\"logId\":\"2151606668983994881\",\"concreteTypeId\":\"1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8\"},{\"logId\":\"2161305517876418151\",\"concreteTypeId\":\"1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893\"},{\"logId\":\"4354576968059844266\",\"concreteTypeId\":\"3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74\"},{\"logId\":\"10870989709723147660\",\"concreteTypeId\":\"96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247\"},{\"logId\":\"10098701174489624218\",\"concreteTypeId\":\"8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a\"}],\"messagesTypes\":[],\"configurables\":[{\"name\":\"INITIAL_TARGET\",\"concreteTypeId\":\"0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8\",\"offset\":13368},{\"name\":\"INITIAL_OWNER\",\"concreteTypeId\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\",\"offset\":13320}]}",));
+    let proxy_dir_output = create_proxy_contract(pkg_name)?;
+    let address = account.address();
+
+    // Add the combined storage slots from the original contract and the proxy contract.
+    let proxy_storage_path = proxy_dir_output.join("proxy-storage_slots.json");
+    let storage_configuration = StorageConfiguration::default()
+        .add_slot_overrides(pkg_storage_slots.iter().cloned())
+        .add_slot_overrides_from_file(proxy_storage_path)?;
+
+    let configurables = ProxyContractConfigurables::default()
+        .with_INITIAL_TARGET(Some(*impl_contract))?
+        .with_INITIAL_OWNER(State::Initialized(Address::from(address).into()))?;
+
+    let configuration = LoadConfiguration::default()
+        .with_storage_configuration(storage_configuration)
+        .with_configurables(configurables);
+
+    let tx_policies = tx_policies_from_cmd(command);
+    let proxy_contract_id: ContractId = fuels::programs::contract::Contract::load_from(
+        proxy_dir_output.join("proxy.bin"),
+        configuration,
+    )?
+    .deploy(account, tx_policies)
+    .await?
+    .into();
+
+    let chain_info = provider.chain_info().await?;
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+
+    println_action_green(
+        "Finished",
+        &format!("deploying proxy contract for {pkg_name} {contract_url}{proxy_contract_id}"),
+    );
+
+    let proxy_contract_bech_id: Bech32ContractId = proxy_contract_id.into();
+    let instance = ProxyContract::new(&proxy_contract_bech_id, account.clone());
+    instance.methods().initialize_proxy().call().await?;
+    println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
+    Ok(proxy_contract_id)
+}
+
+/// Builds and deploys contracts, scripts, and predicates from the given path or workspace.
+///
+/// Contracts are deployed directly, while scripts and predicates are deployed as blobs with generated loaders.
+///
+/// Returns a vector of `DeployedPackage` representing all successful deployments.
+pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
+    if command.unsigned {
+        println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
+    }
+    let curr_dir = if let Some(ref path) = command.pkg.path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+    let build_opts = build_opts_from_cmd(&command, MemberFilter::default());
+    let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
+    let mut deployed_packages = Vec::new();
+
+    let contracts_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Contract])
+                .is_ok()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let scripts_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Script])
+                .is_ok()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let predicates_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Predicate])
+                .is_ok()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if contracts_to_deploy.is_empty()
+        && scripts_to_deploy.is_empty()
+        && predicates_to_deploy.is_empty()
+    {
+        println_warning("No deployable package was found in the current directory.");
+    } else {
+        deployed_packages.extend(
+            deploy_contracts(&command, &contracts_to_deploy)
+                .await?
+                .into_iter()
+                .map(DeployedPackage::Contract),
+        );
+        deployed_packages.extend(
+            deploy_executables(&command, &scripts_to_deploy)
+                .await?
+                .into_iter()
+                .map(DeployedPackage::Script),
+        );
+        deployed_packages.extend(
+            deploy_executables(&command, &predicates_to_deploy)
+                .await?
+                .into_iter()
+                .map(DeployedPackage::Predicate),
+        );
+    }
+
+    Ok(deployed_packages)
+}
+
+/// Calculates the loader data offset. Returns a `None` if the original `binary`
+/// does not have a data section (no configurables and no args). Otherwise
+/// returns the new offset of the data section.
+fn loader_data_offset(binary: &[u8], blob_id: &BlobId) -> Result<Option<usize>> {
+    // The following code is taken from SDK, and once they expose the offsets
+    // we will no longer need to maintain this duplicate version here.
+
+    // The final code is going to have this structure (if the data section is non-empty):
+    // 1. loader instructions
+    // 2. blob id
+    // 3. length_of_data_section
+    // 4. the data_section (updated with configurables as needed)
+    const BLOB_ID_SIZE: u16 = 32;
+    const REG_ADDRESS_OF_DATA_AFTER_CODE: u8 = 0x10;
+    const REG_START_OF_LOADED_CODE: u8 = 0x11;
+    const REG_GENERAL_USE: u8 = 0x12;
+    let get_instructions = |num_of_instructions| {
+        // There are 3 main steps:
+        // 1. Load the blob content into memory
+        // 2. Load the data section right after the blob
+        // 3. Jump to the beginning of the memory where the blob was loaded
+        [
+            // 1. Load the blob content into memory
+            // Find the start of the hardcoded blob ID, which is located after the loader code ends.
+            op::move_(REG_ADDRESS_OF_DATA_AFTER_CODE, RegId::PC),
+            // hold the address of the blob ID.
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                num_of_instructions * Instruction::SIZE as u16,
+            ),
+            // The code is going to be loaded from the current value of SP onwards, save
+            // the location into REG_START_OF_LOADED_CODE so we can jump into it at the end.
+            op::move_(REG_START_OF_LOADED_CODE, RegId::SP),
+            // REG_GENERAL_USE to hold the size of the blob.
+            op::bsiz(REG_GENERAL_USE, REG_ADDRESS_OF_DATA_AFTER_CODE),
+            // Push the blob contents onto the stack.
+            op::ldc(REG_ADDRESS_OF_DATA_AFTER_CODE, 0, REG_GENERAL_USE, 1),
+            // Move on to the data section length
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                BLOB_ID_SIZE,
+            ),
+            // load the size of the data section into REG_GENERAL_USE
+            op::lw(REG_GENERAL_USE, REG_ADDRESS_OF_DATA_AFTER_CODE, 0),
+            // after we have read the length of the data section, we move the pointer to the actual
+            // data by skipping WORD_SIZE B.
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                WORD_SIZE as u16,
+            ),
+            // load the data section of the executable
+            op::ldc(REG_ADDRESS_OF_DATA_AFTER_CODE, 0, REG_GENERAL_USE, 2),
+            // Jump into the memory where the contract is loaded.
+            // What follows is called _jmp_mem by the sway compiler.
+            // Subtract the address contained in IS because jmp will add it back.
+            op::sub(
+                REG_START_OF_LOADED_CODE,
+                REG_START_OF_LOADED_CODE,
+                RegId::IS,
+            ),
+            // jmp will multiply by 4, so we need to divide to cancel that out.
+            op::divi(REG_START_OF_LOADED_CODE, REG_START_OF_LOADED_CODE, 4),
+            // Jump to the start of the contract we loaded.
+            op::jmp(REG_START_OF_LOADED_CODE),
+        ]
+    };
+
+    let offset = extract_data_offset(binary)?;
+
+    if binary.len() < offset {
+        anyhow::bail!("data sectio offset is out of bounds");
+    }
+
+    let data_section = binary[offset..].to_vec();
+
+    if !data_section.is_empty() {
+        let num_of_instructions = u16::try_from(get_instructions(0).len())
+            .expect("to never have more than u16::MAX instructions");
+
+        let instruction_bytes = get_instructions(num_of_instructions)
+            .into_iter()
+            .flat_map(|instruction| instruction.to_bytes());
+
+        let blob_bytes = blob_id.iter().copied();
+
+        let loader_offset =
+            instruction_bytes.count() + blob_bytes.count() + data_section.len().to_be_bytes().len();
+
+        Ok(Some(loader_offset))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Builds and deploys executable (script and predicate) package(s) as blobs,
+/// and generates a loader for each of them.
+pub async fn deploy_executables(
+    command: &cmd::Deploy,
+    executables_to_deploy: &[Arc<BuiltPackage>],
+) -> Result<Vec<DeployedExecutable>> {
+    let mut deployed_executable = vec![];
+    if executables_to_deploy.is_empty() {
+        return Ok(deployed_executable);
+    }
+
+    let node_url = validate_and_get_node_url(command, executables_to_deploy).await?;
+    // We will have 1 transaction per executable as each deployment uses a single blob.
+    let tx_count = executables_to_deploy.len();
+    let account = setup_deployment_account(command, &node_url, tx_count).await?;
+
+    for pkg in executables_to_deploy {
+        let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
+        let loader = script.convert_to_loader()?;
+        println_action_green("Uploading", "blob containing executable bytecode.");
+        loader.upload_blob(account.clone()).await?;
+        println_action_green("Generating", "loader bytecode for the uploaded executable.");
+        let loader_bytecode = loader.code();
+        let pkg_name = &pkg.descriptor.name;
+        let out_dir = pkg.descriptor.manifest_file.dir().join("out");
+        let bin_path = out_dir.join(format!("{pkg_name}-loader.bin"));
+        std::fs::write(&bin_path, &loader_bytecode)?;
+        println_action_green(
+            "Saved",
+            &format!("loader bytecode at {}", bin_path.display()),
+        );
+        if let Some(loader_data_section_offset) =
+            loader_data_offset(&pkg.bytecode.bytes, &BlobId::default())?
+        {
+            if let ProgramABI::Fuel(mut fuel_abi) = pkg.program_abi.clone() {
+                println_action_green("Generating", "loader abi for the uploaded executable.");
+                let json_abi_path = out_dir.join(format!("{pkg_name}-loader-abi.json"));
+                let original_data_section = extract_data_offset(&pkg.bytecode.bytes).unwrap();
+                let offset_shift = original_data_section - loader_data_section_offset;
+                // if there are configurables in the abi we need to shift them by `offset_shift`.
+                let configurables = fuel_abi.configurables.clone().map(|configs| {
+                    configs
+                        .into_iter()
+                        .map(|config| Configurable {
+                            offset: config.offset - offset_shift as u64,
+                            ..config.clone()
+                        })
+                        .collect()
+                });
+                fuel_abi.configurables = configurables;
+                let json_string = serde_json::to_string_pretty(&fuel_abi)?;
+                std::fs::write(json_abi_path, json_string)?;
+            }
+        }
+        // If the executable is a predicate, we also want to display and save the predicate root.
+        if pkg
+            .descriptor
+            .manifest_file
+            .program_type()
+            .with_context(|| {
+                "error while trying to retrieve program type for executable deployment."
+            })?
+            == TreeType::Predicate
+        {
+            // Calculate the root.
+            let root = format!("0x{}", fuel_tx::Input::predicate_owner(&loader_bytecode));
+            // Root files are named in `pkg-name-root` format, since this is a
+            // loader we are also adding an identifier to differentiate it from
+            // the root of the "original" predicate.
+            let root_file_name = format!("{}-loader-root", &pkg_name);
+            let root_path = out_dir.join(root_file_name);
+            std::fs::write(&root_path, &root)?;
+            println_action_green(
+                "Saved",
+                &format!("loader root ({}) at {}", root, root_path.display()),
+            );
+        }
+        let deployed = DeployedExecutable {
+            bytecode: loader_bytecode,
+        };
+        deployed_executable.push(deployed);
+        println_action_green("Finished", &format!("deploying executable {pkg_name}"));
+    }
+    Ok(deployed_executable)
+}
+
+fn extract_data_offset(binary: &[u8]) -> Result<usize> {
+    if binary.len() < 16 {
+        anyhow::bail!(
+            "given binary is too short to contain a data offset, len: {}",
+            binary.len()
+        );
+    }
+
+    let data_offset: [u8; 8] = binary[8..16].try_into().expect("checked above");
+
+    Ok(u64::from_be_bytes(data_offset) as usize)
+}
+
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
 /// will be built and deployed.
 ///
 /// Upon success, returns the ID of each deployed contract in order of deployment.
 ///
 /// When deploying a single contract, only that contract's ID is returned.
-pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
-    if command.unsigned {
-        println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
-    }
+pub async fn deploy_contracts(
+    command: &cmd::Deploy,
+    contracts_to_deploy: &[Arc<BuiltPackage>],
+) -> Result<Vec<DeployedContract>> {
+    let mut deployed_contracts = Vec::new();
 
-    let mut contract_ids = Vec::new();
-    let curr_dir = if let Some(ref path) = command.pkg.path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-
-    let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
-
-    if built_pkgs.is_empty() {
-        println_warning("No deployable contracts found in the current directory.");
-        return Ok(contract_ids);
+    if contracts_to_deploy.is_empty() {
+        return Ok(deployed_contracts);
     }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
         // If we're building 1 package, we just parse the salt as a string, ie. 0x00...
         // If we're building >1 package, we must parse the salt as a pair of strings, ie. contract_name:0x00...
-        if built_pkgs.len() > 1 {
+        if contracts_to_deploy.len() > 1 {
             let map = validate_and_parse_salts(
                 salt_input,
-                built_pkgs.iter().map(|b| &b.descriptor.manifest_file),
+                contracts_to_deploy
+                    .iter()
+                    .map(|b| &b.descriptor.manifest_file),
             )?;
 
             Some(map)
@@ -163,7 +593,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 .unwrap();
             let mut contract_salt_map = ContractSaltMap::default();
             contract_salt_map.insert(
-                built_pkgs[0]
+                contracts_to_deploy[0]
                     .descriptor
                     .manifest_file
                     .project_name()
@@ -176,167 +606,294 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
-    for pkg in built_pkgs {
-        if pkg
-            .descriptor
-            .manifest_file
-            .check_program_type(&[TreeType::Contract])
-            .is_ok()
-        {
-            let salt = match (&contract_salt_map, command.default_salt) {
-                (Some(map), false) => {
-                    if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
-                        *salt
+    let node_url = validate_and_get_node_url(command, contracts_to_deploy).await?;
+    let provider = Provider::connect(node_url.clone()).await?;
+
+    // Confirmation step. Summarize the transaction(s) for the deployment.
+    let account = confirm_transaction_details(
+        contracts_to_deploy,
+        command,
+        node_url.clone(),
+        MAX_CONTRACT_SIZE,
+    )
+    .await?;
+
+    for pkg in contracts_to_deploy {
+        let salt = match (&contract_salt_map, command.default_salt) {
+            (Some(map), false) => {
+                if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
+                    *salt
+                } else {
+                    Default::default()
+                }
+            }
+            (None, true) => Default::default(),
+            (None, false) => rand::random(),
+            (Some(_), true) => {
+                bail!("Both `--salt` and `--default-salt` were specified: must choose one")
+            }
+        };
+        let bytecode_size = pkg.bytecode.bytes.len();
+        let deployed_contract_id = if bytecode_size > MAX_CONTRACT_SIZE {
+            // Deploy chunked
+            let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
+            let provider = Provider::connect(node_url).await?;
+
+            deploy_chunked(
+                command,
+                pkg,
+                salt,
+                &account,
+                &provider,
+                &pkg.descriptor.name,
+            )
+            .await?
+        } else {
+            deploy_pkg(command, pkg, salt, &provider, &account).await?
+        };
+
+        let proxy_id = match &pkg.descriptor.manifest_file.proxy {
+            Some(forc_pkg::manifest::Proxy {
+                enabled: true,
+                address: Some(proxy_addr),
+            }) => {
+                // Make a call into the contract to update impl contract address to 'deployed_contract'.
+
+                // Create a contract instance for the proxy contract using default proxy contract abi and
+                // specified address.
+                let proxy_contract =
+                    ContractId::from_str(proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
+
+                update_proxy_contract_target(&account, proxy_contract, deployed_contract_id)
+                    .await?;
+                Some(proxy_contract)
+            }
+            Some(forc_pkg::manifest::Proxy {
+                enabled: true,
+                address: None,
+            }) => {
+                let pkg_name = &pkg.descriptor.name;
+                let pkg_storage_slots = &pkg.storage_slots;
+                // Deploy a new proxy contract.
+                let deployed_proxy_contract = deploy_new_proxy(
+                    command,
+                    pkg_name,
+                    pkg_storage_slots,
+                    &deployed_contract_id,
+                    &provider,
+                    &account,
+                )
+                .await?;
+
+                // Update manifest file such that the proxy address field points to the new proxy contract.
+                update_proxy_address_in_manifest(
+                    &format!("0x{}", deployed_proxy_contract),
+                    &pkg.descriptor.manifest_file,
+                )?;
+                Some(deployed_proxy_contract)
+            }
+            // Proxy not enabled.
+            _ => None,
+        };
+
+        let deployed_contract = DeployedContract {
+            id: deployed_contract_id,
+            proxy: proxy_id,
+            chunked: bytecode_size > MAX_CONTRACT_SIZE,
+        };
+        deployed_contracts.push(deployed_contract);
+    }
+    Ok(deployed_contracts)
+}
+
+/// Prompt the user to confirm the transactions required for deployment, as well as the signing key.
+async fn confirm_transaction_details(
+    pkgs_to_deploy: &[Arc<BuiltPackage>],
+    command: &cmd::Deploy,
+    node_url: String,
+    max_contract_size: usize,
+) -> Result<ForcClientAccount> {
+    // Confirmation step. Summarize the transaction(s) for the deployment.
+    let mut tx_count = 0;
+    let tx_summary = pkgs_to_deploy
+        .iter()
+        .map(|pkg| {
+            tx_count += 1;
+            let proxy_text = match &pkg.descriptor.manifest_file.proxy {
+                Some(forc_pkg::manifest::Proxy {
+                    enabled: true,
+                    address,
+                }) => {
+                    tx_count += 1;
+                    if address.is_some() {
+                        " + update proxy"
                     } else {
-                        Default::default()
+                        " + deploy proxy"
                     }
                 }
-                (None, true) => Default::default(),
-                (None, false) => rand::random(),
-                (Some(_), true) => {
-                    bail!("Both `--salt` and `--default-salt` were specified: must choose one")
-                }
+                _ => "",
             };
-            let contract_id =
-                deploy_pkg(&command, &pkg.descriptor.manifest_file, &pkg, salt).await?;
-            contract_ids.push(contract_id);
-        }
-    }
-    Ok(contract_ids)
+
+            let pkg_bytecode_len = pkg.bytecode.bytes.len();
+            let blob_text = if pkg_bytecode_len > max_contract_size {
+                let number_of_blobs = pkg_bytecode_len.div_ceil(max_contract_size);
+                tx_count += number_of_blobs;
+                &format!(" + {number_of_blobs} blobs")
+            } else {
+                ""
+            };
+
+            format!(
+                "deploy {}{blob_text}{proxy_text}",
+                pkg.descriptor.manifest_file.project_name()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" + ");
+
+    println_action_green("Confirming", &format!("transactions [{tx_summary}]"));
+    println_action_green("", &format!("Network: {node_url}"));
+
+    let account = setup_deployment_account(command, &node_url, tx_count).await?;
+
+    // TODO: Display the estimated gas cost of the transaction(s).
+    // https://github.com/FuelLabs/sway/issues/6277
+
+    Ok(account)
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
 pub async fn deploy_pkg(
     command: &cmd::Deploy,
-    manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
     salt: Salt,
-) -> Result<DeployedContract> {
-    let node_url = get_node_url(&command.node, &manifest.network)?;
-    let client = FuelClient::new(node_url.clone())?;
+    provider: &Provider,
+    account: &ForcClientAccount,
+) -> Result<fuel_tx::ContractId> {
+    let manifest = &compiled.descriptor.manifest_file;
+    let node_url = provider.url();
+    let client = FuelClient::new(node_url)?;
 
     let bytecode = &compiled.bytecode.bytes;
 
-    let mut storage_slots =
-        if let Some(storage_slot_override_file) = &command.override_storage_slots {
-            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
-            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
-            storage_slots
-        } else {
-            compiled.storage_slots.clone()
-        };
-    storage_slots.sort();
-
+    let storage_slots = resolve_storage_slots(command, compiled)?;
     let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
+    let tx_policies = tx_policies_from_cmd(command);
 
-    let wallet_mode = if command.manual_signing {
-        WalletSelectionMode::Manual
-    } else {
-        WalletSelectionMode::ForcWallet
-    };
+    let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
+        bytecode.clone(),
+        contract_id,
+        state_root,
+        salt,
+        storage_slots.clone(),
+        tx_policies,
+    );
 
-    let provider = Provider::connect(node_url.clone()).await?;
+    account.add_witnesses(&mut tb)?;
+    account.adjust_for_fee(&mut tb, 0).await?;
 
-    // We need a tx for estimation without the signature.
-    let mut tb =
-        TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone());
-    tb.maturity(command.maturity.maturity.into())
-        .add_output(Output::contract_created(contract_id, state_root));
-    let tx_for_estimation = tb.finalize_without_signature_inner();
-
-    // If user specified max_fee use that but if not, we will estimate with %10 safety margin.
-    let max_fee = if let Some(max_fee) = command.gas.max_fee {
-        max_fee
-    } else {
-        let estimation_margin = 10;
-        get_estimated_max_fee(
-            tx_for_estimation.clone(),
-            &provider,
-            &client,
-            estimation_margin,
-        )
-        .await?
-    };
-
-    let tx = tb
-        .max_fee_limit(max_fee)
-        .finalize_signed(
-            provider.clone(),
-            command.default_signer || command.unsigned,
-            command.signing_key,
-            wallet_mode,
-        )
-        .await?;
+    let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);
 
-    let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
+    let chain_info = client.chain_info().await?;
+    let chain_id = chain_info.consensus_parameters.chain_id();
 
-    let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
-        Ok(logs) => match logs {
-            TransactionStatus::Submitted { .. } => {
-                bail!("contract {} deployment timed out", &contract_id);
-            }
-            TransactionStatus::Success { block_height, .. } => {
-                let pkg_name = manifest.project_name();
-                info!("\n\nContract {pkg_name} Deployed!");
-
-                info!("\nNetwork: {node_url}");
-                info!("Contract ID: 0x{contract_id}");
-                info!("Deployed in block {}", &block_height);
-
+    // If only submitting the transaction, don't wait for the deployment to complete
+    let contract_id: ContractId = if command.submit_only {
+        match client.submit(&tx).await {
+            Ok(transaction_id) => {
                 // Create a deployment artifact.
-                let deployment_size = bytecode.len();
-                let deployment_artifact = DeploymentArtifact {
-                    transaction_id: format!("0x{}", tx.id(&chain_id)),
-                    salt: format!("0x{}", salt),
-                    network_endpoint: node_url.to_string(),
-                    chain_id,
-                    contract_id: format!("0x{}", contract_id),
-                    deployment_size,
-                    deployed_block_height: *block_height,
-                };
+                create_deployment_artifact(
+                    DeploymentArtifact {
+                        transaction_id: format!("0x{}", transaction_id),
+                        salt: format!("0x{}", salt),
+                        network_endpoint: node_url.to_string(),
+                        chain_id,
+                        contract_id: format!("0x{}", contract_id),
+                        deployment_size: bytecode.len(),
+                        deployed_block_height: None,
+                    },
+                    command,
+                    manifest,
+                    chain_info,
+                )?;
 
-                let output_dir = command
-                    .pkg
-                    .output_directory
-                    .as_ref()
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|| default_output_directory(manifest.dir()))
-                    .join("deployments");
-                deployment_artifact.to_file(&output_dir, pkg_name, contract_id)?;
-
-                Ok(contract_id)
+                contract_id
             }
-            e => {
+            Err(e) => {
                 bail!(
                     "contract {} failed to deploy due to an error: {:?}",
                     &contract_id,
                     e
                 )
             }
-        },
-        Err(e) => bail!("{e}"),
-    });
+        }
+    } else {
+        let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
+            Ok(logs) => match logs {
+                TransactionStatus::Submitted { .. } => {
+                    bail!("contract {} deployment timed out", &contract_id);
+                }
+                TransactionStatus::Success { block_height, .. } => {
+                    // Create a deployment artifact.
+                    create_deployment_artifact(
+                        DeploymentArtifact {
+                            transaction_id: format!("0x{}", tx.id(&chain_id)),
+                            salt: format!("0x{}", salt),
+                            network_endpoint: node_url.to_string(),
+                            chain_id,
+                            contract_id: format!("0x{}", contract_id),
+                            deployment_size: bytecode.len(),
+                            deployed_block_height: Some(*block_height),
+                        },
+                        command,
+                        manifest,
+                        chain_info,
+                    )?;
 
-    // submit contract deployment with a timeout
-    let contract_id = tokio::time::timeout(
-        Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
-        deployment_request,
-    )
-    .await
-    .with_context(|| {
-        format!(
-            "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
-            &contract_id
+                    Ok(contract_id)
+                }
+                e => {
+                    bail!(
+                        "contract {} failed to deploy due to an error: {:?}",
+                        &contract_id,
+                        e
+                    )
+                }
+            },
+            Err(e) => bail!("{e}"),
+        });
+        tokio::time::timeout(
+            Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
+            deployment_request,
         )
-    })??;
-    Ok(DeployedContract { id: contract_id })
+            .await
+            .with_context(|| {
+                format!(
+                    "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
+                    &contract_id
+                )
+            })??
+    };
+
+    Ok(contract_id)
 }
 
-fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
+fn tx_policies_from_cmd(cmd: &cmd::Deploy) -> TxPolicies {
+    let mut tx_policies = TxPolicies::default();
+    if let Some(max_fee) = cmd.gas.max_fee {
+        tx_policies = tx_policies.with_max_fee(max_fee);
+    }
+    if let Some(script_gas_limit) = cmd.gas.script_gas_limit {
+        tx_policies = tx_policies.with_script_gas_limit(script_gas_limit);
+    }
+    tx_policies
+}
+
+fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> pkg::BuildOpts {
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.pkg.path.clone(),
@@ -344,7 +901,6 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
-            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
             ipfs_node: cmd.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
@@ -353,6 +909,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             asm: cmd.print.asm(),
             bytecode: cmd.print.bytecode,
+            bytecode_spans: false,
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
@@ -369,13 +926,100 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         build_target: BuildTarget::default(),
         tests: false,
-        member_filter: pkg::MemberFilter::only_contracts(),
+        member_filter,
         experimental: ExperimentalFlags {
             new_encoding: !cmd.no_encoding_v1,
         },
     }
 }
 
+/// Creates a deployment artifact and writes it to a file.
+///
+/// This function is used to generate a deployment artifact containing details
+/// about the deployment, such as the transaction ID, salt, network endpoint,
+/// chain ID, contract ID, deployment size, and deployed block height. It then
+/// writes this artifact to a specified output directory.
+fn create_deployment_artifact(
+    deployment_artifact: DeploymentArtifact,
+    cmd: &cmd::Deploy,
+    manifest: &PackageManifestFile,
+    chain_info: ChainInfo,
+) -> Result<()> {
+    let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
+    let pkg_name = manifest.project_name();
+
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
+    let (contract_url, block_url) = match target.explorer_url() {
+        Some(explorer_url) => (
+            format!("{explorer_url}/contract/0x"),
+            format!("{explorer_url}/block/"),
+        ),
+        None => ("".to_string(), "".to_string()),
+    };
+    println_action_green(
+        "Finished",
+        &format!("deploying {pkg_name} {contract_url}{contract_id}"),
+    );
+
+    let block_height = deployment_artifact.deployed_block_height;
+    if let Some(block_height) = block_height {
+        println_action_green("Deployed", &format!("in block {block_url}{block_height}"));
+    }
+
+    let output_dir = cmd
+        .pkg
+        .output_directory
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_output_directory(manifest.dir()))
+        .join("deployments");
+    deployment_artifact.to_file(&output_dir, pkg_name, contract_id)
+}
+
+/// Validates that all packages are being deployed to the same node and returns the node URL.
+async fn validate_and_get_node_url(
+    command: &cmd::Deploy,
+    packages: &[Arc<BuiltPackage>],
+) -> Result<String> {
+    let node_url = get_node_url(&command.node, &packages[0].descriptor.manifest_file.network)?;
+    if !packages.iter().all(|pkg| {
+        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
+            == Some(node_url.clone())
+    }) {
+        bail!("All packages in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all packages is the same.");
+    }
+    Ok(node_url)
+}
+
+/// Sets up and returns the account for deployment.
+async fn setup_deployment_account(
+    command: &cmd::Deploy,
+    node_url: &str,
+    tx_count: usize,
+) -> Result<ForcClientAccount> {
+    let provider = Provider::connect(node_url).await?;
+
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        SignerSelectionMode::Manual
+    } else if let Some(arn) = &command.aws_kms_signer {
+        SignerSelectionMode::AwsSigner(arn.clone())
+    } else {
+        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
+        let password = prompt_forc_wallet_password()?;
+        SignerSelectionMode::ForcWallet(password)
+    };
+
+    let account = select_account(
+        &wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+        tx_count,
+    )
+    .await?;
+
+    Ok(account)
+}
 #[cfg(test)]
 mod test {
     use super::*;
