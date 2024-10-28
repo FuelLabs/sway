@@ -509,6 +509,50 @@ impl TypeParameter {
 
                 let code_block_first_pass = ctx.code_block_first_pass();
                 if !code_block_first_pass {
+                    // Tries to unify type id with a single existing trait implementation.
+                    // If more than one implementation exists we throw an error.
+                    // We only try to do the type inference from trait with a single trait constraint.
+                    if !type_id.is_concrete(engines, TreatNumericAs::Concrete) && trait_constraints.len() == 1 {
+                        let concrete_trait_type_ids : Vec<(TypeId, String)>= ctx
+                            .namespace_mut()
+                            .module(engines)
+                            .current_items()
+                            .implemented_traits
+                            .get_trait_constraints_are_satisfied_for_types(
+                                handler, *type_id, trait_constraints, engines,
+                            )?
+                            .into_iter()
+                            .filter_map(|t| {
+                                if t.0.is_concrete(engines, TreatNumericAs::Concrete) {
+                                    Some(t)
+                                } else {
+                                    None
+                                }
+                            }).collect();
+
+                        match concrete_trait_type_ids.len().cmp(&1) {
+                            Ordering::Equal => {
+                                ctx.engines.te().unify_with_generic(
+                                    handler,
+                                    engines,
+                                    *type_id,
+                                    concrete_trait_type_ids.first().unwrap().0,
+                                    access_span,
+                                    "Type parameter type does not match up with matched trait implementing type.",
+                                    None,
+                                );
+                            }
+                            Ordering::Greater => {
+                                return Err(handler.emit_err(CompileError::MultipleImplsSatisfyingTraitForType{
+                                    span:access_span.clone(),
+                                    type_annotation: engines.help_out(type_id).to_string(),
+                                    trait_names: trait_constraints.iter().map(|t| engines.help_out(t).to_string()).collect(),
+                                    trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
+                                }));
+                            }
+                            Ordering::Less => {}
+                        }
+                    }
                     // Check to see if the trait constraints are satisfied.
                     match ctx
                         .namespace_mut()

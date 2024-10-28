@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-599A6910FBBA5980"
+
+[[package]]
+name = "std"
+source = "path+from-root-599A6910FBBA5980"
+dependencies = ["core"]
+
+[[package]]
+name = "trait_inference_multiple_options"
+source = "member"
+dependencies = ["std"]
