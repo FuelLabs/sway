@@ -302,6 +302,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Profile the build process.
+    pub profile: bool,
     /// If set, outputs compilation metrics info in JSON format.
     pub metrics_outfile: Option<String>,
     /// Warnings must be treated as compiler errors.
@@ -1564,6 +1566,7 @@ pub fn sway_build_config(
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
+    .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
     .with_optimization_level(build_profile.optimization_level)
     .with_experimental(sway_core::ExperimentalFlags {
@@ -1962,15 +1965,14 @@ pub fn compile(
         warnings,
         metrics,
     };
-
-    #[cfg(feature = "profiler")]
-    report_assembly_information(&asm, &compiled_package);
+    if sway_build_config.profile {
+        report_assembly_information(&asm, &compiled_package);
+    }
 
     Ok(compiled_package)
 }
 
 /// Reports assembly information for a compiled package to an external `dyno` process through `stdout`.
-#[cfg(feature = "profiler")]
 fn report_assembly_information(
     compiled_asm: &sway_core::CompiledAsm,
     compiled_package: &CompiledPackage,
@@ -2123,6 +2125,7 @@ fn build_profile_from_opts(
         pkg,
         print,
         time_phases,
+        profile: profile_opt,
         build_profile,
         release,
         metrics_outfile,
@@ -2164,6 +2167,7 @@ fn build_profile_from_opts(
     profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
+    profile.profile |= profile_opt;
     if profile.metrics_outfile.is_none() {
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
