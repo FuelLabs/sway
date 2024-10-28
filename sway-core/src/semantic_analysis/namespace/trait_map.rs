@@ -1404,7 +1404,6 @@ impl TraitMap {
                             } else {
                                 Some(suffix.args.to_vec())
                             },
-                            root_type_id: None,
                         },
                         suffix.name.span().source_id(),
                     );
@@ -1431,7 +1430,6 @@ impl TraitMap {
                         } else {
                             Some(constraint_type_arguments.clone())
                         },
-                        root_type_id: None,
                     },
                     constraint_trait_name.span().source_id(),
                 );
@@ -1472,7 +1470,6 @@ impl TraitMap {
                     if let TypeInfo::Custom {
                         qualified_call_path: _,
                         type_arguments: Some(type_arguments),
-                        root_type_id: _,
                     } = &*type_engine.get(*constraint_type_id)
                     {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));

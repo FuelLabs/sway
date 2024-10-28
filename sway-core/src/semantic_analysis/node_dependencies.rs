@@ -791,21 +791,14 @@ impl Dependencies {
             TypeInfo::Custom {
                 qualified_call_path: name,
                 type_arguments,
-                root_type_id,
             } => {
                 self.deps
                     .insert(DependentSymbol::Symbol(name.clone().call_path.suffix));
-                let s = match type_arguments {
+                match type_arguments {
                     Some(type_arguments) => {
                         self.gather_from_type_arguments(engines, type_arguments)
                     }
                     None => self,
-                };
-                match root_type_id {
-                    Some(root_type_id) => {
-                        s.gather_from_typeinfo(engines, &engines.te().get(*root_type_id))
-                    }
-                    None => s,
                 }
             }
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
