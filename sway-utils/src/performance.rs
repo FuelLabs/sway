@@ -29,19 +29,13 @@ pub struct FunctionEntryPoint {
 macro_rules! time_expr {
     ($pkg_name:expr, $description:expr, $key:expr, $expression:expr, $build_config:expr, $data:expr) => {{
         use std::io::{BufRead, Read, Write};
-        #[cfg(feature = "profiler")]
         if let Some(cfg) = $build_config {
-            println!("/dyno start {} {}", $pkg_name, $description);
-            let output = { $expression };
-            println!("/dyno stop {} {}", $pkg_name, $description);
-            output
-        } else {
-            $expression
-        }
-
-        #[cfg(not(feature = "profiler"))]
-        if let Some(cfg) = $build_config {
-            if cfg.time_phases || cfg.metrics_outfile.is_some() {
+            if cfg.profile {
+                println!("/dyno start {} {}", $pkg_name, $description);
+                let output = { $expression };
+                println!("/dyno stop {} {}", $pkg_name, $description);
+                output
+            } else if cfg.time_phases || cfg.metrics_outfile.is_some() {
                 let expr_start = std::time::Instant::now();
                 let output = { $expression };
                 let elapsed = expr_start.elapsed();
@@ -69,6 +63,7 @@ macro_rules! time_expr {
             } else {
                 $expression
             }
+            
         } else {
             $expression
         }
