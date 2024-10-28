@@ -1,15 +1,16 @@
 use std::path::PathBuf;
 
 use itertools::Itertools;
+use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_arg_demotion_pass, create_ccp_pass, create_const_demotion_pass,
     create_const_folding_pass, create_cse_pass, create_dce_pass, create_dom_fronts_pass,
     create_dominators_pass, create_escaped_symbols_pass, create_mem2reg_pass,
     create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, metadata_to_inline, optimize as opt,
-    register_known_passes, Context, ExperimentalFlags, Function, IrError, PassGroup, PassManager,
-    Value, DCE_NAME, FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME,
-    MEM2REG_NAME, SROA_NAME,
+    register_known_passes, Context, Function, IrError, PassGroup, PassManager, Value, DCE_NAME,
+    FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME,
+    SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -26,17 +27,16 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input_bytes = std::fs::read(&path).unwrap();
         let input = String::from_utf8_lossy(&input_bytes);
 
-        let mut ir = sway_ir::parser::parse(
-            &input,
-            &source_engine,
-            ExperimentalFlags {
-                new_encoding: false,
+        let experimental = ExperimentalFeatures {
+            new_encoding: false,
+        };
+
+        let mut ir = sway_ir::parser::parse(&input, &source_engine, experimental).unwrap_or_else(
+            |parse_err| {
+                println!("{}: {parse_err}", path.display());
+                panic!()
             },
-        )
-        .unwrap_or_else(|parse_err| {
-            println!("{}: {parse_err}", path.display());
-            panic!()
-        });
+        );
 
         let first_line = input.split('\n').next().unwrap();
 
@@ -122,13 +122,8 @@ fn run_ir_verifier_tests(sub_dir: &str) {
             }
         };
 
-        let parse_result = sway_ir::parser::parse(
-            &input,
-            &source_engine,
-            ExperimentalFlags {
-                new_encoding: false,
-            },
-        );
+        let parse_result =
+            sway_ir::parser::parse(&input, &source_engine, ExperimentalFeatures::default());
 
         match parse_result {
             Ok(_) => {

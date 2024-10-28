@@ -23,6 +23,7 @@ serde.workspace = true
 serde_json.workspace = true
 shellfish = { workspace = true, features = ["async", "rustyline", "tokio"] }
 sway-core.workspace = true
+sway-features.workspace = true
 sway-types.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = [
