@@ -995,6 +995,7 @@ impl ty::TyExpression {
         /// Returns the position of the first match arm that is an "interior" arm, meaning:
         ///  - arm is a catch-all arm
         ///  - arm is not the last match arm
+        ///
         /// or `None` if such arm does not exist.
         /// Note that the arm can be the first arm.
         fn interior_catch_all_arm_position(arms_reachability: &[ReachableReport]) -> Option<usize> {
@@ -1243,19 +1244,19 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx
-            .namespace()
-            .resolve_root_symbol(
-                handler,
-                engines,
-                &storage_key_mod_path,
-                &storage_key_ident,
-                None,
-            )?
-            .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
+        let storage_key_decl = ctx.namespace().root().resolve_symbol(
+            handler,
+            engines,
+            &storage_key_mod_path,
+            &storage_key_ident,
+            None,
+        )?;
+
+        let storage_key_struct_decl_id = storage_key_decl
+            .expect_typed()
+            .to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
-            (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
+            (*decl_engine.get_struct(&storage_key_struct_decl_id)).clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1281,7 +1282,7 @@ impl ty::TyExpression {
         let storage_key_struct_decl_ref = decl_engine.insert(
             storage_key_struct_decl,
             decl_engine
-                .get_parsed_decl_id(&storage_key_struct_decl_ref)
+                .get_parsed_decl_id(&storage_key_struct_decl_id)
                 .as_ref(),
         );
         access_type = type_engine.insert(
@@ -2899,7 +2900,7 @@ fn check_asm_block_validity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Engines, ExperimentalFlags};
+    use crate::{Engines, ExperimentalFeatures};
     use sway_error::type_error::TypeError;
     use symbol_collection_context::SymbolCollectionContext;
 
@@ -2908,7 +2909,7 @@ mod tests {
         engines: &Engines,
         expr: &Expression,
         type_annotation: TypeId,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let collection_ctx_ns = Namespace::new();
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
@@ -2952,9 +2953,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         )?;
         expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
         Ok(expr)
@@ -3094,9 +3093,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

@@ -223,6 +223,7 @@ use std::{
     constants::DEFAULT_SUB_ID,
     context::msg_amount,
     string::String,
+    contract_id::ContractId
 };
 
 configurable {
@@ -408,7 +409,8 @@ use std::{
     },
     context::this_balance,
     storage::storage_string::*,
-    string::String
+    string::String,
+    contract_id::ContractId
 };
 
 storage {
