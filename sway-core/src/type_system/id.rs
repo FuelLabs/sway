@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 use indexmap::IndexMap;
 use sway_error::{
     error::CompileError,
