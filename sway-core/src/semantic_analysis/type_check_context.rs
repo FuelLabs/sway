@@ -19,7 +19,8 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeSubstMap, UnifyCheck,
+    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
+    UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -1298,6 +1299,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
+        trait_type_parameters: Vec<TypeParameter>,
         type_id: TypeId,
         items: &[ty::TyImplItem],
         impl_span: &Span,
@@ -1321,6 +1323,7 @@ impl<'a> TypeCheckContext<'a> {
                 handler,
                 full_trait_name,
                 trait_type_args,
+                trait_type_parameters,
                 type_id,
                 &items,
                 impl_span,

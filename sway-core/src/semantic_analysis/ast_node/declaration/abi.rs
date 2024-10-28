@@ -426,6 +426,7 @@ impl ty::TyAbiDecl {
                 &Handler::default(),
                 CallPath::ident_to_fullpath(self.name.clone(), ctx.namespace()),
                 vec![],
+                vec![],
                 type_id,
                 &all_items,
                 &self.span,
