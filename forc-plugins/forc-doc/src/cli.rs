@@ -53,7 +53,6 @@ pub struct Command {
     #[cfg(test)]
     pub(crate) doc_path: Option<String>,
 
-    /// Disable the "new encoding" feature
-    #[clap(long)]
-    pub no_encoding_v1: bool,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
