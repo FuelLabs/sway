@@ -38,31 +38,17 @@ pub fn resolve_type(
         TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
-            root_type_id,
         } => {
-            let type_decl_opt = if let Some(root_type_id) = root_type_id {
-                resolve_call_path_and_root_type_id(
-                    handler,
-                    engines,
-                    namespace.module(engines),
-                    root_type_id,
-                    None,
-                    &qualified_call_path.clone().to_call_path(handler)?,
-                    self_type,
-                )
-                .ok()
-            } else {
-                resolve_qualified_call_path(
-                    handler,
-                    engines,
-                    namespace,
-                    module_path,
-                    &qualified_call_path,
-                    self_type,
-                    subst_ctx,
-                )
-                .ok()
-            };
+            let type_decl_opt = resolve_qualified_call_path(
+                handler,
+                engines,
+                namespace,
+                module_path,
+                &qualified_call_path,
+                self_type,
+                subst_ctx,
+            )
+            .ok();
             type_decl_opt_to_type_id(
                 handler,
                 engines,
@@ -367,6 +353,9 @@ pub fn decl_to_type_info(
                     )));
                 }
                 (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
+            }
+            ty::TyDecl::GenericTypeForFunctionScope(decl) => {
+                (*engines.te().get(decl.type_id)).clone()
             }
             _ => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
