@@ -213,7 +213,7 @@ impl TypeParameter {
             // Type check trait constraints only after type checking all type parameters.
             // This is required because a trait constraint may use other type parameters.
             // Ex: `struct Struct2<A, B> where A : MyAdd<B>`
-            for type_param in &new_type_params {
+            for type_param in new_type_params.iter_mut() {
                 TypeParameter::type_check_trait_constraints(handler, ctx.by_ref(), type_param)?;
             }
 
@@ -327,7 +327,7 @@ impl TypeParameter {
     fn type_check_trait_constraints(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        type_parameter: &TypeParameter,
+        type_parameter: &mut TypeParameter,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
@@ -371,6 +371,8 @@ impl TypeParameter {
                 source_id: type_parameter.name_ident.span().source_id().copied(),
             },
         );
+
+        type_parameter.trait_constraints = trait_constraints_with_supertraits;
 
         // Insert the trait constraints into the namespace.
         type_parameter.insert_into_namespace_constraints(handler, ctx.by_ref())?;
