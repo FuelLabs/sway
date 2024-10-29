@@ -50,13 +50,10 @@ fn is_sway_fence(s: &str) -> bool {
     let mut seen_sway_tags = false;
     let mut seen_other_tags = false;
 
-    let tokens = s
-        .trim()
-        .split(|c| matches!(c, ',' | ' ' | '\t'))
-        .filter_map(|t| {
-            let t = t.trim();
-            (!t.is_empty()).then_some(t)
-        });
+    let tokens = s.trim().split([',', ' ', '\t']).filter_map(|t| {
+        let t = t.trim();
+        (!t.is_empty()).then_some(t)
+    });
 
     for token in tokens {
         match token {

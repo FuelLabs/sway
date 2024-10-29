@@ -13,11 +13,13 @@ use sway_core::{
 };
 use sway_error::handler::Handler;
 
+use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    create_fn_inline_pass, register_known_passes, ExperimentalFlags, PassGroup, PassManager,
-    ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
-    RET_DEMOTION_NAME,
+    create_fn_inline_pass, register_known_passes, PassGroup, PassManager, ARG_DEMOTION_NAME,
+    CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
 };
+
+use crate::RunConfig;
 
 enum Checker {
     Ir,
@@ -166,11 +168,8 @@ fn pretty_print_error_report(error: &str) {
 pub(super) async fn run(
     filter_regex: Option<&regex::Regex>,
     verbose: bool,
-    mut experimental: ExperimentalFlags,
+    run_config: &RunConfig,
 ) -> Result<()> {
-    // TODO the way modules are built for these tests, new_encoding is not working.
-    experimental.new_encoding = false;
-
     // Create new initial namespace for every test by reusing the precompiled
     // standard libraries. The namespace, thus its root module, must have the
     // name set.
@@ -180,7 +179,7 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(core_lib_name, build_target, &engines, experimental);
+    let core_lib = compile_core(core_lib_name, build_target, &engines, run_config);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -223,15 +222,17 @@ pub(super) async fn run(
                 let test_file_name = path.file_name().unwrap().to_string_lossy().to_string();
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
+                let experimental = ExperimentalFeatures {
+                    new_encoding: false, // IR tests still need encoding v1 off
+                };
+
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
                 // no span metadata.
                 let bld_cfg = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
-                ).with_experimental(sway_core::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding,
-                });
+                );
 
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.with_include_tests(true);
@@ -247,6 +248,7 @@ pub(super) async fn run(
                     Some(&bld_cfg),
                     PACKAGE_NAME,
                     None,
+                    experimental
                 );
                 let (errors, _warnings) = handler.consume();
                 if !errors.is_empty() {
@@ -274,9 +276,7 @@ pub(super) async fn run(
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(typed_program, include_tests, &engines, sway_core::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding,
-                })
+                let mut ir = compile_program(typed_program, include_tests, &engines, experimental)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let e = e[0].clone();
@@ -372,9 +372,7 @@ pub(super) async fn run(
                             let mut ir = sway_ir::parser::parse(
                                 &ir_output,
                                  engines.se(),
-                                 sway_ir::ExperimentalFlags {
-                                    new_encoding: experimental.new_encoding,
-                                }
+                                 experimental,
                                 )
                                 .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
 
@@ -469,9 +467,7 @@ pub(super) async fn run(
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
-                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), sway_ir::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding,
-                })
+                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), experimental)
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
@@ -530,7 +526,7 @@ fn compile_core(
     lib_name: sway_types::Ident,
     build_target: BuildTarget,
     engines: &Engines,
-    experimental: ExperimentalFlags,
+    run_config: &RunConfig,
 ) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
@@ -543,7 +539,7 @@ fn compile_core(
         disable_tests: false,
         locked: false,
         ipfs_node: None,
-        no_encoding_v1: !experimental.new_encoding,
+        experimental: run_config.experimental.clone(),
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {

@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::Arc,

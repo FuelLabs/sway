@@ -27,7 +27,13 @@ use crate::{
     TypeSubstMap, UnifyCheck,
 };
 
-use super::TryInsertingTraitImplOnFailure;
+/// Enum used to pass a value asking for insertion of type into trait map when an implementation
+/// of the trait cannot be found.
+#[derive(Debug)]
+pub enum TryInsertingTraitImplOnFailure {
+    Yes,
+    No,
+}
 
 #[derive(Clone)]
 pub enum CodeBlockFirstPass {
@@ -876,7 +882,7 @@ impl TraitMap {
                     },
             } in impls.iter()
             {
-                if !type_info.can_change(decl_engine) && *type_id == *map_type_id {
+                if !type_info.can_change(engines) && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
@@ -1398,7 +1404,6 @@ impl TraitMap {
                             } else {
                                 Some(suffix.args.to_vec())
                             },
-                            root_type_id: None,
                         },
                         suffix.name.span().source_id(),
                     );
@@ -1425,7 +1430,6 @@ impl TraitMap {
                         } else {
                             Some(constraint_type_arguments.clone())
                         },
-                        root_type_id: None,
                     },
                     constraint_trait_name.span().source_id(),
                 );
@@ -1466,7 +1470,6 @@ impl TraitMap {
                     if let TypeInfo::Custom {
                         qualified_call_path: _,
                         type_arguments: Some(type_arguments),
-                        root_type_id: _,
                     } = &*type_engine.get(*constraint_type_id)
                     {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));
@@ -1484,6 +1487,51 @@ impl TraitMap {
 
             Ok(())
         })
+    }
+
+    pub fn get_trait_constraints_are_satisfied_for_types(
+        &self,
+        _handler: &Handler,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+        engines: &Engines,
+    ) -> Result<Vec<(TypeId, String)>, ErrorEmitted> {
+        let _decl_engine = engines.de();
+        let unify_check = UnifyCheck::coercion(engines);
+        let unify_check_equality = UnifyCheck::non_dynamic_equality(engines);
+
+        let impls = self.get_impls(engines, type_id);
+        let impld_traits_type_ids: Vec<(TypeId, String)> = impls
+            .iter()
+            .filter_map(|e| {
+                let key = &e.key;
+                let mut res = None;
+                for constraint in constraints {
+                    if key.name.suffix.name == constraint.trait_name.suffix
+                        && key
+                            .name
+                            .suffix
+                            .args
+                            .iter()
+                            .zip(constraint.type_arguments.iter())
+                            .all(|(a1, a2)| unify_check_equality.check(a1.type_id, a2.type_id))
+                        && unify_check.check(type_id, key.type_id)
+                    {
+                        let name_type_args = if !key.name.suffix.args.is_empty() {
+                            format!("<{}>", engines.help_out(key.name.suffix.args.clone()))
+                        } else {
+                            "".to_string()
+                        };
+                        let name = format!("{}{}", key.name.suffix.name.as_str(), name_type_args);
+                        res = Some((key.type_id, name));
+                        break;
+                    }
+                }
+                res
+            })
+            .collect();
+
+        Ok(impld_traits_type_ids)
     }
 
     fn get_impls_mut(&mut self, engines: &Engines, type_id: TypeId) -> &mut im::Vector<TraitEntry> {
@@ -1542,6 +1590,8 @@ impl TraitMap {
             Contract => TypeRootFilter::Contract,
             ErrorRecovery(_) => TypeRootFilter::ErrorRecovery,
             Tuple(fields) => TypeRootFilter::Tuple(fields.len()),
+            UntypedEnum(decl_id) => TypeRootFilter::Enum(*decl_id),
+            UntypedStruct(decl_id) => TypeRootFilter::Struct(*decl_id),
             Enum(decl_id) => {
                 // TODO Remove unwrap once #6475 is fixed
                 TypeRootFilter::Enum(engines.de().get_parsed_decl_id(decl_id).unwrap())

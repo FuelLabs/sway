@@ -1370,6 +1370,7 @@ fn const_eval_intrinsic(
 mod tests {
     use super::*;
     use sway_error::handler::Handler;
+    use sway_features::ExperimentalFeatures;
     use sway_ir::Kind;
 
     /// This function validates if an expression can be converted to [Constant].
@@ -1388,12 +1389,7 @@ mod tests {
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
         let handler = Handler::default();
-        let mut context = Context::new(
-            engines.se(),
-            sway_ir::ExperimentalFlags {
-                new_encoding: false,
-            },
-        );
+        let mut context = Context::new(engines.se(), ExperimentalFeatures::default());
         let mut md_mgr = MetadataManager::default();
         let mut core_lib = namespace::Root::from(namespace::Module::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
@@ -1409,6 +1405,7 @@ mod tests {
             None,
             "test",
             None,
+            ExperimentalFeatures::default(),
         );
 
         let (errors, _warnings) = handler.consume();
