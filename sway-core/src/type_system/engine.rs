@@ -384,14 +384,13 @@ impl TypeEngine {
     /// call.
     pub(crate) fn new_placeholder(
         &self,
-        engines: &Engines,
         type_parameter: TypeParameter,
     ) -> TypeId {
-        self.new_placeholder_impl(engines, TypeInfo::Placeholder(type_parameter))
+        self.new_placeholder_impl(TypeInfo::Placeholder(type_parameter))
     }
 
-    fn new_placeholder_impl(&self, engines: &Engines, placeholder: TypeInfo) -> TypeId {
-        let source_id = self.get_placeholder_fallback_source_id(engines, &placeholder);
+    fn new_placeholder_impl(&self, placeholder: TypeInfo) -> TypeId {
+        let source_id = self.get_placeholder_fallback_source_id(&placeholder);
         let tsi = TypeSourceInfo {
             type_info: placeholder.into(),
             source_id,
@@ -500,7 +499,7 @@ impl TypeEngine {
     /// its [TypeId], or returns a [TypeId] of an existing shareable tuple type
     /// that corresponds to the tuple given by the `elements`.
     pub(crate) fn insert_tuple(&self, engines: &Engines, elements: Vec<TypeArgument>) -> TypeId {
-        let source_id = self.get_tuple_fallback_source_id(engines, &elements);
+        let source_id = self.get_tuple_fallback_source_id(&elements);
         let is_shareable_type = self.is_shareable_tuple(engines, &elements);
         let type_info = TypeInfo::Tuple(elements);
         self.insert_or_replace_type_source_info(
@@ -535,7 +534,7 @@ impl TypeEngine {
         elem_type: TypeArgument,
         length: Length,
     ) -> TypeId {
-        let source_id = self.get_array_fallback_source_id(engines, &elem_type, &length);
+        let source_id = self.get_array_fallback_source_id(&elem_type, &length);
         let is_shareable_type = self.is_shareable_array(engines, &elem_type, &length);
         let type_info = TypeInfo::Array(elem_type, length);
         self.insert_or_replace_type_source_info(
@@ -622,7 +621,7 @@ impl TypeEngine {
     /// call.
     pub(crate) fn new_alias(&self, engines: &Engines, name: Ident, ty: TypeArgument) -> TypeId {
         // The alias type shareability would be calculated as `!(false || true) ==>> false`.
-        let source_id = self.get_alias_fallback_source_id(engines, &name, &ty);
+        let source_id = self.get_alias_fallback_source_id(&name, &ty);
         let type_info = TypeInfo::Alias { name, ty };
         self.insert_or_replace_type_source_info(engines, type_info, source_id, false, None)
     }
@@ -640,7 +639,6 @@ impl TypeEngine {
         root_type_id: Option<TypeId>,
     ) -> TypeId {
         let source_id = self.get_custom_fallback_source_id(
-            engines,
             &qualified_call_path,
             &type_arguments,
             &root_type_id,
@@ -707,7 +705,7 @@ impl TypeEngine {
     /// its [TypeId], or returns a [TypeId] of an existing shareable slice type
     /// that corresponds to the slice given by the `elem_type`.
     pub(crate) fn insert_slice(&self, engines: &Engines, elem_type: TypeArgument) -> TypeId {
-        let source_id = self.get_slice_fallback_source_id(engines, &elem_type);
+        let source_id = self.get_slice_fallback_source_id(&elem_type);
         let is_shareable_type = self.is_shareable_slice(engines, &elem_type);
         let type_info = TypeInfo::Slice(elem_type);
         self.insert_or_replace_type_source_info(
@@ -723,7 +721,7 @@ impl TypeEngine {
     /// its [TypeId], or returns a [TypeId] of an existing shareable pointer type
     /// that corresponds to the pointer given by the `pointee_type`.
     pub(crate) fn insert_ptr(&self, engines: &Engines, pointee_type: TypeArgument) -> TypeId {
-        let source_id = self.get_ptr_fallback_source_id(engines, &pointee_type);
+        let source_id = self.get_ptr_fallback_source_id(&pointee_type);
         let is_shareable_type = self.is_shareable_ptr(engines, &pointee_type);
         let type_info = TypeInfo::Ptr(pointee_type);
         self.insert_or_replace_type_source_info(
@@ -744,7 +742,7 @@ impl TypeEngine {
         to_mutable_value: bool,
         referenced_type: TypeArgument,
     ) -> TypeId {
-        let source_id = self.get_ref_fallback_source_id(engines, &referenced_type);
+        let source_id = self.get_ref_fallback_source_id(&referenced_type);
         let is_shareable_type = self.is_shareable_ref(engines, &referenced_type);
         let type_info = TypeInfo::Ref {
             to_mutable_value,
@@ -768,7 +766,7 @@ impl TypeEngine {
         name: Ident,
         trait_type_id: TypeId,
     ) -> TypeId {
-        let source_id = self.get_trait_type_fallback_source_id(engines, &name, &trait_type_id);
+        let source_id = self.get_trait_type_fallback_source_id(&name, &trait_type_id);
         // The trait type type shareability would be calculated as `!(false || false) ==>> true`.
         // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
         //       https://github.com/FuelLabs/sway/issues/6601
@@ -830,7 +828,7 @@ impl TypeEngine {
         match ty {
             TypeInfo::Unknown => return self.new_unknown(),
             TypeInfo::Numeric => return self.new_numeric(),
-            TypeInfo::Placeholder(_) => return self.new_placeholder_impl(engines, ty),
+            TypeInfo::Placeholder(_) => return self.new_placeholder_impl(ty),
             TypeInfo::UnknownGeneric { .. } => return self.new_unknown_generic_impl(ty),
             _ => (),
         }
@@ -1383,7 +1381,7 @@ impl TypeEngine {
             | TypeInfo::StringSlice => None,
 
             TypeInfo::UnknownGeneric { .. } => Self::get_unknown_generic_fallback_source_id(ty),
-            TypeInfo::Placeholder(_) => self.get_placeholder_fallback_source_id(engines, ty),
+            TypeInfo::Placeholder(_) => self.get_placeholder_fallback_source_id(ty),
             TypeInfo::StringArray(length) => Self::get_source_id_from_length(length),
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
@@ -1401,30 +1399,29 @@ impl TypeEngine {
                 let decl = parsed_decl_engine.get_struct(decl_id);
                 Self::get_untyped_struct_fallback_source_id(&decl)
             }
-            TypeInfo::Tuple(elements) => self.get_tuple_fallback_source_id(engines, elements),
+            TypeInfo::Tuple(elements) => self.get_tuple_fallback_source_id(elements),
             TypeInfo::Array(elem_type, length) => {
-                self.get_array_fallback_source_id(engines, elem_type, length)
+                self.get_array_fallback_source_id(elem_type, length)
             }
 
             TypeInfo::ContractCaller { abi_name, address } => {
                 Self::get_contract_caller_fallback_source_id(abi_name, address)
             }
 
-            TypeInfo::Alias { name, ty } => self.get_alias_fallback_source_id(engines, name, ty),
+            TypeInfo::Alias { name, ty } => self.get_alias_fallback_source_id(name, ty),
 
             TypeInfo::Ptr(ta)
             | TypeInfo::Slice(ta)
             | TypeInfo::Ref {
                 referenced_type: ta,
                 ..
-            } => self.get_source_id_from_type_argument(engines, ta),
+            } => self.get_source_id_from_type_argument(ta),
 
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
                 root_type_id,
             } => self.get_custom_fallback_source_id(
-                engines,
                 qualified_call_path,
                 type_arguments,
                 root_type_id,
@@ -1433,7 +1430,7 @@ impl TypeEngine {
             TypeInfo::TraitType {
                 name,
                 trait_type_id,
-            } => self.get_trait_type_fallback_source_id(engines, name, trait_type_id),
+            } => self.get_trait_type_fallback_source_id(name, trait_type_id),
         }
     }
 
@@ -1443,19 +1440,17 @@ impl TypeEngine {
 
     fn get_source_id_from_type_argument(
         &self,
-        engines: &Engines,
         ta: &TypeArgument,
     ) -> Option<SourceId> {
         // If the `ta` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
         ta.span.source_id().copied().or_else(|| {
-            self.get_type_fallback_source_id(engines, &self.slab.get(ta.type_id.index()).type_info)
+            self.get_type_source_id(ta.type_id)
         })
     }
 
     fn get_source_id_from_type_arguments(
         &self,
-        engines: &Engines,
         type_arguments: &[TypeArgument],
     ) -> Option<SourceId> {
         // For type arguments, if they are annotated, we take the use site source file.
@@ -1475,10 +1470,7 @@ impl TypeEngine {
                 .find_map(|ta| ta.span.source_id().copied())
                 .or_else(|| {
                     type_arguments.iter().find_map(|ta| {
-                        self.get_type_fallback_source_id(
-                            engines,
-                            &self.slab.get(ta.type_id.index()).type_info,
-                        )
+                        self.get_type_source_id(ta.type_id)
                     })
                 })
         }
@@ -1486,19 +1478,17 @@ impl TypeEngine {
 
     fn get_source_id_from_type_parameter(
         &self,
-        engines: &Engines,
         tp: &TypeParameter,
     ) -> Option<SourceId> {
-        // If the `ta` is span-annotated, take the source id from its `span`,
+        // If the `tp` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
         tp.name.span().source_id().copied().or_else(|| {
-            self.get_type_fallback_source_id(engines, &self.slab.get(tp.type_id.index()).type_info)
+            self.get_type_source_id(tp.type_id)
         })
     }
 
     fn get_placeholder_fallback_source_id(
         &self,
-        engines: &Engines,
         placeholder: &TypeInfo,
     ) -> Option<SourceId> {
         // `TypeInfo::Placeholder` is an always replaceable type and we know we will
@@ -1513,7 +1503,7 @@ impl TypeEngine {
             unreachable!("The `placeholder` is checked to be of variant `TypeInfo::Placeholder`.");
         };
 
-        self.get_source_id_from_type_parameter(engines, tp)
+        self.get_source_id_from_type_parameter(tp)
     }
 
     fn get_unknown_generic_fallback_source_id(unknown_generic: &TypeInfo) -> Option<SourceId> {
@@ -1555,15 +1545,13 @@ impl TypeEngine {
 
     fn get_tuple_fallback_source_id(
         &self,
-        engines: &Engines,
         elements: &[TypeArgument],
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_arguments(engines, elements)
+        self.get_source_id_from_type_arguments(elements)
     }
 
     fn get_array_fallback_source_id(
         &self,
-        engines: &Engines,
         elem_type: &TypeArgument,
         length: &Length,
     ) -> Option<SourceId> {
@@ -1577,7 +1565,7 @@ impl TypeEngine {
             "If an array is annotated, the type argument and the length spans must have the same source id."
         );
 
-        self.get_source_id_from_type_argument(engines, elem_type)
+        self.get_source_id_from_type_argument(elem_type)
     }
 
     fn get_string_array_fallback_source_id(length: &Length) -> Option<SourceId> {
@@ -1605,7 +1593,6 @@ impl TypeEngine {
 
     fn get_alias_fallback_source_id(
         &self,
-        engines: &Engines,
         name: &Ident,
         ty: &TypeArgument,
     ) -> Option<SourceId> {
@@ -1614,36 +1601,32 @@ impl TypeEngine {
         name.span()
             .source_id()
             .copied()
-            .or_else(|| self.get_source_id_from_type_argument(engines, ty))
+            .or_else(|| self.get_source_id_from_type_argument(ty))
     }
 
     fn get_slice_fallback_source_id(
         &self,
-        engines: &Engines,
         elem_type: &TypeArgument,
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_argument(engines, elem_type)
+        self.get_source_id_from_type_argument(elem_type)
     }
 
     fn get_ptr_fallback_source_id(
         &self,
-        engines: &Engines,
         pointee_type: &TypeArgument,
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_argument(engines, pointee_type)
+        self.get_source_id_from_type_argument(pointee_type)
     }
 
     fn get_ref_fallback_source_id(
         &self,
-        engines: &Engines,
         referenced_type: &TypeArgument,
     ) -> Option<SourceId> {
-        self.get_source_id_from_type_argument(engines, referenced_type)
+        self.get_source_id_from_type_argument(referenced_type)
     }
 
     fn get_custom_fallback_source_id(
         &self,
-        engines: &Engines,
         qualified_call_path: &QualifiedCallPath,
         type_arguments: &Option<Vec<TypeArgument>>,
         root_type_id: &Option<TypeId>,
@@ -1661,21 +1644,17 @@ impl TypeEngine {
             .or_else(|| {
                 type_arguments
                     .as_ref()
-                    .and_then(|tas| self.get_source_id_from_type_arguments(engines, tas))
+                    .and_then(|tas| self.get_source_id_from_type_arguments(tas))
             })
             .or_else(|| {
                 root_type_id.and_then(|root_ty| {
-                    self.get_type_fallback_source_id(
-                        engines,
-                        &self.slab.get(root_ty.index()).type_info,
-                    )
+                    self.get_type_source_id(root_ty)
                 })
             })
     }
 
     fn get_trait_type_fallback_source_id(
         &self,
-        engines: &Engines,
         name: &Ident,
         trait_type_id: &TypeId,
     ) -> Option<SourceId> {
@@ -1684,11 +1663,14 @@ impl TypeEngine {
         // For potential situation of having a `name` without spans in generated code, we do a fallback and
         // extract the source id from the `trait_type_id`.
         name.span().source_id().copied().or_else(|| {
-            self.get_type_fallback_source_id(
-                engines,
-                &self.slab.get(trait_type_id.index()).type_info,
-            )
+            self.get_type_source_id(*trait_type_id)
         })
+    }
+
+    /// Returns the known [SourceId] of a type that already exists
+    /// in the [TypeEngine]. The type is given by its `type_id`.
+    fn get_type_source_id(&self, type_id: TypeId) -> Option<SourceId> {
+        self.slab.get(type_id.index()).source_id
     }
 
     fn clear_items<F>(&mut self, keep: F)

@@ -93,7 +93,7 @@ impl TypeSubstMap {
             .map(|type_param| {
                 (
                     type_param.type_id,
-                    type_engine.new_placeholder(engines, type_param.clone()),
+                    type_engine.new_placeholder(type_param.clone()),
                 )
             })
             .collect();

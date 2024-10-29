@@ -82,7 +82,6 @@ fn generic_enum_resolution() {
             .te()
             .new_unknown_generic(generic_name.clone(), VecSet(vec![]), None, false);
     let placeholder_type = engines.te().new_placeholder(
-        &engines,
         TypeParameter {
             type_id: generic_type,
             initial_type_id: generic_type,

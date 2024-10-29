@@ -2162,7 +2162,7 @@ async fn garbage_collection_runner(path: PathBuf) {
 }
 
 #[test]
-fn garbage_collection_storage() {
+fn garbage_collection_storage_contract() {
     let p = sway_workspace_dir()
         .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
         .join("src/main.sw");
@@ -2172,7 +2172,7 @@ fn garbage_collection_storage() {
 }
 
 #[test]
-fn garbage_collection_paths() {
+fn garbage_collection_tokens_paths() {
     let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
     run_async!({
         garbage_collection_runner(p).await;
@@ -2183,6 +2183,16 @@ fn garbage_collection_paths() {
 fn garbage_collection_minimal_script() {
     let p = sway_workspace_dir()
         .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_examples_arrays() {
+    let p = sway_workspace_dir()
+        .join("examples/arrays")
         .join("src/main.sw");
     run_async!({
         garbage_collection_runner(p).await;
@@ -2210,9 +2220,8 @@ fn garbage_collection_minimal_script() {
 /// - Collects results through a thread-safe Mutex
 /// - Provides detailed error reporting for failed tests
 /// - Categorizes different types of failures (exit codes vs signals)
-// #[test]
-#[allow(dead_code)]
-fn run_all_garbage_collection_tests() {
+#[test]
+fn garbage_collection_all_language_tests() {
     let base_dir = sway_workspace_dir().join(e2e_language_dir());
     let entries: Vec<_> = std::fs::read_dir(base_dir)
         .unwrap()
@@ -2233,24 +2242,26 @@ fn run_all_garbage_collection_tests() {
             .to_string();
         let main_file = project_dir.join("src/main.sw");
 
-        println!("▶ Testing: {}", project_name);
-        println!("  Path: {}", main_file.display());
+        if main_file.exists() {
+            println!("▶ Testing: {}", project_name);
+            println!("  Path: {}", main_file.display());
 
-        let status = Command::new(std::env::current_exe().unwrap())
-            .args(["--test", "test_single_project", "--exact", "--nocapture"])
-            .env("TEST_FILE", main_file.to_string_lossy().to_string())
-            .status()
-            .unwrap();
+            let status = Command::new(std::env::current_exe().unwrap())
+                .args(["--test", "test_single_garbage_collection_project", "--exact", "--nocapture"])
+                .env("TEST_FILE", main_file.to_string_lossy().to_string())
+                .status()
+                .unwrap();
 
-        let test_result = if status.success() {
-            println!("  ✅ Passed: {}\n", project_name);
-            (project_name, true, None)
-        } else {
-            println!("  ❌ Failed: {} ({})\n", project_name, status);
-            (project_name, false, Some(format!("Exit code: {}", status)))
-        };
+            let test_result = if status.success() {
+                println!("  ✅ Passed: {}\n", project_name);
+                (project_name, true, None)
+            } else {
+                println!("  ❌ Failed: {} ({})\n", project_name, status);
+                (project_name, false, Some(format!("Exit code: {}", status)))
+            };
 
-        results.lock().unwrap().push(test_result);
+            results.lock().unwrap().push(test_result);
+        }
     });
 
     let results = results.into_inner().unwrap();
@@ -2287,9 +2298,8 @@ fn run_all_garbage_collection_tests() {
 /// 1. Tests are completely isolated from each other
 /// 2. Panics in one test don't affect others
 /// 3. Resource cleanup happens automatically on process exit
-// #[tokio::test]
-#[allow(dead_code)]
-async fn test_single_project() {
+#[tokio::test]
+async fn test_single_garbage_collection_project() {
     if let Ok(file) = std::env::var("TEST_FILE") {
         println!("Running single test for file: {}", file);
         let path = PathBuf::from(file);

@@ -3957,7 +3957,6 @@ fn statement_let_to_ast_nodes_unfold(
                             // However, their `pat.span()`s will always be in the source file in which the placeholder
                             // is logically situated.
                             engines.te().new_placeholder(
-                                engines,
                                 TypeParameter::new_placeholder(
                                     engines.te().new_unknown(),
                                     pat.span(),
