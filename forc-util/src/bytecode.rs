@@ -83,7 +83,7 @@ where
         }
     }
 
-    return Err(anyhow!("Configurables section offset not found"));
+    Err(anyhow!("Configurables section offset not found"))
 }
 
 #[cfg(test)]
