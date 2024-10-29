@@ -164,15 +164,15 @@ impl AbstractProgram {
     /// Right now, it looks like this:
     ///
     /// WORD OP
-    /// 1    MOV $scratch $pc
-    /// -    JMPF $zero i10
-    /// 2    DATA_START (0-32) (in bytes, offset from $is)
-    /// -    DATA_START (32-64)
-    /// 3    CONFIGURABLES_OFFSET (0-32)
-    /// -    CONFIGURABLES_OFFSET (32-64)
-    /// 4    LW $ds $scratch 1
-    /// -    ADD $ds $ds $scratch
-    /// 5    .program_start:
+    ///     1    MOV $scratch $pc
+    ///     -    JMPF $zero i10
+    ///     2    DATA_START (0-32) (in bytes, offset from $is)
+    ///     -    DATA_START (32-64)
+    ///     3    CONFIGURABLES_OFFSET (0-32)
+    ///     -    CONFIGURABLES_OFFSET (32-64)
+    ///     4    LW $ds $scratch 1
+    ///     -    ADD $ds $ds $scratch
+    ///     5    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         const _: () = assert!(
             crate::PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES == 16,
