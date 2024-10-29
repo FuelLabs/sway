@@ -690,10 +690,10 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        // you are always allowed to access your ancestor's symbols
 	// Ignore visibility of common ancestor modules
 	let mut ignored_prefixes = 0;
 	
+	// Ignore visibility of common ancestor modules
 	for (src_prefix, dst_prefix) in src.iter().zip(dst) {
 	    if src_prefix != dst_prefix {
 		break;
