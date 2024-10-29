@@ -152,11 +152,6 @@ pub enum TypeInfo {
     Custom {
         qualified_call_path: QualifiedCallPath,
         type_arguments: Option<Vec<TypeArgument>>,
-        /// When root_type_id contains some type id then the call path applies
-        /// to the specified root_type_id as root.
-        /// This is used by associated types which should produce a TypeInfo::Custom
-        /// such as Self::T.
-        root_type_id: Option<TypeId>,
     },
     B256,
     /// This means that specific type of a number is not yet known. It will be
@@ -243,11 +238,9 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Custom {
                 qualified_call_path: call_path,
                 type_arguments,
-                root_type_id,
             } => {
                 call_path.hash(state, engines);
                 type_arguments.as_deref().hash(state, engines);
-                root_type_id.hash(state);
             }
             TypeInfo::Storage { fields } => {
                 fields.hash(state, engines);
@@ -325,12 +318,10 @@ impl PartialEqWithEngines for TypeInfo {
                 Self::Custom {
                     qualified_call_path: l_name,
                     type_arguments: l_type_args,
-                    root_type_id: l_root_type_id,
                 },
                 Self::Custom {
                     qualified_call_path: r_name,
                     type_arguments: r_type_args,
-                    root_type_id: r_root_type_id,
                 },
             ) => {
                 l_name.call_path.suffix == r_name.call_path.suffix
@@ -338,7 +329,6 @@ impl PartialEqWithEngines for TypeInfo {
                         .qualified_path_root
                         .eq(&r_name.qualified_path_root, ctx)
                     && l_type_args.as_deref().eq(&r_type_args.as_deref(), ctx)
-                    && l_root_type_id.eq(r_root_type_id)
             }
             (Self::StringSlice, Self::StringSlice) => true,
             (Self::StringArray(l), Self::StringArray(r)) => l.val() == r.val(),
@@ -477,12 +467,10 @@ impl OrdWithEngines for TypeInfo {
                 Self::Custom {
                     qualified_call_path: l_call_path,
                     type_arguments: l_type_args,
-                    root_type_id: l_root_type_id,
                 },
                 Self::Custom {
                     qualified_call_path: r_call_path,
                     type_arguments: r_type_args,
-                    root_type_id: r_root_type_id,
                 },
             ) => l_call_path
                 .call_path
@@ -493,8 +481,7 @@ impl OrdWithEngines for TypeInfo {
                         .qualified_path_root
                         .cmp(&r_call_path.qualified_path_root, ctx)
                 })
-                .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), ctx))
-                .then_with(|| l_root_type_id.cmp(r_root_type_id)),
+                .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), ctx)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
             (Self::Enum(l_decl_id), Self::Enum(r_decl_id)) => {
@@ -874,7 +861,6 @@ impl TypeInfo {
                 qualified_path_root: None,
             },
             type_arguments: None,
-            root_type_id: None,
         }
     }
 
@@ -1286,7 +1272,6 @@ impl TypeInfo {
             TypeInfo::Custom {
                 qualified_call_path: call_path,
                 type_arguments: other_type_arguments,
-                root_type_id,
             } => {
                 if other_type_arguments.is_some() {
                     Err(handler
@@ -1295,7 +1280,6 @@ impl TypeInfo {
                     let type_info = TypeInfo::Custom {
                         qualified_call_path: call_path,
                         type_arguments: Some(type_arguments),
-                        root_type_id,
                     };
                     Ok(type_info)
                 }

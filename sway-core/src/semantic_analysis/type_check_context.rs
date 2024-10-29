@@ -881,7 +881,6 @@ impl<'a> TypeCheckContext<'a> {
                             if let TypeInfo::Custom {
                                 qualified_call_path: call_path,
                                 type_arguments,
-                                root_type_id: _,
                             } = &*type_engine.get(as_trait)
                             {
                                 qualified_call_path = Some(call_path.clone());
