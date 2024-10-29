@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 use indexmap::IndexMap;
 use sway_error::{
     error::CompileError,
@@ -360,7 +361,6 @@ impl TypeId {
             TypeInfo::Custom {
                 qualified_call_path: _,
                 type_arguments,
-                root_type_id: _,
             } => {
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {

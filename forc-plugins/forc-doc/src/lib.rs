@@ -55,7 +55,6 @@ pub struct ProgramInfo<'a> {
 pub fn compile_html(
     build_instructions: &Command,
     get_doc_dir: &dyn Fn(&Command) -> String,
-    experimental: sway_core::ExperimentalFlags,
 ) -> Result<(PathBuf, Box<PackageManifestFile>)> {
     // get manifest directory
     let dir = if let Some(ref path) = build_instructions.manifest_path {
@@ -108,7 +107,8 @@ pub fn compile_html(
         tests_enabled,
         &engines,
         None,
-        experimental,
+        &build_instructions.experimental.experimental,
+        &build_instructions.experimental.no_experimental,
     )?;
 
     let raw_docs = if build_instructions.no_deps {
