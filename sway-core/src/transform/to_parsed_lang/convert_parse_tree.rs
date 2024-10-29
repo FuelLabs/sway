@@ -7,7 +7,7 @@ use crate::{
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
-    BuildTarget, Engines, ExperimentalFlags,
+    BuildTarget, Engines,
 };
 
 use indexmap::IndexMap;
@@ -29,14 +29,14 @@ use sway_ast::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
+use sway_features::ExperimentalFeatures;
 use sway_types::{
     constants::{
-        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
-        CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
-        DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, FALLBACK_ATTRIBUTE_NAME,
-        INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        VALID_ATTRIBUTE_NAMES,
+        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
+        DEPRECATED_ATTRIBUTE_NAME, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
+        FALLBACK_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
     BaseIdent,
@@ -1260,7 +1260,6 @@ fn generic_params_opt_to_type_parameters_with_parent(
                     TypeInfo::Custom {
                         qualified_call_path: ident.clone().into(),
                         type_arguments: None,
-                        root_type_id: None,
                     },
                     ident.span().source_id(),
                 );
@@ -4341,7 +4340,6 @@ fn ty_to_type_parameter(
         TypeInfo::Custom {
             qualified_call_path: name_ident.clone().into(),
             type_arguments: None,
-            root_type_id: None,
         },
         name_ident.span().source_id(),
     );
@@ -4625,23 +4623,12 @@ fn path_type_to_type_info(
             }
 
             if !suffix.is_empty() {
-                let (mut call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
+                let (call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
                     context, handler, engines, path_type,
                 )?;
-
-                let mut root_type_id = None;
-                if name.as_str() == "Self" {
-                    call_path.call_path.prefixes.remove(0);
-                    root_type_id = Some(engines.te().insert(
-                        engines,
-                        type_info,
-                        name.span().source_id(),
-                    ));
-                }
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     type_arguments: Some(type_arguments),
-                    root_type_id,
                 }
             } else {
                 type_info
@@ -4686,7 +4673,6 @@ fn path_type_to_type_info(
                 TypeInfo::Custom {
                     qualified_call_path: call_path,
                     type_arguments: Some(type_arguments),
-                    root_type_id: None,
                 }
             }
         }
@@ -4862,7 +4848,7 @@ pub fn cfg_eval(
     context: &Context,
     handler: &Handler,
     attrs_map: &AttributesMap,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<bool, ErrorEmitted> {
     if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
         for cfg_attr in cfg_attrs {
@@ -4928,19 +4914,28 @@ pub fn cfg_eval(
                             return Err(handler.emit_err(error.into()));
                         }
                     }
-                    CFG_EXPERIMENTAL_NEW_ENCODING => match &arg.value {
-                        Some(sway_ast::Literal::Bool(v)) => {
-                            let is_true = matches!(v.kind, sway_ast::literal::LitBoolType::True);
-                            return Ok(experimental.new_encoding == is_true);
+                    // Check if this is a known experimental feature
+                    cfg_experimental
+                        if sway_features::CFG.iter().any(|x| *x == cfg_experimental) =>
+                    {
+                        match &arg.value {
+                            Some(sway_ast::Literal::Bool(v)) => {
+                                let is_true =
+                                    matches!(v.kind, sway_ast::literal::LitBoolType::True);
+                                return Ok(experimental
+                                    .is_enabled_for_cfg(cfg_experimental)
+                                    .unwrap()
+                                    == is_true);
+                            }
+                            _ => {
+                                let error =
+                                    ConvertParseTreeError::UnexpectedValueForCfgExperimental {
+                                        span: arg.span(),
+                                    };
+                                return Err(handler.emit_err(error.into()));
+                            }
                         }
-                        _ => {
-                            let error =
-                                ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue {
-                                    span: arg.span(),
-                                };
-                            return Err(handler.emit_err(error.into()));
-                        }
-                    },
+                    }
                     _ => {
                         return Err(handler.emit_err(
                             ConvertParseTreeError::InvalidCfgArg {

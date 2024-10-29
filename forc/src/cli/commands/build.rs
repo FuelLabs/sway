@@ -17,13 +17,13 @@ forc_util::cli_examples! {
 /// - `script`, `predicate` and `contract` projects will produce their bytecode in binary format `<project-name>.bin`.
 ///
 /// - `script` projects will also produce a file containing the hash of the bytecode binary
-/// `<project-name>-bin-hash` (using `fuel_cypto::Hasher`).
+///   `<project-name>-bin-hash` (using `fuel_cypto::Hasher`).
 ///
 /// - `predicate` projects will also produce a file containing the **root** hash of the bytecode binary
-/// `<project-name>-bin-root` (using `fuel_tx::Contract::root_from_code`).
+///   `<project-name>-bin-root` (using `fuel_tx::Contract::root_from_code`).
 ///
 /// - `contract` and `library` projects will also produce the public ABI in JSON format
-/// `<project-name>-abi.json`.
+///   `<project-name>-abi.json`.
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc build", version, after_help = help())]
 pub struct Command {
@@ -33,9 +33,8 @@ pub struct Command {
     #[clap(long)]
     pub tests: bool,
 
-    /// Disable the "new encoding" feature
-    #[clap(long)]
-    pub no_encoding_v1: bool,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

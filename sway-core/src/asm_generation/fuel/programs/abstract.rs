@@ -17,10 +17,10 @@ use crate::{
         VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
-    ExperimentalFlags,
 };
 use either::Either;
 use sway_error::error::CompileError;
+use sway_features::ExperimentalFeatures;
 
 /// The entry point of an abstract program.
 pub(crate) struct AbstractEntry {
@@ -44,7 +44,7 @@ pub(crate) struct AbstractProgram {
     entries: Vec<AbstractEntry>,
     non_entries: Vec<AbstractInstructionSet>,
     reg_seqr: RegisterSequencer,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 }
 
 impl AbstractProgram {
@@ -57,7 +57,7 @@ impl AbstractProgram {
         entries: Vec<AbstractEntry>,
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Self {
         AbstractProgram {
             kind,

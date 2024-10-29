@@ -1,7 +1,7 @@
+#![allow(clippy::mutable_key_type)]
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    build_config::ExperimentalFlags,
     decl_engine::{DeclEngineGet, DeclRefFunction},
     engine_threading::*,
     language::{
@@ -25,6 +25,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_features::ExperimentalFeatures;
 use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
@@ -48,7 +49,7 @@ pub struct TypeCheckContext<'a> {
     pub(crate) engines: &'a Engines,
 
     /// Set of experimental flags.
-    pub(crate) experimental: ExperimentalFlags,
+    pub(crate) experimental: ExperimentalFeatures,
 
     /// Keeps the accumulated symbols previously collected.
     pub(crate) collection_ctx: &'a mut SymbolCollectionContext,
@@ -117,7 +118,7 @@ impl<'a> TypeCheckContext<'a> {
         namespace: &'a mut Namespace,
         collection_ctx: &'a mut SymbolCollectionContext,
         engines: &'a Engines,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Self {
         Self {
             namespace,
@@ -152,7 +153,7 @@ impl<'a> TypeCheckContext<'a> {
         root_namespace: &'a mut Namespace,
         collection_ctx: &'a mut SymbolCollectionContext,
         engines: &'a Engines,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Self {
         Self::from_module_namespace(root_namespace, collection_ctx, engines, experimental)
     }
@@ -161,7 +162,7 @@ impl<'a> TypeCheckContext<'a> {
         namespace: &'a mut Namespace,
         collection_ctx: &'a mut SymbolCollectionContext,
         engines: &'a Engines,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Self {
         Self {
             collection_ctx,
@@ -880,7 +881,6 @@ impl<'a> TypeCheckContext<'a> {
                             if let TypeInfo::Custom {
                                 qualified_call_path: call_path,
                                 type_arguments,
-                                root_type_id: _,
                             } = &*type_engine.get(as_trait)
                             {
                                 qualified_call_path = Some(call_path.clone());
