@@ -820,22 +820,9 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        // you are always allowed to access your ancestor's symbols
-//        if !is_ancestor(src, dst) {
-//            for prefix in iter_prefixes(src) {
-//                let module = self.require_module(handler, &prefix.to_vec())?;
-//                if module.visibility().is_private() {
-//                    let prefix_last = prefix[prefix.len() - 1].clone();
-//                    handler.emit_err(CompileError::ImportPrivateModule {
-//                        span: prefix_last.span(),
-//                        name: prefix_last,
-//                    });
-//                }
-	    //            }
-
-	// Ignore visibility of common ancestor modules
 	let mut ignored_prefixes = 0;
 	
+	// Ignore visibility of common ancestor modules
 	for (src_prefix, dst_prefix) in src.iter().zip(dst) {
 	    if src_prefix != dst_prefix {
 		break;
