@@ -7,18 +7,13 @@ use crate::{
         parsed::{FunctionDeclaration, FunctionDeclarationKind},
         CallPath,
     },
-    transform::AttributeKind,
-    decl_engine::*,
-    engine_threading::*,
-    language::{parsed, ty::*, Inline, Purity, Visibility},
     semantic_analysis::TypeCheckContext,
-    transform,
-    transform::AttributeKind,
+    transform::{self, AttributeKind},
     type_system::*,
     types::*,
 };
 use monomorphization::MonomorphizeHelper;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     fmt,

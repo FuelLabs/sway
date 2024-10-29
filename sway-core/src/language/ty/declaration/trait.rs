@@ -18,7 +18,7 @@ use crate::{
     type_system::*,
 };
 use monomorphization::MonomorphizeHelper;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},

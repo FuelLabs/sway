@@ -1,12 +1,14 @@
-use crate::{
-    Engines,
-    engine_threading::{EqWithEngines, HashWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
-};
 use super::{
-    DeclUniqueId,
     parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet, ParsedDeclEngineIndex},
+    DeclUniqueId,
 };
-use serde::{Serialize, Deserialize};
+use crate::{
+    engine_threading::{
+        EqWithEngines, HashWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    Engines,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     hash::{DefaultHasher, Hasher},
     marker::PhantomData,

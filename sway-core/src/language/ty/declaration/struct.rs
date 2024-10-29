@@ -2,13 +2,13 @@ use crate::{
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{parsed::StructDeclaration, CallPath, Visibility, ty::TyDeclParsedType},
+    language::{parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
     type_system::*,
     Namespace,
 };
 use monomorphization::MonomorphizeHelper;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
