@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 use crate::{engine_threading::Engines, type_system::priv_prelude::*};
 
 /// Helper struct to perform the occurs check.

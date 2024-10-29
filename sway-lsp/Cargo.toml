@@ -30,6 +30,7 @@ serde_json.workspace = true
 sway-ast.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true
+sway-features.workspace = true
 sway-parse.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true

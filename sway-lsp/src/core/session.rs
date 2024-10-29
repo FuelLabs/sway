@@ -298,7 +298,6 @@ pub fn compile(
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<&LspConfig>,
-    experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
     pkg::check(
@@ -309,7 +308,8 @@ pub fn compile(
         true,
         engines,
         retrigger_compilation,
-        experimental,
+        &[],
+        &[sway_features::Feature::NewEncoding],
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -442,7 +442,6 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
-    experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
@@ -454,7 +453,6 @@ pub fn parse_project(
         engines,
         retrigger_compilation,
         lsp_mode.as_ref(),
-        experimental,
     )?;
 
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
@@ -716,17 +714,8 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(
-            &uri,
-            &engines,
-            None,
-            None,
-            session,
-            sway_core::ExperimentalFlags {
-                new_encoding: false,
-            },
-        )
-        .expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, &engines, None, None, session)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

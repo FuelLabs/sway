@@ -1005,6 +1005,7 @@ impl ty::TyExpression {
         /// Returns the position of the first match arm that is an "interior" arm, meaning:
         ///  - arm is a catch-all arm
         ///  - arm is not the last match arm
+        ///
         /// or `None` if such arm does not exist.
         /// Note that the arm can be the first arm.
         fn interior_catch_all_arm_position(arms_reachability: &[ReachableReport]) -> Option<usize> {
@@ -1367,7 +1368,6 @@ impl ty::TyExpression {
                 let type_info = TypeInfo::Custom {
                     qualified_call_path: qualified_call_path.clone(),
                     type_arguments: None,
-                    root_type_id: None,
                 };
 
                 TypeBinding {
@@ -1514,7 +1514,6 @@ impl ty::TyExpression {
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
                 qualified_call_path: type_name.clone().into(),
                 type_arguments: None,
-                root_type_id: None,
             });
 
             let method_name_binding = TypeBinding {
@@ -1840,7 +1839,6 @@ impl ty::TyExpression {
                 type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
                     qualified_call_path: type_name.clone().into(),
                     type_arguments: None,
-                    root_type_id: None,
                 })
             });
 
@@ -3007,7 +3005,7 @@ fn check_asm_block_validity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Engines, ExperimentalFlags};
+    use crate::{Engines, ExperimentalFeatures};
     use sway_error::type_error::TypeError;
     use symbol_collection_context::SymbolCollectionContext;
 
@@ -3016,7 +3014,7 @@ mod tests {
         engines: &Engines,
         expr: &Expression,
         type_annotation: TypeId,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let collection_ctx_ns = Namespace::new();
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
@@ -3060,9 +3058,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         )?;
         expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
         Ok(expr)
@@ -3202,9 +3198,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

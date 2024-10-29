@@ -1321,7 +1321,6 @@ fn collect_type_id(
         TypeInfo::Custom {
             type_arguments,
             qualified_call_path: name,
-            root_type_id: _,
         } => {
             collect_qualified_path_root(ctx, name.qualified_path_root.clone());
             if let Some(token) = ctx

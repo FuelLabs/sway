@@ -69,12 +69,10 @@ pub(crate) fn struct_instantiation(
         (_, true) => TypeInfo::Custom {
             qualified_call_path: suffix.clone().into(),
             type_arguments: None,
-            root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
             qualified_call_path: suffix.clone().into(),
             type_arguments: Some(type_arguments),
-            root_type_id: None,
         },
     };
 

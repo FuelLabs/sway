@@ -25,7 +25,7 @@ use crate::{
 //    engines: &Engines,
 //    name: Ident,
 //    contract_id_value: String,
-//    experimental: crate::ExperimentalFlags,
+//    experimental: crate::ExperimentalFeatures,
 //) -> Result<Namespace, vec1::Vec1<CompileError>> {
 //    let handler = <_>::default();
 //    default_with_contract_id_inner(
@@ -141,7 +141,7 @@ pub fn namespace_with_contract_id(
     engines: &Engines,
     package_name: Ident,
     contract_id_value: String,
-    experimental: crate::ExperimentalFlags,
+    experimental: crate::ExperimentalFeatures,
 ) -> Result<Root, vec1::Vec1<CompileError>> {
     let root = Root::new(package_name, None, true);
     let handler = <_>::default();
@@ -160,7 +160,7 @@ fn bind_contract_id_in_root_module(
     engines: &Engines,
     contract_id_value: String,
     root: Root,
-    experimental: crate::ExperimentalFlags,
+    experimental: crate::ExperimentalFeatures,
 ) -> Result<Root, ErrorEmitted> {
     // this for loop performs a miniature compilation of each const item in the config
     // FIXME(Centril): Stop parsing. Construct AST directly instead!

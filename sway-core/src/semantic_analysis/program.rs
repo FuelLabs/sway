@@ -11,6 +11,7 @@ use crate::{
     BuildConfig, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_features::ExperimentalFeatures;
 use sway_ir::{Context, Module};
 
 use super::{
@@ -40,6 +41,7 @@ impl TyProgram {
     ///
     /// The given `namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
+    #[allow(clippy::too_many_arguments)]
     pub fn type_check(
         handler: &Handler,
         engines: &Engines,
@@ -48,14 +50,8 @@ impl TyProgram {
         mut namespace: namespace::Namespace,
         package_name: &str,
         build_config: Option<&BuildConfig>,
+        experimental: ExperimentalFeatures,
     ) -> Result<Self, ErrorEmitted> {
-        let experimental =
-            build_config
-                .map(|x| x.experimental)
-                .unwrap_or(crate::ExperimentalFlags {
-                    new_encoding: false,
-                });
-
         let mut ctx =
             TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
                 .with_kind(parsed.kind);

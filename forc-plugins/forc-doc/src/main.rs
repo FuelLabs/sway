@@ -12,13 +12,7 @@ use std::{
 pub fn main() -> Result<()> {
     let build_instructions = Command::parse();
 
-    let (doc_path, pkg_manifest) = compile_html(
-        &build_instructions,
-        &get_doc_dir,
-        sway_core::ExperimentalFlags {
-            new_encoding: !build_instructions.no_encoding_v1,
-        },
-    )?;
+    let (doc_path, pkg_manifest) = compile_html(&build_instructions, &get_doc_dir)?;
 
     // CSS, icons and logos
     static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");

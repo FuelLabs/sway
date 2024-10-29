@@ -84,9 +84,7 @@ impl TypeEngine {
         });
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {
-                TypeId::new(self.slab.insert(tsi))
-            }
+            RawEntryMut::Vacant(_) if ty.can_change(engines) => TypeId::new(self.slab.insert(tsi)),
             RawEntryMut::Vacant(v) => {
                 let type_id = TypeId::new(self.slab.insert(tsi.clone()));
                 v.insert_with_hasher(ty_hash, tsi, type_id, make_hasher(&hash_builder, engines));
@@ -332,33 +330,48 @@ impl TypeEngine {
     }
 
     /// Return whether a given type still contains undecayed references to [TypeInfo::Numeric]
-    pub(crate) fn contains_numeric(&self, decl_engine: &DeclEngine, type_id: TypeId) -> bool {
+    pub(crate) fn contains_numeric(&self, engines: &Engines, type_id: TypeId) -> bool {
+        let decl_engine = engines.de();
         match &&*self.get(type_id) {
+            TypeInfo::UntypedEnum(decl_id) => {
+                engines
+                    .pe()
+                    .get_enum(decl_id)
+                    .variants
+                    .iter()
+                    .all(|variant_type| {
+                        self.contains_numeric(engines, variant_type.type_argument.type_id)
+                    })
+            }
+            TypeInfo::UntypedStruct(decl_id) => engines
+                .pe()
+                .get_struct(decl_id)
+                .fields
+                .iter()
+                .any(|field| self.contains_numeric(engines, field.type_argument.type_id)),
             TypeInfo::Enum(decl_ref) => {
                 decl_engine
                     .get_enum(decl_ref)
                     .variants
                     .iter()
                     .all(|variant_type| {
-                        self.contains_numeric(decl_engine, variant_type.type_argument.type_id)
+                        self.contains_numeric(engines, variant_type.type_argument.type_id)
                     })
             }
             TypeInfo::Struct(decl_ref) => decl_engine
                 .get_struct(decl_ref)
                 .fields
                 .iter()
-                .any(|field| self.contains_numeric(decl_engine, field.type_argument.type_id)),
+                .any(|field| self.contains_numeric(engines, field.type_argument.type_id)),
             TypeInfo::Tuple(fields) => fields
                 .iter()
-                .any(|field_type| self.contains_numeric(decl_engine, field_type.type_id)),
-            TypeInfo::Array(elem_ty, _length) => {
-                self.contains_numeric(decl_engine, elem_ty.type_id)
-            }
-            TypeInfo::Ptr(targ) => self.contains_numeric(decl_engine, targ.type_id),
-            TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
+                .any(|field_type| self.contains_numeric(engines, field_type.type_id)),
+            TypeInfo::Array(elem_ty, _length) => self.contains_numeric(engines, elem_ty.type_id),
+            TypeInfo::Ptr(targ) => self.contains_numeric(engines, targ.type_id),
+            TypeInfo::Slice(targ) => self.contains_numeric(engines, targ.type_id),
             TypeInfo::Ref {
                 referenced_type, ..
-            } => self.contains_numeric(decl_engine, referenced_type.type_id),
+            } => self.contains_numeric(engines, referenced_type.type_id),
             TypeInfo::Unknown
             | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
@@ -393,6 +406,16 @@ impl TypeEngine {
         let decl_engine = engines.de();
 
         match &&*self.get(type_id) {
+            TypeInfo::UntypedEnum(decl_id) => {
+                for variant_type in &engines.pe().get_enum(decl_id).variants {
+                    self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
+                }
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                for field in &engines.pe().get_struct(decl_id).fields {
+                    self.decay_numeric(handler, engines, field.type_argument.type_id, span)?;
+                }
+            }
             TypeInfo::Enum(decl_ref) => {
                 for variant_type in &decl_engine.get_enum(decl_ref).variants {
                     self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
