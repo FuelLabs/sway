@@ -314,6 +314,22 @@ macro_rules! type_engine_shareable_built_in_types {
                 }
             }
         }
+
+        /// Returns true if the type represented by the `type_info`
+        /// is a shareable built-in type.
+        fn is_shareable_built_in_type(&self, type_info: &TypeInfo) -> bool {
+            use TypeInfo::*;
+            match type_info {
+                Tuple(v) if v.is_empty() => true,
+                // Here we also "pass" the dummy value obtained from `Handler::cancel` which will be
+                // optimized away.
+                ErrorRecovery(_) => true,
+                $(
+                    $ti_pat => true,
+                )*
+                _ => false
+            }
+        }
     }
 }
 
@@ -1697,6 +1713,9 @@ impl TypeEngine {
     /// Replaces the replaceable type behind the `type_id` with the `new_value`.
     /// The existing source id will be preserved.
     ///
+    /// Note that, if the `new_value` represents a shareable built-in type,
+    /// the existing source id will be removed (replaced by `None`).
+    ///
     /// Panics if the type behind the `type_id` is not a replaceable type.
     pub fn replace(&self, engines: &Engines, type_id: TypeId, new_value: TypeInfo) {
         // We keep the existing source id. `replace_with_new_source_id` is treated just as a common implementation.
@@ -1706,6 +1725,9 @@ impl TypeEngine {
 
     /// Replaces the replaceable type behind the `type_id` with the `new_value`.
     /// The existing source id will also be replaced with the `new_source_id`.
+    ///
+    /// Note that, if the `new_value` represents a shareable built-in type,
+    /// the existing source id will be removed (replaced by `None`).
     ///
     /// Panics if the type behind the `type_id` is not a replaceable type.
     // TODO: Once https://github.com/FuelLabs/sway/issues/6603 gets implemented and we further optimize
@@ -1734,10 +1756,20 @@ impl TypeEngine {
             self.touch_last_replace();
         }
         let is_shareable_type = self.is_type_shareable(engines, &new_value);
+        // Shareable built-in types like, e.g., `u64`, should "live forever" and never be
+        // garbage-collected. When replacing types, like e.g., unknown generics, that
+        // might be bound to a source id, we will still remove that source id, if the
+        // replaced type is replaced by a shareable built-in type. This maximizes the
+        // reuse of sharable built-in types, and also ensures that they are never GCed.
+        let source_id = if self.is_shareable_built_in_type(&new_value) {
+            None
+        } else {
+            new_source_id
+        };
         self.insert_or_replace_type_source_info(
             engines,
             new_value,
-            new_source_id,
+            source_id,
             is_shareable_type,
             Some(id),
         );

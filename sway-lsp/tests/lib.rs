@@ -12,10 +12,7 @@ use sway_lsp::{
     server_state::ServerState,
 };
 use sway_lsp_test_utils::{
-    assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, random_delay,
-    runnables_test_dir, self_impl_reassignment_dir, setup_panic_hook, sway_workspace_dir,
-    test_fixtures_dir,
+    assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir, e2e_should_pass_dir, e2e_stdlib_dir, e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, random_delay, runnables_test_dir, self_impl_reassignment_dir, setup_panic_hook, sway_workspace_dir, test_fixtures_dir
 };
 use tower_lsp::LspService;
 
@@ -2199,7 +2196,36 @@ fn garbage_collection_examples_arrays() {
     });
 }
 
-/// Tests garbage collection across all language test examples in parallel.
+#[test]
+fn garbage_collection_option_eq() {
+    let p = sway_workspace_dir()
+        .join(e2e_stdlib_dir())
+        .join("option_eq")
+        .join("src/main.sw");
+    run_async!({
+        garbage_collection_runner(p).await;
+    });
+}
+
+#[test]
+fn garbage_collection_all_language_tests() {
+    run_garbage_collection_tests_on_projects(e2e_language_dir());
+}
+
+#[test]
+#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
+fn garbage_collection_all_should_pass_tests() {
+    run_garbage_collection_tests_on_projects(e2e_should_pass_dir());
+}
+
+#[test]
+#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
+fn garbage_collection_all_stdlib_tests() {
+    run_garbage_collection_tests_on_projects(e2e_stdlib_dir());
+}
+
+/// Test runner for garbage collection tests across all Sway projects found in the `projects_dir`.
+/// Tests run in parallel and include only the projects that have `src/main.sw` file.
 ///
 /// # Overview
 /// This test suite takes a unique approach to handling test isolation and error reporting:
@@ -2220,9 +2246,8 @@ fn garbage_collection_examples_arrays() {
 /// - Collects results through a thread-safe Mutex
 /// - Provides detailed error reporting for failed tests
 /// - Categorizes different types of failures (exit codes vs signals)
-#[test]
-fn garbage_collection_all_language_tests() {
-    let base_dir = sway_workspace_dir().join(e2e_language_dir());
+fn run_garbage_collection_tests_on_projects(projects_dir: PathBuf) {
+    let base_dir = sway_workspace_dir().join(projects_dir);
     let entries: Vec<_> = std::fs::read_dir(base_dir)
         .unwrap()
         .filter_map(|e| e.ok())
