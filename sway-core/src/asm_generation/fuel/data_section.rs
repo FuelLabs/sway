@@ -1,6 +1,22 @@
+use rustc_hash::FxHashMap;
 use sway_ir::{size_bytes_round_up_to_word_alignment, Constant, ConstantValue, Context, Padding};
 
 use std::{fmt, iter::repeat};
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub enum EntryName {
+    NonConfigurable,
+    Configurable(String),
+}
+
+impl fmt::Display for EntryName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EntryName::NonConfigurable => write!(f, "NonConfigurable"),
+            EntryName::Configurable(name) => write!(f, "<Configurable, {}>", name),
+        }
+    }
+}
 
 // An entry in the data section.  It's important for the size to be correct, especially for unions
 // where the size could be larger than the represented value.
@@ -8,9 +24,7 @@ use std::{fmt, iter::repeat};
 pub struct Entry {
     pub value: Datum,
     pub padding: Padding,
-    // It is assumed, for now, that only configuration-time constants have a name. Otherwise, this
-    // is `None`.
-    pub name: Option<String>,
+    pub name: EntryName,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -23,7 +37,7 @@ pub enum Datum {
 }
 
 impl Entry {
-    pub(crate) fn new_byte(value: u8, name: Option<String>, padding: Option<Padding>) -> Entry {
+    pub(crate) fn new_byte(value: u8, name: EntryName, padding: Option<Padding>) -> Entry {
         Entry {
             value: Datum::Byte(value),
             padding: padding.unwrap_or(Padding::default_for_u8(value)),
@@ -31,7 +45,7 @@ impl Entry {
         }
     }
 
-    pub(crate) fn new_word(value: u64, name: Option<String>, padding: Option<Padding>) -> Entry {
+    pub(crate) fn new_word(value: u64, name: EntryName, padding: Option<Padding>) -> Entry {
         Entry {
             value: Datum::Word(value),
             padding: padding.unwrap_or(Padding::default_for_u64(value)),
@@ -41,7 +55,7 @@ impl Entry {
 
     pub(crate) fn new_byte_array(
         bytes: Vec<u8>,
-        name: Option<String>,
+        name: EntryName,
         padding: Option<Padding>,
     ) -> Entry {
         Entry {
@@ -51,11 +65,7 @@ impl Entry {
         }
     }
 
-    pub(crate) fn new_slice(
-        bytes: Vec<u8>,
-        name: Option<String>,
-        padding: Option<Padding>,
-    ) -> Entry {
+    pub(crate) fn new_slice(bytes: Vec<u8>, name: EntryName, padding: Option<Padding>) -> Entry {
         Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::Slice(bytes),
@@ -65,7 +75,7 @@ impl Entry {
 
     pub(crate) fn new_collection(
         elements: Vec<Entry>,
-        name: Option<String>,
+        name: EntryName,
         padding: Option<Padding>,
     ) -> Entry {
         Entry {
@@ -80,7 +90,7 @@ impl Entry {
     pub(crate) fn from_constant(
         context: &Context,
         constant: &Constant,
-        name: Option<String>,
+        name: EntryName,
         padding: Option<Padding>,
     ) -> Entry {
         // We need a special handling in case of enums.
@@ -89,8 +99,9 @@ impl Entry {
                 .enum_tag_and_value_with_paddings(context)
                 .expect("Constant is an enum.");
 
-            let tag_entry = Entry::from_constant(context, tag.0, None, tag.1);
-            let value_entry = Entry::from_constant(context, value.0, None, value.1);
+            let tag_entry = Entry::from_constant(context, tag.0, EntryName::NonConfigurable, tag.1);
+            let value_entry =
+                Entry::from_constant(context, value.0, EntryName::NonConfigurable, value.1);
 
             return Entry::new_collection(vec![tag_entry, value_entry], name, padding);
         }
@@ -118,7 +129,9 @@ impl Entry {
                     .array_elements_with_padding(context)
                     .expect("Constant is an array.")
                     .into_iter()
-                    .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))
+                    .map(|(elem, padding)| {
+                        Entry::from_constant(context, elem, EntryName::NonConfigurable, padding)
+                    })
                     .collect(),
                 name,
                 padding,
@@ -128,7 +141,9 @@ impl Entry {
                     .struct_fields_with_padding(context)
                     .expect("Constant is a struct.")
                     .into_iter()
-                    .map(|(elem, padding)| Entry::from_constant(context, elem, None, padding))
+                    .map(|(elem, padding)| {
+                        Entry::from_constant(context, elem, EntryName::NonConfigurable, padding)
+                    })
                     .collect(),
                 name,
                 padding,
@@ -198,45 +213,92 @@ impl Entry {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum DataIdEntryKind {
+    NonConfigurable,
+    Configurable,
+}
+
+impl fmt::Display for DataIdEntryKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DataIdEntryKind::NonConfigurable => write!(f, "NonConfigurable"),
+            DataIdEntryKind::Configurable => write!(f, "Configurable"),
+        }
+    }
+}
+
 /// An address which refers to a value in the data section of the asm.
 #[derive(Clone, Debug)]
-pub(crate) struct DataId(pub(crate) u32);
+pub(crate) struct DataId {
+    pub(crate) idx: u32,
+    pub(crate) kind: DataIdEntryKind,
+}
 
 impl fmt::Display for DataId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "data_{}", self.0)
+        write!(f, "data_{}_{}", self.kind, self.idx)
     }
 }
 
+/// The data to be put in the data section of the asm
 #[derive(Default, Clone, Debug)]
 pub struct DataSection {
-    /// the data to be put in the data section of the asm
-    pub value_pairs: Vec<Entry>,
+    pub non_configurables: Vec<Entry>,
+    pub configurables: Vec<Entry>,
+    pub(crate) pointer_id: FxHashMap<u64, DataId>,
 }
 
 impl DataSection {
-    /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
-    /// in bytes.
-    pub(crate) fn data_id_to_offset(&self, id: &DataId) -> usize {
-        self.raw_data_id_to_offset(id.0)
+    /// Get the number of entries
+    pub(crate) fn num_entries(&self) -> usize {
+        self.non_configurables.len() + self.configurables.len()
+    }
+
+    /// Iterate over all entries, non-configurables followed by configurables
+    pub(crate) fn iter_all_entries(&self) -> impl Iterator<Item = Entry> + '_ {
+        self.non_configurables
+            .iter()
+            .chain(self.configurables.iter())
+            .cloned()
+    }
+
+    /// Get the absolute index of an id
+    fn absolute_idx(&self, id: &DataId) -> usize {
+        match id.kind {
+            DataIdEntryKind::NonConfigurable => id.idx as usize,
+            DataIdEntryKind::Configurable => id.idx as usize + self.non_configurables.len(),
+        }
+    }
+
+    /// Get entry at id
+    fn get(&self, id: &DataId) -> Option<&Entry> {
+        match id.kind {
+            DataIdEntryKind::NonConfigurable => self.non_configurables.get(id.idx as usize),
+            DataIdEntryKind::Configurable => self.configurables.get(id.idx as usize),
+        }
     }
 
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
-    pub(crate) fn raw_data_id_to_offset(&self, id: u32) -> usize {
-        self.value_pairs
-            .iter()
-            .take(id as usize)
-            .fold(0, |offset, entry| {
-                //entries must be word aligned
-                size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
-            })
+    pub(crate) fn data_id_to_offset(&self, id: &DataId) -> usize {
+        let idx = self.absolute_idx(id);
+        self.absolute_idx_to_offset(idx)
+    }
+
+    /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
+    /// in bytes.
+    pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
+        self.iter_all_entries().take(idx).fold(0, |offset, entry| {
+            //entries must be word aligned
+            size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+        })
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
         // not the exact right capacity but serves as a lower bound
-        let mut buf = Vec::with_capacity(self.value_pairs.len());
-        for entry in &self.value_pairs {
+        let mut buf = Vec::with_capacity(self.num_entries());
+        for entry in self.iter_all_entries() {
             buf.append(&mut entry.to_bytes());
 
             //entries must be word aligned
@@ -248,16 +310,12 @@ impl DataSection {
 
     /// Returns whether a specific [DataId] value has a copy type (fits in a register).
     pub(crate) fn has_copy_type(&self, id: &DataId) -> Option<bool> {
-        self.value_pairs
-            .get(id.0 as usize)
-            .map(|entry| entry.has_copy_type())
+        self.get(id).map(|entry| entry.has_copy_type())
     }
 
     /// Returns whether a specific [DataId] value is a byte entry.
     pub(crate) fn is_byte(&self, id: &DataId) -> Option<bool> {
-        self.value_pairs
-            .get(id.0 as usize)
-            .map(|entry| entry.is_byte())
+        self.get(id).map(|entry| entry.is_byte())
     }
 
     /// When generating code, sometimes a hard-coded data pointer is needed to reference
@@ -268,31 +326,57 @@ impl DataSection {
     /// relative to the current (load) instruction.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
         // The 'pointer' is just a literal 64 bit address.
-        self.insert_data_value(Entry::new_word(pointer_value, None, None))
+        let data_id = self.insert_data_value(Entry::new_word(
+            pointer_value,
+            EntryName::NonConfigurable,
+            None,
+        ));
+        self.pointer_id.insert(pointer_value, data_id.clone());
+        data_id
+    }
+
+    /// Get the [DataId] for a pointer, if it exists.
+    /// The pointer must've been inserted with append_pointer.
+    pub(crate) fn data_id_of_pointer(&self, pointer_value: u64) -> Option<DataId> {
+        self.pointer_id.get(&pointer_value).cloned()
     }
 
     /// Given any data in the form of a [Literal] (using this type mainly because it includes type
-    /// information and debug spans), insert it into the data section and return its offset as a
+    /// information and debug spans), insert it into the data section and return its handle as
     /// [DataId].
     pub(crate) fn insert_data_value(&mut self, new_entry: Entry) -> DataId {
         // if there is an identical data value, use the same id
-        match self
-            .value_pairs
-            .iter()
-            .position(|entry| entry.equiv(&new_entry))
-        {
-            Some(num) => DataId(num as u32),
+
+        let (value_pairs, kind) = match new_entry.name {
+            EntryName::NonConfigurable => (
+                &mut self.non_configurables,
+                DataIdEntryKind::NonConfigurable,
+            ),
+            EntryName::Configurable(_) => (&mut self.configurables, DataIdEntryKind::Configurable),
+        };
+        match value_pairs.iter().position(|entry| entry.equiv(&new_entry)) {
+            Some(num) => DataId {
+                idx: num as u32,
+                kind,
+            },
             None => {
-                self.value_pairs.push(new_entry);
+                value_pairs.push(new_entry);
                 // the index of the data section where the value is stored
-                DataId((self.value_pairs.len() - 1) as u32)
+                DataId {
+                    idx: (value_pairs.len() - 1) as u32,
+                    kind,
+                }
             }
         }
     }
 
     // If the stored data is Datum::Word, return the inner value.
     pub(crate) fn get_data_word(&self, data_id: &DataId) -> Option<u64> {
-        self.value_pairs.get(data_id.0 as usize).and_then(|entry| {
+        let value_pairs = match data_id.kind {
+            DataIdEntryKind::NonConfigurable => &self.non_configurables,
+            DataIdEntryKind::Configurable => &self.configurables,
+        };
+        value_pairs.get(data_id.idx as usize).and_then(|entry| {
             if let Datum::Word(w) = entry.value {
                 Some(w)
             } else {
@@ -322,11 +406,12 @@ impl fmt::Display for DataSection {
 
         use std::fmt::Write;
         let mut data_buf = String::new();
-        for (ix, entry) in self.value_pairs.iter().enumerate() {
+        for (ix, entry) in self.iter_all_entries().enumerate() {
             writeln!(
                 data_buf,
-                "{} {}",
-                DataId(ix as u32),
+                "data_{}_{} {}",
+                entry.name,
+                ix,
                 display_entry(&entry.value)
             )?;
         }

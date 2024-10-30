@@ -74,10 +74,10 @@ impl HashWithEngines for TyTraitType {
 }
 
 impl SubstTypes for TyTraitType {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.ty.subst(type_mapping, ctx);
-            self.implementing_type.subst(type_mapping, ctx);
+            self.ty.subst(ctx);
+            self.implementing_type.subst(ctx);
         }
     }
 }

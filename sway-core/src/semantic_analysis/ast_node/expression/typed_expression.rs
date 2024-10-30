@@ -29,7 +29,7 @@ use crate::{
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
-    semantic_analysis::{expression::ReachableReport, type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
     Engines,
@@ -58,6 +58,12 @@ impl ty::TyExpression {
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines;
+        let ctx = ctx.with_type_annotation(engines.te().insert(
+            engines,
+            TypeInfo::Boolean,
+            span.source_id(),
+        ));
         Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
     }
 
@@ -67,6 +73,12 @@ impl ty::TyExpression {
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines;
+        let ctx = ctx.with_type_annotation(engines.te().insert(
+            engines,
+            TypeInfo::Boolean,
+            span.source_id(),
+        ));
         Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
     }
 
@@ -995,6 +1007,7 @@ impl ty::TyExpression {
         /// Returns the position of the first match arm that is an "interior" arm, meaning:
         ///  - arm is a catch-all arm
         ///  - arm is not the last match arm
+        ///
         /// or `None` if such arm does not exist.
         /// Note that the arm can be the first arm.
         fn interior_catch_all_arm_position(arms_reachability: &[ReachableReport]) -> Option<usize> {
@@ -1243,19 +1256,19 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx
-            .namespace()
-            .resolve_root_symbol(
-                handler,
-                engines,
-                &storage_key_mod_path,
-                &storage_key_ident,
-                None,
-            )?
-            .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_decl(handler, engines)?;
+        let storage_key_decl = ctx.namespace().root().resolve_symbol(
+            handler,
+            engines,
+            &storage_key_mod_path,
+            &storage_key_ident,
+            None,
+        )?;
+
+        let storage_key_struct_decl_id = storage_key_decl
+            .expect_typed()
+            .to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
-            (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
+            (*decl_engine.get_struct(&storage_key_struct_decl_id)).clone();
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
@@ -1281,7 +1294,7 @@ impl ty::TyExpression {
         let storage_key_struct_decl_ref = decl_engine.insert(
             storage_key_struct_decl,
             decl_engine
-                .get_parsed_decl_id(&storage_key_struct_decl_ref)
+                .get_parsed_decl_id(&storage_key_struct_decl_id)
                 .as_ref(),
         );
         access_type = type_engine.insert(
@@ -1357,7 +1370,6 @@ impl ty::TyExpression {
                 let type_info = TypeInfo::Custom {
                     qualified_call_path: qualified_call_path.clone(),
                     type_arguments: None,
-                    root_type_id: None,
                 };
 
                 TypeBinding {
@@ -1490,7 +1502,6 @@ impl ty::TyExpression {
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
                 qualified_call_path: type_name.clone().into(),
                 type_arguments: None,
-                root_type_id: None,
             });
 
             let method_name_binding = TypeBinding {
@@ -1732,7 +1743,6 @@ impl ty::TyExpression {
                 type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
                     qualified_call_path: type_name.clone().into(),
                     type_arguments: None,
-                    root_type_id: None,
                 })
             });
 
@@ -1780,14 +1790,10 @@ impl ty::TyExpression {
         // type check the address and make sure it is
         let err_span = address.span().clone();
         let address_expr = {
-            // We want to type check the address expression as we do in the second pass, otherwise we get
-            // mismatched types while comparing TypeInfo::ContractCaller which is the return type of
-            // TyExpressionVariant::AbiCast.
             let ctx = ctx
                 .by_ref()
                 .with_help_text("An address that is being ABI cast must be of type b256")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None))
-                .with_code_block_first_pass(false);
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None));
             ty::TyExpression::type_check(handler, ctx, address)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, err_span, engines))
         };
@@ -1946,7 +1952,7 @@ impl ty::TyExpression {
     }
 
     fn type_check_array(
-        _handler: &Handler,
+        handler: &Handler,
         mut ctx: TypeCheckContext,
         contents: &[Expression],
         span: Span,
@@ -2002,9 +2008,15 @@ impl ty::TyExpression {
                     .with_type_annotation(type_engine.insert(engines, initial_type.clone(), None));
 
                 // type_check_analyze unification will give the final error
-                let handler = Handler::default();
-                Self::type_check(&handler, ctx, expr)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines))
+                let type_check_handler = Handler::default();
+                let result = Self::type_check(&type_check_handler, ctx, expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, span, engines));
+
+                if let TypeInfo::ErrorRecovery(_) = &*engines.te().get(result.return_type) {
+                    handler.append(type_check_handler);
+                }
+
+                result
             })
             .collect();
 
@@ -2897,7 +2909,7 @@ fn check_asm_block_validity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Engines, ExperimentalFlags};
+    use crate::{Engines, ExperimentalFeatures};
     use sway_error::type_error::TypeError;
     use symbol_collection_context::SymbolCollectionContext;
 
@@ -2906,7 +2918,7 @@ mod tests {
         engines: &Engines,
         expr: &Expression,
         type_annotation: TypeId,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let collection_ctx_ns = Namespace::new();
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
@@ -2950,9 +2962,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         )?;
         expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
         Ok(expr)
@@ -2982,7 +2992,7 @@ mod tests {
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
 
-        assert!(errors.len() == 1);
+        assert_eq!(errors.len(), 1);
         assert!(matches!(&errors[0],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
@@ -3092,9 +3102,7 @@ mod tests {
                 ),
                 None,
             ),
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

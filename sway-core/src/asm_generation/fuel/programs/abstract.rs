@@ -5,7 +5,7 @@ use crate::{
             abstract_instruction_set::AbstractInstructionSet,
             allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
             compiler_constants,
-            data_section::{DataSection, Entry},
+            data_section::{DataSection, Entry, EntryName},
             globals_section::GlobalsSection,
             register_sequencer::RegisterSequencer,
         },
@@ -17,10 +17,10 @@ use crate::{
         VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
-    ExperimentalFlags,
 };
 use either::Either;
 use sway_error::error::CompileError;
+use sway_features::ExperimentalFeatures;
 
 /// The entry point of an abstract program.
 pub(crate) struct AbstractEntry {
@@ -44,7 +44,7 @@ pub(crate) struct AbstractProgram {
     entries: Vec<AbstractEntry>,
     non_entries: Vec<AbstractInstructionSet>,
     reg_seqr: RegisterSequencer,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 }
 
 impl AbstractProgram {
@@ -57,7 +57,7 @@ impl AbstractProgram {
         entries: Vec<AbstractEntry>,
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Self {
         AbstractProgram {
             kind,
@@ -75,10 +75,10 @@ impl AbstractProgram {
     pub(crate) fn is_empty(&self) -> bool {
         self.non_entries.is_empty()
             && self.entries.is_empty()
-            && self.data_section.value_pairs.is_empty()
+            && self.data_section.iter_all_entries().next().is_none()
     }
 
-    /// Adds prologue, globals allocation, before entries, contract method switch, and allocates virtual register
+    /// Adds prologue, globals allocation, before entries, contract method switch, and allocates virtual register.
     pub(crate) fn into_allocated_program(
         mut self,
         fallback_fn: Option<crate::asm_lang::Label>,
@@ -111,21 +111,21 @@ impl AbstractProgram {
             })
             .collect();
 
-        // Gather all functions
+        // Gather all functions.
         let all_functions = self
             .entries
             .into_iter()
             .map(|entry| entry.ops)
             .chain(self.non_entries);
 
-        // optimise and then verify these functions.
+        // Optimize and then verify abstract functions.
         let abstract_functions = all_functions
             .map(|instruction_set| instruction_set.optimize(&self.data_section))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
         // Allocate the registers for each function.
-        let functions = abstract_functions
+        let allocated_functions = abstract_functions
             .into_iter()
             .map(|abstract_instruction_set| {
                 let allocated = abstract_instruction_set.allocate_registers()?;
@@ -133,7 +133,12 @@ impl AbstractProgram {
             })
             .collect::<Result<Vec<AllocatedAbstractInstructionSet>, CompileError>>()?;
 
-        // XXX need to verify that the stack use for each function is balanced.
+        // Optimize allocated functions.
+        // TODO: Add verification. E.g., verify that the stack use for each function is balanced.
+        let functions = allocated_functions
+            .into_iter()
+            .map(|instruction_set| instruction_set.optimize())
+            .collect::<Vec<AllocatedAbstractInstructionSet>>();
 
         Ok(AllocatedProgram {
             kind: self.kind,
@@ -159,14 +164,28 @@ impl AbstractProgram {
     /// Right now, it looks like this:
     ///
     /// WORD OP
-    /// 1    MOV $scratch $pc
-    /// -    JMPF $zero i2
-    /// 2    DATA_START (0-32) (in bytes, offset from $is)
-    /// -    DATA_START (32-64)
-    /// 3    LW $ds $scratch 1
-    /// -    ADD $ds $ds $scratch
-    /// 4    .program_start:
+    ///     1    MOV $scratch $pc
+    ///     -    JMPF $zero i10
+    ///     2    DATA_START (0-32) (in bytes, offset from $is)
+    ///     -    DATA_START (32-64)
+    ///     3    CONFIGURABLES_OFFSET (0-32)
+    ///     -    CONFIGURABLES_OFFSET (32-64)
+    ///     4    LW $ds $scratch 1
+    ///     -    ADD $ds $ds $scratch
+    ///     5    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
+        const _: () = assert!(
+            crate::PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES == 16,
+            "Inconsistency in the assumption of prelude organisation"
+        );
+        const _: () = assert!(
+            crate::PRELUDE_CONFIGURABLES_SIZE_IN_BYTES == 8,
+            "Inconsistency in the assumption of prelude organisation"
+        );
+        const _: () = assert!(
+            crate::PRELUDE_SIZE_IN_BYTES == 32,
+            "Inconsistency in the assumption of prelude organisation"
+        );
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {
             ops: [
@@ -190,12 +209,18 @@ impl AbstractProgram {
                     comment: "data section offset".into(),
                     owning_span: None,
                 },
+                // word 3 -- full word u64 placeholder
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Label(label)),
-                    comment: "end of metadata".into(),
+                    opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
+                    comment: "configurables offset".into(),
                     owning_span: None,
                 },
-                // word 3 -- load the data offset into $ds
+                AllocatedAbstractOp {
+                    opcode: Either::Right(ControlFlowOp::Label(label)),
+                    comment: "end of configurables offset".into(),
+                    owning_span: None,
+                },
+                // word 4 -- load the data offset into $ds
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::LW(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
@@ -205,7 +230,7 @@ impl AbstractProgram {
                     comment: "".into(),
                     owning_span: None,
                 },
-                // word 3.5 -- add $ds $ds $is
+                // word 4.5 -- add $ds $ds $is
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
@@ -276,7 +301,7 @@ impl AbstractProgram {
             // Put the selector in the data section.
             let data_label = self.data_section.insert_data_value(Entry::new_word(
                 u32::from_be_bytes(selector) as u64,
-                None,
+                EntryName::NonConfigurable,
                 None,
             ));
 

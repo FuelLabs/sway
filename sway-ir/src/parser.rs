@@ -1,15 +1,16 @@
 //! A parser for the printed IR, useful mostly for testing.
 
+use sway_features::ExperimentalFeatures;
 use sway_types::SourceEngine;
 
-use crate::{context::Context, error::IrError, ExperimentalFlags};
+use crate::{context::Context, error::IrError};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
 pub fn parse<'eng>(
     input: &str,
     source_engine: &'eng SourceEngine,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<Context<'eng>, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
@@ -26,6 +27,7 @@ pub fn parse<'eng>(
 
 mod ir_builder {
     use slotmap::KeyData;
+    use sway_features::ExperimentalFeatures;
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
     type MdIdxRef = u64;
@@ -686,8 +688,7 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, ConfigContent, ExperimentalFlags, Instruction, UnaryOpKind,
-        B256,
+        BinaryOpKind, BlockArgument, ConfigContent, Instruction, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -953,6 +954,7 @@ mod ir_builder {
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     use std::{
+        cell::Cell,
         collections::{BTreeMap, HashMap},
         iter::FromIterator,
     };
@@ -960,7 +962,7 @@ mod ir_builder {
     pub(super) fn build_context(
         ir_ast_mod: IrAstModule,
         source_engine: &SourceEngine,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Result<Context, IrError> {
         let mut ctx = Context::new(source_engine, experimental);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
@@ -1465,7 +1467,7 @@ mod ir_builder {
                     .configs
                     .get_mut(&configurable_name)
                 {
-                    *decode_fn = f;
+                    decode_fn.replace(f);
                 }
             }
 
@@ -1521,7 +1523,7 @@ mod ir_builder {
                     ptr_ty: Type::new_ptr(context, ty),
                     encoded_bytes: config.encoded_bytes,
                     // this will point to the correct function after all functions are compiled
-                    decode_fn: Function(KeyData::default().into()),
+                    decode_fn: Cell::new(Function(KeyData::default().into())),
                     opt_metadata,
                 };
 

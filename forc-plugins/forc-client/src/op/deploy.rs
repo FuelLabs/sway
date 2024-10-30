@@ -13,25 +13,32 @@ use crate::{
     },
 };
 use anyhow::{bail, Context, Result};
-use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
+use fuel_abi_types::abi::program::Configurable;
 use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Salt, Transaction};
-use fuel_vm::prelude::*;
+use fuel_vm::{consts::WORD_SIZE, fuel_asm::op, prelude::*};
 use fuels::{
     macros::abigen,
-    programs::contract::{LoadConfiguration, StorageConfiguration},
-    types::{bech32::Bech32ContractId, transaction_builders::Blob},
+    programs::{
+        contract::{LoadConfiguration, StorageConfiguration},
+        executable::Executable,
+    },
+    types::{
+        bech32::Bech32ContractId,
+        transaction_builders::{Blob, BlobId},
+    },
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
-use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
+use pkg::{BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -40,20 +47,36 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sway_core::language::parsed::TreeType;
-use sway_core::BuildTarget;
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget};
 
-/// Maximum contract size allowed for a single contract. If the target
+/// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
 /// starts dividing the contract and deploy them in chunks automatically.
-/// The value is in bytes.
+/// The value is in bytes
 const MAX_CONTRACT_SIZE: usize = 100_000;
 
+/// Represents a deployed instance of a forc package.
+/// Packages other than libraries are deployable through different mechanisms.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DeployedPackage {
+    Contract(DeployedContract),
+    Script(DeployedExecutable),
+    Predicate(DeployedExecutable),
+}
+
+/// Represents a deployed contract on the Fuel network.
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
     pub proxy: Option<fuel_tx::ContractId>,
     pub chunked: bool,
+}
+
+/// Represents a deployed executable (script or predicate) on the Fuel network.
+/// Executables are deployed as blobs with generated loaders for efficiency.
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
+pub struct DeployedExecutable {
+    pub bytecode: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,7 +176,7 @@ fn resolve_storage_slots(
 }
 
 /// Creates blobs from the contract to deploy contracts that are larger than
-/// `MAX_CONTRACT_SIZE`. Created blobs are deployed, and a loader contract is
+/// maximum contract size. Created blobs are deployed, and a loader contract is
 /// generated such that it loads all the deployed blobs, and provides the user
 /// a single contract (loader contract that loads the blobs) to call into.
 async fn deploy_chunked(
@@ -168,7 +191,7 @@ async fn deploy_chunked(
 
     let storage_slots = resolve_storage_slots(command, compiled)?;
     let chain_info = provider.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let contract_url = match target.explorer_url() {
         Some(explorer_url) => format!("{explorer_url}/contract/0x"),
         None => "".to_string(),
@@ -233,7 +256,7 @@ async fn deploy_new_proxy(
     .into();
 
     let chain_info = provider.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let contract_url = match target.explorer_url() {
         Some(explorer_url) => format!("{explorer_url}/contract/0x"),
         None => "".to_string(),
@@ -251,27 +274,25 @@ async fn deploy_new_proxy(
     Ok(proxy_contract_id)
 }
 
-/// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
-/// will be built and deployed.
+/// Builds and deploys contracts, scripts, and predicates from the given path or workspace.
 ///
-/// Upon success, returns the ID of each deployed contract in order of deployment.
+/// Contracts are deployed directly, while scripts and predicates are deployed as blobs with generated loaders.
 ///
-/// When deploying a single contract, only that contract's ID is returned.
-pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
+/// Returns a vector of `DeployedPackage` representing all successful deployments.
+pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedPackage>> {
     if command.unsigned {
         println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
-
-    let mut deployed_contracts = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
     };
-
-    let build_opts = build_opts_from_cmd(&command);
+    let build_opts = build_opts_from_cmd(&command, MemberFilter::default());
     let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
-    let pkgs_to_deploy = built_pkgs
+    let mut deployed_packages = Vec::new();
+
+    let contracts_to_deploy = built_pkgs
         .iter()
         .filter(|pkg| {
             pkg.descriptor
@@ -279,20 +300,281 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 .check_program_type(&[TreeType::Contract])
                 .is_ok()
         })
+        .cloned()
         .collect::<Vec<_>>();
 
-    if pkgs_to_deploy.is_empty() {
-        println_warning("No deployable contracts found in the current directory.");
+    let scripts_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Script])
+                .is_ok()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let predicates_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Predicate])
+                .is_ok()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    if contracts_to_deploy.is_empty()
+        && scripts_to_deploy.is_empty()
+        && predicates_to_deploy.is_empty()
+    {
+        println_warning("No deployable package was found in the current directory.");
+    } else {
+        deployed_packages.extend(
+            deploy_contracts(&command, &contracts_to_deploy)
+                .await?
+                .into_iter()
+                .map(DeployedPackage::Contract),
+        );
+        deployed_packages.extend(
+            deploy_executables(&command, &scripts_to_deploy)
+                .await?
+                .into_iter()
+                .map(DeployedPackage::Script),
+        );
+        deployed_packages.extend(
+            deploy_executables(&command, &predicates_to_deploy)
+                .await?
+                .into_iter()
+                .map(DeployedPackage::Predicate),
+        );
+    }
+
+    Ok(deployed_packages)
+}
+
+/// Calculates the loader data offset. Returns a `None` if the original `binary`
+/// does not have a data section (no configurables and no args). Otherwise
+/// returns the new offset of the data section.
+fn loader_data_offset(binary: &[u8], blob_id: &BlobId) -> Result<Option<usize>> {
+    // The following code is taken from SDK, and once they expose the offsets
+    // we will no longer need to maintain this duplicate version here.
+
+    // The final code is going to have this structure (if the data section is non-empty):
+    // 1. loader instructions
+    // 2. blob id
+    // 3. length_of_data_section
+    // 4. the data_section (updated with configurables as needed)
+    const BLOB_ID_SIZE: u16 = 32;
+    const REG_ADDRESS_OF_DATA_AFTER_CODE: u8 = 0x10;
+    const REG_START_OF_LOADED_CODE: u8 = 0x11;
+    const REG_GENERAL_USE: u8 = 0x12;
+    let get_instructions = |num_of_instructions| {
+        // There are 3 main steps:
+        // 1. Load the blob content into memory
+        // 2. Load the data section right after the blob
+        // 3. Jump to the beginning of the memory where the blob was loaded
+        [
+            // 1. Load the blob content into memory
+            // Find the start of the hardcoded blob ID, which is located after the loader code ends.
+            op::move_(REG_ADDRESS_OF_DATA_AFTER_CODE, RegId::PC),
+            // hold the address of the blob ID.
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                num_of_instructions * Instruction::SIZE as u16,
+            ),
+            // The code is going to be loaded from the current value of SP onwards, save
+            // the location into REG_START_OF_LOADED_CODE so we can jump into it at the end.
+            op::move_(REG_START_OF_LOADED_CODE, RegId::SP),
+            // REG_GENERAL_USE to hold the size of the blob.
+            op::bsiz(REG_GENERAL_USE, REG_ADDRESS_OF_DATA_AFTER_CODE),
+            // Push the blob contents onto the stack.
+            op::ldc(REG_ADDRESS_OF_DATA_AFTER_CODE, 0, REG_GENERAL_USE, 1),
+            // Move on to the data section length
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                BLOB_ID_SIZE,
+            ),
+            // load the size of the data section into REG_GENERAL_USE
+            op::lw(REG_GENERAL_USE, REG_ADDRESS_OF_DATA_AFTER_CODE, 0),
+            // after we have read the length of the data section, we move the pointer to the actual
+            // data by skipping WORD_SIZE B.
+            op::addi(
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                REG_ADDRESS_OF_DATA_AFTER_CODE,
+                WORD_SIZE as u16,
+            ),
+            // load the data section of the executable
+            op::ldc(REG_ADDRESS_OF_DATA_AFTER_CODE, 0, REG_GENERAL_USE, 2),
+            // Jump into the memory where the contract is loaded.
+            // What follows is called _jmp_mem by the sway compiler.
+            // Subtract the address contained in IS because jmp will add it back.
+            op::sub(
+                REG_START_OF_LOADED_CODE,
+                REG_START_OF_LOADED_CODE,
+                RegId::IS,
+            ),
+            // jmp will multiply by 4, so we need to divide to cancel that out.
+            op::divi(REG_START_OF_LOADED_CODE, REG_START_OF_LOADED_CODE, 4),
+            // Jump to the start of the contract we loaded.
+            op::jmp(REG_START_OF_LOADED_CODE),
+        ]
+    };
+
+    let offset = extract_data_offset(binary)?;
+
+    if binary.len() < offset {
+        anyhow::bail!("data sectio offset is out of bounds");
+    }
+
+    let data_section = binary[offset..].to_vec();
+
+    if !data_section.is_empty() {
+        let num_of_instructions = u16::try_from(get_instructions(0).len())
+            .expect("to never have more than u16::MAX instructions");
+
+        let instruction_bytes = get_instructions(num_of_instructions)
+            .into_iter()
+            .flat_map(|instruction| instruction.to_bytes());
+
+        let blob_bytes = blob_id.iter().copied();
+
+        let loader_offset =
+            instruction_bytes.count() + blob_bytes.count() + data_section.len().to_be_bytes().len();
+
+        Ok(Some(loader_offset))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Builds and deploys executable (script and predicate) package(s) as blobs,
+/// and generates a loader for each of them.
+pub async fn deploy_executables(
+    command: &cmd::Deploy,
+    executables_to_deploy: &[Arc<BuiltPackage>],
+) -> Result<Vec<DeployedExecutable>> {
+    let mut deployed_executable = vec![];
+    if executables_to_deploy.is_empty() {
+        return Ok(deployed_executable);
+    }
+
+    let node_url = validate_and_get_node_url(command, executables_to_deploy).await?;
+    // We will have 1 transaction per executable as each deployment uses a single blob.
+    let tx_count = executables_to_deploy.len();
+    let account = setup_deployment_account(command, &node_url, tx_count).await?;
+
+    for pkg in executables_to_deploy {
+        let script = Executable::from_bytes(pkg.bytecode.bytes.clone());
+        let loader = script.convert_to_loader()?;
+        println_action_green("Uploading", "blob containing executable bytecode.");
+        loader.upload_blob(account.clone()).await?;
+        println_action_green("Generating", "loader bytecode for the uploaded executable.");
+        let loader_bytecode = loader.code();
+        let pkg_name = &pkg.descriptor.name;
+        let out_dir = pkg.descriptor.manifest_file.dir().join("out");
+        let bin_path = out_dir.join(format!("{pkg_name}-loader.bin"));
+        std::fs::write(&bin_path, &loader_bytecode)?;
+        println_action_green(
+            "Saved",
+            &format!("loader bytecode at {}", bin_path.display()),
+        );
+        if let Some(loader_data_section_offset) =
+            loader_data_offset(&pkg.bytecode.bytes, &BlobId::default())?
+        {
+            if let ProgramABI::Fuel(mut fuel_abi) = pkg.program_abi.clone() {
+                println_action_green("Generating", "loader abi for the uploaded executable.");
+                let json_abi_path = out_dir.join(format!("{pkg_name}-loader-abi.json"));
+                let original_data_section = extract_data_offset(&pkg.bytecode.bytes).unwrap();
+                let offset_shift = original_data_section - loader_data_section_offset;
+                // if there are configurables in the abi we need to shift them by `offset_shift`.
+                let configurables = fuel_abi.configurables.clone().map(|configs| {
+                    configs
+                        .into_iter()
+                        .map(|config| Configurable {
+                            offset: config.offset - offset_shift as u64,
+                            ..config.clone()
+                        })
+                        .collect()
+                });
+                fuel_abi.configurables = configurables;
+                let json_string = serde_json::to_string_pretty(&fuel_abi)?;
+                std::fs::write(json_abi_path, json_string)?;
+            }
+        }
+        // If the executable is a predicate, we also want to display and save the predicate root.
+        if pkg
+            .descriptor
+            .manifest_file
+            .program_type()
+            .with_context(|| {
+                "error while trying to retrieve program type for executable deployment."
+            })?
+            == TreeType::Predicate
+        {
+            // Calculate the root.
+            let root = format!("0x{}", fuel_tx::Input::predicate_owner(&loader_bytecode));
+            // Root files are named in `pkg-name-root` format, since this is a
+            // loader we are also adding an identifier to differentiate it from
+            // the root of the "original" predicate.
+            let root_file_name = format!("{}-loader-root", &pkg_name);
+            let root_path = out_dir.join(root_file_name);
+            std::fs::write(&root_path, &root)?;
+            println_action_green(
+                "Saved",
+                &format!("loader root ({}) at {}", root, root_path.display()),
+            );
+        }
+        let deployed = DeployedExecutable {
+            bytecode: loader_bytecode,
+        };
+        deployed_executable.push(deployed);
+        println_action_green("Finished", &format!("deploying executable {pkg_name}"));
+    }
+    Ok(deployed_executable)
+}
+
+fn extract_data_offset(binary: &[u8]) -> Result<usize> {
+    if binary.len() < 16 {
+        anyhow::bail!(
+            "given binary is too short to contain a data offset, len: {}",
+            binary.len()
+        );
+    }
+
+    let data_offset: [u8; 8] = binary[8..16].try_into().expect("checked above");
+
+    Ok(u64::from_be_bytes(data_offset) as usize)
+}
+
+/// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
+/// will be built and deployed.
+///
+/// Upon success, returns the ID of each deployed contract in order of deployment.
+///
+/// When deploying a single contract, only that contract's ID is returned.
+pub async fn deploy_contracts(
+    command: &cmd::Deploy,
+    contracts_to_deploy: &[Arc<BuiltPackage>],
+) -> Result<Vec<DeployedContract>> {
+    let mut deployed_contracts = Vec::new();
+
+    if contracts_to_deploy.is_empty() {
         return Ok(deployed_contracts);
     }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
         // If we're building 1 package, we just parse the salt as a string, ie. 0x00...
         // If we're building >1 package, we must parse the salt as a pair of strings, ie. contract_name:0x00...
-        if built_pkgs.len() > 1 {
+        if contracts_to_deploy.len() > 1 {
             let map = validate_and_parse_salts(
                 salt_input,
-                built_pkgs.iter().map(|b| &b.descriptor.manifest_file),
+                contracts_to_deploy
+                    .iter()
+                    .map(|b| &b.descriptor.manifest_file),
             )?;
 
             Some(map)
@@ -310,7 +592,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 .unwrap();
             let mut contract_salt_map = ContractSaltMap::default();
             contract_salt_map.insert(
-                built_pkgs[0]
+                contracts_to_deploy[0]
                     .descriptor
                     .manifest_file
                     .project_name()
@@ -323,23 +605,19 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
-    // Ensure that all packages are being deployed to the same node.
-    let node_url = get_node_url(
-        &command.node,
-        &pkgs_to_deploy[0].descriptor.manifest_file.network,
-    )?;
-    if !pkgs_to_deploy.iter().all(|pkg| {
-        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
-            == Some(node_url.clone())
-    }) {
-        bail!("All contracts in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all contracts is the same.");
-    }
+    let node_url = validate_and_get_node_url(command, contracts_to_deploy).await?;
+    let provider = Provider::connect(node_url.clone()).await?;
 
     // Confirmation step. Summarize the transaction(s) for the deployment.
-    let (provider, account) =
-        confirm_transaction_details(&pkgs_to_deploy, &command, node_url.clone()).await?;
+    let account = confirm_transaction_details(
+        contracts_to_deploy,
+        command,
+        node_url.clone(),
+        MAX_CONTRACT_SIZE,
+    )
+    .await?;
 
-    for pkg in pkgs_to_deploy {
+    for pkg in contracts_to_deploy {
         let salt = match (&contract_salt_map, command.default_salt) {
             (Some(map), false) => {
                 if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
@@ -361,7 +639,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             let provider = Provider::connect(node_url).await?;
 
             deploy_chunked(
-                &command,
+                command,
                 pkg,
                 salt,
                 &account,
@@ -370,7 +648,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             )
             .await?
         } else {
-            deploy_pkg(&command, pkg, salt, &provider, &account).await?
+            deploy_pkg(command, pkg, salt, &provider, &account).await?
         };
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
@@ -397,7 +675,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 let pkg_storage_slots = &pkg.storage_slots;
                 // Deploy a new proxy contract.
                 let deployed_proxy_contract = deploy_new_proxy(
-                    &command,
+                    command,
                     pkg_name,
                     pkg_storage_slots,
                     &deployed_contract_id,
@@ -429,10 +707,11 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
 /// Prompt the user to confirm the transactions required for deployment, as well as the signing key.
 async fn confirm_transaction_details(
-    pkgs_to_deploy: &[&Arc<BuiltPackage>],
+    pkgs_to_deploy: &[Arc<BuiltPackage>],
     command: &cmd::Deploy,
     node_url: String,
-) -> Result<(Provider, ForcClientAccount)> {
+    max_contract_size: usize,
+) -> Result<ForcClientAccount> {
     // Confirmation step. Summarize the transaction(s) for the deployment.
     let mut tx_count = 0;
     let tx_summary = pkgs_to_deploy
@@ -455,8 +734,8 @@ async fn confirm_transaction_details(
             };
 
             let pkg_bytecode_len = pkg.bytecode.bytes.len();
-            let blob_text = if pkg_bytecode_len > MAX_CONTRACT_SIZE {
-                let number_of_blobs = pkg_bytecode_len.div_ceil(MAX_CONTRACT_SIZE);
+            let blob_text = if pkg_bytecode_len > max_contract_size {
+                let number_of_blobs = pkg_bytecode_len.div_ceil(max_contract_size);
                 tx_count += number_of_blobs;
                 &format!(" + {number_of_blobs} blobs")
             } else {
@@ -474,31 +753,12 @@ async fn confirm_transaction_details(
     println_action_green("Confirming", &format!("transactions [{tx_summary}]"));
     println_action_green("", &format!("Network: {node_url}"));
 
-    let provider = Provider::connect(node_url.clone()).await?;
-
-    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
-        SignerSelectionMode::Manual
-    } else if let Some(arn) = &command.aws_kms_signer {
-        SignerSelectionMode::AwsSigner(arn.clone())
-    } else {
-        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
-        let password = prompt_forc_wallet_password()?;
-        SignerSelectionMode::ForcWallet(password)
-    };
+    let account = setup_deployment_account(command, &node_url, tx_count).await?;
 
     // TODO: Display the estimated gas cost of the transaction(s).
     // https://github.com/FuelLabs/sway/issues/6277
 
-    let account = select_account(
-        &wallet_mode,
-        command.default_signer || command.unsigned,
-        command.signing_key,
-        &provider,
-        tx_count,
-    )
-    .await?;
-
-    Ok((provider.clone(), account))
+    Ok(account)
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
@@ -632,7 +892,7 @@ fn tx_policies_from_cmd(cmd: &cmd::Deploy) -> TxPolicies {
     tx_policies
 }
 
-fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
+fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> pkg::BuildOpts {
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.pkg.path.clone(),
@@ -666,10 +926,9 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         build_target: BuildTarget::default(),
         tests: false,
-        member_filter: pkg::MemberFilter::only_contracts(),
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        member_filter,
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }
 
@@ -688,7 +947,7 @@ fn create_deployment_artifact(
     let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
     let pkg_name = manifest.project_name();
 
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let (contract_url, block_url) = match target.explorer_url() {
         Some(explorer_url) => (
             format!("{explorer_url}/contract/0x"),
@@ -716,6 +975,50 @@ fn create_deployment_artifact(
     deployment_artifact.to_file(&output_dir, pkg_name, contract_id)
 }
 
+/// Validates that all packages are being deployed to the same node and returns the node URL.
+async fn validate_and_get_node_url(
+    command: &cmd::Deploy,
+    packages: &[Arc<BuiltPackage>],
+) -> Result<String> {
+    let node_url = get_node_url(&command.node, &packages[0].descriptor.manifest_file.network)?;
+    if !packages.iter().all(|pkg| {
+        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
+            == Some(node_url.clone())
+    }) {
+        bail!("All packages in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all packages is the same.");
+    }
+    Ok(node_url)
+}
+
+/// Sets up and returns the account for deployment.
+async fn setup_deployment_account(
+    command: &cmd::Deploy,
+    node_url: &str,
+    tx_count: usize,
+) -> Result<ForcClientAccount> {
+    let provider = Provider::connect(node_url).await?;
+
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        SignerSelectionMode::Manual
+    } else if let Some(arn) = &command.aws_kms_signer {
+        SignerSelectionMode::AwsSigner(arn.clone())
+    } else {
+        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
+        let password = prompt_forc_wallet_password()?;
+        SignerSelectionMode::ForcWallet(password)
+    };
+
+    let account = select_account(
+        &wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+        tx_count,
+    )
+    .await?;
+
+    Ok(account)
+}
 #[cfg(test)]
 mod test {
     use super::*;

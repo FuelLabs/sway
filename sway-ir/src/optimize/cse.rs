@@ -220,7 +220,7 @@ pub fn cse(
         }
     }
 
-    // Initialize all instructions and constants. Constants need special treatmemt.
+    // Initialize all instructions and constants. Constants need special treatment.
     // They don't have PartialEq implemented. So we need to value number them manually.
     // This map maps the hash of a constant value to all possible collisions of it.
     let mut const_map = FxHashMap::<u64, Vec<Value>>::default();

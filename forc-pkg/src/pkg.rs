@@ -1,10 +1,7 @@
 use crate::manifest::GenericManifestFile;
 use crate::{
     lock::Lock,
-    manifest::{
-        build_profile::ExperimentalFlags, Dependency, ManifestFile, MemberManifestFiles,
-        PackageManifestFile,
-    },
+    manifest::{Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, IPFSNode, Source},
     BuildProfile,
 };
@@ -49,8 +46,9 @@ use sway_core::{
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{PrintAsm, PrintIr};
+use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_features::ExperimentalFeatures;
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
@@ -312,8 +310,10 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
-    /// Set of experimental flags
-    pub experimental: ExperimentalFlags,
+    /// Set of enabled experimental flags
+    pub experimental: Vec<sway_features::Feature>,
+    /// Set of disabled experimental flags
+    pub no_experimental: Vec<sway_features::Feature>,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -895,22 +895,19 @@ fn validate_version(member_manifests: &MemberManifestFiles) -> Result<()> {
 /// If required minimum forc version is higher than current forc version return an error with
 /// upgrade instructions
 fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
-    match &pkg_manifest.project.forc_version {
-        Some(min_forc_version) => {
-            // Get the current version of the toolchain
-            let crate_version = env!("CARGO_PKG_VERSION");
-            let toolchain_version = semver::Version::parse(crate_version)?;
-            if toolchain_version < *min_forc_version {
-                bail!(
-                    "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
-                    pkg_manifest.project.name,
-                    min_forc_version,
-                    crate_version,
-                    crate_version
-                );
-            }
+    if let Some(min_forc_version) = &pkg_manifest.project.forc_version {
+        // Get the current version of the toolchain
+        let crate_version = env!("CARGO_PKG_VERSION");
+        let toolchain_version = semver::Version::parse(crate_version)?;
+        if toolchain_version < *min_forc_version {
+            bail!(
+                "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
+                pkg_manifest.project.name,
+                min_forc_version,
+                crate_version,
+                crate_version
+            );
         }
-        None => {}
     };
     Ok(())
 }
@@ -1568,10 +1565,7 @@ pub fn sway_build_config(
     .with_time_phases(build_profile.time_phases)
     .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
-    .with_optimization_level(build_profile.optimization_level)
-    .with_experimental(sway_core::ExperimentalFlags {
-        new_encoding: build_profile.experimental.new_encoding,
-    });
+    .with_optimization_level(build_profile.optimization_level);
     Ok(build_config)
 }
 
@@ -1597,7 +1591,7 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1763,6 +1757,7 @@ pub fn compile(
     engines: &Engines,
     namespace: &mut namespace::Root,
     source_map: &mut SourceMap,
+    experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
 
@@ -1799,6 +1794,7 @@ pub fn compile(
             Some(&sway_build_config),
             &pkg.name,
             None,
+            experimental
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -1830,13 +1826,19 @@ pub fn compile(
         pkg.name,
         "compile ast to asm",
         "compile_ast_to_asm",
-        sway_core::ast_to_asm(&handler, engines, &programs, &sway_build_config),
+        sway_core::ast_to_asm(
+            &handler,
+            engines,
+            &programs,
+            &sway_build_config,
+            experimental
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
 
-    const OLD_ENCODING_VERSION: &str = "0";
-    const NEW_ENCODING_VERSION: &str = "1";
+    const ENCODING_V0: &str = "0";
+    const ENCODING_V1: &str = "1";
     const SPEC_VERSION: &str = "1";
 
     let mut program_abi = match pkg.target {
@@ -1853,11 +1855,11 @@ pub fn compile(
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
-                    profile
-                        .experimental
-                        .new_encoding
-                        .then(|| NEW_ENCODING_VERSION.into())
-                        .unwrap_or(OLD_ENCODING_VERSION.into()),
+                    if experimental.new_encoding {
+                        ENCODING_V1.into()
+                    } else {
+                        ENCODING_V0.into()
+                    },
                     SPEC_VERSION.into(),
                 ),
                 Some(sway_build_config.clone()),
@@ -1893,8 +1895,6 @@ pub fn compile(
 
             ProgramABI::Evm(ops)
         }
-
-        BuildTarget::MidenVM => ProgramABI::MidenVM(()),
     };
 
     let entries = asm_res
@@ -1922,7 +1922,7 @@ pub fn compile(
 
     let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
-    let compiled = match bc_res {
+    let mut compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };
@@ -1931,9 +1931,12 @@ pub fn compile(
 
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
+    // Metadata to be placed into the binary.
+    let mut md = [0u8, 0, 0, 0, 0, 0, 0, 0];
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
+        let mut configurables_offset = compiled.bytecode.len() as u64;
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
             configurables.retain(|c| {
@@ -1942,12 +1945,22 @@ pub fn compile(
                     .contains_key(&c.name)
             });
             // Set the actual offsets in the JSON object
-            for (config, offset) in compiled.named_data_section_entries_offsets {
-                if let Some(idx) = configurables.iter().position(|c| c.name == config) {
-                    configurables[idx].offset = offset;
+            for (config, offset) in &compiled.named_data_section_entries_offsets {
+                if *offset < configurables_offset {
+                    configurables_offset = *offset;
+                }
+                if let Some(idx) = configurables.iter().position(|c| &c.name == config) {
+                    configurables[idx].offset = *offset;
                 }
             }
         }
+
+        md = configurables_offset.to_be_bytes();
+    }
+
+    // We know to set the metadata only for fuelvm right now.
+    if let BuildTarget::Fuel = pkg.target {
+        set_bytecode_configurables_offset(&mut compiled, &md);
     }
 
     metrics.bytecode_size = compiled.bytecode.len();
@@ -2009,13 +2022,17 @@ fn report_assembly_information(
         }
     }
 
+    // Merge the data section entry slots together for usage calculation.
+    let mut data_section_entries: Vec<_> = compiled_asm.0.data_section.non_configurables.clone();
+    data_section_entries.extend(compiled_asm.0.data_section.configurables.clone());
+
     // Compute the assembly information to be reported.
     let asm_information = sway_core::asm_generation::AsmInformation {
         bytecode_size: bytes.len() as _,
         data_section: sway_core::asm_generation::DataSectionInformation {
             size: data_section_size,
-            used: compiled_asm.0.data_section.value_pairs.iter().map(calculate_entry_size).sum(),
-            value_pairs: compiled_asm.0.data_section.value_pairs.clone(),
+            used: data_section_entries.iter().map(calculate_entry_size).sum(),
+            value_pairs: data_section_entries.clone(),
         }
     };
 
@@ -2131,7 +2148,6 @@ fn build_profile_from_opts(
         metrics_outfile,
         tests,
         error_on_warnings,
-        experimental,
         ..
     } = build_options;
 
@@ -2173,9 +2189,7 @@ fn build_profile_from_opts(
     }
     profile.include_tests |= tests;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental = ExperimentalFlags {
-        new_encoding: experimental.new_encoding,
-    };
+    // profile.experimental = *experimental;
 
     Ok(profile)
 }
@@ -2214,6 +2228,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         build_target,
         member_filter,
         experimental,
+        no_experimental,
         ..
     } = &build_options;
 
@@ -2259,9 +2274,8 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         *build_target,
         &build_profile,
         &outputs,
-        sway_core::ExperimentalFlags {
-            new_encoding: experimental.new_encoding,
-        },
+        experimental,
+        no_experimental,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2372,7 +2386,8 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2406,6 +2421,13 @@ pub fn build(
             &pkg.name,
             &pkg.source.display_compiling(manifest.dir()),
         );
+
+        let experimental = ExperimentalFeatures::new(
+            &manifest.project.experimental,
+            experimental,
+            no_experimental,
+        )
+        .map_err(|err| anyhow!("{err}"))?;
 
         let descriptor = PackageDescriptor {
             name: pkg.name.clone(),
@@ -2464,6 +2486,7 @@ pub fn build(
                 &engines,
                 &mut dep_namespace,
                 &mut source_map,
+                experimental,
             )?;
 
             if let Some(outfile) = profile.metrics_outfile {
@@ -2537,6 +2560,7 @@ pub fn build(
             &engines,
             &mut dep_namespace,
             &mut source_map,
+            experimental,
         )?;
 
         if let Some(outfile) = profile.metrics_outfile {
@@ -2582,7 +2606,8 @@ pub fn check(
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
@@ -2593,6 +2618,13 @@ pub fn check(
     for (idx, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+
+        let experimental = ExperimentalFeatures::new(
+            &manifest.project.experimental,
+            experimental,
+            no_experimental,
+        )
+        .map_err(|err| anyhow!("{err}"))?;
 
         // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
         // compiler's namespace. Although we only know the contract id during building, we are
@@ -2641,6 +2673,7 @@ pub fn check(
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
+            experimental,
         );
 
         if retrigger_compilation

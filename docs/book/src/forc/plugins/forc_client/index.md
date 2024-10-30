@@ -92,24 +92,30 @@ By default `--default-signer` flag would sign your transactions with the followi
 0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c
 ```
 
-## Interacting with the testnet
+## Selecting a target network
 
-To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the latest `testnet`.
+By default, `local` is used for the target network. To interact with the latest testnet, use the `--testnet` flag. When this flag is passed, transactions created by `forc-deploy` will be sent to the latest `testnet`:
 
 ```sh
 forc-deploy --testnet
 ```
 
-It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag.
+The same can be done to target mainnet:
 
 ```sh
-forc-deploy --node-url https://beta-3.fuel.network
+forc-deploy --mainnet
 ```
 
-Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `beta-5` you can use:
+It is also possible to pass the exact node URL while using `forc-deploy` or `forc-run` which can be done using `--node-url` flag:
 
 ```sh
-forc-deploy --target beta-5
+forc-deploy --node-url https://mainnet.fuel.network
+```
+
+Another alternative is the `--target` option, which provides useful aliases to all targets. For example if you want to deploy to `testnet` you can use:
+
+```sh
+forc-deploy --target testnet
 ```
 
 Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
@@ -179,4 +185,25 @@ If an `address` is present, `forc` calls into that contract to update its `targe
 
 ## Large Contracts
 
-For contracts over 100KB, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
+For contracts over the maximum contract size limit (currently `100kB`) defined by the network, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
+
+## Deploying Scripts and Predicates
+
+`forc deploy` now supports deploying scripts and predicates in addition to contracts. These are deployed as blobs with generated loaders for efficiency.
+
+Scripts and predicates are deployed automatically when you run `forc deploy` on a project that contains them. The deployment process differs slightly from contract deployment:
+
+1. For scripts and predicates, the bytecode is uploaded as a blob.
+2. A loader is generated that can load and execute the blob.
+3. The loader bytecode is saved in the project's output directory.
+
+After deployment, you'll find new files in your project's output directory:
+
+- For scripts: `<script_name>-loader.bin`
+- For predicates: `<predicate_name>-loader.bin` and `<predicate_name>-loader-root`
+
+The loader files contain the bytecode necessary to load and execute your script or predicate from the deployed blob.
+
+This new deployment method allows for more efficient storage and execution of scripts and predicates on the Fuel network.
+
+Note: Contracts are still deployed directly, not as blobs given that the contract size is under the maximum contract size limit defined by network (currently `100kB`).

@@ -40,14 +40,20 @@ rpassword.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sway-core.workspace = true
+sway-features.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
-tokio = { workspace = true, features = ["macros", "process", "rt-multi-thread"] }
+tokio = { workspace = true, features = [
+    "macros",
+    "process",
+    "rt-multi-thread",
+] }
 toml_edit.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
 portpicker = "0.1.1"
+pretty_assertions = "1.4.1"
 rexpect = "0.5"
 tempfile = "3"
 

@@ -11,9 +11,8 @@ use crate::{
         ty::{self, TyTraitType},
     },
     semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext,
-        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckContext,
     },
     type_system::*,
     Engines,
@@ -37,7 +36,7 @@ impl ty::TyTraitType {
 
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         trait_type: parsed::TraitTypeDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let parsed::TraitTypeDeclaration {

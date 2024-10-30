@@ -5,7 +5,7 @@ use crate::{
         ty::{self, TyExpression, TyVariableDecl},
     },
     namespace::ResolvedDeclaration,
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
     Engines,
 };
@@ -32,7 +32,7 @@ impl ty::TyVariableDecl {
 
     pub fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         var_decl: VariableDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let engines = &ctx.engines();

@@ -1,10 +1,16 @@
 category = "fail"
 
 # check: vector.push(false);
-# nextln: $()This parameter was declared as type u8, but argument of type bool was provided.
+# nextln: $()No method "push(Vec<u8>, bool)" found for type "Vec<u8>".
+# nextln: $()Matching method:
+# nextln: $()push(Vec<u8>, u8) -> () in Vec<u8>
 
 # check: vector.push("this should break it 1");
-# nextln: $()This parameter was declared as type u8, but argument of type str was provided.
+# nextln: $()No method "push(Vec<u8>, str)" found for type "Vec<u8>". 
+# nextln: $()Matching method: 
+# nextln: $()push(Vec<u8>, u8) -> () in Vec<u8>
 
 # check: vector.push("this should break it 2");
-# nextln: $()This parameter was declared as type u8, but argument of type str was provided.
+# nextln: $()No method "push(Vec<u8>, str)" found for type "Vec<u8>".
+# nextln: $()Matching method:
+# nextln: $()push(Vec<u8>, u8) -> () in Vec<u8>

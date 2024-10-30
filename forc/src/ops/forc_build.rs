@@ -1,7 +1,7 @@
 use crate::cli::BuildCommand;
 use forc_pkg as pkg;
 use forc_util::ForcResult;
-use pkg::{manifest::build_profile::ExperimentalFlags, MemberFilter};
+use pkg::MemberFilter;
 
 pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);
@@ -44,8 +44,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         member_filter: MemberFilter::default(),
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental,
+        no_experimental: cmd.experimental.no_experimental,
     }
 }

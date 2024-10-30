@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 use indexmap::IndexMap;
 use sway_error::{
     error::CompileError,
@@ -9,10 +10,10 @@ use crate::{
     decl_engine::DeclEngineGet,
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
-    semantic_analysis::type_check_context::EnforceTypeArguments,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
+    EnforceTypeArguments,
 };
 
 use std::{
@@ -91,9 +92,9 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let type_engine = ctx.engines.te();
-        if let Some(matching_id) = type_mapping.find_match(*self, ctx.engines) {
+        if let Some(matching_id) = ctx.type_subst_map.find_match(*self, ctx.engines) {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
                 HasChanges::Yes
@@ -228,6 +229,56 @@ impl TypeId {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
+            TypeInfo::UntypedEnum(decl_id) => {
+                let enum_decl = engines.pe().get_enum(decl_id);
+                for type_param in &enum_decl.type_parameters {
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                            depth + 1,
+                        ),
+                    );
+                }
+                for variant in &enum_decl.variants {
+                    extend(
+                        &mut found,
+                        variant.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
+                    );
+                }
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                let struct_decl = engines.pe().get_struct(decl_id);
+                for type_param in &struct_decl.type_parameters {
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                            depth + 1,
+                        ),
+                    );
+                }
+                for field in &struct_decl.fields {
+                    extend(
+                        &mut found,
+                        field.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
+                    );
+                }
+            }
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in &enum_decl.type_parameters {
@@ -310,7 +361,6 @@ impl TypeId {
             TypeInfo::Custom {
                 qualified_call_path: _,
                 type_arguments,
-                root_type_id: _,
             } => {
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
@@ -613,7 +663,7 @@ impl TypeId {
     fn check_trait_constraints_errors(
         self,
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         structure_type_id: &TypeId,
         structure_trait_constraints: &Vec<TraitConstraint>,
         f: impl Fn(&TraitConstraint),

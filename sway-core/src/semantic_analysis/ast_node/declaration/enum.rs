@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::parsed_id::ParsedDeclId,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
     Engines,
 };
@@ -83,7 +83,7 @@ impl ty::TyEnumDecl {
 impl ty::TyEnumVariant {
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         variant: EnumVariant,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
