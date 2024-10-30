@@ -1,29 +1,80 @@
-use crate::core::token::{SymbolKind, Token, TokenIdent};
+use crate::core::token::{SymbolKind, Token, TokenIdent, TypedAstToken};
 use dashmap::mapref::multiple::RefMulti;
-use lsp_types::{self, Location, SymbolInformation, Url};
+use lsp_types::{self, DocumentSymbol};
 
-pub fn to_symbol_information<'a, I>(tokens: I, url: &Url) -> Vec<SymbolInformation>
+#[derive(Debug)]
+struct SymbolNode {
+    symbol: DocumentSymbol,
+    range_start: u32,
+}
+
+pub fn to_document_symbols<'a, I>(tokens: I) -> Vec<DocumentSymbol>
 where
     I: Iterator<Item = RefMulti<'a, TokenIdent, Token>>,
 {
-    tokens
+    let mut nodes = tokens
         .map(|entry| {
             let (ident, token) = entry.pair();
-            symbol_info(ident, token, url.clone())
+            create_symbol_node(ident, token)
         })
-        .collect()
+        .collect::<Vec<SymbolNode>>();
+
+    nodes.sort_by_key(|node| node.range_start);
+    build_symbol_hierarchy(nodes)
+}
+
+fn build_symbol_hierarchy(nodes: Vec<SymbolNode>) -> Vec<DocumentSymbol> {
+    let mut result = Vec::new();
+    let mut current_struct: Option<DocumentSymbol> = None;
+    let mut struct_children = Vec::new();
+
+    for node in nodes {
+        match node.symbol.kind {
+            lsp_types::SymbolKind::STRUCT => {
+                // Push previous struct if exists
+                if let Some(mut s) = current_struct.take() {
+                    if !struct_children.is_empty() {
+                        s.children = Some(struct_children);
+                        struct_children = Vec::new();
+                    }
+                    result.push(s);
+                }
+                current_struct = Some(node.symbol);
+            }
+            lsp_types::SymbolKind::FIELD | lsp_types::SymbolKind::FUNCTION
+                if current_struct.is_some() =>
+            {
+                struct_children.push(node.symbol);
+            }
+            _ => {
+                // Top-level items
+                if current_struct.is_none() {
+                    result.push(node.symbol);
+                }
+            }
+        }
+    }
+
+    // Handle last struct
+    if let Some(mut s) = current_struct {
+        if !struct_children.is_empty() {
+            s.children = Some(struct_children);
+        }
+        result.push(s);
+    }
+
+    result
 }
 
 /// Given a `token::SymbolKind`, return the `lsp_types::SymbolKind` that corresponds to it.
-pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
+fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
         SymbolKind::BuiltinType | SymbolKind::TypeParameter => {
             lsp_types::SymbolKind::TYPE_PARAMETER
         }
-        SymbolKind::Function | SymbolKind::DeriveHelper | SymbolKind::Intrinsic => {
-            lsp_types::SymbolKind::FUNCTION
-        }
+        SymbolKind::Function | SymbolKind::Intrinsic => lsp_types::SymbolKind::FUNCTION,
+        SymbolKind::DeriveHelper => lsp_types::SymbolKind::KEY,
         SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
         SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
@@ -48,13 +99,39 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
 
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
-fn symbol_info(ident: &TokenIdent, token: &Token, url: Url) -> SymbolInformation {
-    SymbolInformation {
-        name: ident.name.to_string(),
-        kind: symbol_kind(&token.kind),
-        location: Location::new(url, ident.range),
-        tags: None,
-        container_name: None,
-        deprecated: None,
+fn create_symbol_node(ident: &TokenIdent, token: &Token) -> SymbolNode {
+    let kind = symbol_kind(&token.kind);
+
+    let detail = match &token.typed {
+        Some(TypedAstToken::TypedStructField(field)) => {
+            // show the type of the field
+            Some(format!("{}", field.type_argument.span.as_str()))
+        }
+        Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) => {
+            // For functions, show their signature
+            let params = fn_decl
+                .parameters
+                .iter()
+                .map(|p| format!("{}: {}", p.name, p.type_argument.span.as_str()))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let return_type = fn_decl.return_type.span.as_str();
+            Some(format!("fn({}) -> {}", params, return_type))
+        }
+        _ => None,
+    };
+
+    SymbolNode {
+        symbol: DocumentSymbol {
+            name: ident.name.to_string(),
+            detail,
+            kind,
+            tags: None,
+            range: ident.range,
+            selection_range: ident.range,
+            children: None,
+            deprecated: None,
+        },
+        range_start: ident.range.start.line,
     }
 }

@@ -19,7 +19,8 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg as pkg;
 use lsp_types::{
-    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
+    CompletionItem, DocumentSymbol, GotoDefinitionResponse, Location, Position, Range,
+    SymbolInformation, Url,
 };
 use parking_lot::RwLock;
 use pkg::{
@@ -247,13 +248,11 @@ impl Session {
         let program = compiled_program.typed.clone()?;
         Some(program.root.namespace)
     }
-
-    pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let _p = tracing::trace_span!("symbol_information").entered();
+    
+    pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
+        let _p = tracing::trace_span!("document_symbols").entered();
         let tokens = self.token_map.tokens_for_file(url);
-        self.sync
-            .to_workspace_url(url.clone())
-            .map(|url| capabilities::document_symbol::to_symbol_information(tokens, &url))
+        Some(capabilities::document_symbol::to_document_symbols(tokens))
     }
 
     /// Populate [Documents] with sway files found in the workspace.

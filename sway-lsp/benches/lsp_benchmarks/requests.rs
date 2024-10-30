@@ -24,7 +24,7 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("document_symbol", |b| {
         b.iter(|| {
             session
-                .symbol_information(&uri)
+                .document_symbols(&uri)
                 .map(DocumentSymbolResponse::Flat)
         })
     });
