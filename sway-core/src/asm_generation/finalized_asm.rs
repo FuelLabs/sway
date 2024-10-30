@@ -29,7 +29,7 @@ pub struct AsmInformation {
 #[derive(Default, Clone, Debug, serde::Serialize)]
 pub struct DataSectionInformation {
     /// The total size of the data section in bytes
-    pub size : u64,
+    pub size: u64,
     /// The used size of the data section in bytes
     pub used: u64,
     /// The data to be put in the data section of the asm

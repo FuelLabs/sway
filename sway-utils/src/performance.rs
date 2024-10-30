@@ -63,7 +63,6 @@ macro_rules! time_expr {
             } else {
                 $expression
             }
-            
         } else {
             $expression
         }

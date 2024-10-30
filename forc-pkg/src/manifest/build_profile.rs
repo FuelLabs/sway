@@ -144,7 +144,7 @@ mod tests {
             print_bytecode_spans: false,
             terse: true,
             time_phases: true,
-            profile: true,
+            profile: false,
             metrics_outfile: Some("metrics_outfile".into()),
             include_tests: true,
             error_on_warnings: true,
