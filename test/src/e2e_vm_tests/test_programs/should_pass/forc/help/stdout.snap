@@ -26,45 +26,68 @@ Compile the current or target project
 Usage: forc build [OPTIONS]
 
 Options:
-  -p, --path <PATH>                                  Path to the project
-      --offline                                      Offline mode
-  -t, --terse                                        Terse mode
-      --output-directory <OUTPUT_DIRECTORY>          The directory in which Forc output artifacts are placed
-      --locked                                       Requires that the Forc.lock file is up-to-date
-      --ipfs-node <IPFS_NODE>                        The IPFS node to use for fetching IPFS sources
-      --ast                                          Print the generated Sway AST (Abstract Syntax Tree)
-      --dca-graph <DCA_GRAPH>                        Print the computed Sway DCA (Dead Code Analysis) graph
-      --dca-graph-url-format <DCA_GRAPH_URL_FORMAT>  URL format to be used in the generated DCA graph .dot file.
-      --asm <ASM>...                                 Print the generated ASM (assembler). [possible values: virtual, allocated,
-                                                     abstract, final, all]
-      --bytecode                                     Print the bytecode
-      --ir <IR>...                                   Print the generated Sway IR (Intermediate Representation). [possible values:
-                                                     initial, final, all, modified, inline, simplify-cfg, sroa, dce, fn-dce,
-                                                     fn-dedup-release, fn-dedup-debug, mem2reg, memcpyopt, const-folding, arg-demotion,
-                                                     const-demotion, ret-demotion, misc-demotion]
-      --time-phases                                  Output the time elapsed over each part of the compilation process
-      --profile                                      Profile the compilation process
-      --reverse-order                                Output build errors and warnings in reverse order
-  -v, --verbose...                                   Use verbose output
-      --metrics-outfile <METRICS_OUTFILE>            Output compilation metrics into the specified file
-  -s, --silent                                       Silence all output
-      --json-abi                                     Minify JSON ABI files
-  -L, --log-level <LOG_LEVEL>                        Set the log level
-      --json-storage-slots                           Minify JSON storage slot files
-  -o, --output-bin <BIN_FILE>                        Create a binary file at the provided path representing the final bytecode
-  -g, --output-debug <DEBUG_FILE>                    Create a file at the provided path containing debug information
-      --build-profile <BUILD_PROFILE>                The name of the build profile to use [default: debug]
-      --release                                      Use the release build profile
-      --error-on-warnings                            Treat warnings as errors
-      --build-target <BUILD_TARGET>                  Build target to use for code generation [default: fuel] [possible values: fuel,
-                                                     evm]
-      --tests                                        Also build all tests within the project
-      --experimental <EXPERIMENTAL>                  Comma separated list of all experimental features that will be enabled [possible
-                                                     values: new_encoding]
-      --no-experimental <NO_EXPERIMENTAL>            Comma separated list of all experimental features that will be disabled [possible
-                                                     values: new_encoding]
-  -h, --help                                         Print help (see more with '--help')
-  -V, --version                                      Print version
+  -p, --path <PATH>
+          Path to the project
+      --offline
+          Offline mode
+  -t, --terse
+          Terse mode
+      --output-directory <OUTPUT_DIRECTORY>
+          The directory in which Forc output artifacts are placed
+      --locked
+          Requires that the Forc.lock file is up-to-date
+      --ipfs-node <IPFS_NODE>
+          The IPFS node to use for fetching IPFS sources
+      --ast
+          Print the generated Sway AST (Abstract Syntax Tree)
+      --dca-graph <DCA_GRAPH>
+          Print the computed Sway DCA (Dead Code Analysis) graph
+      --dca-graph-url-format <DCA_GRAPH_URL_FORMAT>
+          URL format to be used in the generated DCA graph .dot file.
+      --asm <ASM>...
+          Print the generated ASM (assembler). [possible values: virtual, allocated, abstract, final, all]
+      --bytecode
+          Print the bytecode
+      --ir <IR>...
+          Print the generated Sway IR (Intermediate Representation). [possible values: initial, final, all, modified, inline, simplify-cfg, sroa, dce, fn-dce, fn-dedup-release, fn-dedup-debug, mem2reg, memcpyopt, const-folding, arg-demotion, const-demotion, ret-demotion, misc-demotion]
+      --time-phases
+          Output the time elapsed over each part of the compilation process
+      --reverse-order
+          Output build errors and warnings in reverse order
+      --metrics-outfile <METRICS_OUTFILE>
+          Output compilation metrics into the specified file
+  -v, --verbose...
+          Use verbose output
+      --json-abi
+          Minify JSON ABI files
+  -s, --silent
+          Silence all output
+      --json-storage-slots
+          Minify JSON storage slot files
+  -L, --log-level <LOG_LEVEL>
+          Set the log level
+  -o, --output-bin <BIN_FILE>
+          Create a binary file at the provided path representing the final bytecode
+  -g, --output-debug <DEBUG_FILE>
+          Create a file at the provided path containing debug information
+      --build-profile <BUILD_PROFILE>
+          The name of the build profile to use [default: debug]
+      --release
+          Use the release build profile
+      --error-on-warnings
+          Treat warnings as errors
+      --build-target <BUILD_TARGET>
+          Build target to use for code generation [default: fuel] [possible values: fuel, evm]
+      --tests
+          Also build all tests within the project
+      --experimental <EXPERIMENTAL>
+          Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
+      --no-experimental <NO_EXPERIMENTAL>
+          Comma separated list of all experimental features that will be disabled [possible values: new_encoding]
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
 
 EXAMPLES:
     # Compile the current projectx
@@ -254,12 +277,9 @@ EXAMPLES:
 > forc test -h
 exit status: 0
 output:
-Run the Sway unit tests for the current project
+Compile the current or target project
 
-Usage: forc test [OPTIONS] [FILTER]
-
-Arguments:
-  [FILTER]  When specified, only tests containing the given string will be executed
+Usage: forc build [OPTIONS]
 
 Options:
   -p, --path <PATH>
@@ -288,20 +308,22 @@ Options:
           Print the generated Sway IR (Intermediate Representation). [possible values: initial, final, all, modified, inline, simplify-cfg, sroa, dce, fn-dce, fn-dedup-release, fn-dedup-debug, mem2reg, memcpyopt, const-folding, arg-demotion, const-demotion, ret-demotion, misc-demotion]
       --time-phases
           Output the time elapsed over each part of the compilation process
+      --profil
+          Profile the compilation process
       --reverse-order
           Output build errors and warnings in reverse order
-      --metrics-outfile <METRICS_OUTFILE>
-          Output compilation metrics into the specified file
   -v, --verbose...
           Use verbose output
-      --json-abi
-          Minify JSON ABI files
+      --metrics-outfile <METRICS_OUTFILE>
+          Output compilation metrics into the specified file
   -s, --silent
           Silence all output
-      --json-storage-slots
-          Minify JSON storage slot files
+      --json-abi
+          Minify JSON ABI files
   -L, --log-level <LOG_LEVEL>
           Set the log level
+      --json-storage-slots
+          Minify JSON storage slot files
   -o, --output-bin <BIN_FILE>
           Create a binary file at the provided path representing the final bytecode
   -g, --output-debug <DEBUG_FILE>
@@ -314,16 +336,8 @@ Options:
           Treat warnings as errors
       --build-target <BUILD_TARGET>
           Build target to use for code generation [default: fuel] [possible values: fuel, evm]
-      --pretty
-          Pretty-print the logs emitted from tests
-  -l, --logs
-          Print `Log` and `LogData` receipts for tests
-      --raw-logs
-          Print the raw logs for tests
-      --filter-exact
-          When specified, only the test exactly matching the given string will be executed
-      --test-threads <TEST_THREADS>
-          Number of threads to utilize when running the tests. By default, this is the number of threads available in your system
+      --tests
+          Also build all tests within the project
       --experimental <EXPERIMENTAL>
           Comma separated list of all experimental features that will be enabled [possible values: new_encoding]
       --no-experimental <NO_EXPERIMENTAL>
@@ -334,17 +348,14 @@ Options:
           Print version
 
 EXAMPLES:
-    # Run test
-    forc test
+    # Compile the current projectx
+    forc build
 
-    # Run test with a filter
-    forc test $filter
+    # Compile the current project from a different path
+    forc build --path <PATH>
 
-    # Run test without any output
-    forc test --silent
-
-    # Run test without creating or update the lock file
-    forc test --locked
+    # Compile the current project without updating dependencies
+    forc build --path <PATH> --locked
 
 > forc update -h
 exit status: 0
