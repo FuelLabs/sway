@@ -41,7 +41,7 @@ where
 {
     let mut instructions = parse_bytecode_to_instructions(path.clone())?;
 
-    // Collect the first four instructions into a temporary vector
+    // Collect the first six instructions into a temporary vector
     let mut first_six_instructions = Vec::with_capacity(6);
     for _ in 0..6 {
         if let Some(instruction) = instructions.next() {
