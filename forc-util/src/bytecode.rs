@@ -33,8 +33,6 @@ where
     Ok(instructions)
 }
 
-// TODO: use constants for configurables section offset
-
 /// Gets the bytecode ID from a bytecode file. The bytecode ID is the hash of the bytecode after removing the
 /// condigurables section, if any.
 pub fn get_bytecode_id<P>(path: P) -> anyhow::Result<String>
