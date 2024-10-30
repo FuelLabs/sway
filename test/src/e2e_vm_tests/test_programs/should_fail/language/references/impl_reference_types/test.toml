@@ -3,52 +3,52 @@ category = "fail"
 #check: $()error
 #check: $()concrete_types.sw
 #check: $()r_x.ref_mut_u64_method();
-#nextln: $()No method named "ref_mut_u64_method" found for type "&u64".
+#nextln: $()No method "ref_mut_u64_method(&u64)" found for type "&u64".
 
 #check: $()error
 #check: $()concrete_types.sw
 #check: $()r_r_x.ref_mut_ref_mut_u64_method();
-#nextln: $()No method named "ref_mut_ref_mut_u64_method" found for type "&&u64".
+#nextln: $()No method "ref_mut_ref_mut_u64_method(&&u64)" found for type "&&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_u64();
-#nextln: $()No method named "ref_mut_u64" found for type "&u64".
+#nextln: $()No method "ref_mut_u64(&u64)" found for type "&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_mut_u64();
-#nextln: $()No method named "ref_mut_ref_mut_u64" found for type "&&u64".
+#nextln: $()No method "ref_mut_ref_mut_u64(&&u64)" found for type "&&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_ref_mut_u64();
-#nextln: $()No method named "ref_ref_mut_u64" found for type "&&u64".
+#nextln: $()No method "ref_ref_mut_u64(&&u64)" found for type "&&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_u64();
-#nextln: $()No method named "ref_mut_ref_u64" found for type "&&u64".
+#nextln: $()No method "ref_mut_ref_u64(&&u64)" found for type "&&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_mut_ref_mut_u64();
-#nextln: $()No method named "ref_mut_ref_mut_ref_mut_u64" found for type "&&&u64".
+#nextln: $()No method "ref_mut_ref_mut_ref_mut_u64(&&&u64)" found for type "&&&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_ref_mut_ref_mut_u64();
-#nextln: $()No method named "ref_ref_mut_ref_mut_u64" found for type "&&&u64".
+#nextln: $()No method "ref_ref_mut_ref_mut_u64(&&&u64)" found for type "&&&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_ref_mut_u64();
-#nextln: $()No method named "ref_mut_ref_ref_mut_u64" found for type "&&&u64".
+#nextln: $()No method "ref_mut_ref_ref_mut_u64(&&&u64)" found for type "&&&u64".
 
 #check: $()error
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_mut_ref_u64();
-#nextln: $()No method named "ref_mut_ref_mut_ref_u64" found for type "&&&u64".
+#nextln: $()No method "ref_mut_ref_mut_ref_u64(&&&u64)" found for type "&&&u64".
 
 #check: $()Trait is already implemented for type
 #check: $()ref_and_ref_mut_trait_impls.sw

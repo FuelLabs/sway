@@ -58,6 +58,12 @@ impl ty::TyExpression {
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines;
+        let ctx = ctx.with_type_annotation(engines.te().insert(
+            engines,
+            TypeInfo::Boolean,
+            span.source_id(),
+        ));
         Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
     }
 
@@ -67,6 +73,12 @@ impl ty::TyExpression {
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let engines = ctx.engines;
+        let ctx = ctx.with_type_annotation(engines.te().insert(
+            engines,
+            TypeInfo::Boolean,
+            span.source_id(),
+        ));
         Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
     }
 
