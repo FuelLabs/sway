@@ -177,7 +177,7 @@ impl TypeParameter {
     pub(crate) fn new_self_type(engines: &Engines, use_site_span: Span) -> TypeParameter {
         let type_engine = engines.te();
 
-        let (type_id, name) = type_engine.new_unknown_generic_self_with_name(use_site_span, true);
+        let (type_id, name) = type_engine.new_unknown_generic_self(use_site_span, true);
         TypeParameter {
             type_id,
             initial_type_id: type_id,

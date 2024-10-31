@@ -451,19 +451,8 @@ impl TypeEngine {
     /// Therefore, *the span must always point to a location in the source file in which
     /// the particular `Self` type is, e.g., being declared or implemented*.
     ///
-    /// `is_from_type_parameter` denotes if the `Self` type is from type parameter or not.
+    /// Returns the [TypeId] and the [Ident] set to "Self" and the provided `use_site_span`.
     pub(crate) fn new_unknown_generic_self(
-        &self,
-        use_site_span: Span,
-        is_from_type_parameter: bool,
-    ) -> TypeId {
-        let name = Ident::new_with_override("Self".into(), use_site_span);
-        self.new_unknown_generic(name.clone(), VecSet(vec![]), None, is_from_type_parameter)
-    }
-
-    /// Same as [Self::new_unknown_generic_self], except that, together with the [TypeId], it also returns the [Ident]
-    /// with the value "Self" and the provided `use_site_span`.
-    pub(crate) fn new_unknown_generic_self_with_name(
         &self,
         use_site_span: Span,
         is_from_type_parameter: bool,
