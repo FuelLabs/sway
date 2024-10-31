@@ -19,12 +19,12 @@ use sway_core::{
 };
 use sway_types::{Ident, SourceEngine, Span, Spanned};
 
-/// The `AstToken` holds the types produced by the [sway_core::language::parsed::ParseProgram].
+/// The `ParsedAstToken` holds the types produced by the [sway_core::language::parsed::ParseProgram].
 /// These tokens have not been type-checked.
 /// See this issue https://github.com/FuelLabs/sway/issues/2257 for more information about why they are
 /// useful to the language server.
 #[derive(Debug, Clone)]
-pub enum AstToken {
+pub enum ParsedAstToken {
     AbiCastExpression(AbiCastExpression),
     AmbiguousPathExpression(AmbiguousPathExpression),
     Attribute(Attribute),
@@ -148,14 +148,19 @@ pub enum TypeDefinition {
     Ident(Ident),
 }
 
+#[derive(Debug, Clone)]
+pub enum TokenAstNode {
+    Parsed(ParsedAstToken),
+    Typed(TypedAstToken),
+}
+
 /// The `Token` type is created during traversal of the parsed and typed AST's of a program.
 /// It holds the parsed and typed data structures produced by the sway compiler.
 /// It also holds the type definition & semantic type of the token if they could be inferred
 /// during traversal of the AST's.
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub parsed: AstToken,
-    pub typed: Option<TypedAstToken>,
+    pub ast_node: TokenAstNode,
     pub type_def: Option<TypeDefinition>,
     pub kind: SymbolKind,
 }
@@ -164,12 +169,27 @@ impl Token {
     /// Create a new token with the given [SymbolKind].
     /// This function is intended to be used during traversal of the
     /// [sway_core::language::parsed::ParseProgram] AST.
-    pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
+    pub fn from_parsed(token: ParsedAstToken, kind: SymbolKind) -> Self {
         Self {
-            parsed: token,
-            typed: None,
+            ast_node: TokenAstNode::Parsed(token),
             type_def: None,
             kind,
+        }
+    }
+
+    /// Get the `AstToken`, if this is a parsed token.
+    pub fn as_parsed(&self) -> Option<&ParsedAstToken> {
+        match &self.ast_node {
+            TokenAstNode::Parsed(token) => Some(token),
+            _ => None,
+        }
+    }
+
+    /// Get the `TypedAstToken`, if this is a typed token.
+    pub fn as_typed(&self) -> Option<&TypedAstToken> {
+        match &self.ast_node {
+            TokenAstNode::Typed(token) => Some(token),
+            _ => None,
         }
     }
 
