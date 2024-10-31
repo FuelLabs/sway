@@ -693,7 +693,7 @@ impl TypeEngine {
     /// Creates a new [TypeInfo::Custom] that represents a Self type.
     ///
     /// The `span` must either be a [Span::dummy] or a span pointing
-    /// to text "Span" or "span", otherwise the method panics.
+    /// to text "Self" or "self", otherwise the method panics.
     ///
     /// [TypeInfo::Custom] is not a shareable type and the method
     /// guarantees that a new (or unused) [TypeId] will be returned on every
