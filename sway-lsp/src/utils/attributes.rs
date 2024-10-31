@@ -5,12 +5,12 @@ use sway_core::{
     transform, Engines,
 };
 
+/// Gets attributes map from typed token, falling back to parsed AST node if needed.
+/// Callback can be used to retrieve doc comment attributes or storage attributes.
 pub fn attributes_map<F>(engines: &Engines, token: &Token, mut callback: F)
 where
     F: FnMut(&transform::AttributesMap),
 {
-    // Get the attributes map from the typed token if it exists.
-    // Otherwise, get the attributes map from the parsed ast node.
     match &token.ast_node {
         TokenAstNode::Typed(typed_token) => match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
@@ -49,6 +49,15 @@ where
             }
             TypedAstToken::TypedEnumVariant(variant) => {
                 callback(&variant.attributes);
+            }
+            TypedAstToken::TypedConfigurableDeclaration(configurable) => {
+                callback(&configurable.attributes);
+            }
+            TypedAstToken::TypedTraitTypeDeclaration(trait_type) => {
+                callback(&trait_type.attributes);
+            }
+            TypedAstToken::TypedTypeAliasDeclaration(type_alias) => {
+                callback(&type_alias.attributes);
             }
             _ => {}
         },
