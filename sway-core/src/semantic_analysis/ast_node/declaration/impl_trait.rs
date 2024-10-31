@@ -864,7 +864,9 @@ fn type_check_trait_implementation(
                 // We want the `Self` type to have the span that points to an arbitrary location within
                 // the source file in which the trait is implemented for a type. The `trait_name` points
                 // to the name in the `impl <trait_name> for ...` and is thus a good candidate.
-                let self_type_id = type_engine.new_unknown_generic_self(trait_name.span(), false).0;
+                let self_type_id = type_engine
+                    .new_unknown_generic_self(trait_name.span(), false)
+                    .0;
                 if let Some(type_arg) = type_decl.ty.clone() {
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
