@@ -10,7 +10,7 @@ forc_util::cli_examples! {
    super::Command {
         [ Deploy a single contract => "forc deploy bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408" ]
         [ Deploy a single contract from a different path => "forc deploy bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408 --path {path}" ]
-        [ Deploy to a custom network => "forc deploy --node-url https://beta-5.fuel.network/graphql" ]
+        [ Deploy to a custom network => "forc deploy --node-url https://testnet.fuel.network/graphql" ]
     }
 }
 
@@ -84,9 +84,8 @@ pub struct Command {
     #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
     pub override_storage_slots: Option<String>,
 
-    /// Disable the "new encoding" feature
-    #[clap(long)]
-    pub no_encoding_v1: bool,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 
     /// AWS KMS signer arn. If present forc-deploy will automatically use AWS KMS signer instead of forc-wallet.
     #[clap(long)]

@@ -828,7 +828,6 @@ impl Parse for ParsedDeclId<ImplSelfOrTrait> {
         if let TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
-            root_type_id: _,
         } = &&*ctx
             .engines
             .te()
@@ -1144,7 +1143,6 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
         TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
-            root_type_id: _,
         } => {
             collect_qualified_path_root(ctx, qualified_call_path.qualified_path_root.clone());
             let ident = qualified_call_path.call_path.suffix.clone();

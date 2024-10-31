@@ -15,9 +15,7 @@ use crate::{
         CallPath, Visibility,
     },
     namespace::ResolvedTraitImplItem,
-    semantic_analysis::{
-        type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
-    },
+    semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::*,
     Engines, Namespace,
 };
@@ -71,12 +69,10 @@ pub(crate) fn struct_instantiation(
         (_, true) => TypeInfo::Custom {
             qualified_call_path: suffix.clone().into(),
             type_arguments: None,
-            root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
             qualified_call_path: suffix.clone().into(),
             type_arguments: Some(type_arguments),
-            root_type_id: None,
         },
     };
 

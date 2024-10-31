@@ -1,4 +1,4 @@
 category = "fail"
 
 #check: $()self.ptr.abi_encode2(buffer);
-#nextln: $()No method named "abi_encode2" found for type "pointer".
+#nextln: $()No method "abi_encode2(pointer, Buffer)" found for type "pointer".

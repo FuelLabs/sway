@@ -640,8 +640,8 @@ pub(crate) async fn rename_request<'a>(
         new_name: rename.new_name.to_string(),
         work_done_progress_params: Default::default(),
     };
-    let worspace_edit = request::handle_rename(server, params).await.unwrap();
-    worspace_edit.unwrap()
+    let workspace_edit = request::handle_rename(server, params).await.unwrap();
+    workspace_edit.unwrap()
 }
 
 pub fn create_did_change_params(

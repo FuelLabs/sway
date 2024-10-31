@@ -26,7 +26,7 @@ use sway_error::{
 };
 use sway_types::{Ident, Span};
 
-use super::compiler_constants::NUM_ARG_REGISTERS;
+use super::{compiler_constants::NUM_ARG_REGISTERS, data_section::EntryName};
 
 /// A summary of the adopted calling convention:
 ///
@@ -84,49 +84,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 ));
             }
         } else {
-            // Put NUM_ARG_REGISTERS - 1 arguments into arg registers and rest into the stack.
-            for (idx, arg_val) in args.iter().enumerate() {
-                let arg_reg = self.value_to_register(arg_val)?;
-                // Except for the last arg register, the others hold an argument.
-                if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
-                    self.cur_bytecode.push(Op::register_move(
-                        VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
-                        arg_reg,
-                        format!("[call]: pass argument {idx}"),
-                        self.md_mgr.val_to_span(self.context, *arg_val),
-                    ));
-                } else {
-                    // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
-                    assert!(
-                        self.locals_size_bytes() % 8 == 0,
-                        "The size of locals is not word aligned"
-                    );
-                    let stack_offset_bytes = self.locals_size_bytes()
-                        + (((idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64) * 8);
-                    assert!(
-                        stack_offset_bytes
-                            < self.locals_size_bytes() + (self.max_num_extra_args() * 8)
-                    );
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::SW(
-                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
-                            arg_reg,
-                            VirtualImmediate12::new(
-                                // The VM multiples the offset by 8, so we divide it by 8.
-                                stack_offset_bytes / 8,
-                                self.md_mgr
-                                    .val_to_span(self.context, *arg_val)
-                                    .unwrap_or(Span::dummy()),
-                            )
-                            .expect("Too many arguments, cannot handle."),
-                        )),
-                        comment: format!("[call]: pass argument {idx} via its stack slot"),
-                        owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
-                    });
-                }
-            }
             // Register ARG_REGS[NUM_ARG_REGISTERS-1] must contain LocalsBase + locals_size
             // so that the callee can index the stack arguments from there.
+            // It's also useful for us to save the arguments to the stack next.
             if self.locals_size_bytes() <= TWELVE_BITS {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::ADDI(
@@ -171,6 +131,51 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         .to_string(),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
+            }
+
+            // Put NUM_ARG_REGISTERS - 1 arguments into arg registers and rest into the stack.
+            for (idx, arg_val) in args.iter().enumerate() {
+                let arg_reg = self.value_to_register(arg_val)?;
+                // Except for the last arg register, the others hold an argument.
+                if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
+                    self.cur_bytecode.push(Op::register_move(
+                        VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
+                        arg_reg,
+                        format!("[call]: pass argument {idx}"),
+                        self.md_mgr.val_to_span(self.context, *arg_val),
+                    ));
+                } else {
+                    // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
+                    assert!(
+                        self.locals_size_bytes() % 8 == 0,
+                        "The size of locals is not word aligned"
+                    );
+                    let stack_offset =
+                        (idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64;
+                    let stack_offset_bytes = self.locals_size_bytes() + (stack_offset * 8);
+                    assert!(
+                        stack_offset_bytes
+                            < self.locals_size_bytes() + (self.max_num_extra_args() * 8)
+                    );
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            VirtualRegister::Constant(
+                                ConstantRegister::ARG_REGS
+                                    [compiler_constants::NUM_ARG_REGISTERS as usize - 1],
+                            ),
+                            arg_reg,
+                            VirtualImmediate12::new(
+                                stack_offset,
+                                self.md_mgr
+                                    .val_to_span(self.context, *arg_val)
+                                    .unwrap_or(Span::dummy()),
+                            )
+                            .expect("Too many arguments, cannot handle."),
+                        )),
+                        comment: format!("[call]: pass argument {idx} via its stack slot"),
+                        owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
+                    });
+                }
             }
         }
 
@@ -825,9 +830,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             );
                         }
                         _ => {
-                            let data_id = self.data_section.insert_data_value(
-                                Entry::from_constant(self.context, constant, None, None),
-                            );
+                            let data_id =
+                                self.data_section.insert_data_value(Entry::from_constant(
+                                    self.context,
+                                    constant,
+                                    EntryName::NonConfigurable,
+                                    None,
+                                ));
                             self.ptr_map.insert(*ptr, Storage::Data(data_id));
                         }
                     }
@@ -853,9 +862,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 });
                             }
                             _ => {
-                                let data_id = self.data_section.insert_data_value(
-                                    Entry::from_constant(self.context, constant, None, None),
-                                );
+                                let data_id =
+                                    self.data_section.insert_data_value(Entry::from_constant(
+                                        self.context,
+                                        constant,
+                                        EntryName::NonConfigurable,
+                                        None,
+                                    ));
 
                                 init_mut_vars.push(InitMutVars {
                                     stack_base_words,

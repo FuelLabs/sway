@@ -1,6 +1,6 @@
 use crate::{
     language::{parsed::FunctionParameter, ty},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::TypeCheckContext,
     type_system::*,
 };
 
@@ -13,7 +13,7 @@ use sway_types::Spanned;
 impl ty::TyFunctionParameter {
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         parameter: FunctionParameter,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -67,7 +67,7 @@ impl ty::TyFunctionParameter {
 
     pub(crate) fn type_check_interface_parameter(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         parameter: &FunctionParameter,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();

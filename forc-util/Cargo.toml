@@ -16,7 +16,7 @@ clap = { workspace = true, features = ["cargo", "derive", "env"] }
 dirs.workspace = true
 fd-lock.workspace = true
 forc-tracing.workspace = true
-fuel-tx = { workspace = true, features = ["serde"], optional = true }
+fuel-tx = { workspace = true, optional = true }
 hex.workspace = true
 paste.workspace = true
 regex.workspace = true

@@ -14,7 +14,7 @@ use crate::{
         ty::{self, TyCodeBlock, TyFunctionDecl},
         CallPath, Visibility,
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
     Engines,
 };
@@ -216,8 +216,12 @@ impl ty::TyFunctionDecl {
                 } = ty_fn_decl;
 
                 // Insert the previously type checked type parameters into the current namespace.
+                // We insert all type parameter before the constraints because some constraints may depend on the parameters.
+                for p in type_parameters.iter() {
+                    p.insert_into_namespace_self(handler, ctx.by_ref())?;
+                }
                 for p in type_parameters {
-                    p.insert_into_namespace(handler, ctx.by_ref())?;
+                    p.insert_into_namespace_constraints(handler, ctx.by_ref())?;
                 }
 
                 // Insert the previously type checked function parameters into the current namespace.

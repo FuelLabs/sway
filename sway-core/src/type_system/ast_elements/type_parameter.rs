@@ -96,10 +96,10 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.type_id.subst(type_mapping, ctx);
-            self.trait_constraints.subst(type_mapping, ctx);
+            self.type_id.subst(ctx);
+            self.trait_constraints.subst(ctx);
         }
     }
 }
@@ -213,7 +213,7 @@ impl TypeParameter {
             // Type check trait constraints only after type checking all type parameters.
             // This is required because a trait constraint may use other type parameters.
             // Ex: `struct Struct2<A, B> where A : MyAdd<B>`
-            for type_param in &new_type_params {
+            for type_param in new_type_params.iter_mut() {
                 TypeParameter::type_check_trait_constraints(handler, ctx.by_ref(), type_param)?;
             }
 
@@ -327,7 +327,7 @@ impl TypeParameter {
     fn type_check_trait_constraints(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        type_parameter: &TypeParameter,
+        type_parameter: &mut TypeParameter,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
@@ -372,25 +372,15 @@ impl TypeParameter {
             },
         );
 
+        type_parameter.trait_constraints = trait_constraints_with_supertraits;
+
         // Insert the trait constraints into the namespace.
         type_parameter.insert_into_namespace_constraints(handler, ctx.by_ref())?;
 
         Ok(())
     }
 
-    pub fn insert_into_namespace(
-        &self,
-        handler: &Handler,
-        mut ctx: TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.insert_into_namespace_constraints(handler, ctx.by_ref())?;
-
-        self.insert_into_namespace_self(handler, ctx.by_ref())?;
-
-        Ok(())
-    }
-
-    fn insert_into_namespace_constraints(
+    pub(crate) fn insert_into_namespace_constraints(
         &self,
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -509,6 +499,50 @@ impl TypeParameter {
 
                 let code_block_first_pass = ctx.code_block_first_pass();
                 if !code_block_first_pass {
+                    // Tries to unify type id with a single existing trait implementation.
+                    // If more than one implementation exists we throw an error.
+                    // We only try to do the type inference from trait with a single trait constraint.
+                    if !type_id.is_concrete(engines, TreatNumericAs::Concrete) && trait_constraints.len() == 1 {
+                        let concrete_trait_type_ids : Vec<(TypeId, String)>= ctx
+                            .namespace_mut()
+                            .module(engines)
+                            .current_items()
+                            .implemented_traits
+                            .get_trait_constraints_are_satisfied_for_types(
+                                handler, *type_id, trait_constraints, engines,
+                            )?
+                            .into_iter()
+                            .filter_map(|t| {
+                                if t.0.is_concrete(engines, TreatNumericAs::Concrete) {
+                                    Some(t)
+                                } else {
+                                    None
+                                }
+                            }).collect();
+
+                        match concrete_trait_type_ids.len().cmp(&1) {
+                            Ordering::Equal => {
+                                ctx.engines.te().unify_with_generic(
+                                    handler,
+                                    engines,
+                                    *type_id,
+                                    concrete_trait_type_ids.first().unwrap().0,
+                                    access_span,
+                                    "Type parameter type does not match up with matched trait implementing type.",
+                                    None,
+                                );
+                            }
+                            Ordering::Greater => {
+                                return Err(handler.emit_err(CompileError::MultipleImplsSatisfyingTraitForType{
+                                    span:access_span.clone(),
+                                    type_annotation: engines.help_out(type_id).to_string(),
+                                    trait_names: trait_constraints.iter().map(|t| engines.help_out(t).to_string()).collect(),
+                                    trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
+                                }));
+                            }
+                            Ordering::Less => {}
+                        }
+                    }
                     // Check to see if the trait constraints are satisfied.
                     match ctx
                         .namespace_mut()

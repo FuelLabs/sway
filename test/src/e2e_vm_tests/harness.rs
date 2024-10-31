@@ -1,13 +1,12 @@
+use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
-    op::{deploy, run},
+    op::{deploy, run, DeployedPackage},
     NodeTarget,
 };
-use forc_pkg::{
-    manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage, PrintOpts,
-};
+use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
@@ -19,8 +18,6 @@ use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
 use sway_core::{asm_generation::ProgramABI, BuildTarget};
-
-use super::RunConfig;
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -67,7 +64,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
     println!(" Deploying {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    deploy(DeployCommand {
+    let deployed_packages = deploy(DeployCommand {
         pkg: forc_client::cmd::deploy::Pkg {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
@@ -82,16 +79,23 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
-        no_encoding_v1: !run_config.experimental.new_encoding,
+        experimental: run_config.experimental.clone(),
         ..Default::default()
     })
-    .await
-    .map(|contract_ids| {
-        contract_ids
-            .first()
-            .map(|contract_id| contract_id.id)
-            .unwrap()
-    })
+    .await?;
+
+    deployed_packages
+        .into_iter()
+        .map(|deployed_pkg| {
+            if let DeployedPackage::Contract(deployed_contract) = deployed_pkg {
+                Some(deployed_contract.id)
+            } else {
+                None
+            }
+        })
+        .next()
+        .flatten()
+        .ok_or_else(|| anyhow!("expected to find at least one deployed contract."))
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
@@ -125,7 +129,7 @@ pub(crate) async fn runs_on_node(
             },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
-            no_encoding_v1: !run_config.experimental.new_encoding,
+            experimental: run_config.experimental.clone(),
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {
@@ -141,7 +145,6 @@ pub(crate) async fn runs_on_node(
 pub(crate) enum VMExecutionResult {
     Fuel(ProgramState, Vec<Receipt>),
     Evm(revm::primitives::result::ExecutionResult),
-    MidenVM(miden::ExecutionTrace),
 }
 
 /// Very basic check that code does indeed run in the VM.
@@ -248,25 +251,6 @@ pub(crate) fn runs_in_vm(
                 },
             }
         }
-        BuildTarget::MidenVM => {
-            use miden::{Assembler, ProgramInputs};
-
-            // instantiate the assembler
-            let assembler = Assembler::default();
-
-            let bytecode_str = std::str::from_utf8(&script.bytecode.bytes)?;
-
-            // compile Miden assembly source code into a program
-            let program = assembler.compile(bytecode_str).unwrap();
-
-            // execute the program with no inputs
-            let _trace = miden::execute(&program, &ProgramInputs::none()).unwrap();
-
-            let execution_trace = miden::execute(&program, &ProgramInputs::none())
-                .map_err(|e| anyhow::anyhow!("Failed to execute on MidenVM: {e:?}"))?;
-
-            Ok(VMExecutionResult::MidenVM(execution_trace))
-        }
     }
 }
 
@@ -274,6 +258,7 @@ pub(crate) fn runs_in_vm(
 /// Returns a tuple with the result of the compilation, as well as the output.
 pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) -> Result<Built> {
     println!("Compiling {} ...", file_name.bold());
+
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
         build_target: run_config.build_target,
@@ -297,9 +282,8 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             ..Default::default()
         },
-        experimental: ExperimentalFlags {
-            new_encoding: run_config.experimental.new_encoding,
-        },
+        experimental: run_config.experimental.experimental.clone(),
+        no_experimental: run_config.experimental.no_experimental.clone(),
         ..Default::default()
     };
     match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
@@ -342,9 +326,8 @@ pub(crate) async fn compile_and_run_unit_tests(
                     terse: !(capture_output || run_config.verbose),
                     ..Default::default()
                 },
-                experimental: ExperimentalFlags {
-                    new_encoding: run_config.experimental.new_encoding,
-                },
+                experimental: run_config.experimental.experimental.clone(),
+                no_experimental: run_config.experimental.no_experimental.clone(),
                 ..Default::default()
             })
         }) {
@@ -368,19 +351,40 @@ pub(crate) fn test_json_abi(
     built_package: &BuiltPackage,
     experimental_new_encoding: bool,
     update_output_files: bool,
+    suffix: &Option<String>,
+    has_experimental_field: bool,
 ) -> Result<()> {
     emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let oracle_path = if experimental_new_encoding {
-        format!(
-            "{}/src/e2e_vm_tests/test_programs/{}/{}",
-            manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
-        )
-    } else {
-        format!(
-            "{}/src/e2e_vm_tests/test_programs/{}/{}",
-            manifest_dir, file_name, "json_abi_oracle.json"
-        )
+
+    let oracle_path = match (has_experimental_field, experimental_new_encoding) {
+        (true, _) => {
+            format!(
+                "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle.{}json",
+                manifest_dir,
+                file_name,
+                suffix
+                    .as_ref()
+                    .unwrap()
+                    .strip_prefix("test")
+                    .unwrap()
+                    .strip_suffix("toml")
+                    .unwrap()
+                    .trim_start_matches('.')
+            )
+        }
+        (false, true) => {
+            format!(
+                "{}/src/e2e_vm_tests/test_programs/{}/{}",
+                manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
+            )
+        }
+        (false, false) => {
+            format!(
+                "{}/src/e2e_vm_tests/test_programs/{}/{}",
+                manifest_dir, file_name, "json_abi_oracle.json"
+            )
+        }
     };
 
     let output_path = format!(
