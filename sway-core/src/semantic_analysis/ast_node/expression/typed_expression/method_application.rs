@@ -634,7 +634,6 @@ pub(crate) fn type_check_method_application(
             if let TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
-                root_type_id: _,
             } = &*type_engine.get(t.initial_type_id)
             {
                 let mut subst_type_parameters = vec![];

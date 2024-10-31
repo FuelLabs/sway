@@ -65,7 +65,7 @@ pub fn code_actions(
     };
 
     let actions_by_type = token
-        .typed
+        .as_typed()
         .as_ref()
         .map(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {

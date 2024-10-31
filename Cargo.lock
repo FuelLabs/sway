@@ -2675,7 +2675,7 @@ checksum = "f81ec6369c545a7d40e4589b5597581fa1c441fe1cce96dd1de43159910a36a2"
 
 [[package]]
 name = "forc"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2686,7 +2686,7 @@ dependencies = [
  "completest-pty",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "forc-util",
  "fs_extra",
  "fuel-asm",
@@ -2696,6 +2696,7 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-error",
+ "sway-features",
  "sway-ir",
  "sway-types",
  "sway-utils",
@@ -2712,7 +2713,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2724,7 +2725,7 @@ dependencies = [
  "dialoguer",
  "forc",
  "forc-pkg",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -2749,6 +2750,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sway-core",
+ "sway-features",
  "sway-types",
  "sway-utils",
  "tempfile",
@@ -2759,14 +2761,14 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "async-trait",
  "atty",
  "clap 4.5.20",
  "criterion",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
@@ -2790,7 +2792,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "clap 4.5.20",
@@ -2798,7 +2800,7 @@ dependencies = [
  "escargot",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "fuel-core-client",
  "fuel-types",
  "fuel-vm",
@@ -2809,6 +2811,7 @@ dependencies = [
  "serde_json",
  "shellfish",
  "sway-core",
+ "sway-features",
  "sway-types",
  "thiserror",
  "tokio",
@@ -2816,7 +2819,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "clap 4.5.20",
@@ -2824,7 +2827,7 @@ dependencies = [
  "dir_indexer",
  "expect-test",
  "forc-pkg",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "forc-util",
  "horrorshow",
  "include_dir",
@@ -2834,6 +2837,7 @@ dependencies = [
  "serde_json",
  "sway-ast",
  "sway-core",
+ "sway-features",
  "sway-lsp",
  "sway-types",
  "swayfmt",
@@ -2841,12 +2845,12 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "clap 4.5.20",
  "forc-pkg",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "forc-util",
  "prettydiff 0.7.0",
  "sway-core",
@@ -2858,7 +2862,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "clap 4.5.20",
@@ -2869,13 +2873,13 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "ansi_term",
  "anyhow",
  "byte-unit",
  "cid",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "forc-util",
  "fuel-abi-types",
  "futures",
@@ -2893,6 +2897,7 @@ dependencies = [
  "serde_with",
  "sway-core",
  "sway-error",
+ "sway-features",
  "sway-types",
  "sway-utils",
  "sysinfo",
@@ -2906,7 +2911,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2917,6 +2922,7 @@ dependencies = [
  "rand",
  "rayon",
  "sway-core",
+ "sway-features",
  "sway-types",
 ]
 
@@ -2933,7 +2939,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -2943,7 +2949,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "clap 4.5.20",
@@ -2958,7 +2964,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2966,7 +2972,7 @@ dependencies = [
  "clap 4.5.20",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "fuel-tx",
  "hex",
  "paste",
@@ -7579,7 +7585,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -7591,7 +7597,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "clap 4.5.20",
  "derivative",
@@ -7623,6 +7629,7 @@ dependencies = [
  "strum 0.26.3",
  "sway-ast",
  "sway-error",
+ "sway-features",
  "sway-ir",
  "sway-parse",
  "sway-types",
@@ -7636,7 +7643,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "either",
  "in_definite",
@@ -7649,8 +7656,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-features"
+version = "0.66.3"
+dependencies = [
+ "clap 4.5.20",
+ "paste",
+]
+
+[[package]]
 name = "sway-ir"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -7662,6 +7677,7 @@ dependencies = [
  "prettydiff 0.7.0",
  "rustc-hash 1.1.0",
  "slotmap",
+ "sway-features",
  "sway-ir-macros",
  "sway-types",
  "sway-utils",
@@ -7669,7 +7685,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -7679,7 +7695,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -7690,7 +7706,7 @@ dependencies = [
  "dirs 4.0.0",
  "fd-lock",
  "forc-pkg",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "forc-util",
  "futures",
  "indexmap 2.6.0",
@@ -7710,6 +7726,7 @@ dependencies = [
  "sway-ast",
  "sway-core",
  "sway-error",
+ "sway-features",
  "sway-lsp-test-utils",
  "sway-parse",
  "sway-types",
@@ -7729,7 +7746,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp-test-utils"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "assert-json-diff",
  "futures",
@@ -7744,7 +7761,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -7762,7 +7779,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -7781,7 +7798,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "serde",
  "walkdir",
@@ -7789,11 +7806,11 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.66.2"
+version = "0.66.3"
 dependencies = [
  "anyhow",
  "difference",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "indoc",
  "paste",
  "prettydiff 0.6.4",
@@ -8102,7 +8119,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.66.2",
+ "forc-tracing 0.66.3",
  "fuel-vm",
  "futures",
  "gag",
@@ -8118,6 +8135,7 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-error",
+ "sway-features",
  "sway-ir",
  "sway-types",
  "sway-utils",

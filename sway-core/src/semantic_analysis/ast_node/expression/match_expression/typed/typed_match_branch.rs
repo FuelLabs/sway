@@ -252,12 +252,12 @@ type CarryOverTupleDeclarations = Vec<VarDecl>;
 /// via [ty::TyMatchBranch]:
 /// - branch condition: Overall condition that must be `true` for the branch to match.
 /// - result variable declarations: Variable declarations that needs to be added to the
-/// match branch result, before the actual body. Here we distinguish between the variables
-/// actually declared in the match arm pattern and so called "tuple variables" that are
-/// compiler generated and contain values for variables extracted out of individual OR variants.
+///   match branch result, before the actual body. Here we distinguish between the variables
+///   actually declared in the match arm pattern and so called "tuple variables" that are
+///   compiler generated and contain values for variables extracted out of individual OR variants.
 /// - OR variant index variables: Variable declarations that are generated in case of having
-/// variables in OR patterns. Index variables hold 1-based index of the OR variant being matched
-/// or zero if non of the OR variants has matched.
+///   variables in OR patterns. Index variables hold 1-based index of the OR variant being matched
+///   or zero if non of the OR variants has matched.
 ///
 /// ## Algorithm Overview
 /// The algorithm traverses the `req_decl_tree` bottom up from left to right and collects the

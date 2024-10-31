@@ -1020,7 +1020,7 @@ impl TraitMap {
         type_id: TypeId,
     ) -> Vec<(ResolvedTraitImplItem, TraitKey)> {
         let type_engine = engines.te();
-        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+        let unify_check = UnifyCheck::non_dynamic_equality(engines).with_unify_ref_mut(false);
 
         let mut items = vec![];
         // small performance gain in bad case
@@ -1298,16 +1298,18 @@ impl TraitMap {
                 CompileError::MultipleApplicableItemsInScope {
                     item_name: symbol.as_str().to_string(),
                     item_kind: "item".to_string(),
-                    type_name: engines.help_out(type_id).to_string(),
                     as_traits: candidates
                         .keys()
                         .map(|k| {
-                            k.clone()
-                                .split("::")
-                                .collect::<Vec<_>>()
-                                .last()
-                                .unwrap()
-                                .to_string()
+                            (
+                                k.clone()
+                                    .split("::")
+                                    .collect::<Vec<_>>()
+                                    .last()
+                                    .unwrap()
+                                    .to_string(),
+                                engines.help_out(type_id).to_string(),
+                            )
                         })
                         .collect::<Vec<_>>(),
                     span: symbol.span(),
@@ -1402,8 +1404,7 @@ impl TraitMap {
                             None
                         } else {
                             Some(suffix.args.to_vec())
-                        },
-                        None,
+                        }
                     );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
@@ -1426,8 +1427,7 @@ impl TraitMap {
                         None
                     } else {
                         Some(constraint_type_arguments.clone())
-                    },
-                    None,
+                    }
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })
@@ -1466,7 +1466,6 @@ impl TraitMap {
                     if let TypeInfo::Custom {
                         qualified_call_path: _,
                         type_arguments: Some(type_arguments),
-                        root_type_id: _,
                     } = &*type_engine.get(*constraint_type_id)
                     {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));

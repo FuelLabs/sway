@@ -1,3 +1,5 @@
 category = "fail"
 
-# check: $()Cannot call ABI supertrait's method as a contract method: "foo"
+# check: $()No method "foo(ContractCaller<MyAbi>)" found for type "ContractCaller<MyAbi>". 
+# nextln: $()Matching method: 
+# nextln: $()foo() -> () in ContractCaller<MyAbi> 

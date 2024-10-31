@@ -3,7 +3,7 @@ use crate::{
         code_actions::{CodeActionContext, CODE_ACTION_IMPORT_TITLE},
         diagnostic::DiagnosticData,
     },
-    core::token::{get_range_from_span, AstToken, SymbolKind, TypedAstToken},
+    core::token::{get_range_from_span, ParsedAstToken, SymbolKind, TypedAstToken},
 };
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionKind, CodeActionOrCommand, Position, Range, TextEdit,
@@ -41,13 +41,14 @@ pub(crate) fn import_code_action(
     let mut program_type_keyword = None;
 
     ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
-        if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().typed {
+        if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().as_typed() {
             use_statements.push(use_stmt.clone());
-        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = &item.value().typed
+        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) =
+            &item.value().as_typed()
         {
             include_statements.push(include_stmt.clone());
         } else if item.value().kind == SymbolKind::ProgramTypeKeyword {
-            if let AstToken::Keyword(ident) = &item.value().parsed {
+            if let Some(ParsedAstToken::Keyword(ident)) = &item.value().as_parsed() {
                 program_type_keyword = Some(ident.clone());
             }
         }
@@ -96,7 +97,7 @@ pub(crate) fn get_call_paths_for_name<'s>(
         .tokens_for_name(symbol_name)
         .filter_map(move |item| {
             // If the typed token is a declaration, then we can import it.
-            match item.value().typed.as_ref() {
+            match item.value().as_typed().as_ref() {
                 Some(TypedAstToken::TypedDeclaration(ty_decl)) => {
                     return match ty_decl {
                         TyDecl::StructDecl(decl) => {

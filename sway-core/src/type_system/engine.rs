@@ -651,13 +651,11 @@ impl TypeEngine {
         &self,
         engines: &Engines,
         qualified_call_path: QualifiedCallPath,
-        type_arguments: Option<Vec<TypeArgument>>,
-        root_type_id: Option<TypeId>,
+        type_arguments: Option<Vec<TypeArgument>>
     ) -> TypeId {
         let source_id = self.get_custom_fallback_source_id(
             &qualified_call_path,
             &type_arguments,
-            &root_type_id,
         );
         // The custom type shareability would be calculated as `!(true || true) ==>> false`.
         // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
@@ -666,7 +664,6 @@ impl TypeEngine {
         let type_info = TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
-            root_type_id,
         };
         self.insert_or_replace_type_source_info(
             engines,
@@ -690,7 +687,7 @@ impl TypeEngine {
     /// guarantees that a new (or unused) [TypeId] will be returned on every
     /// call.
     pub(crate) fn new_custom_from_name(&self, engines: &Engines, name: Ident) -> TypeId {
-        self.new_custom(engines, name.into(), None, None)
+        self.new_custom(engines, name.into(), None)
     }
 
     /// Creates a new [TypeInfo::Custom] that represents a Self type.
@@ -1436,11 +1433,9 @@ impl TypeEngine {
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
-                root_type_id,
             } => self.get_custom_fallback_source_id(
                 qualified_call_path,
-                type_arguments,
-                root_type_id,
+                type_arguments
             ),
 
             TypeInfo::TraitType {
@@ -1645,7 +1640,6 @@ impl TypeEngine {
         &self,
         qualified_call_path: &QualifiedCallPath,
         type_arguments: &Option<Vec<TypeArgument>>,
-        root_type_id: &Option<TypeId>,
     ) -> Option<SourceId> {
         // For `TypeInfo::Custom`, we take the source file in which the custom type is used, extracted from the `qualified_call_path`.
         // For non-generated source code, this will always exists.
@@ -1661,11 +1655,6 @@ impl TypeEngine {
                 type_arguments
                     .as_ref()
                     .and_then(|tas| self.get_source_id_from_type_arguments(tas))
-            })
-            .or_else(|| {
-                root_type_id.and_then(|root_ty| {
-                    self.get_type_source_id(root_ty)
-                })
             })
     }
 
