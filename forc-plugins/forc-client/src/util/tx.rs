@@ -10,8 +10,8 @@ use forc_wallet::{
     balance::{
         collect_accounts_with_verification, AccountBalances, AccountVerification, AccountsMap,
     },
-    new::{new_wallet_cli, New},
     import::{import_wallet_cli, Import},
+    new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
 use fuel_crypto::SecretKey;
@@ -81,8 +81,13 @@ pub(crate) fn prompt_forc_wallet_password() -> Result<String> {
 
 pub(crate) fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Result<()> {
     if !wallet_path.exists() {
-        let question = format!("Could not find a wallet at {wallet_path:?}, please select an option: ");
-        let wallet_options = ask_user_with_options(&question, &["Create new wallet", "Import existing wallet"], 0)?;
+        let question =
+            format!("Could not find a wallet at {wallet_path:?}, please select an option: ");
+        let wallet_options = ask_user_with_options(
+            &question,
+            &["Create new wallet", "Import existing wallet"],
+            0,
+        )?;
         match wallet_options {
             0 => {
                 new_wallet_cli(wallet_path, New { force: false, cache_accounts: None })?;
