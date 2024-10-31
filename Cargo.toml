@@ -101,7 +101,7 @@ fuel-tx = "0.58"
 fuel-vm = "0.58"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.11"
+forc-wallet = "0.11.1"
 
 #
 # External dependencies
