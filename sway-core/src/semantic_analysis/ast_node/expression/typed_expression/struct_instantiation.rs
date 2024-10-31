@@ -68,9 +68,7 @@ pub(crate) fn struct_instantiation(
             }));
         }
         (_, true) => type_engine.new_custom_from_name(engines, suffix.clone()),
-        (_, false) => {
-            type_engine.new_custom(engines, suffix.clone().into(), Some(type_arguments))
-        }
+        (_, false) => type_engine.new_custom(engines, suffix.clone().into(), Some(type_arguments)),
     };
 
     // find the module that the struct decl is in

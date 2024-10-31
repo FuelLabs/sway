@@ -1404,7 +1404,7 @@ impl TraitMap {
                             None
                         } else {
                             Some(suffix.args.to_vec())
-                        }
+                        },
                     );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
@@ -1427,7 +1427,7 @@ impl TraitMap {
                         None
                     } else {
                         Some(constraint_type_arguments.clone())
-                    }
+                    },
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })

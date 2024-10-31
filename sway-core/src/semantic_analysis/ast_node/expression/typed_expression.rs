@@ -2896,7 +2896,7 @@ mod tests {
             engines
                 .te()
                 .insert_array_without_annotations(&engines, engines.te().id_of_bool(), 2),
-            ExperimentalFeatures::default()
+            ExperimentalFeatures::default(),
         )?;
         expr.type_check_analyze(handler, &mut TypeCheckAnalysisContext::new(&engines))?;
         Ok(expr)
@@ -3026,7 +3026,7 @@ mod tests {
             engines
                 .te()
                 .insert_array_without_annotations(&engines, engines.te().id_of_bool(), 0),
-            ExperimentalFeatures::default()
+            ExperimentalFeatures::default(),
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

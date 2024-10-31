@@ -398,10 +398,7 @@ impl TypeEngine {
     /// [TypeInfo::Placeholder] is an always replaceable type and the method
     /// guarantees that a new (or unused) [TypeId] will be returned on every
     /// call.
-    pub(crate) fn new_placeholder(
-        &self,
-        type_parameter: TypeParameter,
-    ) -> TypeId {
+    pub(crate) fn new_placeholder(&self, type_parameter: TypeParameter) -> TypeId {
         self.new_placeholder_impl(TypeInfo::Placeholder(type_parameter))
     }
 
@@ -651,12 +648,9 @@ impl TypeEngine {
         &self,
         engines: &Engines,
         qualified_call_path: QualifiedCallPath,
-        type_arguments: Option<Vec<TypeArgument>>
+        type_arguments: Option<Vec<TypeArgument>>,
     ) -> TypeId {
-        let source_id = self.get_custom_fallback_source_id(
-            &qualified_call_path,
-            &type_arguments,
-        );
+        let source_id = self.get_custom_fallback_source_id(&qualified_call_path, &type_arguments);
         // The custom type shareability would be calculated as `!(true || true) ==>> false`.
         // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
         //       https://github.com/FuelLabs/sway/issues/6601
@@ -1433,10 +1427,7 @@ impl TypeEngine {
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
-            } => self.get_custom_fallback_source_id(
-                qualified_call_path,
-                type_arguments
-            ),
+            } => self.get_custom_fallback_source_id(qualified_call_path, type_arguments),
 
             TypeInfo::TraitType {
                 name,
@@ -1449,15 +1440,13 @@ impl TypeEngine {
         length.span().source_id().copied()
     }
 
-    fn get_source_id_from_type_argument(
-        &self,
-        ta: &TypeArgument,
-    ) -> Option<SourceId> {
+    fn get_source_id_from_type_argument(&self, ta: &TypeArgument) -> Option<SourceId> {
         // If the `ta` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
-        ta.span.source_id().copied().or_else(|| {
-            self.get_type_source_id(ta.type_id)
-        })
+        ta.span
+            .source_id()
+            .copied()
+            .or_else(|| self.get_type_source_id(ta.type_id))
     }
 
     fn get_source_id_from_type_arguments(
@@ -1480,28 +1469,24 @@ impl TypeEngine {
                 .iter()
                 .find_map(|ta| ta.span.source_id().copied())
                 .or_else(|| {
-                    type_arguments.iter().find_map(|ta| {
-                        self.get_type_source_id(ta.type_id)
-                    })
+                    type_arguments
+                        .iter()
+                        .find_map(|ta| self.get_type_source_id(ta.type_id))
                 })
         }
     }
 
-    fn get_source_id_from_type_parameter(
-        &self,
-        tp: &TypeParameter,
-    ) -> Option<SourceId> {
+    fn get_source_id_from_type_parameter(&self, tp: &TypeParameter) -> Option<SourceId> {
         // If the `tp` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
-        tp.name.span().source_id().copied().or_else(|| {
-            self.get_type_source_id(tp.type_id)
-        })
+        tp.name
+            .span()
+            .source_id()
+            .copied()
+            .or_else(|| self.get_type_source_id(tp.type_id))
     }
 
-    fn get_placeholder_fallback_source_id(
-        &self,
-        placeholder: &TypeInfo,
-    ) -> Option<SourceId> {
+    fn get_placeholder_fallback_source_id(&self, placeholder: &TypeInfo) -> Option<SourceId> {
         // `TypeInfo::Placeholder` is an always replaceable type and we know we will
         // get a new instance of it in the engine for every "_" occurrence. This means
         // that it can never happen that instances from different source files point
@@ -1554,10 +1539,7 @@ impl TypeEngine {
         decl.span.source_id().copied()
     }
 
-    fn get_tuple_fallback_source_id(
-        &self,
-        elements: &[TypeArgument],
-    ) -> Option<SourceId> {
+    fn get_tuple_fallback_source_id(&self, elements: &[TypeArgument]) -> Option<SourceId> {
         self.get_source_id_from_type_arguments(elements)
     }
 
@@ -1602,11 +1584,7 @@ impl TypeEngine {
         }
     }
 
-    fn get_alias_fallback_source_id(
-        &self,
-        name: &Ident,
-        ty: &TypeArgument,
-    ) -> Option<SourceId> {
+    fn get_alias_fallback_source_id(&self, name: &Ident, ty: &TypeArgument) -> Option<SourceId> {
         // For `TypeInfo::Alias`, we take the source file in which the alias is declared, if it exists.
         // Otherwise, we take the source file of the aliased type `ty`.
         name.span()
@@ -1615,24 +1593,15 @@ impl TypeEngine {
             .or_else(|| self.get_source_id_from_type_argument(ty))
     }
 
-    fn get_slice_fallback_source_id(
-        &self,
-        elem_type: &TypeArgument,
-    ) -> Option<SourceId> {
+    fn get_slice_fallback_source_id(&self, elem_type: &TypeArgument) -> Option<SourceId> {
         self.get_source_id_from_type_argument(elem_type)
     }
 
-    fn get_ptr_fallback_source_id(
-        &self,
-        pointee_type: &TypeArgument,
-    ) -> Option<SourceId> {
+    fn get_ptr_fallback_source_id(&self, pointee_type: &TypeArgument) -> Option<SourceId> {
         self.get_source_id_from_type_argument(pointee_type)
     }
 
-    fn get_ref_fallback_source_id(
-        &self,
-        referenced_type: &TypeArgument,
-    ) -> Option<SourceId> {
+    fn get_ref_fallback_source_id(&self, referenced_type: &TypeArgument) -> Option<SourceId> {
         self.get_source_id_from_type_argument(referenced_type)
     }
 
@@ -1667,9 +1636,10 @@ impl TypeEngine {
         // For non-generated source code, this will always exists.
         // For potential situation of having a `name` without spans in generated code, we do a fallback and
         // extract the source id from the `trait_type_id`.
-        name.span().source_id().copied().or_else(|| {
-            self.get_type_source_id(*trait_type_id)
-        })
+        name.span()
+            .source_id()
+            .copied()
+            .or_else(|| self.get_type_source_id(*trait_type_id))
     }
 
     /// Returns the known [SourceId] of a type that already exists

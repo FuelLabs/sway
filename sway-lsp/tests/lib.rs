@@ -5,7 +5,12 @@ pub mod integration;
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use rayon::prelude::*;
-use std::{fs, panic, path::PathBuf, process::{Command, Stdio}, sync::Mutex};
+use std::{
+    fs, panic,
+    path::PathBuf,
+    process::{Command, Stdio},
+    sync::Mutex,
+};
 use sway_lsp::{
     config::LspClient,
     handlers::{notification, request},
@@ -2167,29 +2172,29 @@ fn garbage_collection_tests() -> Result<(), String> {
             sway_workspace_dir()
                 .join(e2e_stdlib_dir())
                 .join("option_eq")
-                .join("src/main.sw")
+                .join("src/main.sw"),
         ),
         (
             "arrays".into(),
             sway_workspace_dir()
                 .join("examples/arrays")
-                .join("src/main.sw")
+                .join("src/main.sw"),
         ),
         (
             "minimal_script".into(),
             sway_workspace_dir()
                 .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
-                .join("src/main.sw")
+                .join("src/main.sw"),
         ),
         (
             "paths".into(),
-            test_fixtures_dir().join("tokens/paths/src/main.sw")
+            test_fixtures_dir().join("tokens/paths/src/main.sw"),
         ),
         (
             "storage_contract".into(),
             sway_workspace_dir()
                 .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
-                .join("src/main.sw")
+                .join("src/main.sw"),
         ),
     ];
 
@@ -2244,7 +2249,10 @@ fn garbage_collection_all_stdlib_tests() -> Result<(), String> {
 /// - Collects results through a thread-safe [Mutex]
 /// - Provides detailed error reporting for failed tests
 /// - Categorizes different types of failures (exit codes vs signals)
-fn run_garbage_collection_tests(tests: &[(String, PathBuf)], base_dir: Option<String>) -> Result<(), String> {
+fn run_garbage_collection_tests(
+    tests: &[(String, PathBuf)],
+    base_dir: Option<String>,
+) -> Result<(), String> {
     println!("\n=== Starting Garbage Collection Tests ===\n");
 
     match base_dir {
@@ -2259,7 +2267,10 @@ fn run_garbage_collection_tests(tests: &[(String, PathBuf)], base_dir: Option<St
                 .max()
                 .unwrap_or_default();
             tests.iter().for_each(|(project_name, test_file)| {
-                println!("- {project_name:<max_project_name_len$} {}", test_file.display());
+                println!(
+                    "- {project_name:<max_project_name_len$} {}",
+                    test_file.display()
+                );
             });
             println!();
         }
@@ -2271,7 +2282,13 @@ fn run_garbage_collection_tests(tests: &[(String, PathBuf)], base_dir: Option<St
     tests.par_iter().for_each(|(project_name, test_file)| {
         let test_file = test_file.to_string_lossy().to_string();
         let status = Command::new(std::env::current_exe().unwrap())
-            .args(["--test", "test_single_garbage_collection_project", "--exact", "--nocapture", "--ignored"])
+            .args([
+                "--test",
+                "test_single_garbage_collection_project",
+                "--exact",
+                "--nocapture",
+                "--ignored",
+            ])
             .env("TEST_FILE", test_file.clone())
             .stdout(Stdio::null())
             .status()
@@ -2282,7 +2299,12 @@ fn run_garbage_collection_tests(tests: &[(String, PathBuf)], base_dir: Option<St
             (project_name, test_file, true, None)
         } else {
             println!("  ❌ Failed: {} ({})", project_name, status);
-            (project_name, test_file, false, Some(format!("Exit code: {}", status)))
+            (
+                project_name,
+                test_file,
+                false,
+                Some(format!("Exit code: {}", status)),
+            )
         };
 
         results.lock().unwrap().push(test_result);
@@ -2312,7 +2334,10 @@ fn run_garbage_collection_tests(tests: &[(String, PathBuf)], base_dir: Option<St
 
         println!();
 
-        Err(format!("{} project(s) failed garbage collection testing", failed))
+        Err(format!(
+            "{} project(s) failed garbage collection testing",
+            failed
+        ))
     } else {
         Ok(())
     }

@@ -48,9 +48,10 @@ impl TyScrutinee {
                     // are heavily used in code generation, e.g., to generate code for contract
                     // function selection in the `__entry` and sometimes the span does not point
                     // to a "_". But it is always in the code in which the match expression is.
-                    type_id: type_engine.new_placeholder(
-                        TypeParameter::new_placeholder(type_engine.new_unknown(), span.clone()),
-                    ),
+                    type_id: type_engine.new_placeholder(TypeParameter::new_placeholder(
+                        type_engine.new_unknown(),
+                        span.clone(),
+                    )),
                     span,
                 };
                 Ok(typed_scrutinee)
