@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::Arc,
@@ -15,12 +16,15 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem},
+        ty::{
+            self, TyConstantDecl, TyDecl, TyFunctionDecl, TyImplItem, TyImplSelfOrTrait,
+            TyTraitInterfaceItem, TyTraitItem, TyTraitType,
+        },
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode,
+        symbol_collection_context::SymbolCollectionContext, AbiMode, ConstShadowingMode,
         TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
@@ -28,6 +32,37 @@ use crate::{
 };
 
 impl TyImplSelfOrTrait {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<ImplSelfOrTrait>,
+    ) -> Result<(), ErrorEmitted> {
+        let impl_trait = engines.pe().get_impl_self_or_trait(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            impl_trait.trait_name.suffix.clone(),
+            Declaration::ImplSelfOrTrait(*decl_id),
+        )?;
+
+        let _ = ctx.scoped(engines, impl_trait.block_span.clone(), |scoped_ctx| {
+            impl_trait.items.iter().for_each(|item| match item {
+                ImplItem::Fn(decl_id) => {
+                    let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
+                }
+                ImplItem::Constant(decl_id) => {
+                    let _ = TyConstantDecl::collect(handler, engines, scoped_ctx, decl_id);
+                }
+                ImplItem::Type(decl_id) => {
+                    let _ = TyTraitType::collect(handler, engines, scoped_ctx, decl_id);
+                }
+            });
+            Ok(())
+        });
+        Ok(())
+    }
+
     pub(crate) fn type_check_impl_trait(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -57,7 +92,7 @@ impl TyImplSelfOrTrait {
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .with_self_type(Some(self_type_id))
             .allow_functions()
-            .scoped(|mut ctx| {
+            .scoped(handler, Some(block_span.clone()), |mut ctx| {
                 // Type check the type parameters
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -304,7 +339,7 @@ impl TyImplSelfOrTrait {
         // create the namespace for the impl
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
-            .scoped(|mut ctx| {
+            .scoped(handler, Some(block_span.clone()), |mut ctx| {
                 // Create a new type parameter for the "self type".
                 let self_type_param =
                     TypeParameter::new_self_type(engines, implementing_for.span());
@@ -646,7 +681,7 @@ fn type_check_trait_implementation(
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
-    let collecting_unifications = ctx.collecting_unifications();
+    let code_block_first_pass = ctx.code_block_first_pass();
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
@@ -665,7 +700,7 @@ fn type_check_trait_implementation(
                     block_span,
                     engines,
                     TryInsertingTraitImplOnFailure::Yes,
-                    collecting_unifications.into(),
+                    code_block_first_pass.into(),
                 )
         })?;
 
@@ -805,10 +840,11 @@ fn type_check_trait_implementation(
                     ty::TyTraitType::error(ctx.engines(), type_decl.as_ref().clone())
                 });
 
-                type_decl.subst(
+                type_decl.subst(&SubstTypesContext::new(
+                    engines,
                     &trait_type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-                );
+                    !ctx.code_block_first_pass(),
+                ));
 
                 // Remove this type from the checklist.
                 let name = type_decl.name.clone();
@@ -879,10 +915,11 @@ fn type_check_trait_implementation(
                 )
                 .unwrap_or_else(|_| ty::TyFunctionDecl::error(&impl_method));
 
-                impl_method.subst(
+                impl_method.subst(&SubstTypesContext::new(
+                    engines,
                     &trait_type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-                );
+                    !ctx.code_block_first_pass(),
+                ));
 
                 // Remove this method from the checklist.
                 let name = impl_method.name.clone();
@@ -905,10 +942,11 @@ fn type_check_trait_implementation(
                 )
                 .unwrap_or_else(|_| ty::TyConstantDecl::error(ctx.engines(), const_decl.clone()));
 
-                const_decl.subst(
+                const_decl.subst(&SubstTypesContext::new(
+                    engines,
                     &trait_type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-                );
+                    !ctx.code_block_first_pass(),
+                ));
 
                 // Remove this constant from the checklist.
                 let name = const_decl.call_path.suffix.clone();
@@ -978,10 +1016,11 @@ fn type_check_trait_implementation(
 
                 method.implementing_for_typeid = Some(implementing_for);
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
-                method.subst(
-                    &type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-                );
+                method.subst(&SubstTypesContext::new(
+                    engines,
+                    &trait_type_mapping,
+                    !ctx.code_block_first_pass(),
+                ));
                 all_items_refs.push(TyImplItem::Fn(
                     decl_engine
                         .insert(
@@ -994,10 +1033,11 @@ fn type_check_trait_implementation(
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
                 const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
-                const_decl.subst(
-                    &type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-                );
+                const_decl.subst(&SubstTypesContext::new(
+                    engines,
+                    &trait_type_mapping,
+                    !ctx.code_block_first_pass(),
+                ));
                 all_items_refs.push(TyImplItem::Constant(decl_engine.insert(
                     const_decl,
                     decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
@@ -1005,10 +1045,11 @@ fn type_check_trait_implementation(
             }
             TyImplItem::Type(decl_ref) => {
                 let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
-                type_decl.subst(
-                    &type_mapping,
-                    &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-                );
+                type_decl.subst(&SubstTypesContext::new(
+                    engines,
+                    &trait_type_mapping,
+                    !ctx.code_block_first_pass(),
+                ));
                 all_items_refs.push(TyImplItem::Type(decl_engine.insert(
                     type_decl.clone(),
                     decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
@@ -1151,17 +1192,11 @@ fn type_check_impl_method(
 
             // this subst is required to replace associated types, namely TypeInfo::TraitType.
             let mut impl_method_param_type_id = impl_method_param.type_argument.type_id;
-            impl_method_param_type_id.subst(
-                &ctx.type_subst(),
-                &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-            );
+            impl_method_param_type_id.subst(&ctx.subst_ctx());
 
             let mut impl_method_signature_param_type_id =
                 impl_method_signature_param.type_argument.type_id;
-            impl_method_signature_param_type_id.subst(
-                &ctx.type_subst(),
-                &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-            );
+            impl_method_signature_param_type_id.subst(&ctx.subst_ctx());
 
             if !UnifyCheck::non_dynamic_equality(engines).check(
                 impl_method_param_type_id,
@@ -1231,17 +1266,11 @@ fn type_check_impl_method(
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         let mut impl_method_return_type_id = impl_method.return_type.type_id;
-        impl_method_return_type_id.subst(
-            &ctx.type_subst(),
-            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-        );
+        impl_method_return_type_id.subst(&ctx.subst_ctx());
 
         let mut impl_method_signature_return_type_type_id =
             impl_method_signature.return_type.type_id;
-        impl_method_signature_return_type_type_id.subst(
-            &ctx.type_subst(),
-            &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-        );
+        impl_method_signature_return_type_type_id.subst(&ctx.subst_ctx());
 
         if !UnifyCheck::non_dynamic_equality(engines).check(
             impl_method_return_type_id,
@@ -1347,16 +1376,10 @@ fn type_check_const_decl(
 
     // this subst is required to replace associated types, namely TypeInfo::TraitType.
     let mut const_decl_type_id = const_decl.type_ascription.type_id;
-    const_decl_type_id.subst(
-        &ctx.type_subst(),
-        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-    );
+    const_decl_type_id.subst(&ctx.subst_ctx());
 
     let mut const_decl_signature_type_id = const_decl_signature.type_ascription.type_id;
-    const_decl_signature_type_id.subst(
-        &ctx.type_subst(),
-        &SubstTypesContext::new(engines, !ctx.collecting_unifications()),
-    );
+    const_decl_signature_type_id.subst(&ctx.subst_ctx());
 
     // unify the types from the constant with the constant signature
     if !UnifyCheck::non_dynamic_equality(engines)
@@ -1629,8 +1652,7 @@ impl TypeCheckAnalysis for ty::ImplSelfOrTrait {
         ctx.push_nodes_for_impl_trait(self);
 
         // Now lets analyze each impl trait item.
-        for (i, item) in impl_trait.items.iter().enumerate() {
-            let _node = ctx.items_node_stack[i];
+        for item in impl_trait.items.iter() {
             item.type_check_analyze(handler, ctx)?;
         }
 

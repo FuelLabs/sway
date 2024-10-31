@@ -15,9 +15,7 @@ use crate::{
         CallPath, Visibility,
     },
     namespace::ResolvedTraitImplItem,
-    semantic_analysis::{
-        type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
-    },
+    semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::*,
     Engines, Namespace,
 };
@@ -71,12 +69,10 @@ pub(crate) fn struct_instantiation(
         (_, true) => TypeInfo::Custom {
             qualified_call_path: suffix.clone().into(),
             type_arguments: None,
-            root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
             qualified_call_path: suffix.clone().into(),
             type_arguments: Some(type_arguments),
-            root_type_id: None,
         },
     };
 
@@ -305,7 +301,7 @@ pub(crate) fn struct_instantiation(
 
     let instantiation_span = inner_span.clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(|mut scoped_ctx| {
+        .scoped(handler, None, |mut scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
             for type_parameter in struct_decl.type_parameters.iter() {

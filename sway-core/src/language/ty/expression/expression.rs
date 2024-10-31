@@ -56,10 +56,10 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, ctx);
-            self.expression.subst(type_mapping, ctx);
+            self.return_type.subst(ctx);
+            self.expression.subst(ctx);
         }
     }
 }
@@ -123,35 +123,8 @@ impl TypeCheckAnalysis for TyExpression {
                     }
                 }
             }
-            // Check all array items are the same
-            TyExpressionVariant::Array {
-                elem_type,
-                contents,
-            } => {
-                let array_elem_type = ctx.engines.te().get(*elem_type);
-                if !matches!(&*array_elem_type, TypeInfo::Never) {
-                    let unify = crate::type_system::unify::unifier::Unifier::new(
-                        ctx.engines,
-                        "",
-                        unify::unifier::UnifyKind::Default,
-                    );
-                    for element in contents {
-                        let element_type = ctx.engines.te().get(element.return_type);
-
-                        // If the element is never, we do not need to check
-                        if matches!(&*element_type, TypeInfo::Never) {
-                            continue;
-                        }
-
-                        unify.unify(
-                            handler,
-                            element.return_type,
-                            *elem_type,
-                            &element.span,
-                            true,
-                        )
-                    }
-                }
+            TyExpressionVariant::Array { .. } => {
+                self.as_array_unify_elements(handler, ctx.engines);
             }
             _ => {}
         }
@@ -498,6 +471,49 @@ impl TyExpression {
         match &self.expression {
             TyExpressionVariant::IntrinsicFunction(v) => Some(v),
             _ => None,
+        }
+    }
+
+    /// Unify elem_type with each element return type.
+    /// Must be called on arrays.
+    pub fn as_array_unify_elements(&self, handler: &Handler, engines: &Engines) {
+        let TyExpressionVariant::Array {
+            elem_type,
+            contents,
+        } = &self.expression
+        else {
+            unreachable!("Should only be called on Arrays")
+        };
+
+        let array_elem_type = engines.te().get(*elem_type);
+        if !matches!(&*array_elem_type, TypeInfo::Never) {
+            let unify = crate::type_system::unify::unifier::Unifier::new(
+                engines,
+                "",
+                unify::unifier::UnifyKind::Default,
+            );
+            for element in contents {
+                let element_type = engines.te().get(element.return_type);
+
+                // If the element is never, we do not need to check
+                if matches!(&*element_type, TypeInfo::Never) {
+                    continue;
+                }
+
+                let h = Handler::default();
+                unify.unify(&h, element.return_type, *elem_type, &element.span, true);
+
+                // unification error points to type that failed
+                // we want to report the element type instead
+                if h.has_errors() {
+                    handler.emit_err(CompileError::TypeError(TypeError::MismatchedType {
+                        expected: format!("{:?}", engines.help_out(&array_elem_type)),
+                        received: format!("{:?}", engines.help_out(element_type)),
+                        help_text: String::new(),
+                        span: element.span.clone(),
+                    }));
+                }
+            }
         }
     }
 }

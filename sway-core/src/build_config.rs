@@ -32,10 +32,6 @@ pub enum BuildTarget {
     #[clap(name = "evm")]
     #[strum(serialize = "evm")]
     EVM,
-    #[serde(rename = "midenvm")]
-    #[clap(name = "midenvm")]
-    #[strum(serialize = "midenvm")]
-    MidenVM,
 }
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -193,7 +189,6 @@ pub struct BuildConfig {
     pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
-    pub experimental: ExperimentalFlags,
     pub lsp_mode: Option<LspConfig>,
 }
 
@@ -241,9 +236,6 @@ impl BuildConfig {
             time_phases: false,
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags {
-                new_encoding: false,
-            },
             lsp_mode: None,
         }
     }
@@ -314,13 +306,6 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_experimental(self, experimental: ExperimentalFlags) -> Self {
-        Self {
-            experimental,
-            ..self
-        }
-    }
-
     pub fn with_lsp_mode(self, lsp_mode: Option<LspConfig>) -> Self {
         Self { lsp_mode, ..self }
     }
@@ -328,11 +313,6 @@ impl BuildConfig {
     pub fn canonical_root_module(&self) -> Arc<PathBuf> {
         self.canonical_root_module.clone()
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct ExperimentalFlags {
-    pub new_encoding: bool,
 }
 
 #[derive(Clone, Debug, Default)]

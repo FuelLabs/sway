@@ -5,20 +5,43 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
+use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
-    decl_engine::{DeclId, DeclRefFunction},
+    decl_engine::{parsed_id::ParsedDeclId, DeclId, DeclRefFunction},
     language::{
         parsed::*,
         ty::{self, TyCodeBlock, TyFunctionDecl},
         CallPath, Visibility,
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
+    Engines,
 };
 use sway_types::{style::is_snake_case, Spanned};
 
 impl ty::TyFunctionDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<FunctionDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let fn_decl = engines.pe().get_function(decl_id);
+        let _ = ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            fn_decl.name.clone(),
+            Declaration::FunctionDeclaration(*decl_id),
+        );
+
+        // create a namespace for the function
+        let _ = ctx.scoped(engines, fn_decl.span.clone(), |scoped_ctx| {
+            TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
+        });
+        Ok(())
+    }
+
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -85,7 +108,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(|mut ctx| {
+            .scoped(handler, Some(span.clone()), |mut ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -182,7 +205,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(|mut ctx| {
+            .scoped(handler, Some(fn_decl.span.clone()), |mut ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {
@@ -193,8 +216,12 @@ impl ty::TyFunctionDecl {
                 } = ty_fn_decl;
 
                 // Insert the previously type checked type parameters into the current namespace.
+                // We insert all type parameter before the constraints because some constraints may depend on the parameters.
+                for p in type_parameters.iter() {
+                    p.insert_into_namespace_self(handler, ctx.by_ref())?;
+                }
                 for p in type_parameters {
-                    p.insert_into_namespace(handler, ctx.by_ref())?;
+                    p.insert_into_namespace_constraints(handler, ctx.by_ref())?;
                 }
 
                 // Insert the previously type checked function parameters into the current namespace.

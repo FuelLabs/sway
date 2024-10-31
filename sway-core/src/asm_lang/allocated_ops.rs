@@ -17,7 +17,6 @@ use crate::{
     },
     fuel_prelude::fuel_asm::{self, op},
 };
-use either::Either;
 use fuel_vm::fuel_asm::{op::ADDI, Imm12};
 use std::fmt::{self, Write};
 use sway_types::span::Span;
@@ -49,6 +48,10 @@ impl AllocatedRegister {
             AllocatedRegister::Allocated(a) => fuel_asm::RegId::new(a + 16),
             AllocatedRegister::Constant(constant) => constant.to_reg_id(),
         }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        matches!(self, Self::Constant(ConstantRegister::Zero))
     }
 }
 
@@ -110,6 +113,12 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         VirtualImmediate06,
     ),
+    WQMD(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     WQCM(
         AllocatedRegister,
         AllocatedRegister,
@@ -117,6 +126,12 @@ pub(crate) enum AllocatedOpcode {
         VirtualImmediate06,
     ),
     WQAM(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
+    WQMM(
         AllocatedRegister,
         AllocatedRegister,
         AllocatedRegister,
@@ -257,6 +272,7 @@ pub(crate) enum AllocatedOpcode {
 
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
+    ConfigurablesOffsetPlaceholder,
     DataSectionOffsetPlaceholder,
     LoadDataId(AllocatedRegister, DataId),
     AddrDataId(AllocatedRegister, DataId),
@@ -303,8 +319,10 @@ impl AllocatedOpcode {
             WQOP(_, _, _, _) => vec![],
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
+            WQMD(_, _, _, _) => vec![],
             WQCM(r1, _, _, _) => vec![r1],
             WQAM(_, _, _, _) => vec![],
+            WQMM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -379,6 +397,7 @@ impl AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             DataSectionOffsetPlaceholder => vec![],
             LoadDataId(r1, _i) => vec![r1],
             AddrDataId(r1, _i) => vec![r1],
@@ -428,8 +447,10 @@ impl fmt::Display for AllocatedOpcode {
             WQOP(a, b, c, d) => write!(fmtr, "wqop {a} {b} {c} {d}"),
             WQML(a, b, c, d) => write!(fmtr, "wqml {a} {b} {c} {d}"),
             WQDV(a, b, c, d) => write!(fmtr, "wqdv {a} {b} {c} {d}"),
+            WQMD(a, b, c, d) => write!(fmtr, "wqmd {a} {b} {c} {d}"),
             WQCM(a, b, c, d) => write!(fmtr, "wqcm {a} {b} {c} {d}"),
             WQAM(a, b, c, d) => write!(fmtr, "wqam {a} {b} {c} {d}"),
+            WQMM(a, b, c, d) => write!(fmtr, "wqmm {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
             JMP(a) => write!(fmtr, "jmp {a}"),
@@ -505,6 +526,10 @@ impl fmt::Display for AllocatedOpcode {
 
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
+            ConfigurablesOffsetPlaceholder => write!(
+                fmtr,
+                "CONFIGURABLES_OFFSET[0..32]\nCONFIGURABLES_OFFSET[32..64]"
+            ),
             DataSectionOffsetPlaceholder => {
                 write!(
                     fmtr,
@@ -542,17 +567,21 @@ impl fmt::Display for AllocatedOp {
     }
 }
 
-type DoubleWideData = [u8; 8];
+pub(crate) enum FuelAsmData {
+    ConfigurablesOffset([u8; 8]),
+    DatasectionOffset([u8; 8]),
+    Instructions(Vec<fuel_asm::Instruction>),
+}
 
 impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,
         offset_from_instr_start: u64,
-        data_section: &mut DataSection,
-    ) -> Either<Vec<fuel_asm::Instruction>, DoubleWideData> {
+        data_section: &DataSection,
+    ) -> FuelAsmData {
         use AllocatedOpcode::*;
-        Either::Left(vec![match &self.opcode {
+        FuelAsmData::Instructions(vec![match &self.opcode {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => op::ADD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
@@ -594,11 +623,17 @@ impl AllocatedOp {
             WQDV(a, b, c, d) => {
                 op::WQDV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
             }
+            WQMD(a, b, c, d) => {
+                op::WQMD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             WQCM(a, b, c, d) => {
                 op::WQCM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
             }
             WQAM(a, b, c, d) => {
                 op::WQAM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            WQMM(a, b, c, d) => {
+                op::WQMM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
 
             /* Control Flow Instructions */
@@ -615,9 +650,9 @@ impl AllocatedOp {
 
             /* Memory Instructions */
             ALOC(a) => op::ALOC::new(a.to_reg_id()).into(),
-            CFEI(a) if a.value == 0 => return Either::Left(vec![]),
+            CFEI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
             CFEI(a) => op::CFEI::new(a.value.into()).into(),
-            CFSI(a) if a.value == 0 => return Either::Left(vec![]),
+            CFSI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
             CFSI(a) => op::CFSI::new(a.value.into()).into(),
             CFE(a) => op::CFE::new(a.to_reg_id()).into(),
             CFS(a) => op::CFS::new(a.to_reg_id()).into(),
@@ -701,17 +736,20 @@ impl AllocatedOp {
 
             /* Non-VM Instructions */
             BLOB(a) => {
-                return Either::Left(
+                return FuelAsmData::Instructions(
                     std::iter::repeat(op::NOOP::new().into())
                         .take(a.value as usize)
                         .collect(),
                 )
             }
+            ConfigurablesOffsetPlaceholder => {
+                return FuelAsmData::ConfigurablesOffset([0, 0, 0, 0, 0, 0, 0, 0])
+            }
             DataSectionOffsetPlaceholder => {
-                return Either::Right(offset_to_data_section.to_be_bytes())
+                return FuelAsmData::DatasectionOffset(offset_to_data_section.to_be_bytes())
             }
             LoadDataId(a, b) => {
-                return Either::Left(realize_load(
+                return FuelAsmData::Instructions(realize_load(
                     a,
                     b,
                     data_section,
@@ -719,7 +757,7 @@ impl AllocatedOp {
                     offset_from_instr_start,
                 ))
             }
-            AddrDataId(a, b) => return Either::Left(addr_of(a, b, data_section)),
+            AddrDataId(a, b) => return FuelAsmData::Instructions(addr_of(a, b, data_section)),
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
     }
@@ -729,7 +767,7 @@ impl AllocatedOp {
 fn addr_of(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    data_section: &mut DataSection,
+    data_section: &DataSection,
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
     vec![fuel_asm::Instruction::ADDI(ADDI::new(
@@ -746,7 +784,7 @@ fn addr_of(
 fn realize_load(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    data_section: &mut DataSection,
+    data_section: &DataSection,
     offset_to_data_section: u64,
     offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
@@ -789,7 +827,9 @@ fn realize_load(
             offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
 
         // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer = data_section.append_pointer(pointer_offset_from_current_instr);
+        let data_id_for_pointer = data_section
+            .data_id_of_pointer(pointer_offset_from_current_instr)
+            .expect("Pointer offset must be in data_section");
 
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);

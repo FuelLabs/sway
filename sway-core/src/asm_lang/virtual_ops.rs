@@ -75,6 +75,12 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualImmediate06,
     ),
+    WQMD(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
     WQCM(
         VirtualRegister,
         VirtualRegister,
@@ -82,6 +88,12 @@ pub(crate) enum VirtualOp {
         VirtualImmediate06,
     ),
     WQAM(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    WQMM(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
@@ -214,6 +226,7 @@ pub(crate) enum VirtualOp {
 
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
+    ConfigurablesOffsetPlaceholder,
     DataSectionOffsetPlaceholder,
     // LoadDataId takes a virtual register and a DataId, which points to a labeled piece
     // of data in the data section. Note that the ASM op corresponding to a LW is
@@ -263,8 +276,10 @@ impl VirtualOp {
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQMD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             WQCM(r1, r2, r3, _) => vec![r1, r2, r3],
             WQAM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -333,6 +348,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             LoadDataId(r1, _i) => vec![r1],
             AddrDataId(r1, _) => vec![r1],
 
@@ -399,8 +415,10 @@ impl VirtualOp {
             WQOP(_, _, _, _)
             | WQML(_, _, _, _)
             | WQDV(_, _, _, _)
+            | WQMD(_, _, _, _)
             | WQCM(_, _, _, _)
             | WQAM(_, _, _, _)
+            | WQMM(_, _, _, _)
             | JMP(_)
             | JI(_)
             | JNE(_, _, _)
@@ -449,6 +467,7 @@ impl VirtualOp {
             // Virtual OPs
             | BLOB(_)
             | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
             | Undefined => true
         }
     }
@@ -493,8 +512,10 @@ impl VirtualOp {
             | WQOP(_, _, _, _)
             | WQML(_, _, _, _)
             | WQDV(_, _, _, _)
+            | WQMD(_, _, _, _)
             | WQCM(_, _, _, _)
             | WQAM(_, _, _, _)
+            | WQMM(_, _, _, _)
             // Cryptographic
             | ECK1(_, _, _)
             | ECR1(_, _, _)
@@ -553,6 +574,7 @@ impl VirtualOp {
             | GTF(_, _, _)
             | BLOB(_)
             | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
             | LoadDataId(_, _)
             | AddrDataId(_, _)
             | Undefined => vec![],
@@ -596,11 +618,16 @@ impl VirtualOp {
             SUBI(_r1, r2, _i) => vec![r2],
             XOR(_r1, r2, r3) => vec![r2, r3],
             XORI(_r1, r2, _i) => vec![r2],
+            // Note that most of the `WQ..` instructions *read* from the `r1` result register,
+            // because the register itself does not contain the result, but provides the
+            // memory address at which the result will be stored.
             WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQMD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             WQCM(_, r2, r3, _) => vec![r2, r3],
             WQAM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -669,6 +696,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             LoadDataId(_r1, _i) => vec![],
             AddrDataId(_r1, _i) => vec![],
 
@@ -718,8 +746,10 @@ impl VirtualOp {
             WQOP(_, _, _, _) => vec![],
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
+            WQMD(_, _, _, _) => vec![],
             WQCM(r1, _, _, _) => vec![r1],
             WQAM(_, _, _, _) => vec![],
+            WQMM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
@@ -790,6 +820,7 @@ impl VirtualOp {
             LoadDataId(r1, _i) => vec![r1],
             AddrDataId(r1, _i) => vec![r1],
             DataSectionOffsetPlaceholder => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
             Undefined => vec![],
         })
         .into_iter()
@@ -987,6 +1018,12 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r3),
                 i.clone(),
             ),
+            WQMD(r1, r2, r3, r4) => Self::WQMD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
             WQCM(r1, r2, r3, i) => Self::WQCM(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -994,6 +1031,12 @@ impl VirtualOp {
                 i.clone(),
             ),
             WQAM(r1, r2, r3, r4) => Self::WQAM(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            WQMM(r1, r2, r3, r4) => Self::WQMM(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
@@ -1226,6 +1269,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
+            ConfigurablesOffsetPlaceholder => Self::ConfigurablesOffsetPlaceholder,
             LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
@@ -1464,6 +1508,12 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 imm.clone(),
             ),
+            WQMD(reg1, reg2, reg3, reg4) => AllocatedOpcode::WQMD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
             WQCM(reg1, reg2, reg3, imm) => AllocatedOpcode::WQCM(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1471,6 +1521,12 @@ impl VirtualOp {
                 imm.clone(),
             ),
             WQAM(reg1, reg2, reg3, reg4) => AllocatedOpcode::WQAM(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            WQMM(reg1, reg2, reg3, reg4) => AllocatedOpcode::WQMM(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
@@ -1694,6 +1750,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
+            ConfigurablesOffsetPlaceholder => AllocatedOpcode::ConfigurablesOffsetPlaceholder,
             LoadDataId(reg1, label) => {
                 AllocatedOpcode::LoadDataId(map_reg(&mapping, reg1), label.clone())
             }

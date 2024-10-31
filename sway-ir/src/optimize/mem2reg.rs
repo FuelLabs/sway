@@ -319,12 +319,12 @@ pub fn promote_to_registers(
         }
 
         // Process dominator children.
-        for child in dom_tree[&node].children.iter() {
+        for child in dom_tree.children(node) {
             record_rewrites(
                 context,
                 function,
                 dom_tree,
-                *child,
+                child,
                 safe_locals,
                 phi_to_local,
                 name_stack,

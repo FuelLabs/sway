@@ -9,12 +9,6 @@ fn builds_lib_std_docs() {
         ..Default::default()
     };
     println!("Building docs for {:?}", build_instructions.manifest_path);
-    let res = compile_html(
-        &build_instructions,
-        &get_doc_dir,
-        sway_core::ExperimentalFlags {
-            new_encoding: !build_instructions.no_encoding_v1,
-        },
-    );
+    let res = compile_html(&build_instructions, &get_doc_dir);
     assert!(res.is_ok());
 }

@@ -205,19 +205,19 @@ pub enum FuelVmInstruction {
 }
 
 /// Comparison operations.
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Predicate {
     Equal,
     LessThan,
     GreaterThan,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum UnaryOpKind {
     Not,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -284,7 +284,6 @@ impl InstOp {
             InstOp::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::get_unit(context)),
             InstOp::FuelVm(FuelVmInstruction::ReadRegister(_)) => Some(Type::get_uint64(context)),
             InstOp::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::get_unit(context)),
-            InstOp::FuelVm(FuelVmInstruction::Retd { .. }) => None,
 
             // Load needs to strip the pointer from the source type.
             InstOp::Load(ptr_val) => match &context.values[ptr_val.0].value {
@@ -310,7 +309,11 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
+            | InstOp::FuelVm(
+                FuelVmInstruction::Revert(..)
+                | FuelVmInstruction::JmpMem
+                | FuelVmInstruction::Retd { .. },
+            )
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -382,10 +385,11 @@ impl InstOp {
                 vals
             }
             InstOp::GetLocal(_local_var) => {
-                // TODO: Not sure.
+                // `GetLocal` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::GetConfig(_, _) => {
+                // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::IntToPtr(v, _) => vec![*v],
@@ -692,7 +696,11 @@ impl InstOp {
             InstOp::Branch(_)
                 | InstOp::ConditionalBranch { .. }
                 | InstOp::Ret(..)
-                | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
+                | InstOp::FuelVm(
+                    FuelVmInstruction::Revert(..)
+                        | FuelVmInstruction::JmpMem
+                        | FuelVmInstruction::Retd { .. }
+                )
         )
     }
 }

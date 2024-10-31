@@ -1,5 +1,7 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineGetParsedDeclId, DeclEngineInsert},
+    decl_engine::{
+        DeclEngine, DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert,
+    },
     engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
@@ -357,12 +359,69 @@ impl TypeSubstMap {
     pub(crate) fn find_match(&self, type_id: TypeId, engines: &Engines) -> Option<TypeId> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
+        let parsed_decl_engine = engines.pe();
         let type_info = type_engine.get(type_id);
         match (*type_info).clone() {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::TypeParam(_) => None,
+            TypeInfo::UntypedEnum(decl_id) => {
+                let mut decl = (*parsed_decl_engine.get_enum(&decl_id)).clone();
+                let mut need_to_create_new = false;
+
+                for variant in &mut decl.variants {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
+                        need_to_create_new = true;
+                        variant.type_argument.type_id = type_id;
+                    }
+                }
+
+                for type_param in &mut decl.type_parameters {
+                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+                        need_to_create_new = true;
+                        type_param.type_id = type_id;
+                    }
+                }
+                if need_to_create_new {
+                    let source_id = decl.span.source_id().copied();
+                    let new_decl_id = engines.pe().insert(decl);
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::UntypedEnum(new_decl_id),
+                        source_id.as_ref(),
+                    ))
+                } else {
+                    None
+                }
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                let mut decl = (*parsed_decl_engine.get_struct(&decl_id)).clone();
+                let mut need_to_create_new = false;
+                for field in &mut decl.fields {
+                    if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
+                        need_to_create_new = true;
+                        field.type_argument.type_id = type_id;
+                    }
+                }
+                for type_param in &mut decl.type_parameters {
+                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+                        need_to_create_new = true;
+                        type_param.type_id = type_id;
+                    }
+                }
+                if need_to_create_new {
+                    let source_id = decl.span.source_id().copied();
+                    let new_decl_id = parsed_decl_engine.insert(decl);
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::UntypedStruct(new_decl_id),
+                        source_id.as_ref(),
+                    ))
+                } else {
+                    None
+                }
+            }
             TypeInfo::Struct(decl_id) => {
                 let mut decl = (*decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
@@ -538,13 +597,34 @@ fn iter_for_match(
     type_info: &TypeInfo,
 ) -> Option<TypeId> {
     let type_engine = engines.te();
+
     for (source_type, dest_type) in &type_mapping.mapping {
-        if type_engine
-            .get(*source_type)
-            .eq(type_info, &PartialEqWithEnginesContext::new(engines))
+        let source_type_info = type_engine.get(*source_type);
+
+        // Allows current placeholder(T:T1+T2) to match source placeholder(T:T1)
+        if let (
+            TypeInfo::Placeholder(source_type_param),
+            TypeInfo::Placeholder(current_type_param),
+        ) = ((*source_type_info).clone(), type_info)
         {
+            if source_type_param.name_ident.as_str() == current_type_param.name_ident.as_str()
+                && current_type_param
+                    .trait_constraints
+                    .iter()
+                    .all(|current_tc| {
+                        source_type_param.trait_constraints.iter().any(|source_tc| {
+                            source_tc.eq(current_tc, &PartialEqWithEnginesContext::new(engines))
+                        })
+                    })
+            {
+                return Some(*dest_type);
+            }
+        }
+
+        if source_type_info.eq(type_info, &PartialEqWithEnginesContext::new(engines)) {
             return Some(*dest_type);
         }
     }
+
     None
 }

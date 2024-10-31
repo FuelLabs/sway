@@ -1,5 +1,7 @@
 library;
 
+use std::{flags::{disable_panic_on_overflow, disable_panic_on_unsafe_math}, registers::flags};
+
 #[test]
 fn math_root_u256() {
     let max_u256 = u256::max();
@@ -270,6 +272,7 @@ fn math_log_u8() {
 #[test]
 fn math_log_u256() {
     let max_u256 = u256::max();
+    let prior_flags = flags();
     assert(0x2u256.log(0x2u256) == 0x1u256);
     assert(0x1u256.log(0x3u256) == 0);
     assert(0x8u256.log(0x2u256) == 0x3u256);
@@ -277,6 +280,13 @@ fn math_log_u256() {
     assert(0x64u256.log(0x2u256) == 0x6u256);
     assert(0x64u256.log(0x9u256) == 0x2u256);
     assert(max_u256.log(0x2u256) == 0xffu256);
+    assert(prior_flags == flags());
+
+    let _ = disable_panic_on_unsafe_math();
+    let prior_flags = flags();
+    assert(0x1u256.log(0x1u256) == 0);
+    assert(0x0u256.log(0x3u256) == 0);
+    assert(prior_flags == flags());
 }
 
 #[test]
@@ -818,4 +828,284 @@ fn math_0th_root_fail() {
         r3: u8
     };
     log(res);
+}
+
+#[test(should_revert)]
+fn math_u8_overflow_add_revert() {
+    let a = u8::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u16_overflow_add_revert() {
+    let a = u16::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u32_overflow_add_revert() {
+    let a = u32::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u64_overflow_add_revert() {
+    let a = u64::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u256_overflow_add_revert() {
+    let a = u256::max();
+    let b = a + 1;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u8_overflow_mul_revert() {
+    let a = u8::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u16_overflow_mul_revert() {
+    let a = u16::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u32_overflow_mul_revert() {
+    let a = u32::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u64_overflow_mul_revert() {
+    let a = u64::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test(should_revert)]
+fn math_u256_overflow_mul_revert() {
+    let a = u256::max();
+    let b = a * 2;
+    log(b);
+}
+
+#[test]
+fn math_u8_overflow_add() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u8::max();
+    let b = a + 1;
+
+    require(b == 0_u8, b);
+
+    let c = a + 2;
+
+    require(c == 1_u8, c);
+
+    let d = a + u8::max();
+
+    require(d == u8::max() - 1, d);
+
+    let e = a + (u8::max() - 1);
+
+    require(e == u8::max() - 2, e);
+}
+
+#[test]
+fn math_u16_overflow_add() {
+    let _ = disable_panic_on_overflow();
+
+    let a: u16 = u16::max();
+    let b: u16 = a + 1;
+
+    require(b == 0_u16, b);
+
+    let c = a + 2;
+
+    require(c == 1_u16, c);
+
+    let d = a + u16::max();
+
+    require(d == u16::max() - 1, d);
+
+    let e = a + (u16::max() - 1);
+
+    require(e == u16::max() - 2, e);
+}
+
+#[test]
+fn math_u32_overflow_add() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u32::max();
+    let b = a + 1;
+
+    require(b == 0_u32, b);
+
+    let c = a + 2;
+
+    require(c == 1_u32, c);
+
+    let d = a + u32::max();
+
+    require(d == u32::max() - 1, d);
+
+    let e = a + (u32::max() - 1);
+
+    require(e == u32::max() - 2, e);
+}
+
+#[test]
+fn math_u64_overflow_add() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u64::max();
+    let b = a + 1;
+
+    require(b == 0_u64, b);
+
+    let c = a + 2;
+
+    require(c == 1_u64, c);
+
+    let d = a + u64::max();
+
+    require(d == u64::max() - 1, d);
+
+    let e = a + (u64::max() - 1);
+
+    require(e == u64::max() - 2, e);
+}
+
+#[test]
+fn math_u256_overflow_add() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u256::max();
+    let b = a + 1;
+
+    require(b == u256::zero(), b);
+
+    let c = a + 2;
+
+    require(c == 1, c);
+
+    let d = a + u256::max();
+
+    require(d == u256::max() - 1, d);
+
+    let e = a + (u256::max() - 1);
+
+    require(e == u256::max() - 2, e);
+}
+
+#[test]
+fn math_u8_overflow_mul() {
+    let _ = disable_panic_on_overflow();
+
+    let a = (u8::max() / 2) + 1;
+    let b = a * 2;
+
+    require(b == 0_u8, b)
+}
+
+#[test]
+fn math_u16_overflow_mul() {
+    let _ = disable_panic_on_overflow();
+
+    let a = (u16::max() / 2) + 1;
+    let b = a * 2;
+
+    require(b == 0_u16, b)
+}
+
+#[test]
+fn math_u32_overflow_mul() {
+    let _ = disable_panic_on_overflow();
+
+    let a = (u32::max() / 2) + 1;
+    let b = a * 2;
+
+    require(b == 0_u32, b)
+}
+
+#[test]
+fn math_u64_overflow_mul() {
+    let _ = disable_panic_on_overflow();
+
+    let a = (u64::max() / 2) + 1;
+    let b = a * 2;
+
+    require(b == 0_u64, b)
+}
+
+#[test]
+fn math_u256_overflow_mul() {
+    let _ = disable_panic_on_overflow();
+
+    let a = (u256::max() / 2) + 1;
+    let b = a * 2;
+
+    require(b == 0.as_u256(), b);
+}
+
+#[test]
+fn math_u8_overflow_pow() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u8::max();
+    let b = a.pow(2);
+
+    require(b == 0_u8, b);
+}
+
+#[test]
+fn math_u16_overflow_pow() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u16::max();
+    let b = a.pow(2);
+
+    require(b == 0_u16, b);
+}
+
+#[test]
+fn math_u32_overflow_pow() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u32::max();
+    let b = a.pow(2);
+
+    require(b == 0_u32, b);
+}
+
+#[test]
+fn math_u64_overflow_pow() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u64::max();
+    let b = a.pow(2);
+
+    require(b == 0_u64, b);
+}
+
+#[test]
+fn math_u256_overflow_pow() {
+    let _ = disable_panic_on_overflow();
+
+    let a = u256::max();
+    let b = a.pow(2);
+
+    require(b == 0.as_u256(), b);
 }

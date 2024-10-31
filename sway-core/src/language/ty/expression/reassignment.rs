@@ -47,6 +47,7 @@ pub enum TyReassignmentTarget {
     /// E.g.:
     ///  - *my_ref
     ///  - **if x > 0 { &mut &mut a } else { &mut &mut b }
+    ///
     /// The [TyExpression] is guaranteed to be of [TyExpressionVariant::Deref].
     Deref(Box<TyExpression>),
 }
@@ -114,14 +115,14 @@ impl HashWithEngines for TyReassignment {
 }
 
 impl SubstTypes for TyReassignmentTarget {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
             match self {
-                TyReassignmentTarget::Deref(exp) => exp.subst(type_mapping, ctx),
+                TyReassignmentTarget::Deref(exp) => exp.subst(ctx),
                 TyReassignmentTarget::ElementAccess { base_type, indices, .. } => {
                     has_changes! {
-                        base_type.subst(type_mapping, ctx);
-                        indices.subst(type_mapping, ctx);
+                        base_type.subst(ctx);
+                        indices.subst(ctx);
                     }
                 }
             };
@@ -130,10 +131,10 @@ impl SubstTypes for TyReassignmentTarget {
 }
 
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.lhs.subst(type_mapping, ctx);
-            self.rhs.subst(type_mapping, ctx);
+            self.lhs.subst(ctx);
+            self.rhs.subst(ctx);
         }
     }
 }
@@ -330,10 +331,10 @@ impl HashWithEngines for ProjectionKind {
 }
 
 impl SubstTypes for ProjectionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         use ProjectionKind::*;
         match self {
-            ArrayIndex { index, .. } => index.subst(type_mapping, ctx),
+            ArrayIndex { index, .. } => index.subst(ctx),
             _ => HasChanges::No,
         }
     }

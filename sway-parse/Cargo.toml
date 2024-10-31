@@ -1,6 +1,6 @@
 [package]
 name = "sway-parse"
-version = "0.63.3"
+version.workspace = true
 description = "Sway's parser"
 authors.workspace = true
 edition.workspace = true
@@ -9,16 +9,16 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-extension-trait = "1.0.1"
-num-bigint = "0.4.3"
-num-traits = "0.2.14"
-phf = { version = "0.10.1", features = ["macros"] }
-sway-ast = { version = "0.63.3", path = "../sway-ast" }
-sway-error = { version = "0.63.3", path = "../sway-error" }
-sway-types = { version = "0.63.3", path = "../sway-types" }
-thiserror = "1.0"
-unicode-bidi = "0.3.13"
-unicode-xid = "0.2.2"
+extension-trait.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+phf = { workspace = true, features = ["macros"] }
+sway-ast.workspace = true
+sway-error.workspace = true
+sway-types.workspace = true
+thiserror.workspace = true
+unicode-bidi.workspace = true
+unicode-xid.workspace = true
 
 [dev-dependencies]
 assert_matches = "1.5.0"

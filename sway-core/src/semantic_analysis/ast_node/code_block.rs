@@ -11,13 +11,15 @@ impl ty::TyCodeBlock {
         ctx: &mut SymbolCollectionContext,
         code_block: &CodeBlock,
     ) -> Result<(), ErrorEmitted> {
-        let _ = code_block
-            .contents
-            .iter()
-            .map(|node| ty::TyAstNode::collect(handler, engines, ctx, node))
-            .filter_map(|res| res.ok())
-            .collect::<Vec<_>>();
-
+        let _ = ctx.scoped(engines, code_block.whole_block_span.clone(), |scoped_ctx| {
+            let _ = code_block
+                .contents
+                .iter()
+                .map(|node| ty::TyAstNode::collect(handler, engines, scoped_ctx, node))
+                .filter_map(|res| res.ok())
+                .collect::<Vec<_>>();
+            Ok(())
+        });
         Ok(())
     }
 
@@ -28,17 +30,21 @@ impl ty::TyCodeBlock {
         is_root: bool,
     ) -> Result<Self, ErrorEmitted> {
         if !is_root {
-            let code_block_result = ctx.by_ref().scoped(|mut ctx| {
-                let evaluated_contents = code_block
-                    .contents
-                    .iter()
-                    .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
-                    .collect::<Vec<ty::TyAstNode>>();
-                Ok(ty::TyCodeBlock {
-                    contents: evaluated_contents,
-                    whole_block_span: code_block.whole_block_span.clone(),
-                })
-            })?;
+            let code_block_result =
+                ctx.by_ref()
+                    .scoped(handler, Some(code_block.span()), |mut ctx| {
+                        let evaluated_contents = code_block
+                            .contents
+                            .iter()
+                            .filter_map(|node| {
+                                ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok()
+                            })
+                            .collect::<Vec<ty::TyAstNode>>();
+                        Ok(ty::TyCodeBlock {
+                            contents: evaluated_contents,
+                            whole_block_span: code_block.whole_block_span.clone(),
+                        })
+                    })?;
 
             return Ok(code_block_result);
         }
@@ -56,7 +62,8 @@ impl ty::TyCodeBlock {
         // This is required to fix the test case numeric_type_propagation and issue #6371
         ctx.by_ref()
             .with_collecting_unifications()
-            .scoped(|mut ctx| {
+            .with_code_block_first_pass(true)
+            .scoped(handler, Some(code_block.span()), |mut ctx| {
                 code_block.contents.iter().for_each(|node| {
                     ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
                 });
@@ -65,18 +72,19 @@ impl ty::TyCodeBlock {
 
         ctx.engines.te().reapply_unifications(ctx.engines());
 
-        ctx.by_ref().scoped(|mut ctx| {
-            let evaluated_contents = code_block
-                .contents
-                .iter()
-                .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
-                .collect::<Vec<ty::TyAstNode>>();
+        ctx.by_ref()
+            .scoped(handler, Some(code_block.span()), |mut ctx| {
+                let evaluated_contents = code_block
+                    .contents
+                    .iter()
+                    .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
+                    .collect::<Vec<ty::TyAstNode>>();
 
-            Ok(ty::TyCodeBlock {
-                contents: evaluated_contents,
-                whole_block_span: code_block.whole_block_span.clone(),
+                Ok(ty::TyCodeBlock {
+                    contents: evaluated_contents,
+                    whole_block_span: code_block.whole_block_span.clone(),
+                })
             })
-        })
     }
 
     pub fn compute_return_type_and_span(

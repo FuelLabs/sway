@@ -12,7 +12,7 @@ use crate::{
         ty::{TyAstNode, TyAstNodeContent},
         Visibility,
     },
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{symbol_collection_context::SymbolCollectionContext, TypeCheckContext},
     transform::to_parsed_lang,
     Engines, Namespace,
 };
@@ -29,7 +29,7 @@ pub fn default_with_contract_id(
     name: Ident,
     visibility: Visibility,
     contract_id_value: String,
-    experimental: crate::ExperimentalFlags,
+    experimental: crate::ExperimentalFeatures,
 ) -> Result<Module, vec1::Vec1<CompileError>> {
     let handler = <_>::default();
     default_with_contract_id_inner(
@@ -55,7 +55,7 @@ fn default_with_contract_id_inner(
     ns_name: Ident,
     visibility: Visibility,
     contract_id_value: String,
-    experimental: crate::ExperimentalFlags,
+    experimental: crate::ExperimentalFeatures,
 ) -> Result<Module, ErrorEmitted> {
     // it would be nice to one day maintain a span from the manifest file, but
     // we don't keep that around so we just use the span from the generated const decl instead.
@@ -106,8 +106,12 @@ fn default_with_contract_id_inner(
     };
     let mut root = Root::from(Module::new(ns_name.clone(), Visibility::Public, None));
     let mut ns = Namespace::init_root(&mut root);
+
+    let symbol_ctx_ns = Namespace::default();
+    let mut symbol_ctx = SymbolCollectionContext::new(symbol_ctx_ns);
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
+    let type_check_ctx =
+        TypeCheckContext::from_namespace(&mut ns, &mut symbol_ctx, engines, experimental);
     let typed_node = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
     // get the decl out of the typed node:
     // we know as an invariant this must be a const decl, as we hardcoded a const decl in

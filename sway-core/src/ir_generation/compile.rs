@@ -20,7 +20,7 @@ use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{Ident, Spanned};
 
-use std::{collections::HashMap, sync::Arc};
+use std::{cell::Cell, collections::HashMap, sync::Arc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -359,7 +359,7 @@ pub(crate) fn compile_configurables(
                         ty,
                         ptr_ty,
                         encoded_bytes,
-                        decode_fn,
+                        decode_fn: Cell::new(decode_fn),
                         opt_metadata,
                     },
                 );
@@ -635,7 +635,7 @@ fn compile_fn(
     // recent instruction was a RET.
     let already_returns = compiler
         .current_block
-        .is_terminated_by_ret_or_revert(context);
+        .is_terminated_by_return_or_revert(context);
     if !already_returns
         && (compiler.current_block.num_instructions(context) > 0
             || compiler.current_block == compiler.function.get_entry_block(context)

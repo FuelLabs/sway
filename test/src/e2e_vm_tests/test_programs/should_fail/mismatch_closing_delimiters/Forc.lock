@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-F62FA9D54ABC8F01"
+
+[[package]]
+name = "mismatch_closing_delimiters"
+source = "member"
+dependencies = ["core"]

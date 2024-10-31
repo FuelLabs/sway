@@ -21,6 +21,7 @@ members = [
   "test_programs/revert_inline_tests",
   "test_programs/storage_key_inline_tests",
   "test_programs/string_inline_tests",
+  "test_programs/tx_inline_tests",
   "test_programs/u128_inline_tests",
   "test_programs/vec_inline_tests",
   "test_programs/array_conversions_b256_inline_tests",

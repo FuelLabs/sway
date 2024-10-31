@@ -28,10 +28,12 @@ impl TypeId {
                 &*type_engine.get(resolved_type_id),
             ) {
                 (TypeInfo::Custom { .. }, TypeInfo::Struct { .. })
-                | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. })
-                | (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => type_engine
+                | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
                     .abi_str(ctx, engines, true),
+                (_, TypeInfo::Alias { ty, .. }) => {
+                    ty.type_id.get_abi_type_str(ctx, engines, ty.type_id)
+                }
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = resolved_fields
@@ -115,6 +117,14 @@ impl TypeInfo {
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery(_) => "unknown due to error".into(),
+            UntypedEnum(decl_id) => {
+                let decl = engines.pe().get_enum(decl_id);
+                format!("untyped enum {}", decl.name)
+            }
+            UntypedStruct(decl_id) => {
+                let decl = engines.pe().get_struct(decl_id);
+                format!("untyped struct {}", decl.name)
+            }
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let type_params = if (ctx.abi_root_type_without_generic_type_parameters && is_root)

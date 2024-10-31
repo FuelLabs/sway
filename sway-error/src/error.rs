@@ -370,10 +370,18 @@ pub enum CompileError {
     },
     #[error("Field \"{field_name}\" has multiple definitions.")]
     StructFieldDuplicated { field_name: Ident, duplicate: Ident },
-    #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
+    #[error("No method \"{method}\" found for type \"{type_name}\".{}", 
+        if matching_method_strings.is_empty() {
+            "".to_string()
+        } else {
+            format!("  \nMatching method{}:\n{}", if matching_method_strings.len()> 1 {"s"} else {""},
+            matching_method_strings.iter().map(|m| format!("    {m}")).collect::<Vec<_>>().join("\n"))
+        }
+    )]
     MethodNotFound {
-        method_name: Ident,
+        method: String,
         type_name: String,
+        matching_method_strings: Vec<String>,
         span: Span,
     },
     #[error("Module \"{name}\" could not be found.")]
@@ -955,18 +963,17 @@ pub enum CompileError {
         let mut candidates = "".to_string();
         let mut as_traits = as_traits.clone();
         // Make order deterministic
-        as_traits.sort_by_key(|a| a.to_lowercase());
+        as_traits.sort_by_key(|a| a.0.to_lowercase());
         for (index, as_trait) in as_traits.iter().enumerate() {
-            candidates = format!("{candidates}\n  Disambiguate the associated {item_kind} for candidate #{index}\n    <{type_name} as {as_trait}>::{item_name}");
+            candidates = format!("{candidates}\n  Disambiguate the associated {item_kind} for candidate #{index}\n    <{} as {}>::{item_name}", as_trait.1, as_trait.0);
         }
         candidates
     })]
     MultipleApplicableItemsInScope {
         span: Span,
-        type_name: String,
         item_name: String,
         item_kind: String,
-        as_traits: Vec<String>,
+        as_traits: Vec<(String, String)>,
     },
     #[error("Provided generic type is not of type str.")]
     NonStrGenericType { span: Span },
@@ -1019,6 +1026,13 @@ pub enum CompileError {
     },
     #[error("Type must be known at this point")]
     TypeMustBeKnownAtThisPoint { span: Span, internal: String },
+    #[error("Multiple impls satisfying trait for type.")]
+    MultipleImplsSatisfyingTraitForType {
+        span: Span,
+        type_annotation: String,
+        trait_names: Vec<String>,
+        trait_types_and_names: Vec<(String, String)>,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1237,6 +1251,7 @@ impl Spanned for CompileError {
             ABIHashCollision { span, .. } => span.clone(),
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
+            MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
         }
     }
 }
@@ -2646,6 +2661,31 @@ impl ToDiagnostic for CompileError {
                             format!("{}  E.g., `*ref_to_mutable_value` or `*max_mut(&mut x, &mut y)`.", Indent::Single),
                         ]
                     },
+                    ParseErrorKind::UnrecognizedOpCode { known_op_codes } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Assembly instruction is unknown".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("\"{}\" is not a known assembly instruction.",
+                                error.span.as_str()
+                            )
+                        ),
+                        hints: {
+                            let suggestions = &did_you_mean(error.span.as_str(), known_op_codes.iter(), 2);
+                            if suggestions.is_empty() {
+                                vec![]
+                            } else {
+                                vec![
+                                    Hint::help(
+                                        source_engine,
+                                        error.span.clone(),
+                                        format!("Did you mean {}?", sequence_to_str_or(suggestions, Enclosing::DoubleQuote, 2))
+                                    ),
+                                ]
+                            }
+                        },
+                        help: vec![]
+                    },
                     _ => Diagnostic {
                                 // TODO: Temporary we use self here to achieve backward compatibility.
                                 //       In general, self must not be used and will not be used once we
@@ -2722,6 +2762,18 @@ impl ToDiagnostic for CompileError {
                         }
                     ),
                 ],
+            },
+            MultipleImplsSatisfyingTraitForType { span, type_annotation , trait_names, trait_types_and_names: trait_types_and_spans } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("Multiple impls satisfying {} for {}", trait_names.join("+"), type_annotation))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![],
+                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.iter().enumerate().map(|(e, (type_id, name))| 
+                    format!("#{} {} for {}", e, name, type_id.clone())
+                ).collect::<Vec<_>>().join("\n"))],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()fn w()->f{{(()}}
+# nextln: $()mismatched delimiters

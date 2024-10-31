@@ -5,6 +5,28 @@ use ::option::Option::{self, *};
 use ::u128::U128;
 
 impl u64 {
+    /// Attempts to convert the u64 value into a u8 value.
+    ///
+    /// # Additional Information
+    ///
+    /// The max value a u8 can represent is 255.
+    ///
+    /// # Returns
+    ///
+    /// [Option<u8>] - `Some(u8)` if the u64 is less than or equal to the max u8 value. Else `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 255_u64.try_as_u8();
+    ///     assert(val == Some(255_u8));
+    ///
+    ///     // Conversion fails as value is above the max a u8 can represent.
+    ///     let val2 = 256_u64.try_as_u8();
+    ///     assert(val == None);
+    /// }
+    /// ```
     pub fn try_as_u8(self) -> Option<u8> {
         if self <= u8::max().as_u64() {
             Some(asm(input: self) {
@@ -15,6 +37,28 @@ impl u64 {
         }
     }
 
+    /// Attempts to convert the u64 value into a u16 value.
+    ///
+    /// # Additional Information
+    ///
+    /// The max value a u16 can represent is 65_535.
+    ///
+    /// # Returns
+    ///
+    /// [Option<u16>] - `Some(u16)` if the u64 is less than or equal to the max u16 value. Else `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 65_535_u64.try_as_u16();
+    ///     assert(val == Some(65_535_u16));
+    ///
+    ///     // Conversion fails as value is above the max a u16 can represent.
+    ///     let val2 = 65_536_u64.try_as_u16();
+    ///     assert(val == None);
+    /// }
+    /// ```
     pub fn try_as_u16(self) -> Option<u16> {
         if self <= u16::max().as_u64() {
             Some(asm(input: self) {
@@ -25,6 +69,28 @@ impl u64 {
         }
     }
 
+    /// Attempts to convert the u64 value into a u32 value.
+    ///
+    /// # Additional Information
+    ///
+    /// The max value a u32 can represent is 4_294_967_295.
+    ///
+    /// # Returns
+    ///
+    /// [Option<u32>] - `Some(u32)` if the u64 is less than or equal to the max u32 value. Else `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 4_294_967_295_u64.try_as_u32();
+    ///     assert(val == Some(4_294_967_295_u32));
+    ///
+    ///     // Conversion fails as value is above the max a u32 can represent.
+    ///     let val2 = 4_294_967_296_u64.try_as_u32();
+    ///     assert(val == None);
+    /// }
+    /// ```
     pub fn try_as_u32(self) -> Option<u32> {
         if self <= u32::max().as_u64() {
             Some(asm(input: self) {

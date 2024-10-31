@@ -19,6 +19,10 @@ pub mod const_demotion;
 pub use const_demotion::*;
 pub mod constants;
 pub use constants::*;
+pub mod conditional_constprop;
+pub use conditional_constprop::*;
+pub mod cse;
+pub use cse::*;
 pub mod dce;
 pub use dce::*;
 pub mod inline;
@@ -42,7 +46,8 @@ mod target_fuel;
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{ExperimentalFlags, PassGroup, PassManager};
+    use crate::{PassGroup, PassManager};
+    use sway_features::ExperimentalFeatures;
     use sway_types::SourceEngine;
 
     /// This function parses the IR text representation and run the specified optimizers passes.
@@ -81,9 +86,7 @@ pub mod tests {
             "
             ),
             &source_engine,
-            ExperimentalFlags {
-                new_encoding: false,
-            },
+            ExperimentalFeatures::default(),
         )
         .unwrap();
 

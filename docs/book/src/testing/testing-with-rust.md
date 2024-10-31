@@ -74,18 +74,21 @@ Let's have a look at the result:
 $ tree .
 ├── Cargo.toml
 ├── Forc.toml
+├── build.rs
 ├── src
 │   └── main.sw
 └── tests
     └── harness.rs
 ```
 
-We have two new files!
+We have three new files!
 
 - The `Cargo.toml` is the manifest for our new test harness and specifies the
   required dependencies including `fuels` the Fuel Rust SDK.
 - The `tests/harness.rs` contains some boilerplate test code to get us started,
   though doesn't call any contract methods just yet.
+- The `build.rs` is a build script that compiles the Sway project with `forc build`
+  whenever `cargo test` is run.
 
 ### 4. Build the forc project
 
@@ -111,6 +114,7 @@ $ tree
 ├── Cargo.toml
 ├── Forc.lock
 ├── Forc.toml
+├── build.rs
 ├── out
 │   └── debug
 │       ├── my-fuel-project-abi.json
@@ -176,10 +180,13 @@ following:
 ```rust,ignore
 use fuels::{prelude::*, types::ContractId};
 
-// Load ABI from JSON
-abigen!(TestContract, "out/debug/my-fuel-project-abi.json");
+// Load abi from json
+abigen!(Contract(
+    name = "MyContract",
+    abi = "out/debug/my-fuel-project-abi.json"
+));
 
-async fn get_contract_instance() -> (TestContract, ContractId) {
+async fn get_contract_instance() -> (MyContract<WalletUnlocked>, ContractId) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
@@ -188,8 +195,10 @@ async fn get_contract_instance() -> (TestContract, ContractId) {
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,
+        None,
     )
-    .await;
+    .await
+    .unwrap();
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(
@@ -202,11 +211,11 @@ async fn get_contract_instance() -> (TestContract, ContractId) {
         ),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
-    let instance = TestContract::new(id.to_string(), wallet);
+    let instance = MyContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }

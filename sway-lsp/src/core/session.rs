@@ -151,6 +151,26 @@ impl Session {
         Ok(())
     }
 
+    pub fn token_references(&self, url: &Url, position: Position) -> Option<Vec<Location>> {
+        let _p = tracing::trace_span!("token_references").entered();
+        let token_references: Vec<_> = self
+            .token_map
+            .iter()
+            .all_references_of_token(
+                self.token_map.token_at_position(url, position)?.value(),
+                &self.engines.read(),
+            )
+            .filter_map(|item| {
+                let path = item.key().path.as_ref()?;
+                let uri = Url::from_file_path(path).ok()?;
+                self.sync
+                    .to_workspace_url(uri)
+                    .map(|workspace_url| Location::new(workspace_url, item.key().range))
+            })
+            .collect();
+        Some(token_references)
+    }
+
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let _p = tracing::trace_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = self
@@ -207,14 +227,14 @@ impl Session {
                 .tokens_at_position(&engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
-        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
+        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
             let program = compiled_program.typed.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
                 program.root.namespace.module(&engines).current_items(),
                 &engines,
                 ident_to_complete,
-                &fn_decl,
+                fn_decl,
                 position,
             ));
         }
@@ -278,7 +298,6 @@ pub fn compile(
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<&LspConfig>,
-    experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
     pkg::check(
@@ -289,7 +308,8 @@ pub fn compile(
         true,
         engines,
         retrigger_compilation,
-        experimental,
+        &[],
+        &[sway_features::Feature::NewEncoding],
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -422,7 +442,6 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
-    experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
@@ -434,7 +453,6 @@ pub fn parse_project(
         engines,
         retrigger_compilation,
         lsp_mode.as_ref(),
-        experimental,
     )?;
 
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
@@ -457,7 +475,18 @@ pub fn parse_project(
 
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
-        create_runnables(&session.runnables, typed, engines.de(), engines.se());
+        let path = uri.to_file_path().unwrap();
+        let program_id = program_id_from_path(&path, engines)?;
+        if let Some(metrics) = session.metrics.get(&program_id) {
+            // Check if the cached AST was returned by the compiler for the users workspace.
+            // If it was, then we need to use the original engines.
+            let engines = if metrics.reused_programs > 0 {
+                &*session.engines.read()
+            } else {
+                engines
+            };
+            create_runnables(&session.runnables, typed, engines.de(), engines.se());
+        }
     }
     Ok(())
 }
@@ -685,17 +714,8 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(
-            &uri,
-            &engines,
-            None,
-            None,
-            session,
-            sway_core::ExperimentalFlags {
-                new_encoding: false,
-            },
-        )
-        .expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, &engines, None, None, session)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

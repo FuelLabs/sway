@@ -15,11 +15,11 @@ use crate::{
     language::{parsed::Supertrait, ty, CallPath},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
-        type_check_context::EnforceTypeArguments,
         TypeCheckContext,
     },
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
+    EnforceTypeArguments,
 };
 
 #[derive(Debug, Clone)]
@@ -98,8 +98,8 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_arguments.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_arguments.subst(ctx)
     }
 }
 
@@ -137,7 +137,7 @@ impl TraitConstraint {
     pub(crate) fn type_check(
         &mut self,
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         // Right now we don't have the ability to support defining a type for a
         // trait constraint using a callpath directly, so we check to see if the
