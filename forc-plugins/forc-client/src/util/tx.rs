@@ -92,19 +92,16 @@ pub(crate) fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Res
             0 => {
                 new_wallet_cli(wallet_path, New { force: false, cache_accounts: None })?;
                 println!("Wallet created successfully.");
-                // Derive first account for the fresh wallet we created.
-                new_at_index_cli(wallet_path, 0)?;
-                println!("Account derived successfully.");
             }
             1 => {
                 import_wallet_cli(wallet_path, Import { force: false, cache_accounts: None })?;
                 println!("Wallet imported successfully.");
-                // Derive first account for the fresh wallet we created.
-                new_at_index_cli(wallet_path, 0)?;
-                println!("Account derived successfully.");
             },
             _ => anyhow::bail!("Refused to create or import a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag."),
         }
+        // Derive first account for the fresh wallet we created.
+        new_at_index_cli(wallet_path, 0)?;
+        println!("Account derived successfully.");
     }
     Ok(())
 }
