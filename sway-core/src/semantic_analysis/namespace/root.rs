@@ -690,23 +690,15 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        // Ignore visibility of common ancestor modules
-        let mut ignored_prefixes = 0;
-
-        // Ignore visibility of common ancestor modules
-        for (src_prefix, dst_prefix) in src.iter().zip(dst) {
-            if src_prefix != dst_prefix {
-                break;
-            }
-            ignored_prefixes += 1;
-        }
-
+	// Ignore visibility of common ancestors
+	let mut ignored_prefixes = common_ancestor_count(src, dst);
+	
         // Ignore visibility of direct submodules of the destination module
         if dst.len() == ignored_prefixes {
             ignored_prefixes += 1;
         }
 
-        // Check visibility of remaining submodules in the source path
+	// Check visibility of remaining submodules in the source path
         for prefix in iter_prefixes(src).skip(ignored_prefixes) {
             let module = self.module.lookup_submodule(handler, engines, prefix)?;
             if module.visibility().is_private() {
@@ -836,6 +828,12 @@ impl From<Module> for Root {
     fn from(module: Module) -> Self {
         Root { module }
     }
+}
+
+/// Iterates through two module paths and returns the number of common prefixes of src and dst,
+/// i.e., the number of common ancestors of the src and dst modules.
+fn common_ancestor_count(src: &ModulePath, dst: &ModulePath) -> usize {
+    src.iter().zip(dst).position(|(src_id, dst_id)| src_id != dst_id).unwrap_or(dst.len())
 }
 
 fn is_ancestor(src: &ModulePath, dst: &ModulePath) -> bool {
