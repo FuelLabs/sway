@@ -2966,9 +2966,9 @@ dependencies = [
 
 [[package]]
 name = "forc-wallet"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e6ad4498ecab72fa7c5e134ade0137279d1b8f4a6df50963bb3803fdeb69dac"
+checksum = "6ed94e0de4d8265fe744704544932bf1285ffa16ee5feb18062194904d299f9f"
 dependencies = [
  "anyhow",
  "clap",
