@@ -708,7 +708,7 @@ impl Root {
 
 	// Check visibility of remaining submodules in the source path
 	for prefix in iter_prefixes(src).skip(ignored_prefixes) {
-	    let module = self.require_module(handler, &prefix.to_vec())?;
+	    let module = self.module.lookup_submodule(handler, engines, prefix)?;
 	    if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
