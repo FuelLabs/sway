@@ -12,9 +12,9 @@ use std::hash::{Hash, Hasher};
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 use crate::{
-    build_call_graph, callee_first_order, AnalysisResults, Block, Context, DebugWithContext,
-    Function, InstOp, Instruction, IrError, MetadataIndex, Metadatum, Module, Pass, PassMutability,
-    ScopedPass, Type, Value,
+    build_call_graph, callee_first_order, function_print, AnalysisResults, Block, Context,
+    DebugWithContext, Function, InstOp, Instruction, IrError, LocalVar, MetadataIndex, Metadatum,
+    Module, Pass, PassMutability, ScopedPass, Type, Value,
 };
 
 pub const FN_DEDUP_DEBUG_PROFILE_NAME: &str = "fn-dedup-debug";
@@ -432,13 +432,65 @@ fn dedup_fn_demonomorphize(
         eq_class.function_hash_map.insert(function, hash);
     }
 
-    for (class_id, class) in &eq_class.hash_set_map {
-        if class.len() > 1 {
-            print!("{}: ", class_id);
-            for f in class {
-                print!("{}, ", f.get_name(context));
+    for (_class_id, class) in &eq_class.hash_set_map {
+        if class.len() <= 1 {
+            continue;
+        }
+        struct OthersTracker<'a> {
+            locals_iter: Box<dyn Iterator<Item = (&'a String, &'a LocalVar)> + 'a>,
+            instr_iter: Box<dyn Iterator<Item = (Block, Value)> + 'a>,
+        }
+        let mut class_iter = class.iter();
+        let leader = class_iter.next().unwrap();
+        let mut others: FxHashMap<_, _> = class_iter
+            .map(|f| {
+                (
+                    *f,
+                    OthersTracker {
+                        locals_iter: Box::new(f.locals_iter(context)),
+                        instr_iter: Box::new(f.instruction_iter(context)),
+                    },
+                )
+            })
+            .collect();
+
+        // Collect those locals that need to be shifted to an argument.
+        // The key is a local from the leader and the value is a list of
+        // corresponding locals from others in the class.
+        let mut locals_to_args = FxHashMap::default();
+        for local in leader.locals_iter(context) {
+            let mut other_locals = Vec::new();
+            let mut shift_to_arg = false;
+            // If this local differs from a corresponding one in others in the class,
+            // we'll need to shift it to be a caller allocated parameter with an opaque
+            // pointer passed as parameter.
+            let ty = local.1.get_inner_type(context);
+            for other_func in others.iter_mut() {
+                let other_local = other_func.1.locals_iter.next().unwrap();
+                assert!(
+                    local.0 == other_local.0,
+                    "If names differed, then the functions wouldn't be in the same class"
+                );
+                other_locals.push(other_local.1);
+                let other_local_ty = other_local.1.get_inner_type(context);
+                if ty != other_local_ty {
+                    shift_to_arg = true;
+                }
             }
-            println!("");
+            if shift_to_arg {
+                locals_to_args.insert(local.1, other_locals);
+            }
+        }
+        for (idx_in_block, (inst, block)) in leader
+            .block_iter(context)
+            .map(|b| {
+                b.instruction_iter(context)
+                    .map(move |inst| (inst, b))
+                    .enumerate()
+            })
+            .flatten()
+        {
+            
         }
     }
 
