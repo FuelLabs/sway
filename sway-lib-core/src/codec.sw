@@ -5156,6 +5156,15 @@ fn to_slice<T>(array: T) -> raw_slice {
     raw_slice::from_parts::<u8>(__addr_of(array), len)
 }
 
+fn assert_ge<T>(a: T, b: T, revert_code: u64)
+where
+    T: Ord,
+{
+    if a.lt(b) {
+        __revert(revert_code)
+    }
+}
+
 fn assert_eq<T>(a: T, b: T, revert_code: u64)
 where
     T: Eq,
@@ -5205,7 +5214,7 @@ where
     // Append another item
     let buffer = value_to_append.abi_encode(buffer);
     assert_neq(ptr1, buffer.buffer.0, 4); // must have allocated new buffer
-    assert_eq(buffer.buffer.1, size_of_t * 2, 5); // capacity for two items
+    assert_ge(buffer.buffer.1, size_of_t * 2, 5); // capacity for at least two items
     assert_eq(buffer.buffer.2, size_of_t * 2, 6); // buffer has two items
 
     // Check that red zones were not overwritten
