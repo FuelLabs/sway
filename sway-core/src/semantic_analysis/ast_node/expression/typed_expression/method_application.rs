@@ -668,13 +668,9 @@ pub(crate) fn type_check_method_application(
                 // current method application type parameter
                 for p in method.type_parameters.clone() {
                     if names_type_ids.contains_key(&p.name) {
-                        // TODO-IG! Insert placeholder.
-                        subst_type_parameters.push(engines.te().insert(
-                            engines,
-                            TypeInfo::Placeholder(p.clone()),
-                            p.span().source_id(),
-                        ));
-                        subst_type_arguments.push(p.type_id);
+                        let type_parameter_type_id = p.type_id;
+                        subst_type_parameters.push(engines.te().new_placeholder(p));
+                        subst_type_arguments.push(type_parameter_type_id);
                     }
                 }
 
