@@ -5158,9 +5158,9 @@ fn to_slice<T>(array: T) -> raw_slice {
 
 fn assert_ge<T>(a: T, b: T, revert_code: u64)
 where
-    T: Eq,
+    T: Ord,
 {
-    if a < b {
+    if a.lt(b) {
         __revert(revert_code)
     }
 }
