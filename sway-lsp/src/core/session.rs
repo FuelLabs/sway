@@ -227,14 +227,14 @@ impl Session {
                 .tokens_at_position(&engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
-        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
+        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
             let program = compiled_program.typed.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
                 program.root.namespace.module(&engines).current_items(),
                 &engines,
                 ident_to_complete,
-                &fn_decl,
+                fn_decl,
                 position,
             ));
         }

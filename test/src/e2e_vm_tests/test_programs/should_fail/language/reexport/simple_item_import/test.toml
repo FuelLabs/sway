@@ -86,6 +86,6 @@ category = "fail"
 
 #check: $()error
 #check: $()assert(items_3_variants_res == 513);
-#nextln: $()No method named "eq" found for type "{unknown}".
+#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
 
 #check: $()Aborting due to 22 errors.
