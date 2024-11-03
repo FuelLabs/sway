@@ -28,8 +28,12 @@ where
     let mut buffer = vec![0; metadata.len() as usize];
     f.read_exact(&mut buffer).expect("buffer overflow");
 
-    let instructions = fuel_asm::from_bytes(buffer.clone())
-        .zip(buffer.chunks(fuel_asm::Instruction::SIZE).into_iter().map(|chunk: &[u8]| chunk.to_vec()));
+    let instructions = fuel_asm::from_bytes(buffer.clone()).zip(
+        buffer
+            .chunks(fuel_asm::Instruction::SIZE)
+            .into_iter()
+            .map(|chunk: &[u8]| chunk.to_vec()),
+    );
 
     Ok(instructions.collect())
 }
