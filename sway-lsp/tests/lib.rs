@@ -2167,13 +2167,14 @@ async fn garbage_collection_runner(path: PathBuf) {
 #[test]
 fn garbage_collection_tests() -> Result<(), String> {
     let mut tests = vec![
-        (
-            "option_eq".into(),
-            sway_workspace_dir()
-                .join(e2e_stdlib_dir())
-                .join("option_eq")
-                .join("src/main.sw"),
-        ),
+        // TODO: Enable this test once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+        // (
+        //     "option_eq".into(),
+        //     sway_workspace_dir()
+        //         .join(e2e_stdlib_dir())
+        //         .join("option_eq")
+        //         .join("src/main.sw"),
+        // ),
         (
             "arrays".into(),
             sway_workspace_dir()

@@ -1,13 +1,9 @@
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay},
-    decl_engine::*,
-    engine_threading::*,
-    language::{
+    concurrent_slab::{ConcurrentSlab, ListDisplay}, decl_engine::*, engine_threading::*, language::{
         parsed::{EnumDeclaration, StructDeclaration},
         ty::{TyEnumDecl, TyExpression, TyStructDecl},
         QualifiedCallPath,
-    },
-    type_system::priv_prelude::*,
+    }, type_system::priv_prelude::*
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
@@ -1261,18 +1257,30 @@ impl TypeEngine {
 
     fn is_changeable_enum(&self, engines: &Engines, decl: &TyEnumDecl) -> bool {
         self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+        ||
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
     }
 
     fn is_changeable_untyped_enum(&self, engines: &Engines, decl: &EnumDeclaration) -> bool {
         self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+        ||
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
     }
 
     fn is_changeable_struct(&self, engines: &Engines, decl: &TyStructDecl) -> bool {
         self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+        ||
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
     }
 
     fn is_changeable_untyped_struct(&self, engines: &Engines, decl: &StructDeclaration) -> bool {
         self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+        ||
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
     }
 
     fn is_changeable_tuple(&self, engines: &Engines, elements: &[TypeArgument]) -> bool {
@@ -1297,6 +1305,164 @@ impl TypeEngine {
                 .iter()
                 .any(|tp| self.is_type_id_of_changeable_type(engines, tp.type_id))
         }
+    }
+
+    // TODO: Remove this and all `module_might_outlive_xyz` methods once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+    //
+    //       This method represents the best effort to partially mitigate the issue
+    //       described in https://github.com/FuelLabs/sway/issues/6687, by doing changes only in the `TypeEngine`.
+    //
+    //       Enum and struct types use it to restrict their shareability and reduce the chance of accessing
+    //       GCed types.
+    //
+    //       The method takes an **existing** `type_id` and the source id of a particular module (`module_source_id`)
+    //       and checks if the module represented by the `module_source_id` **might** survive LSP garbage collection
+    //       even if the module to which `type_id` is bound gets GCed.
+    //
+    //       E.g., if the `module_source_id` points to the `Option` declaration of a monomorphized `Option<MyStruct>`,
+    //       this method will return true if the `type_id` represents `MyStruct`, because if the `MyStruct`'s module
+    //       gets GCed, the `Option`'s module will "survive" and outlive it, thus pointing via its `TypeArgument` to a
+    //       non-existing, GCed, `MyStruct` type.
+    //
+    //       E.g., if the `module_source_id` points to the `Option` declaration of a monomorphized `Option<u64>`,
+    //       this method will return false if the `type_id` represents `u64`, because the `u64` is not bound to
+    //       any module, and thus, can never be GCed. This means that the `Option`'s module can never outlive it.
+    fn module_might_outlive_type(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_id: TypeId) -> bool {
+        fn module_might_outlive_type_source_id(module_source_id: Option<&SourceId>, type_source_id: Option<SourceId>) -> bool {
+            // If the type represented by the `type_id` is not bound to a source id (`type_source_id.is_none()`)
+            // it cannot be outlived by the module.
+            // Otherwise, if `type_source_id.is_some()` but is the same as the `module_source_id`, it can be GCed only if
+            // the `module_source_id` is GCed.
+            // Otherwise, we cannot guarantee that the module will not outlive the type's module and we must
+            // be pessimistic and return false.
+            type_source_id.is_some() && type_source_id != module_source_id.copied()
+        }
+
+        let tsi = self.slab.get(type_id.index());
+        let type_info = &*tsi.type_info;
+        let type_source_id = tsi.source_id;
+
+        let decl_engine = engines.de();
+        let parsed_decl_engine = engines.pe();
+
+        // We always must check the `type_id` itself, like, e.h., `MyStruct` in `Option<MyStruct>`, ...
+        module_might_outlive_type_source_id(module_source_id, type_source_id)
+        ||
+        // ... and also all types it transitively depends on, like, e.g., in `Option<Option<MyStruct>>`.
+        match type_info {
+            // If a type does not transitively depends on other types, just return `false`.
+            TypeInfo::StringSlice
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
+            | TypeInfo::ErrorRecovery(_)
+            | TypeInfo::Contract
+            | TypeInfo::Never => false,
+
+            // Note that `TypeParam` is currently not used at all.
+            TypeInfo::TypeParam(_) => false,
+
+            TypeInfo::StringArray(_) => false,
+
+            TypeInfo::Unknown
+            | TypeInfo::Numeric => false,
+
+            TypeInfo::Placeholder(tp) => self.module_might_outlive_type_parameter(engines, module_source_id, tp),
+            TypeInfo::UnknownGeneric { trait_constraints, parent, .. } => {
+                parent.is_some_and(|parent_type_id| self.module_might_outlive_type(engines, module_source_id, parent_type_id))
+                ||
+                self.module_might_outlive_trait_constraints(engines, module_source_id, trait_constraints)
+            },
+
+            TypeInfo::ContractCaller { .. } => false,
+
+            TypeInfo::Enum(decl_id) => {
+                let decl = decl_engine.get_enum(decl_id);
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+            }
+            TypeInfo::UntypedEnum(decl_id) => {
+                let decl = parsed_decl_engine.get_enum(decl_id);
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+            }
+            TypeInfo::Struct(decl_id) => {
+                let decl = decl_engine.get_struct(decl_id);
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                let decl = parsed_decl_engine.get_struct(decl_id);
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+            }
+            TypeInfo::Tuple(elements) => self.module_might_outlive_type_arguments(engines, module_source_id, elements),
+
+            TypeInfo::Alias { ty, .. } => self.module_might_outlive_type_argument(engines, module_source_id, ty),
+
+            TypeInfo::Array(ta, _)
+            | TypeInfo::Slice(ta)
+            | TypeInfo::Ptr(ta)
+            | TypeInfo::Ref {
+                referenced_type: ta,
+                ..
+            } => self.module_might_outlive_type_argument(engines, module_source_id, ta),
+
+            TypeInfo::Custom { type_arguments, .. } =>
+                type_arguments.as_ref().is_some_and(|type_arguments|
+                    self.module_might_outlive_type_arguments(engines, module_source_id, &type_arguments)),
+            TypeInfo::TraitType { trait_type_id, .. } => self.module_might_outlive_type(engines, module_source_id, *trait_type_id)
+        }
+    }
+
+    fn module_might_outlive_type_parameter(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_parameter: &TypeParameter) -> bool {
+        self.module_might_outlive_type(engines, module_source_id, type_parameter.type_id)
+        ||
+        self.module_might_outlive_type(engines, module_source_id, type_parameter.initial_type_id)
+        ||
+        self.module_might_outlive_trait_constraints(engines, module_source_id, &type_parameter.trait_constraints)
+    }
+
+    fn module_might_outlive_type_parameters(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_parameters: &[TypeParameter]) -> bool {
+        if type_parameters.is_empty() {
+            false
+        } else {
+            type_parameters
+                .iter()
+                .any(|tp| self.module_might_outlive_type_parameter(engines, module_source_id, tp))
+        }
+    }
+
+    fn module_might_outlive_type_argument(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_argument: &TypeArgument) -> bool {
+        self.module_might_outlive_type(engines, module_source_id, type_argument.type_id)
+        ||
+        self.module_might_outlive_type(engines, module_source_id, type_argument.initial_type_id)
+    }
+
+    fn module_might_outlive_type_arguments(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_arguments: &[TypeArgument]) -> bool {
+        if type_arguments.is_empty() {
+            false
+        } else {
+            type_arguments.iter().any(|ta| self.module_might_outlive_type_argument(engines, module_source_id, ta))
+        }
+    }
+
+    fn module_might_outlive_trait_constraint(&self, _engines: &Engines, _module_source_id: Option<&SourceId>, trait_constraint: &TraitConstraint) -> bool {
+        // `TraitConstraint`s can contain `TypeArgument`s that can cause endless recursion,
+        // unless we track already visited types. This happens in cases of recursive generic
+        // traits like, e.g., `T: Trait<T>`.
+        //
+        // We deliberately decide not to track visited types because:
+        //  - `module_might_outlive_type` represents a best effort to mitigate the issue of modules outliving their types.
+        //    It is already not exact.
+        //  - trait constraints with type arguments are rather rare.
+        //  - tracking already visited types is expensive and `module_might_outlive_type` already adds an overhead.
+        //
+        // Instead, if the `trait_constraint` contains type arguments, we will bail out and
+        // conclude that the module might outlive the types in the trait constraint.
+        !trait_constraint.type_arguments.is_empty()
+    }
+
+    fn module_might_outlive_trait_constraints(&self, engines: &Engines, module_source_id: Option<&SourceId>, trait_constraint: &[TraitConstraint]) -> bool {
+        trait_constraint.iter().any(|tc| self.module_might_outlive_trait_constraint(engines, module_source_id, tc))
     }
 
     // In the `is_shareable_<type>` methods we reuse the logic from the
