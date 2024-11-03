@@ -1,10 +1,7 @@
-use crate::{
-    asm_generation::fuel::data_section::EntryName,
-    asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp,
-        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
-    },
+use crate::asm_lang::{
+    allocated_ops::{AllocatedOpcode, AllocatedRegister},
+    AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp, VirtualImmediate12,
+    VirtualImmediate18, VirtualImmediate24,
 };
 
 use super::{
@@ -351,13 +348,6 @@ impl AllocatedAbstractInstructionSet {
                             comment: String::new(),
                         });
                     }
-                    ControlFlowOp::ConfigurablesOffsetPlaceholder => {
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::ConfigurablesOffsetPlaceholder,
-                            owning_span: None,
-                            comment: String::new(),
-                        });
-                    }
                     ControlFlowOp::LoadLabel(r1, ref lab) => {
                         // LoadLabel ops are inserted by `rewrite_far_jumps`.
                         // So the next instruction must be a relative jump.
@@ -373,11 +363,8 @@ impl AllocatedAbstractInstructionSet {
                         // We compute the relative offset w.r.t the actual jump.
                         // Sub 1 because the relative jumps add a 1.
                         let offset = rel_offset(curr_offset + 1, lab) - 1;
-                        let data_id = data_section.insert_data_value(Entry::new_word(
-                            offset,
-                            EntryName::NonConfigurable,
-                            None,
-                        ));
+                        let data_id =
+                            data_section.insert_data_value(Entry::new_word(offset, None, None));
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::LoadDataId(r1, data_id),
                             owning_span,
@@ -485,8 +472,6 @@ impl AllocatedAbstractInstructionSet {
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
-
-            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
 
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
                 "fix me, pushall and popall don't really belong in control flow ops \
