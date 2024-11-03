@@ -11,15 +11,15 @@ const CONFIGURABLES_OFFSET_INSTR_HI: usize = 5;
 // The count of the beginning half-words that contain the configurables section offset.
 const CONFIGURABLES_OFFSET_PREAMBLE: usize = CONFIGURABLES_OFFSET_INSTR_HI + 1;
 
+/// A tuple of an instruction and its corresponding bytes. Useful when needing to access the raw bytes
+/// of an instruction that is parsed as [fuel_asm::InvalidOpcode], such as metadata in the preamble.
+pub type InstructionWithBytes = (
+    Result<fuel_asm::Instruction, fuel_asm::InvalidOpcode>,
+    Vec<u8>,
+);
+
 /// Parses a bytecode file into an iterator of instructions and their corresponding bytes.
-pub fn parse_bytecode_to_instructions<P>(
-    path: P,
-) -> anyhow::Result<
-    Vec<(
-        Result<fuel_asm::Instruction, fuel_asm::InvalidOpcode>,
-        Vec<u8>,
-    )>,
->
+pub fn parse_bytecode_to_instructions<P>(path: P) -> anyhow::Result<Vec<InstructionWithBytes>>
 where
     P: AsRef<Path> + Clone,
 {
@@ -33,7 +33,6 @@ where
     let instructions = fuel_asm::from_bytes(buffer.clone()).zip(
         buffer
             .chunks(fuel_asm::Instruction::SIZE)
-            .into_iter()
             .map(|chunk: &[u8]| chunk.to_vec()),
     );
 
@@ -77,7 +76,10 @@ where
 
             // Continue hashing the remaining instructions up to the configurables section offset.
             instructions
-                .take(configurables_offset / 4 - CONFIGURABLES_OFFSET_PREAMBLE) // Minus 6 because we already hashed the first six
+                .take(
+                    configurables_offset / fuel_asm::Instruction::SIZE
+                        - CONFIGURABLES_OFFSET_PREAMBLE,
+                ) // Minus 6 because we already hashed the first six
                 .for_each(|(_, raw)| {
                     hasher.update(raw);
                 });
