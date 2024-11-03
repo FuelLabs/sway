@@ -19,7 +19,7 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
-    let instructions = parse_bytecode_to_instructions(&command.file_path)?;
+    let instructions = parse_bytecode_to_instructions(&command.file_path)?.into_iter();
 
     let mut table = term_table::Table::new();
     table.separate_rows = false;

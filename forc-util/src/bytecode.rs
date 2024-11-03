@@ -4,16 +4,19 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::Path;
 
+// The index of the beginning of the half-word (4 bytes) that contains the configurables section offset.
+const CONFIGURABLES_OFFSET_INSTR_LO: usize = 4;
+// The index of the end of the half-word (4 bytes) that contains the configurables section offset.
+const CONFIGURABLES_OFFSET_INSTR_HI: usize = 5;
+
 /// Parses a bytecode file into an iterator of instructions and their corresponding bytes.
 pub fn parse_bytecode_to_instructions<P>(
     path: P,
 ) -> anyhow::Result<
-    impl Iterator<
-        Item = (
-            Result<fuel_asm::Instruction, fuel_asm::InvalidOpcode>,
-            &'static [u8],
-        ),
-    >,
+    Vec<(
+        Result<fuel_asm::Instruction, fuel_asm::InvalidOpcode>,
+        Vec<u8>,
+    )>,
 >
 where
     P: AsRef<Path> + Clone,
@@ -25,12 +28,10 @@ where
     let mut buffer = vec![0; metadata.len() as usize];
     f.read_exact(&mut buffer).expect("buffer overflow");
 
-    let instructions = {
-        let buffer = Box::leak(buffer.into_boxed_slice()); // Leak the buffer to extend its lifetime
-        fuel_asm::from_bytes(buffer.iter().cloned()).zip(buffer.chunks(fuel_asm::Instruction::SIZE))
-    };
+    let instructions = fuel_asm::from_bytes(buffer.clone())
+        .zip(buffer.chunks(fuel_asm::Instruction::SIZE).into_iter().map(|chunk: &[u8]| chunk.to_vec()));
 
-    Ok(instructions)
+    Ok(instructions.collect())
 }
 
 /// Gets the bytecode ID from a bytecode file. The bytecode ID is the hash of the bytecode after removing the
@@ -39,11 +40,11 @@ pub fn get_bytecode_id<P>(path: P) -> anyhow::Result<String>
 where
     P: AsRef<Path> + Clone,
 {
-    let mut instructions = parse_bytecode_to_instructions(path.clone())?;
+    let mut instructions = parse_bytecode_to_instructions(path.clone())?.into_iter();
 
     // Collect the first six instructions into a temporary vector
     let mut first_six_instructions = Vec::with_capacity(6);
-    for _ in 0..6 {
+    for _ in 0..CONFIGURABLES_OFFSET_INSTR_HI + 1 {
         if let Some(instruction) = instructions.next() {
             first_six_instructions.push(instruction);
         } else {
@@ -51,8 +52,8 @@ where
         }
     }
 
-    let (lo_instr, low_raw) = &first_six_instructions[4];
-    let (hi_instr, hi_raw) = &first_six_instructions[5];
+    let (lo_instr, low_raw) = &first_six_instructions[CONFIGURABLES_OFFSET_INSTR_LO];
+    let (hi_instr, hi_raw) = &first_six_instructions[CONFIGURABLES_OFFSET_INSTR_HI];
 
     if let Err(fuel_asm::InvalidOpcode) = lo_instr {
         if let Err(fuel_asm::InvalidOpcode) = hi_instr {
