@@ -1,6 +1,6 @@
 ---
 source: test/tests/tests.rs
-assertion_line: 115
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final
 exit status: 0
@@ -361,4 +361,4 @@ script {
 !128 = fn_call_path_span !0 235 236
 !129 = (!127 !128)
 
-    Finished release [optimized + fuel] target(s) [752 B] in ???
+    Finished release [optimized + fuel] target(s) [744 B] in ???

@@ -46,7 +46,7 @@ use sway_core::{
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
+use sway_core::{PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::constants::{CORE, PRELUDE, STD};
@@ -1914,7 +1914,7 @@ pub fn compile(
 
     let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
-    let mut compiled = match bc_res {
+    let compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };
@@ -1923,12 +1923,9 @@ pub fn compile(
 
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
-    // Metadata to be placed into the binary.
-    let mut md = [0u8, 0, 0, 0, 0, 0, 0, 0];
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
-        let mut configurables_offset = compiled.bytecode.len() as u64;
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
             configurables.retain(|c| {
@@ -1937,22 +1934,12 @@ pub fn compile(
                     .contains_key(&c.name)
             });
             // Set the actual offsets in the JSON object
-            for (config, offset) in &compiled.named_data_section_entries_offsets {
-                if *offset < configurables_offset {
-                    configurables_offset = *offset;
-                }
-                if let Some(idx) = configurables.iter().position(|c| &c.name == config) {
-                    configurables[idx].offset = *offset;
+            for (config, offset) in compiled.named_data_section_entries_offsets {
+                if let Some(idx) = configurables.iter().position(|c| c.name == config) {
+                    configurables[idx].offset = offset;
                 }
             }
         }
-
-        md = configurables_offset.to_be_bytes();
-    }
-
-    // We know to set the metadata only for fuelvm right now.
-    if let BuildTarget::Fuel = pkg.target {
-        set_bytecode_configurables_offset(&mut compiled, &md);
     }
 
     metrics.bytecode_size = compiled.bytecode.len();
