@@ -8,6 +8,8 @@ use std::path::Path;
 const CONFIGURABLES_OFFSET_INSTR_LO: usize = 4;
 // The index of the end of the half-word (4 bytes) that contains the configurables section offset.
 const CONFIGURABLES_OFFSET_INSTR_HI: usize = 5;
+// The count of the beginning half-words that contain the configurables section offset.
+const CONFIGURABLES_OFFSET_PREAMBLE: usize = CONFIGURABLES_OFFSET_INSTR_HI + 1;
 
 /// Parses a bytecode file into an iterator of instructions and their corresponding bytes.
 pub fn parse_bytecode_to_instructions<P>(
@@ -47,8 +49,8 @@ where
     let mut instructions = parse_bytecode_to_instructions(path.clone())?.into_iter();
 
     // Collect the first six instructions into a temporary vector
-    let mut first_six_instructions = Vec::with_capacity(6);
-    for _ in 0..CONFIGURABLES_OFFSET_INSTR_HI + 1 {
+    let mut first_six_instructions = Vec::with_capacity(CONFIGURABLES_OFFSET_PREAMBLE);
+    for _ in 0..CONFIGURABLES_OFFSET_PREAMBLE {
         if let Some(instruction) = instructions.next() {
             first_six_instructions.push(instruction);
         } else {
@@ -75,7 +77,7 @@ where
 
             // Continue hashing the remaining instructions up to the configurables section offset.
             instructions
-                .take(configurables_offset / 4 - 6) // Minus 6 because we already hashed the first six
+                .take(configurables_offset / 4 - CONFIGURABLES_OFFSET_PREAMBLE) // Minus 6 because we already hashed the first six
                 .for_each(|(_, raw)| {
                     hasher.update(raw);
                 });
