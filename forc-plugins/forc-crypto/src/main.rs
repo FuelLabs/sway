@@ -1,13 +1,12 @@
 //! A `forc` plugin for converting a given string or path to their hash.
 
 use anyhow::Result;
-use atty::Stream;
 use clap::Parser;
 use forc_crypto::{address, keccak256, keys, sha256, Command};
 use forc_tracing::{init_tracing_subscriber, println_error};
 use std::{
     default::Default,
-    io::{stdin, stdout, Read, Write},
+    io::{stdin, stdout, IsTerminal, Read, Write},
 };
 use termion::screen::IntoAlternateScreen;
 
@@ -53,7 +52,7 @@ pub fn display_output<T>(message: T) -> anyhow::Result<()>
 where
     T: serde::Serialize,
 {
-    if atty::is(Stream::Stdout) {
+    if stdout().is_terminal() {
         let text = serde_yaml::to_string(&message).expect("valid string");
         if has_sensible_info(&message) {
             let mut screen = stdout().into_alternate_screen()?;
