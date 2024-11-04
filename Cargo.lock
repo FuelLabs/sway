@@ -2765,7 +2765,6 @@ version = "0.66.4"
 dependencies = [
  "anyhow",
  "async-trait",
- "atty",
  "clap 4.5.20",
  "criterion",
  "forc-tracing 0.66.4",
