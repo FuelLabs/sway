@@ -1363,6 +1363,7 @@ fn const_eval_intrinsic(
                 }),
             }
         }
+        Intrinsic::Transmute => todo!(),
     }
 }
 

@@ -106,8 +106,60 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::ElemAt => type_check_elem_at(arguments, handler, kind, span, ctx),
+            Intrinsic::Transmute => {
+                type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
+            }
         }
     }
+}
+
+fn type_check_transmute(
+    arguments: &[Expression],
+    handler: &Handler,
+    kind: Intrinsic,
+    type_arguments: &[TypeArgument],
+    span: Span,
+    ctx: TypeCheckContext,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let mut ctx = ctx;
+
+    // check first argument
+    let first_argument_span = arguments[0].span.clone();
+    let first_argument_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+    let first_argument_typed_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(first_argument_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+
+    let src_type = type_arguments[0].clone();
+    // TODO: check types match
+    // TODO: check they have the same size
+
+    let return_type = type_arguments[1].type_id;
+
+    Ok((
+        TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![first_argument_typed_expr],
+            type_arguments: type_arguments.to_vec(),
+            span,
+        },
+        return_type,
+    ))
 }
 
 fn type_check_elem_at(

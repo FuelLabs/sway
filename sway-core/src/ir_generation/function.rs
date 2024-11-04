@@ -22,6 +22,7 @@ use crate::{
     types::*,
 };
 
+use ast_elements::type_argument;
 use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
@@ -2174,7 +2175,45 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
+            Intrinsic::Transmute => self.compile_intrins_transmute(arguments, context, md_mgr),
         }
+    }
+
+    fn compile_intrins_transmute(
+        &mut self,
+        arguments: &[ty::TyExpression],
+        return_type: TypeId,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 1);
+
+        let temp_arg_name = self.lexical_map.insert_anon();
+
+        let te = self.engines.te();
+        let de = self.engines.de();
+
+        let first_argument_expr = &arguments[0];
+        let first_argument_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
+        );
+        let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value);
+
+        let return_type_elem_ir_type = convert_resolved_type_id(
+            te,
+            de,
+            context,
+            return_type,
+            &Span::dummy(), // TODO
+        )?;
+        let dest_local_var = self
+            .function
+            .new_local_var(context, temp_arg_name, return_type_elem_ir_type, None, false)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+
+        self.current_block.append(context).mem_copy_bytes(dst_val_ptr, src_val_ptr, byte_len)
+
+        todo!()
     }
 
     fn ptr_to_first_element(
