@@ -1,6 +1,7 @@
 script;
 
 fn main() -> u64 {
-    let a = 1u8;
-    __transmute::<[u8;4], u64>([0u8, 0u8, 0u8, a])
+    let a = __transmute::<[u8; 8], u64>([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8]);
+    let b = __transmute::<(u64,), u64>((2,));
+    a + b
 }

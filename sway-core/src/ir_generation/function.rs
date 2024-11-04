@@ -2194,11 +2194,16 @@ impl<'eng> FnCompiler<'eng> {
         let te = self.engines.te();
         let de = self.engines.de();
 
+        let u8 = Type::get_uint8(context);
+        let ptr_u8 = Type::new_ptr(context, u8);
+
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
         );
+        let first_argument_type = first_argument_value.get_type(context).unwrap(); // TODO unwrap
         let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
+        let first_argument_ptr = self.current_block.append(context).cast_ptr(first_argument_ptr, ptr_u8);
 
         let return_type_elem_ir_type = convert_resolved_type_id(
             te,
@@ -2212,12 +2217,21 @@ impl<'eng> FnCompiler<'eng> {
             .new_local_var(context, temp_arg_name, return_type_elem_ir_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let dst_local_var_ptr = self.current_block.append(context).get_local(dst_local_var);
+        let dst_local_var_ptr_as_u8 = self.current_block.append(context).cast_ptr(dst_local_var_ptr, ptr_u8);
 
-        // TODO assert both types have the same size
+        // type check must not allows this to fail
+        let first_arg_size = first_argument_type.size(&context).in_bytes();
+        let return_type_size = return_type_elem_ir_type.size(&context).in_bytes();
+        if first_arg_size != return_type_size {
+            return Err(CompileError::Internal(
+                "Types size do not match",
+                Span::dummy(), // TODO
+            ));
+        }
 
         let byte_len =  return_type_elem_ir_type.size(&context).in_bytes();
         self.current_block.append(context)
-            .mem_copy_bytes(dst_local_var_ptr, first_argument_ptr, byte_len);
+            .mem_copy_bytes(dst_local_var_ptr_as_u8, first_argument_ptr, byte_len);
 
         let final_value = self.current_block.append(context).load(dst_local_var_ptr);
         Ok(TerminatorValue::new(final_value, context))
