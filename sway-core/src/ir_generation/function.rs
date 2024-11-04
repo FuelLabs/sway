@@ -662,7 +662,7 @@ impl<'eng> FnCompiler<'eng> {
                 )
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
+                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone(), ast_expr.return_type)
             }
             ty::TyExpressionVariant::AbiName(_) => {
                 let val = Value::new_constant(context, Constant::new_unit(context));
@@ -870,6 +870,7 @@ impl<'eng> FnCompiler<'eng> {
             span: _,
         }: &ty::TyIntrinsicFunctionKind,
         span: Span,
+        return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
         fn store_key_in_local_mem(
             compiler: &mut FnCompiler,
@@ -2175,7 +2176,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
-            Intrinsic::Transmute => self.compile_intrins_transmute(arguments, context, md_mgr),
+            Intrinsic::Transmute => self.compile_intrins_transmute(arguments, return_type, context, md_mgr),
         }
     }
 
@@ -2197,7 +2198,7 @@ impl<'eng> FnCompiler<'eng> {
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
         );
-        let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value);
+        let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
 
         let return_type_elem_ir_type = convert_resolved_type_id(
             te,
@@ -2206,14 +2207,20 @@ impl<'eng> FnCompiler<'eng> {
             return_type,
             &Span::dummy(), // TODO
         )?;
-        let dest_local_var = self
+        let dst_local_var = self
             .function
             .new_local_var(context, temp_arg_name, return_type_elem_ir_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let dst_local_var_ptr = self.current_block.append(context).get_local(dst_local_var);
 
-        self.current_block.append(context).mem_copy_bytes(dst_val_ptr, src_val_ptr, byte_len)
+        // TODO assert both types have the same size
 
-        todo!()
+        let byte_len =  return_type_elem_ir_type.size(&context).in_bytes();
+        self.current_block.append(context)
+            .mem_copy_bytes(dst_local_var_ptr, first_argument_ptr, byte_len);
+
+        let final_value = self.current_block.append(context).load(dst_local_var_ptr);
+        Ok(TerminatorValue::new(final_value, context))
     }
 
     fn ptr_to_first_element(
