@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use sha2::{Digest, Sha256};
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs::File;
+use std::io::{BufReader, Read};
 use std::path::Path;
 
 // The index of the beginning of the half-word (4 bytes) that contains the configurables section offset.
@@ -18,25 +18,43 @@ pub type InstructionWithBytes = (
     Vec<u8>,
 );
 
+/// An iterator over each [fuel_asm::Instruction] or [fuel_asm::InvalidOpcode] with its corresponding bytes.
+pub struct InstructionWithBytesIterator {
+    buf_reader: BufReader<File>,
+}
+
+impl InstructionWithBytesIterator {
+    /// Return a new iterator for each instruction parsed from raw bytes.
+    pub fn new(buf_reader: BufReader<File>) -> Self {
+        InstructionWithBytesIterator { buf_reader }
+    }
+}
+
+impl Iterator for InstructionWithBytesIterator {
+    type Item = InstructionWithBytes;
+
+    fn next(&mut self) -> Option<InstructionWithBytes> {
+        let mut buffer = [0; fuel_asm::Instruction::SIZE];
+        // Read the next instruction into the buffer
+        match self.buf_reader.read_exact(&mut buffer) {
+            Ok(_) => fuel_asm::from_bytes(buffer)
+                .next()
+                .map(|inst| (inst, buffer.to_vec())),
+            Err(_) => None,
+        }
+    }
+}
+
 /// Parses a bytecode file into an iterator of instructions and their corresponding bytes.
-pub fn parse_bytecode_to_instructions<P>(path: P) -> anyhow::Result<Vec<InstructionWithBytes>>
+pub fn parse_bytecode_to_instructions<P>(path: P) -> anyhow::Result<InstructionWithBytesIterator>
 where
     P: AsRef<Path> + Clone,
 {
-    let mut f = File::open(path.clone())
+    let f = File::open(path.clone())
         .map_err(|_| anyhow!("{}: file not found", path.as_ref().to_string_lossy()))?;
-    let metadata = fs::metadata(path.clone())
-        .map_err(|_| anyhow!("{}: file not found", path.as_ref().to_string_lossy()))?;
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read_exact(&mut buffer).expect("buffer overflow");
+    let buf_reader = BufReader::new(f);
 
-    let instructions = fuel_asm::from_bytes(buffer.clone()).zip(
-        buffer
-            .chunks(fuel_asm::Instruction::SIZE)
-            .map(|chunk: &[u8]| chunk.to_vec()),
-    );
-
-    Ok(instructions.collect())
+    Ok(InstructionWithBytesIterator::new(buf_reader))
 }
 
 /// Gets the bytecode ID from a bytecode file. The bytecode ID is the hash of the bytecode after removing the
@@ -45,7 +63,7 @@ pub fn get_bytecode_id<P>(path: P) -> anyhow::Result<String>
 where
     P: AsRef<Path> + Clone,
 {
-    let mut instructions = parse_bytecode_to_instructions(path.clone())?.into_iter();
+    let mut instructions = parse_bytecode_to_instructions(path.clone())?;
 
     // Collect the first six instructions into a temporary vector
     let mut first_six_instructions = Vec::with_capacity(CONFIGURABLES_OFFSET_PREAMBLE);
