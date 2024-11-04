@@ -1,9 +1,13 @@
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay}, decl_engine::*, engine_threading::*, language::{
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    decl_engine::*,
+    engine_threading::*,
+    language::{
         parsed::{EnumDeclaration, StructDeclaration},
         ty::{TyEnumDecl, TyExpression, TyStructDecl},
         QualifiedCallPath,
-    }, type_system::priv_prelude::*
+    },
+    type_system::priv_prelude::*,
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
@@ -1327,8 +1331,16 @@ impl TypeEngine {
     //       E.g., if the `module_source_id` points to the `Option` declaration of a monomorphized `Option<u64>`,
     //       this method will return false if the `type_id` represents `u64`, because the `u64` is not bound to
     //       any module, and thus, can never be GCed. This means that the `Option`'s module can never outlive it.
-    fn module_might_outlive_type(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_id: TypeId) -> bool {
-        fn module_might_outlive_type_source_id(module_source_id: Option<&SourceId>, type_source_id: Option<SourceId>) -> bool {
+    fn module_might_outlive_type(
+        &self,
+        engines: &Engines,
+        module_source_id: Option<&SourceId>,
+        type_id: TypeId,
+    ) -> bool {
+        fn module_might_outlive_type_source_id(
+            module_source_id: Option<&SourceId>,
+            type_source_id: Option<SourceId>,
+        ) -> bool {
             // If the type represented by the `type_id` is not bound to a source id (`type_source_id.is_none()`)
             // it cannot be outlived by the module.
             // Otherwise, if `type_source_id.is_some()` but is the same as the `module_source_id`, it can be GCed only if
@@ -1408,20 +1420,36 @@ impl TypeEngine {
 
             TypeInfo::Custom { type_arguments, .. } =>
                 type_arguments.as_ref().is_some_and(|type_arguments|
-                    self.module_might_outlive_type_arguments(engines, module_source_id, &type_arguments)),
+                    self.module_might_outlive_type_arguments(engines, module_source_id, type_arguments)),
             TypeInfo::TraitType { trait_type_id, .. } => self.module_might_outlive_type(engines, module_source_id, *trait_type_id)
         }
     }
 
-    fn module_might_outlive_type_parameter(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_parameter: &TypeParameter) -> bool {
+    fn module_might_outlive_type_parameter(
+        &self,
+        engines: &Engines,
+        module_source_id: Option<&SourceId>,
+        type_parameter: &TypeParameter,
+    ) -> bool {
         self.module_might_outlive_type(engines, module_source_id, type_parameter.type_id)
-        ||
-        self.module_might_outlive_type(engines, module_source_id, type_parameter.initial_type_id)
-        ||
-        self.module_might_outlive_trait_constraints(engines, module_source_id, &type_parameter.trait_constraints)
+            || self.module_might_outlive_type(
+                engines,
+                module_source_id,
+                type_parameter.initial_type_id,
+            )
+            || self.module_might_outlive_trait_constraints(
+                engines,
+                module_source_id,
+                &type_parameter.trait_constraints,
+            )
     }
 
-    fn module_might_outlive_type_parameters(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_parameters: &[TypeParameter]) -> bool {
+    fn module_might_outlive_type_parameters(
+        &self,
+        engines: &Engines,
+        module_source_id: Option<&SourceId>,
+        type_parameters: &[TypeParameter],
+    ) -> bool {
         if type_parameters.is_empty() {
             false
         } else {
@@ -1431,21 +1459,41 @@ impl TypeEngine {
         }
     }
 
-    fn module_might_outlive_type_argument(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_argument: &TypeArgument) -> bool {
+    fn module_might_outlive_type_argument(
+        &self,
+        engines: &Engines,
+        module_source_id: Option<&SourceId>,
+        type_argument: &TypeArgument,
+    ) -> bool {
         self.module_might_outlive_type(engines, module_source_id, type_argument.type_id)
-        ||
-        self.module_might_outlive_type(engines, module_source_id, type_argument.initial_type_id)
+            || self.module_might_outlive_type(
+                engines,
+                module_source_id,
+                type_argument.initial_type_id,
+            )
     }
 
-    fn module_might_outlive_type_arguments(&self, engines: &Engines, module_source_id: Option<&SourceId>, type_arguments: &[TypeArgument]) -> bool {
+    fn module_might_outlive_type_arguments(
+        &self,
+        engines: &Engines,
+        module_source_id: Option<&SourceId>,
+        type_arguments: &[TypeArgument],
+    ) -> bool {
         if type_arguments.is_empty() {
             false
         } else {
-            type_arguments.iter().any(|ta| self.module_might_outlive_type_argument(engines, module_source_id, ta))
+            type_arguments
+                .iter()
+                .any(|ta| self.module_might_outlive_type_argument(engines, module_source_id, ta))
         }
     }
 
-    fn module_might_outlive_trait_constraint(&self, _engines: &Engines, _module_source_id: Option<&SourceId>, trait_constraint: &TraitConstraint) -> bool {
+    fn module_might_outlive_trait_constraint(
+        &self,
+        _engines: &Engines,
+        _module_source_id: Option<&SourceId>,
+        trait_constraint: &TraitConstraint,
+    ) -> bool {
         // `TraitConstraint`s can contain `TypeArgument`s that can cause endless recursion,
         // unless we track already visited types. This happens in cases of recursive generic
         // traits like, e.g., `T: Trait<T>`.
@@ -1461,8 +1509,15 @@ impl TypeEngine {
         !trait_constraint.type_arguments.is_empty()
     }
 
-    fn module_might_outlive_trait_constraints(&self, engines: &Engines, module_source_id: Option<&SourceId>, trait_constraint: &[TraitConstraint]) -> bool {
-        trait_constraint.iter().any(|tc| self.module_might_outlive_trait_constraint(engines, module_source_id, tc))
+    fn module_might_outlive_trait_constraints(
+        &self,
+        engines: &Engines,
+        module_source_id: Option<&SourceId>,
+        trait_constraint: &[TraitConstraint],
+    ) -> bool {
+        trait_constraint
+            .iter()
+            .any(|tc| self.module_might_outlive_trait_constraint(engines, module_source_id, tc))
     }
 
     // In the `is_shareable_<type>` methods we reuse the logic from the
