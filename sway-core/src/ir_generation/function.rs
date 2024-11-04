@@ -22,7 +22,6 @@ use crate::{
     types::*,
 };
 
-use ast_elements::type_argument;
 use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
@@ -661,9 +660,13 @@ impl<'eng> FnCompiler<'eng> {
                     span_md_idx,
                 )
             }
-            ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone(), ast_expr.return_type)
-            }
+            ty::TyExpressionVariant::IntrinsicFunction(kind) => self.compile_intrinsic_function(
+                context,
+                md_mgr,
+                kind,
+                ast_expr.span.clone(),
+                ast_expr.return_type,
+            ),
             ty::TyExpressionVariant::AbiName(_) => {
                 let val = Value::new_constant(context, Constant::new_unit(context));
                 Ok(TerminatorValue::new(val, context))
@@ -2176,7 +2179,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
-            Intrinsic::Transmute => self.compile_intrins_transmute(arguments, return_type, context, md_mgr),
+            Intrinsic::Transmute => {
+                self.compile_intrins_transmute(arguments, return_type, context, md_mgr)
+            }
         }
     }
 
@@ -2203,7 +2208,10 @@ impl<'eng> FnCompiler<'eng> {
         );
         let first_argument_type = first_argument_value.get_type(context).unwrap(); // TODO unwrap
         let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
-        let first_argument_ptr = self.current_block.append(context).cast_ptr(first_argument_ptr, ptr_u8);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .cast_ptr(first_argument_ptr, ptr_u8);
 
         let return_type_elem_ir_type = convert_resolved_type_id(
             te,
@@ -2214,14 +2222,23 @@ impl<'eng> FnCompiler<'eng> {
         )?;
         let dst_local_var = self
             .function
-            .new_local_var(context, temp_arg_name, return_type_elem_ir_type, None, false)
+            .new_local_var(
+                context,
+                temp_arg_name,
+                return_type_elem_ir_type,
+                None,
+                false,
+            )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let dst_local_var_ptr = self.current_block.append(context).get_local(dst_local_var);
-        let dst_local_var_ptr_as_u8 = self.current_block.append(context).cast_ptr(dst_local_var_ptr, ptr_u8);
+        let dst_local_var_ptr_as_u8 = self
+            .current_block
+            .append(context)
+            .cast_ptr(dst_local_var_ptr, ptr_u8);
 
         // type check must not allows this to fail
-        let first_arg_size = first_argument_type.size(&context).in_bytes();
-        let return_type_size = return_type_elem_ir_type.size(&context).in_bytes();
+        let first_arg_size = first_argument_type.size(context).in_bytes();
+        let return_type_size = return_type_elem_ir_type.size(context).in_bytes();
         if first_arg_size != return_type_size {
             return Err(CompileError::Internal(
                 "Types size do not match",
@@ -2229,9 +2246,12 @@ impl<'eng> FnCompiler<'eng> {
             ));
         }
 
-        let byte_len =  return_type_elem_ir_type.size(&context).in_bytes();
-        self.current_block.append(context)
-            .mem_copy_bytes(dst_local_var_ptr_as_u8, first_argument_ptr, byte_len);
+        let byte_len = return_type_elem_ir_type.size(context).in_bytes();
+        self.current_block.append(context).mem_copy_bytes(
+            dst_local_var_ptr_as_u8,
+            first_argument_ptr,
+            byte_len,
+        );
 
         let final_value = self.current_block.append(context).load(dst_local_var_ptr);
         Ok(TerminatorValue::new(final_value, context))

@@ -129,7 +129,6 @@ fn type_check_transmute(
         }));
     }
 
-    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     let mut ctx = ctx;
@@ -147,19 +146,33 @@ fn type_check_transmute(
     let return_type = type_arguments[1].type_id;
 
     // Forbid ref and ptr types
-    fn forbid_ref_ptr_types(engines: &Engines, handler: &Handler, t: TypeId, span: &Span) -> Result<(), ErrorEmitted> {
-        let types = t.extract_any_including_self(engines, &|t| matches!(t,
-            TypeInfo::StringSlice |
-            TypeInfo::RawUntypedPtr |
-            TypeInfo::RawUntypedSlice |
-            TypeInfo::Ptr(_) |
-            TypeInfo::Slice(_) |
-            TypeInfo::Ref { .. }), vec![], 0);
+    fn forbid_ref_ptr_types(
+        engines: &Engines,
+        handler: &Handler,
+        t: TypeId,
+        span: &Span,
+    ) -> Result<(), ErrorEmitted> {
+        let types = t.extract_any_including_self(
+            engines,
+            &|t| {
+                matches!(
+                    t,
+                    TypeInfo::StringSlice
+                        | TypeInfo::RawUntypedPtr
+                        | TypeInfo::RawUntypedSlice
+                        | TypeInfo::Ptr(_)
+                        | TypeInfo::Slice(_)
+                        | TypeInfo::Ref { .. }
+                )
+            },
+            vec![],
+            0,
+        );
         if !types.is_empty() {
-            return Err(handler.emit_err(CompileError::TypeNotAllowed { 
-                reason: sway_error::error::TypeNotAllowedReason::NotAllowedInTransmute, 
-                span: span.clone()
-            }));
+            Err(handler.emit_err(CompileError::TypeNotAllowed {
+                reason: sway_error::error::TypeNotAllowedReason::NotAllowedInTransmute,
+                span: span.clone(),
+            }))
         } else {
             Ok(())
         }
