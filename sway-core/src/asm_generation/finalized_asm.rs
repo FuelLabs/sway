@@ -3,8 +3,8 @@ use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
-use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
-use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode, FuelAsmData};
+use crate::asm_generation::fuel::data_section::{DataId, Datum, Entry};
+use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
 use crate::BuildConfig;
@@ -16,6 +16,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 use sway_types::SourceEngine;
 
+use either::Either;
 use std::{collections::BTreeMap, fmt};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
@@ -111,7 +112,6 @@ fn to_bytecode_mut(
             {
                 8
             }
-            AllocatedOpcode::ConfigurablesOffsetPlaceholder => 8,
             AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
             AllocatedOpcode::BLOB(count) => count.value as u64 * 4,
             AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value == 0 => 0,
@@ -141,29 +141,6 @@ fn to_bytecode_mut(
         &ops_padded
     };
 
-    let mut offset_from_instr_start = 0;
-    for op in ops.iter() {
-        match &op.opcode {
-            AllocatedOpcode::LoadDataId(_reg, data_label)
-                if !data_section
-                    .has_copy_type(data_label)
-                    .expect("data label references non existent data -- internal error") =>
-            {
-                // For non-copy type loads, pre-insert pointers into the data_section so that
-                // from this point on, the data_section remains immutable. This is necessary
-                // so that when we take addresses of configurables, that address doesn't change
-                // later on if a non-configurable is added to the data-section.
-                let offset_bytes = data_section.data_id_to_offset(data_label) as u64;
-                // The -4 is because $pc is added in the *next* instruction.
-                let pointer_offset_from_current_instr =
-                    offset_to_data_section_in_bytes - offset_from_instr_start + offset_bytes - 4;
-                data_section.append_pointer(pointer_offset_from_current_instr);
-            }
-            _ => (),
-        }
-        offset_from_instr_start += op_size_in_bytes(data_section, op);
-    }
-
     let mut bytecode = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
 
     if build_config.print_bytecode {
@@ -189,7 +166,7 @@ fn to_bytecode_mut(
         offset_from_instr_start += op_size_in_bytes(data_section, op);
 
         match fuel_op {
-            FuelAsmData::DatasectionOffset(data) => {
+            Either::Right(data) => {
                 if build_config.print_bytecode {
                     print!("{}{:#010x} ", " ".repeat(indentation), bytecode.len());
                     println!(
@@ -205,23 +182,7 @@ fn to_bytecode_mut(
                 bytecode.extend(data.iter().cloned());
                 half_word_ix += 2;
             }
-            FuelAsmData::ConfigurablesOffset(data) => {
-                if build_config.print_bytecode {
-                    print!("{}{:#010x} ", " ".repeat(indentation), bytecode.len());
-                    println!(
-                        "                                                ;; {:?}",
-                        data
-                    );
-                }
-
-                // Static assert to ensure that we're only dealing with ConfigurablesOffsetPlaceholder,
-                // a 1-word (8 bytes) data within the code. No other uses are known.
-                let _: [u8; 8] = data;
-
-                bytecode.extend(data.iter().cloned());
-                half_word_ix += 2;
-            }
-            FuelAsmData::Instructions(instructions) => {
+            Either::Left(instructions) => {
                 for instruction in instructions {
                     // Print original source span only once
                     if build_config.print_bytecode_spans {
@@ -334,9 +295,9 @@ fn to_bytecode_mut(
             };
         }
 
-        for (i, entry) in data_section.iter_all_entries().enumerate() {
-            let entry_offset = data_section.absolute_idx_to_offset(i);
-            print_entry(indentation, offset + entry_offset, &entry);
+        for (i, entry) in data_section.value_pairs.iter().enumerate() {
+            let entry_offset = data_section.data_id_to_offset(&DataId(i as u32));
+            print_entry(indentation, offset + entry_offset, entry);
         }
 
         println!(";; --- END OF TARGET BYTECODE ---\n");
@@ -345,19 +306,16 @@ fn to_bytecode_mut(
     assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
     assert_eq!(bytecode.len(), offset_to_data_section_in_bytes as usize);
 
-    let num_nonconfigurables = data_section.non_configurables.len();
     let named_data_section_entries_offsets = data_section
-        .configurables
+        .value_pairs
         .iter()
         .enumerate()
+        .filter(|entry| entry.1.name.is_some())
         .map(|(id, entry)| {
-            let EntryName::Configurable(name) = &entry.name else {
-                panic!("Non-configurable in configurables part of datasection");
-            };
             (
-                name.clone(),
+                entry.name.as_ref().unwrap().clone(),
                 offset_to_data_section_in_bytes
-                    + data_section.absolute_idx_to_offset(id + num_nonconfigurables) as u64,
+                    + data_section.raw_data_id_to_offset(id as u32) as u64,
             )
         })
         .collect::<BTreeMap<String, u64>>();

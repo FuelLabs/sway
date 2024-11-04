@@ -1,5 +1,4 @@
 use super::{
-    data_section::EntryName,
     globals_section::GlobalsSection,
     programs::{AbstractEntry, AbstractProgram},
 };
@@ -99,12 +98,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     fn compile_configurable(&mut self, config: &ConfigContent) {
         match config {
             ConfigContent::V0 { name, constant, .. } => {
-                let entry = Entry::from_constant(
-                    self.context,
-                    constant,
-                    EntryName::Configurable(name.clone()),
-                    None,
-                );
+                let entry = Entry::from_constant(self.context, constant, Some(name.clone()), None);
                 let dataid = self.data_section.insert_data_value(entry);
                 self.configurable_v0_data_id.insert(name.clone(), dataid);
             }
@@ -123,7 +117,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                 let (decode_fn_label, _) = self.func_label_map.get(&decode_fn.get()).unwrap();
                 let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
                     encoded_bytes.clone(),
-                    EntryName::Configurable(name.clone()),
+                    Some(name.clone()),
                     None,
                 ));
 
@@ -2063,11 +2057,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
             _otherwise => {
                 // Get the constant into the namespace.
-                let config_name = if let Some(name) = config_name {
-                    EntryName::Configurable(name)
-                } else {
-                    EntryName::NonConfigurable
-                };
                 let entry = Entry::from_constant(self.context, constant, config_name, None);
                 let data_id = self.data_section.insert_data_value(entry);
 
@@ -2188,11 +2177,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             let comment = comment.into();
-            let data_id = self.data_section.insert_data_value(Entry::new_word(
-                imm,
-                EntryName::NonConfigurable,
-                None,
-            ));
+            let data_id = self
+                .data_section
+                .insert_data_value(Entry::new_word(imm, None, None));
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(reg.clone(), data_id)),
                 owning_span: span.clone(),

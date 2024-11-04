@@ -26,7 +26,7 @@ use sway_error::{
 };
 use sway_types::{Ident, Span};
 
-use super::{compiler_constants::NUM_ARG_REGISTERS, data_section::EntryName};
+use super::compiler_constants::NUM_ARG_REGISTERS;
 
 /// A summary of the adopted calling convention:
 ///
@@ -830,13 +830,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             );
                         }
                         _ => {
-                            let data_id =
-                                self.data_section.insert_data_value(Entry::from_constant(
-                                    self.context,
-                                    constant,
-                                    EntryName::NonConfigurable,
-                                    None,
-                                ));
+                            let data_id = self.data_section.insert_data_value(
+                                Entry::from_constant(self.context, constant, None, None),
+                            );
                             self.ptr_map.insert(*ptr, Storage::Data(data_id));
                         }
                     }
@@ -862,13 +858,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 });
                             }
                             _ => {
-                                let data_id =
-                                    self.data_section.insert_data_value(Entry::from_constant(
-                                        self.context,
-                                        constant,
-                                        EntryName::NonConfigurable,
-                                        None,
-                                    ));
+                                let data_id = self.data_section.insert_data_value(
+                                    Entry::from_constant(self.context, constant, None, None),
+                                );
 
                                 init_mut_vars.push(InitMutVars {
                                     stack_base_words,
