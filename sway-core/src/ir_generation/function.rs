@@ -2231,6 +2231,7 @@ impl<'eng> FnCompiler<'eng> {
             )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let dst_local_var_ptr = self.current_block.append(context).get_local(dst_local_var);
+        let dst_local_var_ptr_type = dst_local_var_ptr.get_type(context).unwrap(); // TODO unwrap
         let dst_local_var_ptr_as_u8 = self
             .current_block
             .append(context)
@@ -2252,6 +2253,11 @@ impl<'eng> FnCompiler<'eng> {
             first_argument_ptr,
             byte_len,
         );
+
+        let dst_local_var_ptr = self
+            .current_block
+            .append(context)
+            .cast_ptr(dst_local_var_ptr_as_u8, dst_local_var_ptr_type);
 
         let final_value = self.current_block.append(context).load(dst_local_var_ptr);
         Ok(TerminatorValue::new(final_value, context))
