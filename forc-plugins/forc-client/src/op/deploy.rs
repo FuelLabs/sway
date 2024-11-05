@@ -30,10 +30,7 @@ use fuels::{
         contract::{LoadConfiguration, StorageConfiguration},
         executable::Executable,
     },
-    types::{
-        bech32::Bech32ContractId,
-        transaction_builders::Blob,
-    },
+    types::{bech32::Bech32ContractId, transaction_builders::Blob},
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
@@ -386,25 +383,25 @@ pub async fn deploy_executables(
             &format!("loader bytecode at {}", bin_path.display()),
         );
         let loader_data_section_offset = loader.data_offset_in_code();
-            if let ProgramABI::Fuel(mut fuel_abi) = pkg.program_abi.clone() {
-                println_action_green("Generating", "loader abi for the uploaded executable.");
-                let json_abi_path = out_dir.join(format!("{pkg_name}-loader-abi.json"));
-                let original_data_section = extract_data_offset(&pkg.bytecode.bytes).unwrap();
-                let offset_shift = original_data_section - loader_data_section_offset;
-                // if there are configurables in the abi we need to shift them by `offset_shift`.
-                let configurables = fuel_abi.configurables.clone().map(|configs| {
-                    configs
-                        .into_iter()
-                        .map(|config| Configurable {
-                            offset: config.offset - offset_shift as u64,
-                            ..config.clone()
-                        })
-                        .collect()
-                });
-                fuel_abi.configurables = configurables;
-                let json_string = serde_json::to_string_pretty(&fuel_abi)?;
-                std::fs::write(json_abi_path, json_string)?;
-            }
+        if let ProgramABI::Fuel(mut fuel_abi) = pkg.program_abi.clone() {
+            println_action_green("Generating", "loader abi for the uploaded executable.");
+            let json_abi_path = out_dir.join(format!("{pkg_name}-loader-abi.json"));
+            let original_data_section = extract_data_offset(&pkg.bytecode.bytes).unwrap();
+            let offset_shift = original_data_section - loader_data_section_offset;
+            // if there are configurables in the abi we need to shift them by `offset_shift`.
+            let configurables = fuel_abi.configurables.clone().map(|configs| {
+                configs
+                    .into_iter()
+                    .map(|config| Configurable {
+                        offset: config.offset - offset_shift as u64,
+                        ..config.clone()
+                    })
+                    .collect()
+            });
+            fuel_abi.configurables = configurables;
+            let json_string = serde_json::to_string_pretty(&fuel_abi)?;
+            std::fs::write(json_abi_path, json_string)?;
+        }
         // If the executable is a predicate, we also want to display and save the predicate root.
         if pkg
             .descriptor
