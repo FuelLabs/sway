@@ -2194,13 +2194,17 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<TerminatorValue, CompileError> {
         assert!(arguments.len() == 1);
 
-        let temp_arg_name = self.lexical_map.insert_anon();
-
         let te = self.engines.te();
         let de = self.engines.de();
 
-        let u8 = Type::get_uint8(context);
-        let ptr_u8 = Type::new_ptr(context, u8);
+        let return_type_ir_type = convert_resolved_type_id(
+            te,
+            de,
+            context,
+            return_type,
+            &Span::dummy(), // TODO
+        )?;
+        let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
@@ -2208,38 +2212,10 @@ impl<'eng> FnCompiler<'eng> {
         );
         let first_argument_type = first_argument_value.get_type(context).unwrap(); // TODO unwrap
         let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
-        let first_argument_ptr = self
-            .current_block
-            .append(context)
-            .cast_ptr(first_argument_ptr, ptr_u8);
 
-        let return_type_elem_ir_type = convert_resolved_type_id(
-            te,
-            de,
-            context,
-            return_type,
-            &Span::dummy(), // TODO
-        )?;
-        let dst_local_var = self
-            .function
-            .new_local_var(
-                context,
-                temp_arg_name,
-                return_type_elem_ir_type,
-                None,
-                false,
-            )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let dst_local_var_ptr = self.current_block.append(context).get_local(dst_local_var);
-        let dst_local_var_ptr_type = dst_local_var_ptr.get_type(context).unwrap(); // TODO unwrap
-        let dst_local_var_ptr_as_u8 = self
-            .current_block
-            .append(context)
-            .cast_ptr(dst_local_var_ptr, ptr_u8);
-
-        // type check must not allows this to fail
+        // check IR sizes match
         let first_arg_size = first_argument_type.size(context).in_bytes();
-        let return_type_size = return_type_elem_ir_type.size(context).in_bytes();
+        let return_type_size = return_type_ir_type.size(context).in_bytes();
         if first_arg_size != return_type_size {
             return Err(CompileError::Internal(
                 "Types size do not match",
@@ -2247,19 +2223,12 @@ impl<'eng> FnCompiler<'eng> {
             ));
         }
 
-        let byte_len = return_type_elem_ir_type.size(context).in_bytes();
-        self.current_block.append(context).mem_copy_bytes(
-            dst_local_var_ptr_as_u8,
-            first_argument_ptr,
-            byte_len,
-        );
-
-        let dst_local_var_ptr = self
+        let first_argument_ptr = self
             .current_block
             .append(context)
-            .cast_ptr(dst_local_var_ptr_as_u8, dst_local_var_ptr_type);
+            .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
 
-        let final_value = self.current_block.append(context).load(dst_local_var_ptr);
+        let final_value = self.current_block.append(context).load(first_argument_ptr);
         Ok(TerminatorValue::new(final_value, context))
     }
 

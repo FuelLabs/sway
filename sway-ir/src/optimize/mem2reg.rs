@@ -81,6 +81,7 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
             }
         }
     }
+    dbg!(&locals);
     locals
 }
 
