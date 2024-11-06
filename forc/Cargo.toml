@@ -18,7 +18,7 @@ path = "src/main.rs"
 
 [dependencies]
 annotate-snippets.workspace = true
-ansi_term.workspace = true
+ansiterm.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["cargo", "derive", "env"] }
 clap_complete.workspace = true
