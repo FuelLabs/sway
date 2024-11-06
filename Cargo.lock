@@ -191,6 +191,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansiterm"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ab587f5395da16dd2e6939adf53dede583221b320cadfb94e02b5b7b9bf24cc"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2672,7 +2681,7 @@ name = "forc"
 version = "0.66.4"
 dependencies = [
  "annotate-snippets",
- "ansi_term",
+ "ansiterm",
  "anyhow",
  "clap 4.5.20",
  "clap_complete",
@@ -2845,7 +2854,7 @@ dependencies = [
  "forc-pkg",
  "forc-tracing 0.66.4",
  "forc-util",
- "prettydiff 0.7.0",
+ "prettydiff",
  "sway-core",
  "sway-utils",
  "swayfmt",
@@ -2868,7 +2877,7 @@ dependencies = [
 name = "forc-pkg"
 version = "0.66.4"
 dependencies = [
- "ansi_term",
+ "ansiterm",
  "anyhow",
  "byte-unit",
  "cid",
@@ -2934,7 +2943,7 @@ dependencies = [
 name = "forc-tracing"
 version = "0.66.4"
 dependencies = [
- "ansi_term",
+ "ansiterm",
  "tracing",
  "tracing-subscriber",
  "tracing-test",
@@ -2960,7 +2969,7 @@ name = "forc-util"
 version = "0.66.4"
 dependencies = [
  "annotate-snippets",
- "ansi_term",
+ "ansiterm",
  "anyhow",
  "clap 4.5.20",
  "dirs 5.0.1",
@@ -3904,15 +3913,6 @@ dependencies = [
  "serde",
  "spin",
  "stable_deref_trait",
-]
-
-[[package]]
-name = "heck"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
-dependencies = [
- "unicode-segmentation",
 ]
 
 [[package]]
@@ -5883,18 +5883,6 @@ dependencies = [
 
 [[package]]
 name = "prettydiff"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ff1fec61082821f8236cf6c0c14e8172b62ce8a72a0eedc30d3b247bb68dc11"
-dependencies = [
- "ansi_term",
- "pad",
- "prettytable-rs",
- "structopt",
-]
-
-[[package]]
-name = "prettydiff"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abec3fb083c10660b3854367697da94c674e9e82aa7511014dc958beeb7215e9"
@@ -7471,30 +7459,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
-name = "structopt"
-version = "0.3.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c6b5c64445ba8094a6ab0c3cd2ad323e07171012d9c98b0b15651daf1787a10"
-dependencies = [
- "clap 2.34.0",
- "lazy_static",
- "structopt-derive",
-]
-
-[[package]]
-name = "structopt-derive"
-version = "0.4.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb5ae327f9cc13b68763b5749770cb9e048a99bd9dfdfa58d0cf05d5f64afe0"
-dependencies = [
- "heck 0.3.3",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "strum"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7667,7 +7631,7 @@ dependencies = [
  "itertools 0.13.0",
  "once_cell",
  "peg",
- "prettydiff 0.7.0",
+ "prettydiff",
  "rustc-hash 1.1.0",
  "slotmap",
  "sway-features",
@@ -7805,7 +7769,7 @@ dependencies = [
  "forc-tracing 0.66.4",
  "indoc",
  "paste",
- "prettydiff 0.6.4",
+ "prettydiff",
  "ropey",
  "serde",
  "serde_ignored",
@@ -8121,7 +8085,7 @@ dependencies = [
  "insta",
  "libtest-mimic",
  "normalize-path",
- "prettydiff 0.7.0",
+ "prettydiff",
  "rand",
  "regex",
  "revm",
@@ -8144,7 +8108,7 @@ name = "test-macros"
 version = "0.0.0"
 dependencies = [
  "paste",
- "prettydiff 0.6.4",
+ "prettydiff",
 ]
 
 [[package]]

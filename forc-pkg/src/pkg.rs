@@ -2244,13 +2244,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
 
 fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
     let prog_ty_str = forc_util::program_type_str(&built_pkg.tree_type);
-    // The ansi_term formatters ignore the `std::fmt` right-align
+    // The ansiterm formatters ignore the `std::fmt` right-align
     // formatter, so we manually calculate the padding to align the program
     // type and name around the 10th column ourselves.
     let padded_ty_str = format!("{prog_ty_str:>10}");
     let padding = &padded_ty_str[..padded_ty_str.len() - prog_ty_str.len()];
-    let ty_ansi = ansi_term::Colour::Green.bold().paint(prog_ty_str);
-    let name_ansi = ansi_term::Style::new()
+    let ty_ansi = ansiterm::Colour::Green.bold().paint(prog_ty_str);
+    let name_ansi = ansiterm::Style::new()
         .bold()
         .paint(&built_pkg.descriptor.name);
     debug!("{padding}{ty_ansi} {name_ansi}");

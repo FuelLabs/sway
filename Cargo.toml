@@ -108,7 +108,7 @@ forc-wallet = "0.11"
 #
 
 annotate-snippets = "0.10"
-ansi_term = "0.12"
+ansiterm = "0.12"
 anyhow = "1.0"
 assert-json-diff = "2.0"
 async-trait = "0.1"

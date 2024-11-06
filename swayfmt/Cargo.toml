@@ -26,6 +26,6 @@ toml = { workspace = true, features = ["parse"] }
 
 [dev-dependencies]
 paste = "1.0"
-prettydiff = "0.6"
+prettydiff = "0.7"
 similar = "2.0"
 test-macros = { path = "test_macros" }

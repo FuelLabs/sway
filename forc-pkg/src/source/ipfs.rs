@@ -69,11 +69,7 @@ impl source::Fetch for Pinned {
             if !repo_path.exists() {
                 println_action_green(
                     "Fetching",
-                    &format!(
-                        "{} {}",
-                        ansi_term::Style::new().bold().paint(ctx.name),
-                        self
-                    ),
+                    &format!("{} {}", ansiterm::Style::new().bold().paint(ctx.name), self),
                 );
                 let cid = &self.0;
                 let ipfs_client = ipfs_client();
