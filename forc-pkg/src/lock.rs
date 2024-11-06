@@ -354,7 +354,7 @@ where
             };
             println_action_red(
                 "Removing",
-                &format!("{}{src}", ansi_term::Style::new().bold().paint(&pkg.name)),
+                &format!("{}{src}", ansiterm::Style::new().bold().paint(&pkg.name)),
             );
         }
     }
@@ -372,7 +372,7 @@ where
             };
             println_action_green(
                 "Adding",
-                &format!("{}{src}", ansi_term::Style::new().bold().paint(&pkg.name)),
+                &format!("{}{src}", ansiterm::Style::new().bold().paint(&pkg.name)),
             );
         }
     }

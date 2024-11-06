@@ -1,5 +1,5 @@
 use crate::cli;
-use ansi_term::Colour;
+use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};

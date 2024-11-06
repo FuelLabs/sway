@@ -29,7 +29,7 @@ pub mod restricted;
 #[macro_use]
 pub mod cli;
 
-pub use ansi_term;
+pub use ansiterm;
 pub use paste;
 pub use regex::Regex;
 pub use serial_test;
@@ -347,7 +347,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
     };
     println_action_green(
         "Compiling",
-        &format!("{ty}{} ({src})", ansi_term::Style::new().bold().paint(name)),
+        &format!("{ty}{} ({src})", ansiterm::Style::new().bold().paint(name)),
     );
 }
 

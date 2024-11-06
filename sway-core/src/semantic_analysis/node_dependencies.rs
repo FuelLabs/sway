@@ -1029,7 +1029,6 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
-        TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
         TypeInfo::RawUntypedSlice => "raw untyped slice",
         TypeInfo::Ptr(..) => "__ptr",

@@ -1059,7 +1059,7 @@ impl Parse for EnumVariant {
 impl Parse for TypeParameter {
     fn parse(&self, ctx: &ParseContext) {
         ctx.tokens.insert(
-            ctx.ident(&self.name_ident),
+            ctx.ident(&self.name),
             Token::from_parsed(
                 ParsedAstToken::TypeParameter(self.clone()),
                 SymbolKind::TypeParameter,

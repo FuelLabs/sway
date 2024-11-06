@@ -11,7 +11,6 @@ repository.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
-atty.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 forc-tracing.workspace = true
 forc-util.workspace = true
