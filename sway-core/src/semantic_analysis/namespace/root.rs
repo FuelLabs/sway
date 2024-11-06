@@ -683,6 +683,10 @@ impl Root {
         Ok(())
     }
 
+    /// Check that all accessed modules in the src path are visible from the dst path.
+    /// If src and dst have a common ancestor module that is private, this privacy modifier is
+    /// ignored for visibility purposes, since src and dst are both behind that private visibility
+    /// modifier.  Additionally, items in a private module are visible to its immediate parent.
     fn check_module_privacy(
         &self,
         handler: &Handler,
@@ -690,8 +694,15 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
+        // Calculate the number of src prefixes whose privacy is ignored.
+        let mut ignored_prefixes = 0;
+
         // Ignore visibility of common ancestors
-        let mut ignored_prefixes = common_ancestor_count(src, dst);
+        ignored_prefixes += src
+            .iter()
+            .zip(dst)
+            .position(|(src_id, dst_id)| src_id != dst_id)
+            .unwrap_or(dst.len());
 
         // Ignore visibility of direct submodules of the destination module
         if dst.len() == ignored_prefixes {
@@ -828,15 +839,6 @@ impl From<Module> for Root {
     fn from(module: Module) -> Self {
         Root { module }
     }
-}
-
-/// Iterates through two module paths and returns the number of common prefixes of src and dst,
-/// i.e., the number of common ancestors of the src and dst modules.
-fn common_ancestor_count(src: &ModulePath, dst: &ModulePath) -> usize {
-    src.iter()
-        .zip(dst)
-        .position(|(src_id, dst_id)| src_id != dst_id)
-        .unwrap_or(dst.len())
 }
 
 fn is_ancestor(src: &ModulePath, dst: &ModulePath) -> bool {
