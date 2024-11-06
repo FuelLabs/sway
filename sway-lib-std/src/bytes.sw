@@ -950,3 +950,33 @@ fn ok_bytes_buffer_ownership() {
     let mut bytes = abi_decode::<Bytes>(encoded_slice);
     assert(bytes.get(0) == Some(5));
 }
+
+#[test]
+fn ok_bytes_bigger_than_3064() {
+    let mut v: Bytes = Bytes::new();
+
+    // We allocate 1024 bytes initially, this is throw away because 
+    // it is not big enough for the buffer.
+    // Then we used to double the buffer to 2048.
+    // Then we started writing an `u64` with the length of the buffer.
+    // Then we write the buffer itself.
+    // (1024 + 2048) - 8 = 3064
+    // Thus, we need a buffer with 3065 bytes to write into the red zone
+    let mut a = 3065;
+    while a > 0 {
+        v.push(1u8);
+        a -= 1;
+    }
+
+    // This red zone should not be overwritten
+    let red_zone = asm(size: 1024) {
+        aloc size;
+        hp: raw_ptr
+    };
+    red_zone.write(0xFFFFFFFFFFFFFFFF);
+    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
+
+    encode(v);
+
+    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
+}
