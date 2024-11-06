@@ -976,7 +976,7 @@ fn ok_bytes_bigger_than_3064() {
     red_zone.write(0xFFFFFFFFFFFFFFFF);
     assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
 
-    encode(v);
+    let _ = encode(v);
 
     assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
 }
