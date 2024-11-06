@@ -184,7 +184,6 @@ fn convert_resolved_type_info(
         TypeInfo::Placeholder(_) => reject_type!("Placeholder"),
         TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
-        TypeInfo::Storage { .. } => reject_type!("Storage"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
     })
 }

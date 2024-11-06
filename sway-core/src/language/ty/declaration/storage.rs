@@ -234,27 +234,6 @@ impl TyStorageDecl {
             return_type,
         ))
     }
-
-    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TyStructField> {
-        self.fields
-            .iter()
-            .map(
-                |TyStorageField {
-                     ref name,
-                     ref type_argument,
-                     ref span,
-                     ref attributes,
-                     ..
-                 }| TyStructField {
-                    visibility: Visibility::Public,
-                    name: name.clone(),
-                    span: span.clone(),
-                    type_argument: type_argument.clone(),
-                    attributes: attributes.clone(),
-                },
-            )
-            .collect()
-    }
 }
 
 impl Spanned for TyStorageField {

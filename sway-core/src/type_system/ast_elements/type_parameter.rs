@@ -12,7 +12,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, BaseIdent, Spanned};
 
 use std::{
     cmp::Ordering,
@@ -21,21 +21,47 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Clone)]
+/// [TypeParameter] describes a generic type parameter, including its
+/// monomorphized version. It holds the `name` of the parameter, its
+/// `type_id`, and the `initial_type_id`, as well as an additional
+/// information about that type parameter, called the annotation.
+///
+/// If a [TypeParameter] is considered as not being annotated,
+/// its `initial_type_id` must be same as `type_id`, its
+/// `trait_constraints_span` must be [Span::dummy]
+/// and its `is_from_parent` must be false.
+///
+/// The annotations are ignored when calculating the [TypeParameter]'s hash
+/// (with engines) and equality (with engines).
+#[derive(Debug, Clone)]
 pub struct TypeParameter {
     pub type_id: TypeId,
+    /// Denotes the initial type represented by the [TypeParameter], before
+    /// unification, monomorphization, or replacement of [TypeInfo::Custom]s.
     pub(crate) initial_type_id: TypeId,
-    pub name_ident: Ident,
+    pub name: Ident,
     pub(crate) trait_constraints: Vec<TraitConstraint>,
     pub(crate) trait_constraints_span: Span,
     pub(crate) is_from_parent: bool,
+}
+
+impl TypeParameter {
+    /// Returns true if `self` is annotated by heaving either
+    /// its [Self::initial_type_id] different from [Self::type_id],
+    /// or [Self::trait_constraints_span] different from [Span::dummy]
+    /// or [Self::is_from_parent] different from false.
+    pub fn is_annotated(&self) -> bool {
+        self.type_id != self.initial_type_id
+            || self.is_from_parent
+            || !self.trait_constraints_span.is_dummy()
+    }
 }
 
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TypeParameter {
             type_id,
-            name_ident,
+            name,
             trait_constraints,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
@@ -45,7 +71,7 @@ impl HashWithEngines for TypeParameter {
         } = self;
         let type_engine = engines.te();
         type_engine.get(*type_id).hash(state, engines);
-        name_ident.hash(state);
+        name.hash(state);
         trait_constraints.hash(state, engines);
     }
 }
@@ -57,7 +83,7 @@ impl PartialEqWithEngines for TypeParameter {
         type_engine
             .get(self.type_id)
             .eq(&type_engine.get(other.type_id), ctx)
-            && self.name_ident == other.name_ident
+            && self.name == other.name
             && self.trait_constraints.eq(&other.trait_constraints, ctx)
     }
 }
@@ -66,7 +92,7 @@ impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TypeParameter {
             type_id: lti,
-            name_ident: ln,
+            name: ln,
             trait_constraints: ltc,
             // these fields are not compared because they aren't relevant/a
             // reliable source of obj v. obj distinction
@@ -76,7 +102,7 @@ impl OrdWithEngines for TypeParameter {
         } = self;
         let TypeParameter {
             type_id: rti,
-            name_ident: rn,
+            name: rn,
             trait_constraints: rtc,
             // these fields are not compared because they aren't relevant/a
             // reliable source of obj v. obj distinction
@@ -106,7 +132,7 @@ impl SubstTypes for TypeParameter {
 
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
-        self.name_ident.span()
+        self.name.span()
     }
 }
 
@@ -118,7 +144,7 @@ impl IsConcrete for TypeParameter {
 
 impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", self.name_ident)?;
+        write!(f, "{}", self.name)?;
         if !self.trait_constraints.is_empty() {
             write!(
                 f,
@@ -134,37 +160,56 @@ impl DebugWithEngines for TypeParameter {
     }
 }
 
-impl fmt::Debug for TypeParameter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let _ = write!(f, "{}: {:?}", self.name_ident, self.type_id);
-        for c in &self.trait_constraints {
-            let _ = write!(f, "+ {:?}", c.trait_name);
-        }
-        write!(f, "")
-    }
-}
-
 impl TypeParameter {
-    pub(crate) fn new_self_type(engines: &Engines, span: Span) -> TypeParameter {
+    /// Creates a new [TypeParameter] that represents a `Self` type.
+    /// The returned type parameter will have its [TypeParameter::name]
+    /// set to "Self" with the provided `use_site_span`.
+    ///
+    /// `Self` type is a [TypeInfo::UnknownGeneric] and therefore [TypeParameter::type_id]s
+    /// will be set to newly created unknown generic type.
+    ///
+    /// Note that the span in general does not point to a reserved word "Self" in
+    /// the source code, nor is related to it. The `Self` type represents the type
+    /// in `impl`s and does not necessarily relate to the "Self" keyword in code.
+    ///
+    /// Therefore, *the span must always point to a location in the source file in which
+    /// the particular `Self` type is, e.g., being declared or implemented*.
+    pub(crate) fn new_self_type(engines: &Engines, use_site_span: Span) -> TypeParameter {
         let type_engine = engines.te();
 
-        let name = Ident::new_with_override("Self".into(), span.clone());
-        let type_id = type_engine.insert(
-            engines,
-            TypeInfo::UnknownGeneric {
-                name: name.clone(),
-                trait_constraints: VecSet(vec![]),
-                parent: None,
-                is_from_type_parameter: true,
-            },
-            span.source_id(),
-        );
+        let (type_id, name) = type_engine.new_unknown_generic_self(use_site_span, true);
         TypeParameter {
             type_id,
             initial_type_id: type_id,
-            name_ident: name,
+            name,
             trait_constraints: vec![],
-            trait_constraints_span: span,
+            trait_constraints_span: Span::dummy(),
+            is_from_parent: false,
+        }
+    }
+
+    /// Creates a new [TypeParameter] specifically to be used as the type parameter
+    /// for a [TypeInfo::Placeholder]. The returned type parameter will have its
+    /// [TypeParameter::name] set to "_" with the provided `placeholder_or_use_site_span`
+    /// and its [TypeParameter::type_id]s set to the `type_id`.
+    ///
+    /// Note that in the user written code, the span will always point to the place in
+    /// the source code where "_" is located. In the compiler generated code that is not always the case
+    /// be the case. For cases when the span does not point to "_" see the comments
+    /// in the usages of this method.
+    ///
+    /// However, *the span must always point to a location in the source file in which
+    /// the particular placeholder is considered to be used*.
+    pub(crate) fn new_placeholder(
+        type_id: TypeId,
+        placeholder_or_use_site_span: Span,
+    ) -> TypeParameter {
+        TypeParameter {
+            type_id,
+            initial_type_id: type_id,
+            name: BaseIdent::new_with_override("_".into(), placeholder_or_use_site_span),
+            trait_constraints: vec![],
+            trait_constraints_span: Span::dummy(),
             is_from_parent: false,
         }
     }
@@ -176,11 +221,11 @@ impl TypeParameter {
     ) {
         let type_parameter_decl =
             ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                name: self.name_ident.clone(),
+                name: self.name.clone(),
                 type_id: self.type_id,
             });
-        let name_a = Ident::new_with_override("self".into(), self.name_ident.span());
-        let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
+        let name_a = Ident::new_with_override("self".into(), self.name.span());
+        let name_b = Ident::new_with_override("Self".into(), self.name.span());
         let _ = ctx.insert_symbol(handler, name_a, type_parameter_decl.clone());
         let _ = ctx.insert_symbol(handler, name_b, type_parameter_decl);
     }
@@ -266,11 +311,10 @@ impl TypeParameter {
         type_parameter: TypeParameter,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         let TypeParameter {
             initial_type_id,
-            name_ident,
+            name,
             trait_constraints,
             trait_constraints_span,
             is_from_parent,
@@ -296,19 +340,15 @@ impl TypeParameter {
 
         // Create type id and type parameter before type checking trait constraints.
         // This order is required because a trait constraint may depend on its own type parameter.
-        let type_id = type_engine.insert(
-            engines,
-            TypeInfo::UnknownGeneric {
-                name: name_ident.clone(),
-                trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
-                parent,
-                is_from_type_parameter: true,
-            },
-            name_ident.span().source_id(),
+        let type_id = type_engine.new_unknown_generic(
+            name.clone(),
+            VecSet(trait_constraints_with_supertraits.clone()),
+            parent,
+            true,
         );
 
         let type_parameter = TypeParameter {
-            name_ident: name_ident.clone(),
+            name,
             type_id,
             initial_type_id,
             trait_constraints,
@@ -360,15 +400,11 @@ impl TypeParameter {
         type_engine.replace(
             ctx.engines(),
             type_parameter.type_id,
-            TypeSourceInfo {
-                type_info: TypeInfo::UnknownGeneric {
-                    name: type_parameter.name_ident.clone(),
-                    trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
-                    parent,
-                    is_from_type_parameter: true,
-                }
-                .into(),
-                source_id: type_parameter.name_ident.span().source_id().copied(),
+            TypeInfo::UnknownGeneric {
+                name: type_parameter.name.clone(),
+                trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+                parent,
+                is_from_type_parameter: true,
             },
         );
 
@@ -405,7 +441,7 @@ impl TypeParameter {
     ) -> Result<(), ErrorEmitted> {
         let Self {
             is_from_parent,
-            name_ident,
+            name,
             type_id,
             ..
         } = self;
@@ -418,7 +454,7 @@ impl TypeParameter {
                 .module(ctx.engines())
                 .current_items()
                 .symbols
-                .get(name_ident)
+                .get(name)
                 .unwrap();
 
             match sy.expect_typed_ref() {
@@ -440,15 +476,11 @@ impl TypeParameter {
                         ctx.engines.te().replace(
                             ctx.engines(),
                             *type_id,
-                            TypeSourceInfo {
-                                type_info: TypeInfo::UnknownGeneric {
-                                    name: name.clone(),
-                                    trait_constraints: trait_constraints.clone(),
-                                    parent: Some(*parent_type_id),
-                                    is_from_type_parameter: *is_from_type_parameter,
-                                }
-                                .into(),
-                                source_id: name.span().source_id().copied(),
+                            TypeInfo::UnknownGeneric {
+                                name: name.clone(),
+                                trait_constraints: trait_constraints.clone(),
+                                parent: Some(*parent_type_id),
+                                is_from_type_parameter: *is_from_type_parameter,
                             },
                         );
                     }
@@ -456,7 +488,7 @@ impl TypeParameter {
                 _ => {
                     handler.emit_err(CompileError::Internal(
                         "Unexpected TyDeclaration for TypeParameter.",
-                        self.name_ident.span(),
+                        self.name.span(),
                     ));
                 }
             }
@@ -466,10 +498,10 @@ impl TypeParameter {
         // declaration.
         let type_parameter_decl =
             ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                name: name_ident.clone(),
+                name: name.clone(),
                 type_id: *type_id,
             });
-        ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
+        ctx.insert_symbol(handler, name.clone(), type_parameter_decl)
             .ok();
 
         Ok(())

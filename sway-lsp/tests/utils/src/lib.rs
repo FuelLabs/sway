@@ -28,6 +28,18 @@ pub fn e2e_language_dir() -> PathBuf {
     PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
 }
 
+pub fn e2e_should_pass_dir() -> PathBuf {
+    PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass")
+}
+
+pub fn e2e_should_fail_dir() -> PathBuf {
+    PathBuf::from("test/src/e2e_vm_tests/test_programs/should_fail")
+}
+
+pub fn e2e_stdlib_dir() -> PathBuf {
+    PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/stdlib")
+}
+
 pub fn e2e_unit_dir() -> PathBuf {
     PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/unit_tests")
 }

@@ -17,7 +17,7 @@ use crate::{
         ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars, TyExpression},
     },
     semantic_analysis::*,
-    Engines, TypeArgument, TypeInfo, UnifyCheck,
+    Engines, TypeInfo, UnifyCheck,
 };
 
 use super::{instantiate::Instantiate, matcher::matcher, ReqDeclTree};
@@ -619,7 +619,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
         ) -> Result<(VarDecl, Vec<VarDecl>), ErrorEmitted> {
             let type_engine = ctx.engines.te();
             // At this point we have the guarantee that we have:
-            // - exactly the same variables in each OR variant
+            // - exactly the same variables in each of the OR variants
             // - that variables of the same name are of the same type
             // - that we do not have duplicates in variable names inside of alternatives
 
@@ -645,18 +645,10 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
             // All variants have same variable types and names, thus we pick them from the first alternative.
             let tuple_field_types = carry_over_vars[0]
                 .iter()
-                .map(|(_, var_body)| TypeArgument {
-                    type_id: var_body.return_type,
-                    initial_type_id: var_body.return_type,
-                    span: var_body.span.clone(), // Although not needed, this span can be mapped to var declaration.
-                    call_path_tree: None,
-                })
+                .map(|(_, var_body)| var_body.return_type)
                 .collect();
-            let tuple_type = type_engine.insert(
-                ctx.engines,
-                TypeInfo::Tuple(tuple_field_types),
-                instantiate.dummy_span().source_id(),
-            );
+            let tuple_type =
+                type_engine.insert_tuple_without_annotations(ctx.engines, tuple_field_types);
             let variable_names = carry_over_vars[0]
                 .iter()
                 .map(|(ident, _)| ident.clone())

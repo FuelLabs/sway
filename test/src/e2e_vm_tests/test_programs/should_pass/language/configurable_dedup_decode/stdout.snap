@@ -1,6 +1,6 @@
 ---
 source: test/tests/tests.rs
-assertion_line: 99
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final
 exit status: 0
@@ -207,24 +207,25 @@ script {
         encode_10_abi_encode_11_block1():
         v81 = const u64 2
         v82 = mul v33, v81, !116
-        v83 = asm(new_cap: v82, old_ptr: v30, len: v36) -> ptr u8 hp, !117 {
+        v83 = add v82, v37, !117
+        v84 = asm(new_cap: v83, old_ptr: v30, len: v36) -> ptr u8 hp, !118 {
             aloc   new_cap
             mcp    hp old_ptr len
         }
-        br encode_10_abi_encode_11_block0(v83, v82), !118
+        br encode_10_abi_encode_11_block0(v84, v83), !119
     }
 
-    entry_orig fn main_8() -> u64, !121 {
+    entry_orig fn main_8() -> u64, !122 {
         entry():
-        v0 = get_config ptr { u64 }, WRAPPED, !122
+        v0 = get_config ptr { u64 }, WRAPPED, !123
         v1 = const u64 0
-        v2 = get_elem_ptr v0, ptr u64, v1, !123
+        v2 = get_elem_ptr v0, ptr u64, v1, !124
         v3 = load v2
-        v4 = get_config ptr { u64 }, TUPLE, !124
+        v4 = get_config ptr { u64 }, TUPLE, !125
         v5 = const u64 0
-        v6 = get_elem_ptr v4, ptr u64, v5, !125
+        v6 = get_elem_ptr v4, ptr u64, v5, !126
         v7 = load v6
-        v8 = add v3, v7, !128
+        v8 = add v3, v7, !129
         ret u64 v8
     }
 }
@@ -348,15 +349,16 @@ script {
 !116 = (!49 !50 !66 !67)
 !117 = (!49 !50 !66 !67)
 !118 = (!49 !50 !66 !67)
-!119 = span !0 202 246
-!120 = fn_name_span !0 205 209
-!121 = (!119 !120)
-!122 = span !0 225 232
-!123 = span !0 30 36
-!124 = span !0 237 242
-!125 = span !0 243 244
-!126 = span !0 225 244
-!127 = fn_call_path_span !0 235 236
-!128 = (!126 !127)
+!119 = (!49 !50 !66 !67)
+!120 = span !0 202 246
+!121 = fn_name_span !0 205 209
+!122 = (!120 !121)
+!123 = span !0 225 232
+!124 = span !0 30 36
+!125 = span !0 237 242
+!126 = span !0 243 244
+!127 = span !0 225 244
+!128 = fn_call_path_span !0 235 236
+!129 = (!127 !128)
 
     Finished release [optimized + fuel] target(s) [744 B] in ???

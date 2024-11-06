@@ -191,6 +191,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansiterm"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ab587f5395da16dd2e6939adf53dede583221b320cadfb94e02b5b7b9bf24cc"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -440,17 +449,6 @@ name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
-
-[[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
-]
 
 [[package]]
 name = "aurora-engine-modexp"
@@ -1209,21 +1207,6 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
-dependencies = [
- "ansi_term",
- "atty",
- "bitflags 1.3.2",
- "strsim 0.8.0",
- "textwrap 0.11.0",
- "unicode-width",
- "vec_map",
-]
-
-[[package]]
-name = "clap"
 version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b97f376d85a664d5837dbae44bf546e6477a679ff6610010f17276f686d867e8"
@@ -1251,7 +1234,7 @@ version = "4.5.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9646e2e245bf62f45d39a0f3f36f1171ad1ea0d6967fd114bca72cb02a8fcdfb"
 dependencies = [
- "clap 4.5.20",
+ "clap",
 ]
 
 [[package]]
@@ -1260,7 +1243,7 @@ version = "4.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d494102c8ff3951810c72baf96910b980fb065ca5d3101243e6a8dc19747c86b"
 dependencies = [
- "clap 4.5.20",
+ "clap",
  "clap_complete",
 ]
 
@@ -1446,7 +1429,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c93ab3577cca16b4a1d80a88c2e0cd8b6e969e51696f0bbb0d1dcb0157109832"
 dependencies = [
  "caseless",
- "clap 4.5.20",
+ "clap",
  "derive_builder",
  "entities",
  "memchr",
@@ -1593,7 +1576,7 @@ dependencies = [
  "anes",
  "cast",
  "ciborium",
- "clap 4.5.20",
+ "clap",
  "criterion-plot",
  "is-terminal",
  "itertools 0.10.5",
@@ -1885,7 +1868,7 @@ dependencies = [
  "hashbrown 0.14.5",
  "lock_api",
  "once_cell",
- "parking_lot_core 0.9.10",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -1899,7 +1882,7 @@ dependencies = [
  "hashbrown 0.14.5",
  "lock_api",
  "once_cell",
- "parking_lot_core 0.9.10",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -2070,12 +2053,6 @@ name = "diff"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
-
-[[package]]
-name = "difference"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 
 [[package]]
 name = "digest"
@@ -2675,18 +2652,18 @@ checksum = "f81ec6369c545a7d40e4589b5597581fa1c441fe1cce96dd1de43159910a36a2"
 
 [[package]]
 name = "forc"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "annotate-snippets",
- "ansi_term",
+ "ansiterm",
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "clap_complete",
  "clap_complete_fig",
  "completest-pty",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "forc-util",
  "fs_extra",
  "fuel-asm",
@@ -2706,26 +2683,25 @@ dependencies = [
  "toml_edit",
  "tracing",
  "url",
- "uwuify",
  "walkdir",
  "whoami",
 ]
 
 [[package]]
 name = "forc-client"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
  "async-trait",
  "aws-config",
  "aws-sdk-kms",
  "chrono",
- "clap 4.5.20",
+ "clap",
  "devault",
  "dialoguer",
  "forc",
  "forc-pkg",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -2761,14 +2737,13 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
  "async-trait",
- "atty",
- "clap 4.5.20",
+ "clap",
  "criterion",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
@@ -2792,15 +2767,15 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "dap",
  "escargot",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "fuel-core-client",
  "fuel-types",
  "fuel-vm",
@@ -2819,15 +2794,15 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "comrak",
  "dir_indexer",
  "expect-test",
  "forc-pkg",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "forc-util",
  "horrorshow",
  "include_dir",
@@ -2845,14 +2820,14 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "forc-pkg",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "forc-util",
- "prettydiff 0.7.0",
+ "prettydiff",
  "sway-core",
  "sway-utils",
  "swayfmt",
@@ -2862,10 +2837,10 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "sway-lsp",
  "tikv-jemallocator",
  "tokio",
@@ -2873,13 +2848,13 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
- "ansi_term",
+ "ansiterm",
  "anyhow",
  "byte-unit",
  "cid",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "forc-util",
  "fuel-abi-types",
  "futures",
@@ -2911,7 +2886,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2939,9 +2914,9 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
- "ansi_term",
+ "ansiterm",
  "tracing",
  "tracing-subscriber",
  "tracing-test",
@@ -2949,10 +2924,10 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "devault",
  "forc-util",
  "fuel-tx",
@@ -2964,15 +2939,15 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "annotate-snippets",
- "ansi_term",
+ "ansiterm",
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "fuel-tx",
  "hex",
  "paste",
@@ -2996,7 +2971,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e6ad4498ecab72fa7c5e134ade0137279d1b8f4a6df50963bb3803fdeb69dac"
 dependencies = [
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "eth-keystore",
  "forc-tracing 0.47.0",
  "fuel-crypto",
@@ -3135,7 +3110,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94a1c3eb92040d95d27f7c658801bb5c04ad4aaf67de380cececbeed5aab6e61"
 dependencies = [
  "once_cell",
- "parking_lot 0.12.3",
+ "parking_lot",
  "pin-project-lite",
  "prometheus-client",
  "regex",
@@ -3173,7 +3148,7 @@ dependencies = [
  "async-trait",
  "fuel-core-metrics",
  "futures",
- "parking_lot 0.12.3",
+ "parking_lot",
  "pin-project-lite",
  "tokio",
  "tracing",
@@ -3915,15 +3890,6 @@ dependencies = [
 
 [[package]]
 name = "heck"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
-dependencies = [
- "unicode-segmentation",
-]
-
-[[package]]
-name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
@@ -3933,15 +3899,6 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -4459,15 +4416,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "instant"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
-dependencies = [
- "cfg-if 1.0.0",
-]
-
-[[package]]
 name = "ipfs-api-backend-hyper"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4799,7 +4747,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc0bda45ed5b3a2904262c1bb91e526127aa70e7ef3758aba2ef93cf896b9b58"
 dependencies = [
- "clap 4.5.20",
+ "clap",
  "escape8259",
  "termcolor",
  "threadpool",
@@ -4898,7 +4846,7 @@ checksum = "b45a38e19bd200220ef07c892b0157ad3d2365e5b5a267ca01ad12182491eea5"
 dependencies = [
  "anyhow",
  "chrono",
- "clap 4.5.20",
+ "clap",
  "clap_complete",
  "env_logger",
  "handlebars",
@@ -4921,7 +4869,7 @@ name = "mdbook-forc-documenter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 4.5.20",
+ "clap",
  "mdbook",
  "semver 1.0.23",
  "serde",
@@ -4974,7 +4922,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9aa3f302fe0f8de065d4a2d1ed64f60204623cac58b80cd3c2a83a25d5a7d437"
 dependencies = [
- "clap 4.5.20",
+ "clap",
 ]
 
 [[package]]
@@ -5490,12 +5438,6 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "owo-colors"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2386b4ebe91c2f7f51082d4cefa145d030e33a1842a96b12e4885cc3c01f7a55"
-
-[[package]]
-name = "owo-colors"
 version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1b04fb49957986fdce4d6ee7a65027d55d4b6d2265e5848bbb507b58ccfdb6f"
@@ -5549,37 +5491,12 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
-dependencies = [
- "instant",
- "lock_api",
- "parking_lot_core 0.8.6",
-]
-
-[[package]]
-name = "parking_lot"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.10",
-]
-
-[[package]]
-name = "parking_lot_core"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60a2cfe6f0ad2bfc16aefa463b497d5c7a5ecd44a23efa72aa342d90177356dc"
-dependencies = [
- "cfg-if 1.0.0",
- "instant",
- "libc",
- "redox_syscall 0.2.16",
- "smallvec",
- "winapi",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -5890,23 +5807,11 @@ dependencies = [
 
 [[package]]
 name = "prettydiff"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ff1fec61082821f8236cf6c0c14e8172b62ce8a72a0eedc30d3b247bb68dc11"
-dependencies = [
- "ansi_term",
- "pad",
- "prettytable-rs",
- "structopt",
-]
-
-[[package]]
-name = "prettydiff"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abec3fb083c10660b3854367697da94c674e9e82aa7511014dc958beeb7215e9"
 dependencies = [
- "owo-colors 3.5.0",
+ "owo-colors",
  "pad",
  "prettytable-rs",
 ]
@@ -6007,7 +5912,7 @@ checksum = "504ee9ff529add891127c4827eb481bd69dc0ebc72e9a682e187db4caa60c3ca"
 dependencies = [
  "dtoa",
  "itoa",
- "parking_lot 0.12.3",
+ "parking_lot",
  "prometheus-client-derive-encode",
 ]
 
@@ -6231,15 +6136,6 @@ checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
-]
-
-[[package]]
-name = "redox_syscall"
-version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb5a58c1855b4b6819d59012155603f0b22ad30cad752600aadfcb695265519a"
-dependencies = [
- "bitflags 1.3.2",
 ]
 
 [[package]]
@@ -7196,7 +7092,7 @@ dependencies = [
  "futures",
  "log",
  "once_cell",
- "parking_lot 0.12.3",
+ "parking_lot",
  "scc",
  "serial_test_derive",
 ]
@@ -7461,12 +7357,6 @@ checksum = "e9557cb6521e8d009c51a8666f09356f4b817ba9ba0981a305bd86aee47bd35c"
 
 [[package]]
 name = "strsim"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
-
-[[package]]
-name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
@@ -7476,30 +7366,6 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
-
-[[package]]
-name = "structopt"
-version = "0.3.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c6b5c64445ba8094a6ab0c3cd2ad323e07171012d9c98b0b15651daf1787a10"
-dependencies = [
- "clap 2.34.0",
- "lazy_static",
- "structopt-derive",
-]
-
-[[package]]
-name = "structopt-derive"
-version = "0.4.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb5ae327f9cc13b68763b5749770cb9e048a99bd9dfdfa58d0cf05d5f64afe0"
-dependencies = [
- "heck 0.3.3",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
 
 [[package]]
 name = "strum"
@@ -7585,7 +7451,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -7597,9 +7463,9 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
- "clap 4.5.20",
+ "clap",
  "derivative",
  "dirs 5.0.1",
  "either",
@@ -7617,7 +7483,8 @@ dependencies = [
  "itertools 0.13.0",
  "lazy_static",
  "object",
- "parking_lot 0.12.3",
+ "parking_lot",
+ "paste",
  "pest",
  "pest_derive",
  "petgraph",
@@ -7642,7 +7509,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "either",
  "in_definite",
@@ -7651,20 +7518,19 @@ dependencies = [
  "strsim 0.11.1",
  "sway-types",
  "thiserror",
- "uwuify",
 ]
 
 [[package]]
 name = "sway-features"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
- "clap 4.5.20",
+ "clap",
  "paste",
 ]
 
 [[package]]
 name = "sway-ir"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -7673,7 +7539,7 @@ dependencies = [
  "itertools 0.13.0",
  "once_cell",
  "peg",
- "prettydiff 0.7.0",
+ "prettydiff",
  "rustc-hash 1.1.0",
  "slotmap",
  "sway-features",
@@ -7684,7 +7550,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -7694,7 +7560,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -7705,14 +7571,14 @@ dependencies = [
  "dirs 4.0.0",
  "fd-lock",
  "forc-pkg",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "forc-util",
  "futures",
  "indexmap 2.6.0",
  "lsp-types",
  "notify",
  "notify-debouncer-mini",
- "parking_lot 0.12.3",
+ "parking_lot",
  "pretty_assertions",
  "proc-macro2",
  "quote",
@@ -7745,7 +7611,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp-test-utils"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "assert-json-diff",
  "futures",
@@ -7760,7 +7626,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -7778,7 +7644,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -7788,7 +7654,7 @@ dependencies = [
  "lazy_static",
  "num-bigint",
  "num-traits",
- "parking_lot 0.12.3",
+ "parking_lot",
  "rustc-hash 1.1.0",
  "serde",
  "sway-utils",
@@ -7797,7 +7663,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "serde",
  "walkdir",
@@ -7805,17 +7671,17 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.66.3"
+version = "0.66.4"
 dependencies = [
  "anyhow",
- "difference",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "indoc",
  "paste",
- "prettydiff 0.6.4",
+ "prettydiff",
  "ropey",
  "serde",
  "serde_ignored",
+ "similar",
  "sway-ast",
  "sway-core",
  "sway-error",
@@ -8110,7 +7976,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "bytes",
- "clap 4.5.20",
+ "clap",
  "colored",
  "duct",
  "filecheck",
@@ -8118,7 +7984,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.66.3",
+ "forc-tracing 0.66.4",
  "fuel-vm",
  "futures",
  "gag",
@@ -8127,7 +7993,7 @@ dependencies = [
  "insta",
  "libtest-mimic",
  "normalize-path",
- "prettydiff 0.7.0",
+ "prettydiff",
  "rand",
  "regex",
  "revm",
@@ -8138,7 +8004,7 @@ dependencies = [
  "sway-ir",
  "sway-types",
  "sway-utils",
- "textwrap 0.16.1",
+ "textwrap",
  "tokio",
  "toml 0.8.19",
  "tracing",
@@ -8150,7 +8016,7 @@ name = "test-macros"
 version = "0.0.0"
 dependencies = [
  "paste",
- "prettydiff 0.6.4",
+ "prettydiff",
 ]
 
 [[package]]
@@ -8158,15 +8024,6 @@ name = "text-size"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f18aa187839b2bdb1ad2fa35ead8c4c2976b64e4363c386d45ac0f7ee85c9233"
-
-[[package]]
-name = "textwrap"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
-dependencies = [
- "unicode-width",
-]
 
 [[package]]
 name = "textwrap"
@@ -8332,7 +8189,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio 1.0.2",
- "parking_lot 0.12.3",
+ "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",
@@ -8837,18 +8694,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8c5f0a0af699448548ad1a2fbf920fb4bee257eae39953ba95cb84891a0446a"
 
 [[package]]
-name = "uwuify"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3db6840b7adcfd2e866c79157cc890ecdbbc1f739607134039ae64eaa6c07e24"
-dependencies = [
- "clap 2.34.0",
- "owo-colors 1.3.0",
- "parking_lot 0.11.2",
- "thiserror",
-]
-
-[[package]]
 name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8865,12 +8710,6 @@ name = "vec1"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eab68b56840f69efb0fefbe3ab6661499217ffdc58e2eef7c3f6f69835386322"
-
-[[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "version_check"
