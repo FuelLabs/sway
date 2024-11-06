@@ -602,9 +602,15 @@ impl TestContext {
                                 )));
                             }
                         }
-                        TestResult::ReturnData(_) => todo!("Test result `ReturnData` is currently not implemented."),
-                        TestResult::Return(_) => todo!("Test result `Return` is currently not implemented."),
-                        TestResult::Revert(_) => todo!("Test result `Revert` is currently not implemented."),
+                        TestResult::ReturnData(_) => {
+                            todo!("Test result `ReturnData` is currently not implemented.")
+                        }
+                        TestResult::Return(_) => {
+                            todo!("Test result `Return` is currently not implemented.")
+                        }
+                        TestResult::Revert(_) => {
+                            todo!("Test result `Revert` is currently not implemented.")
+                        }
                     },
                     Receipt::ReturnData { data, .. } => match expected_result.unwrap() {
                         TestResult::ReturnData(v) => {
@@ -614,9 +620,15 @@ impl TestContext {
                                 )));
                             }
                         }
-                        TestResult::Result(_) => todo!("Test result `Result` is currently not implemented."),
-                        TestResult::Return(_) => todo!("Test result `Return` is currently not implemented."),
-                        TestResult::Revert(_) => todo!("Test result `Revert` is currently not implemented."),
+                        TestResult::Result(_) => {
+                            todo!("Test result `Result` is currently not implemented.")
+                        }
+                        TestResult::Return(_) => {
+                            todo!("Test result `Return` is currently not implemented.")
+                        }
+                        TestResult::Revert(_) => {
+                            todo!("Test result `Revert` is currently not implemented.")
+                        }
                     },
                     _ => {}
                 };

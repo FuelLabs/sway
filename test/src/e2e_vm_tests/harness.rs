@@ -398,17 +398,24 @@ pub(crate) fn test_json_abi(
     }
 
     if fs::metadata(oracle_path.clone()).is_err() {
-        bail!("JSON ABI oracle file does not exist for this test\nExpected oracle path: {}", &oracle_path);
+        bail!(
+            "JSON ABI oracle file does not exist for this test\nExpected oracle path: {}",
+            &oracle_path
+        );
     }
     if fs::metadata(output_path.clone()).is_err() {
-        bail!("JSON ABI output file does not exist for this test\nExpected output path: {}", &output_path);
+        bail!(
+            "JSON ABI output file does not exist for this test\nExpected output path: {}",
+            &output_path
+        );
     }
-    let oracle_contents =
-        fs::read_to_string(&oracle_path).expect("Something went wrong reading the JSON ABI oracle file.");
-    let output_contents =
-        fs::read_to_string(&output_path).expect("Something went wrong reading the JSON ABI output file.");
+    let oracle_contents = fs::read_to_string(&oracle_path)
+        .expect("Something went wrong reading the JSON ABI oracle file.");
+    let output_contents = fs::read_to_string(&output_path)
+        .expect("Something went wrong reading the JSON ABI output file.");
     if oracle_contents != output_contents {
-        bail!("Mismatched ABI JSON output.\nOracle path: {}\nOutput path: {}\n{}",
+        bail!(
+            "Mismatched ABI JSON output.\nOracle path: {}\nOutput path: {}\n{}",
             oracle_path,
             output_path,
             prettydiff::diff_lines(&oracle_contents, &output_contents)
@@ -434,7 +441,11 @@ fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn test_json_storage_slots(file_name: &str, built_package: &BuiltPackage, suffix: &Option<String>,) -> Result<()> {
+pub(crate) fn test_json_storage_slots(
+    file_name: &str,
+    built_package: &BuiltPackage,
+    suffix: &Option<String>,
+) -> Result<()> {
     emit_json_storage_slots(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let oracle_path = format!(
@@ -460,12 +471,13 @@ pub(crate) fn test_json_storage_slots(file_name: &str, built_package: &BuiltPack
     if fs::metadata(output_path.clone()).is_err() {
         bail!("JSON storage slots output file does not exist for this test.\nExpected output path: {}", &output_path);
     }
-    let oracle_contents =
-        fs::read_to_string(oracle_path.clone()).expect("Something went wrong reading the JSON storage slots oracle file.");
-    let output_contents =
-        fs::read_to_string(output_path.clone()).expect("Something went wrong reading the JSON storage slots output file.");
+    let oracle_contents = fs::read_to_string(oracle_path.clone())
+        .expect("Something went wrong reading the JSON storage slots oracle file.");
+    let output_contents = fs::read_to_string(output_path.clone())
+        .expect("Something went wrong reading the JSON storage slots output file.");
     if oracle_contents != output_contents {
-        bail!("Mismatched storage slots JSON output.\nOracle path: {}\nOutput path: {}\n{}",
+        bail!(
+            "Mismatched storage slots JSON output.\nOracle path: {}\nOutput path: {}\n{}",
             oracle_path,
             output_path,
             prettydiff::diff_lines(&oracle_contents, &output_contents)

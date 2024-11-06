@@ -9,8 +9,9 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     ir_generation::storage::get_storage_key_string,
-    language::parsed::StorageDeclaration, ty::*,
+    language::parsed::StorageDeclaration,
     transform::{self},
+    ty::*,
     type_system::*,
     Namespace,
 };

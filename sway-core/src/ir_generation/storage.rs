@@ -23,7 +23,11 @@ enum InByte8Padding {
 /// Hands out storage keys using storage field names or an existing key.
 /// Basically returns sha256((0u8, "storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>"))
 /// or key if defined.
-pub(super) fn get_storage_key(storage_field_names: Vec<String>, key: Option<U256>, experimental: ExperimentalFeatures) -> Bytes32 {
+pub(super) fn get_storage_key(
+    storage_field_names: Vec<String>,
+    key: Option<U256>,
+    experimental: ExperimentalFeatures,
+) -> Bytes32 {
     match key {
         Some(key) => key.to_be_bytes().into(),
         None => hash_storage_key_string(get_storage_key_string(&storage_field_names), experimental),
@@ -79,7 +83,10 @@ pub(super) fn get_storage_field_id(
     hash_storage_key_string(data, experimental)
 }
 
-fn hash_storage_key_string(storage_key_string: String, experimental: ExperimentalFeatures) -> Bytes32 {
+fn hash_storage_key_string(
+    storage_key_string: String,
+    experimental: ExperimentalFeatures,
+) -> Bytes32 {
     let mut hasher = Hasher::default();
     // Certain storage types, like, e.g., `StorageMap` allow
     // storage slots of their contained elements to be defined
