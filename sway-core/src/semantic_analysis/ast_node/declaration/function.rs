@@ -85,7 +85,6 @@ impl ty::TyFunctionDecl {
         let mut return_type = fn_decl.return_type.clone();
 
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
@@ -146,9 +145,7 @@ impl ty::TyFunctionDecl {
                         EnforceTypeArguments::Yes,
                         None,
                     )
-                    .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                    .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
                 let (visibility, is_contract_call) = if is_method {
                     if is_in_impl_self {
@@ -329,7 +326,7 @@ impl TypeCheckFinalization for ty::TyFunctionDecl {
 fn test_function_selector_behavior() {
     use crate::language::Visibility;
     use crate::Engines;
-    use sway_types::{integer_bits::IntegerBits, Ident, Span};
+    use sway_types::{Ident, Span};
 
     let engines = Engines::default();
     let handler = Handler::default();
@@ -373,11 +370,7 @@ fn test_function_selector_behavior() {
                 mutability_span: Span::dummy(),
                 type_argument: engines
                     .te()
-                    .insert(
-                        &engines,
-                        TypeInfo::StringArray(Length::new(5, Span::dummy())),
-                        None,
-                    )
+                    .insert_string_array_without_annotations(&engines, 5)
                     .into(),
             },
             ty::TyFunctionParameter {
@@ -386,16 +379,10 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: engines.te().insert(
-                        &engines,
-                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                        None,
-                    ),
-                    initial_type_id: engines.te().insert(
-                        &engines,
-                        TypeInfo::StringArray(Length::new(5, Span::dummy())),
-                        None,
-                    ),
+                    type_id: engines.te().id_of_u32(),
+                    initial_type_id: engines
+                        .te()
+                        .insert_string_array_without_annotations(&engines, 5),
                     span: Span::dummy(),
                     call_path_tree: None,
                 },
