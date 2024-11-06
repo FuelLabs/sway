@@ -958,7 +958,7 @@ fn ok_bytes_bigger_than_3064() {
     // We allocate 1024 bytes initially, this is throw away because 
     // it is not big enough for the buffer.
     // Then we used to double the buffer to 2048.
-    // Then we started writing an `u64` with the length of the buffer.
+    // Then we write an `u64` with the length of the buffer.
     // Then we write the buffer itself.
     // (1024 + 2048) - 8 = 3064
     // Thus, we need a buffer with 3065 bytes to write into the red zone
