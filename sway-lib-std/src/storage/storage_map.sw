@@ -19,6 +19,7 @@ use ::storage::storage_key::*;
 /// The domain prefix for the [StorageMap] is 1u8.
 ///
 /// For detailed elaboration see: https://github.com/FuelLabs/sway/issues/6317
+#[cfg(experimental_storage_domains = true)]
 const STORAGE_MAP_DOMAIN: u8 = 1;
 
 /// Errors pertaining to the `StorageMap` struct.
@@ -66,7 +67,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((STORAGE_MAP_DOMAIN, key, self.field_id()));
+        let key = self.get_slot_key(key);
         write::<V>(key, 0, value);
     }
 
@@ -100,7 +101,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((STORAGE_MAP_DOMAIN, key, self.field_id()));
+        let key = self.get_slot_key(key);
         StorageKey::<V>::new(key, 0, key)
     }
 
@@ -139,7 +140,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((STORAGE_MAP_DOMAIN, key, self.field_id()));
+        let key = self.get_slot_key(key);
         clear::<V>(key, 0)
     }
 
@@ -190,7 +191,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((STORAGE_MAP_DOMAIN, key, self.field_id()));
+        let key = self.get_slot_key(key);
 
         let val = read::<V>(key, 0);
 
@@ -203,5 +204,15 @@ where
                 Result::Ok(value)
             }
         }
+    }
+
+    #[cfg(experimental_storage_domains = false)]
+    fn get_slot_key(self, key: K) -> b256 {
+        sha256((key, self.field_id()))
+    }
+
+    #[cfg(experimental_storage_domains = true)]
+    fn get_slot_key(self, key: K) -> b256 {
+        sha256((STORAGE_MAP_DOMAIN, key, self.field_id()))
     }
 }
