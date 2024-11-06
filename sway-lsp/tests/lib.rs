@@ -5,18 +5,18 @@ pub mod integration;
 use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use rayon::prelude::*;
-use std::{fs, panic, path::PathBuf, process::Command, sync::Mutex};
+use std::{
+    fs, panic,
+    path::PathBuf,
+    process::{Command, Stdio},
+    sync::Mutex,
+};
 use sway_lsp::{
     config::LspClient,
     handlers::{notification, request},
     server_state::ServerState,
 };
-use sway_lsp_test_utils::{
-    assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, random_delay,
-    runnables_test_dir, self_impl_reassignment_dir, setup_panic_hook, sway_workspace_dir,
-    test_fixtures_dir,
-};
+use sway_lsp_test_utils::*;
 use tower_lsp::LspService;
 
 /// Holds the information needed to check the response of a goto definition request.
@@ -2161,35 +2161,75 @@ async fn garbage_collection_runner(path: PathBuf) {
     shutdown_and_exit(&mut service).await;
 }
 
+/// Contains representable individual projects suitable for GC tests,
+/// as well as projects in which GC was failing, and that are not
+/// included in [garbage_collection_all_language_tests].
 #[test]
-fn garbage_collection_storage() {
-    let p = sway_workspace_dir()
-        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
-        .join("src/main.sw");
-    run_async!({
-        garbage_collection_runner(p).await;
-    });
+fn garbage_collection_tests() -> Result<(), String> {
+    let mut tests = vec![
+        // TODO: Enable this test once https://github.com/FuelLabs/sway/issues/6687 is fixed.
+        // (
+        //     "option_eq".into(),
+        //     sway_workspace_dir()
+        //         .join(e2e_stdlib_dir())
+        //         .join("option_eq")
+        //         .join("src/main.sw"),
+        // ),
+        (
+            "arrays".into(),
+            sway_workspace_dir()
+                .join("examples/arrays")
+                .join("src/main.sw"),
+        ),
+        (
+            "minimal_script".into(),
+            sway_workspace_dir()
+                .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
+                .join("src/main.sw"),
+        ),
+        (
+            "paths".into(),
+            test_fixtures_dir().join("tokens/paths/src/main.sw"),
+        ),
+        (
+            "storage_contract".into(),
+            sway_workspace_dir()
+                .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+                .join("src/main.sw"),
+        ),
+    ];
+
+    tests.sort();
+
+    run_garbage_collection_tests(&tests, None)
 }
 
 #[test]
-fn garbage_collection_paths() {
-    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
-    run_async!({
-        garbage_collection_runner(p).await;
-    });
+fn garbage_collection_all_language_tests() -> Result<(), String> {
+    run_garbage_collection_tests_from_projects_dir(e2e_language_dir())
 }
 
 #[test]
-fn garbage_collection_minimal_script() {
-    let p = sway_workspace_dir()
-        .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
-        .join("src/main.sw");
-    run_async!({
-        garbage_collection_runner(p).await;
-    });
+#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
+fn garbage_collection_all_should_pass_tests() -> Result<(), String> {
+    run_garbage_collection_tests_from_projects_dir(e2e_should_pass_dir())
 }
 
-/// Tests garbage collection across all language test examples in parallel.
+#[test]
+#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
+fn garbage_collection_all_should_fail_tests() -> Result<(), String> {
+    run_garbage_collection_tests_from_projects_dir(e2e_should_fail_dir())
+}
+
+#[test]
+#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
+fn garbage_collection_all_stdlib_tests() -> Result<(), String> {
+    run_garbage_collection_tests_from_projects_dir(e2e_stdlib_dir())
+}
+
+/// Parallel test runner for garbage collection tests across Sway projects defined by `tests`.
+/// Each test in `tests` consists of a project name and the path to the file that will
+/// be changed during the test (keystroke simulation will be in that file).
 ///
 /// # Overview
 /// This test suite takes a unique approach to handling test isolation and error reporting:
@@ -2206,74 +2246,128 @@ fn garbage_collection_minimal_script() {
 ///    examples need garbage collection fixes.
 ///
 /// # Implementation Details
-/// - Uses std::process::Command to spawn each test in isolation
-/// - Collects results through a thread-safe Mutex
+/// - Uses [std::process::Command] to spawn each test in isolation
+/// - Collects results through a thread-safe [Mutex]
 /// - Provides detailed error reporting for failed tests
 /// - Categorizes different types of failures (exit codes vs signals)
-// #[test]
-#[allow(dead_code)]
-fn run_all_garbage_collection_tests() {
-    let base_dir = sway_workspace_dir().join(e2e_language_dir());
-    let entries: Vec<_> = std::fs::read_dir(base_dir)
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
-        .collect();
+fn run_garbage_collection_tests(
+    tests: &[(String, PathBuf)],
+    base_dir: Option<String>,
+) -> Result<(), String> {
+    println!("\n=== Starting Garbage Collection Tests ===\n");
+
+    match base_dir {
+        Some(base_dir) => {
+            println!("▶ Testing {} project(s) in '{base_dir}'\n", tests.len());
+        }
+        None => {
+            println!("▶ Testing {} project(s):", tests.len());
+            let max_project_name_len = tests
+                .iter()
+                .map(|(project_name, _)| project_name.len())
+                .max()
+                .unwrap_or_default();
+            tests.iter().for_each(|(project_name, test_file)| {
+                println!(
+                    "- {project_name:<max_project_name_len$} {}",
+                    test_file.display()
+                );
+            });
+            println!();
+        }
+    }
 
     let results = Mutex::new(Vec::new());
 
-    println!("\n=== Starting Garbage Collection Tests ===\n");
-
-    entries.par_iter().for_each(|entry| {
-        let project_dir = entry.path();
-        let project_name = project_dir
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-        let main_file = project_dir.join("src/main.sw");
-
-        println!("▶ Testing: {}", project_name);
-        println!("  Path: {}", main_file.display());
-
+    println!("▶ Testing started\n");
+    tests.par_iter().for_each(|(project_name, test_file)| {
+        let test_file = test_file.to_string_lossy().to_string();
         let status = Command::new(std::env::current_exe().unwrap())
-            .args(["--test", "test_single_project", "--exact", "--nocapture"])
-            .env("TEST_FILE", main_file.to_string_lossy().to_string())
+            .args([
+                "--test",
+                "test_single_garbage_collection_project",
+                "--exact",
+                "--nocapture",
+                "--ignored",
+            ])
+            .env("TEST_FILE", test_file.clone())
+            .stdout(Stdio::null())
             .status()
             .unwrap();
 
         let test_result = if status.success() {
-            println!("  ✅ Passed: {}\n", project_name);
-            (project_name, true, None)
+            println!("  ✅ Passed: {}", project_name);
+            (project_name, test_file, true, None)
         } else {
-            println!("  ❌ Failed: {} ({})\n", project_name, status);
-            (project_name, false, Some(format!("Exit code: {}", status)))
+            println!("  ❌ Failed: {} ({})", project_name, status);
+            (
+                project_name,
+                test_file,
+                false,
+                Some(format!("Exit code: {}", status)),
+            )
         };
 
         results.lock().unwrap().push(test_result);
     });
+    println!("\n▶ Testing finished");
 
     let results = results.into_inner().unwrap();
 
-    // Print final results
-    println!("=== Garbage Collection Test Results ===\n");
+    println!("\n=== Garbage Collection Test Results ===\n");
 
     let total = results.len();
-    let passed = results.iter().filter(|r| r.1).count();
+    let passed = results.iter().filter(|r| r.2).count();
     let failed = total - passed;
 
-    println!("Total tests:  {}", total);
-    println!("✅ Passed:    {}", passed);
-    println!("❌ Failed:    {}", failed);
+    println!("Total tests: {}", total);
+    println!("✅ Passed:   {}", passed);
+    println!("❌ Failed:   {}", failed);
+    println!();
 
     if failed > 0 {
-        println!("\nFailed Projects:");
-        for (name, _, error) in results.iter().filter(|r| !r.1) {
-            println!("- {} (Error: {})", name, error.as_ref().unwrap());
+        println!("Failed projects:");
+        for (project_name, test_file, _, error) in results.iter().filter(|r| !r.2) {
+            println!("- Project: {project_name}");
+            println!("  Path:    {test_file}");
+            println!("  Error:   {}", error.as_ref().unwrap());
         }
 
-        panic!("{} projects failed garbage collection testing", failed);
+        println!();
+
+        Err(format!(
+            "{} project(s) failed garbage collection testing",
+            failed
+        ))
+    } else {
+        Ok(())
     }
+}
+
+/// Test runner for garbage collection tests across all Sway projects found in the `projects_dir`.
+/// Tests run in parallel and include only the projects that have `src/main.sw` file.
+fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Result<(), String> {
+    let base_dir = sway_workspace_dir().join(projects_dir);
+    let mut tests: Vec<_> = std::fs::read_dir(base_dir.clone())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .map(|dir_entry| {
+            let project_dir = dir_entry.path();
+            let project_name = project_dir
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            let main_file = project_dir.join("src/main.sw");
+            (project_name, main_file)
+        })
+        .filter(|(_, main_file)| main_file.exists())
+        .collect();
+
+    tests.sort();
+
+    run_garbage_collection_tests(&tests, Some(base_dir.to_string_lossy().to_string()))
 }
 
 /// Individual test runner executed in a separate process for each test.
@@ -2287,12 +2381,11 @@ fn run_all_garbage_collection_tests() {
 /// 1. Tests are completely isolated from each other
 /// 2. Panics in one test don't affect others
 /// 3. Resource cleanup happens automatically on process exit
-// #[tokio::test]
-#[allow(dead_code)]
-async fn test_single_project() {
-    if let Ok(file) = std::env::var("TEST_FILE") {
-        println!("Running single test for file: {}", file);
-        let path = PathBuf::from(file);
+#[tokio::test]
+#[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
+async fn test_single_garbage_collection_project() {
+    if let Ok(test_file) = std::env::var("TEST_FILE") {
+        let path = PathBuf::from(test_file);
         garbage_collection_runner(path).await;
     } else {
         panic!("TEST_FILE environment variable not set");

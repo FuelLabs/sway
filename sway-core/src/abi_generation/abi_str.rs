@@ -179,7 +179,6 @@ impl TypeInfo {
                     length.val()
                 )
             }
-            Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
             Ptr(ty) => {

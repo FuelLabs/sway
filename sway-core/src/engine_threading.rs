@@ -7,6 +7,7 @@ use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
+    sync::Arc,
 };
 use sway_types::{SourceEngine, Span};
 
@@ -40,7 +41,7 @@ impl Engines {
         &self.source_engine
     }
 
-    /// Removes all data associated with `program_id` from the declaration and type engines.
+    /// Removes all data associated with `program_id` from the engines.
     /// It is intended to be used during garbage collection to remove any data that is no longer needed.
     pub fn clear_program(&mut self, program_id: &sway_types::ProgramId) {
         self.type_engine.clear_program(program_id);
@@ -49,7 +50,7 @@ impl Engines {
         self.query_engine.clear_program(program_id);
     }
 
-    /// Removes all data associated with `source_id` from the declaration and type engines.
+    /// Removes all data associated with `source_id` from the engines.
     /// It is intended to be used during garbage collection to remove any data that is no longer needed.
     pub fn clear_module(&mut self, source_id: &sway_types::SourceId) {
         self.type_engine.clear_module(source_id);
@@ -253,6 +254,12 @@ impl<T: HashWithEngines> HashWithEngines for [T] {
 }
 
 impl<T: HashWithEngines> HashWithEngines for Box<T> {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        (**self).hash(state, engines)
+    }
+}
+
+impl<T: HashWithEngines> HashWithEngines for Arc<T> {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         (**self).hash(state, engines)
     }

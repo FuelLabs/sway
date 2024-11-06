@@ -115,7 +115,6 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         Array(elem_ty, length) => {
             format!("{}[{}]", abi_str_type_arg(elem_ty, engines), length.val())
         }
-        Storage { .. } => "contract storage".into(),
         RawUntypedPtr => "raw untyped ptr".into(),
         RawUntypedSlice => "raw untyped slice".into(),
         Ptr(ty) => {
