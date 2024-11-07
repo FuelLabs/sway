@@ -2223,10 +2223,15 @@ impl<'eng> FnCompiler<'eng> {
             ));
         }
 
+        let u64 = Type::get_uint64(context);
         let first_argument_ptr = self
             .current_block
             .append(context)
-            .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
+            .ptr_to_int(first_argument_ptr, u64);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .int_to_ptr(first_argument_ptr, return_type_ir_type_ptr);
 
         let final_value = self.current_block.append(context).load(first_argument_ptr);
         Ok(TerminatorValue::new(final_value, context))
