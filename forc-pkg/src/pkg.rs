@@ -1915,7 +1915,13 @@ pub fn compile(
         pkg.name,
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(&handler, &mut asm, source_map, engines.se(), &sway_build_config),
+        sway_core::asm_to_bytecode(
+            &handler,
+            &mut asm,
+            source_map,
+            engines.se(),
+            &sway_build_config
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
@@ -1981,7 +1987,16 @@ fn report_assembly_information(
     let mut bytes = compiled_package.bytecode.bytes.clone();
 
     // Attempt to get the data section offset out of the compiled package bytes.
-    let data_offset = u64::from_be_bytes(bytes.iter().skip(8).take(8).cloned().collect::<Vec<_>>().try_into().unwrap());
+    let data_offset = u64::from_be_bytes(
+        bytes
+            .iter()
+            .skip(8)
+            .take(8)
+            .cloned()
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+    );
     let data_section_size = bytes.len() as u64 - data_offset;
 
     // Remove the data section from the compiled package bytes.
@@ -1995,7 +2010,7 @@ fn report_assembly_information(
             sway_core::asm_generation::Datum::Byte(value) => std::mem::size_of_val(value) as u64,
 
             sway_core::asm_generation::Datum::Word(value) => std::mem::size_of_val(value) as u64,
-            
+
             sway_core::asm_generation::Datum::ByteArray(bytes)
             | sway_core::asm_generation::Datum::Slice(bytes) => {
                 if bytes.len() % 8 == 0 {
@@ -2004,8 +2019,10 @@ fn report_assembly_information(
                     ((bytes.len() + 7) & 0xfffffff8_usize) as u64
                 }
             }
-            
-            sway_core::asm_generation::Datum::Collection(items) => items.iter().map(calculate_entry_size).sum(),
+
+            sway_core::asm_generation::Datum::Collection(items) => {
+                items.iter().map(calculate_entry_size).sum()
+            }
         }
     }
 
@@ -2020,7 +2037,10 @@ fn report_assembly_information(
     };
 
     // Report the assembly information to the `dyno` process through `stdout`.
-    println!("/dyno info {}", serde_json::to_string(&asm_information).unwrap());
+    println!(
+        "/dyno info {}",
+        serde_json::to_string(&asm_information).unwrap()
+    );
 }
 
 impl PkgEntry {

@@ -283,10 +283,7 @@ impl BuildConfig {
     }
 
     pub fn with_profile(self, a: bool) -> Self {
-        Self {
-            profile: a,
-            ..self
-        }
+        Self { profile: a, ..self }
     }
 
     pub fn with_metrics(self, a: Option<String>) -> Self {

@@ -991,7 +991,13 @@ pub fn compile_to_bytecode(
         package_name,
         experimental,
     )?;
-    asm_to_bytecode(handler, &mut asm_res, source_map, engines.se(), build_config)
+    asm_to_bytecode(
+        handler,
+        &mut asm_res,
+        source_map,
+        engines.se(),
+        build_config,
+    )
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
