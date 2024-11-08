@@ -14,62 +14,35 @@ pub struct PerformanceData {
     pub reused_programs: u64,
 }
 
-#[derive(serde::Serialize, Clone)]
-pub struct FunctionEntryPoint {
-    /// The original entry point function name.
-    pub fn_name: String,
-    /// The immediate instruction offset at which the entry function begins.
-    pub imm: u64,
-    /// The function selector (only `Some` for contract ABI methods).
-    pub selector: Option<[u8; 4]>,
-}
-
 #[macro_export]
 // Time the given expression and print/save the result.
 macro_rules! time_expr {
-    ($pkg_name:expr, $description:expr, $key:expr, $expression:expr, $build_config:expr, $data:expr) => {{
-        use std::io::{BufRead, Read, Write};
-        #[cfg(feature = "profile")]
-        if let Some(cfg) = $build_config {
-            println!("/forc-perf start {} {}", $pkg_name, $description);
-            let output = { $expression };
-            println!("/forc-perf stop {} {}", $pkg_name, $description);
-            output
-        } else {
-            $expression
-        }
-
-        #[cfg(not(feature = "profile"))]
+    ($description:expr, $key:expr, $expression:expr, $build_config:expr, $data:expr) => {{
         if let Some(cfg) = $build_config {
             if cfg.time_phases || cfg.metrics_outfile.is_some() {
                 let expr_start = std::time::Instant::now();
-
                 let output = { $expression };
-
                 let elapsed = expr_start.elapsed();
-
                 if cfg.time_phases {
-                    println!("  Time elapsed for {}: {:?}", $description, elapsed);
+                    println!("  Time elapsed to {}: {:?}", $description, elapsed);
                 }
-
                 if cfg.metrics_outfile.is_some() {
+                    #[cfg(not(target_os = "macos"))]
                     let memory_usage = {
-                        let mut sys = sysinfo::System::new_with_specifics(
-                            sysinfo::RefreshKind::new()
-                                .with_memory(sysinfo::MemoryRefreshKind::everything()),
-                        );
-                        sys.refresh_memory();
-
+                        use sysinfo::{System, SystemExt};
+                        let mut sys = System::new();
+                        sys.refresh_system();
                         Some(sys.used_memory())
                     };
-                    
+                    #[cfg(target_os = "macos")]
+                    let memory_usage = None;
+
                     $data.metrics.push(PerformanceMetric {
                         phase: $key.to_string(),
                         elapsed: elapsed.as_secs_f64(),
-                        memory_usage: None,
+                        memory_usage,
                     });
                 }
-
                 output
             } else {
                 $expression

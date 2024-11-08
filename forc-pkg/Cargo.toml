@@ -43,6 +43,5 @@ walkdir.workspace = true
 [dev-dependencies]
 regex = "^1.10.2"
 
-[features]
-default = ["dep:sysinfo"]
-profile = []
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo = "0.29"

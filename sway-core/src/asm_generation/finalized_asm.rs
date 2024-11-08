@@ -21,24 +21,6 @@ use std::{collections::BTreeMap, fmt};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
-#[derive(Clone, serde::Serialize)]
-pub struct AsmInformation {
-    pub bytecode_size: u64,
-    pub data_section: DataSectionInformation,
-}
-
-#[derive(Default, Clone, Debug, serde::Serialize)]
-pub struct DataSectionInformation {
-    /// The total size of the data section in bytes
-    pub size : u64,
-    /// The used size of the data section in bytes
-    pub used: u64,
-    /// The data to be put in the data section of the asm
-    pub value_pairs: Vec<Entry>,
-}
-
-/// Represents an ASM set which has had register allocation, jump elimination, and optimization
-/// applied to it
 #[derive(Clone)]
 pub struct FinalizedAsm {
     pub data_section: DataSection,

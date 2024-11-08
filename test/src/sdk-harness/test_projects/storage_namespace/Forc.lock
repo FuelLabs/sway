@@ -1,13 +1,13 @@
 [[package]]
-name = "core"
-source = "path+from-root-7819628DC0499FA1"
+name = 'core'
+source = 'path+from-root-37E4B1588712FA61'
 
 [[package]]
-name = "std"
-source = "path+from-root-7819628DC0499FA1"
-dependencies = ["core"]
+name = 'std'
+source = 'path+from-root-37E4B1588712FA61'
+dependencies = ['core']
 
 [[package]]
-name = "storage_namespace"
-source = "member"
-dependencies = ["std"]
+name = 'storage_namespace'
+source = 'member'
+dependencies = ['std']
