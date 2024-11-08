@@ -177,7 +177,6 @@ enum TypeRootFilter {
     Struct(ParsedDeclId<StructDeclaration>),
     ContractCaller(String),
     Array(usize),
-    Storage,
     RawUntypedPtr,
     RawUntypedSlice,
     Ptr,
@@ -882,7 +881,8 @@ impl TraitMap {
                     },
             } in impls.iter()
             {
-                if !type_info.can_change(engines) && *type_id == *map_type_id {
+                if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
+                {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
@@ -1397,17 +1397,14 @@ impl TraitMap {
                 let key = &e.key;
                 let suffix = &key.name.suffix;
                 if unify_check.check(type_id, key.type_id) {
-                    let map_trait_type_id = type_engine.insert(
+                    let map_trait_type_id = type_engine.new_custom(
                         engines,
-                        TypeInfo::Custom {
-                            qualified_call_path: suffix.name.clone().into(),
-                            type_arguments: if suffix.args.is_empty() {
-                                None
-                            } else {
-                                Some(suffix.args.to_vec())
-                            },
+                        suffix.name.clone().into(),
+                        if suffix.args.is_empty() {
+                            None
+                        } else {
+                            Some(suffix.args.to_vec())
                         },
-                        suffix.name.span().source_id(),
                     );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
@@ -1423,17 +1420,14 @@ impl TraitMap {
                     trait_name: constraint_trait_name,
                     type_arguments: constraint_type_arguments,
                 } = c;
-                let constraint_type_id = type_engine.insert(
+                let constraint_type_id = type_engine.new_custom(
                     engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: constraint_trait_name.suffix.clone().into(),
-                        type_arguments: if constraint_type_arguments.is_empty() {
-                            None
-                        } else {
-                            Some(constraint_type_arguments.clone())
-                        },
+                    constraint_trait_name.suffix.clone().into(),
+                    if constraint_type_arguments.is_empty() {
+                        None
+                    } else {
+                        Some(constraint_type_arguments.clone())
                     },
-                    constraint_trait_name.span().source_id(),
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })
@@ -1604,7 +1598,6 @@ impl TraitMap {
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
             Array(_, length) => TypeRootFilter::Array(length.val()),
-            Storage { .. } => TypeRootFilter::Storage,
             RawUntypedPtr => TypeRootFilter::RawUntypedPtr,
             RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
             Ptr(_) => TypeRootFilter::Ptr,

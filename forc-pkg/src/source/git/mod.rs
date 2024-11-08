@@ -206,11 +206,7 @@ impl source::Fetch for Pinned {
             if !repo_path.exists() {
                 println_action_green(
                     "Fetching",
-                    &format!(
-                        "{} {}",
-                        ansi_term::Style::new().bold().paint(ctx.name),
-                        self
-                    ),
+                    &format!("{} {}", ansiterm::Style::new().bold().paint(ctx.name), self),
                 );
                 fetch(ctx.fetch_id(), ctx.name(), self)?;
             }

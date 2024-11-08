@@ -18,7 +18,7 @@ path = "src/main.rs"
 
 [dependencies]
 annotate-snippets.workspace = true
-ansi_term.workspace = true
+ansiterm.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["cargo", "derive", "env"] }
 clap_complete.workspace = true
@@ -44,7 +44,6 @@ toml = { workspace = true, features = ["parse"] }
 toml_edit.workspace = true
 tracing.workspace = true
 url.workspace = true
-uwuify = { workspace = true, optional = true }
 walkdir.workspace = true
 whoami.workspace = true
 
@@ -52,7 +51,6 @@ whoami.workspace = true
 default = []
 test = []
 util = []
-uwu = ["uwuify"]
 
 [dev-dependencies]
 completest-pty = "0.5.0"

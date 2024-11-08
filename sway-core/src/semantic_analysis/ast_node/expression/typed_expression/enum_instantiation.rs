@@ -56,11 +56,7 @@ pub(crate) fn instantiate_enum(
 
     match (&args, &*type_engine.get(enum_variant.type_argument.type_id)) {
         ([], ty) if ty.is_unit() => Ok(ty::TyExpression {
-            return_type: type_engine.insert(
-                engines,
-                TypeInfo::Enum(*enum_ref.id()),
-                enum_ref.span().source_id(),
-            ),
+            return_type: type_engine.insert_enum(engines, *enum_ref.id()),
             expression: ty::TyExpressionVariant::EnumInstantiation {
                 tag: enum_variant.tag,
                 contents: None,
@@ -149,11 +145,7 @@ pub(crate) fn instantiate_enum(
             // Create the resulting enum type based on the enum we have instantiated.
             // Note that we clone the `enum_ref` but the unification we do below will
             // affect the types behind that new enum decl reference.
-            let type_id = type_engine.insert(
-                engines,
-                TypeInfo::Enum(*enum_ref.id()),
-                enum_ref.span().source_id(),
-            );
+            let type_id = type_engine.insert_enum(engines, *enum_ref.id());
 
             // The above type check will unify the type behind the `enum_variant_type_id`
             // and the resulting expression type.

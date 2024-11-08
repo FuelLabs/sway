@@ -124,8 +124,8 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             engines,
             collection_ctx,
-            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
-            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            type_annotation: engines.te().new_unknown(),
+            function_type_annotation: engines.te().new_unknown(),
             unify_generic: false,
             self_type: None,
             type_subst: TypeSubstMap::new(),
@@ -168,8 +168,8 @@ impl<'a> TypeCheckContext<'a> {
             collection_ctx,
             namespace,
             engines,
-            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
-            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            type_annotation: engines.te().new_unknown(),
+            function_type_annotation: engines.te().new_unknown(),
             unify_generic: false,
             self_type: None,
             type_subst: TypeSubstMap::new(),
@@ -750,7 +750,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
         )
-        .unwrap_or_else(|err| type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None));
+        .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // grab the module where the type itself is declared
         let type_module = self.namespace().lookup_submodule_from_absolute_path(

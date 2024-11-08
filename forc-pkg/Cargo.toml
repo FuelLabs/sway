@@ -9,7 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ansi_term.workspace = true
+ansiterm.workspace = true
 anyhow.workspace = true
 byte-unit.workspace = true
 cid.workspace = true
