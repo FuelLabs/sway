@@ -53,7 +53,7 @@ vec1.workspace = true
 sysinfo = "0.29.0"
 
 [features]
-profile = []
+profiler = []
 
 [lints.clippy]
 iter_over_hash_type = "deny"

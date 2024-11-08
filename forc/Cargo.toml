@@ -49,7 +49,7 @@ whoami.workspace = true
 
 [features]
 default = []
-profile = []
+profiler = []
 test = []
 util = []
 profile = []
