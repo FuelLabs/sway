@@ -2031,9 +2031,15 @@ fn report_assembly_information(
         bytecode_size: bytes.len() as _,
         data_section: sway_core::asm_generation::DataSectionInformation {
             size: data_section_size,
-            used: compiled_asm.0.data_section.value_pairs.iter().map(calculate_entry_size).sum(),
+            used: compiled_asm
+                .0
+                .data_section
+                .value_pairs
+                .iter()
+                .map(calculate_entry_size)
+                .sum(),
             value_pairs: compiled_asm.0.data_section.value_pairs.clone(),
-        }
+        },
     };
 
     // Report the assembly information to the `dyno` process through `stdout`.
