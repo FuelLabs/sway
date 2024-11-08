@@ -54,3 +54,7 @@ sysinfo = "0.29.0"
 
 [lints.clippy]
 iter_over_hash_type = "deny"
+
+[features]
+default = ["dep:sysinfo"]
+profile = []

@@ -4,7 +4,7 @@ use std::{fmt, iter::repeat};
 
 // An entry in the data section.  It's important for the size to be correct, especially for unions
 // where the size could be larger than the represented value.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct Entry {
     pub value: Datum,
     pub padding: Padding,
@@ -13,7 +13,7 @@ pub struct Entry {
     pub name: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub enum Datum {
     Byte(u8),
     Word(u64),
@@ -208,7 +208,7 @@ impl fmt::Display for DataId {
     }
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, serde::Serialize)]
 pub struct DataSection {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Entry>,
