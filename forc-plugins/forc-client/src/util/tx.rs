@@ -170,9 +170,6 @@ pub(crate) async fn select_account(
     match wallet_mode {
         SignerSelectionMode::ForcWallet(password) => {
             let wallet_path = default_wallet_path();
-            check_and_create_wallet_at_default_path(&wallet_path)?;
-            // TODO: This is a very simple TUI, we should consider adding a nice TUI
-            // capabilities for selections and answer collection.
             let accounts = collect_user_accounts(&wallet_path, password)?;
             let account_balances = collect_account_balances(&accounts, provider).await?;
             let base_asset_id = provider.base_asset_id();
