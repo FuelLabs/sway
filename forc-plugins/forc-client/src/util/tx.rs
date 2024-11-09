@@ -10,6 +10,7 @@ use forc_wallet::{
     balance::{
         collect_accounts_with_verification, AccountBalances, AccountVerification, AccountsMap,
     },
+    import::{import_wallet_cli, Import},
     new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
@@ -45,6 +46,15 @@ fn ask_user_yes_no_question(question: &str) -> Result<bool> {
     Ok(answer)
 }
 
+fn ask_user_with_options(question: &str, options: &[&str], default: usize) -> Result<usize> {
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt(question)
+        .items(options)
+        .default(default)
+        .interact()?;
+    Ok(selection)
+}
+
 fn collect_user_accounts(
     wallet_path: &Path,
     password: &str,
@@ -71,21 +81,27 @@ pub(crate) fn prompt_forc_wallet_password() -> Result<String> {
 
 pub(crate) fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Result<()> {
     if !wallet_path.exists() {
-        let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
-        let accepted = ask_user_yes_no_question(&question)?;
-        let new_options = New {
-            force: false,
-            cache_accounts: None,
-        };
-        if accepted {
-            new_wallet_cli(wallet_path, new_options)?;
-            println!("Wallet created successfully.");
-            // Derive first account for the fresh wallet we created.
-            new_at_index_cli(wallet_path, 0)?;
-            println!("Account derived successfully.");
-        } else {
-            anyhow::bail!("Refused to create a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag.")
+        let question =
+            format!("Could not find a wallet at {wallet_path:?}, please select an option: ");
+        let wallet_options = ask_user_with_options(
+            &question,
+            &["Create new wallet", "Import existing wallet"],
+            0,
+        )?;
+        match wallet_options {
+            0 => {
+                new_wallet_cli(wallet_path, New { force: false, cache_accounts: None })?;
+                println!("Wallet created successfully.");
+            }
+            1 => {
+                import_wallet_cli(wallet_path, Import { force: false, cache_accounts: None })?;
+                println!("Wallet imported successfully.");
+            },
+            _ => anyhow::bail!("Refused to create or import a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag."),
         }
+        // Derive first account for the fresh wallet we created.
+        new_at_index_cli(wallet_path, 0)?;
+        println!("Account derived successfully.");
     }
     Ok(())
 }
