@@ -197,6 +197,7 @@ enum TypeRootFilter {
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: im::HashSet<u64>,
+    insert_for_type_cache: im::HashSet<TypeId>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -537,6 +538,7 @@ impl TraitMap {
         let trait_map = TraitMap {
             trait_impls,
             satisfied_cache: im::HashSet::default(),
+            insert_for_type_cache: im::HashSet::default(),
         };
 
         self.extend(trait_map, engines);
@@ -634,6 +636,11 @@ impl TraitMap {
         type_id: TypeId,
         code_block_first_pass: CodeBlockFirstPass,
     ) {
+        if self.insert_for_type_cache.contains(&type_id) {
+            return;
+        }
+        self.insert_for_type_cache.insert(type_id);
+
         self.extend(
             self.filter_by_type(type_id, engines, code_block_first_pass),
             engines,

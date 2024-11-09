@@ -813,7 +813,6 @@ impl<'a> TypeCheckContext<'a> {
         annotation_type: TypeId,
         arguments_types: &VecDeque<TypeId>,
         as_trait: Option<TypeId>,
-        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
@@ -834,6 +833,9 @@ impl<'a> TypeCheckContext<'a> {
             }
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
         }
+
+        // Retrieve the implemented traits for the type and insert them in the namespace.
+        self.insert_trait_implementation_for_type(type_id);
 
         let mut matching_item_decl_refs =
             self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
@@ -1119,26 +1121,6 @@ impl<'a> TypeCheckContext<'a> {
         {
             Err(err)
         } else {
-            if matches!(
-                try_inserting_trait_impl_on_failure,
-                TryInsertingTraitImplOnFailure::Yes
-            ) {
-                // Retrieve the implemented traits for the type and insert them in the namespace.
-                // insert_trait_implementation_for_type is done lazily only when required because of a failure.
-                self.insert_trait_implementation_for_type(type_id);
-
-                return self.find_method_for_type(
-                    handler,
-                    type_id,
-                    method_prefix,
-                    method_name,
-                    annotation_type,
-                    arguments_types,
-                    as_trait,
-                    TryInsertingTraitImplOnFailure::No,
-                );
-            }
-
             let type_name = if let Some(call_path) = qualified_call_path {
                 format!(
                     "{} as {}",

@@ -8,7 +8,6 @@ use crate::{
         ty::{self, TyDecl, TyExpression, TyFunctionSig},
         *,
     },
-    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::*,
 };
@@ -831,7 +830,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -868,7 +866,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -892,7 +889,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -917,7 +913,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 Some(*as_trait),
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
