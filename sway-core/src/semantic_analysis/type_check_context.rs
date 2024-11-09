@@ -27,9 +27,10 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_features::ExperimentalFeatures;
-use sway_types::{span::Span, Ident, Spanned};
+use sway_types::{span::Span, Ident, IdentUnique, Spanned};
 
 use super::{
+    namespace::CodeBlockFirstPass,
     namespace::{Items, LexicalScopeId},
     symbol_collection_context::SymbolCollectionContext,
     type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
@@ -804,8 +805,9 @@ impl<'a> TypeCheckContext<'a> {
         arguments_types: &VecDeque<TypeId>,
         as_trait: Option<TypeId>,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
-        let decl_engine = self.engines.de();
-        let type_engine = self.engines.te();
+        let engines = self.engines;
+        let decl_engine = engines.de();
+        let type_engine = engines.te();
 
         let eq_check = UnifyCheck::constraint_subset(self.engines);
         let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
@@ -861,6 +863,22 @@ impl<'a> TypeCheckContext<'a> {
             })
             .collect::<Vec<_>>();
 
+        let type_id_type_parameters = match &*self.engines().te().get(type_id) {
+            TypeInfo::Enum(decl_id) => self
+                .engines()
+                .de()
+                .get_enum(decl_id)
+                .type_parameters
+                .clone(),
+            TypeInfo::Struct(decl_id) => self
+                .engines()
+                .de()
+                .get_struct(decl_id)
+                .type_parameters
+                .clone(),
+            _ => vec![],
+        };
+
         let mut qualified_call_path = None;
         let matching_method_decl_ref = {
             // Case where multiple methods exist with the same name
@@ -886,9 +904,81 @@ impl<'a> TypeCheckContext<'a> {
                             &*type_engine.get(method.return_type.type_id),
                             TypeInfo::Never
                         )
-                        || coercion_check.check(annotation_type, method.return_type.type_id))
+                        || coercion_check
+                            .with_ignore_generic_names(true)
+                            .check(annotation_type, method.return_type.type_id))
                 {
-                    maybe_method_decl_refs.push(decl_ref);
+                    let mut method_type_id_type_parameters = vec![];
+                    if let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) =
+                        method.implementing_type.clone()
+                    {
+                        let trait_decl = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
+                        method_type_id_type_parameters =
+                            match &*self.engines().te().get(trait_decl.implementing_for.type_id) {
+                                TypeInfo::Enum(decl_id) => self
+                                    .engines()
+                                    .de()
+                                    .get_enum(decl_id)
+                                    .type_parameters
+                                    .clone(),
+                                TypeInfo::Struct(decl_id) => self
+                                    .engines()
+                                    .de()
+                                    .get_struct(decl_id)
+                                    .type_parameters
+                                    .clone(),
+                                _ => vec![],
+                            };
+
+                        for method_type_id_type_parameter in
+                            method_type_id_type_parameters.iter_mut()
+                        {
+                            for impl_type_parameters in trait_decl.impl_type_parameters.iter() {
+                                if impl_type_parameters
+                                    .type_id
+                                    .eq(&method_type_id_type_parameter.type_id)
+                                {
+                                    for impl_trait_constraint in
+                                        impl_type_parameters.trait_constraints.iter()
+                                    {
+                                        method_type_id_type_parameter
+                                            .trait_constraints
+                                            .push(impl_trait_constraint.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let mut trait_constraints_satisfied = true;
+                    for (type_id_type_parameter, method_type_id_type_parameter) in
+                        type_id_type_parameters
+                            .iter()
+                            .zip(method_type_id_type_parameters.iter())
+                    {
+                        if !self
+                            .namespace_mut()
+                            .module_mut(engines)
+                            .current_items_mut()
+                            .implemented_traits
+                            .check_if_trait_constraints_are_satisfied_for_type(
+                                &Handler::default(),
+                                type_id_type_parameter.type_id,
+                                &method_type_id_type_parameter.trait_constraints,
+                                &method.span(),
+                                engines,
+                                TryInsertingTraitImplOnFailure::Yes,
+                                CodeBlockFirstPass::No,
+                            )
+                            .is_ok()
+                        {
+                            trait_constraints_satisfied = false;
+                        }
+                    }
+
+                    if trait_constraints_satisfied {
+                        maybe_method_decl_refs.push(decl_ref);
+                    }
                 }
             }
 
@@ -898,10 +988,12 @@ impl<'a> TypeCheckContext<'a> {
                         CallPath,
                         Vec<WithEngines<TypeArgument>>,
                         Option<WithEngines<TypeInfo>>,
+                        IdentUnique,
+                        bool, // Is impl self
                     ),
                     DeclRefFunction,
                 >::new();
-                let mut impl_self_method = None;
+                let mut impl_self_methods = vec![];
                 for method_ref in maybe_method_decl_refs.clone() {
                     let method = decl_engine.get_function(&method_ref);
                     if let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) =
@@ -920,6 +1012,8 @@ impl<'a> TypeCheckContext<'a> {
                             method.implementing_for_typeid.map(|t| {
                                 self.engines.help_out((*self.engines.te().get(t)).clone())
                             }),
+                            method.name.clone().into(),
+                            trait_decl.trait_decl_ref.is_none(),
                         );
 
                         let mut skip_insert = false;
@@ -974,6 +1068,22 @@ impl<'a> TypeCheckContext<'a> {
                             }
                         }
 
+                        let trait_methods_key = (
+                            trait_decl.trait_name.clone(),
+                            trait_decl
+                                .trait_type_arguments
+                                .iter()
+                                .cloned()
+                                .map(|a| self.engines.help_out(a))
+                                .collect::<Vec<_>>(),
+                            method.implementing_for_typeid.map(|t| {
+                                self.engines.help_out((*self.engines.te().get(t)).clone())
+                            }),
+                        );
+
+                        // If we have: impl<T> FromBytes for T
+                        // and: impl FromBytes for DataPoint
+                        // We pick the second implementation.
                         if let Some(existing_value) = trait_methods.get(&trait_methods_key) {
                             let existing_method = decl_engine.get_function(existing_value);
                             if existing_method.is_type_check_finalized
@@ -984,10 +1094,12 @@ impl<'a> TypeCheckContext<'a> {
                         }
 
                         if !skip_insert {
-                            trait_methods.insert(trait_methods_key, method_ref.clone());
+                            trait_methods.insert(trait_methods_key.clone(), method_ref.clone());
                         }
-                        if trait_decl.trait_decl_ref.is_none() {
-                            impl_self_method = Some(method_ref);
+                        if trait_decl.trait_decl_ref.is_none()
+                            && !trait_methods.contains_key(&trait_methods_key)
+                        {
+                            impl_self_methods.push(method_ref);
                         }
                     }
                 }
@@ -1014,9 +1126,9 @@ impl<'a> TypeCheckContext<'a> {
                 if trait_methods.len() == 1 {
                     trait_methods.values().next().cloned()
                 } else if trait_methods.len() > 1 {
-                    if impl_self_method.is_some() {
+                    if impl_self_methods.len() == 1 {
                         // In case we have trait methods and a impl self method we use the impl self method.
-                        impl_self_method
+                        impl_self_methods.first().cloned()
                     } else {
                         // Avoids following error when we already know the exact type:
                         // Multiple applicable items in scope.
@@ -1064,18 +1176,36 @@ impl<'a> TypeCheckContext<'a> {
                             }
                             let mut trait_strings = trait_methods
                                 .keys()
-                                .map(|t| {
-                                    (
-                                        to_string(t.0.clone(), t.1.clone()),
-                                        t.2.clone()
-                                            .map(|t| t.to_string())
-                                            .or_else(|| {
-                                                Some(self.engines().help_out(type_id).to_string())
-                                            })
-                                            .unwrap(),
-                                    )
+                                .filter_map(|t| {
+                                    if t.4 {
+                                        // Is impl self
+                                        None
+                                    } else {
+                                        Some((
+                                            to_string(t.0.clone(), t.1.clone()),
+                                            t.2.clone()
+                                                .map(|t| t.to_string())
+                                                .or_else(|| {
+                                                    Some(
+                                                        self.engines()
+                                                            .help_out(type_id)
+                                                            .to_string(),
+                                                    )
+                                                })
+                                                .unwrap(),
+                                        ))
+                                    }
                                 })
                                 .collect::<Vec<(String, String)>>();
+                            let item_paths = trait_methods
+                                .values()
+                                .filter_map(|method_ref| {
+                                    let method = decl_engine.get_function(method_ref);
+                                    method
+                                        .span()
+                                        .to_string_path_with_line_col(self.engines().se())
+                                })
+                                .collect::<Vec<String>>();
                             // Sort so the output of the error is always the same.
                             trait_strings.sort();
                             return Err(handler.emit_err(
@@ -1084,6 +1214,7 @@ impl<'a> TypeCheckContext<'a> {
                                     item_kind: "function".to_string(),
                                     as_traits: trait_strings,
                                     span: method_name.span(),
+                                    item_paths,
                                 },
                             ));
                         }

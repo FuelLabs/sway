@@ -1251,6 +1251,10 @@ impl TraitMap {
                             )
                         })
                         .collect::<Vec<_>>(),
+                    item_paths: candidates
+                        .values()
+                        .filter_map(|i| i.span(engines).to_string_path_with_line_col(engines.se()))
+                        .collect::<Vec<String>>(),
                     span: symbol.span(),
                 },
             )),
