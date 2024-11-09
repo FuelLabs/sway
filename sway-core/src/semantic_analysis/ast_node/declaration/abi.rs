@@ -9,7 +9,7 @@ use crate::{
         DeclId,
     },
     language::ty::{TyAbiDecl, TyFunctionDecl},
-    namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
+    namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
         TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -112,7 +112,6 @@ impl ty::TyAbiDecl {
                             ctx.type_annotation(),
                             &Default::default(),
                             None,
-                            TryInsertingTraitImplOnFailure::No,
                         ) {
                             let superabi_impl_method =
                                 ctx.engines.de().get_function(&superabi_impl_method_ref);
@@ -277,7 +276,6 @@ impl ty::TyAbiDecl {
                                 ctx.type_annotation(),
                                 &Default::default(),
                                 None,
-                                TryInsertingTraitImplOnFailure::No,
                             ) {
                                 let superabi_method =
                                     ctx.engines.de().get_function(&superabi_method_ref);
@@ -352,7 +350,6 @@ impl ty::TyAbiDecl {
                             ctx.type_annotation(),
                             &Default::default(),
                             None,
-                            TryInsertingTraitImplOnFailure::No,
                         ) {
                             let superabi_impl_method =
                                 ctx.engines.de().get_function(&superabi_impl_method_ref);

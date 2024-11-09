@@ -199,6 +199,7 @@ enum TypeRootFilter {
 pub struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: HashSet<u64>,
+    insert_for_type_cache: HashSet<TypeId>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -637,6 +638,11 @@ impl TraitMap {
         type_id: TypeId,
         code_block_first_pass: CodeBlockFirstPass,
     ) {
+        if self.insert_for_type_cache.contains(&type_id) {
+            return;
+        }
+        self.insert_for_type_cache.insert(type_id);
+
         let type_id = engines.te().get_unaliased_type_id(type_id);
 
         let mut base_trait_map = TraitMap::default();
