@@ -824,6 +824,9 @@ impl<'a> TypeCheckContext<'a> {
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
         }
 
+        // Retrieve the implemented traits for the type and insert them in the namespace.
+        self.insert_trait_implementation_for_type(type_id);
+
         let mut matching_item_decl_refs =
             self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
 

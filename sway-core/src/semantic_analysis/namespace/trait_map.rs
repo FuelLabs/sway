@@ -208,6 +208,7 @@ enum TypeRootFilter {
 pub struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: HashSet<u64>,
+    insert_for_type_cache: HashSet<TypeId>,
 }
 
 pub(crate) enum IsImplSelf {
