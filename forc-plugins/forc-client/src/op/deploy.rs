@@ -7,8 +7,8 @@ use crate::{
         pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
         tx::{
-            prompt_forc_wallet_password, select_account, update_proxy_contract_target,
-            SignerSelectionMode,
+            check_and_create_wallet_at_default_path, prompt_forc_wallet_password, select_account,
+            update_proxy_contract_target, SignerSelectionMode,
         },
     },
 };
@@ -1002,6 +1002,11 @@ async fn setup_deployment_account(
     } else if let Some(arn) = &command.aws_kms_signer {
         SignerSelectionMode::AwsSigner(arn.clone())
     } else {
+        // Check if we have a wallet in the default path
+        // If there is one we will ask for the password
+        // If not we will ask the user to either create a new one or import one
+        let wallet_path = default_wallet_path();
+        check_and_create_wallet_at_default_path(&wallet_path)?;
         println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
         let password = prompt_forc_wallet_password()?;
         SignerSelectionMode::ForcWallet(password)

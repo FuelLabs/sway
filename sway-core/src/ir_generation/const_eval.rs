@@ -221,7 +221,7 @@ pub(crate) fn compile_constant_expression_to_constant(
         // definition, rather than the actual call site.
         ty::TyExpressionVariant::FunctionApplication { call_path, .. } => {
             let span = call_path.span();
-            let span = if span == Span::dummy() {
+            let span = if span.is_dummy() {
                 const_expr.span.clone()
             } else {
                 span

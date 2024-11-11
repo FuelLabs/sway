@@ -373,7 +373,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "adcd0480deb735ffd8f5bd0683b66c55465e0841076efca4c28be25c767ede5b",
+            "5a4d19b92e784817f3e4f7d7c9961c5cba3069e53dcee2a93e8cd723e555c5f3",
         )
         .unwrap(),
         proxy: None,
@@ -416,7 +416,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "adcd0480deb735ffd8f5bd0683b66c55465e0841076efca4c28be25c767ede5b",
+            "5a4d19b92e784817f3e4f7d7c9961c5cba3069e53dcee2a93e8cd723e555c5f3",
         )
         .unwrap(),
         proxy: None,
@@ -462,12 +462,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "adcd0480deb735ffd8f5bd0683b66c55465e0841076efca4c28be25c767ede5b",
+            "5a4d19b92e784817f3e4f7d7c9961c5cba3069e53dcee2a93e8cd723e555c5f3",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "5297238a1d867c9d7c8fa83c700e2d0d1c57e1874ec95ff4a67063e222ab1880",
+                "f0641246d72044059de56248becf345bd8553c7892df8c12d7df23f461a7f95b",
             )
             .unwrap(),
         ),
@@ -693,7 +693,7 @@ async fn test_non_owner_fails_to_set_target() {
 // It would also require overriding `default_wallet_path` function for tests, so as not to interfere with the user's wallet.
 
 #[test]
-fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error> {
+fn test_deploy_interactive_missing_wallet() -> Result<(), rexpect::error::Error> {
     let (mut node, port) = run_node();
     let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
 
@@ -711,9 +711,8 @@ fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error>
     process
         .exp_string("\u{1b}[1;32mConfirming\u{1b}[0m transactions [deploy standalone_contract]")?;
     process.exp_string(&format!("Network: {node_url}"))?;
-    process.exp_string("Wallet: ")?;
-    process.exp_string("Wallet password")?;
-    process.send_line("mock_password")?;
+    process.exp_regex("Could not find a wallet at")?;
+    process.send_line("n")?;
 
     process.process.exit()?;
     node.kill().unwrap();
