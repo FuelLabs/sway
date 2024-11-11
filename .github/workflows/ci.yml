@@ -599,7 +599,7 @@ jobs:
           RUST_BACKTRACE: full
         run: cargo test --locked --release -p forc -- --nocapture
   cargo-test-workspace:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
