@@ -1783,7 +1783,7 @@ impl<'eng> FnCompiler<'eng> {
                     );
 
                     // needs realloc block
-                    // new_cap = cap * 2
+                    // new_cap = (cap * 2) + needed_size
                     // aloc new_cap
                     // mcp hp old_ptr len
                     // hp: ptr u8
@@ -1793,11 +1793,15 @@ impl<'eng> FnCompiler<'eng> {
 
                     let two = Constant::new_uint(context, 64, 2);
                     let two = Value::new_constant(context, two);
-                    let new_cap =
+                    let new_cap_part =
                         s.current_block
                             .append(context)
                             .binary_op(BinaryOpKind::Mul, cap, two);
-
+                    let new_cap = s.current_block.append(context).binary_op(
+                        BinaryOpKind::Add,
+                        new_cap_part,
+                        needed_size,
+                    );
                     let new_ptr = s.current_block.append(context).asm_block(
                         vec![
                             AsmArg {

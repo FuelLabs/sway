@@ -24,17 +24,17 @@ forc_util::cli_examples! {
 pub struct HashArgs {
     /// This argument is optional, it can be either:
     ///
-    ///     1. A path to a file. If that is the case, the content of the file is
-    ///        loaded.
+    /// 1. A path to a file. If that is the case, the content of the file is
+    ///    loaded
     ///
-    ///     2. A binary string encoded as a hex string. If that is the case, the
-    ///        hex is decoded and passed as a Vec<u8>
+    /// 2. A binary string encoded as a hex string. If that is the case, the
+    ///    hex is decoded and passed as a Vec<u8>
     ///
-    ///     3. A string. This is the last option, if the string is "-", `stdin`
-    ///        is read instead. Otherwise the raw string is converted to a Vec<u8>
-    ///        and passed
+    /// 3. A string. This is the last option, if the string is "-", "stdin"
+    ///    is read instead. Otherwise the raw string is converted to a Vec<u8>
+    ///    and passed
     ///
-    ///     4. If it nos not provided, `stdin` is read
+    /// 4. If it is not provided, "stdin" is read
     content_or_filepath: Option<String>,
 }
 

@@ -28,6 +28,7 @@ itertools.workspace = true
 lazy_static.workspace = true
 object = { workspace = true, features = ["write"] }
 parking_lot.workspace = true
+paste.workspace = true
 pest.workspace = true
 pest_derive.workspace = true
 petgraph.workspace = true
@@ -38,6 +39,7 @@ sha2.workspace = true
 strum = { workspace = true, features = ["derive"] }
 sway-ast.workspace = true
 sway-error.workspace = true
+sway-features.workspace = true
 sway-ir.workspace = true
 sway-parse.workspace = true
 sway-types.workspace = true

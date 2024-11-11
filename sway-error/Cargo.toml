@@ -16,11 +16,9 @@ smallvec.workspace = true
 strsim.workspace = true
 sway-types.workspace = true
 thiserror.workspace = true
-uwuify = { workspace = true, optional = true }
 
 [features]
 default = []
-uwu = ["uwuify"]
 
 [lints.clippy]
 iter_over_hash_type = "deny"
