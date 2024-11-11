@@ -111,6 +111,7 @@ fn to_bytecode_mut(
             {
                 8
             }
+            AllocatedOpcode::AddrDataId(_, _data_id) => 8,
             AllocatedOpcode::ConfigurablesOffsetPlaceholder => 8,
             AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
             AllocatedOpcode::BLOB(count) => count.value as u64 * 4,
