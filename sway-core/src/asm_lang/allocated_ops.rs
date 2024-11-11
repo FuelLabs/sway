@@ -18,8 +18,8 @@ use crate::{
     fuel_prelude::fuel_asm::{self, op},
 };
 use fuel_vm::fuel_asm::{
-    op::{ADD, ADDI, MOVI},
-    Imm12, Imm18,
+    op::{ADD, MOVI},
+    Imm18,
 };
 use std::fmt::{self, Write};
 use sway_types::span::Span;
