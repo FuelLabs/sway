@@ -139,7 +139,7 @@ fn type_check_transmute(
             span,
         }));
     }
-    
+
     let src_type = ctx
         .resolve_type(
             handler,
@@ -201,7 +201,11 @@ fn type_check_transmute(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(engines.te().insert(engines, (&*arg_type).clone(), type_arguments[0].span.source_id()));
+            .with_type_annotation(engines.te().insert(
+                engines,
+                (*arg_type).clone(),
+                type_arguments[0].span.source_id(),
+            ));
         ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
     };
 
