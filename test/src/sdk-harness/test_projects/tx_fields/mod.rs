@@ -789,20 +789,23 @@ mod tx {
             provider.send_transaction(tx).await.unwrap();
         }
 
-        // Inputs for predicate
-        let predicate_input = predicate
-            .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
-            .await
-            .unwrap();
-
-        // Outputs for predicate
-        let predicate_output =
-            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
-
         let mut builder = UpgradeTransactionBuilder::prepare_state_transition_upgrade(
             root,
             TxPolicies::default(),
         );
+
+        wallet.add_witnesses(&mut builder).unwrap();
+        wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+
+        // Inputs for predicate
+        let predicate_input = predicate
+        .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+        .await
+        .unwrap();
+
+        // Outputs for predicate
+        let predicate_output =
+            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
 
         // Append the predicate to the transaction
         builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -810,8 +813,6 @@ mod tx {
             .outputs
             .push(predicate_output.get(0).unwrap().clone());
 
-        wallet.add_witnesses(&mut builder).unwrap();
-        wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
         let tx = builder.build(provider.clone()).await.unwrap();
 
         provider.send_transaction(tx).await.unwrap();
