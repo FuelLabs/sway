@@ -119,7 +119,7 @@ fn type_check_transmute(
     kind: Intrinsic,
     type_arguments: &[TypeArgument],
     span: Span,
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     if arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
@@ -131,8 +131,6 @@ fn type_check_transmute(
 
     let engines = ctx.engines();
 
-    let mut ctx = ctx;
-
     // Both type arguments needs to be explicitly defined
     if type_arguments.len() != 2 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
@@ -141,9 +139,25 @@ fn type_check_transmute(
             span,
         }));
     }
-
-    let src_type = type_arguments[0].type_id;
-    let return_type = type_arguments[1].type_id;
+    
+    let src_type = ctx
+        .resolve_type(
+            handler,
+            type_arguments[0].type_id,
+            &type_arguments[0].span,
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
+    let return_type = ctx
+        .resolve_type(
+            handler,
+            type_arguments[1].type_id,
+            &type_arguments[1].span,
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
     // Forbid ref and ptr types
     fn forbid_ref_ptr_types(
@@ -182,13 +196,18 @@ fn type_check_transmute(
     forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span)?;
 
     // check first argument
+    let arg_type = engines.te().get(src_type);
     let first_argument_typed_expr = {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(src_type);
-        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+            .with_type_annotation(engines.te().insert(engines, (&*arg_type).clone(), type_arguments[0].span.source_id()));
+        ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
     };
+
+    // if handler.has_errors() {
+    //     panic!("{:?}", handler.clone().consume());
+    // }
 
     Ok((
         TyIntrinsicFunctionKind {

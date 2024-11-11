@@ -7,11 +7,15 @@ fn assert(v: bool) {
 }
 
 enum SomeEnum {
-    A: u64
+    A: u64,
+    B: u64
 }
 
-struct SomeStruct {
-    a: u64
+pub struct SomeStruct {
+    #[allow(dead_code)]
+    tag: u64,
+    #[allow(dead_code)]
+    value: u64
 }
 
 fn main() {
@@ -72,7 +76,17 @@ fn main() {
     assert(tuple_u8_u6_u8.1 == 2);
     assert(tuple_u8_u6_u8.2 == 3);
 
-    // Check zero sized types
-    let s = SomeStruct {a: 1};
-    let zse = __transmute::<SomeStruct, SomeEnum>(s);
+    // Check struct to enum
+    let some_struct: SomeStruct = SomeStruct { tag: 0, value: 1 };
+    let some_enum = __transmute::<SomeStruct, SomeEnum>(some_struct);
+    match some_enum {
+        SomeEnum::A(v) => assert(v == 1),
+        _ => {}
+    };
+
+    // check enum to struct
+    let some_enum = SomeEnum::B(1);
+    let some_struct = __transmute::<SomeEnum, SomeStruct>(some_enum);
+    assert(some_struct.tag == 1);
+    assert(some_struct.value == 1);
 }
