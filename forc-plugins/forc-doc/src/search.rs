@@ -1,7 +1,7 @@
 use crate::doc::{module::ModuleInfo, Document, Documentation};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::{BTreeMap, HashMap}, fs, path::Path};
 
 const JS_SEARCH_FILE_NAME: &str = "search.js";
 
@@ -19,7 +19,7 @@ impl Documentation {
     /// and returns the map as a `serde_json::Value`.
     fn to_search_index_json_value(&self) -> Result<serde_json::Value, serde_json::Error> {
         let mut map = HashMap::with_capacity(self.len());
-        let mut modules = HashMap::new();
+        let mut modules = BTreeMap::new();
         for doc in self.iter() {
             let project_name = doc.module_info.project_name().to_string();
             map.entry(project_name)
