@@ -1363,7 +1363,100 @@ fn const_eval_intrinsic(
                 }),
             }
         }
-        Intrinsic::Transmute => todo!(),
+        Intrinsic::Transmute => {
+            let src_type = &intrinsic.type_arguments[0];
+            let src_ir_type = convert_resolved_type_id(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                src_type.type_id,
+                &src_type.span,
+            )
+            .unwrap();
+
+            let dst_type = &intrinsic.type_arguments[1];
+            let dst_ir_type = convert_resolved_type_id(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                dst_type.type_id,
+                &dst_type.span,
+            )
+            .unwrap();
+
+            fn bytes_to_uint<'a, const N: usize>(
+                context: &mut Context<'_>,
+                items: impl Iterator<Item = &'a Constant>,
+            ) -> [u8; N]
+            where
+                [u8; N]: TryFrom<Vec<u8>>,
+                <[u8; N] as TryFrom<Vec<u8>>>::Error: std::fmt::Debug,
+            {
+                let mut bytes = Vec::<u8>::with_capacity(N);
+
+                for item in items {
+                    assert!(item.ty.is_uint8(context));
+                    match item.value {
+                        ConstantValue::Uint(v) => {
+                            let v = v.try_into().unwrap();
+                            bytes.push(v);
+                        }
+                        _ => unreachable!(),
+                    };
+                }
+
+                bytes.try_into().unwrap()
+            }
+
+            fn check_is_zero<'a>(items: &mut impl Iterator<Item = &'a Constant>, n: usize) {
+                for item in items.by_ref().take(n) {
+                    if item.as_uint().unwrap() != 0 {
+                        todo!();
+                    }
+                }
+            }
+
+            // TODO check sizes
+            match (
+                src_ir_type.get_content(lookup.context),
+                dst_ir_type.get_content(lookup.context),
+                &args[0].value,
+            ) {
+                (
+                    TypeContent::Array(item_type, 8),
+                    TypeContent::Uint(64),
+                    ConstantValue::Array(items),
+                ) if item_type.is_uint8(lookup.context) => {
+                    assert!(items.len() == 8);
+
+                    let mut items = items.iter();
+                    let value = match &*lookup.engines.te().get(intrinsic.type_arguments[1].type_id)
+                    {
+                        TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                            check_is_zero(&mut items, 6);
+                            let bytes = bytes_to_uint::<2>(lookup.context, items);
+                            ConstantValue::Uint(u16::from_be_bytes(bytes) as u64)
+                        }
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                            check_is_zero(&mut items, 4);
+                            let bytes = bytes_to_uint::<4>(lookup.context, items);
+                            ConstantValue::Uint(u32::from_be_bytes(bytes) as u64)
+                        }
+                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
+                            let bytes = bytes_to_uint::<8>(lookup.context, items);
+                            ConstantValue::Uint(u64::from_be_bytes(bytes))
+                        }
+                        _ => todo!(),
+                    };
+
+                    Ok(Some(Constant {
+                        ty: Type::get_uint64(lookup.context),
+                        value,
+                    }))
+                }
+                _ => todo!(),
+            }
+        }
     }
 }
 
