@@ -1,7 +1,11 @@
 use crate::doc::{module::ModuleInfo, Document, Documentation};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{collections::{BTreeMap, HashMap}, fs, path::Path};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs,
+    path::Path,
+};
 
 const JS_SEARCH_FILE_NAME: &str = "search.js";
 
