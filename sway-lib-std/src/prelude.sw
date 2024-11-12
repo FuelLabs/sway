@@ -21,7 +21,7 @@ pub use ::vec::{Vec, VecIter};
 pub use ::assert::{assert, assert_eq, assert_ne};
 pub use ::option::Option::{self, *};
 pub use ::result::Result::{self, *};
-pub use ::revert::{require, revert};
+pub use ::revert::{require, revert, panic};
 
 // Convert
 pub use ::convert::From;

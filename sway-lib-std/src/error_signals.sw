@@ -35,3 +35,10 @@ pub const FAILED_ASSERT_SIGNAL = 0xffff_ffff_ffff_0004;
 ///
 /// The value is: 18446744073709486085
 pub const FAILED_ASSERT_NE_SIGNAL = 0xffff_ffff_ffff_0005;
+
+/// A revert with this value signals that it was caused by a call to `std::revert::panic`.
+///
+/// # Additional Information
+///
+/// The value is: 18446744073709486086
+pub const PANIC_SIGNAL = 0xffff_ffff_ffff_0006;
