@@ -23,7 +23,7 @@ jobs:
     needs:
       - build-sway-lib-core
       - build-sway-lib-std
-      - build-sway-lib-examples
+      - build-sway-examples
       - build-reference-examples
       - forc-fmt-check-sway-lib-core
       - forc-fmt-check-sway-lib-std
