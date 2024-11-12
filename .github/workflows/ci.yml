@@ -19,6 +19,42 @@ env:
   NIGHTLY_RUST_VERSION: nightly-2024-10-21
 
 jobs:
+  verifications-complete:
+    needs:
+      - build-sway-lib-core
+      - build-sway-lib-std
+      - build-sway-lib-examples
+      - build-reference-examples
+      - forc-fmt-check-sway-lib-core
+      - forc-fmt-check-sway-lib-std
+      - forc-fmt-check-sway-examples
+      - forc-fmt-check-panic
+      - check-sdk-harness-test-suite-compatibility
+      - build-mdbook
+      - build-forc-doc-sway-lib-std
+      - build-forc-test-project
+      - cargo-build-workspace
+      - cargo-clippy
+      - cargo-toml-fmt-check
+      - cargo-fmt-check
+      - cargo-run-e2e-test-evm
+      - cargo-test-lib-std
+      - forc-run-benchmarks
+      - forc-unit-tests
+      - forc-pkg-fuels-deps-check
+      - cargo-test-sway-lsp
+      - cargo-test-forc
+      - cargo-test-workspace
+      - cargo-unused-deps-check
+      - pre-publish-check
+      - cargo-run-e2e-test
+      - cargo-run-e2e-test-release
+      - cargo-test-forc-debug
+      - cargo-test-forc-client
+      - notify-slack-on-failure
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "pass"
   get-fuel-core-version:
     runs-on: buildjet-4vcpu-ubuntu-2204
     outputs:
