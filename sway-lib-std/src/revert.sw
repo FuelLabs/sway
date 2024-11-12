@@ -85,16 +85,14 @@ where
 /// # Examples
 ///
 /// ```sway
-/// fn foo(should_revert: bool) {
-///     if should_revert {
-///         revert(0);
-///     }
+/// fn foo() {
+///     panic("Example error message");
 /// }
 /// ```
 #[cfg(experimental_new_encoding = false)]
 pub fn panic<T>(value: T) {
     log(value);
-    panic_with_code(PANIC_SIGNAL)
+    revert(PANIC_SIGNAL)
 }
 
 #[cfg(experimental_new_encoding = true)]
@@ -103,5 +101,5 @@ where
     T: AbiEncode,
 {
     log(value);
-    panic_with_code(PANIC_SIGNAL)
+    revert(PANIC_SIGNAL)
 }
