@@ -52,7 +52,17 @@ pub(crate) fn type_check_method_application(
         let arg_handler = Handler::default();
         let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg).ok();
 
-        let needs_second_pass = arg_handler.has_errors();
+        let has_errors = arg_handler.has_errors();
+        let has_numerics = arg_opt
+            .as_ref()
+            .map(|x| {
+                x.return_type
+                    .extract_inner_types(engines, IncludeSelf::Yes)
+                    .iter()
+                    .any(|x| matches!(&*engines.te().get(*x), TypeInfo::Numeric))
+            })
+            .unwrap_or_default();
+        let needs_second_pass = has_errors || has_numerics;
 
         if index == 0 {
             // We want to emit errors in the self parameter and ignore TraitConstraintNotSatisfied with Placeholder
