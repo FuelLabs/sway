@@ -15,7 +15,7 @@ fn pass_revert_require() {
     require(true, "error");
 }
 
-#[test(should_revert)]
+#[test(should_revert = "error")]
 fn revert_panic() {
     panic("error")
 }
