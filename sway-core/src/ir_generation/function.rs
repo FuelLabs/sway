@@ -2180,7 +2180,7 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
             Intrinsic::Transmute => {
-                self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr)
+                self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
             }
         }
     }
@@ -2191,6 +2191,7 @@ impl<'eng> FnCompiler<'eng> {
         return_type: TypeId,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
+        span: &Span,
     ) -> Result<TerminatorValue, CompileError> {
         assert!(arguments.len() == 1);
 
@@ -2202,7 +2203,7 @@ impl<'eng> FnCompiler<'eng> {
             de,
             context,
             return_type,
-            &Span::dummy(), // TODO
+            span
         )?;
         let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
 
@@ -2210,7 +2211,7 @@ impl<'eng> FnCompiler<'eng> {
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
         );
-        let first_argument_type = first_argument_value.get_type(context).unwrap(); // TODO unwrap
+        let first_argument_type = first_argument_value.get_type(context).expect("transmute first argument type not found");
         let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
 
         // check IR sizes match
@@ -2219,7 +2220,7 @@ impl<'eng> FnCompiler<'eng> {
         if first_arg_size != return_type_size {
             return Err(CompileError::Internal(
                 "Types size do not match",
-                Span::dummy(), // TODO
+                span.clone()
             ));
         }
 
