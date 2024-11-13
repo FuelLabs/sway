@@ -1,4 +1,7 @@
-use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
+use std::{
+    io::Read,
+    ops::{BitAnd, BitOr, BitXor, Not, Rem},
+};
 
 use crate::{
     engine_threading::*,
@@ -1384,78 +1387,113 @@ fn const_eval_intrinsic(
             )
             .unwrap();
 
-            fn bytes_to_uint<'a, const N: usize>(
-                context: &mut Context<'_>,
-                items: impl Iterator<Item = &'a Constant>,
-            ) -> [u8; N]
-            where
-                [u8; N]: TryFrom<Vec<u8>>,
-                <[u8; N] as TryFrom<Vec<u8>>>::Error: std::fmt::Debug,
-            {
-                let mut bytes = Vec::<u8>::with_capacity(N);
+            // check IR sizes match
+            let src_ir_type_in_bytes = src_ir_type.size(lookup.context).in_bytes();
+            let dst_ir_type_in_bytes = dst_ir_type.size(lookup.context).in_bytes();
+            if src_ir_type_in_bytes != dst_ir_type_in_bytes {
+                return Err(ConstEvalError::CompileError);
+            }
 
-                for item in items {
-                    assert!(item.ty.is_uint8(context));
-                    match item.value {
-                        ConstantValue::Uint(v) => {
-                            let v = v.try_into().unwrap();
-                            bytes.push(v);
+            fn append_bytes(
+                ctx: &Context<'_>,
+                bytes: &mut Vec<u8>,
+                t: &Type,
+                value: &ConstantValue,
+            ) {
+                match t.get_content(ctx) {
+                    TypeContent::Array(item_type, size) => match value {
+                        ConstantValue::Array(items) => {
+                            assert!(*size as usize == items.len());
+                            for item in items {
+                                append_bytes(ctx, bytes, item_type, &item.value);
+                            }
                         }
                         _ => unreachable!(),
-                    };
+                    },
+                    TypeContent::Uint(8) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend((*v as u8).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    TypeContent::Uint(16) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend([0u8, 0u8, 0u8, 0u8, 0u8, 0u8]);
+                            bytes.extend((*v as u16).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    TypeContent::Uint(32) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend([0u8, 0u8, 0u8, 0u8]);
+                            bytes.extend((*v as u32).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    TypeContent::Uint(64) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend((*v).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    x => todo!("{:?}", x),
                 }
-
-                bytes.try_into().unwrap()
             }
 
-            fn check_is_zero<'a>(items: &mut impl Iterator<Item = &'a Constant>, n: usize) {
-                for item in items.by_ref().take(n) {
-                    if item.as_uint().unwrap() != 0 {
-                        todo!();
+            fn transmute_bytes(
+                ctx: &Context<'_>,
+                bytes: &mut std::io::Cursor<Vec<u8>>,
+                t: &Type,
+            ) -> Constant {
+                match t.get_content(ctx) {
+                    TypeContent::Uint(8) => {
+                        let mut buffer = [0u8];
+                        let _ = bytes.read_exact(&mut buffer);
+                        Constant {
+                            ty: Type::get_uint8(ctx),
+                            value: ConstantValue::Uint(buffer[0] as u64),
+                        }
                     }
+                    TypeContent::Uint(16) => {
+                        let mut buffer = [0u8; 8]; // u16 = u64 at runtime
+                        let _ = bytes.read_exact(&mut buffer);
+                        let buffer = [buffer[6], buffer[7]];
+                        Constant {
+                            ty: Type::get_uint16(ctx),
+                            value: ConstantValue::Uint(u16::from_be_bytes(buffer) as u64),
+                        }
+                    }
+                    TypeContent::Uint(32) => {
+                        let mut buffer = [0u8; 8]; // u32 = u64 at runtime
+                        let _ = bytes.read_exact(&mut buffer);
+                        let buffer = [buffer[4], buffer[5], buffer[6], buffer[7]];
+                        Constant {
+                            ty: Type::get_uint32(ctx),
+                            value: ConstantValue::Uint(u32::from_be_bytes(buffer) as u64),
+                        }
+                    }
+                    TypeContent::Uint(64) => {
+                        let mut buffer = [0u8; 8];
+                        let _ = bytes.read_exact(&mut buffer);
+                        Constant {
+                            ty: Type::get_uint64(ctx),
+                            value: ConstantValue::Uint(u64::from_be_bytes(buffer)),
+                        }
+                    }
+                    _ => todo!(),
                 }
             }
 
-            // TODO check sizes
-            match (
-                src_ir_type.get_content(lookup.context),
-                dst_ir_type.get_content(lookup.context),
+            let mut runtime_bytes = vec![];
+            append_bytes(
+                lookup.context,
+                &mut runtime_bytes,
+                &src_ir_type,
                 &args[0].value,
-            ) {
-                (
-                    TypeContent::Array(item_type, 8),
-                    TypeContent::Uint(64),
-                    ConstantValue::Array(items),
-                ) if item_type.is_uint8(lookup.context) => {
-                    assert!(items.len() == 8);
-
-                    let mut items = items.iter();
-                    let value = match &*lookup.engines.te().get(intrinsic.type_arguments[1].type_id)
-                    {
-                        TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
-                            check_is_zero(&mut items, 6);
-                            let bytes = bytes_to_uint::<2>(lookup.context, items);
-                            ConstantValue::Uint(u16::from_be_bytes(bytes) as u64)
-                        }
-                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
-                            check_is_zero(&mut items, 4);
-                            let bytes = bytes_to_uint::<4>(lookup.context, items);
-                            ConstantValue::Uint(u32::from_be_bytes(bytes) as u64)
-                        }
-                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
-                            let bytes = bytes_to_uint::<8>(lookup.context, items);
-                            ConstantValue::Uint(u64::from_be_bytes(bytes))
-                        }
-                        _ => todo!(),
-                    };
-
-                    Ok(Some(Constant {
-                        ty: Type::get_uint64(lookup.context),
-                        value,
-                    }))
-                }
-                _ => todo!(),
-            }
+            );
+            let mut cursor = std::io::Cursor::new(runtime_bytes);
+            let c = transmute_bytes(lookup.context, &mut cursor, &dst_ir_type);
+            Ok(Some(c))
         }
     }
 }

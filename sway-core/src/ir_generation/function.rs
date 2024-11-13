@@ -2180,12 +2180,12 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
             Intrinsic::Transmute => {
-                self.compile_intrins_transmute(arguments, return_type, context, md_mgr)
+                self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr)
             }
         }
     }
 
-    fn compile_intrins_transmute(
+    fn compile_intrinsic_transmute(
         &mut self,
         arguments: &[ty::TyExpression],
         return_type: TypeId,

@@ -209,10 +209,6 @@ fn type_check_transmute(
         ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
     };
 
-    // if handler.has_errors() {
-    //     panic!("{:?}", handler.clone().consume());
-    // }
-
     Ok((
         TyIntrinsicFunctionKind {
             kind,

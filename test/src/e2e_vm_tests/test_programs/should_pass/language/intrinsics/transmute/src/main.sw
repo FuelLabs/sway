@@ -29,6 +29,13 @@ fn const_transmute() {
 
     const U8ARRAY_U64 = __transmute::<[u8; 8], u64>([1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8]);
     assert(U8ARRAY_U64 == 0x0102030405060708u64);
+
+    // u32 <-> u64
+    const U32_U64 = __transmute::<u32, u64>(1u32);
+    assert(U32_U64 == 0x0000000000000001u64);
+
+    const U64_U32 = __transmute::<u64, u32>(1u64);
+    assert(U64_U32 == 0x00000001u32);
 }
 
 fn main() {
@@ -61,6 +68,13 @@ fn main() {
 
     let u8array_u64 = __transmute::<[u8; 8], u64>([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8]);
     assert(u8array_u64 == 1);
+
+    // u32 <-> u64
+    let u32_u64 = __transmute::<u32, u64>(1u32);
+    assert(u32_u64 == 0x0000000000000001u64);
+
+    let u64_u32 = __transmute::<u64, u32>(1u64);
+    assert(u64_u32 == 0x00000001u32);
 
     // check u256 and b256 are transmutable
     let u256_b256 = __transmute::<u256, b256>(u256::max());
