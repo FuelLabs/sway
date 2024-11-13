@@ -2,7 +2,7 @@
 library;
 
 use ::logging::log;
-use ::error_signals::{FAILED_REQUIRE_SIGNAL, PANIC_SIGNAL};
+use ::error_signals::{FAILED_REQUIRE_SIGNAL, REVERT_WITH_LOG_SIGNAL};
 
 /// Will either panic or revert with a given number depending on the context.
 ///
@@ -92,7 +92,7 @@ where
 #[cfg(experimental_new_encoding = false)]
 pub fn revert_with_log<T>(value: T) {
     log(value);
-    revert(PANIC_SIGNAL)
+    revert(REVERT_WITH_LOG_SIGNAL)
 }
 
 #[cfg(experimental_new_encoding = true)]
@@ -101,5 +101,5 @@ where
     T: AbiEncode,
 {
     log(value);
-    revert(PANIC_SIGNAL)
+    revert(REVERT_WITH_LOG_SIGNAL)
 }
