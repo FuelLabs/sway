@@ -1002,7 +1002,7 @@ jobs:
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
 
       - name: Archive forc binaries
-        uses: actions/upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
