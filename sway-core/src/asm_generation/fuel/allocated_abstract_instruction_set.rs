@@ -457,7 +457,7 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            Either::Left(AllocatedOpcode::AddrDataId(_, ref _data_id)) => 8,
+            Either::Left(AllocatedOpcode::AddrDataId(_, ref _data_id)) => 2,
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedOpcode::CFEI(ref op))
