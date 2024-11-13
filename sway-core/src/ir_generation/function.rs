@@ -2198,20 +2198,16 @@ impl<'eng> FnCompiler<'eng> {
         let te = self.engines.te();
         let de = self.engines.de();
 
-        let return_type_ir_type = convert_resolved_type_id(
-            te,
-            de,
-            context,
-            return_type,
-            span
-        )?;
+        let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
         let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
         );
-        let first_argument_type = first_argument_value.get_type(context).expect("transmute first argument type not found");
+        let first_argument_type = first_argument_value
+            .get_type(context)
+            .expect("transmute first argument type not found");
         let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
 
         // check IR sizes match
@@ -2220,7 +2216,7 @@ impl<'eng> FnCompiler<'eng> {
         if first_arg_size != return_type_size {
             return Err(CompileError::Internal(
                 "Types size do not match",
-                span.clone()
+                span.clone(),
             ));
         }
 
