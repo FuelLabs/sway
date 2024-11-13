@@ -3975,8 +3975,9 @@ impl<'eng> FnCompiler<'eng> {
         if field_tys.len() != 1 && contents.is_some() {
             // Insert the value too.
             // Only store if the value does not diverge.
+            let contents_expr = contents.unwrap();
             let contents_value = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, contents.unwrap())?
+                self.compile_expression_to_value(context, md_mgr, contents_expr)?
             );
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
@@ -3984,6 +3985,20 @@ impl<'eng> FnCompiler<'eng> {
                     enum_decl.span.clone(),
                 )
             })?;
+
+            let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
+            if contents_type != variant_type {
+                return Err(CompileError::Internal(
+                    format!(
+                        "Expression type \"{}\" and Variant type \"{}\" do not match",
+                        contents_type.as_string(context),
+                        variant_type.as_string(context)
+                    )
+                    .leak(),
+                    contents_expr.span.clone(),
+                ));
+            }
+
             let gep_val = self
                 .current_block
                 .append(context)
