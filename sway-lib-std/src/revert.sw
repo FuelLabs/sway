@@ -86,17 +86,17 @@ where
 ///
 /// ```sway
 /// fn foo() {
-///     panic("Example error message");
+///     revert_with_log("Example error message");
 /// }
 /// ```
 #[cfg(experimental_new_encoding = false)]
-pub fn panic<T>(value: T) {
+pub fn revert_with_log<T>(value: T) {
     log(value);
     revert(PANIC_SIGNAL)
 }
 
 #[cfg(experimental_new_encoding = true)]
-pub fn panic<T>(value: T)
+pub fn revert_with_log<T>(value: T)
 where
     T: AbiEncode,
 {

@@ -16,6 +16,6 @@ fn pass_revert_require() {
 }
 
 #[test(should_revert = "error")]
-fn revert_panic() {
-    panic("error")
+fn revert_revert_with_log() {
+    revert_with_log("error")
 }
