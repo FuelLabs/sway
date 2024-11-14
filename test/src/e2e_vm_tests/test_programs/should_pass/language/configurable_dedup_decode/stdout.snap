@@ -1,6 +1,6 @@
 ---
 source: test/tests/tests.rs
-assertion_line: 99
+assertion_line: 115
 snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final
@@ -350,15 +350,16 @@ script {
 !116 = (!49 !50 !66 !67)
 !117 = (!49 !50 !66 !67)
 !118 = (!49 !50 !66 !67)
-!119 = span !0 202 246
-!120 = fn_name_span !0 205 209
-!121 = (!119 !120)
-!122 = span !0 225 232
-!123 = span !0 30 36
-!124 = span !0 237 242
-!125 = span !0 243 244
-!126 = span !0 225 244
-!127 = fn_call_path_span !0 235 236
-!128 = (!126 !127)
+!119 = (!49 !50 !66 !67)
+!120 = span !0 202 246
+!121 = fn_name_span !0 205 209
+!122 = (!120 !121)
+!123 = span !0 225 232
+!124 = span !0 30 36
+!125 = span !0 237 242
+!126 = span !0 243 244
+!127 = span !0 225 244
+!128 = fn_call_path_span !0 235 236
+!129 = (!127 !128)
 
-    Finished release [optimized + fuel] target(s) [744 B] in ???
+    Finished release [optimized + fuel] target(s) [760 B] in ???
