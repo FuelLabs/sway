@@ -502,7 +502,7 @@ where
     fn generate_type(engines: &Engines, t: &TypeArgument) -> Option<String> {
         match &*engines.te().get(t.type_id) {
             // when a function does not define a return type, the span points to the whole signature.
-            TypeInfo::Tuple(v) if v.is_empty() => return Some("()".into()),
+            TypeInfo::Tuple(v) if v.is_empty() => Some("()".into()),
             _ => Some(t.span().as_str().to_string()),
         }
     }
