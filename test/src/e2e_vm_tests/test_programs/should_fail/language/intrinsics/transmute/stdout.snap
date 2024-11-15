@@ -1,0 +1,62 @@
+---
+source: test/tests/tests.rs
+snapshot_kind: text
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute
+   Compiling library core (sway-lib-core)
+   Compiling script transmute (test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute)
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute/src/main.sw:5:13
+  |
+3 | fn main() {
+4 |     // Missing type arguments
+5 |     let _ = __transmute(1u64);
+  |             ^^^^^^^^^^^^^^^^^ Call to "transmute" expects 2 type arguments
+6 |     let _ = __transmute::<u64>(1u64);
+7 | 
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute/src/main.sw:6:13
+  |
+4 |     // Missing type arguments
+5 |     let _ = __transmute(1u64);
+6 |     let _ = __transmute::<u64>(1u64);
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^ Call to "transmute" expects 2 type arguments
+7 | 
+8 |      // Wrong source type
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute/src/main.sw:9:36
+   |
+ 7 | 
+ 8 |      // Wrong source type
+ 9 |     let _ = __transmute::<u64, u8>(1u32);
+   |                                    ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+
+10 | 
+11 |     // Different sizes
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute/src/main.sw:15:27
+   |
+13 | 
+14 |     // Invalid types
+15 |     let _ = __transmute::<&u64, &u8>(&1u64);
+   |                           ^^^^ references, pointers, slices, string slices or types containing any of these are not allowed.
+16 | }
+   |
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile transmute

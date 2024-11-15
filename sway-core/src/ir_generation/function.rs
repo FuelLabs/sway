@@ -660,9 +660,13 @@ impl<'eng> FnCompiler<'eng> {
                     span_md_idx,
                 )
             }
-            ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
-            }
+            ty::TyExpressionVariant::IntrinsicFunction(kind) => self.compile_intrinsic_function(
+                context,
+                md_mgr,
+                kind,
+                ast_expr.span.clone(),
+                ast_expr.return_type,
+            ),
             ty::TyExpressionVariant::AbiName(_) => {
                 let val = Value::new_constant(context, Constant::new_unit(context));
                 Ok(TerminatorValue::new(val, context))
@@ -869,6 +873,7 @@ impl<'eng> FnCompiler<'eng> {
             span: _,
         }: &ty::TyIntrinsicFunctionKind,
         span: Span,
+        return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
         fn store_key_in_local_mem(
             compiler: &mut FnCompiler,
@@ -2174,7 +2179,59 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
+            Intrinsic::Transmute => {
+                self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
+            }
         }
+    }
+
+    fn compile_intrinsic_transmute(
+        &mut self,
+        arguments: &[ty::TyExpression],
+        return_type: TypeId,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        span: &Span,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 1);
+
+        let te = self.engines.te();
+        let de = self.engines.de();
+
+        let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
+        let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
+
+        let first_argument_expr = &arguments[0];
+        let first_argument_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
+        );
+        let first_argument_type = first_argument_value
+            .get_type(context)
+            .expect("transmute first argument type not found");
+        let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
+
+        // check IR sizes match
+        let first_arg_size = first_argument_type.size(context).in_bytes();
+        let return_type_size = return_type_ir_type.size(context).in_bytes();
+        if first_arg_size != return_type_size {
+            return Err(CompileError::Internal(
+                "Types size do not match",
+                span.clone(),
+            ));
+        }
+
+        let u64 = Type::get_uint64(context);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .ptr_to_int(first_argument_ptr, u64);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .int_to_ptr(first_argument_ptr, return_type_ir_type_ptr);
+
+        let final_value = self.current_block.append(context).load(first_argument_ptr);
+        Ok(TerminatorValue::new(final_value, context))
     }
 
     fn ptr_to_first_element(
@@ -3975,8 +4032,9 @@ impl<'eng> FnCompiler<'eng> {
         if field_tys.len() != 1 && contents.is_some() {
             // Insert the value too.
             // Only store if the value does not diverge.
+            let contents_expr = contents.unwrap();
             let contents_value = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, contents.unwrap())?
+                self.compile_expression_to_value(context, md_mgr, contents_expr)?
             );
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
@@ -3984,6 +4042,20 @@ impl<'eng> FnCompiler<'eng> {
                     enum_decl.span.clone(),
                 )
             })?;
+
+            let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
+            if contents_type != variant_type {
+                return Err(CompileError::Internal(
+                    format!(
+                        "Expression type \"{}\" and Variant type \"{}\" do not match",
+                        contents_type.as_string(context),
+                        variant_type.as_string(context)
+                    )
+                    .leak(),
+                    contents_expr.span.clone(),
+                ));
+            }
+
             let gep_val = self
                 .current_block
                 .append(context)

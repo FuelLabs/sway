@@ -740,6 +740,7 @@ pub fn compile_to_ast(
 
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
+        package_name,
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
         parse(input, handler, engines, build_config, experimental),
@@ -764,6 +765,7 @@ pub fn compile_to_ast(
 
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
+        package_name,
         "parse the concrete syntax tree (CST) to a typed AST",
         "parse_ast",
         parsed_to_ast(
@@ -980,7 +982,7 @@ pub fn compile_to_bytecode(
     package_name: &str,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let asm_res = compile_to_asm(
+    let mut asm_res = compile_to_asm(
         handler,
         engines,
         input,
@@ -989,13 +991,19 @@ pub fn compile_to_bytecode(
         package_name,
         experimental,
     )?;
-    asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
+    asm_to_bytecode(
+        handler,
+        &mut asm_res,
+        source_map,
+        engines.se(),
+        build_config,
+    )
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,
-    mut asm: CompiledAsm,
+    asm: &mut CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,

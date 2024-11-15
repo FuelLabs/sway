@@ -47,7 +47,9 @@ pub(crate) fn generate_searchbar(module_info: &ModuleInfo) -> Box<dyn RenderBox>
                     if (results.length > 0) {{
                         const resultList = results.map(item => {{
                             const formattedName = `<span class="type ${{item.type_name}}">${{item.name}}</span>`;
-                            const name = [...item.module_info, formattedName].join("::");
+                            const name = item.type_name === "module"
+                                ? [...item.module_info.slice(0, -1), formattedName].join("::")
+                                : [...item.module_info, formattedName].join("::");
                             const path = ["{}", ...item.module_info, item.html_filename].join("/");
                             const left = `<td><span>${{name}}</span></td>`;
                             const right = `<td><p>${{item.preview}}</p></td>`;

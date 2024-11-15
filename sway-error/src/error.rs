@@ -2812,6 +2812,9 @@ pub enum TypeNotAllowedReason {
 
     #[error("slices or types containing slices on `const` are not allowed.")]
     SliceInConst,
+
+    #[error("references, pointers, slices, string slices or types containing any of these are not allowed.")]
+    NotAllowedInTransmute,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
