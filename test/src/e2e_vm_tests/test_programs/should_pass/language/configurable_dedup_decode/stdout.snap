@@ -362,4 +362,4 @@ script {
 !128 = fn_call_path_span !0 235 236
 !129 = (!127 !128)
 
-    Finished release [optimized + fuel] target(s) [760 B] in ???
+    Finished release [optimized + fuel] target(s) [736 B] in ???
