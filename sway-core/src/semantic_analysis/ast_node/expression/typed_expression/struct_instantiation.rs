@@ -397,9 +397,9 @@ fn type_check_field_arguments(
                         .with_type_annotation(struct_field.type_argument.type_id)
                         .with_unify_generic(true);
 
-                    // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
-                    //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
-                    //          not treated as an error in the `type_check()`'s result.
+                    // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+                    //       We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+                    //       not treated as an error in the `type_check()`'s result.
                     let typed_expr = handler
                         .scope(|handler| ty::TyExpression::type_check(handler, ctx, &field.value));
 
