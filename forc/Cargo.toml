@@ -51,6 +51,7 @@ whoami.workspace = true
 default = []
 test = []
 util = []
+profile = []
 
 [dev-dependencies]
 completest-pty = "0.5.0"

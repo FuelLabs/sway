@@ -2,7 +2,7 @@
 library;
 
 use ::logging::log;
-use ::error_signals::FAILED_REQUIRE_SIGNAL;
+use ::error_signals::{FAILED_REQUIRE_SIGNAL, REVERT_WITH_LOG_SIGNAL};
 
 /// Will either panic or revert with a given number depending on the context.
 ///
@@ -70,4 +70,36 @@ where
         log(value);
         revert(FAILED_REQUIRE_SIGNAL)
     }
+}
+
+/// Reverts unconditionally and logs `value`.
+///
+/// # Arguments
+///
+/// * `value`: [T] - The value which will be logged.
+///
+/// # Reverts
+///
+/// * Reverts unconditionally.
+///
+/// # Examples
+///
+/// ```sway
+/// fn foo() {
+///     revert_with_log("Example error message");
+/// }
+/// ```
+#[cfg(experimental_new_encoding = false)]
+pub fn revert_with_log<T>(value: T) {
+    log(value);
+    revert(REVERT_WITH_LOG_SIGNAL)
+}
+
+#[cfg(experimental_new_encoding = true)]
+pub fn revert_with_log<T>(value: T)
+where
+    T: AbiEncode,
+{
+    log(value);
+    revert(REVERT_WITH_LOG_SIGNAL)
 }

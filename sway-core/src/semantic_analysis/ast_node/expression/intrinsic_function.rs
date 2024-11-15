@@ -106,8 +106,118 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::ElemAt => type_check_elem_at(arguments, handler, kind, span, ctx),
+            Intrinsic::Transmute => {
+                type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
+            }
         }
     }
+}
+
+fn type_check_transmute(
+    arguments: &[Expression],
+    handler: &Handler,
+    kind: Intrinsic,
+    type_arguments: &[TypeArgument],
+    span: Span,
+    mut ctx: TypeCheckContext,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let engines = ctx.engines();
+
+    // Both type arguments needs to be explicitly defined
+    if type_arguments.len() != 2 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        }));
+    }
+
+    let src_type = ctx
+        .resolve_type(
+            handler,
+            type_arguments[0].type_id,
+            &type_arguments[0].span,
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
+    let return_type = ctx
+        .resolve_type(
+            handler,
+            type_arguments[1].type_id,
+            &type_arguments[1].span,
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
+
+    // Forbid ref and ptr types
+    fn forbid_ref_ptr_types(
+        engines: &Engines,
+        handler: &Handler,
+        t: TypeId,
+        span: &Span,
+    ) -> Result<(), ErrorEmitted> {
+        let types = t.extract_any_including_self(
+            engines,
+            &|t| {
+                matches!(
+                    t,
+                    TypeInfo::StringSlice
+                        | TypeInfo::RawUntypedPtr
+                        | TypeInfo::RawUntypedSlice
+                        | TypeInfo::Ptr(_)
+                        | TypeInfo::Slice(_)
+                        | TypeInfo::Ref { .. }
+                )
+            },
+            vec![],
+            0,
+        );
+        if !types.is_empty() {
+            Err(handler.emit_err(CompileError::TypeNotAllowed {
+                reason: sway_error::error::TypeNotAllowedReason::NotAllowedInTransmute,
+                span: span.clone(),
+            }))
+        } else {
+            Ok(())
+        }
+    }
+
+    forbid_ref_ptr_types(engines, handler, src_type, &type_arguments[0].span)?;
+    forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span)?;
+
+    // check first argument
+    let arg_type = engines.te().get(src_type);
+    let first_argument_typed_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(engines.te().insert(
+                engines,
+                (*arg_type).clone(),
+                type_arguments[0].span.source_id(),
+            ));
+        ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
+    };
+
+    Ok((
+        TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![first_argument_typed_expr],
+            type_arguments: type_arguments.to_vec(),
+            span,
+        },
+        return_type,
+    ))
 }
 
 fn type_check_elem_at(
