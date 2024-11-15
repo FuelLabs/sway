@@ -8,8 +8,10 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{parsed::StorageDeclaration, ty::*},
+    ir_generation::storage::get_storage_key_string,
+    language::parsed::StorageDeclaration,
     transform::{self},
+    ty::*,
     type_system::*,
     Namespace,
 };
@@ -250,6 +252,22 @@ pub struct TyStorageField {
     pub initializer: TyExpression,
     pub(crate) span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl TyStorageField {
+    /// Returns the full name of the [TyStorageField], consisting
+    /// of its name preceded by its full namespace path.
+    /// E.g., "storage::ns1::ns1.name".
+    pub fn full_name(&self) -> String {
+        get_storage_key_string(
+            &self
+                .namespace_names
+                .iter()
+                .map(|i| i.as_str().to_string())
+                .chain(vec![self.name.as_str().to_string()])
+                .collect::<Vec<_>>(),
+        )
+    }
 }
 
 impl EqWithEngines for TyStorageField {}
