@@ -2047,11 +2047,10 @@ fn report_assembly_information(
             used: compiled_asm
                 .0
                 .data_section
-                .value_pairs
-                .iter()
-                .map(calculate_entry_size)
+                .iter_all_entries()
+                .map(|entry| calculate_entry_size(&entry))
                 .sum(),
-            value_pairs: compiled_asm.0.data_section.value_pairs.clone(),
+            value_pairs: compiled_asm.0.data_section.iter_all_entries().collect(),
         },
     };
 
