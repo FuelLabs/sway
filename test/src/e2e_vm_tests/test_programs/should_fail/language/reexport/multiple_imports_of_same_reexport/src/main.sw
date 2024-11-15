@@ -1,8 +1,8 @@
 script;
 
-mod items_1;
-mod lib_1_1;  // Item reexports of items_1
-mod lib_1_2;  // Item reexports of items_1
+pub mod items_1;
+pub mod lib_1_1;  // Item reexports of items_1
+pub mod lib_1_2;  // Item reexports of items_1
 
 mod tests; // All tests
 
