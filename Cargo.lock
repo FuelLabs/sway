@@ -7723,6 +7723,7 @@ dependencies = [
  "peg",
  "prettydiff",
  "rustc-hash 1.1.0",
+ "serde",
  "slotmap",
  "sway-features",
  "sway-ir-macros",
