@@ -131,6 +131,8 @@ impl ExperimentalFeatures {
 features! {
     new_encoding = true,
     "https://github.com/FuelLabs/sway/issues/5727",
+    storage_domains = false,
+    "https://github.com/FuelLabs/sway/issues/6701",
 }
 
 #[derive(Clone, Debug, Default, Parser)]
@@ -228,6 +230,7 @@ mod tests {
 
         let mut features = ExperimentalFeatures {
             new_encoding: false,
+            ..Default::default()
         };
 
         std::env::set_var("FORC_EXPERIMENTAL", "new_encoding");

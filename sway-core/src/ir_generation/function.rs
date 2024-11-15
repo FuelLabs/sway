@@ -4338,6 +4338,14 @@ impl<'eng> FnCompiler<'eng> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
+        // Use the `struct_field_names` to get a field id that is unique even for zero-sized values that live in the same slot.
+        // We calculate the `unique_field_id` early, here, before the `storage_filed_names` get consumed by `get_storage_key` below.
+        let unique_field_id = get_storage_field_id(
+            &storage_field_names,
+            &struct_field_names,
+            context.experimental,
+        );
+
         // Get the actual storage key as a `Bytes32` as well as the offset, in words,
         // within the slot. The offset depends on what field of the top level storage
         // variable is being accessed.
@@ -4371,7 +4379,7 @@ impl<'eng> FnCompiler<'eng> {
             // particular slot is the remaining offset, in words.
             (
                 add_to_b256(
-                    get_storage_key(storage_field_names.clone(), key.clone()),
+                    get_storage_key(storage_field_names, key, context.experimental),
                     offset_in_slots,
                 ),
                 offset_remaining,
@@ -4428,7 +4436,6 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the field identifier as the third field in the `StorageKey` struct
-        let unique_field_id = get_storage_field_id(storage_field_names, struct_field_names); // use the struct_field_names to get a field id that is unique even for zero-sized values that live in the same slot
         let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
             .add_metadatum(context, span_md_idx);
         let gep_2_val =

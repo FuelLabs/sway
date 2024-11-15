@@ -441,22 +441,32 @@ impl TyDecl {
                             let initializer =
                                 ty::TyExpression::type_check(handler, ctx.by_ref(), &initializer)?;
 
-                            let mut key_ty_expression = None;
-                            if let Some(key_expression) = key_expression {
-                                let mut key_ctx =
-                                    ctx.with_type_annotation(engines.te().id_of_b256());
+                            let key_expression = match key_expression {
+                                Some(key_expression) => {
+                                    let key_ctx = ctx
+                                        .with_type_annotation(engines.te().id_of_b256())
+                                        .with_help_text("Storage keys must have type \"b256\".");
 
-                                key_ty_expression = Some(ty::TyExpression::type_check(
-                                    handler,
-                                    key_ctx.by_ref(),
-                                    &key_expression,
-                                )?);
-                            }
+                                    // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+                                    //       We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+                                    //       not treated as an error in the `type_check()`'s result.
+                                    let typed_expr = handler.scope(|handler| {
+                                        ty::TyExpression::type_check(
+                                            handler,
+                                            key_ctx,
+                                            &key_expression,
+                                        )
+                                    })?;
+
+                                    Some(typed_expr)
+                                }
+                                None => None,
+                            };
 
                             fields_buf.push(ty::TyStorageField {
                                 name,
                                 namespace_names: namespace_names.clone(),
-                                key_expression: key_ty_expression,
+                                key_expression,
                                 type_argument,
                                 initializer,
                                 span: field_span,
