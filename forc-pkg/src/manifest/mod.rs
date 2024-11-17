@@ -851,6 +851,7 @@ pub struct WorkspaceManifest {
 #[serde(rename_all = "kebab-case")]
 pub struct Workspace {
     pub members: Vec<PathBuf>,
+    pub metadata: Option<toml::Value>,
 }
 
 impl WorkspaceManifestFile {
