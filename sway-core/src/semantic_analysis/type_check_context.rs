@@ -1429,19 +1429,16 @@ impl<'a> TypeCheckContext<'a> {
         let handler = Handler::default();
         let engines = self.engines;
         let code_block_first_pass = self.code_block_first_pass();
-        self.namespace_mut()
-            .module_mut(engines)
-            .current_items_mut()
-            .implemented_traits
-            .check_if_trait_constraints_are_satisfied_for_type(
-                &handler,
-                type_id,
-                constraints,
-                &Span::dummy(),
-                engines,
-                crate::namespace::TryInsertingTraitImplOnFailure::Yes,
-                code_block_first_pass.into(),
-            )
-            .is_ok()
+        TraitMap::check_if_trait_constraints_are_satisfied_for_type(
+            &handler,
+            self.namespace_mut().module_mut(engines),
+            type_id,
+            constraints,
+            &Span::dummy(),
+            engines,
+            crate::namespace::TryInsertingTraitImplOnFailure::Yes,
+            code_block_first_pass.into(),
+        )
+        .is_ok()
     }
 }

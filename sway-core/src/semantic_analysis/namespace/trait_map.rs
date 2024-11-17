@@ -27,9 +27,11 @@ use crate::{
     TypeSubstMap, UnifyCheck,
 };
 
+use super::Module;
+
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TryInsertingTraitImplOnFailure {
     Yes,
     No,
@@ -189,7 +191,7 @@ enum TypeRootFilter {
 /// Note: "impl self" blocks are considered traits and are stored in the
 /// [TraitMap].
 #[derive(Clone, Debug, Default)]
-pub(crate) struct TraitMap {
+pub struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: im::HashSet<u64>,
 }
@@ -1326,8 +1328,8 @@ impl TraitMap {
     /// Checks to see if the trait constraints are satisfied for a given type.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
-        &mut self,
         handler: &Handler,
+        module: &mut Module,
         type_id: TypeId,
         constraints: &[TraitConstraint],
         access_span: &Span,
@@ -1352,42 +1354,67 @@ impl TraitMap {
         }
         let hash = hasher.finish();
 
-        if self.satisfied_cache.contains(&hash) {
-            return Ok(());
+        {
+            let trait_map = &mut module.current_lexical_scope_mut().items.implemented_traits;
+            if trait_map.satisfied_cache.contains(&hash) {
+                return Ok(());
+            }
         }
 
+        let all_impld_traits: BTreeSet<(Ident, TypeId)> =
+            Self::get_all_implemented_traits(module, type_id, engines);
+
         // Call the real implementation and cache when true
-        match self.check_if_trait_constraints_are_satisfied_for_type_inner(
+        match Self::check_if_trait_constraints_are_satisfied_for_type_inner(
             handler,
+            module,
             type_id,
             constraints,
             access_span,
             engines,
+            all_impld_traits,
             try_inserting_trait_impl_on_failure,
             code_block_first_pass,
         ) {
             Ok(()) => {
-                self.satisfied_cache.insert(hash);
+                let trait_map = &mut module.current_lexical_scope_mut().items.implemented_traits;
+                trait_map.satisfied_cache.insert(hash);
                 Ok(())
             }
             r => r,
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn check_if_trait_constraints_are_satisfied_for_type_inner(
-        &mut self,
-        handler: &Handler,
+    fn get_all_implemented_traits(
+        module: &Module,
         type_id: TypeId,
-        constraints: &[TraitConstraint],
-        access_span: &Span,
         engines: &Engines,
-        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
-        code_block_first_pass: CodeBlockFirstPass,
-    ) -> Result<(), ErrorEmitted> {
-        let type_engine = engines.te();
+    ) -> BTreeSet<(Ident, TypeId)> {
+        let mut lexical_scope_opt = Some(module.current_lexical_scope());
+        let mut all_impld_traits: BTreeSet<(Ident, TypeId)> = Default::default();
+        while let Some(lexical_scope) = lexical_scope_opt {
+            all_impld_traits.extend(
+                lexical_scope
+                    .items
+                    .implemented_traits
+                    .get_implemented_traits(type_id, engines),
+            );
+            if let Some(parent_scope_id) = lexical_scope.parent {
+                lexical_scope_opt = module.get_lexical_scope(parent_scope_id);
+            } else {
+                lexical_scope_opt = None;
+            }
+        }
 
-        let _decl_engine = engines.de();
+        all_impld_traits
+    }
+
+    fn get_implemented_traits(
+        &self,
+        type_id: TypeId,
+        engines: &Engines,
+    ) -> BTreeSet<(Ident, TypeId)> {
+        let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
         let impls = self.get_impls(engines, type_id);
@@ -1412,6 +1439,24 @@ impl TraitMap {
                 }
             })
             .collect();
+
+        all_impld_traits
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn check_if_trait_constraints_are_satisfied_for_type_inner(
+        handler: &Handler,
+        module: &mut Module,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+        access_span: &Span,
+        engines: &Engines,
+        all_impld_traits: BTreeSet<(Ident, TypeId)>,
+        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
+        code_block_first_pass: CodeBlockFirstPass,
+    ) -> Result<(), ErrorEmitted> {
+        let type_engine = engines.te();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
         let required_traits: BTreeSet<(Ident, TypeId)> = constraints
             .iter()
@@ -1451,9 +1496,13 @@ impl TraitMap {
                     try_inserting_trait_impl_on_failure,
                     TryInsertingTraitImplOnFailure::Yes
                 ) {
-                    self.insert_for_type(engines, type_id, code_block_first_pass.clone());
-                    return self.check_if_trait_constraints_are_satisfied_for_type(
+                    let trait_map =
+                        &mut module.current_lexical_scope_mut().items.implemented_traits;
+                    trait_map.insert_for_type(engines, type_id, code_block_first_pass.clone());
+
+                    return Self::check_if_trait_constraints_are_satisfied_for_type(
                         handler,
+                        module,
                         type_id,
                         constraints,
                         access_span,

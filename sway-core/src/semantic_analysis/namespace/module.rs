@@ -215,6 +215,14 @@ impl Module {
             .unwrap()
     }
 
+    pub fn get_lexical_scope(&self, id: LexicalScopeId) -> Option<&LexicalScope> {
+        self.lexical_scopes.get(id)
+    }
+
+    pub fn get_lexical_scope_mut(&mut self, id: LexicalScopeId) -> Option<&mut LexicalScope> {
+        self.lexical_scopes.get_mut(id)
+    }
+
     /// Returns the current lexical scope associated with this module.
     pub fn current_lexical_scope(&self) -> &LexicalScope {
         self.lexical_scopes
