@@ -1332,4 +1332,174 @@ mod tests {
         assert!(dependency_details_git_rev.validate().is_ok());
         assert!(dependency_details_ipfs.validate().is_ok());
     }
+
+    #[test]
+    fn test_project_with_null_metadata() {
+        let project = Project {
+            authors: Some(vec!["Test Author".to_string()]),
+            name: "test-project".to_string(),
+            organization: None,
+            license: "Apache-2.0".to_string(),
+            entry: "main.sw".to_string(),
+            implicit_std: None,
+            forc_version: None,
+            experimental: HashMap::new(),
+            metadata: Some(toml::Value::from(toml::value::Table::new())),
+        };
+
+        let serialized = toml::to_string(&project).unwrap();
+        let deserialized: Project = toml::from_str(&serialized).unwrap();
+
+        assert_eq!(project.name, deserialized.name);
+        assert_eq!(project.metadata, deserialized.metadata);
+    }
+
+    #[test]
+    fn test_project_without_metadata() {
+        let project = Project {
+            authors: Some(vec!["Test Author".to_string()]),
+            name: "test-project".to_string(),
+            organization: None,
+            license: "Apache-2.0".to_string(),
+            entry: "main.sw".to_string(),
+            implicit_std: None,
+            forc_version: None,
+            experimental: HashMap::new(),
+            metadata: None,
+        };
+
+        let serialized = toml::to_string(&project).unwrap();
+        let deserialized: Project = toml::from_str(&serialized).unwrap();
+
+        assert_eq!(project.name, deserialized.name);
+        assert_eq!(project.metadata, deserialized.metadata);
+        assert_eq!(project.metadata, None);
+    }
+
+    #[test]
+    fn test_project_metadata_from_toml() {
+        let toml_str = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            authors = ["Test Author"]
+
+            [metadata]
+            description = "A test project"
+            version = "1.0.0"
+            homepage = "https://example.com"
+            documentation = "https://docs.example.com"
+            repository = "https://github.com/example/test-project"
+            keywords = ["test", "project"]
+            categories = ["test"]
+        "#;
+
+        let project: Project = toml::from_str(toml_str).unwrap();
+        assert!(project.metadata.is_some());
+
+        let metadata = project.metadata.unwrap();
+        let table = metadata.as_table().unwrap();
+
+        assert_eq!(
+            table.get("description").unwrap().as_str().unwrap(),
+            "A test project"
+        );
+        assert_eq!(table.get("version").unwrap().as_str().unwrap(), "1.0.0");
+        assert_eq!(
+            table.get("homepage").unwrap().as_str().unwrap(),
+            "https://example.com"
+        );
+
+        let keywords = table.get("keywords").unwrap().as_array().unwrap();
+        assert_eq!(keywords[0].as_str().unwrap(), "test");
+        assert_eq!(keywords[1].as_str().unwrap(), "project");
+    }
+
+    #[test]
+    fn test_project_with_invalid_metadata() {
+        // Test with invalid TOML syntax - unclosed table
+        let invalid_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata
+            description = "Invalid TOML"
+        "#;
+
+        let result: Result<Project, _> = toml::from_str(invalid_toml);
+        assert!(result.is_err());
+
+        // Test with invalid TOML syntax - invalid key
+        let invalid_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata]
+            ] = "Invalid key"
+        "#;
+
+        let result: Result<Project, _> = toml::from_str(invalid_toml);
+        assert!(result.is_err());
+
+        // Test with duplicate keys
+        let invalid_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata]
+            nested = { key = "value1" }
+
+            [metadata.nested]
+            key = "value2"
+        "#;
+
+        let result: Result<Project, _> = toml::from_str(invalid_toml);
+        assert!(result.is_err());
+        assert!(result
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("duplicate key `nested` in table `metadata`"));
+    }
+
+    #[test]
+    fn test_metadata_roundtrip() {
+        let original_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata]
+            boolean = true
+            integer = 42
+            float = 3.14
+            string = "value"
+            array = [1, 2, 3]
+            mixed_array = [1, "two", true]
+
+            [metadata.nested]
+            key = "value2"
+        "#;
+
+        let project: Project = toml::from_str(original_toml).unwrap();
+        let serialized = toml::to_string(&project).unwrap();
+        let deserialized: Project = toml::from_str(&serialized).unwrap();
+
+        // Verify that the metadata is preserved
+        assert_eq!(project.metadata, deserialized.metadata);
+
+        // Verify all types were preserved
+        let table_val = project.metadata.unwrap();
+        let table = table_val.as_table().unwrap();
+        assert!(table.get("boolean").unwrap().as_bool().unwrap());
+        assert_eq!(table.get("integer").unwrap().as_integer().unwrap(), 42);
+        assert_eq!(table.get("float").unwrap().as_float().unwrap(), 3.14);
+        assert_eq!(table.get("string").unwrap().as_str().unwrap(), "value");
+        assert_eq!(table.get("array").unwrap().as_array().unwrap().len(), 3);
+        assert!(table.get("nested").unwrap().as_table().is_some());
+    }
+
 }
