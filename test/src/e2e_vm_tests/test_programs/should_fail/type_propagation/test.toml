@@ -2,4 +2,6 @@ category = "fail"
 
 # check: $()a.push("str");
 # check: $()a.push("str");
-# nextln: $()This parameter was declared as type u8, but argument of type str was provided
+# nextln: $()No method "push(Vec<u8>, str)" found for type "Vec<u8>".
+# nextln: $()Matching method:
+# nextln: $()push(Vec<u8>, u8) -> () in Vec<u8>

@@ -177,12 +177,13 @@ fn convert_resolved_type_info(
         TypeInfo::Custom { .. } => reject_type!("Custom"),
         TypeInfo::Contract => reject_type!("Contract"),
         TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
+        TypeInfo::UntypedEnum(_) => reject_type!("UntypedEnum"),
+        TypeInfo::UntypedStruct(_) => reject_type!("UntypedStruct"),
         TypeInfo::Unknown => reject_type!("Unknown"),
         TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
         TypeInfo::Placeholder(_) => reject_type!("Placeholder"),
         TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
-        TypeInfo::Storage { .. } => reject_type!("Storage"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
     })
 }

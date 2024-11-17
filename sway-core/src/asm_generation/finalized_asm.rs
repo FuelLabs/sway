@@ -1,5 +1,4 @@
 use super::instruction_set::InstructionSet;
-use super::ToMidenBytecode;
 use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
@@ -19,6 +18,24 @@ use sway_types::SourceEngine;
 
 use either::Either;
 use std::{collections::BTreeMap, fmt};
+
+/// Represents an ASM set which has had register allocation, jump elimination, and optimization
+/// applied to it
+#[derive(Clone, serde::Serialize)]
+pub struct AsmInformation {
+    pub bytecode_size: u64,
+    pub data_section: DataSectionInformation,
+}
+
+#[derive(Default, Clone, Debug, serde::Serialize)]
+pub struct DataSectionInformation {
+    /// The total size of the data section in bytes
+    pub size: u64,
+    /// The used size of the data section in bytes
+    pub used: u64,
+    /// The data to be put in the data section of the asm
+    pub value_pairs: Vec<Entry>,
+}
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
@@ -78,10 +95,6 @@ impl FinalizedAsm {
                     })
                 }
             }
-            InstructionSet::MidenVM { ops } => Ok(CompiledBytecode {
-                bytecode: ops.to_bytecode().into(),
-                named_data_section_entries_offsets: Default::default(),
-            }),
         }
     }
 }
@@ -553,6 +566,5 @@ pub fn check_invalid_opcodes(handler: &Handler, asm: &FinalizedAsm) -> Result<()
             ProgramKind::Predicate => checks::check_predicate_opcodes(handler, &ops[..]),
         },
         InstructionSet::Evm { ops: _ } => Ok(()),
-        InstructionSet::MidenVM { ops: _ } => Ok(()),
     }
 }

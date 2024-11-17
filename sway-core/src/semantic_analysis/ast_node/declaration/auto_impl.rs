@@ -75,11 +75,8 @@ where
         } else {
             format!(
                 "<{}>",
-                itertools::intersperse(
-                    type_parameters.iter().map(|x| { x.name_ident.as_str() }),
-                    ", "
-                )
-                .collect::<String>()
+                itertools::intersperse(type_parameters.iter().map(|x| { x.name.as_str() }), ", ")
+                    .collect::<String>()
             )
         }
     }
@@ -94,7 +91,7 @@ where
         for t in type_parameters.iter() {
             code.push_str(&format!(
                 "{}: {},\n",
-                t.name_ident.as_str(),
+                t.name.as_str(),
                 itertools::intersperse(
                     [extra_constraint].into_iter().chain(
                         t.trait_constraints
@@ -324,7 +321,18 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(|ctx| {
+        let _r = TyDecl::collect(
+            &handler,
+            engines,
+            ctx.collection_ctx,
+            Declaration::FunctionDeclaration(decl),
+        );
+        if handler.has_errors() {
+            return Err(handler);
+        }
+
+        let ctx = self.ctx.by_ref();
+        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
             TyDecl::type_check(
                 &handler,
                 ctx,
@@ -375,7 +383,17 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(|ctx| {
+        let _r = TyDecl::collect(
+            &handler,
+            engines,
+            ctx.collection_ctx,
+            Declaration::ImplSelfOrTrait(decl),
+        );
+        if handler.has_errors() {
+            return Err(handler);
+        }
+
+        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
             TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 
@@ -481,7 +499,7 @@ where
     fn generate_type(engines: &Engines, type_id: TypeId) -> Option<String> {
         let name = match &*engines.te().get(type_id) {
             TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(type_param) => type_param.name_ident.to_string(),
+            TypeInfo::Placeholder(type_param) => type_param.name.to_string(),
             TypeInfo::StringSlice => "str".into(),
             TypeInfo::StringArray(x) => format!("str[{}]", x.val()),
             TypeInfo::UnsignedInteger(x) => match x {

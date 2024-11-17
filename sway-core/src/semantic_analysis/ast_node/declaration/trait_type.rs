@@ -5,22 +5,37 @@ use sway_error::{
 use sway_types::Span;
 
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
-        parsed,
+        parsed::{self, Declaration, TraitTypeDeclaration},
         ty::{self, TyTraitType},
     },
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckContext,
     },
-    type_system::*,
-    Engines,
+    EnforceTypeArguments, Engines,
 };
 
 impl ty::TyTraitType {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<TraitTypeDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let trait_type_decl = engines.pe().get_trait_type(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            trait_type_decl.name.clone(),
+            Declaration::TraitTypeDeclaration(*decl_id),
+        )
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         trait_type: parsed::TraitTypeDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let parsed::TraitTypeDeclaration {
@@ -42,9 +57,7 @@ impl ty::TyTraitType {
                     EnforceTypeArguments::No,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
             Some(ty)
         } else {
             None
@@ -76,11 +89,7 @@ impl ty::TyTraitType {
             name,
             attributes,
             ty: ty_opt,
-            implementing_type: engines.te().insert(
-                engines,
-                TypeInfo::new_self_type(Span::dummy()),
-                None,
-            ),
+            implementing_type: engines.te().new_self_type(engines, Span::dummy()),
             span,
         }
     }

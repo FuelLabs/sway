@@ -39,7 +39,6 @@ pub async fn handle_did_open_text_document(
                 file_versions: BTreeMap::new(),
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
-
         state.wait_for_parsing().await;
         state
             .publish_diagnostics(uri, params.text_document.uri, session)
@@ -111,7 +110,8 @@ pub async fn handle_did_change_text_document(
         session.clone(),
         &uri,
         Some(params.text_document.version),
-        true,
+        // TODO: Set this back to true once https://github.com/FuelLabs/sway/issues/6576 is fixed.
+        false,
         file_versions,
     );
     Ok(())

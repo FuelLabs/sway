@@ -1,6 +1,6 @@
 [package]
 name = "forc-lsp"
-version = "0.63.5"
+version.workspace = true
 description = "A simple `forc` plugin for starting the sway language server."
 authors.workspace = true
 edition.workspace = true
@@ -9,8 +9,8 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-anyhow = "1"
-clap = { version = "4.5.4", features = ["derive"] }
-sway-lsp = { version = "0.63.5", path = "../../sway-lsp" }
-tikv-jemallocator = "0.5"
-tokio = { version = "1.8" }
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+sway-lsp.workspace = true
+tikv-jemallocator.workspace = true
+tokio.workspace = true

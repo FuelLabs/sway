@@ -1,11 +1,33 @@
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{parsed::*, ty, CallPath},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, *},
+    semantic_analysis::*,
     type_system::*,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyStructDecl {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<StructDeclaration>,
+    ) -> Result<(), ErrorEmitted> {
+        let struct_decl = engines.pe().get_struct(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            struct_decl.name.clone(),
+            Declaration::StructDeclaration(*decl_id),
+        )?;
+
+        // create a namespace for the decl, used to create a scope for generics
+        let _ = ctx.scoped(engines, struct_decl.span.clone(), |_scoped_ctx| Ok(()));
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
@@ -22,7 +44,7 @@ impl ty::TyStructDecl {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        ctx.scoped(|mut ctx| {
+        ctx.scoped(handler, Some(span.clone()), |mut ctx| {
             // Type check the type parameters.
             let new_type_parameters = TypeParameter::type_check_type_params(
                 handler,
@@ -57,7 +79,7 @@ impl ty::TyStructDecl {
 impl ty::TyStructField {
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         field: StructField,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -71,9 +93,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| {
-                type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
-            });
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         let field = ty::TyStructField {
             visibility: field.visibility,
             name: field.name,

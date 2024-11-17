@@ -2,7 +2,6 @@ use crate::cli::ContractIdCommand;
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options};
 use forc_tracing::println_green;
-use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
 use tracing::info;
 
@@ -65,6 +64,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
+        profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile.clone(),
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
@@ -78,8 +78,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }

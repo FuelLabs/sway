@@ -1,9 +1,13 @@
 use sway_types::Spanned;
 
 use crate::{
-    decl_engine::DeclId,
-    language::{parsed, ty, CallPath, Visibility},
-    semantic_analysis::type_check_context::EnforceTypeArguments,
+    decl_engine::{parsed_id::ParsedDeclId, DeclId},
+    language::{
+        parsed::{self, Declaration, TraitFn},
+        ty, CallPath, Visibility,
+    },
+    semantic_analysis::symbol_collection_context::SymbolCollectionContext,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -13,6 +17,23 @@ use crate::{
 };
 
 impl ty::TyTraitFn {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        decl_id: &ParsedDeclId<TraitFn>,
+    ) -> Result<(), ErrorEmitted> {
+        let trait_fn = engines.pe().get_trait_fn(decl_id);
+        ctx.insert_parsed_symbol(
+            handler,
+            engines,
+            trait_fn.name.clone(),
+            Declaration::TraitFnDeclaration(*decl_id),
+        )?;
+        let _ = ctx.scoped(engines, trait_fn.span.clone(), |_scoped_ctx| Ok(()));
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -28,10 +49,9 @@ impl ty::TyTraitFn {
         } = trait_fn;
 
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().scoped(|mut ctx| {
+        ctx.by_ref().scoped(handler, Some(span.clone()), |mut ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.
@@ -59,9 +79,7 @@ impl ty::TyTraitFn {
                     EnforceTypeArguments::Yes,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             let trait_fn = ty::TyTraitFn {
                 name: name.clone(),

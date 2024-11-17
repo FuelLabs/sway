@@ -126,9 +126,6 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
-        let experimental = sway_core::ExperimentalFlags {
-            new_encoding: false,
-        };
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
@@ -137,28 +134,24 @@ impl ServerState {
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
 
-                        if let Some(version) = ctx.version {
-                            // Perform garbage collection at configured intervals if enabled to manage memory usage.
-                            if ctx.gc_options.gc_enabled
-                                && version % ctx.gc_options.gc_frequency == 0
+                        // Perform garbage collection if enabled to manage memory usage.
+                        if ctx.gc_options.gc_enabled {
+                            // Call this on the engines clone so we don't clear types that are still in use
+                            // and might be needed in the case cancel compilation was triggered.
+                            if let Err(err) =
+                                session.garbage_collect_module(&mut engines_clone, &uri)
                             {
-                                // Call this on the engines clone so we don't clear types that are still in use
-                                // and might be needed in the case cancel compilation was triggered.
-                                if let Err(err) =
-                                    session.garbage_collect_module(&mut engines_clone, &uri)
-                                {
-                                    tracing::error!(
-                                        "Unable to perform garbage collection: {}",
-                                        err.to_string()
-                                    );
-                                }
+                                tracing::error!(
+                                    "Unable to perform garbage collection: {}",
+                                    err.to_string()
+                                );
                             }
                         }
-
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
                             file_versions: ctx.file_versions,
                         });
+
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
@@ -167,23 +160,22 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
-                            experimental,
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
-                                // Find the module id from the path
+                                // Find the program id from the path
                                 match session::program_id_from_path(&path, &engines_clone) {
                                     Ok(program_id) => {
-                                        // Use the module id to get the metrics for the module
+                                        // Use the program id to get the metrics for the program
                                         if let Some(metrics) = session.metrics.get(&program_id) {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                             // as the engines_clone might have cleared some types that are still in use.
                                             if metrics.reused_programs == 0 {
-                                                // Commit local changes in the module cache to the shared state.
+                                                // Commit local changes in the programs, module, and function caches to the shared state.
                                                 // This ensures that any modifications made during compilation are preserved
                                                 // before we swap the engines.
-                                                engines_clone.qe().module_cache.commit();
+                                                engines_clone.qe().commit();
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 mem::swap(

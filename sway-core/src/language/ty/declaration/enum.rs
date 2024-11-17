@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use monomorphization::MonomorphizeHelper;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -13,7 +14,6 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{parsed::EnumDeclaration, CallPath, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };
@@ -70,10 +70,10 @@ impl HashWithEngines for TyEnumDecl {
 }
 
 impl SubstTypes for TyEnumDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.variants.subst(type_mapping, ctx);
-            self.type_parameters.subst(type_mapping, ctx);
+            self.variants.subst(ctx);
+            self.type_parameters.subst(ctx);
         }
     }
 }
@@ -186,7 +186,7 @@ impl OrdWithEngines for TyEnumVariant {
 }
 
 impl SubstTypes for TyEnumVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.subst_inner(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(ctx)
     }
 }

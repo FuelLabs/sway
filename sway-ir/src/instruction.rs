@@ -205,19 +205,19 @@ pub enum FuelVmInstruction {
 }
 
 /// Comparison operations.
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Predicate {
     Equal,
     LessThan,
     GreaterThan,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum UnaryOpKind {
     Not,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum BinaryOpKind {
     Add,
     Sub,
@@ -385,10 +385,11 @@ impl InstOp {
                 vals
             }
             InstOp::GetLocal(_local_var) => {
-                // TODO: Not sure.
+                // `GetLocal` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::GetConfig(_, _) => {
+                // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::IntToPtr(v, _) => vec![*v],

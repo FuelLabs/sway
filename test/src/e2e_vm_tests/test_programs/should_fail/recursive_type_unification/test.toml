@@ -13,3 +13,5 @@ category = "fail"
 # nextln: $()expected: V
 # nextln: $()found:    MyOption<V>.
 # nextln: $()Implicit return must match up with block's type.
+
+# check: $()2 errors.

@@ -12,7 +12,6 @@ use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
 use fuels_core::codec::ABIDecoder;
 use fuels_core::types::param_types::ParamType;
-use pkg::manifest::build_profile::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
@@ -152,10 +151,14 @@ pub struct TestOpts {
     pub error_on_warnings: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Profile the compilation process.
+    pub profile: bool,
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
-    /// Set of experimental flags
-    pub experimental: ExperimentalFlags,
+    /// Set of enabled experimental flags
+    pub experimental: Vec<sway_features::Feature>,
+    /// Set of disabled experimental flags
+    pub no_experimental: Vec<sway_features::Feature>,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -452,10 +455,12 @@ impl From<TestOpts> for pkg::BuildOpts {
             release: val.release,
             error_on_warnings: val.error_on_warnings,
             time_phases: val.time_phases,
+            profile: val.profile,
             metrics_outfile: val.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
             experimental: val.experimental,
+            no_experimental: val.no_experimental,
         }
     }
 }
@@ -474,10 +479,12 @@ impl TestOpts {
             release: self.release,
             error_on_warnings: self.error_on_warnings,
             time_phases: self.time_phases,
+            profile: self.profile,
             metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
             experimental: self.experimental,
+            no_experimental: self.no_experimental,
         }
     }
 }

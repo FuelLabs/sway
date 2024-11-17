@@ -1,0 +1,16 @@
+[[package]]
+name = "array_wrong_elements_types"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "core"
+source = "path+from-root-C125AFC4EC59A434"
+
+[[package]]
+name = "std"
+source = "path+from-root-C125AFC4EC59A434"
+dependencies = ["core"]
