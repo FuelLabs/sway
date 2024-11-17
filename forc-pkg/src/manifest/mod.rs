@@ -166,7 +166,7 @@ impl TryInto<WorkspaceManifestFile> for ManifestFile {
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: PackageManifest,
@@ -175,7 +175,7 @@ pub struct PackageManifestFile {
 }
 
 /// A direct mapping to a `Forc.toml`.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct PackageManifest {
     pub project: Project,
@@ -189,7 +189,7 @@ pub struct PackageManifest {
     pub proxy: Option<Proxy>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
