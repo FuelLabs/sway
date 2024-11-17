@@ -1502,4 +1502,117 @@ mod tests {
         assert!(table.get("nested").unwrap().as_table().is_some());
     }
 
+    #[test]
+    fn test_workspace_with_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+            
+            [workspace.metadata]
+            description = "A test workspace"
+            version = "1.0.0"
+            authors = ["Test Author"]
+            homepage = "https://example.com"
+            
+            [workspace.metadata.ci]
+            workflow = "main"
+            timeout = 3600
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        assert!(manifest.workspace.metadata.is_some());
+
+        let metadata = manifest.workspace.metadata.unwrap();
+        let table = metadata.as_table().unwrap();
+
+        assert_eq!(
+            table.get("description").unwrap().as_str().unwrap(),
+            "A test workspace"
+        );
+        assert_eq!(table.get("version").unwrap().as_str().unwrap(), "1.0.0");
+
+        let ci = table.get("ci").unwrap().as_table().unwrap();
+        assert_eq!(ci.get("workflow").unwrap().as_str().unwrap(), "main");
+        assert_eq!(ci.get("timeout").unwrap().as_integer().unwrap(), 3600);
+    }
+
+    #[test]
+    fn test_workspace_without_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        assert!(manifest.workspace.metadata.is_none());
+    }
+
+    #[test]
+    fn test_workspace_empty_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+            
+            [workspace.metadata]
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        assert!(manifest.workspace.metadata.is_some());
+        let metadata = manifest.workspace.metadata.unwrap();
+        assert!(metadata.as_table().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_workspace_complex_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+            
+            [workspace.metadata]
+            numbers = [1, 2, 3]
+            strings = ["a", "b", "c"]
+            mixed = [1, "two", true]
+            
+            [workspace.metadata.nested]
+            key = "value"
+            
+            [workspace.metadata.nested.deep]
+            another = "value"
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        let metadata = manifest.workspace.metadata.unwrap();
+        let table = metadata.as_table().unwrap();
+
+        assert!(table.get("numbers").unwrap().as_array().is_some());
+        assert!(table.get("strings").unwrap().as_array().is_some());
+        assert!(table.get("mixed").unwrap().as_array().is_some());
+
+        let nested = table.get("nested").unwrap().as_table().unwrap();
+        assert_eq!(nested.get("key").unwrap().as_str().unwrap(), "value");
+
+        let deep = nested.get("deep").unwrap().as_table().unwrap();
+        assert_eq!(deep.get("another").unwrap().as_str().unwrap(), "value");
+    }
+
+    #[test]
+    fn test_workspace_metadata_roundtrip() {
+        let original = WorkspaceManifest {
+            workspace: Workspace {
+                members: vec![PathBuf::from("package1"), PathBuf::from("package2")],
+                metadata: Some(toml::Value::Table({
+                    let mut table = toml::value::Table::new();
+                    table.insert("key".to_string(), toml::Value::String("value".to_string()));
+                    table
+                })),
+            },
+            patch: None,
+        };
+
+        let serialized = toml::to_string(&original).unwrap();
+        let deserialized: WorkspaceManifest = toml::from_str(&serialized).unwrap();
+
+        assert_eq!(original.workspace.members, deserialized.workspace.members);
+        assert_eq!(original.workspace.metadata, deserialized.workspace.metadata);
+    }
 }
