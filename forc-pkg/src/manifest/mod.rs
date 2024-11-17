@@ -202,6 +202,7 @@ pub struct Project {
     pub forc_version: Option<semver::Version>,
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
+    pub metadata: Option<toml::Value>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
