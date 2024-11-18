@@ -4,7 +4,7 @@ library;
 use ::logging::log;
 use ::revert::revert;
 use ::error_signals::{FAILED_ASSERT_EQ_SIGNAL, FAILED_ASSERT_NE_SIGNAL, FAILED_ASSERT_SIGNAL};
-use ::codec::AbiEncode
+use ::codec::AbiEncode;
 
 /// Asserts that the given `condition` will always be `true` during runtime.
 ///
