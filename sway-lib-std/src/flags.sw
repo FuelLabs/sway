@@ -1,7 +1,7 @@
 //! Functionality for setting and unsetting FuelVM flags to modify behavior related to the `$err` and `$of` registers.
 library;
 
-use ::{assert::assert, registers::{error, flags}};
+use ::registers::flags;
 
 // Mask second bit, which is `F_WRAPPING`.
 pub const F_WRAPPING_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
