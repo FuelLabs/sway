@@ -1,5 +1,6 @@
 library;
 
+pub mod str;
 pub mod raw_ptr;
 pub mod raw_slice;
 pub mod primitives;
