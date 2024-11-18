@@ -1475,7 +1475,7 @@ mod tests {
             [metadata]
             boolean = true
             integer = 42
-            float = 3.14
+            float = 3.12
             string = "value"
             array = [1, 2, 3]
             mixed_array = [1, "two", true]
@@ -1496,7 +1496,7 @@ mod tests {
         let table = table_val.as_table().unwrap();
         assert!(table.get("boolean").unwrap().as_bool().unwrap());
         assert_eq!(table.get("integer").unwrap().as_integer().unwrap(), 42);
-        assert_eq!(table.get("float").unwrap().as_float().unwrap(), 3.14);
+        assert_eq!(table.get("float").unwrap().as_float().unwrap(), 3.12);
         assert_eq!(table.get("string").unwrap().as_str().unwrap(), "value");
         assert_eq!(table.get("array").unwrap().as_array().unwrap().len(), 3);
         assert!(table.get("nested").unwrap().as_table().is_some());
