@@ -77,6 +77,7 @@ library;
 use ::logging::log;
 use ::result::Result;
 use ::revert::revert;
+use ::codec::AbiEncode;
 
 // ANCHOR: docs_option
 /// A type that represents an optional value, either `Some(val)` or `None`.

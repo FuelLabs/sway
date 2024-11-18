@@ -3,6 +3,7 @@ library;
 
 use ::logging::log;
 use ::error_signals::{FAILED_REQUIRE_SIGNAL, REVERT_WITH_LOG_SIGNAL};
+use ::codec::AbiEncode;
 
 /// Will either panic or revert with a given number depending on the context.
 ///

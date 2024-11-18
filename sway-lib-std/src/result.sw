@@ -57,6 +57,7 @@ library;
 
 use ::logging::log;
 use ::revert::revert;
+use ::codec::AbiEncode;
 
 // ANCHOR: docs_result
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).

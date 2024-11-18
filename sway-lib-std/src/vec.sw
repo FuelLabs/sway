@@ -6,6 +6,7 @@ use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
 use ::iterator::*;
+use ::codec::AbiEncode;
 
 struct RawVec<T> {
     ptr: raw_ptr,
