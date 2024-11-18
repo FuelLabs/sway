@@ -33,9 +33,9 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             .find_map(|item| {
                 if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplSelfOrTrait(
                     ty::ImplSelfOrTrait { decl_id, .. },
-                ))) = item.value().typed
+                ))) = item.value().as_typed()
                 {
-                    Some((*ctx.engines.de().get_impl_self_or_trait(&decl_id)).clone())
+                    Some((*ctx.engines.de().get_impl_self_or_trait(decl_id)).clone())
                 } else {
                     None
                 }

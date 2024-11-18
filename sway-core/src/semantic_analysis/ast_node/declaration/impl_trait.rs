@@ -83,8 +83,13 @@ impl TyImplSelfOrTrait {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        // Create a new type parameter for the Self type
-        let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
+        // Create a new type parameter for the Self type.
+        // For the `use_site_span` of the self type parameter we take the `block_span`.
+        // This is the span of the whole impl trait and block and thus, points to
+        // the code in the source file in which the self type is used in the implementation.
+        let self_type_use_site_span = block_span.clone();
+        let self_type_param =
+            TypeParameter::new_self_type(engines, self_type_use_site_span.clone());
         let self_type_id = self_type_param.type_id;
 
         // create a namespace for the impl
@@ -157,7 +162,7 @@ impl TyImplSelfOrTrait {
                 // Update the context
                 let mut ctx = ctx
                     .with_help_text("")
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+                    .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
 
                 let impl_trait = match ctx
@@ -248,7 +253,7 @@ impl TyImplSelfOrTrait {
                         }
 
                         let self_type_param =
-                            TypeParameter::new_self_type(engines, abi.span.clone());
+                            TypeParameter::new_self_type(engines, self_type_use_site_span);
                         // Unify the "self" type param from the abi declaration with
                         // the type that we are implementing for.
                         handler.scope(|h| {
@@ -340,9 +345,11 @@ impl TyImplSelfOrTrait {
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |mut ctx| {
-                // Create a new type parameter for the "self type".
+                // Create a new type parameter for the self type.
                 let self_type_param =
-                    TypeParameter::new_self_type(engines, implementing_for.span());
+                    // Same as with impl trait or ABI, we take the `block_span` as the `use_site_span`
+                    // of the self type.
+                    TypeParameter::new_self_type(engines, block_span.clone());
                 let self_type_id = self_type_param.type_id;
 
                 // create the trait name
@@ -413,7 +420,7 @@ impl TyImplSelfOrTrait {
 
                 let mut ctx = ctx
                     .with_help_text("")
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+                    .with_type_annotation(type_engine.new_unknown());
 
                 // type check the items inside of the impl block
                 let mut new_items = vec![];
@@ -854,41 +861,29 @@ fn type_check_trait_implementation(
                 let decl_ref = decl_engine.insert(type_decl.clone(), Some(decl_id));
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Type(decl_ref));
 
-                let old_type_decl_info1 = TypeInfo::TraitType {
-                    name: type_decl.name.clone(),
-                    trait_type_id: implementing_for,
-                };
-                let old_type_decl_info2 = TypeInfo::TraitType {
-                    name: type_decl.name.clone(),
-                    trait_type_id: type_engine.insert(
-                        engines,
-                        TypeInfo::UnknownGeneric {
-                            // Using Span::dummy just to match the type substitution, type is not used anywhere else.
-                            name: Ident::new_with_override("Self".into(), Span::dummy()),
-                            trait_constraints: VecSet(vec![]),
-                            parent: None,
-                            is_from_type_parameter: false,
-                        },
-                        None,
-                    ),
-                };
+                // We want the `Self` type to have the span that points to an arbitrary location within
+                // the source file in which the trait is implemented for a type. The `trait_name` points
+                // to the name in the `impl <trait_name> for ...` and is thus a good candidate.
+                let self_type_id = type_engine
+                    .new_unknown_generic_self(trait_name.span(), false)
+                    .0;
                 if let Some(type_arg) = type_decl.ty.clone() {
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![type_engine.insert(
+                            vec![type_engine.insert_trait_type(
                                 engines,
-                                old_type_decl_info1,
-                                type_decl.name.span().source_id(),
+                                type_decl.name.clone(),
+                                implementing_for,
                             )],
                             vec![type_arg.type_id],
                         ),
                     );
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![type_engine.insert(
+                            vec![type_engine.insert_trait_type(
                                 engines,
-                                old_type_decl_info2,
-                                type_decl.name.span().source_id(),
+                                type_decl.name.clone(),
+                                self_type_id,
                             )],
                             vec![type_arg.type_id],
                         ),
@@ -1106,7 +1101,7 @@ fn type_check_impl_method(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        .with_type_annotation(type_engine.new_unknown());
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1335,7 +1330,7 @@ fn type_check_const_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        .with_type_annotation(type_engine.new_unknown());
 
     let interface_name = || -> InterfaceName {
         if is_contract {
@@ -1416,7 +1411,7 @@ fn type_check_type_decl(
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        .with_type_annotation(type_engine.new_unknown());
 
     let interface_name = || -> InterfaceName {
         if is_contract {

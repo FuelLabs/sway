@@ -527,7 +527,6 @@ impl<'a> UnifyCheck<'a> {
                 // engine
                 (TypeInfo::Unknown, TypeInfo::Unknown) => false,
                 (TypeInfo::Numeric, TypeInfo::Numeric) => false,
-                (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 
                 // these cases are able to be directly compared
                 (TypeInfo::Contract, TypeInfo::Contract) => true,

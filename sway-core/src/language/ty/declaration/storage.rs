@@ -8,8 +8,10 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{parsed::StorageDeclaration, ty::*, Visibility},
+    ir_generation::storage::get_storage_key_string,
+    language::parsed::StorageDeclaration,
     transform::{self},
+    ty::*,
     type_system::*,
     Namespace,
 };
@@ -233,27 +235,6 @@ impl TyStorageDecl {
             return_type,
         ))
     }
-
-    pub(crate) fn fields_as_typed_struct_fields(&self) -> Vec<TyStructField> {
-        self.fields
-            .iter()
-            .map(
-                |TyStorageField {
-                     ref name,
-                     ref type_argument,
-                     ref span,
-                     ref attributes,
-                     ..
-                 }| TyStructField {
-                    visibility: Visibility::Public,
-                    name: name.clone(),
-                    span: span.clone(),
-                    type_argument: type_argument.clone(),
-                    attributes: attributes.clone(),
-                },
-            )
-            .collect()
-    }
 }
 
 impl Spanned for TyStorageField {
@@ -271,6 +252,22 @@ pub struct TyStorageField {
     pub initializer: TyExpression,
     pub(crate) span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl TyStorageField {
+    /// Returns the full name of the [TyStorageField], consisting
+    /// of its name preceded by its full namespace path.
+    /// E.g., "storage::ns1::ns1.name".
+    pub fn full_name(&self) -> String {
+        get_storage_key_string(
+            &self
+                .namespace_names
+                .iter()
+                .map(|i| i.as_str().to_string())
+                .chain(vec![self.name.as_str().to_string()])
+                .collect::<Vec<_>>(),
+        )
+    }
 }
 
 impl EqWithEngines for TyStorageField {}

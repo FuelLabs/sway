@@ -542,11 +542,7 @@ pub fn item_fn_to_function_declaration(
     let return_type = match item_fn.fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
         None => {
-            let type_id = engines.te().insert(
-                engines,
-                TypeInfo::Tuple(Vec::new()),
-                item_fn.fn_signature.span().source_id(),
-            );
+            let type_id = engines.te().id_of_unit();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -992,7 +988,7 @@ pub(crate) fn item_const_to_constant_declaration(
                     return Err(errors);
                 }
             }
-            engines.te().insert(engines, TypeInfo::Unknown, None).into()
+            engines.te().new_unknown().into()
         }
     };
 
@@ -1255,18 +1251,11 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .into_inner()
             .into_iter()
             .map(|ident| {
-                let custom_type = type_engine.insert(
-                    engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: ident.clone().into(),
-                        type_arguments: None,
-                    },
-                    ident.span().source_id(),
-                );
+                let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
                 TypeParameter {
                     type_id: custom_type,
                     initial_type_id: custom_type,
-                    name_ident: ident,
+                    name: ident,
                     trait_constraints: Vec::new(),
                     trait_constraints_span: Span::dummy(),
                     is_from_parent,
@@ -1286,12 +1275,12 @@ fn generic_params_opt_to_type_parameters_with_parent(
     {
         let param_to_edit = if let Some(o) = params
             .iter_mut()
-            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             o
         } else if let Some(o2) = parent_params
             .iter()
-            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             params.push(o2.clone());
             params.last_mut().unwrap()
@@ -1405,11 +1394,7 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
             };
-            let type_id = engines.te().insert(
-                engines,
-                TypeInfo::new_self_type(self_token.span()),
-                self_token.span().source_id(),
-            );
+            let type_id = engines.te().new_self_type(engines, self_token.span());
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
@@ -1613,11 +1598,7 @@ fn fn_signature_to_trait_fn(
     let return_type = match &fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
         None => {
-            let type_id = engines.te().insert(
-                engines,
-                TypeInfo::Tuple(Vec::new()),
-                fn_signature.span().source_id(),
-            );
+            let type_id = engines.te().id_of_unit();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -2754,7 +2735,10 @@ fn expr_to_length(
     expr: Expr,
 ) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
-    Ok(Length::new(expr_to_usize(context, handler, expr)?, span))
+    Ok(Length::from_numeric_literal(
+        expr_to_usize(context, handler, expr)?,
+        span,
+    ))
 }
 
 fn expr_to_usize(
@@ -3047,7 +3031,7 @@ fn match_expr_to_expression(
 
     let var_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
-            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            let type_id = engines.te().new_unknown();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -3131,7 +3115,7 @@ fn for_expr_to_expression(
     // Declare iterable with iterator return
     let iterable_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
-            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            let type_id = engines.te().new_unknown();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -3164,7 +3148,7 @@ fn for_expr_to_expression(
     // Declare value_opt = iterable.next()
     let value_opt_to_next_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
-            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            let type_id = engines.te().new_unknown();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -3820,7 +3804,7 @@ fn statement_let_to_ast_nodes_unfold(
             let type_ascription = match ty_opt {
                 Some(ty) => ty_to_type_argument(context, handler, engines, ty)?,
                 None => {
-                    let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+                    let type_id = engines.te().new_unknown();
                     TypeArgument {
                         type_id,
                         initial_type_id: type_id,
@@ -3870,7 +3854,7 @@ fn statement_let_to_ast_nodes_unfold(
             let type_ascription = match &ty_opt {
                 Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                 None => {
-                    let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+                    let type_id = engines.te().new_unknown();
                     TypeArgument {
                         type_id,
                         initial_type_id: type_id,
@@ -3954,52 +3938,38 @@ fn statement_let_to_ast_nodes_unfold(
             let tuple_name =
                 generate_tuple_var_name(context.next_destructured_tuple_unique_suffix());
 
-            let tuple_name = Ident::new_with_override(tuple_name, pat_tuple.span().clone());
+            let tuple_name = Ident::new_with_override(tuple_name, pat_tuple.span());
 
-            // Acript a second declaration to a tuple of placeholders to check that the tuple
-            // is properly sized to the pattern
+            // Ascribe a second declaration to a tuple of placeholders to check that the tuple
+            // is properly sized to the pattern.
             let placeholders_type_ascription = {
-                let type_id = engines.te().insert(
+                let type_id = engines.te().insert_tuple_without_annotations(
                     engines,
-                    TypeInfo::Tuple(
-                        pat_tuple
-                            .clone()
-                            .into_inner()
-                            .into_iter()
-                            .map(|pat| {
-                                let initial_type_id =
-                                    engines.te().insert(engines, TypeInfo::Unknown, None);
-                                let dummy_type_param = TypeParameter {
-                                    type_id: initial_type_id,
-                                    initial_type_id,
-                                    name_ident: Ident::new_with_override(
-                                        "_".into(),
-                                        pat.span().clone(),
-                                    ),
-                                    trait_constraints: vec![],
-                                    trait_constraints_span: Span::dummy(),
-                                    is_from_parent: false,
-                                };
-                                let initial_type_id = engines.te().insert(
-                                    engines,
-                                    TypeInfo::Placeholder(dummy_type_param),
-                                    None,
-                                );
-                                TypeArgument {
-                                    type_id: initial_type_id,
-                                    initial_type_id,
-                                    call_path_tree: None,
-                                    span: Span::dummy(),
-                                }
-                            })
-                            .collect(),
-                    ),
-                    tuple_name.span().source_id(),
+                    pat_tuple
+                        .clone()
+                        .into_inner()
+                        .into_iter()
+                        .map(|pat| {
+                            // Since these placeholders are generated specifically for checks, the `pat.span()` must not
+                            // necessarily point to a "_" string in code. E.g., in this example:
+                            //   let (a, _) = (0, 0);
+                            // The first `pat.span()` will point to "a", while the second one will indeed point to "_".
+                            // However, their `pat.span()`s will always be in the source file in which the placeholder
+                            // is logically situated.
+                            engines.te().new_placeholder(TypeParameter::new_placeholder(
+                                engines.te().new_unknown(),
+                                pat.span(),
+                            ))
+                        })
+                        .collect(),
                 );
+
+                // The type argument is a tuple of place holders of unknowns pointing to
+                // the tuple pattern.
                 TypeArgument {
                     type_id,
                     initial_type_id: type_id,
-                    span: tuple_name.span(),
+                    span: pat_tuple.span(),
                     call_path_tree: None,
                 }
             };
@@ -4313,14 +4283,14 @@ fn ty_to_type_parameter(
 ) -> Result<TypeParameter, ErrorEmitted> {
     let type_engine = engines.te();
 
-    let name_ident = match ty {
+    let name = match ty {
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+            let unknown_type = type_engine.new_unknown();
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
-                name_ident: underscore_token.into(),
+                name: underscore_token.into(),
                 trait_constraints: Vec::default(),
                 trait_constraints_span: Span::dummy(),
                 is_from_parent: false,
@@ -4328,25 +4298,18 @@ fn ty_to_type_parameter(
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
-        Ty::StringSlice(..) => panic!("str types are not allowed in this position"),
-        Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
+        Ty::StringSlice(..) => panic!("str slice types are not allowed in this position"),
+        Ty::StringArray { .. } => panic!("str array types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
         Ty::Ref { .. } => panic!("ref types are not allowed in this position"),
         Ty::Never { .. } => panic!("never types are not allowed in this position"),
     };
-    let custom_type = type_engine.insert(
-        engines,
-        TypeInfo::Custom {
-            qualified_call_path: name_ident.clone().into(),
-            type_arguments: None,
-        },
-        name_ident.span().source_id(),
-    );
+    let custom_type = type_engine.new_custom_from_name(engines, name.clone());
     Ok(TypeParameter {
         type_id: custom_type,
         initial_type_id: custom_type,
-        name_ident,
+        name,
         trait_constraints: Vec::new(),
         trait_constraints_span: Span::dummy(),
         is_from_parent: false,

@@ -1,4 +1,7 @@
-use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
+use std::{
+    io::Read,
+    ops::{BitAnd, BitOr, BitXor, Not, Rem},
+};
 
 use crate::{
     engine_threading::*,
@@ -221,7 +224,7 @@ pub(crate) fn compile_constant_expression_to_constant(
         // definition, rather than the actual call site.
         ty::TyExpressionVariant::FunctionApplication { call_path, .. } => {
             let span = call_path.span();
-            let span = if span == Span::dummy() {
+            let span = if span.is_dummy() {
                 const_expr.span.clone()
             } else {
                 span
@@ -1362,6 +1365,136 @@ fn const_eval_intrinsic(
                     span: intrinsic.span.clone(),
                 }),
             }
+        }
+        Intrinsic::Transmute => {
+            let src_type = &intrinsic.type_arguments[0];
+            let src_ir_type = convert_resolved_type_id(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                src_type.type_id,
+                &src_type.span,
+            )
+            .unwrap();
+
+            let dst_type = &intrinsic.type_arguments[1];
+            let dst_ir_type = convert_resolved_type_id(
+                lookup.engines.te(),
+                lookup.engines.de(),
+                lookup.context,
+                dst_type.type_id,
+                &dst_type.span,
+            )
+            .unwrap();
+
+            // check IR sizes match
+            let src_ir_type_in_bytes = src_ir_type.size(lookup.context).in_bytes();
+            let dst_ir_type_in_bytes = dst_ir_type.size(lookup.context).in_bytes();
+            if src_ir_type_in_bytes != dst_ir_type_in_bytes {
+                return Err(ConstEvalError::CompileError);
+            }
+
+            fn append_bytes(
+                ctx: &Context<'_>,
+                bytes: &mut Vec<u8>,
+                t: &Type,
+                value: &ConstantValue,
+            ) -> Result<(), ConstEvalError> {
+                match t.get_content(ctx) {
+                    TypeContent::Array(item_type, size) => match value {
+                        ConstantValue::Array(items) => {
+                            assert!(*size as usize == items.len());
+                            for item in items {
+                                append_bytes(ctx, bytes, item_type, &item.value)?;
+                            }
+                        }
+                        _ => unreachable!(),
+                    },
+                    TypeContent::Uint(8) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend((*v as u8).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    TypeContent::Uint(16) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend([0u8, 0u8, 0u8, 0u8, 0u8, 0u8]);
+                            bytes.extend((*v as u16).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    TypeContent::Uint(32) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend([0u8, 0u8, 0u8, 0u8]);
+                            bytes.extend((*v as u32).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    TypeContent::Uint(64) => match value {
+                        ConstantValue::Uint(v) => {
+                            bytes.extend((*v).to_be_bytes());
+                        }
+                        _ => unreachable!(),
+                    },
+                    _ => return Err(ConstEvalError::CompileError),
+                }
+                Ok(())
+            }
+
+            fn transmute_bytes(
+                ctx: &Context<'_>,
+                bytes: &mut std::io::Cursor<Vec<u8>>,
+                t: &Type,
+            ) -> Result<Constant, ConstEvalError> {
+                Ok(match t.get_content(ctx) {
+                    TypeContent::Uint(8) => {
+                        let mut buffer = [0u8];
+                        let _ = bytes.read_exact(&mut buffer);
+                        Constant {
+                            ty: Type::get_uint8(ctx),
+                            value: ConstantValue::Uint(buffer[0] as u64),
+                        }
+                    }
+                    TypeContent::Uint(16) => {
+                        let mut buffer = [0u8; 8]; // u16 = u64 at runtime
+                        let _ = bytes.read_exact(&mut buffer);
+                        let buffer = [buffer[6], buffer[7]];
+                        Constant {
+                            ty: Type::get_uint16(ctx),
+                            value: ConstantValue::Uint(u16::from_be_bytes(buffer) as u64),
+                        }
+                    }
+                    TypeContent::Uint(32) => {
+                        let mut buffer = [0u8; 8]; // u32 = u64 at runtime
+                        let _ = bytes.read_exact(&mut buffer);
+                        let buffer = [buffer[4], buffer[5], buffer[6], buffer[7]];
+                        Constant {
+                            ty: Type::get_uint32(ctx),
+                            value: ConstantValue::Uint(u32::from_be_bytes(buffer) as u64),
+                        }
+                    }
+                    TypeContent::Uint(64) => {
+                        let mut buffer = [0u8; 8];
+                        let _ = bytes.read_exact(&mut buffer);
+                        Constant {
+                            ty: Type::get_uint64(ctx),
+                            value: ConstantValue::Uint(u64::from_be_bytes(buffer)),
+                        }
+                    }
+                    _ => return Err(ConstEvalError::CompileError),
+                })
+            }
+
+            let mut runtime_bytes = vec![];
+            append_bytes(
+                lookup.context,
+                &mut runtime_bytes,
+                &src_ir_type,
+                &args[0].value,
+            )?;
+            let mut cursor = std::io::Cursor::new(runtime_bytes);
+            let c = transmute_bytes(lookup.context, &mut cursor, &dst_ir_type)?;
+            Ok(Some(c))
         }
     }
 }

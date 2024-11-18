@@ -705,27 +705,26 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-// TODO: Uncomment when fixed. https://github.com/FuelLabs/sway/issues/6567
-// #[test]
-// fn ok_vec_buffer_ownership() {
-//     let mut original_array = [1u8, 2u8, 3u8, 4u8];
-//     let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+#[test]
+fn ok_vec_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
 
-//     // Check Vec duplicates the original slice
-//     let mut bytes = Vec::<u8>::from(slice);
-//     bytes.set(0, 5);
-//     assert(original_array[0] == 1);
+    // Check Vec duplicates the original slice
+    let mut bytes = Vec::<u8>::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
 
-//     // At this point, slice equals [5, 2, 3, 4]
-//     let encoded_slice = encode(bytes);
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
 
-//     // `Vec<u8>` should duplicate the underlying buffer,
-//     // so when we write to it, it should not change
-//     // `encoded_slice` 
-//     let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
-//     bytes.set(0, 6);
-//     assert(bytes.get(0) == Some(6));
+    // `Vec<u8>` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
 
-//     let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
-//     assert(bytes.get(0) == Some(5));
-// }
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
+}

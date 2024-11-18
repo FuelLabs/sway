@@ -683,6 +683,10 @@ impl Root {
         Ok(())
     }
 
+    /// Check that all accessed modules in the src path are visible from the dst path.
+    /// If src and dst have a common ancestor module that is private, this privacy modifier is
+    /// ignored for visibility purposes, since src and dst are both behind that private visibility
+    /// modifier.  Additionally, items in a private module are visible to its immediate parent.
     fn check_module_privacy(
         &self,
         handler: &Handler,
@@ -690,20 +694,33 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        // you are always allowed to access your ancestor's symbols
-        if !is_ancestor(src, dst) {
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(src).skip(1) {
-                let module = self.module.lookup_submodule(handler, engines, prefix)?;
-                if module.visibility().is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    handler.emit_err(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
+        // Calculate the number of src prefixes whose privacy is ignored.
+        let mut ignored_prefixes = 0;
+
+        // Ignore visibility of common ancestors
+        ignored_prefixes += src
+            .iter()
+            .zip(dst)
+            .position(|(src_id, dst_id)| src_id != dst_id)
+            .unwrap_or(dst.len());
+
+        // Ignore visibility of direct submodules of the destination module
+        if dst.len() == ignored_prefixes {
+            ignored_prefixes += 1;
+        }
+
+        // Check visibility of remaining submodules in the source path
+        for prefix in iter_prefixes(src).skip(ignored_prefixes) {
+            let module = self.module.lookup_submodule(handler, engines, prefix)?;
+            if module.visibility().is_private() {
+                let prefix_last = prefix[prefix.len() - 1].clone();
+                handler.emit_err(CompileError::ImportPrivateModule {
+                    span: prefix_last.span(),
+                    name: prefix_last,
+                });
             }
         }
+
         Ok(())
     }
 
