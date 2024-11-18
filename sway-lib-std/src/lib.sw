@@ -2,6 +2,7 @@ library;
 
 pub mod raw_ptr;
 pub mod raw_slice;
+pub mod codec;
 pub mod constants;
 pub mod error_signals;
 pub mod logging;
