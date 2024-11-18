@@ -121,3 +121,33 @@ fn u8_try_from_u128() {
 
     assert(u8_4.is_none());
 }
+
+#[test]
+fn test_u8_as_u64() {
+    let val = 2u8;
+    let result = val.as_u64();
+    assert(result == 2);
+}
+
+#[test]
+fn test_u8_as_u32() {
+    let val = 2u8;
+    let result = val.as_u32();
+    assert(result == 2u32);
+}
+
+#[test]
+fn test_u8_as_u16() {
+    let val = 2u8;
+    let result = val.as_u16();
+    assert(result == 2u16);
+}
+
+#[test]
+fn test_u8_as_u256() {
+    let val = 2u8;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
+}
