@@ -1,7 +1,6 @@
 library;
 
 use ::primitives::*;
-use ::slice::*;
 use ::assert::assert;
 use ::registers::flags;
 use ::flags::panic_on_overflow_enabled;
