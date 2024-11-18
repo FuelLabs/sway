@@ -1,0 +1,4 @@
+category = "compile"
+validate_abi = false
+validate_storage_slots = false
+expected_warnings = 0
