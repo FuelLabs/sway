@@ -132,7 +132,7 @@ impl TestExecutor {
             test_entry: test_entry.clone(),
             name,
             ji_idx,
-            test_offset: (test_offset - ji_idx as u32) * Instruction::SIZE as u32
+            test_offset: (test_offset - ji_idx as u32) * Instruction::SIZE as u32,
         })
     }
 
@@ -214,15 +214,20 @@ impl TestExecutor {
 
         loop {
             match state {
-                ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_) => break,
+                ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_) => {
+                    break
+                }
                 ProgramState::RunProgram(eval) => {
                     if eval.breakpoint().unwrap().pc() == jump_pc {
                         self.interpreter.registers_mut()[3] += self.test_offset as u64;
                         self.interpreter.set_single_stepping(false);
                     }
 
-                    state = self.interpreter.resume().map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
-                },
+                    state = self
+                        .interpreter
+                        .resume()
+                        .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
+                }
                 ProgramState::VerifyPredicate(_) => todo!(),
             }
         }
@@ -280,8 +285,11 @@ fn find_ji_instruction_index(bytecode: &[u8]) -> usize {
     // LW $writable $fp 0x49                           ;; [93, 64, 96, 73]
     let b = vm::fuel_asm::op::lw(fuel_asm::RegId::WRITABLE, fuel_asm::RegId::FP, 73).to_bytes();
 
-    bytecode.chunks(Instruction::SIZE).position(|instruction| {
-        let instruction: [u8; 4] = instruction.try_into().unwrap();
-        instruction == a || instruction == b
-    }).unwrap()
+    bytecode
+        .chunks(Instruction::SIZE)
+        .position(|instruction| {
+            let instruction: [u8; 4] = instruction.try_into().unwrap();
+            instruction == a || instruction == b
+        })
+        .unwrap()
 }
