@@ -37,3 +37,13 @@ pub use ::auth::msg_sender;
 
 // Math
 pub use ::math::*;
+
+// (Previously) core
+pub use ::primitives::*;
+pub use ::slice::*;
+pub use ::ops::*;
+pub use ::never::*;
+pub use ::raw_ptr::*;
+pub use ::raw_slice::*;
+pub use ::codec::*;
+pub use ::str::*;
