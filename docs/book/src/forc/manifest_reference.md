@@ -47,6 +47,55 @@ name = "wallet_contract"
 indexing = { namespace = "counter-contract", schema_path = "out/release/counter-contract-abi.json" }
 ```
 
+### Metadata Section in Forc.toml
+
+The `[project.metadata]` section provides a dedicated space for external tools and plugins to store their configuration in `Forc.toml`. The metadata key names are arbitrary and do not need to match the tool's name.
+
+#### Usage
+
+Use any descriptive key name for your metadata table:
+
+```toml
+[project.metadata.any_name_here]
+option1 = "value"
+option2 = "value"
+
+[project.metadata.my_custom_config]
+setting1 = "value"
+setting2 = "value"
+```
+
+Example from an indexing tool:
+```toml
+[project.metadata.indexing]
+namespace = "counter-contract"
+schema_path = "out/release/counter-contract-abi.json"
+```
+
+#### Guidelines for Plugin Developers
+
+1. Best Practices
+- Choose clear, descriptive metadata key names
+- Document the exact metadata key name your tool expects
+- Don't require `Forc.toml` if tool can function without it
+- Consider using TOML format for dedicated config files
+
+2. Implementation Notes
+- The metadata section is optional
+- Forc does not parse metadata contents
+- Plugin developers handle their own configuration parsing
+- Choose unique metadata keys to avoid conflicts with other tools
+
+#### Example Use Cases
+- Documentation generation settings
+- Formatter configurations
+- Debugger options
+- Wallet integration
+- Contract indexing
+- Testing frameworks
+
+This allows for a streamlined developer experience while maintaining clear separation between core Forc functionality and third-party tools.
+
 ## The `[dependencies]` section
 
 The following fields can be provided with a dependency:
