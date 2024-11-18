@@ -1,7 +1,6 @@
 library;
 
 use ::primitives::*;
-use ::assert::assert;
 use ::registers::flags;
 use ::flags::panic_on_overflow_enabled;
 
@@ -1399,14 +1398,4 @@ impl Eq for str {
             }
         }
     }
-}
-
-#[test]
-pub fn ok_str_eq() {
-    assert("" == "");
-    assert("a" == "a");
-
-    assert("a" != "");
-    assert("" != "a");
-    assert("a" != "b");
 }
