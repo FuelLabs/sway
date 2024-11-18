@@ -66,6 +66,7 @@ setting2 = "value"
 ```
 
 Example from an indexing tool:
+
 ```toml
 [project.metadata.indexing]
 namespace = "counter-contract"
@@ -74,25 +75,28 @@ schema_path = "out/release/counter-contract-abi.json"
 
 #### Guidelines for Plugin Developers
 
-1. Best Practices
-- Choose clear, descriptive metadata key names
-- Document the exact metadata key name your tool expects
-- Don't require `Forc.toml` if tool can function without it
-- Consider using TOML format for dedicated config files
+Best Practices
 
-2. Implementation Notes
-- The metadata section is optional
-- Forc does not parse metadata contents
-- Plugin developers handle their own configuration parsing
-- Choose unique metadata keys to avoid conflicts with other tools
+* Choose clear, descriptive metadata key names
+* Document the exact metadata key name your tool expects
+* Don't require `Forc.toml` if tool can function without it
+* Consider using TOML format for dedicated config files
+
+Implementation Notes
+
+* The metadata section is optional
+* Forc does not parse metadata contents
+* Plugin developers handle their own configuration parsing
+* Choose unique metadata keys to avoid conflicts with other tools
 
 #### Example Use Cases
-- Documentation generation settings
-- Formatter configurations
-- Debugger options
-- Wallet integration
-- Contract indexing
-- Testing frameworks
+
+* Documentation generation settings
+* Formatter configurations
+* Debugger options
+* Wallet integration
+* Contract indexing
+* Testing frameworks
 
 This allows for a streamlined developer experience while maintaining clear separation between core Forc functionality and third-party tools.
 
