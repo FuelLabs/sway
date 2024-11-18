@@ -2557,22 +2557,32 @@ impl AbiDecode for u64 {
     }
 }
 
+pub fn as_u16(u8) -> u16 {
+    asm(input: u8) {
+        input: u16
+    }
+}
+
+pub fn as_u32(u8) -> u32 {
+    asm(input: u8) {
+        input: u32
+    }
+}
+
 impl AbiDecode for u32 {
     fn abi_decode(ref mut buffer: BufferReader) -> u32 {
-        use ::primitive_conversions::u8::*;
-        let a = buffer.read::<u8>().as_u32();
-        let b = buffer.read::<u8>().as_u32();
-        let c = buffer.read::<u8>().as_u32();
-        let d = buffer.read::<u8>().as_u32();
+        let a = as_u32(buffer.read::<u8>());
+        let b = as_u32(buffer.read::<u8>());
+        let c = as_u32(buffer.read::<u8>());
+        let d = as_u32(buffer.read::<u8>());
         (a << 24) | (b << 16) | (c << 8) | d
     }
 }
 
 impl AbiDecode for u16 {
     fn abi_decode(ref mut buffer: BufferReader) -> u16 {
-        use ::primitive_conversions::u8::*;
-        let a = buffer.read::<u8>().as_u16();
-        let b = buffer.read::<u8>().as_u16();
+        let a = as_u16(buffer.read::<u8>());
+        let b = as_u16(buffer.read::<u8>());
         (a << 8) | b
     }
 }
