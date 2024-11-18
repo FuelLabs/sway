@@ -68,7 +68,7 @@ impl Address {
     }
 }
 
-impl core::ops::Eq for Address {
+impl ::ops::Eq for Address {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }

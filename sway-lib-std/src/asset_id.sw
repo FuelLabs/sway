@@ -27,7 +27,7 @@ impl Hash for AssetId {
     }
 }
 
-impl core::ops::Eq for AssetId {
+impl ::ops::Eq for AssetId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }

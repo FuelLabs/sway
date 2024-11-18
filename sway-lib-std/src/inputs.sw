@@ -17,7 +17,7 @@ use ::tx::{
     Transaction,
     tx_type,
 };
-use core::ops::Eq;
+use ::ops::Eq;
 use ::revert::revert;
 
 // GTF Opcode const selectors

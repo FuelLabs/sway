@@ -724,7 +724,7 @@ impl Bytes {
     }
 }
 
-impl core::ops::Eq for Bytes {
+impl ::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
             return false;

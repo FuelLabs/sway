@@ -19,7 +19,7 @@ pub enum Identity {
 }
 // ANCHOR_END: docs_identity
 
-impl core::ops::Eq for Identity {
+impl ::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,

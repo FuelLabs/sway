@@ -264,7 +264,7 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
     }
 }
 
-impl core::ops::Eq for Output {
+impl ::ops::Eq for Output {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Output::Coin, Output::Coin) => true,

@@ -1,6 +1,6 @@
 library;
 
-use core::ops::Eq;
+use ::ops::Eq;
 
 impl Eq for raw_ptr {
     fn eq(self, other: Self) -> bool {
