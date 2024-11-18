@@ -202,7 +202,7 @@ fn find_all_methods_for_decl<'a>(
         .all_references_of_token(decl_token, engines)
         .filter_map(|item| {
             let token = item.value();
-            token.typed.as_ref().and_then(|typed| match typed {
+            token.as_typed().as_ref().and_then(|typed| match typed {
                 TypedAstToken::TypedDeclaration(decl) => match decl {
                     ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                         let abi_decl = engines.de().get_abi(decl_id);

@@ -89,11 +89,11 @@ impl Spanned for TyConfigurableDecl {
 }
 
 impl SubstTypes for TyConfigurableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, ctx);
-            self.type_ascription.subst(type_mapping, ctx);
-            self.value.subst(type_mapping, ctx);
+            self.return_type.subst(ctx);
+            self.type_ascription.subst(ctx);
+            self.value.subst(ctx);
         }
     }
 }

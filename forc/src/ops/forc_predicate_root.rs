@@ -1,7 +1,6 @@
 use crate::cli::PredicateRootCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, build_with_options};
-use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::BuildTarget;
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
@@ -34,6 +33,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
             reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
+        profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
@@ -47,8 +47,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_predicates(),
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental,
+        no_experimental: cmd.experimental.no_experimental,
     }
 }

@@ -6,10 +6,7 @@ use crate::{
         parsed::{self, Declaration, TraitFn},
         ty, CallPath, Visibility,
     },
-    semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext,
-        type_check_context::EnforceTypeArguments,
-    },
+    semantic_analysis::symbol_collection_context::SymbolCollectionContext,
     Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -52,7 +49,6 @@ impl ty::TyTraitFn {
         } = trait_fn;
 
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
         ctx.by_ref().scoped(handler, Some(span.clone()), |mut ctx| {
@@ -83,9 +79,7 @@ impl ty::TyTraitFn {
                     EnforceTypeArguments::Yes,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             let trait_fn = ty::TyTraitFn {
                 name: name.clone(),

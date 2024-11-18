@@ -13,10 +13,10 @@ use crate::{
     },
     semantic_analysis::{
         symbol_resolve::ResolveSymbols, symbol_resolve_context::SymbolResolveContext,
-        type_check_context::EnforceTypeArguments, TypeCheckContext,
+        TypeCheckContext,
     },
     type_system::priv_prelude::*,
-    Ident,
+    EnforceTypeArguments, Ident,
 };
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
@@ -238,7 +238,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix),
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         Ok(type_id)
     }
@@ -309,9 +309,11 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     > {
         let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
-        let engines = ctx.engines();
+
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx
+            .resolve_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_typed();
         // Check to see if this is a fn declaration.
         let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
         // Get a new copy from the declaration engine.
@@ -337,9 +339,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                         EnforceTypeArguments::Yes,
                         None,
                     )
-                    .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                    .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
                 }
             }
         }
@@ -389,7 +389,9 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx
+            .resolve_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_typed();
         // Check to see if this is a struct declaration.
         let struct_id = unknown_decl.to_struct_decl(handler, engines)?;
         // Get a new copy from the declaration engine.
@@ -407,11 +409,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             new_copy,
             decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
         );
-        let type_id = type_engine.insert(
-            engines,
-            TypeInfo::Struct(*new_struct_ref.id()),
-            new_struct_ref.span().source_id(),
-        );
+        let type_id = type_engine.insert_struct(engines, *new_struct_ref.id());
         Ok((new_struct_ref, Some(type_id), None))
     }
 }
@@ -433,7 +431,9 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx
+            .resolve_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_typed();
 
         // Get a new copy from the declaration engine.
         let enum_id = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) =
@@ -458,11 +458,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         // Insert the new copy into the declaration engine.
         let new_enum_ref =
             decl_engine.insert(new_copy, decl_engine.get_parsed_decl_id(&enum_id).as_ref());
-        let type_id = type_engine.insert(
-            engines,
-            TypeInfo::Enum(*new_enum_ref.id()),
-            new_enum_ref.span().source_id(),
-        );
+        let type_id = type_engine.insert_enum(engines, *new_enum_ref.id());
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
     }
 }
@@ -474,8 +470,9 @@ impl TypeBinding<QualifiedCallPath> {
         ctx: &mut TypeCheckContext,
     ) -> Result<DeclRef<DeclId<ty::TyConstantDecl>>, ErrorEmitted> {
         // Grab the declaration.
-        let unknown_decl =
-            ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx
+            .resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_typed();
 
         // Check to see if this is a const declaration.
         let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
@@ -498,7 +495,9 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         ErrorEmitted,
     > {
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx
+            .resolve_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_typed();
 
         // Check to see if this is a const declaration.
         let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;

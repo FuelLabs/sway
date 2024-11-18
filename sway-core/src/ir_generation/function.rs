@@ -660,9 +660,13 @@ impl<'eng> FnCompiler<'eng> {
                     span_md_idx,
                 )
             }
-            ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
-            }
+            ty::TyExpressionVariant::IntrinsicFunction(kind) => self.compile_intrinsic_function(
+                context,
+                md_mgr,
+                kind,
+                ast_expr.span.clone(),
+                ast_expr.return_type,
+            ),
             ty::TyExpressionVariant::AbiName(_) => {
                 let val = Value::new_constant(context, Constant::new_unit(context));
                 Ok(TerminatorValue::new(val, context))
@@ -869,6 +873,7 @@ impl<'eng> FnCompiler<'eng> {
             span: _,
         }: &ty::TyIntrinsicFunctionKind,
         span: Span,
+        return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
         fn store_key_in_local_mem(
             compiler: &mut FnCompiler,
@@ -1783,7 +1788,7 @@ impl<'eng> FnCompiler<'eng> {
                     );
 
                     // needs realloc block
-                    // new_cap = cap * 2
+                    // new_cap = (cap * 2) + needed_size
                     // aloc new_cap
                     // mcp hp old_ptr len
                     // hp: ptr u8
@@ -1793,11 +1798,15 @@ impl<'eng> FnCompiler<'eng> {
 
                     let two = Constant::new_uint(context, 64, 2);
                     let two = Value::new_constant(context, two);
-                    let new_cap =
+                    let new_cap_part =
                         s.current_block
                             .append(context)
                             .binary_op(BinaryOpKind::Mul, cap, two);
-
+                    let new_cap = s.current_block.append(context).binary_op(
+                        BinaryOpKind::Add,
+                        new_cap_part,
+                        needed_size,
+                    );
                     let new_ptr = s.current_block.append(context).asm_block(
                         vec![
                             AsmArg {
@@ -2170,7 +2179,59 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
+            Intrinsic::Transmute => {
+                self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
+            }
         }
+    }
+
+    fn compile_intrinsic_transmute(
+        &mut self,
+        arguments: &[ty::TyExpression],
+        return_type: TypeId,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        span: &Span,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 1);
+
+        let te = self.engines.te();
+        let de = self.engines.de();
+
+        let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
+        let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
+
+        let first_argument_expr = &arguments[0];
+        let first_argument_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
+        );
+        let first_argument_type = first_argument_value
+            .get_type(context)
+            .expect("transmute first argument type not found");
+        let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
+
+        // check IR sizes match
+        let first_arg_size = first_argument_type.size(context).in_bytes();
+        let return_type_size = return_type_ir_type.size(context).in_bytes();
+        if first_arg_size != return_type_size {
+            return Err(CompileError::Internal(
+                "Types size do not match",
+                span.clone(),
+            ));
+        }
+
+        let u64 = Type::get_uint64(context);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .ptr_to_int(first_argument_ptr, u64);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .int_to_ptr(first_argument_ptr, return_type_ir_type_ptr);
+
+        let final_value = self.current_block.append(context).load(first_argument_ptr);
+        Ok(TerminatorValue::new(final_value, context))
     }
 
     fn ptr_to_first_element(
@@ -3971,8 +4032,9 @@ impl<'eng> FnCompiler<'eng> {
         if field_tys.len() != 1 && contents.is_some() {
             // Insert the value too.
             // Only store if the value does not diverge.
+            let contents_expr = contents.unwrap();
             let contents_value = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, contents.unwrap())?
+                self.compile_expression_to_value(context, md_mgr, contents_expr)?
             );
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
@@ -3980,6 +4042,20 @@ impl<'eng> FnCompiler<'eng> {
                     enum_decl.span.clone(),
                 )
             })?;
+
+            let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
+            if contents_type != variant_type {
+                return Err(CompileError::Internal(
+                    format!(
+                        "Expression type \"{}\" and Variant type \"{}\" do not match",
+                        contents_type.as_string(context),
+                        variant_type.as_string(context)
+                    )
+                    .leak(),
+                    contents_expr.span.clone(),
+                ));
+            }
+
             let gep_val = self
                 .current_block
                 .append(context)
@@ -4262,6 +4338,14 @@ impl<'eng> FnCompiler<'eng> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
+        // Use the `struct_field_names` to get a field id that is unique even for zero-sized values that live in the same slot.
+        // We calculate the `unique_field_id` early, here, before the `storage_filed_names` get consumed by `get_storage_key` below.
+        let unique_field_id = get_storage_field_id(
+            &storage_field_names,
+            &struct_field_names,
+            context.experimental,
+        );
+
         // Get the actual storage key as a `Bytes32` as well as the offset, in words,
         // within the slot. The offset depends on what field of the top level storage
         // variable is being accessed.
@@ -4295,7 +4379,7 @@ impl<'eng> FnCompiler<'eng> {
             // particular slot is the remaining offset, in words.
             (
                 add_to_b256(
-                    get_storage_key(storage_field_names.clone(), key.clone()),
+                    get_storage_key(storage_field_names, key, context.experimental),
                     offset_in_slots,
                 ),
                 offset_remaining,
@@ -4352,7 +4436,6 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the field identifier as the third field in the `StorageKey` struct
-        let unique_field_id = get_storage_field_id(storage_field_names, struct_field_names); // use the struct_field_names to get a field id that is unique even for zero-sized values that live in the same slot
         let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
             .add_metadatum(context, span_md_idx);
         let gep_2_val =

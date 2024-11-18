@@ -1,6 +1,6 @@
 [package]
 name = "forc-util"
-version = "0.63.6"
+version.workspace = true
 description = "Utility items shared between forc crates."
 authors.workspace = true
 edition.workspace = true
@@ -9,31 +9,31 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-annotate-snippets = { version = "0.10.1" }
-ansi_term = "0.12"
-anyhow = "1"
-clap = { version = "4.5.4", features = ["cargo", "derive", "env"] }
-dirs = "3.0.2"
-fd-lock = "4.0"
-forc-tracing = { version = "0.63.6", path = "../forc-tracing" }
-fuel-tx = { workspace = true, features = ["serde"], optional = true }
-hex = "0.4.3"
-paste = "1.0.14"
-regex = "1.10.2"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.73"
-serial_test = "3.0.0"
-sway-core = { version = "0.63.6", path = "../sway-core" }
-sway-error = { version = "0.63.6", path = "../sway-error" }
-sway-types = { version = "0.63.6", path = "../sway-types" }
-sway-utils = { version = "0.63.6", path = "../sway-utils" }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = [
+annotate-snippets.workspace = true
+ansiterm.workspace = true
+anyhow.workspace = true
+clap = { workspace = true, features = ["cargo", "derive", "env"] }
+dirs.workspace = true
+fd-lock.workspace = true
+forc-tracing.workspace = true
+fuel-tx = { workspace = true, optional = true }
+hex.workspace = true
+paste.workspace = true
+regex.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serial_test.workspace = true
+sway-core.workspace = true
+sway-error.workspace = true
+sway-types.workspace = true
+sway-utils.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = [
     "ansi",
     "env-filter",
     "json",
 ] }
-unicode-xid = "0.2.2"
+unicode-xid.workspace = true
 
 [features]
 default = ["fuel-tx"]
