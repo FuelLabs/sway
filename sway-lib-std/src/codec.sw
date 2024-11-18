@@ -2557,14 +2557,14 @@ impl AbiDecode for u64 {
     }
 }
 
-pub fn as_u16(u8) -> u16 {
-    asm(input: u8) {
+pub fn as_u16(input: u8) -> u16 {
+    asm(input: input) {
         input: u16
     }
 }
 
-pub fn as_u32(u8) -> u32 {
-    asm(input: u8) {
+pub fn as_u32(input: u8) -> u32 {
+    asm(input: input) {
         input: u32
     }
 }
