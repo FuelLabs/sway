@@ -47,7 +47,7 @@ name = "wallet_contract"
 indexing = { namespace = "counter-contract", schema_path = "out/release/counter-contract-abi.json" }
 ```
 
-### Metadata Section in Forc.toml
+### Metadata Section in `Forc.toml`
 
 The `[project.metadata]` section provides a dedicated space for external tools and plugins to store their configuration in `Forc.toml`. The metadata key names are arbitrary and do not need to match the tool's name.
 
