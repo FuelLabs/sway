@@ -6,6 +6,7 @@ use forc_pkg::PkgTestEntry;
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::fuel_asm;
+use fuel_vm::prelude::Instruction;
 use fuel_vm::{
     self as vm,
     checked_transaction::builder::TransactionBuilderExt,
