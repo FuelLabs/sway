@@ -2,7 +2,7 @@
 //! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
 library;
 
-use core::codec::*;
+use ::codec::*;
 use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;

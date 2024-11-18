@@ -281,8 +281,8 @@ where
     T: AbiDecode,
 {
     match input_type(index) {
-        Some(Input::Coin) => Some(core::codec::decode_predicate_data_by_index::<T>(index)),
-        Some(Input::Message) => Some(core::codec::decode_predicate_data_by_index::<T>(index)),
+        Some(Input::Coin) => Some(::codec::decode_predicate_data_by_index::<T>(index)),
+        Some(Input::Message) => Some(::codec::decode_predicate_data_by_index::<T>(index)),
         _ => None,
     }
 }
