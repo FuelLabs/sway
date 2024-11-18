@@ -5,6 +5,7 @@ use crate::TEST_METADATA_SEED;
 use forc_pkg::PkgTestEntry;
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
+use fuel_vm::fuel_asm;
 use fuel_vm::{
     self as vm,
     checked_transaction::builder::TransactionBuilderExt,
@@ -27,6 +28,8 @@ pub struct TestExecutor {
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
+    pub ji_idx: usize,
+    pub test_offset: u32,
 }
 
 /// The result of executing a test with breakpoints enabled.
@@ -49,7 +52,8 @@ impl TestExecutor {
         let storage = test_setup.storage().clone();
 
         // Patch the bytecode to jump to the relevant test.
-        let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
+        //let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
+        let ji_idx = find_ji_instruction_index(bytecode);
 
         // Create a transaction to execute the test function.
         let script_input_data = vec![];
@@ -68,7 +72,7 @@ impl TestExecutor {
         let block_height = (u32::MAX >> 1).into();
         let gas_price = 0;
 
-        let mut tx_builder = tx::TransactionBuilder::script(bytecode, script_input_data);
+        let mut tx_builder = tx::TransactionBuilder::script(bytecode.to_vec(), script_input_data);
 
         let params = maxed_consensus_params();
 
@@ -126,6 +130,8 @@ impl TestExecutor {
             tx,
             test_entry: test_entry.clone(),
             name,
+            ji_idx,
+            test_offset: (test_offset - ji_idx as u32) * Instruction::SIZE as u32
         })
     }
 
@@ -192,14 +198,36 @@ impl TestExecutor {
 
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
         let start = std::time::Instant::now();
-        let transition = self
-            .interpreter
-            .transact(self.tx.clone())
-            .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
-        let state = *transition.state();
+
+        self.interpreter.set_single_stepping(true);
+
+        let mut state = {
+            let transition = self
+                .interpreter
+                .transact(self.tx.clone())
+                .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
+            *transition.state()
+        };
+
+        let jump_pc = (self.ji_idx * Instruction::SIZE) as u64;
+
+        loop {
+            match state {
+                ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_) => break,
+                ProgramState::RunProgram(eval) => {
+                    if eval.breakpoint().unwrap().pc() == jump_pc {
+                        self.interpreter.registers_mut()[3] += self.test_offset as u64;
+                        self.interpreter.set_single_stepping(false);
+                    }
+
+                    state = self.interpreter.resume().map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
+                },
+                ProgramState::VerifyPredicate(_) => todo!(),
+            }
+        }
 
         let duration = start.elapsed();
-        let (gas_used, logs) = Self::get_gas_and_receipts(transition.receipts().to_vec())?;
+        let (gas_used, logs) = Self::get_gas_and_receipts(self.interpreter.receipts().to_vec())?;
         let span = self.test_entry.span.clone();
         let file_path = self.test_entry.file_path.clone();
         let condition = self.test_entry.pass_condition.clone();
@@ -237,42 +265,22 @@ impl TestExecutor {
     }
 }
 
-/// Given some bytecode and an instruction offset for some test's desired entry point, patch the
-/// bytecode with a `JI` (jump) instruction to jump to the desired test.
-///
-/// We want to splice in the `JI` only after the initial data section setup is complete, and only
-/// if the entry point doesn't begin exactly after the data section setup.
-///
-/// The following is how the beginning of the bytecode is laid out:
-///
-/// ```ignore
-/// [ 0] ji   i(4 + 2)                 ; Jumps to the data section setup.
-/// [ 1] noop
-/// [ 2] DATA_SECTION_OFFSET[0..32]
-/// [ 3] DATA_SECTION_OFFSET[32..64]
-/// [ 4] CONFIGURABLES_OFFSET[0..32]
-/// [ 5] CONFIGURABLES_OFFSET[32..64]
-/// [ 6] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
-/// [ 7] add  $$ds $$ds $is
-/// [ 8] <first-entry-point>           ; This is where we want to jump from to our test code!
-/// ```
-fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
-    // Each instruction is 4 bytes,
-    // so we divide the total byte-size by 4 to get the instruction offset.
-    const PROGRAM_START_INST_OFFSET: u32 = (sway_core::PRELUDE_SIZE_IN_BYTES / 4) as u32;
-    const PROGRAM_START_BYTE_OFFSET: usize = sway_core::PRELUDE_SIZE_IN_BYTES;
+fn find_ji_instruction_index(bytecode: &[u8]) -> usize {
+    // Search first `move $$locbase $sp`
+    // This will be `__entry` for script/predicate/contract using encoding v1;
+    // `main` for script/predicate using encoding v0;
+    // or the first function for libraries
+    // MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+    let a = vm::fuel_asm::op::move_(59, fuel_asm::RegId::SP).to_bytes();
 
-    // If our desired entry point is the program start, no need to jump.
-    if test_offset == PROGRAM_START_INST_OFFSET {
-        return std::borrow::Cow::Borrowed(bytecode);
-    }
+    // for contracts using encoding v0
+    // search the first `lw $r0 $fp i73`
+    // which is the start of the fn selector
+    // LW $writable $fp 0x49                           ;; [93, 64, 96, 73]
+    let b = vm::fuel_asm::op::lw(fuel_asm::RegId::WRITABLE, fuel_asm::RegId::FP, 73).to_bytes();
 
-    // Create the jump instruction and splice it into the bytecode.
-    let ji = vm::fuel_asm::op::ji(test_offset);
-    let ji_bytes = ji.to_bytes();
-    let start = PROGRAM_START_BYTE_OFFSET;
-    let end = start + ji_bytes.len();
-    let mut patched = bytecode.to_vec();
-    patched.splice(start..end, ji_bytes);
-    std::borrow::Cow::Owned(patched)
+    bytecode.chunks(Instruction::SIZE).position(|instruction| {
+        let instruction: [u8; 4] = instruction.try_into().unwrap();
+        instruction == a || instruction == b
+    }).unwrap()
 }
