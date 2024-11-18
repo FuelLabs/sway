@@ -100,6 +100,11 @@ Implementation Notes
 
 This allows for a streamlined developer experience while maintaining clear separation between core Forc functionality and third-party tools.
 
+#### External Tooling Examples
+
+* [forc-index-ts](https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-ts): A TypeScript CLI tool for parsing `Forc.toml` metadata to read contract ABI JSON file.
+* [forc-index-rs](https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-rs): A Rust CLI tool for parsing `Forc.toml` metadata to read contract ABI JSON file.
+
 ## The `[dependencies]` section
 
 The following fields can be provided with a dependency:
