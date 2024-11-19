@@ -133,7 +133,8 @@ impl TestExecutor {
             test_entry: test_entry.clone(),
             name,
             jump_instruction_index,
-            relative_jump_in_bytes: (test_instruction_index - jump_instruction_index as u32) * Instruction::SIZE as u32,
+            relative_jump_in_bytes: (test_instruction_index - jump_instruction_index as u32)
+                * Instruction::SIZE as u32,
         })
     }
 
@@ -206,10 +207,8 @@ impl TestExecutor {
 
         self.interpreter.set_single_stepping(true);
         let mut state = {
-            let transition = self
-                .interpreter
-                .transact(self.tx.clone());
-            Ok(transition.unwrap().state().clone())
+            let transition = self.interpreter.transact(self.tx.clone());
+            Ok(*transition.unwrap().state())
         };
 
         loop {
@@ -219,21 +218,20 @@ impl TestExecutor {
                     state = Ok(ProgramState::Revert(0));
                     break;
                 }
-                Ok(ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_)) => {
-                    break
-                }
+                Ok(
+                    ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_),
+                ) => break,
                 Ok(ProgramState::RunProgram(eval) | ProgramState::VerifyPredicate(eval)) => {
                     // time to jump into the specified test
                     if let Some(b) = eval.breakpoint() {
-                        if b.pc()  == jump_pc {
-                            self.interpreter.registers_mut()[RegId::PC] += self.relative_jump_in_bytes as u64;
+                        if b.pc() == jump_pc {
+                            self.interpreter.registers_mut()[RegId::PC] +=
+                                self.relative_jump_in_bytes as u64;
                             self.interpreter.set_single_stepping(false);
                         }
                     }
 
-                    state = self
-                        .interpreter
-                        .resume();
+                    state = self.interpreter.resume();
                 }
             }
         }
