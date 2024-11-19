@@ -55,14 +55,14 @@ The `[project.metadata]` section provides a dedicated space for external tools a
 
 Metadata can be defined at two levels:
 
-Workspace level - defined in the workspace's root `Forc.toml`:
+Workspace level - defined in the workspace\'s root `Forc.toml`:
 
 ```toml
 [workspace.metadata]
 my_tool = { shared_setting = "value" }
 ```
 
-Project level - defined in individual project's `Forc.toml`:
+Project level - defined in individual project\'s `Forc.toml`:
 
 ```toml
 [project.metadata.any_name_here]
