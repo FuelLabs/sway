@@ -117,6 +117,8 @@ mod test {
 
     #[test]
     fn test_get_bytecode_id_happy() {
+        // These binary files were generated from `examples/configurable_constants` and `examples/counter`
+        // using `forc build` and `forc build --release` respectively.
         let bytecode_id: String =
             get_bytecode_id("tests/fixtures/bytecode/debug-counter.bin").expect("bytecode id");
         assert_eq!(
@@ -150,6 +152,8 @@ mod test {
 
     #[test]
     fn test_get_bytecode_id_missing_configurable_offset() {
+        // This bytecode file was generated from `examples/configurable_constants` using an older version of the 
+        // compiler that did not include the configurables section offset in the preamble.
         let result = get_bytecode_id(
             "tests/fixtures/bytecode/debug-configurable_constants-missing-offset.bin",
         );
