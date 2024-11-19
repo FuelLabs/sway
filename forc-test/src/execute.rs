@@ -7,6 +7,7 @@ use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::fuel_asm;
 use fuel_vm::prelude::Instruction;
+use fuel_vm::prelude::RegId;
 use fuel_vm::{
     self as vm,
     checked_transaction::builder::TransactionBuilderExt,
@@ -29,8 +30,8 @@ pub struct TestExecutor {
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
-    pub ji_idx: usize,
-    pub test_offset: u32,
+    pub jump_instruction_index: usize,
+    pub relative_jump_in_bytes: u32,
 }
 
 /// The result of executing a test with breakpoints enabled.
@@ -45,16 +46,16 @@ pub enum DebugResult {
 impl TestExecutor {
     pub fn build(
         bytecode: &[u8],
-        test_offset: u32,
+        test_instruction_index: u32,
         test_setup: TestSetup,
         test_entry: &PkgTestEntry,
         name: String,
     ) -> anyhow::Result<Self> {
         let storage = test_setup.storage().clone();
 
-        // Patch the bytecode to jump to the relevant test.
-        //let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
-        let ji_idx = find_ji_instruction_index(bytecode);
+        // Find the instruction which we will jump into the
+        // specified test
+        let jump_instruction_index = find_jump_instruction_index(bytecode);
 
         // Create a transaction to execute the test function.
         let script_input_data = vec![];
@@ -131,8 +132,8 @@ impl TestExecutor {
             tx,
             test_entry: test_entry.clone(),
             name,
-            ji_idx,
-            test_offset: (test_offset - ji_idx as u32) * Instruction::SIZE as u32,
+            jump_instruction_index,
+            relative_jump_in_bytes: (test_instruction_index - jump_instruction_index as u32) * Instruction::SIZE as u32,
         })
     }
 
@@ -200,35 +201,40 @@ impl TestExecutor {
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
         let start = std::time::Instant::now();
 
-        self.interpreter.set_single_stepping(true);
+        // single-step until the jump-to-test instruction
+        let jump_pc = (self.jump_instruction_index * Instruction::SIZE) as u64;
 
+        self.interpreter.set_single_stepping(true);
         let mut state = {
             let transition = self
                 .interpreter
-                .transact(self.tx.clone())
-                .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
-            *transition.state()
+                .transact(self.tx.clone());
+            Ok(transition.unwrap().state().clone())
         };
-
-        let jump_pc = (self.ji_idx * Instruction::SIZE) as u64;
 
         loop {
             match state {
-                ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_) => {
+                // if the VM fails, we interpret as a revert
+                Err(_) => {
+                    state = Ok(ProgramState::Revert(0));
+                    break;
+                }
+                Ok(ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_)) => {
                     break
                 }
-                ProgramState::RunProgram(eval) => {
-                    if eval.breakpoint().unwrap().pc() == jump_pc {
-                        self.interpreter.registers_mut()[3] += self.test_offset as u64;
-                        self.interpreter.set_single_stepping(false);
+                Ok(ProgramState::RunProgram(eval) | ProgramState::VerifyPredicate(eval)) => {
+                    // time to jump into the specified test
+                    if let Some(b) = eval.breakpoint() {
+                        if b.pc()  == jump_pc {
+                            self.interpreter.registers_mut()[RegId::PC] += self.relative_jump_in_bytes as u64;
+                            self.interpreter.set_single_stepping(false);
+                        }
                     }
 
                     state = self
                         .interpreter
-                        .resume()
-                        .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
+                        .resume();
                 }
-                ProgramState::VerifyPredicate(_) => todo!(),
             }
         }
 
@@ -243,7 +249,7 @@ impl TestExecutor {
             file_path,
             duration,
             span,
-            state,
+            state: state.unwrap(),
             condition,
             logs,
             gas_used,
@@ -271,7 +277,7 @@ impl TestExecutor {
     }
 }
 
-fn find_ji_instruction_index(bytecode: &[u8]) -> usize {
+fn find_jump_instruction_index(bytecode: &[u8]) -> usize {
     // Search first `move $$locbase $sp`
     // This will be `__entry` for script/predicate/contract using encoding v1;
     // `main` for script/predicate using encoding v0;
