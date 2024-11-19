@@ -138,20 +138,60 @@ impl TestExecutor {
         })
     }
 
+    // single-step until the jump-to-test instruction, then
+    // jump into the first instruction of the test
+    fn single_step_until_test(&mut self) -> ProgramState {
+        let jump_pc = (self.jump_instruction_index * Instruction::SIZE) as u64;
+
+        let old_single_stepping = self.interpreter.single_stepping();
+        self.interpreter.set_single_stepping(true);
+        let mut state = {
+            let transition = self.interpreter.transact(self.tx.clone());
+            Ok(*transition.unwrap().state())
+        };
+
+        loop {
+            match state {
+                // if the VM fails, we interpret as a revert
+                Err(_) => {
+                    break ProgramState::Revert(0);
+                }
+                Ok(
+                    state @ ProgramState::Return(_) | state @ ProgramState::ReturnData(_) | state @ ProgramState::Revert(_),
+                ) => break state,
+                Ok(s @ ProgramState::RunProgram(eval) | s @ ProgramState::VerifyPredicate(eval)) => {
+                    // time to jump into the specified test
+                    if let Some(b) = eval.breakpoint() {
+                        if b.pc() == jump_pc {
+                            self.interpreter.registers_mut()[RegId::PC] +=
+                                self.relative_jump_in_bytes as u64;
+                            self.interpreter.set_single_stepping(old_single_stepping);
+                            break s;
+                        }
+                    }
+
+                    state = self.interpreter.resume();
+                }
+            }
+        }
+    }
+
     /// Execute the test with breakpoints enabled.
     pub fn start_debugging(&mut self) -> anyhow::Result<DebugResult> {
         let start = std::time::Instant::now();
-        let transition = self
-            .interpreter
-            .transact(self.tx.clone())
-            .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
-        let state = *transition.state();
+        
+        let _ = self.single_step_until_test();
+        let state = self.interpreter.resume()
+            .map_err(|err: InterpreterError<_>| {
+                anyhow::anyhow!("VM failed to resume. {:?}", err)
+            })?;
         if let ProgramState::RunProgram(DebugEval::Breakpoint(breakpoint)) = state {
             // A breakpoint was hit, so we tell the client to stop.
             return Ok(DebugResult::Breakpoint(breakpoint.pc()));
         }
+
         let duration = start.elapsed();
-        let (gas_used, logs) = Self::get_gas_and_receipts(transition.receipts().to_vec())?;
+        let (gas_used, logs) = Self::get_gas_and_receipts(self.interpreter.receipts().to_vec())?;
         let span = self.test_entry.span.clone();
         let file_path = self.test_entry.file_path.clone();
         let condition = self.test_entry.pass_condition.clone();
@@ -202,18 +242,11 @@ impl TestExecutor {
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
         let start = std::time::Instant::now();
 
-        // single-step until the jump-to-test instruction
-        let jump_pc = (self.jump_instruction_index * Instruction::SIZE) as u64;
+        let mut state = Ok(self.single_step_until_test());
 
-        self.interpreter.set_single_stepping(true);
-        let mut state = {
-            let transition = self.interpreter.transact(self.tx.clone());
-            Ok(*transition.unwrap().state())
-        };
-
+        // Run test until its end
         loop {
             match state {
-                // if the VM fails, we interpret as a revert
                 Err(_) => {
                     state = Ok(ProgramState::Revert(0));
                     break;
@@ -221,16 +254,7 @@ impl TestExecutor {
                 Ok(
                     ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_),
                 ) => break,
-                Ok(ProgramState::RunProgram(eval) | ProgramState::VerifyPredicate(eval)) => {
-                    // time to jump into the specified test
-                    if let Some(b) = eval.breakpoint() {
-                        if b.pc() == jump_pc {
-                            self.interpreter.registers_mut()[RegId::PC] +=
-                                self.relative_jump_in_bytes as u64;
-                            self.interpreter.set_single_stepping(false);
-                        }
-                    }
-
+                Ok(ProgramState::RunProgram(_) | ProgramState::VerifyPredicate(_)) => {
                     state = self.interpreter.resume();
                 }
             }

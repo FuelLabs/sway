@@ -11,6 +11,7 @@ use sway_types::LineCol;
 impl DapServer {
     /// Handles a `launch` request. Returns true if the server should continue running.
     pub fn handle_launch(&mut self) -> Result<bool, AdapterError> {
+        dbg!();
         // Build tests for the given path.
         let (pkg_to_debug, test_setup) = self.build_tests()?;
         let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {
@@ -20,6 +21,7 @@ impl DapServer {
             None
         });
 
+        dbg!();
         // Construct a TestExecutor for each test and store it
         let executors: Vec<TestExecutor> = entries
             .filter_map(|(entry, test_entry)| {
@@ -42,6 +44,7 @@ impl DapServer {
             .collect();
         self.state.init_executors(executors);
 
+        dbg!();
         // Start debugging
         self.start_debugging_tests(false)
     }
