@@ -157,9 +157,13 @@ impl TestExecutor {
                     break ProgramState::Revert(0);
                 }
                 Ok(
-                    state @ ProgramState::Return(_) | state @ ProgramState::ReturnData(_) | state @ ProgramState::Revert(_),
+                    state @ ProgramState::Return(_)
+                    | state @ ProgramState::ReturnData(_)
+                    | state @ ProgramState::Revert(_),
                 ) => break state,
-                Ok(s @ ProgramState::RunProgram(eval) | s @ ProgramState::VerifyPredicate(eval)) => {
+                Ok(
+                    s @ ProgramState::RunProgram(eval) | s @ ProgramState::VerifyPredicate(eval),
+                ) => {
                     // time to jump into the specified test
                     if let Some(b) = eval.breakpoint() {
                         if b.pc() == jump_pc {
@@ -179,9 +183,11 @@ impl TestExecutor {
     /// Execute the test with breakpoints enabled.
     pub fn start_debugging(&mut self) -> anyhow::Result<DebugResult> {
         let start = std::time::Instant::now();
-        
+
         let _ = self.single_step_until_test();
-        let state = self.interpreter.resume()
+        let state = self
+            .interpreter
+            .resume()
             .map_err(|err: InterpreterError<_>| {
                 anyhow::anyhow!("VM failed to resume. {:?}", err)
             })?;
