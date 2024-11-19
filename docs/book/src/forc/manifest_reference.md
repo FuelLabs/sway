@@ -51,9 +51,18 @@ indexing = { namespace = "counter-contract", schema_path = "out/release/counter-
 
 The `[project.metadata]` section provides a dedicated space for external tools and plugins to store their configuration in `Forc.toml`. The metadata key names are arbitrary and do not need to match the tool's name.
 
-#### Usage
+#### Workspace vs Project Metadata
 
-Use any descriptive key name for your metadata table:
+Metadata can be defined at two levels:
+
+Workspace level - defined in the workspace's root `Forc.toml`:
+
+```toml
+[workspace.metadata]
+my_tool = { shared_setting = "value" }
+```
+
+Project level - defined in individual project's `Forc.toml`:
 
 ```toml
 [project.metadata.any_name_here]
@@ -65,13 +74,19 @@ setting1 = "value"
 setting2 = "value"
 ```
 
-Example from an indexing tool:
+Example for an indexing tool:
 
 ```toml
 [project.metadata.indexing]
 namespace = "counter-contract"
 schema_path = "out/release/counter-contract-abi.json"
 ```
+
+When both workspace and project metadata exist:
+
+* Project-level metadata should take precedence over workspace metadata
+* Tools can choose to merge workspace and project settings
+* Consider documenting your tool's metadata inheritance behavior
 
 #### Guidelines for Plugin Developers
 
@@ -81,6 +96,7 @@ Best Practices
 * Document the exact metadata key name your tool expects
 * Don't require `Forc.toml` if tool can function without it
 * Consider using TOML format for dedicated config files
+* Specify how your tool handles workspace vs project metadata
 
 Implementation Notes
 
