@@ -358,16 +358,15 @@ impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
 
 impl<T: OrdWithEngines> OrdWithEngines for Vec<T> {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
-        if self.len() == other.len() {
-            self.iter()
+        match self.len().cmp(&other.len()) {
+            Ordering::Less => Ordering::Less,
+            Ordering::Equal => self
+                .iter()
                 .zip(other.iter())
                 .fold(Ordering::Equal, |accumulator, values| {
                     accumulator.then_with(|| values.0.cmp(values.1, ctx))
-                })
-        } else if self.len() < other.len() {
-            Ordering::Less
-        } else {
-            Ordering::Greater
+                }),
+            Ordering::Greater => Ordering::Greater,
         }
     }
 }
