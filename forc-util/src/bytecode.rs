@@ -152,7 +152,7 @@ mod test {
 
     #[test]
     fn test_get_bytecode_id_missing_configurable_offset() {
-        // This bytecode file was generated from `examples/configurable_constants` using an older version of the 
+        // This bytecode file was generated from `examples/configurable_constants` using an older version of the
         // compiler that did not include the configurables section offset in the preamble.
         let result = get_bytecode_id(
             "tests/fixtures/bytecode/debug-configurable_constants-missing-offset.bin",
