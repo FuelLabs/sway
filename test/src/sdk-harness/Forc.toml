@@ -29,6 +29,8 @@ members = [
   "test_projects/result_option_expect",
   "test_projects/run_external_proxy",
   "test_projects/run_external_target",
+  "test_projects/run_external_proxy_with_storage",
+  "test_projects/run_external_target_with_storage",
   "test_projects/script_bytecode",
   "test_projects/script_data",
   "test_projects/storage",

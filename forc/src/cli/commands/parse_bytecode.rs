@@ -1,8 +1,6 @@
-use anyhow::anyhow;
 use clap::Parser;
+use forc_util::bytecode::parse_bytecode_to_instructions;
 use forc_util::ForcResult;
-use std::fs::{self, File};
-use std::io::Read;
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 use tracing::info;
@@ -21,15 +19,7 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
-    let mut f = File::open(&command.file_path)
-        .map_err(|_| anyhow!("{}: file not found", command.file_path))?;
-    let metadata = fs::metadata(&command.file_path)
-        .map_err(|_| anyhow!("{}: file not found", command.file_path))?;
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read_exact(&mut buffer).expect("buffer overflow");
-
-    let instructions = fuel_asm::from_bytes(buffer.iter().cloned())
-        .zip(buffer.chunks(fuel_asm::Instruction::SIZE));
+    let instructions = parse_bytecode_to_instructions(&command.file_path)?;
 
     let mut table = term_table::Table::new();
     table.separate_rows = false;
