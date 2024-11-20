@@ -1,7 +1,17 @@
 category = "fail"
 
 # check: $()let _ = my_struct_1.foo(my_struct_2);
+# nextln: $()No method "foo(MyStruct<u64>, MyStruct<numeric>)" found for type "MyStruct<u64>".
+# nextln: $()Matching method:
+# nextln: $()foo(MyStruct<u64>, MyStruct<u64>) -> bool in MyStruct<u64>
+# nextln: $()test/src/e2e_vm_tests/test_programs/should_fail/trait_method_and_generic_trait_impl/src/main.sw:16:5
+# nextln: $()Not used because of 1 issue:
 # nextln: $()Trait "MyTrait" is not implemented for type "u64".
 
 # check: $()let _ = my_struct_1.bar(my_struct_2);
+# nextln: $()No method "bar(MyStruct<u64>, MyStruct<numeric>)" found for type "MyStruct<u64>".
+# nextln: $()Matching method:
+# nextln: $()bar(MyStruct<u64>, MyStruct<u64>) -> bool in MyStruct<u64>
+# nextln: $()test/src/e2e_vm_tests/test_programs/should_fail/trait_method_and_generic_trait_impl/src/main.sw:10:5
+# nextln: $()Not used because of 1 issue:
 # nextln: $()Trait "MyTrait" is not implemented for type "u64".
