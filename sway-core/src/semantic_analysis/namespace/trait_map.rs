@@ -197,7 +197,7 @@ enum TypeRootFilter {
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: im::HashSet<u64>,
-    insert_for_type_cache: im::HashSet<TypeId>,
+    insert_for_type_cache: im::HashMap<TypeRootFilter, im::Vector<TypeId>>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -246,8 +246,9 @@ impl TraitMap {
                 .filter(|t| t.type_id == type_id_type_parameter.type_id)
                 .last();
             if let Some(impl_type_parameter) = impl_type_parameter {
-                type_id_type_parameter.trait_constraints =
-                    impl_type_parameter.trait_constraints.clone();
+                type_id_type_parameter
+                    .trait_constraints
+                    .clone_from(&impl_type_parameter.trait_constraints);
             }
         }
         handler.scope(|handler| {
@@ -382,7 +383,7 @@ impl TraitMap {
                     if type_id_type_parameter
                         .type_id
                         .is_concrete(engines, crate::TreatNumericAs::Abstract)
-                        && !self
+                        && self
                             .check_if_trait_constraints_are_satisfied_for_type(
                                 &Handler::default(),
                                 type_id_type_parameter.type_id,
@@ -392,7 +393,7 @@ impl TraitMap {
                                 TryInsertingTraitImplOnFailure::Yes,
                                 CodeBlockFirstPass::No,
                             )
-                            .is_ok()
+                            .is_err()
                     {
                         trait_constraints_safified = false;
                     }
@@ -507,6 +508,7 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
@@ -518,15 +520,16 @@ impl TraitMap {
         engines: &Engines,
     ) {
         let key = TraitKey {
-            name: trait_name,
+            name: trait_name.clone(),
             type_id,
             type_id_type_parameters,
             trait_decl_span,
         };
         let value = TraitValue {
-            trait_items: trait_methods,
+            trait_items: trait_methods.clone(),
             impl_span,
         };
+
         let entry = TraitEntry { key, value };
         let mut trait_impls: TraitImpls =
             im::HashMap::<TypeRootFilter, im::Vector<TraitEntry>>::new();
@@ -538,7 +541,7 @@ impl TraitMap {
         let trait_map = TraitMap {
             trait_impls,
             satisfied_cache: im::HashSet::default(),
-            insert_for_type_cache: im::HashSet::default(),
+            insert_for_type_cache: im::HashMap::<TypeRootFilter, im::Vector<TypeId>>::new(),
         };
 
         self.extend(trait_map, engines);
@@ -636,10 +639,18 @@ impl TraitMap {
         type_id: TypeId,
         code_block_first_pass: CodeBlockFirstPass,
     ) {
-        if self.insert_for_type_cache.contains(&type_id) {
-            return;
+        let root_filter = TraitMap::get_type_root_filter(engines, type_id);
+        if let Some(values) = self.insert_for_type_cache.get_mut(&root_filter) {
+            let unify_checker = UnifyCheck::non_dynamic_equality(engines).with_unify_ref_mut(false);
+            if values.iter().any(|v| unify_checker.check(type_id, *v)) {
+                return;
+            } else {
+                values.push_back(type_id);
+            }
+        } else {
+            self.insert_for_type_cache
+                .insert(root_filter, vec![type_id].into());
         }
-        self.insert_for_type_cache.insert(type_id);
 
         self.extend(
             self.filter_by_type(type_id, engines, code_block_first_pass),
@@ -665,10 +676,44 @@ impl TraitMap {
                 });
 
                 match pos {
-                    Ok(pos) => self_vec[pos]
-                        .value
-                        .trait_items
-                        .extend(oe.value.trait_items.clone()),
+                    Ok(pos) => {
+                        let mut skip_insert = false;
+
+                        // If we have the same method in: impl<T> FromBytes for T
+                        // and: impl FromBytes for DataPoint
+                        // We keep the second implementation.
+                        for (name, item) in oe.value.trait_items.iter() {
+                            for (existing_name, existing_item) in
+                                self_vec[pos].value.trait_items.iter()
+                            {
+                                if name == existing_name {
+                                    if let (
+                                        TyTraitItem::Fn(fn_ref),
+                                        TyTraitItem::Fn(existing_fn_ref),
+                                    ) = (
+                                        item.clone().expect_typed(),
+                                        existing_item.clone().expect_typed(),
+                                    ) {
+                                        let method = engines.de().get_function(fn_ref.id());
+                                        let existing_method =
+                                            engines.de().get_function(existing_fn_ref.id());
+                                        if !existing_method.is_from_blanket_impl(engines)
+                                            && method.is_from_blanket_impl(engines)
+                                        {
+                                            skip_insert = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !skip_insert {
+                            self_vec[pos]
+                                .value
+                                .trait_items
+                                .extend(oe.value.trait_items.clone())
+                        }
+                    }
                     Err(pos) => self_vec.insert(pos, oe.clone()),
                 }
             }
