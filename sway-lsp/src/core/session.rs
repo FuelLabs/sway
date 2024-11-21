@@ -248,11 +248,16 @@ impl Session {
         let program = compiled_program.typed.clone()?;
         Some(program.root.namespace)
     }
-    
+
     pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
-        let tokens = self.token_map.tokens_for_file(url);
-        Some(capabilities::document_symbol::to_document_symbols(tokens))
+        //let tokens = self.token_map.tokens_for_file(url);
+        //Some(capabilities::document_symbol::to_document_symbols(tokens))
+        Some(capabilities::document_symbol::to_document_symbols(
+            url,
+            &self.token_map,
+            &self.engines.read(),
+        ))
     }
 
     /// Populate [Documents] with sway files found in the workspace.

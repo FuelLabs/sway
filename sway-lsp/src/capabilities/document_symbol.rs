@@ -1,54 +1,101 @@
-use crate::core::token::{SymbolKind, Token, TokenIdent, TypedAstToken};
+use crate::core::{
+    token::{get_range_from_span, AstToken, SymbolKind, Token, TokenIdent, TypedAstToken},
+    token_map::{self, TokenMap},
+};
 use dashmap::mapref::multiple::RefMulti;
-use lsp_types::{self, DocumentSymbol};
+use lsp_types::{self, DocumentSymbol, Url};
+use sway_core::Engines;
 
-#[derive(Debug)]
+// #[derive(Debug)]
 struct SymbolNode {
     symbol: DocumentSymbol,
     range_start: u32,
+    ident: TokenIdent,
+    token: Token,
+    // t: RefMulti<'a, TokenIdent, Token>,
 }
 
-pub fn to_document_symbols<'a, I>(tokens: I) -> Vec<DocumentSymbol>
-where
-    I: Iterator<Item = RefMulti<'a, TokenIdent, Token>>,
-{
-    let mut nodes = tokens
+pub fn to_document_symbols<'a>(
+    uri: &Url,
+    token_map: &'a TokenMap,
+    engines: &Engines,
+) -> Vec<DocumentSymbol> {
+    let tokens_for_file = token_map.tokens_for_file(uri);
+    let mut nodes = tokens_for_file
         .map(|entry| {
             let (ident, token) = entry.pair();
             create_symbol_node(ident, token)
         })
         .collect::<Vec<SymbolNode>>();
-
     nodes.sort_by_key(|node| node.range_start);
-    build_symbol_hierarchy(nodes)
+    build_symbol_hierarchy(nodes, engines)
 }
 
-fn build_symbol_hierarchy(nodes: Vec<SymbolNode>) -> Vec<DocumentSymbol> {
+fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<DocumentSymbol> {
     let mut result = Vec::new();
     let mut current_struct: Option<DocumentSymbol> = None;
-    let mut struct_children = Vec::new();
+    let mut struct_fields = Vec::new();
+
+    let mut current_enum: Option<DocumentSymbol> = None;
+    let mut enum_variants = Vec::new();
 
     for node in nodes {
+        let is_declaration = match node.token.typed {
+            Some(TypedAstToken::TypedDeclaration(_)) => true,
+            None => match node.token.parsed {
+                AstToken::Declaration(_) => true,
+                _ => false,
+            },
+            _ => false,
+        };
         match node.symbol.kind {
             lsp_types::SymbolKind::STRUCT => {
-                // Push previous struct if exists
-                if let Some(mut s) = current_struct.take() {
-                    if !struct_children.is_empty() {
-                        s.children = Some(struct_children);
-                        struct_children = Vec::new();
+                if is_declaration {
+                    // Push previous struct if exists
+                    if let Some(mut s) = current_struct.take() {
+                        if !struct_fields.is_empty() {
+                            s.children = Some(struct_fields);
+                            struct_fields = Vec::new();
+                        }
+                        result.push(s);
                     }
-                    result.push(s);
+                    current_struct = Some(node.symbol);
                 }
-                current_struct = Some(node.symbol);
             }
-            lsp_types::SymbolKind::FIELD | lsp_types::SymbolKind::FUNCTION
-                if current_struct.is_some() =>
-            {
-                struct_children.push(node.symbol);
+            lsp_types::SymbolKind::FIELD => {
+                // Only collect struct field members if they belong to the struct declaration
+                if let Some(decl_ident) = node.token.declared_token_ident(engines) {
+                    if node.ident.range == decl_ident.range {
+                        if current_struct.is_some() {
+                            struct_fields.push(node.symbol);
+                        }
+                    }
+                }
+            }
+            lsp_types::SymbolKind::ENUM => {
+                if is_declaration {
+                    // Push previous struct if exists
+                    if let Some(mut s) = current_enum.take() {
+                        if !enum_variants.is_empty() {
+                            s.children = Some(enum_variants);
+                            enum_variants = Vec::new();
+                        }
+                        result.push(s);
+                    }
+                    current_enum = Some(node.symbol);
+                }
+            }
+            lsp_types::SymbolKind::ENUM_MEMBER => {
+                // Only collect enum members if they belong to the enum declaration, we expect None in this case
+                if node.token.declared_token_ident(engines).is_none() {
+                    if current_enum.is_some() {
+                        enum_variants.push(node.symbol);
+                    }
+                }
             }
             _ => {
-                // Top-level items
-                if current_struct.is_none() {
+                if matches!(node.symbol.kind, lsp_types::SymbolKind::FUNCTION) {
+                    // For everything else (including functions), just add to results in order
                     result.push(node.symbol);
                 }
             }
@@ -57,8 +104,16 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>) -> Vec<DocumentSymbol> {
 
     // Handle last struct
     if let Some(mut s) = current_struct {
-        if !struct_children.is_empty() {
-            s.children = Some(struct_children);
+        if !struct_fields.is_empty() {
+            s.children = Some(struct_fields);
+        }
+        result.push(s);
+    }
+
+    // Handle last enum
+    if let Some(mut s) = current_enum {
+        if !enum_variants.is_empty() {
+            s.children = Some(enum_variants);
         }
         result.push(s);
     }
@@ -99,7 +154,7 @@ fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
 
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
-fn create_symbol_node(ident: &TokenIdent, token: &Token) -> SymbolNode {
+fn create_symbol_node<'a>(ident: &'a TokenIdent, token: &'a Token) -> SymbolNode {
     let kind = symbol_kind(&token.kind);
 
     let detail = match &token.typed {
@@ -133,5 +188,7 @@ fn create_symbol_node(ident: &TokenIdent, token: &Token) -> SymbolNode {
             deprecated: None,
         },
         range_start: ident.range.start.line,
+        ident: ident.clone(),
+        token: token.clone(),
     }
 }
