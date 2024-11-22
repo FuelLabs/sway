@@ -95,48 +95,38 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
                 }
             }
             lsp_types::SymbolKind::FUNCTION => {
-                if let Some(typed) = node.token.typed {
-                    if let TypedAstToken::TypedFunctionDeclaration(fn_decl) = typed {
-                        let mut variables = Vec::new();
-                        for node in fn_decl.body.contents {
-                            if let TyAstNodeContent::Declaration(decl) = node.content {
-                                if let TyDecl::VariableDecl(var_decl) = decl {
-                                    let range = get_range_from_span(&var_decl.name.span());
-                                    let type_name = format!("{}", engines.help_out(var_decl.type_ascription.type_id));
-                                    let detail = if type_name.is_empty() {
-                                        None
-                                    } else {
-                                        Some(type_name)
-                                    };
-                                    let symbol = DocumentSymbol {
-                                        name: var_decl.name.span().str().to_string(),
-                                        detail: detail,
-                                        kind: lsp_types::SymbolKind::VARIABLE,
-                                        tags: None,
-                                        range: range,
-                                        selection_range: range,
-                                        children: None,
-                                        deprecated: None,
-                                    };
-                                    variables.push(symbol);
-                                }
+                if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = node.token.typed {
+                    // Collect all variables declared within the function body
+                    let variables: Vec<_> = fn_decl.body.contents.iter()
+                        .filter_map(|node| {
+                            if let TyAstNodeContent::Declaration(TyDecl::VariableDecl(var_decl)) = &node.content {
+                                let range = get_range_from_span(&var_decl.name.span());
+                                let type_name = format!("{}", engines.help_out(var_decl.type_ascription.type_id));
+                                let symbol = DocumentSymbolBuilder::new()
+                                    .name(var_decl.name.span().str().to_string())
+                                    .kind(lsp_types::SymbolKind::VARIABLE)
+                                    .range(range)
+                                    .selection_range(range)
+                                    .detail((!type_name.is_empty()).then_some(type_name))
+                                    .build();
+                                Some(symbol)
+                            } else {
+                                None
                             }
-                        }
-                        let mut fn_symbol = node.symbol.clone();
-                        if !variables.is_empty() {
-                            fn_symbol.children = Some(variables);
-                        }
-                        result.push(fn_symbol);
+                        })
+                        .collect();
+                
+                    let mut fn_symbol = node.symbol.clone();
+                    if !variables.is_empty() {
+                        // Add the variables to the function symbol
+                        fn_symbol.children = Some(variables);
                     }
+                    result.push(fn_symbol);
                 }
             }
             _ => {
-                if matches!(node.symbol.kind, lsp_types::SymbolKind::FUNCTION) {
-                    // For everything else (including functions), just add to results in order
-                    result.push(node.symbol);
-                }
+                
             }
-            
         }
     }
 
@@ -228,5 +218,80 @@ fn create_symbol_node<'a>(ident: &'a TokenIdent, token: &'a Token) -> SymbolNode
         range_start: ident.range.start.line,
         ident: ident.clone(),
         token: token.clone(),
+    }
+}
+
+
+pub struct DocumentSymbolBuilder {
+    name: String,
+    detail: Option<String>,
+    kind: lsp_types::SymbolKind,
+    tags: Option<Vec<lsp_types::SymbolTag>>,
+    range: lsp_types::Range,
+    selection_range: lsp_types::Range,
+    children: Option<Vec<DocumentSymbol>>,
+    deprecated: Option<bool>,
+}
+
+impl DocumentSymbolBuilder {
+    pub fn new() -> Self {
+        Self {
+            name: String::new(),
+            kind: lsp_types::SymbolKind::NULL,
+            range: lsp_types::Range::new(lsp_types::Position::new(0, 0), lsp_types::Position::new(0, 0)),
+            selection_range: lsp_types::Range::new(lsp_types::Position::new(0, 0), lsp_types::Position::new(0, 0)),
+            detail: None,
+            tags: None,
+            children: None,
+            deprecated: None,
+        }
+    }
+
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = name.into();
+        self
+    }
+
+    pub fn kind(mut self, kind: lsp_types::SymbolKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    pub fn range(mut self, range: lsp_types::Range) -> Self {
+        self.range = range;
+        self
+    }
+
+    pub fn selection_range(mut self, range: lsp_types::Range) -> Self {
+        self.selection_range = range;
+        self
+    }
+
+    pub fn detail(mut self, detail: Option<String>) -> Self {
+        self.detail = detail;
+        self
+    }
+
+    pub fn tags(mut self, tags: Vec<lsp_types::SymbolTag>) -> Self {
+        self.tags = Some(tags);
+        self
+    }
+
+    pub fn children(mut self, children: Vec<DocumentSymbol>) -> Self {
+        self.children = Some(children);
+        self
+    }
+
+    pub fn build(self) -> DocumentSymbol {
+        DocumentSymbol {
+            name: self.name,
+            detail: self.detail,
+            kind: self.kind,
+            tags: self.tags,
+            range: self.range,
+            selection_range: self.selection_range,
+            children: self.children,
+            deprecated: self.deprecated,
+        }
     }
 }
