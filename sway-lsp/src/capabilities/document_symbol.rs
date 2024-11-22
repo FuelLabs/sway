@@ -1,10 +1,10 @@
 use crate::core::{
-    token::{get_range_from_span, AstToken, SymbolKind, Token, TokenIdent, TypedAstToken},
+    token::{get_range_from_span, SymbolKind, Token, TokenIdent, TypedAstToken},
     token_map::{self, TokenMap},
 };
 use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{self, DocumentSymbol, Url};
-use sway_core::{language::ty::{TyAstNodeContent, TyDecl}, Engines};
+use sway_core::{language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl, TyFunctionParameter, TyTraitInterfaceItem, TyTraitItem}, Engines, TypeArgument};
 use sway_types::Spanned;
 
 // #[derive(Debug)]
@@ -21,6 +21,22 @@ pub fn to_document_symbols<'a>(
     token_map: &'a TokenMap,
     engines: &Engines,
 ) -> Vec<DocumentSymbol> {
+    // let decl_tokens_for_file: Vec<_> = token_map.tokens_for_file(uri).filter_map(|t| {
+    //     match t.typed {
+    //         Some(TypedAstToken::TypedDeclaration(_)) 
+    //         | Some(TypedAstToken::TypedFunctionDeclaration(_)) 
+    //         | Some(TypedAstToken::TypedConstantDeclaration(_))
+    //         | Some(TypedAstToken::TypedConfigurableDeclaration(_))
+    //         | Some(TypedAstToken::TypedTraitTypeDeclaration(_)) => {
+    //             Some(t.typed.clone())
+    //         }
+    //         _ => None,
+    //     }
+    // }).collect();
+
+    // decl_tokens_for_file
+
+
     let tokens_for_file = token_map.tokens_for_file(uri);
     let mut nodes = tokens_for_file
         .map(|entry| {
@@ -34,64 +50,112 @@ pub fn to_document_symbols<'a>(
 
 fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<DocumentSymbol> {
     let mut result = Vec::new();
-    let mut current_struct: Option<DocumentSymbol> = None;
-    let mut struct_fields = Vec::new();
-
-    let mut current_enum: Option<DocumentSymbol> = None;
-    let mut enum_variants = Vec::new();
 
     for node in nodes {
-        let is_declaration = match node.token.typed {
-            Some(TypedAstToken::TypedDeclaration(_)) => true,
-            None => match node.token.parsed {
-                AstToken::Declaration(_) => true,
-                _ => false,
-            },
-            _ => false,
-        };
         match node.symbol.kind {
-            lsp_types::SymbolKind::STRUCT => {
-                if is_declaration {
-                    // Push previous struct if exists
-                    if let Some(mut s) = current_struct.take() {
-                        if !struct_fields.is_empty() {
-                            s.children = Some(struct_fields);
-                            struct_fields = Vec::new();
-                        }
-                        result.push(s);
+            lsp_types::SymbolKind::INTERFACE => {
+                let methods: Vec<_> = match node.token.typed {
+                    Some(TypedAstToken::TypedDeclaration(TyDecl::TraitDecl(trait_decl))) => {
+                        engines.de()
+                            .get_trait(&trait_decl.decl_id)
+                            .items
+                            .iter()
+                            .filter_map(|trait_item| {
+                                if let TyTraitItem::Fn(decl_ref) = trait_item {
+                                    Some(engines.de().get_function(decl_ref))
+                                } else {
+                                    None
+                                }
+                            })
+                            .map(|fn_decl| {
+                                let range = get_range_from_span(&fn_decl.name.span());
+                                DocumentSymbolBuilder::new()
+                                    .name(fn_decl.name.span().str().to_string())
+                                    .detail(Some(fn_decl_detail(&fn_decl.parameters, &fn_decl.return_type)))
+                                    .kind(lsp_types::SymbolKind::FUNCTION)
+                                    .range(range)
+                                    .selection_range(range)
+                                    .build()
+                            })
+                            .collect()
                     }
-                    current_struct = Some(node.symbol);
+                    Some(TypedAstToken::TypedDeclaration(TyDecl::AbiDecl(abi_decl))) => {
+                        engines.de()
+                            .get_abi(&abi_decl.decl_id)
+                            .interface_surface
+                            .iter()
+                            .filter_map(|trait_item| {
+                                if let TyTraitInterfaceItem::TraitFn(decl_ref) = trait_item {
+                                    Some(engines.de().get_trait_fn(decl_ref))
+                                } else {
+                                    None
+                                }
+                            })
+                            .map(|trait_fn| {
+                                let range = get_range_from_span(&trait_fn.name.span());
+                                DocumentSymbolBuilder::new()
+                                    .name(trait_fn.name.span().str().to_string())
+                                    .detail(Some(fn_decl_detail(&trait_fn.parameters, &trait_fn.return_type)))
+                                    .kind(lsp_types::SymbolKind::FUNCTION)
+                                    .range(range)
+                                    .selection_range(range)
+                                    .build()
+                            })
+                            .collect()
+                    }
+                    _ => vec![],
+                };
+                let mut trait_symbol = node.symbol.clone();
+                if !methods.is_empty() {
+                    trait_symbol.children = Some(methods);
                 }
+                result.push(trait_symbol);
             }
-            lsp_types::SymbolKind::FIELD => {
-                // Only collect struct field members if they belong to the struct declaration
-                if let Some(decl_ident) = node.token.declared_token_ident(engines) {
-                    if node.ident.range == decl_ident.range {
-                        if current_struct.is_some() {
-                            struct_fields.push(node.symbol);
-                        }
+            lsp_types::SymbolKind::STRUCT => {
+                if let Some(TypedAstToken::TypedDeclaration(TyDecl::StructDecl(struct_decl))) = node.token.typed {
+                    let fields: Vec<_> = engines.de()
+                        .get_struct(&struct_decl.decl_id)
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let range = get_range_from_span(&field.name.span());
+                            DocumentSymbolBuilder::new()
+                                .name(field.name.span().str().to_string())
+                                .detail(Some(format!("{}", field.type_argument.span.as_str())))
+                                .kind(lsp_types::SymbolKind::FIELD)
+                                .range(range)
+                                .selection_range(range)
+                                .build()
+                        })
+                        .collect();
+                    let mut struct_symbol = node.symbol.clone();
+                    if !fields.is_empty() {
+                        struct_symbol.children = Some(fields);
                     }
+                    result.push(struct_symbol);
                 }
             }
             lsp_types::SymbolKind::ENUM => {
-                if is_declaration {
-                    // Push previous struct if exists
-                    if let Some(mut s) = current_enum.take() {
-                        if !enum_variants.is_empty() {
-                            s.children = Some(enum_variants);
-                            enum_variants = Vec::new();
-                        }
-                        result.push(s);
+                if let Some(TypedAstToken::TypedDeclaration(TyDecl::EnumDecl(enum_decl))) = node.token.typed {
+                    let variants: Vec<_> = engines.de()
+                        .get_enum(&enum_decl.decl_id)
+                        .variants
+                        .iter()
+                        .map(|variant| {
+                            let range = get_range_from_span(&variant.name.span());
+                            DocumentSymbolBuilder::new()
+                                .name(variant.name.span().str().to_string())
+                                .kind(lsp_types::SymbolKind::ENUM_MEMBER)
+                                .range(range)
+                                .selection_range(range)
+                                .build()
+                        })
+                        .collect();
+                    let mut enum_symbol = node.symbol.clone();
+                    if !variants.is_empty() {
+                        enum_symbol.children = Some(variants);
                     }
-                    current_enum = Some(node.symbol);
-                }
-            }
-            lsp_types::SymbolKind::ENUM_MEMBER => {
-                // Only collect enum members if they belong to the enum declaration, we expect None in this case
-                if node.token.declared_token_ident(engines).is_none() {
-                    if current_enum.is_some() {
-                        enum_variants.push(node.symbol);
-                    }
+                    result.push(enum_symbol);
                 }
             }
             lsp_types::SymbolKind::FUNCTION => {
@@ -115,7 +179,6 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
                             }
                         })
                         .collect();
-                
                     let mut fn_symbol = node.symbol.clone();
                     if !variables.is_empty() {
                         // Add the variables to the function symbol
@@ -128,22 +191,6 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
                 
             }
         }
-    }
-
-    // Handle last struct
-    if let Some(mut s) = current_struct {
-        if !struct_fields.is_empty() {
-            s.children = Some(struct_fields);
-        }
-        result.push(s);
-    }
-
-    // Handle last enum
-    if let Some(mut s) = current_enum {
-        if !enum_variants.is_empty() {
-            s.children = Some(enum_variants);
-        }
-        result.push(s);
     }
 
     result
@@ -180,6 +227,17 @@ fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     }
 }
 
+// Generate the signature for functions
+fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &TypeArgument) -> String {
+    let params = parameters
+        .iter()
+        .map(|p| format!("{}: {}", p.name, p.type_argument.span.as_str()))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let return_type = return_type.span.as_str();
+    format!("fn({}) -> {}", params, return_type)
+}
+
 #[allow(warnings)]
 // TODO: the "deprecated: None" field is deprecated according to this library
 fn create_symbol_node<'a>(ident: &'a TokenIdent, token: &'a Token) -> SymbolNode {
@@ -191,15 +249,7 @@ fn create_symbol_node<'a>(ident: &'a TokenIdent, token: &'a Token) -> SymbolNode
             Some(format!("{}", field.type_argument.span.as_str()))
         }
         Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) => {
-            // For functions, show their signature
-            let params = fn_decl
-                .parameters
-                .iter()
-                .map(|p| format!("{}: {}", p.name, p.type_argument.span.as_str()))
-                .collect::<Vec<_>>()
-                .join(", ");
-            let return_type = fn_decl.return_type.span.as_str();
-            Some(format!("fn({}) -> {}", params, return_type))
+            Some(fn_decl_detail(&fn_decl.parameters, &fn_decl.return_type))
         }
         _ => None,
     };
@@ -221,7 +271,8 @@ fn create_symbol_node<'a>(ident: &'a TokenIdent, token: &'a Token) -> SymbolNode
     }
 }
 
-
+/// Builder for creating [`DocumentSymbol`] instances with method chaining.
+/// Initializes with empty name, NULL kind, and zero position ranges. 
 pub struct DocumentSymbolBuilder {
     name: String,
     detail: Option<String>,
