@@ -1,9 +1,8 @@
 ---
 source: test/tests/tests.rs
-assertion_line: 115
 snapshot_kind: text
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode
@@ -362,4 +361,195 @@ script {
 !128 = fn_call_path_span !0 235 236
 !129 = (!127 !128)
 
-    Finished release [optimized + fuel] target(s) [736 B] in ???
+;; ASM: Final program
+;; Program kind: Script
+.program:
+move $$tmp $pc
+jmpf $zero i4
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+CONFIGURABLES_OFFSET[0..32]
+CONFIGURABLES_OFFSET[32..64]
+lw   $$ds $$tmp i1
+add  $$ds $$ds $$tmp
+cfei i16                      ; allocate stack space for globals
+addr $$arg0 data_Configurable_0; get pointer to configurable TUPLE default value
+addi $$arg1 $zero i8          ; get length of configurable TUPLE default value
+addi $$arg2 $ssp i0           ; get pointer to configurable TUPLE stack address
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; set new return address
+jmpf $zero i93                ; decode configurable TUPLE
+addr $$arg0 data_Configurable_1; get pointer to configurable WRAPPED default value
+addi $$arg1 $zero i8          ; get length of configurable WRAPPED default value
+addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack address
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; set new return address
+jmpf $zero i85                ; decode configurable WRAPPED
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i360                     ; allocate 360 bytes for locals and 0 slots for call arguments
+addi $r6 $$locbase i320       ; get offset to local
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; [call]: set new return address
+jmpf $zero i141               ; [call]: call main_8
+move $r0 $$retv               ; [call]: copy the return value
+movi $r1 i1024                ; initialize constant into register
+aloc $r1
+move $r1 $hp                  ; return value from ASM block with return register hp
+addi $r2 $$locbase i112       ; get offset to local
+sw   $$locbase $r1 i14        ; store word
+movi $r1 i1024                ; initialize constant into register
+sw   $$locbase $r1 i15        ; store word
+sw   $$locbase $zero i16      ; store word
+movi $r1 i24                  ; get data length for memory copy
+mcp  $$locbase $r2 $r1        ; copy memory
+addi $r1 $$locbase i184       ; get offset to local
+movi $r2 i24                  ; get data length for memory copy
+mcp  $r1 $$locbase $r2        ; copy memory
+addi $r2 $$locbase i272       ; get offset to local
+movi $r3 i24                  ; get data length for memory copy
+mcp  $r2 $r1 $r3              ; copy memory
+addi $r1 $$locbase i24        ; get offset to local
+movi $r3 i24                  ; get data length for memory copy
+mcp  $r1 $r2 $r3              ; copy memory
+addi $r2 $$locbase i136       ; get offset to local
+movi $r3 i24                  ; get data length for memory copy
+mcp  $r2 $r1 $r3              ; copy memory
+lw   $r5 $$locbase i17        ; load word
+lw   $r4 $$locbase i18        ; load word
+lw   $r1 $$locbase i19        ; load word
+movi $r2 i8                   ; initialize constant into register
+add  $r2 $r1 $r2
+gt   $r3 $r2 $r4
+jnzf $r3 $zero i1
+jmpf $zero i7
+movi $r3 i2                   ; initialize constant into register
+mul  $r3 $r4 $r3
+movi $r4 i8                   ; initialize constant into register
+add  $r4 $r3 $r4
+aloc $r4
+mcp  $hp $r5 $r1
+move $r5 $hp                  ; return value from ASM block with return register hp
+add  $r1 $r5 $r1
+sw   $r1 $r0 i0               ; store word
+addi $r0 $$locbase i208       ; get offset to local
+sw   $$locbase $r5 i26        ; store word
+sw   $$locbase $r4 i27        ; store word
+sw   $$locbase $r2 i28        ; store word
+addi $r1 $$locbase i48        ; get offset to local
+movi $r2 i24                  ; get data length for memory copy
+mcp  $r1 $r0 $r2              ; copy memory
+addi $r0 $$locbase i248       ; get offset to local
+movi $r2 i24                  ; get data length for memory copy
+mcp  $r0 $r1 $r2              ; copy memory
+addi $r1 $$locbase i336       ; get offset to local
+movi $r2 i24                  ; get data length for memory copy
+mcp  $r1 $r0 $r2              ; copy memory
+addi $r0 $$locbase i336       ; get offset to local
+addi $r1 $$locbase i296       ; get offset to local
+movi $r2 i24                  ; get data length for memory copy
+mcp  $r1 $r0 $r2              ; copy memory
+addi $r0 $$locbase i72        ; get offset to local
+movi $r2 i24                  ; get data length for memory copy
+mcp  $r0 $r1 $r2              ; copy memory
+addi $r1 $$locbase i160       ; get offset to local
+movi $r2 i24                  ; get data length for memory copy
+mcp  $r1 $r0 $r2              ; copy memory
+lw   $r0 $$locbase i20        ; load word
+addi $r1 $r1 i16              ; get offset to aggregate element
+addi $r2 $$locbase i232       ; get offset to local
+sw   $$locbase $r0 i29        ; store word
+addi $r0 $r2 i8               ; get offset to aggregate element
+movi $r3 i8                   ; get data length for memory copy
+mcp  $r0 $r1 $r3              ; copy memory
+addi $r0 $$locbase i96        ; get offset to local
+movi $r1 i16                  ; get data length for memory copy
+mcp  $r0 $r2 $r1              ; copy memory
+movi $r1 i16                  ; get data length for memory copy
+mcp  $r6 $r0 $r1              ; copy memory
+lw   $r0 $r6 i1               ; load size of returned slice
+lw   $r6 $r6 i0               ; load pointer to returned slice
+retd  $r6 $r0
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function abi_decode_in_place_0
+cfei i24                      ; allocate 24 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (ptr)
+move $r1 $$arg1               ; save argument 1 (len)
+move $r2 $$arg2               ; save argument 2 (target)
+move $r3 $$reta               ; save return address
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r1               ; [call]: pass argument 1
+move $$arg2 $$locbase         ; [call]: pass argument 2
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; [call]: set new return address
+jmpf $zero i20                ; [call]: call from_parts_1
+move $r0 $$retv               ; [call]: copy the return value
+lw   $r0 $r0 i0               ; load word
+sw   $$locbase $r0 i1         ; store word
+addi $r0 $$locbase i8         ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; [call]: set new return address
+jmpf $zero i23                ; [call]: call abi_decode_3
+move $r0 $$retv               ; [call]: copy the return value
+sw   $$locbase $r0 i2         ; store word
+addi $r0 $$locbase i16        ; get offset to local
+movi $r1 i8                   ; initialize constant into register
+mcp  $r2 $r0 $r1              ; mcp target temp size
+move $$retv $zero             ; set return value
+cfsi i24                      ; free 24 bytes for locals and 0 slots for extra call arguments
+move $$reta $r3               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jmp $$reta                    ; return from call
+pshl i7                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function from_parts_1
+move $r0 $$arg0               ; save argument 0 (ptr)
+move $r1 $$arg2               ; save argument 2 (__ret_value)
+move $r2 $$reta               ; save return address
+sw   $r1 $r0 i0               ; store word
+move $$retv $r1               ; set return value
+move $$reta $r2               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i7                       ; restore registers 16..40
+jmp $$reta                    ; return from call
+pshl i31                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function abi_decode_3
+move $r0 $$arg0               ; save argument 0 (buffer)
+move $r1 $$reta               ; save return address
+lw   $r2 $r0 i0               ; load word
+lw   $r2 $r2 i0               ; lw val ptr i0
+lw   $r3 $r0 i0               ; load word
+movi $r4 i8                   ; initialize constant into register
+add  $r3 $r3 $r4
+sw   $r0 $r3 i0               ; store word
+move $$retv $r2               ; set return value
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i31                      ; restore registers 16..40
+jmp $$reta                    ; return from call
+pshl i7                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function main_8
+move $r2 $$reta               ; save return address
+lw   $r0 $ssp i1              ; load word
+lw   $r1 $ssp i0              ; load word
+add  $r0 $r0 $r1
+move $$retv $r0               ; set return value
+move $$reta $r2               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i7                       ; restore registers 16..40
+jmp $$reta                    ; return from call
+.data:
+data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
+data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
+
+
+    Finished release [optimized + fuel] target(s) [760 B] in ???
