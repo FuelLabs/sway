@@ -4,7 +4,8 @@ use crate::core::{
 };
 use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{self, DocumentSymbol, Url};
-use sway_core::Engines;
+use sway_core::{language::ty::{TyAstNodeContent, TyDecl}, Engines};
+use sway_types::Spanned;
 
 // #[derive(Debug)]
 struct SymbolNode {
@@ -93,12 +94,49 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
                     }
                 }
             }
+            lsp_types::SymbolKind::FUNCTION => {
+                if let Some(typed) = node.token.typed {
+                    if let TypedAstToken::TypedFunctionDeclaration(fn_decl) = typed {
+                        let mut variables = Vec::new();
+                        for node in fn_decl.body.contents {
+                            if let TyAstNodeContent::Declaration(decl) = node.content {
+                                if let TyDecl::VariableDecl(var_decl) = decl {
+                                    let range = get_range_from_span(&var_decl.name.span());
+                                    let type_name = format!("{}", engines.help_out(var_decl.type_ascription.type_id));
+                                    let detail = if type_name.is_empty() {
+                                        None
+                                    } else {
+                                        Some(type_name)
+                                    };
+                                    let symbol = DocumentSymbol {
+                                        name: var_decl.name.span().str().to_string(),
+                                        detail: detail,
+                                        kind: lsp_types::SymbolKind::VARIABLE,
+                                        tags: None,
+                                        range: range,
+                                        selection_range: range,
+                                        children: None,
+                                        deprecated: None,
+                                    };
+                                    variables.push(symbol);
+                                }
+                            }
+                        }
+                        let mut fn_symbol = node.symbol.clone();
+                        if !variables.is_empty() {
+                            fn_symbol.children = Some(variables);
+                        }
+                        result.push(fn_symbol);
+                    }
+                }
+            }
             _ => {
                 if matches!(node.symbol.kind, lsp_types::SymbolKind::FUNCTION) {
                     // For everything else (including functions), just add to results in order
                     result.push(node.symbol);
                 }
             }
+            
         }
     }
 
