@@ -393,7 +393,7 @@ addi $r6 $$locbase i320       ; get offset to local
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; [call]: set new return address
-jmpf $zero i141               ; [call]: call main_8
+jmpf $zero i140               ; [call]: call main_8
 move $r0 $$retv               ; [call]: copy the return value
 movi $r1 i1024                ; initialize constant into register
 aloc $r1
@@ -486,9 +486,8 @@ move $$arg2 $$locbase         ; [call]: pass argument 2
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; [call]: set new return address
-jmpf $zero i20                ; [call]: call from_parts_1
-move $r0 $$retv               ; [call]: copy the return value
-lw   $r0 $r0 i0               ; load word
+jmpf $zero i19                ; [call]: call from_parts_1
+lw   $r0 $$retv i0            ; load word
 sw   $$locbase $r0 i1         ; store word
 addi $r0 $$locbase i8         ; get offset to local
 move $$arg0 $r0               ; [call]: pass argument 0
@@ -552,4 +551,4 @@ data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [760 B] in ???
+    Finished release [optimized + fuel] target(s) [752 B] in ???
