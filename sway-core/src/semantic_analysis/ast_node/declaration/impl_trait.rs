@@ -9,7 +9,7 @@ use sway_error::{
     error::{CompileError, InterfaceName},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, *},
@@ -1306,6 +1306,50 @@ fn type_check_impl_method(
     })
 }
 
+fn trait_const_item_value(
+    trait_decl: TyDecl,
+    engines: &Engines,
+    const_decl: &TyConstantDecl,
+) -> Option<ty::TyExpression> {
+    fn get_const_decl_from_trait_items(
+        engines: &Engines,
+        items: &[TyTraitInterfaceItem],
+        name: &Ident,
+    ) -> Option<Arc<TyConstantDecl>> {
+        for item in items.iter() {
+            match item {
+                TyTraitInterfaceItem::Constant(decl) => {
+                    let const_decl = engines.de().get_constant(decl.id());
+                    if const_decl.name() == name {
+                        return Some(const_decl);
+                    }
+                }
+                _ => continue,
+            }
+        }
+        None
+    }
+
+    let trait_or_abi_const_decl = match trait_decl {
+        TyDecl::TraitDecl(decl) => get_const_decl_from_trait_items(
+            engines,
+            &engines.de().get_trait(&decl.decl_id).interface_surface,
+            const_decl.name(),
+        ),
+        TyDecl::AbiDecl(decl) => get_const_decl_from_trait_items(
+            engines,
+            &engines.de().get_abi(&decl.decl_id).interface_surface,
+            const_decl.name(),
+        ),
+        _ => unreachable!(),
+    };
+
+    match trait_or_abi_const_decl {
+        Some(trait_or_abi_const_decl) => trait_or_abi_const_decl.value.clone(),
+        None => None,
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn type_check_const_decl(
     handler: &Handler,
@@ -1340,6 +1384,16 @@ fn type_check_const_decl(
     let const_decl = ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
 
     let const_name = const_decl.call_path.suffix.clone();
+
+    // Ensure that there is an expression if the constant in the base trait is not defined.
+    let trait_decl = ctx.resolve_call_path(handler, trait_name)?;
+
+    if trait_const_item_value(trait_decl, engines, &const_decl).is_none() && !const_decl.value.is_some()
+    {
+        return Err(handler.emit_err(CompileError::ConstantRequiresExpression {
+            span: const_decl.span.clone(),
+        }));
+    }
 
     // Ensure that there aren't multiple definitions of this constant
     if impld_constant_ids.contains_key(&(const_name.clone(), self_type_id)) {

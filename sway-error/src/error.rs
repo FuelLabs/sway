@@ -679,6 +679,8 @@ pub enum CompileError {
         span: Span,
         prefix_span: Span,
     },
+    #[error("Constant requires expression.")]
+    ConstantRequiresExpression { span: Span },
     #[error("Constants cannot be shadowed. {shadowing_source} \"{name}\" shadows constant of the same name.")]
     ConstantsCannotBeShadowed {
         /// Defines what shadows the constant.
@@ -1161,6 +1163,7 @@ impl Spanned for CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
+            ConstantRequiresExpression { span, .. } => span.clone(),
             ConstantsCannotBeShadowed { name, .. } => name.span(),
             ConfigurablesCannotBeShadowed { name, .. } => name.span(),
             ConfigurablesCannotBeMatchedAgainst { name, .. } => name.span(),
