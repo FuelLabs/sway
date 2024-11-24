@@ -54,7 +54,7 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
     for node in nodes {
         match node.symbol.kind {
             lsp_types::SymbolKind::INTERFACE => {
-                let methods: Vec<_> = match node.token.typed {
+                let methods: Vec<_> = match node.token.as_typed() {
                     Some(TypedAstToken::TypedDeclaration(TyDecl::TraitDecl(trait_decl))) => {
                         engines.de()
                             .get_trait(&trait_decl.decl_id)
@@ -112,7 +112,7 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
                 result.push(trait_symbol);
             }
             lsp_types::SymbolKind::STRUCT => {
-                if let Some(TypedAstToken::TypedDeclaration(TyDecl::StructDecl(struct_decl))) = node.token.typed {
+                if let Some(TypedAstToken::TypedDeclaration(TyDecl::StructDecl(struct_decl))) = node.token.as_typed() {
                     let fields: Vec<_> = engines.de()
                         .get_struct(&struct_decl.decl_id)
                         .fields
@@ -136,7 +136,7 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
                 }
             }
             lsp_types::SymbolKind::ENUM => {
-                if let Some(TypedAstToken::TypedDeclaration(TyDecl::EnumDecl(enum_decl))) = node.token.typed {
+                if let Some(TypedAstToken::TypedDeclaration(TyDecl::EnumDecl(enum_decl))) = node.token.as_typed() {
                     let variants: Vec<_> = engines.de()
                         .get_enum(&enum_decl.decl_id)
                         .variants
@@ -159,7 +159,7 @@ fn build_symbol_hierarchy(nodes: Vec<SymbolNode>, engines: &Engines) -> Vec<Docu
                 }
             }
             lsp_types::SymbolKind::FUNCTION => {
-                if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = node.token.typed {
+                if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = node.token.as_typed() {
                     // Collect all variables declared within the function body
                     let variables: Vec<_> = fn_decl.body.contents.iter()
                         .filter_map(|node| {
@@ -243,7 +243,7 @@ fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &TypeArgument
 fn create_symbol_node<'a>(ident: &'a TokenIdent, token: &'a Token) -> SymbolNode {
     let kind = symbol_kind(&token.kind);
 
-    let detail = match &token.typed {
+    let detail = match &token.as_typed() {
         Some(TypedAstToken::TypedStructField(field)) => {
             // show the type of the field
             Some(format!("{}", field.type_argument.span.as_str()))
