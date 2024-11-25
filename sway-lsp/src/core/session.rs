@@ -249,15 +249,17 @@ impl Session {
         Some(program.root.namespace)
     }
 
+    /// Generate heirarchical document symbols for the given file.
     pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
-        //let tokens = self.token_map.tokens_for_file(url);
-        //Some(capabilities::document_symbol::to_document_symbols(tokens))
-        Some(capabilities::document_symbol::to_document_symbols(
-            url,
-            &self.token_map,
-            &self.engines.read(),
-        ))
+        match &self.compiled_program.read().typed {
+            Some(ty_program) => Some(capabilities::document_symbol::to_document_symbols(
+                url,
+                &ty_program,
+                &self.engines.read(),
+            )),
+            None => None,
+        }
     }
 
     /// Populate [Documents] with sway files found in the workspace.
