@@ -1246,18 +1246,6 @@ impl<'a> TypeCheckContext<'a> {
                                 .values()
                                 .filter_map(|method_ref| {
                                     let method = decl_engine.get_function(method_ref);
-
-                                    //if method.name.clone().as_str() == "new" {
-                                    println!(
-                                        "find_method_for_type {:?} {:?}",
-                                        method.implementing_for_typeid.map(|t| {
-                                            self.engines
-                                                .help_out((*self.engines.te().get(t)).clone())
-                                        }),
-                                        method.name.clone(),
-                                    );
-                                    //}
-
                                     method
                                         .span()
                                         .to_string_path_with_line_col(self.engines().se())

@@ -200,6 +200,36 @@ enum TypeRootFilter {
     TraitType(String),
 }
 
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+enum TypeFilter {
+    Unknown,
+    Never,
+    Placeholder,
+    TypeParam(usize),
+    StringSlice,
+    StringArray(usize),
+    U8,
+    U16,
+    U32,
+    U64,
+    U256,
+    Bool,
+    Custom(String),
+    B256,
+    Contract,
+    ErrorRecovery,
+    Tuple(usize, Vec<TypeFilter>),
+    Enum(ParsedDeclId<EnumDeclaration>, Vec<TypeFilter>),
+    Struct(ParsedDeclId<StructDeclaration>, Vec<TypeFilter>),
+    ContractCaller(String),
+    Array(usize, Box<TypeFilter>),
+    RawUntypedPtr,
+    RawUntypedSlice,
+    Ptr(Box<TypeFilter>),
+    Slice(Box<TypeFilter>),
+    TraitType(String),
+}
+
 /// Map holding trait implementations for types.
 ///
 /// Note: "impl self" blocks are considered traits and are stored in the
@@ -208,7 +238,7 @@ enum TypeRootFilter {
 pub struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: HashSet<u64>,
-    insert_for_type_cache: HashMap<TypeRootFilter, im::Vector<TypeId>>,
+    insert_for_type_cache: HashMap<TypeFilter, im::Vector<TypeId>>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -538,7 +568,8 @@ impl TraitMap {
 
         let trait_map = TraitMap {
             trait_impls,
-            satisfied_cache: HashMap::<TypeRootFilter, im::Vector<TypeId>>::new(),
+            satisfied_cache: HashSet::default(),
+            insert_for_type_cache: HashMap::<TypeRootFilter, im::Vector<TypeId>>::new(),
         };
 
         self.extend(trait_map, engines);
@@ -1621,6 +1652,90 @@ impl TraitMap {
             Ref {
                 referenced_type, ..
             } => Self::get_type_root_filter(engines, referenced_type.type_id),
+        }
+    }
+
+    // This is used by the trait map to filter the entries into a HashMap with the return type string as key.
+    fn get_type_filter(engines: &Engines, type_id: TypeId) -> TypeFilter {
+        use TypeInfo::*;
+        match &*engines.te().get(type_id) {
+            Unknown => TypeFilter::Unknown,
+            Never => TypeFilter::Never,
+            UnknownGeneric { .. } | Placeholder(_) => TypeFilter::Placeholder,
+            TypeParam(n) => TypeFilter::TypeParam(*n),
+            StringSlice => TypeFilter::StringSlice,
+            StringArray(x) => TypeFilter::StringArray(x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => TypeFilter::U8,
+                IntegerBits::Sixteen => TypeFilter::U16,
+                IntegerBits::ThirtyTwo => TypeFilter::U32,
+                IntegerBits::SixtyFour => TypeFilter::U64,
+                IntegerBits::V256 => TypeFilter::U256,
+            },
+            Boolean => TypeFilter::Bool,
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => TypeFilter::Custom(call_path.call_path.suffix.to_string()),
+            B256 => TypeFilter::B256,
+            Numeric => TypeFilter::U64, // u64 is the default
+            Contract => TypeFilter::Contract,
+            ErrorRecovery(_) => TypeFilter::ErrorRecovery,
+            Tuple(fields) => TypeFilter::Tuple(
+                fields.len(),
+                fields
+                    .iter()
+                    .map(|f| Self::get_type_filter(engines, f.type_id))
+                    .collect::<Vec<_>>(),
+            ),
+            UntypedEnum(_) => unreachable!(),
+            UntypedStruct(_) => unreachable!(),
+            Enum(decl_id) => {
+                // TODO Remove unwrap once #6475 is fixed
+                TypeFilter::Enum(
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines
+                        .de()
+                        .get_enum(decl_id)
+                        .type_parameters
+                        .iter()
+                        .map(|f| Self::get_type_filter(engines, f.type_id))
+                        .collect::<Vec<_>>(),
+                )
+            }
+            Struct(decl_id) => {
+                // TODO Remove unwrap once #6475 is fixed
+                TypeFilter::Struct(
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines
+                        .de()
+                        .get_struct(decl_id)
+                        .type_parameters
+                        .iter()
+                        .map(|f| Self::get_type_filter(engines, f.type_id))
+                        .collect::<Vec<_>>(),
+                )
+            }
+            ContractCaller { abi_name, .. } => TypeFilter::ContractCaller(abi_name.to_string()),
+            Array(type_argument, length) => TypeFilter::Array(
+                length.val(),
+                Box::new(Self::get_type_filter(engines, type_argument.type_id)),
+            ),
+            RawUntypedPtr => TypeFilter::RawUntypedPtr,
+            RawUntypedSlice => TypeFilter::RawUntypedSlice,
+            Ptr(type_argument) => TypeFilter::Ptr(Box::new(Self::get_type_filter(
+                engines,
+                type_argument.type_id,
+            ))),
+            Slice(type_argument) => TypeFilter::Slice(Box::new(Self::get_type_filter(
+                engines,
+                type_argument.type_id,
+            ))),
+            Alias { ty, .. } => Self::get_type_filter(engines, ty.type_id),
+            TraitType { name, .. } => TypeFilter::TraitType(name.to_string()),
+            Ref {
+                referenced_type, ..
+            } => Self::get_type_filter(engines, referenced_type.type_id),
         }
     }
 }
