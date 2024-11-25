@@ -2,9 +2,9 @@ use crate::core::token::{get_range_from_span, SymbolKind};
 use lsp_types::{self, DocumentSymbol, Url};
 use sway_core::{
     language::ty::{
-        TyAbiDecl, TyAstNodeContent, TyDecl, TyEnumDecl, TyFunctionDecl, TyFunctionParameter,
-        TyImplSelfOrTrait, TyProgram, TyStorageDecl, TyStructDecl, TyTraitDecl,
-        TyTraitInterfaceItem, TyTraitItem,
+        TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
+        TyFunctionParameter, TyImplSelfOrTrait, TyProgram, TyStorageDecl, TyStructDecl,
+        TyTraitDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
     },
     Engines, TypeArgument,
 };
@@ -72,12 +72,13 @@ pub fn to_document_symbols<'a>(
                 }
                 TyDecl::AbiDecl(decl) => {
                     let abi_decl = engines.de().get_abi(&decl.decl_id);
-                    let span = abi_decl.name.span();
-                    let range = get_range_from_span(&span);
+                    let decl_str = format!("{}", abi_decl.span().str());
+                    let name = extract_header(&decl_str);
+                    let range = get_range_from_span(&abi_decl.name.span());
                     let children = collect_fns_from_abi_decl(engines, &abi_decl);
                     let abi_symbol = DocumentSymbolBuilder::new()
-                        .name(span.str().to_string())
-                        .kind(lsp_types::SymbolKind::INTERFACE)
+                        .name(name)
+                        .kind(lsp_types::SymbolKind::NAMESPACE)
                         .range(range)
                         .selection_range(range)
                         .children(children)
@@ -86,11 +87,12 @@ pub fn to_document_symbols<'a>(
                 }
                 TyDecl::TraitDecl(decl) => {
                     let trait_decl = engines.de().get_trait(&decl.decl_id);
-                    let span = trait_decl.name.span();
-                    let range = get_range_from_span(&span);
-                    let children = collect_ty_trait_items(engines, &trait_decl.items);
+                    let decl_str = format!("{}", trait_decl.span().str());
+                    let name = extract_header(&decl_str);
+                    let range = get_range_from_span(&trait_decl.name.span());
+                    let children = collect_interface_surface(engines, &trait_decl.interface_surface);
                     let trait_symbol = DocumentSymbolBuilder::new()
-                        .name(span.str().to_string())
+                        .name(name)
                         .kind(lsp_types::SymbolKind::INTERFACE)
                         .range(range)
                         .selection_range(range)
@@ -100,23 +102,16 @@ pub fn to_document_symbols<'a>(
                 }
                 TyDecl::TraitTypeDecl(decl) => {
                     let trait_type_decl = engines.de().get_type(&decl.decl_id);
-                    let span = trait_type_decl.name.span();
-                    let range = get_range_from_span(&span);
-                    let trait_type_symbol = DocumentSymbolBuilder::new()
-                        .name(span.str().to_string())
-                        .kind(lsp_types::SymbolKind::INTERFACE)
-                        .range(range)
-                        .selection_range(range)
-                        .build();
-                    Some(trait_type_symbol)
+                    Some(build_trait_symbol(&trait_type_decl))
                 }
                 TyDecl::ImplSelfOrTrait(decl) => {
                     let impl_trait_decl = engines.de().get_impl_self_or_trait(&decl.decl_id);
-                    let span = impl_trait_decl.trait_name.suffix.span();
-                    let range = get_range_from_span(&span);
+                    let decl_str = format!("{}", impl_trait_decl.span().str());
+                    let name = extract_header(&decl_str);
+                    let range = get_range_from_span(&impl_trait_decl.trait_name.suffix.span());
                     let children = collect_ty_trait_items(engines, &impl_trait_decl.items);
                     let symbol = DocumentSymbolBuilder::new()
-                        .name(span.str().to_string())
+                        .name(name)
                         .kind(lsp_types::SymbolKind::NAMESPACE)
                         .range(range)
                         .selection_range(range)
@@ -124,19 +119,9 @@ pub fn to_document_symbols<'a>(
                         .build();
                     Some(symbol)
                 }
-                
                 TyDecl::ConstantDecl(decl) => {
                     let const_decl = engines.de().get_constant(&decl.decl_id);
-                    let span = const_decl.call_path.suffix.span();
-                    let range = get_range_from_span(&span);
-                    let configurable_symbol = DocumentSymbolBuilder::new()
-                        .name(span.str().to_string())
-                        .kind(lsp_types::SymbolKind::CONSTANT)
-                        .detail(Some(format!("{}", const_decl.type_ascription.span.as_str())))
-                        .range(range)
-                        .selection_range(range)
-                        .build();
-                    Some(configurable_symbol) 
+                    Some(build_constant_symbol(&const_decl))
                 }
                 TyDecl::StorageDecl(decl) => {
                     let storage_decl = engines.de().get_storage(&decl.decl_id);
@@ -170,8 +155,63 @@ pub fn to_document_symbols<'a>(
             }
         })
         .collect();
+
+    // Sort by range start position
     nodes.sort_by_key(|node| node.range.start);
     nodes
+}
+
+fn build_constant_symbol(const_decl: &TyConstantDecl) -> DocumentSymbol {
+    let span = const_decl.call_path.suffix.span();
+    let range = get_range_from_span(&span);
+    DocumentSymbolBuilder::new()
+        .name(span.str().to_string())
+        .kind(lsp_types::SymbolKind::CONSTANT)
+        .detail(Some(format!(
+            "{}",
+            const_decl.type_ascription.span.as_str()
+        )))
+        .range(range)
+        .selection_range(range)
+        .build()
+}
+
+fn build_trait_symbol(trait_type_decl: &TyTraitType) -> DocumentSymbol {
+    let span = trait_type_decl.name.span();
+    let range = get_range_from_span(&span);
+    DocumentSymbolBuilder::new()
+        .name(span.str().to_string())
+        .kind(lsp_types::SymbolKind::TYPE_PARAMETER)
+        .range(range)
+        .selection_range(range)
+        .build()
+}
+
+fn collect_interface_surface(
+    engines: &Engines,
+    items: &[TyTraitInterfaceItem],
+) -> Vec<DocumentSymbol> {
+    items
+        .iter()
+        .map(|item| match item {
+            TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                let fn_decl = engines.de().get_trait_fn(decl_ref);
+                build_function_symbol(
+                    &fn_decl.name.span(),
+                    &fn_decl.parameters,
+                    &fn_decl.return_type,
+                )
+            }
+            TyTraitInterfaceItem::Constant(decl_ref) => {
+                let const_decl = engines.de().get_constant(decl_ref);
+                build_constant_symbol(&const_decl)
+            }
+            TyTraitInterfaceItem::Type(decl_ref) => {
+                let trait_type_decl = engines.de().get_type(decl_ref);
+                build_trait_symbol(&trait_type_decl)
+            }
+        })
+        .collect()
 }
 
 fn collect_ty_trait_items(engines: &Engines, items: &[TyTraitItem]) -> Vec<DocumentSymbol> {
@@ -304,6 +344,31 @@ fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &TypeArgument
         .join(", ");
     let return_type = return_type.span.as_str();
     format!("fn({}) -> {}", params, return_type)
+}
+
+/// Extracts the header of a sway construct such as an `impl` block or `abi` declaration,
+/// including any generic parameters, traits, or super traits, up to (but not including)
+/// the opening `{` character. Trims any trailing whitespace.
+///
+/// If the `{` character is not found, the entire string is returned without trailing whitespace.
+///
+/// # Examples
+///
+/// ```
+/// let impl_example = "impl<T> Setter<T> for FooBarData<T> {\n    fn set(self, new_value: T) -> Self {\n        FooBarData {\n            value: new_value,\n        }\n    }\n}";
+/// let result = extract_header(impl_example);
+/// assert_eq!(result, "impl<T> Setter<T> for FooBarData<T>");
+///
+/// let abi_example = "abi MyAbi : MySuperAbi {\n    fn bar();\n}";
+/// let result = extract_header(abi_example);
+/// assert_eq!(result, "abi MyAbi : MySuperAbi");
+/// ```
+fn extract_header(s: &str) -> &str {
+    if let Some(pos) = s.find('{') {
+        s[..pos].trim_end()
+    } else {
+        s.trim_end()
+    }
 }
 
 /// Builder for creating [`DocumentSymbol`] instances with method chaining.
