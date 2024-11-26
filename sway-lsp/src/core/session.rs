@@ -248,7 +248,7 @@ impl Session {
         Some(program.root.namespace)
     }
 
-    /// Generate heirarchical document symbols for the given file.
+    /// Generate hierarchical document symbols for the given file.
     pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
         self.compiled_program
