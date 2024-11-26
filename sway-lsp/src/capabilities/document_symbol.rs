@@ -52,150 +52,142 @@ pub fn to_document_symbols(
     .into_iter()
     .flatten()
     .filter_map(|node| {
-        // Iterare over the ast_nodes and only carry forward Declaration nodes.
-        matches!(node.content, TyAstNodeContent::Declaration(_))
-            .then(|| &node.content)
-            .and_then(|content| {
-                if let TyAstNodeContent::Declaration(n) = content {
-                    Some(n)
-                } else {
+        match &node.content {
+            TyAstNodeContent::Declaration(decl) => match decl {
+                TyDecl::FunctionDecl(decl) => {
+                    let fn_decl = engines.de().get_function(&decl.decl_id);
+                    let range = get_range_from_span(&fn_decl.name.span());
+                    let detail = Some(fn_decl_detail(&fn_decl.parameters, &fn_decl.return_type));
+                    let children = collect_variables_from_func_decl(engines, &fn_decl);
+                    let func_symbol = DocumentSymbolBuilder::new()
+                        .name(fn_decl.name.span().str().to_string())
+                        .kind(lsp_types::SymbolKind::FUNCTION)
+                        .range(range)
+                        .selection_range(range)
+                        .detail(detail)
+                        .children(children)
+                        .build();
+                    Some(func_symbol)
+                }
+                TyDecl::EnumDecl(decl) => {
+                    let enum_decl = engines.de().get_enum(&decl.decl_id);
+                    let span = enum_decl.call_path.suffix.span();
+                    let range = get_range_from_span(&span);
+                    let children = collect_enum_variants(&enum_decl);
+                    let enum_symbol = DocumentSymbolBuilder::new()
+                        .name(span.str().to_string())
+                        .kind(lsp_types::SymbolKind::ENUM)
+                        .range(range)
+                        .selection_range(range)
+                        .children(children)
+                        .build();
+                    Some(enum_symbol)
+                }
+                TyDecl::StructDecl(decl) => {
+                    let struct_decl = engines.de().get_struct(&decl.decl_id);
+                    let span = struct_decl.call_path.suffix.span();
+                    let range = get_range_from_span(&span);
+                    let children = collect_struct_fields(&struct_decl);
+                    let struct_symbol = DocumentSymbolBuilder::new()
+                        .name(span.str().to_string())
+                        .kind(lsp_types::SymbolKind::STRUCT)
+                        .range(range)
+                        .selection_range(range)
+                        .children(children)
+                        .build();
+                    Some(struct_symbol)
+                }
+                TyDecl::AbiDecl(decl) => {
+                    let abi_decl = engines.de().get_abi(&decl.decl_id);
+                    let decl_str = abi_decl.span().str();
+                    let name = extract_header(&decl_str);
+                    let range = get_range_from_span(&abi_decl.name.span());
+                    let children = collect_fns_from_abi_decl(engines, &abi_decl);
+                    let abi_symbol = DocumentSymbolBuilder::new()
+                        .name(name)
+                        .kind(lsp_types::SymbolKind::NAMESPACE)
+                        .range(range)
+                        .selection_range(range)
+                        .children(children)
+                        .build();
+                    Some(abi_symbol)
+                }
+                TyDecl::TraitDecl(decl) => {
+                    let trait_decl = engines.de().get_trait(&decl.decl_id);
+                    let decl_str = trait_decl.span().str().to_string();
+                    let name = extract_header(&decl_str);
+                    let range = get_range_from_span(&trait_decl.name.span());
+                    let children =
+                        collect_interface_surface(engines, &trait_decl.interface_surface);
+                    let trait_symbol = DocumentSymbolBuilder::new()
+                        .name(name)
+                        .kind(lsp_types::SymbolKind::INTERFACE)
+                        .range(range)
+                        .selection_range(range)
+                        .children(children)
+                        .build();
+                    Some(trait_symbol)
+                }
+                TyDecl::TraitTypeDecl(decl) => {
+                    let trait_type_decl = engines.de().get_type(&decl.decl_id);
+                    Some(build_trait_symbol(&trait_type_decl))
+                }
+                TyDecl::ImplSelfOrTrait(decl) => {
+                    let impl_trait_decl = engines.de().get_impl_self_or_trait(&decl.decl_id);
+                    let decl_str = impl_trait_decl.span().str().to_string();
+                    let name = extract_header(&decl_str);
+                    let range = get_range_from_span(&impl_trait_decl.trait_name.suffix.span());
+                    let children = collect_ty_trait_items(engines, &impl_trait_decl.items);
+                    let symbol = DocumentSymbolBuilder::new()
+                        .name(name)
+                        .kind(lsp_types::SymbolKind::NAMESPACE)
+                        .range(range)
+                        .selection_range(range)
+                        .children(children)
+                        .build();
+                    Some(symbol)
+                }
+                TyDecl::ConstantDecl(decl) => {
+                    let const_decl = engines.de().get_constant(&decl.decl_id);
+                    Some(build_constant_symbol(&const_decl))
+                }
+                TyDecl::StorageDecl(decl) => {
+                    let storage_decl = engines.de().get_storage(&decl.decl_id);
+                    let span = storage_decl.storage_keyword.span();
+                    let range = get_range_from_span(&span);
+                    let children = collect_fields_from_storage(&storage_decl);
+                    let storage_symbol = DocumentSymbolBuilder::new()
+                        .name(span.str().to_string())
+                        .kind(lsp_types::SymbolKind::STRUCT)
+                        .range(range)
+                        .selection_range(range)
+                        .children(children)
+                        .build();
+                    Some(storage_symbol)
+                }
+                TyDecl::ConfigurableDecl(decl) => {
+                    let configurable_decl = engines.de().get_configurable(&decl.decl_id);
+                    let span = configurable_decl.call_path.suffix.span();
+                    let range = get_range_from_span(&span);
+                    let symbol = DocumentSymbolBuilder::new()
+                        .name(span.str().to_string())
+                        .kind(lsp_types::SymbolKind::FIELD)
+                        .detail(Some(
+                            configurable_decl.type_ascription.span.as_str().to_string(),
+                        ))
+                        .range(range)
+                        .selection_range(range)
+                        .build();
+                    // Add symbol to the end of configurable_symbol's children field
+                    configurable_symbol
+                        .as_mut()?
+                        .children
+                        .as_mut()?
+                        .push(symbol);
                     None
                 }
-            })
-    })
-    .filter_map(|n| {
-        match n {
-            TyDecl::FunctionDecl(decl) => {
-                let fn_decl = engines.de().get_function(&decl.decl_id);
-                let range = get_range_from_span(&fn_decl.name.span());
-                let detail = Some(fn_decl_detail(&fn_decl.parameters, &fn_decl.return_type));
-                let children = collect_variables_from_func_decl(engines, &fn_decl);
-                let func_symbol = DocumentSymbolBuilder::new()
-                    .name(fn_decl.name.span().str().to_string())
-                    .kind(lsp_types::SymbolKind::FUNCTION)
-                    .range(range)
-                    .selection_range(range)
-                    .detail(detail)
-                    .children(children)
-                    .build();
-                Some(func_symbol)
-            }
-            TyDecl::EnumDecl(decl) => {
-                let enum_decl = engines.de().get_enum(&decl.decl_id);
-                let span = enum_decl.call_path.suffix.span();
-                let range = get_range_from_span(&span);
-                let children = collect_enum_variants(&enum_decl);
-                let enum_symbol = DocumentSymbolBuilder::new()
-                    .name(span.str().to_string())
-                    .kind(lsp_types::SymbolKind::ENUM)
-                    .range(range)
-                    .selection_range(range)
-                    .children(children)
-                    .build();
-                Some(enum_symbol)
-            }
-            TyDecl::StructDecl(decl) => {
-                let struct_decl = engines.de().get_struct(&decl.decl_id);
-                let span = struct_decl.call_path.suffix.span();
-                let range = get_range_from_span(&span);
-                let children = collect_struct_fields(&struct_decl);
-                let struct_symbol = DocumentSymbolBuilder::new()
-                    .name(span.str().to_string())
-                    .kind(lsp_types::SymbolKind::STRUCT)
-                    .range(range)
-                    .selection_range(range)
-                    .children(children)
-                    .build();
-                Some(struct_symbol)
-            }
-            TyDecl::AbiDecl(decl) => {
-                let abi_decl = engines.de().get_abi(&decl.decl_id);
-                let decl_str = abi_decl.span().str();
-                let name = extract_header(&decl_str);
-                let range = get_range_from_span(&abi_decl.name.span());
-                let children = collect_fns_from_abi_decl(engines, &abi_decl);
-                let abi_symbol = DocumentSymbolBuilder::new()
-                    .name(name)
-                    .kind(lsp_types::SymbolKind::NAMESPACE)
-                    .range(range)
-                    .selection_range(range)
-                    .children(children)
-                    .build();
-                Some(abi_symbol)
-            }
-            TyDecl::TraitDecl(decl) => {
-                let trait_decl = engines.de().get_trait(&decl.decl_id);
-                let decl_str = trait_decl.span().str().to_string();
-                let name = extract_header(&decl_str);
-                let range = get_range_from_span(&trait_decl.name.span());
-                let children = collect_interface_surface(engines, &trait_decl.interface_surface);
-                let trait_symbol = DocumentSymbolBuilder::new()
-                    .name(name)
-                    .kind(lsp_types::SymbolKind::INTERFACE)
-                    .range(range)
-                    .selection_range(range)
-                    .children(children)
-                    .build();
-                Some(trait_symbol)
-            }
-            TyDecl::TraitTypeDecl(decl) => {
-                let trait_type_decl = engines.de().get_type(&decl.decl_id);
-                Some(build_trait_symbol(&trait_type_decl))
-            }
-            TyDecl::ImplSelfOrTrait(decl) => {
-                let impl_trait_decl = engines.de().get_impl_self_or_trait(&decl.decl_id);
-                let decl_str = impl_trait_decl.span().str().to_string();
-                let name = extract_header(&decl_str);
-                let range = get_range_from_span(&impl_trait_decl.trait_name.suffix.span());
-                let children = collect_ty_trait_items(engines, &impl_trait_decl.items);
-                let symbol = DocumentSymbolBuilder::new()
-                    .name(name)
-                    .kind(lsp_types::SymbolKind::NAMESPACE)
-                    .range(range)
-                    .selection_range(range)
-                    .children(children)
-                    .build();
-                Some(symbol)
-            }
-            TyDecl::ConstantDecl(decl) => {
-                let const_decl = engines.de().get_constant(&decl.decl_id);
-                Some(build_constant_symbol(&const_decl))
-            }
-            TyDecl::StorageDecl(decl) => {
-                let storage_decl = engines.de().get_storage(&decl.decl_id);
-                let span = storage_decl.storage_keyword.span();
-                let range = get_range_from_span(&span);
-                let children = collect_fields_from_storage(&storage_decl);
-                let storage_symbol = DocumentSymbolBuilder::new()
-                    .name(span.str().to_string())
-                    .kind(lsp_types::SymbolKind::STRUCT)
-                    .range(range)
-                    .selection_range(range)
-                    .children(children)
-                    .build();
-                Some(storage_symbol)
-            }
-            TyDecl::ConfigurableDecl(decl) => {
-                let configurable_decl = engines.de().get_configurable(&decl.decl_id);
-                let span = configurable_decl.call_path.suffix.span();
-                let range = get_range_from_span(&span);
-                let symbol = DocumentSymbolBuilder::new()
-                    .name(span.str().to_string())
-                    .kind(lsp_types::SymbolKind::FIELD)
-                    .detail(Some(
-                        configurable_decl.type_ascription.span.as_str().to_string(),
-                    ))
-                    .range(range)
-                    .selection_range(range)
-                    .build();
-                // Add symbol to the end of configurable_symbol's children field
-                configurable_symbol
-                    .as_mut()?
-                    .children
-                    .as_mut()?
-                    .push(symbol);
-                None
-            }
+                _ => None,
+            },
             _ => None,
         }
     })
