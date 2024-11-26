@@ -1,8 +1,6 @@
-use crate::core::{
-    token::get_range_from_span,
-    token_map::TokenMap,
-};
+use crate::core::{token::get_range_from_span, token_map::TokenMap};
 use lsp_types::{self, DocumentSymbol, Url};
+use std::path::PathBuf;
 use sway_core::{
     language::ty::{
         TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
@@ -19,11 +17,11 @@ use sway_types::{Span, Spanned};
 /// structs with their fields, and traits with their methods.
 pub fn to_document_symbols(
     uri: &Url,
+    path: &PathBuf,
     ty_program: &TyProgram,
     engines: &Engines,
     token_map: &TokenMap,
 ) -> Vec<DocumentSymbol> {
-    let path = uri.to_file_path().unwrap();
     let source_id = engines.se().get_source_id(&path);
 
     // Find if there is a configurable symbol in the token map that belongs to the current file

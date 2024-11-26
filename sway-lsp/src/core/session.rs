@@ -251,6 +251,7 @@ impl Session {
     /// Generate hierarchical document symbols for the given file.
     pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
+        let path = url.to_file_path().ok()?;
         self.compiled_program
             .read()
             .typed
@@ -258,6 +259,7 @@ impl Session {
             .map(|ty_program| {
                 capabilities::document_symbol::to_document_symbols(
                     url,
+                    &path,
                     ty_program,
                     &self.engines.read(),
                     &self.token_map,
