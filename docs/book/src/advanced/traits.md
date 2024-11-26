@@ -9,7 +9,7 @@ Let's take a look at some code:
 ```sway
 trait Compare {
     fn equals(self, b: Self) -> bool;
-} {
+
     fn not_equals(self, b: Self) -> bool {
         !self.equals(b)
     }
