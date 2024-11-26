@@ -260,6 +260,7 @@ impl Session {
                     url,
                     ty_program,
                     &self.engines.read(),
+                    &self.token_map,
                 )
             })
     }

@@ -1,4 +1,7 @@
-use crate::core::token::get_range_from_span;
+use crate::core::{
+    token::get_range_from_span,
+    token_map::TokenMap,
+};
 use lsp_types::{self, DocumentSymbol, Url};
 use sway_core::{
     language::ty::{
@@ -18,9 +21,25 @@ pub fn to_document_symbols(
     uri: &Url,
     ty_program: &TyProgram,
     engines: &Engines,
+    token_map: &TokenMap,
 ) -> Vec<DocumentSymbol> {
     let path = uri.to_file_path().unwrap();
     let source_id = engines.se().get_source_id(&path);
+
+    // Find if there is a configurable symbol in the token map that belongs to the current file
+    // We will add children symbols to this when we encounter a configurable declarations below.
+    let mut configurable_symbol = token_map
+        .tokens_for_file(uri)
+        .find(|item| item.key().name == "configurable")
+        .map(|item| {
+            DocumentSymbolBuilder::new()
+                .name(item.key().name.clone())
+                .kind(lsp_types::SymbolKind::STRUCT)
+                .range(item.key().range)
+                .selection_range(item.key().range)
+                .children(vec![])
+                .build()
+        });
 
     // Only include nodes that originate from the file.
     let mut nodes: Vec<_> = (if ty_program.root.span.source_id() == Some(&source_id) {
@@ -159,25 +178,35 @@ pub fn to_document_symbols(
                 Some(storage_symbol)
             }
             TyDecl::ConfigurableDecl(decl) => {
-                // Ideally we would show these as children of the configurable symbol
                 let configurable_decl = engines.de().get_configurable(&decl.decl_id);
                 let span = configurable_decl.call_path.suffix.span();
                 let range = get_range_from_span(&span);
-                let configurable_symbol = DocumentSymbolBuilder::new()
+                let symbol = DocumentSymbolBuilder::new()
                     .name(span.str().to_string())
-                    .kind(lsp_types::SymbolKind::STRUCT)
+                    .kind(lsp_types::SymbolKind::FIELD)
                     .detail(Some(
                         configurable_decl.type_ascription.span.as_str().to_string(),
                     ))
                     .range(range)
                     .selection_range(range)
                     .build();
-                Some(configurable_symbol)
+                // Add symbol to the end of configurable_symbol's children field
+                configurable_symbol
+                    .as_mut()?
+                    .children
+                    .as_mut()?
+                    .push(symbol);
+                None
             }
             _ => None,
         }
     })
     .collect();
+
+    // Add configurable symbol to the end after all children symbols have been added
+    if let Some(symbol) = configurable_symbol {
+        nodes.push(symbol);
+    }
 
     // Sort by range start position
     nodes.sort_by_key(|node| node.range.start);
