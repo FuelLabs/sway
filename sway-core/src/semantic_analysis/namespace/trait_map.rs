@@ -669,6 +669,7 @@ impl TraitMap {
         type_id: TypeId,
         code_block_first_pass: CodeBlockFirstPass,
     ) {
+        let type_id = engines.te().get_unaliased_type_id(type_id);
         let root_filter = TraitMap::get_type_filter(engines, type_id);
         if let Some(values) = self.insert_for_type_cache.get_mut(&root_filter) {
             let unify_checker = UnifyCheck::non_dynamic_equality(engines).with_unify_ref_mut(false);
