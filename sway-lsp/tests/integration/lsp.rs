@@ -247,7 +247,7 @@ pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
     }
 }
 
-pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn document_symbols_request(server: &ServerState, uri: &Url) {
     let params = DocumentSymbolParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
@@ -256,8 +256,62 @@ pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
     let response = request::handle_document_symbol(server, params)
         .await
         .unwrap();
-    if let Some(DocumentSymbolResponse::Nested(res)) = response {
-        assert!(!res.is_empty());
+
+    if let Some(DocumentSymbolResponse::Nested(symbols)) = response {
+        // Check for enum with its variants
+        let enum_symbol = symbols
+            .iter()
+            .find(|s| s.name == "NumberOrString")
+            .expect("Should find NumberOrString enum");
+        assert_eq!(enum_symbol.kind, SymbolKind::ENUM);
+        let variants = enum_symbol
+            .children
+            .as_ref()
+            .expect("Enum should have variants");
+        assert_eq!(variants.len(), 2);
+        assert!(variants.iter().any(|v| v.name == "Number"));
+        assert!(variants.iter().any(|v| v.name == "String"));
+
+        // Check for struct with its fields
+        let struct_symbol = symbols
+            .iter()
+            .find(|s| s.name == "Data")
+            .expect("Should find Data struct");
+        assert_eq!(struct_symbol.kind, SymbolKind::STRUCT);
+        let fields = struct_symbol
+            .children
+            .as_ref()
+            .expect("Struct should have fields");
+        assert_eq!(fields.len(), 2);
+        assert!(fields
+            .iter()
+            .any(|f| f.name == "value" && f.detail.as_deref() == Some("NumberOrString")));
+        assert!(fields
+            .iter()
+            .any(|f| f.name == "address" && f.detail.as_deref() == Some("u64")));
+
+        // Check for impl with nested function and variable
+        let impl_symbol = symbols
+            .iter()
+            .find(|s| s.name == "impl FooABI for Contract")
+            .expect("Should find impl block");
+        let impl_fns = impl_symbol
+            .children
+            .as_ref()
+            .expect("Impl should have functions");
+        let main_fn = impl_fns
+            .iter()
+            .find(|f| f.name == "main")
+            .expect("Should find main function");
+        let vars = main_fn
+            .children
+            .as_ref()
+            .expect("Function should have variables");
+        assert!(vars
+            .iter()
+            .any(|v| v.name == "_data" && v.detail.as_deref() == Some("Data")));
+    } else {
+        panic!("Expected nested document symbols response");
     }
 }
 
