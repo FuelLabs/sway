@@ -118,7 +118,7 @@ trait Trait {
 }
 ```
 
-Check the `associated consts` section on [constants](../basics/constants.md) page.
+Check the `associated constants` section on [constants](../basics/constants.md) page.
 
 ### Associated types
 
@@ -185,7 +185,7 @@ impl Card for MyCard {
 
 fn main() {
     let mut i = 52;
-    let mut deck: Vec<MyCard> = Vec::with_capacity(50);
+    let mut deck: Vec<MyCard> = Vec::with_capacity(52);
     while i > 0 {
         i = i - 1;
         deck.push(MyCard { suit: generate_random_suit(), value: i % 4}
