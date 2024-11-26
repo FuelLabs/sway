@@ -22,7 +22,7 @@ pub fn to_document_symbols(
     engines: &Engines,
     token_map: &TokenMap,
 ) -> Vec<DocumentSymbol> {
-    let source_id = engines.se().get_source_id(&path);
+    let source_id = engines.se().get_source_id(path);
 
     // Find if there is a configurable symbol in the token map that belongs to the current file
     // We will add children symbols to this when we encounter a configurable declarations below.
