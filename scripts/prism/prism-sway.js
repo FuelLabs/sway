@@ -115,7 +115,9 @@ Prism.languages.sway = {
     'operator': /[-+*\/%!^]=?|=[=>]?|&[&=]?|\|[|=]?|<<?=?|>>?=?|[@?]/
 };
 
-Prism.languages.sway['closure-params'].inside.rest = Prism.languages.sway;
-Prism.languages.sway['attribute'].inside['string'] = Prism.languages.sway['string'];
+import { languages } from 'Prism';
 
-}(Prism));
+const closureParamsInsideRest = languages.sway['closure-params'].inside.rest = languages.sway;
+const attributeInsideString = languages.sway['attribute'].inside['string'] = languages.sway['string'];
+const finalAssignment = closureParamsInsideRest && attributeInsideString;
+
