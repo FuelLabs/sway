@@ -293,13 +293,38 @@ languageName:n})},unregisterLanguage:e=>{delete t[e]
 listLanguages:()=>Object.keys(t),getLanguage:x,registerAliases:k,
 autoDetection:v,inherit:Y,addPlugin:e=>{(e=>{
 e["before:highlightBlock"]&&!e["before:highlightElement"]&&(e["before:highlightElement"]=t=>{
-e["before:highlightBlock"](Object.assign({block:t.el},t))
-}),e["after:highlightBlock"]&&!e["after:highlightElement"]&&(e["after:highlightElement"]=t=>{
-e["after:highlightBlock"](Object.assign({block:t.el},t))})})(e),a.push(e)}
-}),e.debugMode=()=>{r=!1},e.safeMode=()=>{r=!0
-},e.versionString="11.3.1",e.regex={concat:b,lookahead:u,either:p,optional:h,
-anyNumberOfTimes:g};for(const e in A)"object"==typeof A[e]&&n(A[e])
-;return Object.assign(e,A),e})({}),ne=Object.freeze({__proto__:null,
+e["before:highlightBlock"]({...t, block: t.el})
+
+}), e["after:highlightBlock"] && !e["after:highlightElement"] && 
+(e["after:highlightElement"] = t => {
+  e["after:highlightBlock"]({...t, block: t.el})
+})
+
+})(e), a = [...a, e]
+
+}), e.debugMode = () => { r = false }
+
+e.safeMode = () => { r = true }
+
+e.versionString = "11.3.1"
+
+e.regex = {
+  concat: b,
+  lookahead: u,
+  either: p,
+  optional: h,
+  anyNumberOfTimes: g
+}
+
+for (const e in A) {
+  if (typeof A[e] === "object") n(A[e])
+}
+
+Object.assign(e, A)
+
+return e
+})({}), ne = Object.freeze({__proto__: null})
+
 grmr_sway:e=>{const t={className:"title.function.invoke",relevance:0,
 begin:b(/\b/,/(?!let\b)/,e.IDENT_RE,u(/\s*\(/))},n="([u](8|16|32|64))?";return{
 name:"Sway",aliases:["sw"],keywords:{$pattern:e.IDENT_RE+"!?",
