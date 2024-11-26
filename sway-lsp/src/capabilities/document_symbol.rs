@@ -3,16 +3,20 @@ use lsp_types::{self, DocumentSymbol, Url};
 use sway_core::{
     language::ty::{
         TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
-        TyFunctionParameter, TyProgram, TyStorageDecl, TyStructDecl,
-        TyTraitInterfaceItem, TyTraitItem, TyTraitType,
+        TyFunctionParameter, TyProgram, TyStorageDecl, TyStructDecl, TyTraitInterfaceItem,
+        TyTraitItem, TyTraitType,
     },
     Engines, TypeArgument,
 };
 use sway_types::{Span, Spanned};
 
-pub fn to_document_symbols<'a>(
+/// Generates a hierarchical document symbol tree for LSP code outline/navigation.
+/// Processes declarations (functions, structs, enums, etc.) into nested symbols,
+/// preserving parent-child relationships like functions with their variables,
+/// structs with their fields, and traits with their methods.
+pub fn to_document_symbols(
     uri: &Url,
-    ty_program: &'a TyProgram,
+    ty_program: &TyProgram,
     engines: &Engines,
 ) -> Vec<DocumentSymbol> {
     let path = uri.to_file_path().unwrap();
@@ -89,7 +93,7 @@ pub fn to_document_symbols<'a>(
             }
             TyDecl::AbiDecl(decl) => {
                 let abi_decl = engines.de().get_abi(&decl.decl_id);
-                let decl_str = format!("{}", abi_decl.span().str());
+                let decl_str = abi_decl.span().str();
                 let name = extract_header(&decl_str);
                 let range = get_range_from_span(&abi_decl.name.span());
                 let children = collect_fns_from_abi_decl(engines, &abi_decl);
@@ -104,7 +108,7 @@ pub fn to_document_symbols<'a>(
             }
             TyDecl::TraitDecl(decl) => {
                 let trait_decl = engines.de().get_trait(&decl.decl_id);
-                let decl_str = format!("{}", trait_decl.span().str());
+                let decl_str = trait_decl.span().str().to_string();
                 let name = extract_header(&decl_str);
                 let range = get_range_from_span(&trait_decl.name.span());
                 let children = collect_interface_surface(engines, &trait_decl.interface_surface);
@@ -123,7 +127,7 @@ pub fn to_document_symbols<'a>(
             }
             TyDecl::ImplSelfOrTrait(decl) => {
                 let impl_trait_decl = engines.de().get_impl_self_or_trait(&decl.decl_id);
-                let decl_str = format!("{}", impl_trait_decl.span().str());
+                let decl_str = impl_trait_decl.span().str().to_string();
                 let name = extract_header(&decl_str);
                 let range = get_range_from_span(&impl_trait_decl.trait_name.suffix.span());
                 let children = collect_ty_trait_items(engines, &impl_trait_decl.items);
@@ -162,10 +166,9 @@ pub fn to_document_symbols<'a>(
                 let configurable_symbol = DocumentSymbolBuilder::new()
                     .name(span.str().to_string())
                     .kind(lsp_types::SymbolKind::STRUCT)
-                    .detail(Some(format!(
-                        "{}",
-                        configurable_decl.type_ascription.span.as_str()
-                    )))
+                    .detail(Some(
+                        configurable_decl.type_ascription.span.as_str().to_string(),
+                    ))
                     .range(range)
                     .selection_range(range)
                     .build();
@@ -187,10 +190,7 @@ fn build_constant_symbol(const_decl: &TyConstantDecl) -> DocumentSymbol {
     DocumentSymbolBuilder::new()
         .name(span.str().to_string())
         .kind(lsp_types::SymbolKind::CONSTANT)
-        .detail(Some(format!(
-            "{}",
-            const_decl.type_ascription.span.as_str()
-        )))
+        .detail(Some(const_decl.type_ascription.span.as_str().to_string()))
         .range(range)
         .selection_range(range)
         .build()
@@ -262,10 +262,10 @@ fn collect_fields_from_storage(decl: &TyStorageDecl) -> Vec<DocumentSymbol> {
 }
 
 fn build_field_symbol(span: &Span, type_argument: &TypeArgument) -> DocumentSymbol {
-    let range = get_range_from_span(&span);
+    let range = get_range_from_span(span);
     DocumentSymbolBuilder::new()
         .name(span.clone().str().to_string())
-        .detail(Some(format!("{}", type_argument.span.as_str())))
+        .detail(Some(type_argument.span.as_str().to_string()))
         .kind(lsp_types::SymbolKind::FIELD)
         .range(range)
         .selection_range(range)
@@ -317,13 +317,12 @@ fn collect_enum_variants(decl: &TyEnumDecl) -> Vec<DocumentSymbol> {
         .iter()
         .map(|variant| {
             let range = get_range_from_span(&variant.name.span());
-            let symbol = DocumentSymbolBuilder::new()
+            DocumentSymbolBuilder::new()
                 .name(variant.name.span().str().to_string())
                 .kind(lsp_types::SymbolKind::ENUM_MEMBER)
                 .range(range)
                 .selection_range(range)
-                .build();
-            symbol
+                .build()
         })
         .collect()
 }
@@ -402,6 +401,12 @@ pub struct DocumentSymbolBuilder {
     selection_range: lsp_types::Range,
     children: Option<Vec<DocumentSymbol>>,
     deprecated: Option<bool>,
+}
+
+impl Default for DocumentSymbolBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DocumentSymbolBuilder {

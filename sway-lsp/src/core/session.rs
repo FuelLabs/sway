@@ -251,14 +251,17 @@ impl Session {
     /// Generate heirarchical document symbols for the given file.
     pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
-        match &self.compiled_program.read().typed {
-            Some(ty_program) => Some(capabilities::document_symbol::to_document_symbols(
-                url,
-                &ty_program,
-                &self.engines.read(),
-            )),
-            None => None,
-        }
+        self.compiled_program
+            .read()
+            .typed
+            .as_ref()
+            .map(|ty_program| {
+                capabilities::document_symbol::to_document_symbols(
+                    url,
+                    ty_program,
+                    &self.engines.read(),
+                )
+            })
     }
 
     /// Populate [Documents] with sway files found in the workspace.
