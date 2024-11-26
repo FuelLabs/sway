@@ -213,13 +213,37 @@ const t=e[0],s=n.substr(e.index),i=b(v,e,s);if(!i)return ee;const a=v
 ;v.endScope&&v.endScope._wrap?(u(),
 S.addKeyword(t,v.endScope._wrap)):v.endScope&&v.endScope._multi?(u(),
 g(v.endScope,e)):a.skip?R+=t:(a.returnEnd||a.excludeEnd||(R+=t),
-u(),a.excludeEnd&&(R=t));do{
-v.scope&&S.closeNode(),v.skip||v.subLanguage||(M+=v.relevance),v=v.parent
-}while(v!==i.parent);return i.starts&&h(i.starts,e),a.returnEnd?0:t.length}
-let m={};function w(t,a){const o=a&&a[0];if(R+=t,null==o)return u(),0
-;if("begin"===m.type&&"end"===a.type&&m.index===a.index&&""===o){
-if(R+=n.slice(a.index,a.index+1),!r){const t=Error(`0 width match regex (${e})`)
-;throw t.languageName=e,t.badRule=m.rule,t}return 1}
+u();
+if (a.excludeEnd) R = t;
+do {
+  if (v.scope) S.closeNode();
+  if (!v.skip && !v.subLanguage) M += v.relevance;
+  v = v.parent;
+} while (v !== i.parent);
+if (i.starts) h(i.starts, e);
+return a.returnEnd ? 0 : t.length;
+
+let m = {};
+
+function w(t, a) {
+  const o = a?.[0];
+  R += t;
+  if (!o) {
+    u();
+    return 0;
+  }
+  if (m.type === "begin" && a.type === "end" && m.index === a.index && o === "") {
+    R += n.slice(a.index, a.index + 1);
+    if (!r) {
+      const error = new Error(`0 width match regex (${e})`);
+      error.languageName = e;
+      error.badRule = m.rule;
+      throw error;
+    }
+    return 1;
+  }
+}
+
 if(m=a,"begin"===a.type)return(e=>{
 const t=e[0],n=e.rule,i=new s(n),a=[n.__beforeBegin,n["on:begin"]]
 ;for(const n of a)if(n&&(n(e,i),i.isMatchIgnored))return p(t)
