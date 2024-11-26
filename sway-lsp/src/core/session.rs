@@ -19,8 +19,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg as pkg;
 use lsp_types::{
-    CompletionItem, DocumentSymbol, GotoDefinitionResponse, Location, Position, Range,
-    SymbolInformation, Url,
+    CompletionItem, DocumentSymbol, GotoDefinitionResponse, Location, Position, Range, Url,
 };
 use parking_lot::RwLock;
 use pkg::{
