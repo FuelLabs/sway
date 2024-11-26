@@ -1,6 +1,6 @@
 # Generics and Trait Constraints
 
-## Generics as Constraints
+## Generics and Constraints
 
 At a high level, Sway allows you to define constraints, or restrictions, that
 allow you to strike a balance between writing abstract and reusable code and
