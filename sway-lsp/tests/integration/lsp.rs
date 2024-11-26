@@ -256,7 +256,7 @@ pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
     let response = request::handle_document_symbol(server, params)
         .await
         .unwrap();
-    if let Some(DocumentSymbolResponse::Flat(res)) = response {
+    if let Some(DocumentSymbolResponse::Nested(res)) = response {
         assert!(!res.is_empty());
     }
 }
