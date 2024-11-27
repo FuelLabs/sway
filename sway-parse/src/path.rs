@@ -139,37 +139,65 @@ mod tests {
     fn parse_nested_path() {
         assert_ron_snapshot!(parse::<PathExpr>(r#"
             std::vec::Vec
-        "#,), @r###"
+        "#,), @r#"
         PathExpr(
           root_opt: None,
           prefix: PathExprSegment(
-            name: Ident(
-              to_string: "std",
-              span: (13, 16),
+            name: BaseIdent(
+              name_override_opt: None,
+              span: Span(
+                src: "\n            std::vec::Vec\n        ",
+                start: 13,
+                end: 16,
+                source_id: None,
+              ),
+              is_raw_ident: false,
             ),
             generics_opt: None,
           ),
           suffix: [
             (DoubleColonToken(
-              span: (16, 18),
+              span: Span(
+                src: "\n            std::vec::Vec\n        ",
+                start: 16,
+                end: 18,
+                source_id: None,
+              ),
             ), PathExprSegment(
-              name: Ident(
-                to_string: "vec",
-                span: (18, 21),
+              name: BaseIdent(
+                name_override_opt: None,
+                span: Span(
+                  src: "\n            std::vec::Vec\n        ",
+                  start: 18,
+                  end: 21,
+                  source_id: None,
+                ),
+                is_raw_ident: false,
               ),
               generics_opt: None,
             )),
             (DoubleColonToken(
-              span: (21, 23),
+              span: Span(
+                src: "\n            std::vec::Vec\n        ",
+                start: 21,
+                end: 23,
+                source_id: None,
+              ),
             ), PathExprSegment(
-              name: Ident(
-                to_string: "Vec",
-                span: (23, 26),
+              name: BaseIdent(
+                name_override_opt: None,
+                span: Span(
+                  src: "\n            std::vec::Vec\n        ",
+                  start: 23,
+                  end: 26,
+                  source_id: None,
+                ),
+                is_raw_ident: false,
               ),
               generics_opt: None,
             )),
           ],
         )
-        "###);
+        "#);
     }
 }
