@@ -20,7 +20,6 @@ use sway_error::{
 };
 use sway_types::{ident::Ident, span::Span, BaseIdent, Spanned};
 
-
 /// [TypeParameter] describes a generic type parameter, including its
 /// monomorphized version. It holds the `name` of the parameter, its
 /// `type_id`, and the `initial_type_id`, as well as an additional
