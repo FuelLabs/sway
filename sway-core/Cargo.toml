@@ -22,18 +22,19 @@ gimli.workspace = true
 graph-cycles.workspace = true
 hashbrown.workspace = true
 hex = { workspace = true, optional = true }
-im.workspace = true
+im = { workspace = true, features = ["serde"] }
 indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
 lazy_static.workspace = true
 object = { workspace = true, features = ["write"] }
-parking_lot.workspace = true
+parking_lot = { workspace = true, features = ["serde"] }
 paste.workspace = true
 pest.workspace = true
 pest_derive.workspace = true
 petgraph.workspace = true
+postcard.workspace = true
 rustc-hash.workspace = true
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "rc"] }
 serde_json.workspace = true
 sha2.workspace = true
 strum = { workspace = true, features = ["derive"] }

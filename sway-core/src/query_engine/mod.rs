@@ -47,6 +47,7 @@ pub struct ParsedModuleInfo {
 #[derive(Clone, Debug)]
 pub struct TypedModuleInfo {
     pub module: Arc<TyModule>,
+    pub serialized_module: Vec<u8>,
     pub version: Option<u64>,
 }
 

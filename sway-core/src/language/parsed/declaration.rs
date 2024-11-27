@@ -18,6 +18,7 @@ pub use constant::*;
 pub use function::*;
 pub use impl_trait::*;
 pub use r#enum::*;
+use serde::{Deserialize, Serialize};
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
@@ -43,7 +44,7 @@ use crate::{
     Engines,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Declaration {
     VariableDeclaration(ParsedDeclId<VariableDeclaration>),
     FunctionDeclaration(ParsedDeclId<FunctionDeclaration>),
@@ -61,7 +62,7 @@ pub enum Declaration {
     TraitFnDeclaration(ParsedDeclId<TraitFn>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnumVariantDeclaration {
     pub enum_ref: ParsedDeclId<EnumDeclaration>,
     pub variant_name: Ident,

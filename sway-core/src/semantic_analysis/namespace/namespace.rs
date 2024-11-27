@@ -9,12 +9,12 @@ use super::{
     submodule_namespace::SubmoduleNamespace,
     ModulePath, ModulePathBuf,
 };
-
+use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 
 /// The set of items that represent the namespace context passed throughout type checking.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Namespace {
     /// An immutable namespace that consists of the names that should always be present, no matter
     /// what module or scope we are currently checking.

@@ -8,10 +8,10 @@ use crate::{
     type_system::TypeArgument,
     Engines, TypeParameter,
 };
-
+use serde::{Deserialize, Serialize};
 use sway_types::{span::Span, Named, Spanned};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ImplItem {
     Fn(ParsedDeclId<FunctionDeclaration>),
     Constant(ParsedDeclId<ConstantDeclaration>),

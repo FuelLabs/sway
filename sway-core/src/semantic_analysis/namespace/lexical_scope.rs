@@ -19,7 +19,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, IdentUnique, Named, Spanned};
-
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 pub enum ResolvedFunctionDecl {
@@ -63,7 +63,7 @@ pub type LexicalScopePath = Vec<LexicalScopeId>;
 
 /// A `LexicalScope` contains a set of all items that exist within the lexical scope via declaration or
 /// importing, along with all its associated hierarchical scopes.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct LexicalScope {
     /// The set of symbols, implementations, synonyms and aliases present within this scope.
     pub items: Items,
@@ -74,7 +74,7 @@ pub struct LexicalScope {
 }
 
 /// The set of items that exist within some lexical scope via declaration or importing.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Items {
     /// An ordered map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,

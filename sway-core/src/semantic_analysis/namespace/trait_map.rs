@@ -5,7 +5,7 @@ use std::{
     hash::{DefaultHasher, Hash, Hasher},
     sync::Arc,
 };
-
+use serde::{Deserialize, Serialize};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -51,7 +51,7 @@ impl From<bool> for CodeBlockFirstPass {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct TraitSuffix {
     name: Ident,
     args: Vec<TypeArgument>,
@@ -96,7 +96,7 @@ impl DebugWithEngines for TraitSuffix {
 
 type TraitName = Arc<CallPath<TraitSuffix>>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
@@ -111,7 +111,7 @@ impl OrdWithEngines for TraitKey {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ResolvedTraitImplItem {
     Parsed(ImplItem),
     Typed(TyImplItem),
@@ -136,14 +136,14 @@ impl ResolvedTraitImplItem {
 /// Map of name to [ResolvedTraitImplItem](ResolvedTraitImplItem)
 type TraitItems = im::HashMap<String, ResolvedTraitImplItem>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct TraitValue {
     trait_items: TraitItems,
     /// The span of the entire impl block.
     impl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct TraitEntry {
     key: TraitKey,
     value: TraitValue,
@@ -154,7 +154,7 @@ struct TraitEntry {
 /// don't need to traverse every TraitEntry.
 type TraitImpls = im::HashMap<TypeRootFilter, im::Vector<TraitEntry>>;
 
-#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
 enum TypeRootFilter {
     Unknown,
     Never,
@@ -188,7 +188,7 @@ enum TypeRootFilter {
 ///
 /// Note: "impl self" blocks are considered traits and are stored in the
 /// [TraitMap].
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: im::HashSet<u64>,

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Serialize, Deserialize};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
@@ -11,7 +12,7 @@ use crate::{
     Engines,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyModule {
     pub span: Span,
     pub submodules: Vec<(ModName, TySubmodule)>,
@@ -73,7 +74,7 @@ impl TyModule {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TySubmodule {
     pub module: Arc<TyModule>,
     pub mod_name_span: Span,

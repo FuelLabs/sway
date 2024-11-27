@@ -6,6 +6,7 @@ use std::{
 };
 
 use graph_cycles::Cycles;
+use postcard::{to_allocvec, from_bytes};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -18,7 +19,7 @@ use crate::{
     is_ty_module_cache_up_to_date,
     language::{
         parsed::*,
-        ty::{self, TyAstNodeContent, TyDecl},
+        ty::{self, TyAstNodeContent, TyDecl, TyModule},
         CallPath, ModName,
     },
     query_engine::{ModuleCacheKey, TypedModuleInfo},
@@ -283,9 +284,21 @@ impl ty::TyModule {
                     build_config,
                 );
 
+                let now = std::time::Instant::now();
+                // Deserialize the bytes back into a TyModule
+                let ty_module = match from_bytes::<TyModule>(&typed.serialized_module) {
+                    Ok(module) => Some(Arc::new(module)),
+                    Err(err) => {
+                        eprintln!("Failed to deserialize TyModule: {:?}", err);
+                        None
+                    }
+                };
+                eprintln!("Deserialize module took {:?}", now.elapsed());
+
                 // Return the cached module if it's up to date, otherwise None
                 if is_up_to_date {
-                    Some(typed.module.clone())
+                    // Some(typed.module.clone())
+                    Some(ty_module.unwrap())
                 } else {
                     None
                 }
@@ -478,10 +491,17 @@ impl ty::TyModule {
 
             let include_tests = build_config.map_or(false, |x| x.include_tests);
             let key = ModuleCacheKey::new(path.clone().into(), include_tests);
+
+            let now = std::time::Instant::now();
+            // Serialize the TyModule into bytes
+            let serialized_module = to_allocvec(&ty_module).unwrap();
+            eprintln!("Serialize module took {:?} | path: {:?}", now.elapsed(), path);
+
             engines.qe().update_typed_module_cache_entry(
                 &key,
                 TypedModuleInfo {
                     module: ty_module.clone(),
+                    serialized_module,
                     version,
                 },
             );

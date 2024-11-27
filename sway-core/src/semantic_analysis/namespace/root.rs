@@ -13,6 +13,7 @@ use crate::{
     semantic_analysis::type_resolve::{resolve_associated_item, resolve_associated_type},
     TypeId,
 };
+use serde::{Deserialize, Serialize};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -20,7 +21,7 @@ use sway_error::{
 use sway_types::Spanned;
 use sway_utils::iter_prefixes;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ResolvedDeclaration {
     Parsed(Declaration),
     Typed(ty::TyDecl),
@@ -158,7 +159,7 @@ impl ResolvedDeclaration {
 /// canonical paths, or that use canonical paths internally, are *only* called from the root. This
 /// normally includes methods that first lookup some canonical path via `use_synonyms` before using
 /// that canonical path to look up the symbol declaration.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Root {
     pub(crate) module: Module,
 }

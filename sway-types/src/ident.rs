@@ -138,7 +138,7 @@ impl fmt::Debug for Ident {
 /// An [IdentUnique] is an _identifier_ with a corresponding `span` from which it was derived.
 /// Its hash and equality implementation takes the full span into account, meaning that identifiers
 /// are considered unique if they originate from different files.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IdentUnique(BaseIdent);
 
 impl From<Ident> for IdentUnique {

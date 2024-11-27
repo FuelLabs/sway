@@ -8,6 +8,7 @@ use super::{
 
 use rustc_hash::FxHasher;
 use std::{collections::HashMap, hash::BuildHasherDefault};
+use serde::{Deserialize, Serialize};
 use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_types::{span::Span, Spanned};
@@ -20,7 +21,7 @@ use sway_types::{span::Span, Spanned};
 ///
 /// A `Module` contains a set of all items that exist within the lexical scope via declaration or
 /// importing, along with a map of each of its submodules.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
     /// to the associated `Module`.
