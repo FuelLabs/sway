@@ -692,7 +692,7 @@ impl Bytes {
     ///     assert(bytes.capacity() == first_cap + second_cap);
     /// }
     /// ```
-    pub fn append(ref mut self, ref mut other: self) {
+    pub fn append(ref mut self, ref mut other: Self) {
         let other_len = other.len();
         if other_len == 0 {
             return
