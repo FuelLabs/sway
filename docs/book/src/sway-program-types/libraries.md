@@ -192,7 +192,6 @@ Some Sway Libraries to try out:
 
 - [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/merkle)
 - [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/signed_integers)
-- [Unsigned Fixed Point Number](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/fixed_point)
 - [Ownership](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/ownership)
 
 ### Example

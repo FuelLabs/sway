@@ -223,7 +223,9 @@ pub(super) async fn run(
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
                 let experimental = ExperimentalFeatures {
-                    new_encoding: false, // IR tests still need encoding v1 off
+                    new_encoding: false, // IR tests still need encoding v1 off.
+                    // TODO: Properly support experimental features in IR tests.
+                    ..Default::default()
                 };
 
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have

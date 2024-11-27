@@ -20,7 +20,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{constants, integer_bits::IntegerBits, BaseIdent, IdentUnique};
+use sway_types::{constants, BaseIdent, IdentUnique};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
 use sway_types::{Ident, Span};
 
@@ -45,14 +45,24 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+            .with_type_annotation(type_engine.new_unknown());
 
         // Ignore errors in method parameters
         // On the second pass we will throw the errors if they persist.
         let arg_handler = Handler::default();
         let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg).ok();
 
-        let needs_second_pass = arg_handler.has_errors();
+        let has_errors = arg_handler.has_errors();
+        let has_numerics = arg_opt
+            .as_ref()
+            .map(|x| {
+                x.return_type
+                    .extract_inner_types(engines, IncludeSelf::Yes)
+                    .iter()
+                    .any(|x| matches!(&*engines.te().get(*x), TypeInfo::Numeric))
+            })
+            .unwrap_or_default();
+        let needs_second_pass = has_errors || has_numerics;
 
         if index == 0 {
             // We want to emit errors in the self parameter and ignore TraitConstraintNotSatisfied with Placeholder
@@ -82,7 +92,7 @@ pub(crate) fn type_check_method_application(
             .iter()
             .map(|(arg, _has_errors)| match arg {
                 Some(arg) => arg.return_type,
-                None => type_engine.insert(engines, TypeInfo::Unknown, None),
+                None => type_engine.new_unknown(),
             })
             .collect(),
     )?;
@@ -130,7 +140,7 @@ pub(crate) fn type_check_method_application(
             } else {
                 ctx.by_ref()
                     .with_help_text("")
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+                    .with_type_annotation(type_engine.new_unknown())
             };
 
             args_buf.push_back(
@@ -183,17 +193,13 @@ pub(crate) fn type_check_method_application(
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
                     untyped_contract_call_params_map
                         .insert(param.name.to_string(), param.value.clone());
-                    let type_annotation = type_engine.insert(
-                        engines,
-                        if param.name.span().as_str()
-                            != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
-                        {
-                            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-                        } else {
-                            TypeInfo::B256
-                        },
-                        param.name.span().source_id(),
-                    );
+                    let type_annotation = if param.name.span().as_str()
+                        != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
+                    {
+                        type_engine.id_of_u64()
+                    } else {
+                        type_engine.id_of_b256()
+                    };
                     let ctx = ctx
                         .by_ref()
                         .with_help_text("")
@@ -443,21 +449,10 @@ pub(crate) fn type_check_method_application(
             asset_id_expr: Expression,
             gas_expr: Expression,
         ) -> Expression {
-            let tuple_args_type_id = ctx.engines.te().insert(
-                ctx.engines,
-                TypeInfo::Tuple(
-                    typed_arguments
-                        .iter()
-                        .map(|&type_id| TypeArgument {
-                            type_id,
-                            initial_type_id: type_id,
-                            span: Span::dummy(),
-                            call_path_tree: None,
-                        })
-                        .collect(),
-                ),
-                None,
-            );
+            let tuple_args_type_id = ctx
+                .engines
+                .te()
+                .insert_tuple_without_annotations(ctx.engines, typed_arguments);
             Expression {
                 kind: ExpressionKind::FunctionApplication(Box::new(
                     FunctionApplicationExpression {
@@ -607,7 +602,7 @@ pub(crate) fn type_check_method_application(
                     for p in method.type_parameters.clone() {
                         if p.is_from_parent {
                             if let Some(impl_type_param) =
-                                names_index.get(&p.name_ident).and_then(|type_param_index| {
+                                names_index.get(&p.name).and_then(|type_param_index| {
                                     implementing_type_parameters.get(*type_param_index)
                                 })
                             {
@@ -671,7 +666,7 @@ pub(crate) fn type_check_method_application(
 
                 // This handles the case of substituting the generic blanket type by call_path_typeid.
                 for p in method.type_parameters.clone() {
-                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                    if p.name.as_str() == qualified_call_path.call_path.suffix.as_str() {
                         subst_type_parameters.push(t.initial_type_id);
                         subst_type_arguments.push(call_path_typeid);
                         break;
@@ -681,13 +676,10 @@ pub(crate) fn type_check_method_application(
                 // This will subst inner method_application placeholders with the already resolved
                 // current method application type parameter
                 for p in method.type_parameters.clone() {
-                    if names_type_ids.contains_key(&p.name_ident) {
-                        subst_type_parameters.push(engines.te().insert(
-                            engines,
-                            TypeInfo::Placeholder(p.clone()),
-                            p.span().source_id(),
-                        ));
-                        subst_type_arguments.push(p.type_id);
+                    if names_type_ids.contains_key(&p.name) {
+                        let type_parameter_type_id = p.type_id;
+                        subst_type_parameters.push(engines.te().new_placeholder(p));
+                        subst_type_arguments.push(type_parameter_type_id);
                     }
                 }
 
@@ -825,9 +817,7 @@ pub(crate) fn resolve_method_name(
 //	    }
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
-                .unwrap_or_else(|err| {
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             // find the module that the symbol is in
 //            let type_info_prefix = ctx
@@ -876,7 +866,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments_types
                 .front()
                 .cloned()
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
+                .unwrap_or_else(|| type_engine.new_unknown());
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -902,7 +892,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments_types
                 .front()
                 .cloned()
-                .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
+                .unwrap_or_else(|| type_engine.new_unknown());
 
             // find the method
             let decl_ref = ctx.find_method_for_type(

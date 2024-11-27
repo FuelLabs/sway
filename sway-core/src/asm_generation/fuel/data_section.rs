@@ -3,7 +3,7 @@ use sway_ir::{size_bytes_round_up_to_word_alignment, Constant, ConstantValue, Co
 
 use std::{fmt, iter::repeat};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub enum EntryName {
     NonConfigurable,
     Configurable(String),
@@ -20,14 +20,14 @@ impl fmt::Display for EntryName {
 
 // An entry in the data section.  It's important for the size to be correct, especially for unions
 // where the size could be larger than the represented value.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct Entry {
     pub value: Datum,
     pub padding: Padding,
     pub name: EntryName,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub enum Datum {
     Byte(u8),
     Word(u64),
@@ -251,12 +251,12 @@ pub struct DataSection {
 
 impl DataSection {
     /// Get the number of entries
-    pub(crate) fn num_entries(&self) -> usize {
+    pub fn num_entries(&self) -> usize {
         self.non_configurables.len() + self.configurables.len()
     }
 
     /// Iterate over all entries, non-configurables followed by configurables
-    pub(crate) fn iter_all_entries(&self) -> impl Iterator<Item = Entry> + '_ {
+    pub fn iter_all_entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.non_configurables
             .iter()
             .chain(self.configurables.iter())

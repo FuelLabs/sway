@@ -80,7 +80,7 @@ impl CollectTypesMetadata for TypeId {
                 }
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
-                        type_param.name_ident.clone(),
+                        type_param.name.clone(),
                         ctx.call_site_get(self),
                     ));
                 }
@@ -108,7 +108,7 @@ impl SubstTypes for TypeId {
 }
 
 impl TypeId {
-    pub(super) fn new(index: usize) -> TypeId {
+    pub(super) const fn new(index: usize) -> TypeId {
         TypeId(index)
     }
 
@@ -382,19 +382,6 @@ impl TypeId {
                     ty.type_id
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
-            }
-            TypeInfo::Storage { fields } => {
-                for field in fields {
-                    extend(
-                        &mut found,
-                        field.type_argument.type_id.extract_any_including_self(
-                            engines,
-                            filter_fn,
-                            vec![],
-                            depth + 1,
-                        ),
-                    );
-                }
             }
             TypeInfo::Alias { name: _, ty } => {
                 extend(
@@ -697,13 +684,7 @@ impl TypeId {
                                         EnforceTypeArguments::No,
                                         None,
                                     )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
+                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
                                     ctx.resolve_type(
                                         handler,
                                         t2.type_id,
@@ -711,13 +692,7 @@ impl TypeId {
                                         EnforceTypeArguments::No,
                                         None,
                                     )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
+                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
                                 )
                             })
                 },

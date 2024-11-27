@@ -370,10 +370,18 @@ pub enum CompileError {
     },
     #[error("Field \"{field_name}\" has multiple definitions.")]
     StructFieldDuplicated { field_name: Ident, duplicate: Ident },
-    #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
+    #[error("No method \"{method}\" found for type \"{type_name}\".{}", 
+        if matching_method_strings.is_empty() {
+            "".to_string()
+        } else {
+            format!("  \nMatching method{}:\n{}", if matching_method_strings.len()> 1 {"s"} else {""},
+            matching_method_strings.iter().map(|m| format!("    {m}")).collect::<Vec<_>>().join("\n"))
+        }
+    )]
     MethodNotFound {
-        method_name: Ident,
+        method: String,
         type_name: String,
+        matching_method_strings: Vec<String>,
         span: Span,
     },
     #[error("Module \"{name}\" could not be found.")]
@@ -955,18 +963,17 @@ pub enum CompileError {
         let mut candidates = "".to_string();
         let mut as_traits = as_traits.clone();
         // Make order deterministic
-        as_traits.sort_by_key(|a| a.to_lowercase());
+        as_traits.sort_by_key(|a| a.0.to_lowercase());
         for (index, as_trait) in as_traits.iter().enumerate() {
-            candidates = format!("{candidates}\n  Disambiguate the associated {item_kind} for candidate #{index}\n    <{type_name} as {as_trait}>::{item_name}");
+            candidates = format!("{candidates}\n  Disambiguate the associated {item_kind} for candidate #{index}\n    <{} as {}>::{item_name}", as_trait.1, as_trait.0);
         }
         candidates
     })]
     MultipleApplicableItemsInScope {
         span: Span,
-        type_name: String,
         item_name: String,
         item_kind: String,
-        as_traits: Vec<String>,
+        as_traits: Vec<(String, String)>,
     },
     #[error("Provided generic type is not of type str.")]
     NonStrGenericType { span: Span },
@@ -2805,6 +2812,9 @@ pub enum TypeNotAllowedReason {
 
     #[error("slices or types containing slices on `const` are not allowed.")]
     SliceInConst,
+
+    #[error("references, pointers, slices, string slices or types containing any of these are not allowed.")]
+    NotAllowedInTransmute,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -14,7 +14,7 @@ use crate::{
     semantic_analysis::type_resolve::resolve_type,
     type_system::ast_elements::create_type_id::CreateTypeId,
     EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
-    TypeInfo, TypeParameter, TypeSubstMap,
+    TypeParameter, TypeSubstMap,
 };
 
 pub(crate) trait MonomorphizeHelper {
@@ -130,11 +130,7 @@ where
                     self_type,
                     subst_ctx,
                 )
-                .unwrap_or_else(|err| {
-                    engines
-                        .te()
-                        .insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
             let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                 value
@@ -259,11 +255,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             );
 
             // create the type id from the copy
-            type_engine.insert(
-                engines,
-                TypeInfo::Struct(*new_decl_ref.id()),
-                new_decl_ref.span().source_id(),
-            )
+            type_engine.insert_struct(engines, *new_decl_ref.id())
         }
         Some(ResolvedDeclaration::Typed(ty::TyDecl::EnumDecl(ty::EnumDecl {
             decl_id: original_id,
@@ -293,11 +285,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             );
 
             // create the type id from the copy
-            type_engine.insert(
-                engines,
-                TypeInfo::Enum(*new_decl_ref.id()),
-                new_decl_ref.span().source_id(),
-            )
+            type_engine.insert_enum(engines, *new_decl_ref.id())
         }
         Some(ResolvedDeclaration::Typed(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
             decl_id: original_id,
@@ -305,8 +293,8 @@ pub(crate) fn type_decl_opt_to_type_id(
         }))) => {
             let new_copy = decl_engine.get_type_alias(&original_id);
 
-            // TODO: monomorphize the copy, in place, when generic type aliases are
-            // supported
+            // TODO: (GENERIC-TYPE-ALIASES) Monomorphize the copy, in place, once generic type aliases are
+            //       supported.
 
             new_copy.create_type_id(engines)
         }
@@ -321,14 +309,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             if let Some(ty) = &decl_type.ty {
                 ty.type_id
             } else if let Some(implementing_type) = self_type {
-                type_engine.insert(
-                    engines,
-                    TypeInfo::TraitType {
-                        name: decl_type.name.clone(),
-                        trait_type_id: implementing_type,
-                    },
-                    decl_type.name.span().source_id(),
-                )
+                type_engine.insert_trait_type(engines, decl_type.name.clone(), implementing_type)
             } else {
                 return Err(handler.emit_err(CompileError::Internal(
                     "Self type not provided.",
@@ -341,7 +322,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 name: call_path.to_string(),
                 span: call_path.span(),
             });
-            type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+            type_engine.id_of_error_recovery(err)
         }
     })
 }

@@ -2,4 +2,4 @@ category = "fail"
 
 # check: $()The generic type parameter "T" is unconstrained.
 
-# check: $()No method named "f" found for type "S".
+# check: $()No method "f(S, bool)" found for type "S".

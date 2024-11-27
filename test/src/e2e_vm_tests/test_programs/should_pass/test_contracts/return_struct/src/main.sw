@@ -1,6 +1,6 @@
 contract;
 
-mod data_structures;
+pub mod data_structures;
 mod interface;
 
 use interface::MyContract;

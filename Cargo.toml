@@ -31,7 +31,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.66.2"
+version = "0.66.5"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -42,35 +42,35 @@ repository = "https://github.com/FuelLabs/sway"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.66.2" }
-forc-pkg = { path = "forc-pkg/", version = "0.66.2" }
-forc-test = { path = "forc-test/", version = "0.66.2" }
-forc-tracing = { path = "forc-tracing/", version = "0.66.2" }
-forc-util = { path = "forc-util/", version = "0.66.2" }
+forc = { path = "forc/", version = "0.66.5" }
+forc-pkg = { path = "forc-pkg/", version = "0.66.5" }
+forc-test = { path = "forc-test/", version = "0.66.5" }
+forc-tracing = { path = "forc-tracing/", version = "0.66.5" }
+forc-util = { path = "forc-util/", version = "0.66.5" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.66.2" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.66.2" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.66.2" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.66.2" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.2" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.2" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.2" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.2" }
+forc-plugins = { path = "forc-plugins/", version = "0.66.5" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.66.5" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.66.5" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.66.5" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.5" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.5" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.5" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.5" }
 
-sway-ast = { path = "sway-ast/", version = "0.66.2" }
-sway-core = { path = "sway-core/", version = "0.66.2" }
-sway-error = { path = "sway-error/", version = "0.66.2" }
-sway-features = { path = "sway-features/", version = "0.66.2" }
-sway-lsp = { path = "sway-lsp/", version = "0.66.2" }
-sway-parse = { path = "sway-parse/", version = "0.66.2" }
-sway-types = { path = "sway-types/", version = "0.66.2" }
-sway-utils = { path = "sway-utils/", version = "0.66.2" }
-swayfmt = { path = "swayfmt/", version = "0.66.2" }
+sway-ast = { path = "sway-ast/", version = "0.66.5" }
+sway-core = { path = "sway-core/", version = "0.66.5" }
+sway-error = { path = "sway-error/", version = "0.66.5" }
+sway-features = { path = "sway-features/", version = "0.66.5" }
+sway-lsp = { path = "sway-lsp/", version = "0.66.5" }
+sway-parse = { path = "sway-parse/", version = "0.66.5" }
+sway-types = { path = "sway-types/", version = "0.66.5" }
+sway-utils = { path = "sway-utils/", version = "0.66.5" }
+swayfmt = { path = "swayfmt/", version = "0.66.5" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.66.2" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.2" }
+sway-ir = { path = "sway-ir/", version = "0.66.5" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.5" }
 
 #
 # External Fuel dependencies
@@ -89,9 +89,9 @@ fuel-core-types = { version = "0.40", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.66.9"
-fuels-core = "0.66.9"
-fuels-accounts = "0.66.9"
+fuels = "0.66.10"
+fuels-core = "0.66.10"
+fuels-accounts = "0.66.10"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.58"
@@ -108,11 +108,10 @@ forc-wallet = "0.11"
 #
 
 annotate-snippets = "0.10"
-ansi_term = "0.12"
+ansiterm = "0.12"
 anyhow = "1.0"
 assert-json-diff = "2.0"
 async-trait = "0.1"
-atty = "0.2"
 aws-config = "1.5"
 aws-sdk-kms = "1.44"
 byte-unit = "5.1"
@@ -166,7 +165,7 @@ libtest-mimic = "0.7"
 lsp-types = "0.94"
 mdbook = { version = "0.4", default-features = false }
 minifier = "0.3"
-normalize-path = "0.2.1"
+normalize-path = "0.2"
 notify = "6.1"
 notify-debouncer-mini = "0.4"
 num-bigint = "0.4"
@@ -229,7 +228,6 @@ unicode-bidi = "0.3"
 unicode-xid = "0.2"
 url = "2.2"
 urlencoding = "2.1"
-uwuify = "^0.2"
 vec1 = "1.8"
 vte = "0.13"
 walkdir = "2.3"
