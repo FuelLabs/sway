@@ -380,8 +380,14 @@ fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &TypeArgument
         .map(|p| format!("{}: {}", p.name, p.type_argument.span.as_str()))
         .collect::<Vec<_>>()
         .join(", ");
-    let return_type = return_type.span.as_str();
-    format!("fn({}) -> {}", params, return_type)
+
+    // Check for the presence of a CallPathTree, and if it exists, add it to the return type.
+    let return_type = return_type
+        .call_path_tree
+        .as_ref()
+        .map(|_| format!(" -> {}", return_type.span.as_str()))
+        .unwrap_or_default();
+    format!("fn({}){}", params, return_type)
 }
 
 /// Extracts the header of a sway construct such as an `impl` block or `abi` declaration,
