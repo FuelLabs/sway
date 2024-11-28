@@ -2131,6 +2131,7 @@ fn expr_to_expression(
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
                 body: braced_code_block_contents_to_code_block(context, handler, engines, block)?,
+                is_desugared_for_loop: false,
             }),
             span,
         },
@@ -3278,6 +3279,7 @@ fn for_expr_to_expression(
                                 span: Span::dummy(),
                             }),
                             body: while_body,
+                            is_desugared_for_loop: true,
                         }),
                         span: Span::dummy(),
                     }),
