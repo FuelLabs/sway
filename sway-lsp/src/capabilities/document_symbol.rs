@@ -336,11 +336,20 @@ fn collect_enum_variants(decl: &TyEnumDecl) -> Vec<DocumentSymbol> {
         .iter()
         .map(|variant| {
             let range = get_range_from_span(&variant.name.span());
+            // Check for the presence of a CallPathTree, and if it exists, use the type information as the detail.
+            let detail = variant
+                .type_argument
+                .call_path_tree
+                .as_ref()
+                .map(|_| Some(variant.type_argument.span.as_str().to_string()))
+                .unwrap_or(None);
+
             DocumentSymbolBuilder::new()
                 .name(variant.name.span().str().to_string())
                 .kind(lsp_types::SymbolKind::ENUM_MEMBER)
                 .range(range)
                 .selection_range(range)
+                .detail(detail)
                 .build()
         })
         .collect()
