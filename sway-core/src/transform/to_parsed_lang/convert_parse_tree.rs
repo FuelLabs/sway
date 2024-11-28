@@ -3333,22 +3333,18 @@ fn path_root_opt_to_bool_and_qualified_path_root(
                 close_angle_bracket_token: _,
             }),
             _,
-        )) => (
-            false,
-            if let Some((_, path_type)) = as_trait {
-                Some(QualifiedPathType {
-                    ty: ty_to_type_argument(context, handler, engines, *ty)?,
-                    as_trait: engines.te().insert(
-                        engines,
-                        path_type_to_type_info(context, handler, engines, *path_type.clone())?,
-                        path_type.span().source_id(),
-                    ),
-                    as_trait_span: path_type.span(),
-                })
-            } else {
-                None
-            },
-        ),
+        )) => (false, {
+            let (_, path_type) = as_trait;
+            Some(QualifiedPathType {
+                ty: ty_to_type_argument(context, handler, engines, *ty)?,
+                as_trait: engines.te().insert(
+                    engines,
+                    path_type_to_type_info(context, handler, engines, *path_type.clone())?,
+                    path_type.span().source_id(),
+                ),
+                as_trait_span: path_type.span(),
+            })
+        }),
     })
 }
 
