@@ -118,7 +118,7 @@ trait Trait {
 }
 ```
 
-Check the `associated constants` section on [constants](../basics/constants.md) page.
+Check the [associated constants](../basics/constants.md#associated-constants) section on [constants](../basics/constants.md) page.
 
 ### Associated types
 
@@ -132,7 +132,7 @@ trait MyTrait {
 }
 ```
 
-Check the `associated types` section on [associated types](./associated_types.md) page.
+Check the [associated types](./associated_types.md) section on [associated types](./associated_types.md) page.
 
 ## Use Cases
 
