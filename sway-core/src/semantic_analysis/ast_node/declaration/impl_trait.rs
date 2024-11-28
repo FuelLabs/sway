@@ -165,10 +165,7 @@ impl TyImplSelfOrTrait {
                     .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
 
-                let impl_trait = match ctx
-                    .resolve_call_path_typed(handler, engines, &trait_name)
-                    .ok()
-                {
+                let impl_trait = match ctx.resolve_call_path(handler, &trait_name).ok() {
                     Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                         let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
 
@@ -1567,7 +1564,7 @@ fn handle_supertraits(
 
             match ctx
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-                .resolve_call_path_typed(&Handler::default(), engines, &supertrait.name)
+                .resolve_call_path(&Handler::default(), &supertrait.name)
                 .ok()
             {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

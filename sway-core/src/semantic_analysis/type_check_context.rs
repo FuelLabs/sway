@@ -695,7 +695,7 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol_typed(
+    pub(crate) fn resolve_symbol(
         &self,
         handler: &Handler,
         symbol: &Ident,
@@ -729,15 +729,14 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_typed(
+    pub(crate) fn resolve_call_path(
         &self,
         handler: &Handler,
-        engines: &Engines,
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         resolve_call_path_and_mod_path(
             handler,
-            engines,
+            self.engines(),
             self.namespace().root_module(),
             self.namespace().mod_path(),
             call_path,

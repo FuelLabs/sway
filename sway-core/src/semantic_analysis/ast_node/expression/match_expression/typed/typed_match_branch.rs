@@ -93,7 +93,7 @@ impl ty::TyMatchBranch {
                 let default_handler = &Handler::default();
                 // If there exist a configurable with the same name as the pattern variable.
                 if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) =
-                    ctx.resolve_symbol_typed(default_handler, &ident)
+                    ctx.resolve_symbol(default_handler, &ident)
                 {
                     let name = (&ident).into();
                     let configurable_span = engines

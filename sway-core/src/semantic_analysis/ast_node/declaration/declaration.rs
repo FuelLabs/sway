@@ -188,7 +188,7 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .resolve_call_path_typed(handler, engines, &supertrait.name)
+                        .resolve_call_path(handler, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 decl_id: supertrait_decl_id,
@@ -295,11 +295,7 @@ impl TyDecl {
 
                 // Choose which items are going to be visible depending if this is an abi impl
                 // or trait impl
-                let t = ctx.resolve_call_path_typed(
-                    &Handler::default(),
-                    engines,
-                    &impl_trait.trait_name,
-                );
+                let t = ctx.resolve_call_path(&Handler::default(), &impl_trait.trait_name);
 
                 let empty_vec = vec![];
                 let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = t {
@@ -363,7 +359,7 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .resolve_call_path_typed(handler, engines, &supertrait.name)
+                        .resolve_call_path(handler, &supertrait.name)
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 decl_id: supertrait_decl_id,
