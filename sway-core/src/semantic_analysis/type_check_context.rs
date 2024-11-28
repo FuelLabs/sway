@@ -32,7 +32,7 @@ use super::{
     symbol_collection_context::SymbolCollectionContext,
     type_resolve::{
         resolve_call_path, resolve_call_path_and_mod_path, resolve_qualified_call_path,
-        resolve_symbol_and_mod_path, resolve_type,
+        resolve_symbol_and_mod_path, resolve_type, VisibilityCheck,
     },
     GenericShadowingMode,
 };
@@ -674,6 +674,7 @@ impl<'a> TypeCheckContext<'a> {
             type_info_prefix,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
     }
 
@@ -690,6 +691,7 @@ impl<'a> TypeCheckContext<'a> {
             qualified_call_path,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
         .map(|d| d.expect_typed())
     }
@@ -724,6 +726,7 @@ impl<'a> TypeCheckContext<'a> {
             &self.namespace().mod_path,
             call_path,
             self.self_type(),
+            VisibilityCheck::Yes,
         )
         .map(|d| d.expect_typed())
     }
@@ -788,6 +791,7 @@ impl<'a> TypeCheckContext<'a> {
             None,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 

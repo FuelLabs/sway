@@ -9,7 +9,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
 use super::{
-    symbol_collection_context::SymbolCollectionContext, type_resolve::resolve_call_path,
+    symbol_collection_context::SymbolCollectionContext,
+    type_resolve::{resolve_call_path, VisibilityCheck},
     GenericShadowingMode,
 };
 
@@ -190,6 +191,7 @@ impl<'a> SymbolResolveContext<'a> {
             &self.namespace().mod_path,
             call_path,
             self.self_type(),
+            VisibilityCheck::Yes,
         )
     }
 }

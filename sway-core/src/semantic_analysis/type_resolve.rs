@@ -16,6 +16,13 @@ use crate::{
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
 
+/// Specifies if visibility checks should be performed as part of name resolution.
+#[derive(Clone, Copy, PartialEq)]
+pub enum VisibilityCheck {
+    Yes,
+    No,
+}
+
 /// Resolve the type of the given [TypeId], replacing any instances of
 /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
 /// enum, or a reference to a type parameter.
@@ -31,6 +38,7 @@ pub fn resolve_type(
     type_info_prefix: Option<&ModulePath>,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
+    check_visibility: VisibilityCheck,
 ) -> Result<TypeId, ErrorEmitted> {
     let type_engine = engines.te();
     let module_path = type_info_prefix.unwrap_or(mod_path);
@@ -47,6 +55,7 @@ pub fn resolve_type(
                 &qualified_call_path,
                 self_type,
                 subst_ctx,
+                check_visibility,
             )
             .ok();
             type_decl_opt_to_type_id(
@@ -75,6 +84,7 @@ pub fn resolve_type(
                 None,
                 self_type,
                 subst_ctx,
+                check_visibility,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -92,6 +102,7 @@ pub fn resolve_type(
                 None,
                 self_type,
                 subst_ctx,
+                check_visibility,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -110,6 +121,7 @@ pub fn resolve_type(
                     None,
                     self_type,
                     subst_ctx,
+                    check_visibility,
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
@@ -156,6 +168,7 @@ pub fn resolve_type(
                 None,
                 self_type,
                 subst_ctx,
+                check_visibility,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -170,6 +183,7 @@ pub fn resolve_type(
     Ok(type_id)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn resolve_qualified_call_path(
     handler: &Handler,
     engines: &Engines,
@@ -178,6 +192,7 @@ pub fn resolve_qualified_call_path(
     qualified_call_path: &QualifiedCallPath,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
+    check_visibility: VisibilityCheck,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let type_engine = engines.te();
     if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
@@ -194,6 +209,7 @@ pub fn resolve_qualified_call_path(
                     mod_path,
                     &qualified_call_path.clone().to_call_path(handler)?,
                     self_type,
+                    check_visibility,
                 )?;
                 type_decl_opt_to_type_id(
                     handler,
@@ -242,10 +258,19 @@ pub fn resolve_qualified_call_path(
             mod_path,
             &qualified_call_path.call_path,
             self_type,
+            check_visibility,
         )
     }
 }
 
+/// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
+///
+/// This will concatenate the `mod_path` with the `call_path`'s prefixes and
+/// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+///
+/// The `mod_path` is significant here as we assume the resolution is done within the
+/// context of the module pointed to by `mod_path` and will only check the call path prefixes
+/// and the symbol's own visibility.
 pub fn resolve_call_path_and_mod_path(
     handler: &Handler,
     engines: &Engines,
@@ -269,14 +294,6 @@ pub fn resolve_call_path_and_mod_path(
     )
 }
 
-/// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-///
-/// This will concatenate the `mod_path` with the `call_path`'s prefixes and
-/// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-///
-/// The `mod_path` is significant here as we assume the resolution is done within the
-/// context of the module pointed to by `mod_path` and will only check the call path prefixes
-/// and the symbol's own visibility.
 pub fn resolve_call_path(
     handler: &Handler,
     engines: &Engines,
@@ -284,6 +301,7 @@ pub fn resolve_call_path(
     mod_path: &ModulePath,
     call_path: &CallPath,
     self_type: Option<TypeId>,
+    check_visibility: VisibilityCheck,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let (decl, mod_path) = resolve_call_path_and_mod_path(
         handler,
@@ -293,6 +311,10 @@ pub fn resolve_call_path(
         call_path,
         self_type,
     )?;
+
+    if check_visibility == VisibilityCheck::No {
+        return Ok(decl);
+    }
 
     // In case there is no mod path we don't need to check visibility
     if mod_path.is_empty() {
