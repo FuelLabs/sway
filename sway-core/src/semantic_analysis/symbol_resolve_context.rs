@@ -104,13 +104,15 @@ impl<'a> SymbolResolveContext<'a> {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         self,
+	handler: &Handler,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
         with_submod_ctx: impl FnOnce(SymbolResolveContext) -> T,
-    ) -> T {
+    ) -> Result<T, ErrorEmitted> {
         let engines = self.engines;
         self.symbol_collection_ctx.enter_submodule(
+	    handler,
             engines,
             mod_name,
             visibility,
@@ -186,7 +188,7 @@ impl<'a> SymbolResolveContext<'a> {
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.resolve_call_path_with_visibility_check_and_modpath(
             handler,
-            &self.namespace().mod_path,
+            &self.namespace().current_mod_path,
             call_path,
         )
     }
@@ -205,11 +207,12 @@ impl<'a> SymbolResolveContext<'a> {
         mod_path: &ModulePath,
         call_path: &CallPath,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+	let full_path = call_path.to_fullpath(&self.engines, &self.namespace());
         let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
             handler,
             self.engines,
             mod_path,
-            call_path,
+            &full_path,
             self.self_type,
         )?;
 
@@ -226,10 +229,9 @@ impl<'a> SymbolResolveContext<'a> {
         // check the visibility of the call path elements
         // we don't check the first prefix because direct children are always accessible
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self.namespace().lookup_submodule_from_absolute_path(
+            let module = self.namespace().require_module_from_absolute_path(
                 handler,
-                self.engines(),
-                prefix,
+                &prefix.to_vec(),
             )?;
             if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();

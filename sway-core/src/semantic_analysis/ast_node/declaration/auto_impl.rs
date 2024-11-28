@@ -419,7 +419,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.root().module.name().as_str() == "core" {
+        if self.ctx.namespace.current_package_name().as_str() == "core" {
             return Some((None, None));
         }
 
@@ -454,7 +454,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.root().module.name().as_str() == "core" {
+        if self.ctx.namespace.current_package_name().as_str() == "core" {
             return Some((None, None));
         }
 

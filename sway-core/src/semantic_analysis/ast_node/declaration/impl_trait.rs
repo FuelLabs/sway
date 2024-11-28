@@ -165,6 +165,7 @@ impl TyImplSelfOrTrait {
                     .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
 
+//		dbg!(&trait_name);
                 let impl_trait = match ctx
                     .namespace()
                     .resolve_call_path_typed(handler, engines, &trait_name, ctx.self_type())
@@ -360,8 +361,11 @@ impl TyImplSelfOrTrait {
                     } => call_path.call_path.suffix.clone(),
                     _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
                 };
+//		let problem = suffix.as_str() == "Bytes";
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
-
+//		if problem {
+//		    dbg!(&trait_name);
+//		}
                 // Type check the type parameters.
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -430,6 +434,7 @@ impl TyImplSelfOrTrait {
                         match item {
                             ImplItem::Fn(fn_decl_id) => {
                                 let fn_decl = engines.pe().get_function(fn_decl_id);
+//				if problem { dbg!(&fn_decl); };
                                 let fn_decl = match ty::TyFunctionDecl::type_check_signature(
                                     handler,
                                     ctx.by_ref(),
@@ -693,7 +698,7 @@ fn type_check_trait_implementation(
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
     ctx.namespace_mut()
-        .module_mut(engines)
+        .current_module_mut()
         .write(engines, |m| {
             m.current_items_mut()
                 .implemented_traits
@@ -1566,6 +1571,8 @@ fn handle_supertraits(
                 continue;
             }
 
+	    //dbg!(&supertrait.name);
+	    
             match ctx
                 .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
@@ -1622,6 +1629,7 @@ fn handle_supertraits(
                     // we allow ABIs as superABIs now
                 }
                 _ => {
+//		    println!("impl_trait");
                     handler.emit_err(CompileError::TraitNotFound {
                         name: supertrait.name.to_string(),
                         span: supertrait.name.span(),

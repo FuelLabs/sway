@@ -252,6 +252,8 @@ impl TraitConstraint {
                 });
             }
             _ => {
+//		println!("trait_constraint");
+//		dbg!(&trait_name);
                 handler.emit_err(CompileError::TraitNotFound {
                     name: trait_name.to_string(),
                     span: trait_name.span(),

@@ -104,7 +104,7 @@ impl Parse for ty::TySideEffect {
                     span: _,
                     import_type,
                     alias,
-                    is_absolute: _,
+                    is_relative_to_package_root: _,
                 },
             ) => {
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
@@ -115,7 +115,7 @@ impl Parse for ty::TySideEffect {
 
                         if let Some(span) = ctx
                             .namespace
-                            .submodule(ctx.engines, mod_path)
+                            .submodule(mod_path)
                             .and_then(|tgt_submod| tgt_submod.span().clone())
                         {
                             token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
@@ -133,7 +133,7 @@ impl Parse for ty::TySideEffect {
                             let mut type_def = None;
                             if let Some(decl_ident) = ctx
                                 .namespace
-                                .submodule(ctx.engines, call_path)
+                                .submodule(call_path)
                                 .and_then(|module| module.current_items().symbols().get(item))
                                 .and_then(|decl| {
                                     decl.expect_typed_ref().get_decl_ident(ctx.engines)
@@ -173,7 +173,7 @@ impl Parse for ty::TySideEffect {
                             ));
                             if let Some(span) = ctx
                                 .namespace
-                                .submodule(ctx.engines, call_path)
+                                .submodule(call_path)
                                 .and_then(|tgt_submod| tgt_submod.span().clone())
                             {
                                 token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
@@ -196,7 +196,7 @@ impl Parse for ty::TySideEffect {
                     ));
                     if let Some(span) = ctx
                         .namespace
-                        .submodule(ctx.engines, &[mod_name.clone()])
+                        .submodule(&[mod_name.clone()])
                         .and_then(|tgt_submod| tgt_submod.span().clone())
                     {
                         token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
@@ -476,7 +476,7 @@ impl Parse for ty::TyExpression {
                         TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
                     if let Some(abi_def_ident) = ctx
                         .namespace
-                        .submodule(ctx.engines, &abi_name.prefixes)
+                        .submodule(&abi_name.prefixes)
                         .and_then(|module| module.current_items().symbols().get(&abi_name.suffix))
                         .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
                     {
@@ -1212,7 +1212,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
                         TokenAstNode::Typed(TypedAstToken::TypedArgument(type_arg.clone()));
                     if let Some(abi_def_ident) = ctx
                         .namespace
-                        .submodule(ctx.engines, &abi_call_path.call_path.prefixes)
+                        .submodule(&abi_call_path.call_path.prefixes)
                         .and_then(|module| {
                             module
                                 .current_items()
@@ -1236,7 +1236,7 @@ fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
             token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(ident.clone()));
             if let Some(span) = ctx
                 .namespace
-                .submodule(ctx.engines, mod_path)
+                .submodule(mod_path)
                 .and_then(|tgt_submod| tgt_submod.span().clone())
             {
                 token.kind = SymbolKind::Module;
@@ -1414,7 +1414,7 @@ fn collect_trait_constraint(
         ));
         if let Some(trait_def_ident) = ctx
             .namespace
-            .submodule(ctx.engines, &trait_name.prefixes)
+            .submodule(&trait_name.prefixes)
             .and_then(|module| module.current_items().symbols().get(&trait_name.suffix))
             .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
         {

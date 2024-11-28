@@ -451,7 +451,7 @@ impl TypeParameter {
 
             let sy = ctx
                 .namespace()
-                .module(ctx.engines())
+                .current_module()
                 .current_items()
                 .symbols
                 .get(name)
@@ -537,7 +537,7 @@ impl TypeParameter {
                     if !type_id.is_concrete(engines, TreatNumericAs::Concrete) && trait_constraints.len() == 1 {
                         let concrete_trait_type_ids : Vec<(TypeId, String)>= ctx
                             .namespace_mut()
-                            .module(engines)
+                            .current_module_mut()
                             .current_items()
                             .implemented_traits
                             .get_trait_constraints_are_satisfied_for_types(
@@ -577,11 +577,11 @@ impl TypeParameter {
                     }
                     // Check to see if the trait constraints are satisfied.
                     match ctx
-                        .namespace_mut()
-                        .module_mut(engines)
-                        .current_items_mut()
-                        .implemented_traits
-                        .check_if_trait_constraints_are_satisfied_for_type(
+			.namespace_mut()
+			.current_module_mut()
+			.current_items_mut()
+			.implemented_traits
+			.check_if_trait_constraints_are_satisfied_for_type(
                             handler,
                             *type_id,
                             trait_constraints,

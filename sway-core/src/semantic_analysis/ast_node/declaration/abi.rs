@@ -84,6 +84,8 @@ impl ty::TyAbiDecl {
         let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
         let self_type_id = self_type_param.type_id;
 
+	let mod_path = ctx.namespace().current_mod_path().clone();
+
         // A temporary namespace for checking within this scope.
         ctx.with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
             .with_self_type(Some(self_type_id))
@@ -105,13 +107,13 @@ impl ty::TyAbiDecl {
                 let mut new_interface_surface = vec![];
 
                 let mut ids: HashSet<Ident> = HashSet::default();
-
                 let error_on_shadowing_superabi_method =
                     |method_name: &Ident, ctx: &mut TypeCheckContext| {
                         if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             self_type_id,
-                            &[],
+                            //&[],     <---- This doesn't look right
+			    &mod_path,
                             &method_name.clone(),
                             ctx.type_annotation(),
                             &Default::default(),
@@ -276,6 +278,8 @@ impl ty::TyAbiDecl {
             (false, Span::dummy())
         };
 
+	let mod_path = ctx.namespace().current_mod_path().clone();
+
         handler.scope(|handler| {
             for item in interface_surface.iter() {
                 match item {
@@ -286,7 +290,8 @@ impl ty::TyAbiDecl {
                             if let Ok(superabi_method_ref) = ctx.find_method_for_type(
                                 &Handler::default(),
                                 type_id,
-                                &[],
+				//&[],
+                                &mod_path,
                                 &method.name.clone(),
                                 ctx.type_annotation(),
                                 &Default::default(),
