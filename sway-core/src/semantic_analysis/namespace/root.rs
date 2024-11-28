@@ -436,13 +436,13 @@ impl Root {
                     paths: decls
                         .iter()
                         .map(|(path, decl, _)| {
-                            let mut path_strs = path.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+			    let mut path_strs = super::lexical_scope::get_path_for_decl(path, decl, engines, self.current_package_name());
                             // Add the enum name to the path if the decl is an enum variant.
                             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                 enum_ref, ..
                             }) = decl.expect_typed_ref()
                             {
-                                path_strs.push(enum_ref.name().as_str())
+                                path_strs.push(enum_ref.name().to_string())
                             };
                             path_strs.join("::")
                         })
@@ -987,7 +987,7 @@ impl Root {
                             module
                                 .current_lexical_scope()
                                 .items
-                                .resolve_symbol(handler, engines, ident)?,
+                                .resolve_symbol(handler, engines, ident, self.current_package_name())?,
                         );
                     }
                 }
@@ -1004,7 +1004,7 @@ impl Root {
                 let decl = module
                     .current_lexical_scope()
                     .items
-                    .resolve_symbol(handler, engines, symbol)?;
+                    .resolve_symbol(handler, engines, symbol, self.current_package_name())?;
                 Ok((decl, mod_path.to_vec()))
             })
     }
