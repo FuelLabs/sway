@@ -506,9 +506,18 @@ impl ty::TyExpression {
                 arguments,
                 span,
             ),
-            ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
-                Self::type_check_while_loop(handler, ctx.by_ref(), condition, body, span)
-            }
+            ExpressionKind::WhileLoop(WhileLoopExpression {
+                condition,
+                body,
+                is_desugared_for_loop,
+            }) => Self::type_check_while_loop(
+                handler,
+                ctx.by_ref(),
+                condition,
+                body,
+                *is_desugared_for_loop,
+                span,
+            ),
             ExpressionKind::ForLoop(ForLoopExpression { desugared }) => {
                 Self::type_check_for_loop(handler, ctx.by_ref(), desugared)
             }
@@ -2131,6 +2140,7 @@ impl ty::TyExpression {
         mut ctx: TypeCheckContext,
         condition: &Expression,
         body: &CodeBlock,
+        is_desugared_for_loop: bool,
         span: Span,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -2144,11 +2154,17 @@ impl ty::TyExpression {
         };
 
         let unit_ty = type_engine.id_of_unit();
-        let mut ctx = ctx.with_type_annotation(unit_ty).with_help_text(
-            "A while loop's loop body cannot implicitly return a value. Try \
+        let mut ctx = ctx
+            .with_type_annotation(unit_ty)
+            .with_help_text(if is_desugared_for_loop {
+                "A for loop's loop body cannot implicitly return a value. Try \
                  assigning it to a mutable variable declared outside of the loop \
-                 instead.",
-        );
+                 instead."
+            } else {
+                "A while loop's loop body cannot implicitly return a value. Try \
+                 assigning it to a mutable variable declared outside of the loop \
+                 instead."
+            });
         let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, false)?;
 
         let exp = ty::TyExpression {

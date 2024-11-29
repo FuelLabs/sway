@@ -1446,7 +1446,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
-        "Self" | "self" => Some(TypeInfo::new_self_type(name.span())),
+        "Self" => Some(TypeInfo::new_self_type(name.span())),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
     }
@@ -2131,6 +2131,7 @@ fn expr_to_expression(
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
                 body: braced_code_block_contents_to_code_block(context, handler, engines, block)?,
+                is_desugared_for_loop: false,
             }),
             span,
         },
@@ -3278,6 +3279,7 @@ fn for_expr_to_expression(
                                 span: Span::dummy(),
                             }),
                             body: while_body,
+                            is_desugared_for_loop: true,
                         }),
                         span: Span::dummy(),
                     }),
@@ -4594,7 +4596,10 @@ fn path_type_to_type_info(
             }
         }
         None => {
-            if name.as_str() == "ContractCaller" {
+            if name.as_str() == "self" {
+                let error = ConvertParseTreeError::UnknownTypeNameSelf { span };
+                return Err(handler.emit_err(error.into()));
+            } else if name.as_str() == "ContractCaller" {
                 if root_opt.is_some() || !suffix.is_empty() {
                     let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
                     return Err(handler.emit_err(error.into()));
