@@ -1,8 +1,8 @@
-# Sway Language basics
+# Sway Language Basics
 
 Sway is a programming language designed for the FuelVM. It is a statically typed, compiled language with type inference and traits. Sway aims to make smart contract development safer and more efficient through the use of strong static analysis and compiler feedback.
 
-Get started with the basics of Sway:
+## Get started with the basics of Sway:
 
 - [Variables](./variables.md)
 - [Built-in Types](./built_in_types.md)
