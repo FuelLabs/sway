@@ -118,7 +118,7 @@ trait Trait {
 }
 ```
 
-Check the `associated consts` section on [constants](../basics/constants.md) page.
+Check the [associated constants](../basics/constants.md#associated-constants) section on [constants](../basics/constants.md) page.
 
 ### Associated types
 
@@ -132,7 +132,7 @@ trait MyTrait {
 }
 ```
 
-Check the `associated types` section on [associated types](./associated_types.md) page.
+Check the [associated types](./associated_types.md) section on [associated types](./associated_types.md) page.
 
 ## Use Cases
 
@@ -144,10 +144,10 @@ Often, libraries and APIs have interfaces that are abstracted over a type that i
 library;
 
 pub enum Suit {
-    Hearts: (),
-    Diamonds: (),
-    Clubs: (),
-    Spades: (),
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades,
 }
 
 pub trait Card {
@@ -185,10 +185,10 @@ impl Card for MyCard {
 
 fn main() {
     let mut i = 52;
-    let mut deck: Vec<MyCard> = Vec::with_capacity(50);
+    let mut deck: Vec<MyCard> = Vec::with_capacity(52);
     while i > 0 {
         i = i - 1;
-        deck.push(MyCard { suit: generate_random_suit(), value: i % 4}
+        deck.push(MyCard { suit: generate_random_suit(), value: i % 4});
     }
     play_game_with_deck(deck);
 }
