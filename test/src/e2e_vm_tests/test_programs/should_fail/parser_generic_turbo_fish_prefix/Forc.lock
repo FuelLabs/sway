@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-3A3AB9F18BDA9100"
+
+[[package]]
+name = "parser_generic_turbo_fish_prefix"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-3A3AB9F18BDA9100"
+dependencies = ["core"]
