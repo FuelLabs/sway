@@ -2618,6 +2618,37 @@ where
     }
 }
 
+
+#[inline(never)]
+pub fn indirect_abi_decode_in_place<T>(ptr: raw_ptr, len: u64, target: raw_ptr)
+where
+    T: AbiDecode,
+{
+    asm(ptr: ptr) {
+        log ptr ptr ptr ptr;
+    };
+
+    let ptr = asm(newptr, ptr: ptr) {
+        lw newptr ptr i0;
+        add newptr newptr ptr;
+        newptr: raw_ptr
+    };
+    
+    asm(ptr: ptr) {
+        log ptr ptr ptr ptr;
+    };
+
+    let mut buffer = BufferReader::from_parts(ptr, len);
+    let temp = T::abi_decode(buffer);
+    asm(
+        target: target,
+        temp: __addr_of(temp),
+        size: __size_of::<T>(),
+    ) {
+        mcp target temp size;
+    }
+}
+
 // Decode
 
 pub trait AbiDecode {

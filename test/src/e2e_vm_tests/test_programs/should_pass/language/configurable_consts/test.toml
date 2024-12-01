@@ -2,7 +2,7 @@ category = "run"
 expected_result = { action = "return", value = 0 }
 expected_result_new_encoding = { action = "return_data", value = "" }
 validate_abi = true
-expected_warnings = 1
+expected_warnings = 2
 unsupported_profiles = ["debug"]
 
 # check: $()ANOTHER_U8 8
@@ -20,3 +20,5 @@ unsupported_profiles = ["debug"]
 # check: $()U256 32
 # check: $()U32 8
 # check: $()U64 8
+# check: $()U8 8
+# check: $()VEC_U8 8

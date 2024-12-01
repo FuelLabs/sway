@@ -6,7 +6,7 @@ use crate::{
     semantic_analysis::namespace,
     type_system::TypeId,
     types::{LogId, MessageId},
-    Engines,
+    AbiEncodeSizeHint, Engines,
 };
 
 use super::{
@@ -375,16 +375,14 @@ pub(crate) fn compile_configurables(
                 };
 
                 let config_type_info = engines.te().get(decl.type_ascription.type_id());
-                let buffer_size = match config_type_info.abi_encode_size_hint(engines) {
-                    crate::AbiEncodeSizeHint::Exact(len) => len,
-                    crate::AbiEncodeSizeHint::Range(_, len) => len,
-                    _ => unreachable!("unexpected type accepted as configurable"),
+                let indirect = match config_type_info.abi_encode_size_hint(engines) {
+                    AbiEncodeSizeHint::Exact(len) | AbiEncodeSizeHint::Range(_, len) => {
+                        encoded_bytes.extend([0].repeat(len - encoded_bytes.len()));
+                        assert!(encoded_bytes.len() == len);
+                        false
+                    }
+                    _ => true,
                 };
-
-                if buffer_size > encoded_bytes.len() {
-                    encoded_bytes.extend([0].repeat(buffer_size - encoded_bytes.len()));
-                }
-                assert!(encoded_bytes.len() == buffer_size);
 
                 let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
                 let decode_fn = cache.ty_function_decl_to_unique_function(
@@ -408,6 +406,7 @@ pub(crate) fn compile_configurables(
                         encoded_bytes,
                         decode_fn: Cell::new(decode_fn),
                         opt_metadata,
+                        indirect,
                     },
                 );
             } else {

@@ -92,14 +92,16 @@ mod ir_builder {
                 }
 
             rule init_config() -> IrAstConfig
-                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:id() _ "," _ encoded_bytes:config_encoded_bytes()
+                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:id() _ "," _ encoded_bytes:config_encoded_bytes() _ "," _ flags:config_encoded_bytes()
                 metadata:comma_metadata_idx()? {
+                    assert!(flags.len() == 1); // TODO improve error message
                     IrAstConfig {
                         value_name,
                         ty: val_ty,
                         encoded_bytes,
                         decode_fn,
                         metadata,
+                        flags: flags[0],
                     }
                 }
 
@@ -817,6 +819,7 @@ mod ir_builder {
         encoded_bytes: Vec<u8>,
         decode_fn: String,
         metadata: Option<MdIdxRef>,
+        flags: u8
     }
 
     #[derive(Debug)]
@@ -1598,6 +1601,7 @@ mod ir_builder {
                     // this will point to the correct function after all functions are compiled
                     decode_fn: Cell::new(Function(KeyData::default().into())),
                     opt_metadata,
+                    indirect: ConfigContent::v1_indirect_from_flags(config.flags),
                 };
 
                 module.add_config(context, config.value_name.clone(), config_val.clone());

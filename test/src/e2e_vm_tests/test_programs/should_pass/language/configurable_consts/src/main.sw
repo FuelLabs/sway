@@ -32,7 +32,7 @@ configurable {
     ANOTHER_U8: AnotherU8 = 3,
     U16: u16 = 2,
     U32: u32 = 3,
-    U64: u32 = 4,
+    U64: u64 = 4,
     U256: u256 = 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256,
     B256: b256 = 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
     CONFIGURABLE_STRUCT: ConfigurableStruct = ConfigurableStruct { a: true, b: 5 },
@@ -42,7 +42,13 @@ configurable {
     ARRAY_U64: [u64; 3] = [9, 8, 7],
     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
     STR_4: str[4] = __to_str_array("abcd"),
-    NOT_USED: u8 = 1,
+    VEC_U8: Vec<u8> = Vec::new(),
+
+    // The test runner does not have a way to calculate the dynamic part of the data section
+    // This configurable guarantee that all the others have their buffer size calculated correctly.
+    ZZ_LAST_CONFIGURABLE: u8 = 1,
+
+    NOT_USED: u8 = 1
 }
 
 fn main() {
@@ -67,6 +73,7 @@ fn main() {
     assert(TUPLE_BOOL_U64.0 == true);
     assert(TUPLE_BOOL_U64.1 == 11);
     assert(sha256_str_array(STR_4) == sha256("abcd"));
+    assert(VEC_U8.len() == 0);
 
     // Assert address do not change
     let addr_1 = asm(addr: __addr_of(&BOOL)) {

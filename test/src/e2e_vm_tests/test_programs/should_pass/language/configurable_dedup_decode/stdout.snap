@@ -13,8 +13,8 @@ library {
    Compiling script configurable_dedup_decode (test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode)
 // IR: Final
 script {
-    TUPLE = config { u64 }, abi_decode_in_place_0, 0x0000000000000002, !1
-    WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, !2
+    TUPLE = config { u64 }, abi_decode_in_place_0, 0x0000000000000002, 0x00, !1
+    WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, 0x00, !2
 
     pub fn abi_decode_in_place_0(ptr !4: u64, len !5: u64, target !6: u64) -> (), !10 {
         local { u64 } __ret_val
@@ -256,6 +256,7 @@ script {
 !25 = span !3 666 761
 !26 = fn_name_span !3 673 683
 !27 = (!25 !26)
+<<<<<<< HEAD
 !28 = span !3 68767 68773
 !29 = span !3 68745 68840
 !30 = fn_name_span !3 68748 68758
@@ -263,6 +264,24 @@ script {
 !32 = span !3 68806 68834
 !33 = fn_call_path_span !3 68813 68825
 !34 = span !3 625 637
+=======
+<<<<<<< HEAD
+!28 = span !3 68735 68741
+!29 = span !3 68713 68808
+!30 = fn_name_span !3 68716 68726
+!31 = (!29 !30)
+!32 = span !3 68774 68802
+!33 = fn_call_path_span !3 68781 68793
+=======
+!28 = span !3 66134 66140
+!29 = span !3 66112 66207
+!30 = fn_name_span !3 66115 66125
+!31 = (!29 !30)
+!32 = span !3 66173 66201
+!33 = fn_call_path_span !3 66180 66192
+>>>>>>> 86c719807 (allow indirect configurables for dynamic types such as vec, slices etc...)
+!34 = span !3 593 605
+>>>>>>> b03b5d371 (allow indirect configurables for dynamic types such as vec, slices etc...)
 !35 = (!32 !33 !34)
 !36 = (!32 !33)
 !37 = span !3 2766 2847

@@ -39,7 +39,29 @@ pub enum ConfigContent {
         encoded_bytes: Vec<u8>,
         decode_fn: Cell<Function>,
         opt_metadata: Option<MetadataIndex>,
+        indirect: bool
     },
+}
+
+const V1_INDIRECT_FLAG: u8 = 1;
+
+impl ConfigContent {
+    pub(crate) fn flags(&self) -> u8 {
+        match self {
+            ConfigContent::V0 { .. } => 0,
+            ConfigContent::V1 { indirect, .. } => {
+                let mut flags = 0u8;
+                if *indirect {
+                    flags |= V1_INDIRECT_FLAG;
+                }
+                flags
+            },
+        }
+    }
+
+    pub(crate) fn v1_indirect_from_flags(flags: u8) -> bool {
+        (flags & V1_INDIRECT_FLAG) == V1_INDIRECT_FLAG
+    }
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.

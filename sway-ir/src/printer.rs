@@ -303,13 +303,19 @@ fn config_to_doc(
                 .map(|b| format!("{b:02x}"))
                 .collect::<Vec<String>>()
                 .concat();
+            let flags = configurable.flags().to_be_bytes()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<Vec<String>>()
+                .concat();
             Doc::line(
                 Doc::text(format!(
-                    "{} = config {}, {}, 0x{}",
+                    "{} = config {}, {}, 0x{}, 0x{}",
                     name,
                     ty,
                     decode_fn.get().get_name(context),
                     bytes,
+                    flags,
                 ))
                 .append(md_namer.md_idx_to_doc(context, opt_metadata)),
             )

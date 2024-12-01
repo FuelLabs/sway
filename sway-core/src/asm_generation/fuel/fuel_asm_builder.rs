@@ -114,6 +114,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                 ty,
                 encoded_bytes,
                 decode_fn,
+                indirect,
                 ..
             } => {
                 let size_in_bytes = ty.size(self.context).in_bytes();
@@ -122,20 +123,64 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                 let global = self.globals_section.get_by_name(name).unwrap();
 
                 let (decode_fn_label, _) = self.func_label_map.get(&decode_fn.get()).unwrap();
-                let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
-                    encoded_bytes.clone(),
-                    EntryName::Configurable(name.clone()),
-                    None,
-                ));
+                
+                if *indirect {
+                    let mut encoded_bytes = Entry::new_byte_array(
+                        encoded_bytes.clone(),
+                        EntryName::Dynamic(name.clone()),
+                        None,
+                    );
+                    encoded_bytes.word_aligned = false;
+                    let encoded_bytes = self.data_section.insert_data_value(encoded_bytes);
+                    
+                    let offset = self.data_section.insert_data_value(Entry::new_offset_of(
+                        encoded_bytes,
+                        EntryName::Configurable(name.clone()),
+                        None,
+                    ));
 
-                self.before_entries.push(Op {
-                    opcode: Either::Left(VirtualOp::AddrDataId(
-                        VirtualRegister::Constant(ConstantRegister::FuncArg0),
-                        dataid,
-                    )),
-                    comment: format!("get pointer to configurable {} default value", name),
-                    owning_span: None,
-                });
+                    self.before_entries.push(Op {
+                        opcode: Either::Left(VirtualOp::AddrDataId(
+                            VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                            offset,
+                        )),
+                        comment: format!("get offset to configurable {} default value", name),
+                        owning_span: None,
+                    });
+                    self.before_entries.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                            VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: format!("load offset to configurable {} default value", name),
+                        owning_span: None,
+                    });
+                    self.before_entries.push(Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                            VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                            VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+                        )),
+                        comment: format!("calculate ptr to configurable {} default value", name),
+                        owning_span: None,
+                    });
+                } else {
+                    let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
+                        encoded_bytes.clone(),
+                        EntryName::Configurable(name.clone()),
+                        None,
+                    ));
+    
+                    self.before_entries.push(Op {
+                        opcode: Either::Left(VirtualOp::AddrDataId(
+                            VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                            dataid,
+                        )),
+                        comment: format!("get pointer to configurable {} default value", name),
+                        owning_span: None,
+                    });
+                }
 
                 self.before_entries.push(Op {
                     opcode: Either::Left(VirtualOp::ADDI(

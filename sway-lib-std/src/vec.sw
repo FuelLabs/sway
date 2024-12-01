@@ -36,7 +36,7 @@ impl<T> RawVec<T> {
     /// ```
     pub fn new() -> Self {
         Self {
-            ptr: alloc::<T>(0),
+            ptr: raw_ptr::null(),
             cap: 0,
         }
     }
