@@ -24,7 +24,7 @@ use crate::{
     },
     type_system::{SubstTypes, TypeId},
     IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
-    TypeSubstMap, UnifyCheck,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
@@ -100,6 +100,7 @@ type TraitName = Arc<CallPath<TraitSuffix>>;
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
+    type_id_type_parameters: Vec<TypeParameter>,
     trait_decl_span: Option<Span>,
 }
 
@@ -108,6 +109,10 @@ impl OrdWithEngines for TraitKey {
         self.name
             .cmp(&other.name, ctx)
             .then_with(|| self.type_id.cmp(&other.type_id))
+            .then_with(|| {
+                self.type_id_type_parameters
+                    .cmp(&other.type_id_type_parameters, ctx)
+            })
     }
 }
 
@@ -184,6 +189,36 @@ enum TypeRootFilter {
     TraitType(String),
 }
 
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+enum TypeFilter {
+    Unknown,
+    Never,
+    Placeholder,
+    TypeParam(usize),
+    StringSlice,
+    StringArray(usize),
+    U8,
+    U16,
+    U32,
+    U64,
+    U256,
+    Bool,
+    Custom(String),
+    B256,
+    Contract,
+    ErrorRecovery,
+    Tuple(usize, Vec<TypeFilter>),
+    Enum(ParsedDeclId<EnumDeclaration>, Vec<TypeFilter>),
+    Struct(ParsedDeclId<StructDeclaration>, Vec<TypeFilter>),
+    ContractCaller(String),
+    Array(usize, Box<TypeFilter>),
+    RawUntypedPtr,
+    RawUntypedSlice,
+    Ptr(Box<TypeFilter>),
+    Slice(Box<TypeFilter>),
+    TraitType(String),
+}
+
 /// Map holding trait implementations for types.
 ///
 /// Note: "impl self" blocks are considered traits and are stored in the
@@ -192,6 +227,7 @@ enum TypeRootFilter {
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: im::HashSet<u64>,
+    insert_for_type_cache: im::HashMap<TypeFilter, im::Vector<TypeId>>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -218,6 +254,7 @@ impl TraitMap {
         handler: &Handler,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
+        impl_type_parameters: Vec<TypeParameter>,
         type_id: TypeId,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
@@ -226,6 +263,24 @@ impl TraitMap {
         is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
+        let mut type_id_type_parameters = match &*engines.te().get(type_id) {
+            TypeInfo::Enum(decl_id) => engines.de().get_enum(decl_id).type_parameters.clone(),
+            TypeInfo::Struct(decl_id) => engines.de().get_struct(decl_id).type_parameters.clone(),
+            _ => vec![],
+        };
+
+        // Copy impl type parameter trait constraint to type_id_type_parameters
+        for type_id_type_parameter in type_id_type_parameters.iter_mut() {
+            let impl_type_parameter = impl_type_parameters
+                .iter()
+                .filter(|t| t.type_id == type_id_type_parameter.type_id)
+                .last();
+            if let Some(impl_type_parameter) = impl_type_parameter {
+                type_id_type_parameter
+                    .trait_constraints
+                    .clone_from(&impl_type_parameter.trait_constraints);
+            }
+        }
         handler.scope(|handler| {
             let mut trait_items: TraitItems = im::HashMap::new();
             for item in items.iter() {
@@ -254,7 +309,7 @@ impl TraitMap {
                 }
             }
 
-            let trait_impls = self.get_impls_mut(engines, type_id);
+            let trait_impls = self.get_impls_mut(engines, type_id).clone();
 
             // check to see if adding this trait will produce a conflicting definition
             for TraitEntry {
@@ -262,6 +317,7 @@ impl TraitMap {
                     TraitKey {
                         name: map_trait_name,
                         type_id: map_type_id,
+                        type_id_type_parameters: map_type_id_type_parameters,
                         trait_decl_span: _,
                     },
                 value:
@@ -345,6 +401,36 @@ impl TraitMap {
                             traits_are_subset = false;
                         }
                     }
+                }
+
+                let mut trait_constraints_safified = true;
+                for (map_type_id_type_parameter, type_id_type_parameter) in
+                    map_type_id_type_parameters
+                        .iter()
+                        .zip(type_id_type_parameters.iter())
+                {
+                    // Check that type_id_type_parameter satisfies all trait constraints in map_type_id_type_parameter.
+                    if type_id_type_parameter
+                        .type_id
+                        .is_concrete(engines, crate::TreatNumericAs::Abstract)
+                        && self
+                            .check_if_trait_constraints_are_satisfied_for_type(
+                                &Handler::default(),
+                                type_id_type_parameter.type_id,
+                                &map_type_id_type_parameter.trait_constraints,
+                                impl_span,
+                                engines,
+                                TryInsertingTraitImplOnFailure::Yes,
+                                CodeBlockFirstPass::No,
+                            )
+                            .is_err()
+                    {
+                        trait_constraints_safified = false;
+                    }
+                }
+
+                if !trait_constraints_safified {
+                    continue;
                 }
 
                 if matches!(is_extending_existing_impl, IsExtendingExistingImpl::No)
@@ -443,6 +529,7 @@ impl TraitMap {
                 impl_span.clone(),
                 trait_decl_span,
                 type_id,
+                type_id_type_parameters,
                 trait_items,
                 engines,
             );
@@ -451,24 +538,28 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
+        type_id_type_parameters: Vec<TypeParameter>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
         let key = TraitKey {
-            name: trait_name,
+            name: trait_name.clone(),
             type_id,
+            type_id_type_parameters,
             trait_decl_span,
         };
         let value = TraitValue {
-            trait_items: trait_methods,
+            trait_items: trait_methods.clone(),
             impl_span,
         };
+
         let entry = TraitEntry { key, value };
         let mut trait_impls: TraitImpls =
             im::HashMap::<TypeRootFilter, im::Vector<TraitEntry>>::new();
@@ -480,6 +571,7 @@ impl TraitMap {
         let trait_map = TraitMap {
             trait_impls,
             satisfied_cache: im::HashSet::default(),
+            insert_for_type_cache: im::HashMap::<TypeFilter, im::Vector<TypeId>>::new(),
         };
 
         self.extend(trait_map, engines);
@@ -577,6 +669,20 @@ impl TraitMap {
         type_id: TypeId,
         code_block_first_pass: CodeBlockFirstPass,
     ) {
+        let type_id = engines.te().get_unaliased_type_id(type_id);
+        let root_filter = TraitMap::get_type_filter(engines, type_id);
+        if let Some(values) = self.insert_for_type_cache.get_mut(&root_filter) {
+            let unify_checker = UnifyCheck::non_dynamic_equality(engines).with_unify_ref_mut(false);
+            if values.iter().any(|v| unify_checker.check(type_id, *v)) {
+                return;
+            } else {
+                values.push_back(type_id);
+            }
+        } else {
+            self.insert_for_type_cache
+                .insert(root_filter, vec![type_id].into());
+        }
+
         self.extend(
             self.filter_by_type(type_id, engines, code_block_first_pass),
             engines,
@@ -601,10 +707,44 @@ impl TraitMap {
                 });
 
                 match pos {
-                    Ok(pos) => self_vec[pos]
-                        .value
-                        .trait_items
-                        .extend(oe.value.trait_items.clone()),
+                    Ok(pos) => {
+                        let mut skip_insert = false;
+
+                        // If we have the same method in: impl<T> FromBytes for T
+                        // and: impl FromBytes for DataPoint
+                        // We keep the second implementation.
+                        for (name, item) in oe.value.trait_items.iter() {
+                            for (existing_name, existing_item) in
+                                self_vec[pos].value.trait_items.iter()
+                            {
+                                if name == existing_name {
+                                    if let (
+                                        TyTraitItem::Fn(fn_ref),
+                                        TyTraitItem::Fn(existing_fn_ref),
+                                    ) = (
+                                        item.clone().expect_typed(),
+                                        existing_item.clone().expect_typed(),
+                                    ) {
+                                        let method = engines.de().get_function(fn_ref.id());
+                                        let existing_method =
+                                            engines.de().get_function(existing_fn_ref.id());
+                                        if !existing_method.is_from_blanket_impl(engines)
+                                            && method.is_from_blanket_impl(engines)
+                                        {
+                                            skip_insert = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !skip_insert {
+                            self_vec[pos]
+                                .value
+                                .trait_items
+                                .extend(oe.value.trait_items.clone())
+                        }
+                    }
                     Err(pos) => self_vec.insert(pos, oe.clone()),
                 }
             }
@@ -872,6 +1012,7 @@ impl TraitMap {
                     TraitKey {
                         name: map_trait_name,
                         type_id: map_type_id,
+                        type_id_type_parameters: map_type_id_constraints,
                         trait_decl_span: map_trait_decl_span,
                     },
                 value:
@@ -888,6 +1029,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_type_id_constraints.clone(),
                         map_trait_items.clone(),
                         engines,
                     );
@@ -985,6 +1127,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_type_id_constraints.clone(),
                         trait_items,
                         engines,
                     );
@@ -1312,6 +1455,10 @@ impl TraitMap {
                             )
                         })
                         .collect::<Vec<_>>(),
+                    item_paths: candidates
+                        .values()
+                        .filter_map(|i| i.span(engines).to_string_path_with_line_col(engines.se()))
+                        .collect::<Vec<String>>(),
                     span: symbol.span(),
                 },
             )),
@@ -1607,6 +1754,90 @@ impl TraitMap {
             Ref {
                 referenced_type, ..
             } => Self::get_type_root_filter(engines, referenced_type.type_id),
+        }
+    }
+
+    // This is used by the trait map to filter the entries into a HashMap with the return type string as key.
+    fn get_type_filter(engines: &Engines, type_id: TypeId) -> TypeFilter {
+        use TypeInfo::*;
+        match &*engines.te().get(type_id) {
+            Unknown => TypeFilter::Unknown,
+            Never => TypeFilter::Never,
+            UnknownGeneric { .. } | Placeholder(_) => TypeFilter::Placeholder,
+            TypeParam(n) => TypeFilter::TypeParam(*n),
+            StringSlice => TypeFilter::StringSlice,
+            StringArray(x) => TypeFilter::StringArray(x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => TypeFilter::U8,
+                IntegerBits::Sixteen => TypeFilter::U16,
+                IntegerBits::ThirtyTwo => TypeFilter::U32,
+                IntegerBits::SixtyFour => TypeFilter::U64,
+                IntegerBits::V256 => TypeFilter::U256,
+            },
+            Boolean => TypeFilter::Bool,
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => TypeFilter::Custom(call_path.call_path.suffix.to_string()),
+            B256 => TypeFilter::B256,
+            Numeric => TypeFilter::U64, // u64 is the default
+            Contract => TypeFilter::Contract,
+            ErrorRecovery(_) => TypeFilter::ErrorRecovery,
+            Tuple(fields) => TypeFilter::Tuple(
+                fields.len(),
+                fields
+                    .iter()
+                    .map(|f| Self::get_type_filter(engines, f.type_id))
+                    .collect::<Vec<_>>(),
+            ),
+            UntypedEnum(_) => unreachable!(),
+            UntypedStruct(_) => unreachable!(),
+            Enum(decl_id) => {
+                // TODO Remove unwrap once #6475 is fixed
+                TypeFilter::Enum(
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines
+                        .de()
+                        .get_enum(decl_id)
+                        .type_parameters
+                        .iter()
+                        .map(|f| Self::get_type_filter(engines, f.type_id))
+                        .collect::<Vec<_>>(),
+                )
+            }
+            Struct(decl_id) => {
+                // TODO Remove unwrap once #6475 is fixed
+                TypeFilter::Struct(
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines
+                        .de()
+                        .get_struct(decl_id)
+                        .type_parameters
+                        .iter()
+                        .map(|f| Self::get_type_filter(engines, f.type_id))
+                        .collect::<Vec<_>>(),
+                )
+            }
+            ContractCaller { abi_name, .. } => TypeFilter::ContractCaller(abi_name.to_string()),
+            Array(type_argument, length) => TypeFilter::Array(
+                length.val(),
+                Box::new(Self::get_type_filter(engines, type_argument.type_id)),
+            ),
+            RawUntypedPtr => TypeFilter::RawUntypedPtr,
+            RawUntypedSlice => TypeFilter::RawUntypedSlice,
+            Ptr(type_argument) => TypeFilter::Ptr(Box::new(Self::get_type_filter(
+                engines,
+                type_argument.type_id,
+            ))),
+            Slice(type_argument) => TypeFilter::Slice(Box::new(Self::get_type_filter(
+                engines,
+                type_argument.type_id,
+            ))),
+            Alias { ty, .. } => Self::get_type_filter(engines, ty.type_id),
+            TraitType { name, .. } => TypeFilter::TraitType(name.to_string()),
+            Ref {
+                referenced_type, ..
+            } => Self::get_type_filter(engines, referenced_type.type_id),
         }
     }
 }

@@ -499,6 +499,7 @@ impl TyImplSelfOrTrait {
                         handler,
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
+                        impl_trait.impl_type_parameters.clone(),
                         impl_trait.implementing_for.type_id,
                         &impl_trait.items,
                         &impl_trait.span,
@@ -760,6 +761,7 @@ fn type_check_trait_implementation(
             &Handler::default(),
             trait_name.clone(),
             trait_type_arguments.to_vec(),
+            impl_type_parameters.to_vec(),
             implementing_for,
             &this_supertrait_impld_method_refs
                 .values()
