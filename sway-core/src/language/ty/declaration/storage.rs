@@ -1,11 +1,3 @@
-use std::hash::{Hash, Hasher};
-
-use sway_error::{
-    error::{CompileError, StructFieldUsageContext},
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     engine_threading::*,
     ir_generation::storage::get_storage_key_string,
@@ -15,8 +7,15 @@ use crate::{
     type_system::*,
     Namespace,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_error::{
+    error::{CompileError, StructFieldUsageContext},
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStorageDecl {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
@@ -243,7 +242,7 @@ impl Spanned for TyStorageField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStorageField {
     pub name: Ident,
     pub namespace_names: Vec<Ident>,
