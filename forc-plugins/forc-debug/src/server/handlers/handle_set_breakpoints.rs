@@ -44,24 +44,22 @@ impl DapServer {
             .iter()
             .map(|source_bp| {
                 let verified = source_map.contains_key(&source_bp.line);
-
-                match existing_breakpoints.iter().find(|bp| match bp.line {
-                    Some(line) => line == source_bp.line,
-                    None => false,
-                }) {
-                    Some(existing_bp) => Breakpoint {
+                if let Some(existing_bp) = existing_breakpoints
+                    .iter()
+                    .find(|bp| bp.line.map_or(false, |line| line == source_bp.line))
+                {
+                    Breakpoint {
                         verified,
                         ..existing_bp.clone()
-                    },
-                    None => {
-                        let id = Some(self.breakpoint_id_gen.next());
-                        Breakpoint {
-                            id,
-                            verified,
-                            line: Some(source_bp.line),
-                            source: Some(args.source.clone()),
-                            ..Default::default()
-                        }
+                    }
+                } else {
+                    let id = Some(self.breakpoint_id_gen.next());
+                    Breakpoint {
+                        id,
+                        verified,
+                        line: Some(source_bp.line),
+                        source: Some(args.source.clone()),
+                        ..Default::default()
                     }
                 }
             })

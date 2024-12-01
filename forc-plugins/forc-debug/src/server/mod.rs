@@ -56,8 +56,8 @@ impl DapServer {
         let server = Server::new(BufReader::new(input), BufWriter::new(output));
         DapServer {
             server,
-            state: Default::default(),
-            breakpoint_id_gen: Default::default(),
+            state: ServerState::default(),
+            breakpoint_id_gen: IdGenerator::default(),
         }
     }
 
@@ -82,7 +82,7 @@ impl DapServer {
                                     self.exit(0);
                                 }
                                 Err(e) => {
-                                    self.error(format!("Launch error: {:?}", e));
+                                    self.error(format!("Launch error: {e:?}"));
                                     self.exit(1);
                                 }
                             }
@@ -100,12 +100,12 @@ impl DapServer {
         let response = match result {
             Ok(rsp) => Ok(req.success(rsp)),
             Err(e) => {
-                self.error(format!("{:?}", e));
-                Ok(req.error(&format!("{:?}", e)))
+                self.error(format!("{e:?}"));
+                Ok(req.error(&format!("{e:?}")))
             }
         };
         if let Some(exit_code) = exit_code {
-            self.exit(exit_code)
+            self.exit(exit_code);
         }
         response
     }
@@ -303,11 +303,7 @@ impl DapServer {
             .test_results
             .iter()
             .map(|result| {
-                let outcome = match result.passed() {
-                    true => "ok",
-                    false => "failed",
-                };
-
+                let outcome = if result.passed() { "ok" } else { "failed" };
                 format!(
                     "test {} ... {} ({}ms, {} gas)",
                     result.name,
@@ -318,9 +314,10 @@ impl DapServer {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        let final_outcome = match self.state.test_results.iter().any(|r| !r.passed()) {
-            true => "FAILED",
-            false => "OK",
+        let final_outcome = if self.state.test_results.iter().any(|r| !r.passed()) {
+            "FAILED"
+        } else {
+            "OK"
         };
         let passed = self
             .state
@@ -335,8 +332,7 @@ impl DapServer {
             .filter(|r| !r.passed())
             .count();
         self.log(format!(
-            "{}\nResult: {}. {} passed. {} failed.\n",
-            results, final_outcome, passed, failed
+            "{results}\nResult: {final_outcome}. {passed} passed. {failed} failed.\n",
         ));
     }
 

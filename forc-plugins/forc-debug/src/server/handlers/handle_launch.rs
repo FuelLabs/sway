@@ -1,11 +1,13 @@
 use crate::server::{AdapterError, DapServer};
 use crate::types::Instruction;
 use forc_pkg::manifest::GenericManifestFile;
+use forc_pkg::source::IPFSNode;
 use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
 use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;
 use std::{collections::HashMap, sync::Arc};
+use sway_core::BuildTarget;
 use sway_types::LineCol;
 
 impl DapServer {
@@ -57,49 +59,49 @@ impl DapServer {
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
             .map_err(|err| AdapterError::BuildFailed {
-                reason: format!("read manifest file: {:?}", err),
+                reason: format!("read manifest file: {err:?}"),
             })?;
         let pkg_manifest: PackageManifestFile =
             manifest_file
                 .clone()
                 .try_into()
                 .map_err(|err: anyhow::Error| AdapterError::BuildFailed {
-                    reason: format!("package manifest: {:?}", err),
+                    reason: format!("package manifest: {err:?}"),
                 })?;
         let member_manifests =
             manifest_file
                 .member_manifests()
                 .map_err(|err| AdapterError::BuildFailed {
-                    reason: format!("member manifests: {:?}", err),
+                    reason: format!("member manifests: {err:?}"),
                 })?;
         let lock_path = manifest_file
             .lock_path()
             .map_err(|err| AdapterError::BuildFailed {
-                reason: format!("lock path: {:?}", err),
+                reason: format!("lock path: {err:?}"),
             })?;
         let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
             &member_manifests,
             false,
             false,
-            &Default::default(),
+            &IPFSNode::default(),
         )
         .map_err(|err| AdapterError::BuildFailed {
-            reason: format!("build plan: {:?}", err),
+            reason: format!("build plan: {err:?}"),
         })?;
 
         let project_name = pkg_manifest.project_name();
 
         let outputs = std::iter::once(build_plan.find_member_index(project_name).ok_or(
             AdapterError::BuildFailed {
-                reason: format!("find built project: {}", project_name),
+                reason: format!("find built project: {project_name}"),
             },
         )?)
         .collect();
 
         let built_packages = forc_pkg::build(
             &build_plan,
-            Default::default(),
+            BuildTarget::default(),
             &BuildProfile {
                 optimization_level: sway_core::OptLevel::Opt0,
                 include_tests: true,
@@ -110,12 +112,12 @@ impl DapServer {
             &[],
         )
         .map_err(|err| AdapterError::BuildFailed {
-            reason: format!("build packages: {:?}", err),
+            reason: format!("build packages: {err:?}"),
         })?;
 
         // 2. Store the source maps
         let mut pkg_to_debug: Option<&BuiltPackage> = None;
-        built_packages.iter().for_each(|(_, built_pkg)| {
+        for (_, built_pkg) in &built_packages {
             if built_pkg.descriptor.manifest_file == pkg_manifest {
                 pkg_to_debug = Some(built_pkg);
             }
@@ -150,18 +152,18 @@ impl DapServer {
                     ));
                 }
             });
-        });
+        }
 
         // 3. Build the tests
         let built_package = pkg_to_debug.ok_or(AdapterError::BuildFailed {
-            reason: format!("find package: {}", project_name),
+            reason: format!("find package: {project_name}"),
         })?;
 
         let built = Built::Package(Arc::from(built_package.clone()));
 
         let built_tests = BuiltTests::from_built(built, &build_plan).map_err(|err| {
             AdapterError::BuildFailed {
-                reason: format!("build tests: {:?}", err),
+                reason: format!("build tests: {err:?}"),
             }
         })?;
 
@@ -174,7 +176,7 @@ impl DapServer {
             }
         };
         let test_setup = pkg_tests.setup().map_err(|err| AdapterError::BuildFailed {
-            reason: format!("test setup: {:?}", err),
+            reason: format!("test setup: {err:?}"),
         })?;
         self.state.built_package = Some(built_package.clone());
         self.state.test_setup = Some(test_setup.clone());

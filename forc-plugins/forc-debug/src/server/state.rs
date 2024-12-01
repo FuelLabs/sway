@@ -65,7 +65,7 @@ impl ServerState {
         self.source_map
             .iter()
             .find_map(|(source_path, source_map)| {
-                for (&line, instructions) in source_map.iter() {
+                for (&line, instructions) in source_map {
                     // Divide by 4 to get the opcode offset rather than the program counter offset.
                     let instruction_offset = pc / 4;
                     if instructions

@@ -32,7 +32,7 @@ impl DapServer {
             .enumerate()
             .map(|(index, value)| Variable {
                 name: register_name(index),
-                value: format!("0x{:X?}", value),
+                value: format!("0x{value:X?}"),
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -56,7 +56,7 @@ impl DapServer {
             .iter()
             .filter_map(|(name, value)| {
                 value.as_ref().map(|value| Variable {
-                    name: name.to_string(),
+                    name: (*name).to_string(),
                     value: value.to_string(),
                     ..Default::default()
                 })

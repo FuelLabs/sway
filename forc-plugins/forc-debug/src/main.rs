@@ -4,7 +4,7 @@ use forc_debug::{
     server::DapServer,
     ContractId, FuelClient, RunResult, Transaction,
 };
-use forc_tracing::{init_tracing_subscriber, println_error};
+use forc_tracing::{init_tracing_subscriber, println_error, TracingSubscriberOptions};
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
 use shellfish::{async_fn, Command as ShCommand, Shell};
 use std::error::Error;
@@ -23,11 +23,11 @@ pub struct Opt {
 
 #[tokio::main]
 async fn main() {
-    init_tracing_subscriber(Default::default());
+    init_tracing_subscriber(TracingSubscriberOptions::default());
     let config = Opt::parse();
 
     if let Err(err) = run(&config).await {
-        println_error(&format!("{}", err));
+        println_error(&format!("{err}"));
         std::process::exit(1);
     }
 }
@@ -112,7 +112,7 @@ enum ArgError {
 
 fn pretty_print_run_result(rr: &RunResult) {
     for receipt in rr.receipts() {
-        println!("Receipt: {:?}", receipt);
+        println!("Receipt: {receipt:?}");
     }
     if let Some(bp) = &rr.breakpoint {
         println!(
@@ -173,8 +173,7 @@ async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dy
         .set_single_stepping(
             &state.session_id,
             args.first()
-                .map(|v| !["off", "no", "disable"].contains(&v.as_str()))
-                .unwrap_or(true),
+                .map_or(true, |v| !["off", "no", "disable"].contains(&v.as_str())),
         )
         .await?;
     Ok(())
@@ -228,7 +227,7 @@ async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<(), B
                     let value = state.client.register(&state.session_id, v as u32).await?;
                     println!("reg[{:#02x}] = {:<8} # {}", v, value, register_name(v));
                 } else {
-                    println!("Register index too large {}", v);
+                    println!("Register index too large {v}");
                     return Ok(());
                 }
             } else if let Some(index) = register_index(arg) {
@@ -236,9 +235,9 @@ async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<(), B
                     .client
                     .register(&state.session_id, index as u32)
                     .await?;
-                println!("reg[{:#02x}] = {:<8} # {}", index, value, arg);
+                println!("reg[{index:#02x}] = {value:<8} # {arg}");
             } else {
-                println!("Unknown register name {}", arg);
+                println!("Unknown register name {arg}");
                 return Ok(());
             }
         }
@@ -274,7 +273,7 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<(), Box<
     for (i, chunk) in mem.chunks(WORD_SIZE).enumerate() {
         print!(" {:06x}:", offset + i * WORD_SIZE);
         for byte in chunk {
-            print!(" {:02x}", byte);
+            print!(" {byte:02x}");
         }
         println!();
     }
