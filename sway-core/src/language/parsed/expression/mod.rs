@@ -370,6 +370,7 @@ impl PartialEqWithEngines for IntrinsicFunctionExpression {
 pub struct WhileLoopExpression {
     pub condition: Box<Expression>,
     pub body: CodeBlock,
+    pub is_desugared_for_loop: bool,
 }
 
 impl EqWithEngines for WhileLoopExpression {}

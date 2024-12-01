@@ -121,10 +121,7 @@ impl Parse for PathTypeSegment {
 impl Parse for QualifiedPathRoot {
     fn parse(parser: &mut Parser) -> ParseResult<QualifiedPathRoot> {
         let ty = parser.parse()?;
-        let as_trait = match parser.take() {
-            Some(as_token) => Some((as_token, parser.parse()?)),
-            None => None,
-        };
+        let as_trait = (parser.parse()?, parser.parse()?);
         Ok(QualifiedPathRoot { ty, as_trait })
     }
 }

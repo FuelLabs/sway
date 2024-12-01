@@ -62,10 +62,9 @@ impl Format for QualifiedPathRoot {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.ty.format(formatted_code, formatter)?;
-        if let Some((as_token, path_type)) = &self.as_trait {
-            write!(formatted_code, " {} ", as_token.span().as_str())?;
-            path_type.format(formatted_code, formatter)?;
-        }
+        let (as_token, path_type) = &self.as_trait;
+        write!(formatted_code, " {} ", as_token.span().as_str())?;
+        path_type.format(formatted_code, formatter)?;
 
         Ok(())
     }

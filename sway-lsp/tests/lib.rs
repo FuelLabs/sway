@@ -1952,7 +1952,7 @@ lsp_capability_test!(
 );
 lsp_capability_test!(
     document_symbol,
-    lsp::document_symbol_request,
+    lsp::document_symbols_request,
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
