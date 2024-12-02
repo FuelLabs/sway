@@ -1,7 +1,3 @@
-use sway_ast::Intrinsic;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned};
-
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
@@ -18,6 +14,10 @@ use crate::{
     type_system::priv_prelude::*,
     EnforceTypeArguments, Ident,
 };
+use serde::{Deserialize, Serialize};
+use sway_ast::Intrinsic;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Span, Spanned};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -78,7 +78,7 @@ use crate::{
 /// - `data4` has a type ascription and has type arguments in the `TypeBinding`,
 ///     so, with the type from the value passed to `value`, all three are unified
 ///     together
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeBinding<T> {
     pub inner: T,
     pub type_arguments: TypeArgs,
@@ -103,7 +103,7 @@ pub struct TypeBinding<T> {
 /// ```
 /// So we can have type parameters in the `Prefix` or `Regular` variant but not
 /// in both.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TypeArgs {
     /// `Regular` variant indicates the type arguments are located after the suffix.
     Regular(Vec<TypeArgument>),
