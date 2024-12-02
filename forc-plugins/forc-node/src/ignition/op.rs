@@ -1,19 +1,16 @@
 use super::cmd::IgnitionCmd;
 use crate::{
-    cmd::{ask_user_discreetly, ask_user_string, ask_user_yes_no_question},
+    chain_config::{create_chainconfig_dir, ChainConfig},
     consts::{
         MAINNET_BOOTSTRAP_NODE, MAINNET_RELAYER_DA_DEPLOY_HEIGHT,
         MAINNET_RELAYER_LISTENING_CONTRACT, MAINNET_RELAYER_LOG_PAGE_SIZE, MAINNET_SERVICE_NAME,
         MAINNET_SYNC_HEADER_BATCH_SIZE,
     },
-    op::HumanReadableCommand,
-    pkg::{create_chainconfig_dir, ChainConfig},
     run_opts::{DbType, RunOpts},
+    util::{ask_user_keypair, ask_user_string, HumanReadableCommand, KeyPair},
 };
 use anyhow::Context;
 use forc_tracing::println_green;
-use forc_util::forc_result_bail;
-use serde::{Deserialize, Serialize};
 use std::{
     net::IpAddr,
     path::PathBuf,
@@ -23,20 +20,13 @@ use std::{
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
 pub(crate) fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
     create_chainconfig_dir(ChainConfig::Ignition)?;
-    let (peer_id, secret) = if let (Some(peer_id), Some(secret)) = (&cmd.peer_id, &cmd.secret) {
-        (peer_id.clone(), secret.clone())
-    } else {
-        let has_keypair = ask_user_yes_no_question("Do you have a keypair in hand?")?;
-        if has_keypair {
-            // ask the keypair
-            let peer_id = ask_user_string("Peer Id:")?;
-            let secret = ask_user_discreetly("Secret:")?;
-            (peer_id, secret)
-        } else {
-            forc_result_bail!(
-                "Please create a keypair with `fuel-core-keygen new --key-type peering`"
-            );
+    let keypair = if let (Some(peer_id), Some(secret)) = (&cmd.peer_id, &cmd.secret) {
+        KeyPair {
+            peer_id: peer_id.to_string(),
+            secret: secret.to_string(),
         }
+    } else {
+        ask_user_keypair()?
     };
 
     let relayer = if let Some(relayer) = cmd.relayer {
@@ -44,8 +34,6 @@ pub(crate) fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Chil
     } else {
         ask_user_string("Ethereum RPC (mainnet) Endpoint:")?
     };
-
-    let keypair = KeyPair { peer_id, secret };
 
     let opts = IgnitionOpts {
         keypair,
@@ -85,12 +73,6 @@ pub struct IgnitionOpts {
     db_path: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct KeyPair {
-    peer_id: String,
-    secret: String,
-}
-
 impl From<IgnitionOpts> for RunOpts {
     fn from(value: IgnitionOpts) -> Self {
         Self {
@@ -107,7 +89,6 @@ impl From<IgnitionOpts> for RunOpts {
             utxo_validation: true,
             poa_instant: false,
             enable_p2p: true,
-            reserved_nodes: None,
             sync_header_batch_size: Some(MAINNET_SYNC_HEADER_BATCH_SIZE),
             enable_relayer: true,
             relayer_listener: Some(MAINNET_RELAYER_LISTENING_CONTRACT.to_string()),
