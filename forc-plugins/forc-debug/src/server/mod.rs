@@ -4,8 +4,8 @@ mod util;
 
 use self::{state::ServerState, util::IdGenerator};
 use crate::{
-    error::AdapterError,
-    types::{DynResult, Instruction},
+    error::{self, AdapterError, Error},
+    types::Instruction,
 };
 use dap::{
     events::{ExitedEventBody, OutputEventBody, StoppedEventBody},
@@ -60,7 +60,7 @@ impl DapServer {
         }
     }
 
-    pub fn start(&mut self) -> DynResult<()> {
+    pub fn start(&mut self) -> error::Result<()> {
         loop {
             match self.server.poll_request()? {
                 Some(req) => {
@@ -88,12 +88,12 @@ impl DapServer {
                         }
                     }
                 }
-                None => return Err(Box::new(AdapterError::MissingCommand)),
+                None => return Err(Error::AdapterError(AdapterError::MissingCommand)),
             };
         }
     }
 
-    fn handle_request(&mut self, req: Request) -> DynResult<Response> {
+    fn handle_request(&mut self, req: Request) -> error::Result<Response> {
         let command = req.command.clone();
         let (result, exit_code) = self.handle_command(command);
         let response = match result {

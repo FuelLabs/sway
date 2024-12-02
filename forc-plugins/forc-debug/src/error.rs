@@ -1,11 +1,15 @@
 use crate::types::Instruction;
 use dap::requests::Command;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum ForcDebugError {
-    #[error("Command argument error: {0}")]
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
     ArgumentError(#[from] ArgumentError),
+
+    #[error(transparent)]
+    AdapterError(#[from] AdapterError),
 
     #[error("VM error: {0}")]
     VMError(String),
@@ -16,14 +20,17 @@ pub enum ForcDebugError {
     #[error("Session error: {0}")]
     SessionError(String),
 
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
+    #[error("I/O error")]
+    IoError(std::io::Error),
 
-    #[error("Json error: {0}")]
+    #[error("Json error")]
     JsonError(#[from] serde_json::Error),
+
+    #[error("Server error: {0}")]
+    DapServerError(#[from] dap::errors::ServerError),
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ArgumentError {
     #[error("Invalid argument: {0}")]
     Invalid(String),
@@ -38,7 +45,7 @@ pub enum ArgumentError {
     InvalidNumber(String),
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum AdapterError {
     #[error("Unhandled command")]
     UnhandledCommand { command: Command },
@@ -73,8 +80,6 @@ pub enum AdapterError {
         source: anyhow::Error,
     },
 }
-
-pub type Result<T> = std::result::Result<T, ForcDebugError>;
 
 impl ArgumentError {
     /// Ensures argument count falls within [min, max] range.

@@ -1,7 +1,6 @@
 use dap::types::Breakpoint;
 use std::{collections::HashMap, path::PathBuf};
 
-pub type DynResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub type Line = i64;
 pub type Instruction = u64;
 pub type FileSourceMap = HashMap<Line, Vec<Instruction>>;
