@@ -122,7 +122,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                 let global = self.globals_section.get_by_name(name).unwrap();
 
                 let (decode_fn_label, _) = self.func_label_map.get(&decode_fn.get()).unwrap();
-                
+
                 if *indirect {
                     let mut encoded_bytes = Entry::new_byte_array(
                         encoded_bytes.clone(),
@@ -131,7 +131,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                     );
                     encoded_bytes.word_aligned = false;
                     let encoded_bytes = self.data_section.insert_data_value(encoded_bytes);
-                    
+
                     let offset = self.data_section.insert_data_value(Entry::new_offset_of(
                         encoded_bytes,
                         EntryName::Configurable(name.clone()),
@@ -170,7 +170,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                         EntryName::Configurable(name.clone()),
                         None,
                     ));
-    
+
                     self.before_entries.push(Op {
                         opcode: Either::Left(VirtualOp::AddrDataId(
                             VirtualRegister::Constant(ConstantRegister::FuncArg0),
