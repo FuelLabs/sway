@@ -39,7 +39,7 @@ pub enum ConfigContent {
         encoded_bytes: Vec<u8>,
         decode_fn: Cell<Function>,
         opt_metadata: Option<MetadataIndex>,
-        indirect: bool
+        indirect: bool,
     },
 }
 
@@ -55,7 +55,7 @@ impl ConfigContent {
                     flags |= V1_INDIRECT_FLAG;
                 }
                 flags
-            },
+            }
         }
     }
 

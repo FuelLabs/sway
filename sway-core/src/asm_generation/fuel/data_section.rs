@@ -9,7 +9,7 @@ use std::fmt;
 pub enum EntryName {
     NonConfigurable,
     Configurable(String),
-    Dynamic(String)
+    Dynamic(String),
 }
 
 impl fmt::Display for EntryName {
@@ -17,8 +17,7 @@ impl fmt::Display for EntryName {
         match self {
             EntryName::NonConfigurable => write!(f, "NonConfigurable"),
             EntryName::Configurable(name) => write!(f, "Configurable_{}", name),
-            EntryName::Dynamic(name) =>  write!(f, "Dynamic_{}", name),
-            
+            EntryName::Dynamic(name) => write!(f, "Dynamic_{}", name),
         }
     }
 }
@@ -50,7 +49,7 @@ impl Entry {
             value: Datum::Byte(value),
             padding: padding.unwrap_or(Padding::default_for_u8(value)),
             name,
-            word_aligned: true
+            word_aligned: true,
         }
     }
 
@@ -59,7 +58,7 @@ impl Entry {
             value: Datum::Word(value),
             padding: padding.unwrap_or(Padding::default_for_u64(value)),
             name,
-            word_aligned: true
+            word_aligned: true,
         }
     }
 
@@ -180,12 +179,12 @@ impl Entry {
         }
     }
 
-    fn to_bytes_len(&self, ds: &DataSection) -> usize {
+    fn to_bytes_len(&self) -> usize {
         let bytes_len = match &self.value {
             Datum::Byte(_) => 1,
             Datum::Word(_) | Datum::OffsetOf(_) => 8,
             Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes.len(),
-            Datum::Collection(items) => items.iter().map(|el| el.to_bytes_len(ds)).sum(),
+            Datum::Collection(items) => items.iter().map(|el| el.to_bytes_len()).sum(),
         };
 
         let final_padding = self.padding.target_size().saturating_sub(bytes_len);
@@ -200,9 +199,7 @@ impl Entry {
             Datum::Word(value) => value.to_be_bytes().to_vec(),
             Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes.clone(),
             Datum::Collection(items) => items.iter().flat_map(|el| el.to_bytes(ds)).collect(),
-            Datum::OffsetOf(id) => {
-                ds.data_id_to_offset(id).to_be_bytes().to_vec()
-            }
+            Datum::OffsetOf(id) => ds.data_id_to_offset(id).to_be_bytes().to_vec(),
         };
 
         let final_padding = self.padding.target_size().saturating_sub(bytes.len());
@@ -307,7 +304,9 @@ impl DataSection {
         match id.kind {
             DataIdEntryKind::NonConfigurable => id.idx as usize,
             DataIdEntryKind::Configurable => id.idx as usize + self.non_configurables.len(),
-            DataIdEntryKind::Dynamic => id.idx as usize + self.non_configurables.len() + self.configurables.len(),
+            DataIdEntryKind::Dynamic => {
+                id.idx as usize + self.non_configurables.len() + self.configurables.len()
+            }
         }
     }
 
@@ -331,17 +330,19 @@ impl DataSection {
     /// in bytes.
     pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
         let sum_len = std::iter::repeat(true).take(idx).chain([false]);
-        self.iter_all_entries().zip(sum_len).fold(0, |mut offset, (entry, sum_len)| {
-            if entry.word_aligned {
-                offset = size_bytes_round_up_to_word_alignment!(offset);
-            }
+        self.iter_all_entries()
+            .zip(sum_len)
+            .fold(0, |mut offset, (entry, sum_len)| {
+                if entry.word_aligned {
+                    offset = size_bytes_round_up_to_word_alignment!(offset);
+                }
 
-            if sum_len {
-                offset += entry.to_bytes_len(self);
-            }
+                if sum_len {
+                    offset += entry.to_bytes_len();
+                }
 
-            offset
-        })
+                offset
+            })
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
@@ -471,7 +472,7 @@ impl fmt::Display for DataSection {
                         ix,
                         display_entry(self, &entry.value)
                     )?;
-                },
+                }
                 EntryName::Configurable(_) => {
                     writeln!(
                         data_buf,
@@ -491,7 +492,6 @@ impl fmt::Display for DataSection {
                     )?;
                 }
             }
-            
         }
 
         write!(f, ".data:\n{data_buf}")
@@ -516,17 +516,36 @@ fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
 fn ok_data_section_to_string() {
     let mut ds = DataSection::default();
 
-    let id_vec_u8 = ds.insert_data_value(Entry::new_byte_array(vec![0, 1, 2, 3, 4, 5], EntryName::Dynamic("VEC_U8_BYTES".into()), None));
-    let id_u8 = ds.insert_data_value(Entry::new_byte(1, EntryName::Configurable("U8".into()), None));
-    let id_vec_u8_offset = ds.insert_data_value(Entry::new_offset_of(id_vec_u8.clone(), EntryName::Configurable("VEC_U8_OFFSET".into()), None));
-    let id_const = ds.insert_data_value(Entry::new_word(0xffffffffffffffff_u64, EntryName::NonConfigurable, None));
+    let id_vec_u8 = ds.insert_data_value(Entry::new_byte_array(
+        vec![0, 1, 2, 3, 4, 5],
+        EntryName::Dynamic("VEC_U8_BYTES".into()),
+        None,
+    ));
+    let id_u8 = ds.insert_data_value(Entry::new_byte(
+        1,
+        EntryName::Configurable("U8".into()),
+        None,
+    ));
+    let id_vec_u8_offset = ds.insert_data_value(Entry::new_offset_of(
+        id_vec_u8.clone(),
+        EntryName::Configurable("VEC_U8_OFFSET".into()),
+        None,
+    ));
+    let id_const = ds.insert_data_value(Entry::new_word(
+        0xffffffffffffffff_u64,
+        EntryName::NonConfigurable,
+        None,
+    ));
 
-    assert_eq!(ds.serialize_to_bytes(), [
-        255, 255, 255, 255, 255, 255, 255, 255, // NonConfigurable
-        1, 0, 0, 0, 0, 0, 0, 0, // U8
-        0, 0, 0, 0, 0, 0, 0, 24, // VEC_U8_OFFSET
-        0, 1, 2, 3, 4, 5 // VEC_U8_BYTES
-    ]);
+    assert_eq!(
+        ds.serialize_to_bytes(),
+        [
+            255, 255, 255, 255, 255, 255, 255, 255, // NonConfigurable
+            1, 0, 0, 0, 0, 0, 0, 0, // U8
+            0, 0, 0, 0, 0, 0, 0, 24, // VEC_U8_OFFSET
+            0, 1, 2, 3, 4, 5 // VEC_U8_BYTES
+        ]
+    );
 
     assert_eq!(ds.data_id_to_offset(&id_const), 0);
     assert_eq!(ds.data_id_to_offset(&id_u8), 8);

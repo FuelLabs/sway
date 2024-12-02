@@ -819,7 +819,7 @@ mod ir_builder {
         encoded_bytes: Vec<u8>,
         decode_fn: String,
         metadata: Option<MdIdxRef>,
-        flags: u8
+        flags: u8,
     }
 
     #[derive(Debug)]

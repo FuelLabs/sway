@@ -311,7 +311,13 @@ fn to_bytecode_mut(
         let offset = bytecode.len();
         let ds_start = offset as u64;
 
-        fn print_entry(ds: &DataSection, indentation: usize, ds_start: u64, offset: usize, entry: &Entry) {
+        fn print_entry(
+            ds: &DataSection,
+            indentation: usize,
+            ds_start: u64,
+            offset: usize,
+            entry: &Entry,
+        ) {
             print!("{}{:#010x} ", " ".repeat(indentation), offset);
 
             match &entry.value {
@@ -357,15 +363,27 @@ fn to_bytecode_mut(
                 }
                 Datum::OffsetOf(_) => {
                     let offset_as_bytes = entry.to_bytes(ds);
-                    let offset_as_u64 = u64::from_be_bytes(offset_as_bytes.as_slice().try_into().unwrap());
-                    println!(".offset of 0x{:08x}, as word {}, as hex be bytes ({:02X?})", ds_start + offset_as_u64, offset_as_u64, offset_as_bytes);
+                    let offset_as_u64 =
+                        u64::from_be_bytes(offset_as_bytes.as_slice().try_into().unwrap());
+                    println!(
+                        ".offset of 0x{:08x}, as word {}, as hex be bytes ({:02X?})",
+                        ds_start + offset_as_u64,
+                        offset_as_u64,
+                        offset_as_bytes
+                    );
                 }
             };
         }
 
         for (i, entry) in data_section.iter_all_entries().enumerate() {
             let entry_offset = data_section.absolute_idx_to_offset(i);
-            print_entry(&data_section, indentation, ds_start, offset + entry_offset, &entry);
+            print_entry(
+                data_section,
+                indentation,
+                ds_start,
+                offset + entry_offset,
+                &entry,
+            );
         }
 
         println!(";; --- END OF TARGET BYTECODE ---\n");

@@ -303,7 +303,9 @@ fn config_to_doc(
                 .map(|b| format!("{b:02x}"))
                 .collect::<Vec<String>>()
                 .concat();
-            let flags = configurable.flags().to_be_bytes()
+            let flags = configurable
+                .flags()
+                .to_be_bytes()
                 .iter()
                 .map(|b| format!("{b:02x}"))
                 .collect::<Vec<String>>()
