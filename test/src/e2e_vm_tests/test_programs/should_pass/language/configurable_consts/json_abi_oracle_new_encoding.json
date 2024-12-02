@@ -33,6 +33,10 @@
       "type": "enum ConfigurableEnum"
     },
     {
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "type": "str"
+    },
+    {
       "concreteTypeId": "94f0fa95c830be5e4f711963e83259fe7e8bc723278ab6ec34449e791a99b53a",
       "type": "str[4]"
     },

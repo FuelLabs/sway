@@ -184,8 +184,7 @@ impl Entry {
         let bytes_len = match &self.value {
             Datum::Byte(_) => 1,
             Datum::Word(_) | Datum::OffsetOf(_) => 8,
-            Datum::ByteArray(bytes) | Datum::Slice(bytes) if bytes.len() % 8 == 0 => bytes.len(),
-            Datum::ByteArray(bytes) | Datum::Slice(bytes) => (bytes.len() + 7) & 0xfffffff8_usize,
+            Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes.len(),
             Datum::Collection(items) => items.iter().map(|el| el.to_bytes_len(ds)).sum(),
         };
 
@@ -331,14 +330,17 @@ impl DataSection {
     /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
-        self.iter_all_entries().take(idx).fold(0, |offset, entry| {
-            let offset = if entry.word_aligned {
-                size_bytes_round_up_to_word_alignment!(offset)
-            } else {
-                offset
-            };
+        let sum_len = std::iter::repeat(true).take(idx).chain([false]);
+        self.iter_all_entries().zip(sum_len).fold(0, |mut offset, (entry, sum_len)| {
+            if entry.word_aligned {
+                offset = size_bytes_round_up_to_word_alignment!(offset);
+            }
 
-            offset + entry.to_bytes_len(self)
+            if sum_len {
+                offset += entry.to_bytes_len(self);
+            }
+
+            offset
         })
     }
 
@@ -470,12 +472,21 @@ impl fmt::Display for DataSection {
                         display_entry(self, &entry.value)
                     )?;
                 },
-                EntryName::Configurable(_) | EntryName::Dynamic(_) => {
+                EntryName::Configurable(_) => {
                     writeln!(
                         data_buf,
                         "data_{} ({}) {}",
                         entry.name,
                         ix - self.non_configurables.len(),
+                        display_entry(self, &entry.value)
+                    )?;
+                }
+                EntryName::Dynamic(_) => {
+                    writeln!(
+                        data_buf,
+                        "data_{} ({}) {}",
+                        entry.name,
+                        ix - self.non_configurables.len() - self.configurables.len(),
                         display_entry(self, &entry.value)
                     )?;
                 }
@@ -505,9 +516,20 @@ fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
 fn ok_data_section_to_string() {
     let mut ds = DataSection::default();
 
-    let vec_u8 = ds.insert_data_value(Entry::new_byte_array(vec![0, 1, 2, 3, 4, 5], EntryName::Dynamic("VEC_U8_BYTES".into()), None));
-    ds.insert_data_value(Entry::new_offset_of(vec_u8, EntryName::Configurable("VEC_U8_OFFSET".into()), None));
-    ds.insert_data_value(Entry::new_word(0xffffffffffffffff_u64, EntryName::NonConfigurable, None));
+    let id_vec_u8 = ds.insert_data_value(Entry::new_byte_array(vec![0, 1, 2, 3, 4, 5], EntryName::Dynamic("VEC_U8_BYTES".into()), None));
+    let id_u8 = ds.insert_data_value(Entry::new_byte(1, EntryName::Configurable("U8".into()), None));
+    let id_vec_u8_offset = ds.insert_data_value(Entry::new_offset_of(id_vec_u8.clone(), EntryName::Configurable("VEC_U8_OFFSET".into()), None));
+    let id_const = ds.insert_data_value(Entry::new_word(0xffffffffffffffff_u64, EntryName::NonConfigurable, None));
 
-    assert_eq!(ds.serialize_to_bytes(), [255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 16, 0, 1, 2, 3, 4, 5]);
+    assert_eq!(ds.serialize_to_bytes(), [
+        255, 255, 255, 255, 255, 255, 255, 255, // NonConfigurable
+        1, 0, 0, 0, 0, 0, 0, 0, // U8
+        0, 0, 0, 0, 0, 0, 0, 24, // VEC_U8_OFFSET
+        0, 1, 2, 3, 4, 5 // VEC_U8_BYTES
+    ]);
+
+    assert_eq!(ds.data_id_to_offset(&id_const), 0);
+    assert_eq!(ds.data_id_to_offset(&id_u8), 8);
+    assert_eq!(ds.data_id_to_offset(&id_vec_u8_offset), 16);
+    assert_eq!(ds.data_id_to_offset(&id_vec_u8), 24);
 }

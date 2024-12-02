@@ -75,8 +75,7 @@ fn main() {
     assert(TUPLE_BOOL_U64.1 == 11);
     assert(sha256_str_array(STR_4) == sha256("abcd"));
     assert(VEC_U8.len() == 0);
-    //__log(STRING_SLICE);
-    //assert(sha256(STRING_SLICE) == sha256("Hello, Sway"));
+    assert(sha256(STRING_SLICE) == sha256("Hello, Sway"));
 
     // Assert address do not change
     let addr_1 = asm(addr: __addr_of(&BOOL)) {
