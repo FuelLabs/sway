@@ -363,12 +363,7 @@ fn resolve_symbol_and_mod_path(
                     current_mod_path.push(ident.clone());
                 }
                 None => {
-                    decl_opt = Some(
-                        current_module
-                            .current_lexical_scope()
-                            .items
-                            .resolve_symbol(handler, engines, ident)?,
-                    );
+                    decl_opt = Some(current_module.resolve_symbol(handler, engines, ident)?);
                 }
             }
         }
@@ -389,10 +384,7 @@ fn resolve_symbol_and_mod_path(
     module
         .lookup_submodule(handler, engines, mod_path)
         .and_then(|module| {
-            let decl = module
-                .current_lexical_scope()
-                .items
-                .resolve_symbol(handler, engines, symbol)?;
+            let decl = module.resolve_symbol(handler, engines, symbol)?;
             Ok((decl, mod_path.to_vec()))
         })
 }

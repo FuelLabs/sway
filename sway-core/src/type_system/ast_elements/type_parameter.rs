@@ -444,13 +444,11 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx
-                .namespace()
-                .module(ctx.engines())
-                .current_items()
-                .symbols
-                .get(name)
-                .unwrap();
+            let sy = ctx.namespace().module(ctx.engines()).resolve_symbol(
+                handler,
+                ctx.engines(),
+                name,
+            )?;
 
             match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
