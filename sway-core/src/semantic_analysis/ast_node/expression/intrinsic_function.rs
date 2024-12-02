@@ -192,10 +192,13 @@ fn type_check_transmute(
         }
     }
 
-    match (&*engines.te().get(type_arguments[0].type_id), &*engines.te().get(type_arguments[1].type_id)) {
+    match (
+        &*engines.te().get(type_arguments[0].type_id),
+        &*engines.te().get(type_arguments[1].type_id),
+    ) {
         // u64 <-> raw_ptr
-        (TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), TypeInfo::RawUntypedPtr) | 
-        (TypeInfo::RawUntypedPtr, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)) => {}
+        (TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), TypeInfo::RawUntypedPtr)
+        | (TypeInfo::RawUntypedPtr, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)) => {}
         _ => {
             forbid_ref_ptr_types(engines, handler, src_type, &type_arguments[0].span)?;
             forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span)?;

@@ -1,5 +1,12 @@
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, language::{ty, Visibility}, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, type_system::TypeId, types::{LogId, MessageId}, AbiEncodeSizeHint, Engines
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    language::{ty, Visibility},
+    metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
+    semantic_analysis::namespace,
+    type_system::TypeId,
+    types::{LogId, MessageId},
+    AbiEncodeSizeHint, Engines,
 };
 
 use super::{
@@ -359,7 +366,7 @@ pub(crate) fn compile_configurables(
                         encoded_bytes.extend([0].repeat(len - encoded_bytes.len()));
                         assert!(encoded_bytes.len() == len);
                         false
-                    },
+                    }
                     _ => true,
                 };
 
