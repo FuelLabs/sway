@@ -1,9 +1,14 @@
-use crate::{engine_threading::Engines, language::Visibility, Ident};
+use crate::{
+    engine_threading::Engines,
+    language::{ty, Visibility},
+    Ident, TypeId,
+};
 
 use super::{
-    lexical_scope::{Items, LexicalScope},
+    lexical_scope::{Items, LexicalScope, ResolvedFunctionDecl},
     root::Root,
-    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf,
+    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration,
+    ResolvedTraitImplItem,
 };
 
 use rustc_hash::FxHasher;
@@ -215,6 +220,14 @@ impl Module {
             .unwrap()
     }
 
+    pub fn get_lexical_scope(&self, id: LexicalScopeId) -> Option<&LexicalScope> {
+        self.lexical_scopes.get(id)
+    }
+
+    pub fn get_lexical_scope_mut(&mut self, id: LexicalScopeId) -> Option<&mut LexicalScope> {
+        self.lexical_scopes.get_mut(id)
+    }
+
     /// Returns the current lexical scope associated with this module.
     pub fn current_lexical_scope(&self) -> &LexicalScope {
         self.lexical_scopes
@@ -284,6 +297,82 @@ impl Module {
     pub fn pop_lexical_scope(&mut self) {
         let parent_scope_id = self.current_lexical_scope().parent;
         self.current_lexical_scope_id = parent_scope_id.unwrap_or(0);
+    }
+
+    pub fn walk_scope_chain<T>(
+        &self,
+        mut f: impl FnMut(&LexicalScope) -> Result<Option<T>, ErrorEmitted>,
+    ) -> Result<Option<T>, ErrorEmitted> {
+        let mut lexical_scope_opt = Some(self.current_lexical_scope());
+        while let Some(lexical_scope) = lexical_scope_opt {
+            let result = f(lexical_scope)?;
+            if let Some(result) = result {
+                return Ok(Some(result));
+            }
+            if let Some(parent_scope_id) = lexical_scope.parent {
+                lexical_scope_opt = self.get_lexical_scope(parent_scope_id);
+            } else {
+                lexical_scope_opt = None;
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn get_items_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedTraitImplItem> {
+        let mut vec = vec![];
+        let _ = self.walk_scope_chain(|lexical_scope| {
+            vec.extend(
+                lexical_scope
+                    .items
+                    .implemented_traits
+                    .get_items_for_type(engines, type_id),
+            );
+            Ok(Some(()))
+        });
+        vec
+    }
+
+    pub fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let ret = self.walk_scope_chain(|lexical_scope| {
+            lexical_scope.items.resolve_symbol(handler, engines, symbol)
+        })?;
+
+        if let Some(ret) = ret {
+            Ok(ret)
+        } else {
+            // Symbol not found
+            Err(handler.emit_err(CompileError::SymbolNotFound {
+                name: symbol.clone(),
+                span: symbol.span(),
+            }))
+        }
+    }
+
+    pub fn get_methods_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedFunctionDecl> {
+        self.get_items_for_type(engines, type_id)
+            .into_iter()
+            .filter_map(|item| match item {
+                ResolvedTraitImplItem::Parsed(_) => unreachable!(),
+                ResolvedTraitImplItem::Typed(item) => match item {
+                    ty::TyTraitItem::Fn(decl_ref) => Some(ResolvedFunctionDecl::Typed(decl_ref)),
+                    ty::TyTraitItem::Constant(_decl_ref) => None,
+                    ty::TyTraitItem::Type(_decl_ref) => None,
+                },
+            })
+            .collect::<Vec<_>>()
     }
 }
 
