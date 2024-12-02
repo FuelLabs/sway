@@ -1,13 +1,24 @@
 use crate::server::{AdapterError, DapServer};
 use dap::{
     requests::SetBreakpointsArguments,
+    responses::ResponseBody,
     types::{Breakpoint, StartDebuggingRequestKind},
 };
 use std::path::PathBuf;
 
 impl DapServer {
     /// Handles a `set_breakpoints` request. Returns the list of [Breakpoint]s for the path provided in `args`.
-    pub(crate) fn handle_set_breakpoints(
+    pub(crate) fn handle_set_breakpoints_command(
+        &mut self,
+        args: &SetBreakpointsArguments,
+    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+        let result = self.set_breakpoints(args).map(|breakpoints| {
+            ResponseBody::SetBreakpoints(dap::responses::SetBreakpointsResponse { breakpoints })
+        });
+        (result, None)
+    }
+
+    fn set_breakpoints(
         &mut self,
         args: &SetBreakpointsArguments,
     ) -> Result<Vec<Breakpoint>, AdapterError> {
@@ -130,7 +141,7 @@ mod tests {
     fn test_handle_set_breakpoints_existing_verified() {
         let mut server = get_test_server(true, true);
         let args = get_test_args();
-        let result = server.handle_set_breakpoints(&args).expect("success");
+        let result = server.set_breakpoints(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
         assert_eq!(result[0].id, Some(MOCK_BP_ID));
@@ -145,7 +156,7 @@ mod tests {
     fn test_handle_set_breakpoints_existing_unverified() {
         let mut server = get_test_server(false, true);
         let args = get_test_args();
-        let result = server.handle_set_breakpoints(&args).expect("success");
+        let result = server.set_breakpoints(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
         assert_eq!(result[0].id, Some(MOCK_BP_ID));
@@ -160,7 +171,7 @@ mod tests {
     fn test_handle_set_breakpoints_new() {
         let mut server = get_test_server(true, false);
         let args = get_test_args();
-        let result = server.handle_set_breakpoints(&args).expect("success");
+        let result = server.set_breakpoints(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, Some(MOCK_LINE));
         assert_eq!(
@@ -175,6 +186,6 @@ mod tests {
     fn test_handle_breakpoint_locations_missing_argument() {
         let mut server = get_test_server(true, true);
         let args = SetBreakpointsArguments::default();
-        server.handle_set_breakpoints(&args).unwrap();
+        server.set_breakpoints(&args).unwrap();
     }
 }

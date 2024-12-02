@@ -2,12 +2,23 @@ use crate::{
     names::register_name,
     server::{AdapterError, DapServer, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF},
 };
-use dap::{requests::VariablesArguments, types::Variable};
+use dap::{requests::VariablesArguments, responses::ResponseBody, types::Variable};
 use fuel_vm::fuel_asm::{Imm06, Imm12, Imm18, Imm24, Instruction, RawInstruction, RegId};
 
 impl DapServer {
-    /// Handles a `variables` request. Returns the list of [Variable]s for the current execution state.
-    pub(crate) fn handle_variables(
+    /// Processes a variables request, returning all variables and their current values.
+    pub(crate) fn handle_variables_command(
+        &self,
+        args: &VariablesArguments,
+    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+        let result = self.get_variables(args).map(|variables| {
+            ResponseBody::Variables(dap::responses::VariablesResponse { variables })
+        });
+        (result, None)
+    }
+
+    /// Returns the list of [Variable]s for the current execution state.
+    pub(crate) fn get_variables(
         &self,
         args: &VariablesArguments,
     ) -> Result<Vec<Variable>, AdapterError> {

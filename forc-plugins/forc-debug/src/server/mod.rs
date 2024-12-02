@@ -2,23 +2,35 @@ mod handlers;
 mod state;
 mod util;
 
-use self::{state::ServerState, util::IdGenerator};
 use crate::{
     error::{self, AdapterError, Error},
+    server::{state::ServerState, util::IdGenerator},
     types::Instruction,
 };
 use dap::{
     events::{ExitedEventBody, OutputEventBody, StoppedEventBody},
     prelude::*,
-    types::{Scope, StartDebuggingRequestKind},
+    types::StartDebuggingRequestKind,
 };
-use forc_test::execute::DebugResult;
+use forc_pkg::{
+    manifest::GenericManifestFile,
+    source::IPFSNode,
+    {self, BuildProfile, Built, BuiltPackage, PackageManifestFile},
+};
+use forc_test::{
+    execute::{DebugResult, TestExecutor},
+    setup::TestSetup,
+    BuiltTests,
+};
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     io::{BufReader, BufWriter, Read, Write},
-    path::PathBuf,
     process,
+    sync::Arc,
 };
+use sway_core::BuildTarget;
+use sway_types::LineCol;
 
 pub const THREAD_ID: i64 = 0;
 pub const REGISTERS_VARIABLE_REF: i64 = 1;
@@ -86,7 +98,7 @@ impl DapServer {
             // Handle launch after configuration is complete
             if self.should_launch() {
                 self.state.started_debugging = true;
-                match self.handle_launch() {
+                match self.launch() {
                     Ok(true) => continue,
                     Ok(false) => self.exit(0), // The tests finished executing
                     Err(e) => {
@@ -120,134 +132,22 @@ impl DapServer {
         command: &Command,
     ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
         match command {
-            Command::Attach(_) => {
-                self.state.mode = Some(StartDebuggingRequestKind::Attach);
-                self.error("This feature is not currently supported.".into());
-                (Ok(ResponseBody::Attach), Some(0))
-            }
+            Command::Attach(_) => self.handle_attach(),
             Command::BreakpointLocations(ref args) => {
-                match self.handle_breakpoint_locations(args) {
-                    Ok(breakpoints) => (
-                        Ok(ResponseBody::BreakpointLocations(
-                            responses::BreakpointLocationsResponse { breakpoints },
-                        )),
-                        None,
-                    ),
-                    Err(e) => (Err(e), None),
-                }
+                self.handle_breakpoint_locations_command(args)
             }
-            Command::ConfigurationDone => {
-                self.state.configuration_done = true;
-                (Ok(ResponseBody::ConfigurationDone), None)
-            }
-            Command::Continue(_) => match self.handle_continue() {
-                Ok(true) => (
-                    Ok(ResponseBody::Continue(responses::ContinueResponse {
-                        all_threads_continued: Some(true),
-                    })),
-                    None,
-                ),
-                Ok(false) => (
-                    Ok(ResponseBody::Continue(responses::ContinueResponse {
-                        all_threads_continued: Some(true),
-                    })),
-                    Some(0),
-                ),
-                Err(e) => (Err(e), Some(1)),
-            },
+            Command::ConfigurationDone => self.handle_configuration_done(),
+            Command::Continue(_) => self.handle_continue(),
             Command::Disconnect(_) => (Ok(ResponseBody::Disconnect), Some(0)),
-            Command::Evaluate(args) => {
-                let result = match args.context {
-                    Some(types::EvaluateArgumentsContext::Variables) => args.expression.clone(),
-                    _ => "Evaluate expressions not supported in this context".into(),
-                };
-                (
-                    Ok(ResponseBody::Evaluate(responses::EvaluateResponse {
-                        result,
-                        ..Default::default()
-                    })),
-                    None,
-                )
-            }
-            Command::Initialize(_) => (
-                Ok(ResponseBody::Initialize(types::Capabilities {
-                    supports_breakpoint_locations_request: Some(true),
-                    supports_configuration_done_request: Some(true),
-                    ..Default::default()
-                })),
-                None,
-            ),
-            Command::Launch(ref args) => {
-                self.state.mode = Some(StartDebuggingRequestKind::Launch);
-                if let Some(additional_data) = &args.additional_data {
-                    if let Ok(data) =
-                        serde_json::from_value::<AdditionalData>(additional_data.clone())
-                    {
-                        self.state.program_path = PathBuf::from(data.program);
-                        return (Ok(ResponseBody::Launch), None);
-                    }
-                }
-                (Err(AdapterError::MissingConfiguration), Some(1))
-            }
-            Command::Next(_) => {
-                match self.handle_next() {
-                    Ok(true) => (Ok(ResponseBody::Next), None),
-                    Ok(false) => {
-                        // The tests finished executing
-                        (Ok(ResponseBody::Next), Some(0))
-                    }
-                    Err(e) => (Err(e), Some(1)),
-                }
-            }
-            Command::Pause(_) => {
-                // TODO: interpreter pause function
-                if let Some(executor) = self.state.executor() {
-                    executor.interpreter.set_single_stepping(true);
-                }
-                (Ok(ResponseBody::Pause), None)
-            }
-            Command::Restart(_) => {
-                self.state.reset();
-                (Ok(ResponseBody::Restart), None)
-            }
-            Command::Scopes(_) => (
-                Ok(ResponseBody::Scopes(responses::ScopesResponse {
-                    scopes: vec![
-                        Scope {
-                            name: "Current VM Instruction".into(),
-                            presentation_hint: Some(types::ScopePresentationhint::Registers),
-                            variables_reference: INSTRUCTIONS_VARIABLE_REF,
-                            ..Default::default()
-                        },
-                        Scope {
-                            name: "Registers".into(),
-                            presentation_hint: Some(types::ScopePresentationhint::Registers),
-                            variables_reference: REGISTERS_VARIABLE_REF,
-                            ..Default::default()
-                        },
-                    ],
-                })),
-                None,
-            ),
-            Command::SetBreakpoints(ref args) => match self.handle_set_breakpoints(args) {
-                Ok(breakpoints) => (
-                    Ok(ResponseBody::SetBreakpoints(
-                        responses::SetBreakpointsResponse { breakpoints },
-                    )),
-                    None,
-                ),
-                Err(e) => (Err(e), None),
-            },
-            Command::StackTrace(_) => match self.handle_stack_trace() {
-                Ok(stack_frames) => (
-                    Ok(ResponseBody::StackTrace(responses::StackTraceResponse {
-                        stack_frames,
-                        total_frames: None,
-                    })),
-                    None,
-                ),
-                Err(e) => (Err(e), None),
-            },
+            Command::Evaluate(args) => self.handle_evaluate(args),
+            Command::Initialize(_) => self.handle_initialize(),
+            Command::Launch(ref args) => self.handle_launch(args),
+            Command::Next(_) => self.handle_next(),
+            Command::Pause(_) => self.handle_pause(),
+            Command::Restart(_) => self.handle_restart(),
+            Command::Scopes(_) => self.handle_scopes(),
+            Command::SetBreakpoints(ref args) => self.handle_set_breakpoints_command(args),
+            Command::StackTrace(_) => self.handle_stack_trace_command(),
             Command::StepIn(_) => {
                 self.error("This feature is not currently supported.".into());
                 (Ok(ResponseBody::StepIn), None)
@@ -258,24 +158,8 @@ impl DapServer {
             }
             Command::Terminate(_) => (Ok(ResponseBody::Terminate), Some(0)),
             Command::TerminateThreads(_) => (Ok(ResponseBody::TerminateThreads), Some(0)),
-            Command::Threads => (
-                Ok(ResponseBody::Threads(responses::ThreadsResponse {
-                    threads: vec![types::Thread {
-                        id: THREAD_ID,
-                        name: "main".into(),
-                    }],
-                })),
-                None,
-            ),
-            Command::Variables(ref args) => match self.handle_variables(args) {
-                Ok(variables) => (
-                    Ok(ResponseBody::Variables(responses::VariablesResponse {
-                        variables,
-                    })),
-                    None,
-                ),
-                Err(e) => (Err(e), None),
-            },
+            Command::Threads => self.handle_threads(),
+            Command::Variables(ref args) => self.handle_variables_command(args),
             _ => (
                 Err(AdapterError::UnhandledCommand {
                     command: command.clone(),
@@ -341,6 +225,178 @@ impl DapServer {
             "{test_lines}\nResult: {final_outcome}. {passed} passed. {} failed.\n",
             test_results.len() - passed
         ));
+    }
+
+    /// Handles a `launch` request. Returns true if the server should continue running.
+    pub fn launch(&mut self) -> Result<bool, AdapterError> {
+        // Build tests for the given path.
+        let (pkg_to_debug, test_setup) = self.build_tests()?;
+        let entries = pkg_to_debug.bytecode.entries.iter().filter_map(|entry| {
+            if let Some(test_entry) = entry.kind.test() {
+                return Some((entry, test_entry));
+            }
+            None
+        });
+
+        // Construct a TestExecutor for each test and store it
+        let executors: Vec<TestExecutor> = entries
+            .filter_map(|(entry, test_entry)| {
+                let offset = u32::try_from(entry.finalized.imm)
+                    .expect("test instruction offset out of range");
+                let name = entry.finalized.fn_name.clone();
+                if test_entry.file_path.as_path() != self.state.program_path.as_path() {
+                    return None;
+                }
+
+                TestExecutor::build(
+                    &pkg_to_debug.bytecode.bytes,
+                    offset,
+                    test_setup.clone(),
+                    test_entry,
+                    name.clone(),
+                )
+                .ok()
+            })
+            .collect();
+        self.state.init_executors(executors);
+
+        // Start debugging
+        self.start_debugging_tests(false)
+    }
+
+    /// Builds the tests at the given [PathBuf] and stores the source maps.
+    pub(crate) fn build_tests(&mut self) -> Result<(BuiltPackage, TestSetup), AdapterError> {
+        if let Some(pkg) = &self.state.built_package {
+            if let Some(setup) = &self.state.test_setup {
+                return Ok((pkg.clone(), setup.clone()));
+            }
+        }
+
+        // 1. Build the packages
+        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
+            .map_err(|err| AdapterError::BuildFailed {
+                reason: format!("read manifest file: {err:?}"),
+            })?;
+        let pkg_manifest: PackageManifestFile =
+            manifest_file
+                .clone()
+                .try_into()
+                .map_err(|err: anyhow::Error| AdapterError::BuildFailed {
+                    reason: format!("package manifest: {err:?}"),
+                })?;
+        let member_manifests =
+            manifest_file
+                .member_manifests()
+                .map_err(|err| AdapterError::BuildFailed {
+                    reason: format!("member manifests: {err:?}"),
+                })?;
+        let lock_path = manifest_file
+            .lock_path()
+            .map_err(|err| AdapterError::BuildFailed {
+                reason: format!("lock path: {err:?}"),
+            })?;
+        let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            false,
+            false,
+            &IPFSNode::default(),
+        )
+        .map_err(|err| AdapterError::BuildFailed {
+            reason: format!("build plan: {err:?}"),
+        })?;
+
+        let project_name = pkg_manifest.project_name();
+
+        let outputs = std::iter::once(build_plan.find_member_index(project_name).ok_or(
+            AdapterError::BuildFailed {
+                reason: format!("find built project: {project_name}"),
+            },
+        )?)
+        .collect();
+
+        let built_packages = forc_pkg::build(
+            &build_plan,
+            BuildTarget::default(),
+            &BuildProfile {
+                optimization_level: sway_core::OptLevel::Opt0,
+                include_tests: true,
+                ..Default::default()
+            },
+            &outputs,
+            &[],
+            &[],
+        )
+        .map_err(|err| AdapterError::BuildFailed {
+            reason: format!("build packages: {err:?}"),
+        })?;
+
+        // 2. Store the source maps
+        let mut pkg_to_debug: Option<&BuiltPackage> = None;
+        for (_, built_pkg) in &built_packages {
+            if built_pkg.descriptor.manifest_file == pkg_manifest {
+                pkg_to_debug = Some(built_pkg);
+            }
+            let source_map = &built_pkg.source_map;
+
+            let paths = &source_map.paths;
+            source_map.map.iter().for_each(|(instruction, sm_span)| {
+                if let Some(path_buf) = paths.get(sm_span.path.0) {
+                    let LineCol { line, .. } = sm_span.range.start;
+                    let (line, instruction) = (line as i64, *instruction as Instruction);
+
+                    self.state
+                        .source_map
+                        .entry(path_buf.clone())
+                        .and_modify(|new_map| {
+                            new_map
+                                .entry(line)
+                                .and_modify(|val| {
+                                    // Store the instructions in ascending order
+                                    match val.binary_search(&instruction) {
+                                        Ok(_) => {} // Ignore duplicates
+                                        Err(pos) => val.insert(pos, instruction),
+                                    }
+                                })
+                                .or_insert(vec![instruction]);
+                        })
+                        .or_insert(HashMap::from([(line, vec![instruction])]));
+                } else {
+                    self.error(format!(
+                        "Path missing from source map: {:?}",
+                        sm_span.path.0
+                    ));
+                }
+            });
+        }
+
+        // 3. Build the tests
+        let built_package = pkg_to_debug.ok_or(AdapterError::BuildFailed {
+            reason: format!("find package: {project_name}"),
+        })?;
+
+        let built = Built::Package(Arc::from(built_package.clone()));
+
+        let built_tests = BuiltTests::from_built(built, &build_plan).map_err(|err| {
+            AdapterError::BuildFailed {
+                reason: format!("build tests: {err:?}"),
+            }
+        })?;
+
+        let pkg_tests = match built_tests {
+            BuiltTests::Package(pkg_tests) => pkg_tests,
+            BuiltTests::Workspace(_) => {
+                return Err(AdapterError::BuildFailed {
+                    reason: "package tests: workspace tests not supported".into(),
+                })
+            }
+        };
+        let test_setup = pkg_tests.setup().map_err(|err| AdapterError::BuildFailed {
+            reason: format!("test setup: {err:?}"),
+        })?;
+        self.state.built_package = Some(built_package.clone());
+        self.state.test_setup = Some(test_setup.clone());
+        Ok((built_package.clone(), test_setup))
     }
 
     /// Sends the 'exited' event to the client and kills the server process.
