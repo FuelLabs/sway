@@ -192,9 +192,8 @@ impl TraitConstraint {
         let mut type_arguments = type_arguments.clone();
 
         match ctx
-            .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path(&Handler::default(), trait_name)
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

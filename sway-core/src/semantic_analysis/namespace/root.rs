@@ -7,10 +7,9 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructDecl, TyDecl},
-        CallPath, Visibility,
+        Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    semantic_analysis::type_resolve::{resolve_associated_item, resolve_associated_type},
     TypeId,
 };
 use sway_error::{
@@ -722,116 +721,6 @@ impl Root {
         }
 
         Ok(())
-    }
-
-    ////// NAME RESOLUTION //////
-
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
-        Ok(decl)
-    }
-
-    pub(crate) fn resolve_call_path_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let symbol_path: Vec<_> = mod_path
-            .iter()
-            .chain(&call_path.prefixes)
-            .cloned()
-            .collect();
-        self.resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            &symbol_path,
-            &call_path.suffix,
-            self_type,
-        )
-    }
-
-    /// Given a path to a module and the identifier of a symbol within that module, resolve its
-    /// declaration.
-    ///
-    /// If the symbol is within the given module's namespace via import, we recursively traverse
-    /// imports until we find the original declaration.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
-        Ok(decl)
-    }
-
-    fn resolve_symbol_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-        // This block tries to resolve associated types
-        let mut module = &self.module;
-        let mut current_mod_path = vec![];
-        let mut decl_opt = None;
-        for ident in mod_path.iter() {
-            if let Some(decl) = decl_opt {
-                decl_opt = Some(resolve_associated_type(
-                    handler, engines, module, ident, decl, None, self_type,
-                )?);
-            } else {
-                match module.submodules.get(ident.as_str()) {
-                    Some(ns) => {
-                        module = ns;
-                        current_mod_path.push(ident.clone());
-                    }
-                    None => {
-                        decl_opt = Some(
-                            module
-                                .current_lexical_scope()
-                                .items
-                                .resolve_symbol(handler, engines, ident)?,
-                        );
-                    }
-                }
-            }
-        }
-        if let Some(decl) = decl_opt {
-            let decl =
-                resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
-            return Ok((decl, current_mod_path));
-        }
-
-        self.module
-            .lookup_submodule(handler, engines, mod_path)
-            .and_then(|module| {
-                let decl = module
-                    .current_lexical_scope()
-                    .items
-                    .resolve_symbol(handler, engines, symbol)?;
-                Ok((decl, mod_path.to_vec()))
-            })
     }
 }
 

@@ -30,7 +30,7 @@ use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
     symbol_collection_context::SymbolCollectionContext,
-    type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type},
+    type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
     GenericShadowingMode,
 };
 
@@ -671,30 +671,15 @@ impl<'a> TypeCheckContext<'a> {
             type_info_prefix,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
     }
 
-    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_with_visibility_check(
-        &self,
-        handler: &Handler,
-        call_path: &CallPath,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        resolve_call_path(
-            handler,
-            self.engines(),
-            self.namespace(),
-            &self.namespace().mod_path,
-            call_path,
-            self.self_type(),
-        )
-    }
-
-    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+    pub(crate) fn resolve_qualified_call_path(
         &mut self,
         handler: &Handler,
         qualified_call_path: &QualifiedCallPath,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         resolve_qualified_call_path(
             handler,
             self.engines(),
@@ -703,7 +688,63 @@ impl<'a> TypeCheckContext<'a> {
             qualified_call_path,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
+        .map(|d| d.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        symbol: &Ident,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path(
+            handler,
+            self.engines(),
+            self.namespace().root(),
+            self.namespace().mod_path(),
+            &symbol.clone().into(),
+            self.self_type(),
+            VisibilityCheck::No,
+        )
+        .map(|d| d.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        handler: &Handler,
+        call_path: &CallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path(
+            handler,
+            self.engines(),
+            self.namespace().root(),
+            &self.namespace().mod_path,
+            call_path,
+            self.self_type(),
+            VisibilityCheck::Yes,
+        )
+        .map(|d| d.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        call_path: &CallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path(
+            handler,
+            self.engines(),
+            self.namespace().root(),
+            self.namespace().mod_path(),
+            call_path,
+            self.self_type(),
+            VisibilityCheck::No,
+        )
+        .map(|d| d.expect_typed())
     }
 
     /// Given a name and a type (plus a `self_type` to potentially
@@ -726,7 +767,7 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // grab the local module
-        let local_module = self.namespace().lookup_submodule_from_absolute_path(
+        let local_module = self.namespace().root_module().lookup_submodule(
             handler,
             self.engines(),
             &self.namespace().mod_path,
@@ -749,11 +790,12 @@ impl<'a> TypeCheckContext<'a> {
             None,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // grab the module where the type itself is declared
-        let type_module = self.namespace().lookup_submodule_from_absolute_path(
+        let type_module = self.namespace().root_module().lookup_submodule(
             handler,
             self.engines(),
             item_prefix,
