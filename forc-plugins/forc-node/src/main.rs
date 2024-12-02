@@ -1,13 +1,14 @@
 //! A forc plugin to start a fuel core instance, preconfigured for generic
 //! usecases.
+mod chain_config;
 mod cmd;
 mod consts;
 mod ignition;
 mod local;
 mod op;
-mod pkg;
 mod run_opts;
 mod testnet;
+mod util;
 
 use anyhow::anyhow;
 use clap::Parser;
