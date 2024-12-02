@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{ty, CallPath},
-    namespace::TryInsertingTraitImplOnFailure,
+    namespace::{TraitMap, TryInsertingTraitImplOnFailure},
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
@@ -444,13 +444,11 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx
-                .namespace()
-                .module(ctx.engines())
-                .current_items()
-                .symbols
-                .get(name)
-                .unwrap();
+            let sy = ctx.namespace().module(ctx.engines()).resolve_symbol(
+                handler,
+                ctx.engines(),
+                name,
+            )?;
 
             match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -571,13 +569,9 @@ impl TypeParameter {
                         }
                     }
                     // Check to see if the trait constraints are satisfied.
-                    match ctx
-                        .namespace_mut()
-                        .module_mut(engines)
-                        .current_items_mut()
-                        .implemented_traits
-                        .check_if_trait_constraints_are_satisfied_for_type(
+                    match TraitMap::check_if_trait_constraints_are_satisfied_for_type(
                             handler,
+                            ctx.namespace_mut().module_mut(engines),
                             *type_id,
                             trait_constraints,
                             access_span,
