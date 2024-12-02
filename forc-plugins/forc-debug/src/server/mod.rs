@@ -292,46 +292,33 @@ impl DapServer {
         }));
     }
 
+    /// Logs test execution results in a cargo-test-like format, showing duration and gas usage for each test.
     fn log_test_results(&mut self) {
         if !self.state.executors.is_empty() {
             return;
         }
-
-        let results = self
-            .state
-            .test_results
+        let test_results = &self.state.test_results;
+        let test_lines = test_results
             .iter()
-            .map(|result| {
-                let outcome = if result.passed() { "ok" } else { "failed" };
+            .map(|r| {
+                let outcome = if r.passed() { "ok" } else { "failed" };
                 format!(
                     "test {} ... {} ({}ms, {} gas)",
-                    result.name,
+                    r.name,
                     outcome,
-                    result.duration.as_millis(),
-                    result.gas_used
+                    r.duration.as_millis(),
+                    r.gas_used
                 )
             })
             .collect::<Vec<_>>()
             .join("\n");
-        let final_outcome = if self.state.test_results.iter().any(|r| !r.passed()) {
-            "FAILED"
-        } else {
-            "OK"
-        };
-        let passed = self
-            .state
-            .test_results
-            .iter()
-            .filter(|r| r.passed())
-            .count();
-        let failed = self
-            .state
-            .test_results
-            .iter()
-            .filter(|r| !r.passed())
-            .count();
+    
+        let passed = test_results.iter().filter(|r| r.passed()).count();
+        let final_outcome = if passed == test_results.len() { "OK" } else { "FAILED" };
+        
         self.log(format!(
-            "{results}\nResult: {final_outcome}. {passed} passed. {failed} failed.\n",
+            "{test_lines}\nResult: {final_outcome}. {passed} passed. {} failed.\n",
+            test_results.len() - passed
         ));
     }
 
