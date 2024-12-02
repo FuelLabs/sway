@@ -1,5 +1,7 @@
-use super::AdapterError;
-use crate::types::{Breakpoints, Instruction, SourceMap};
+use crate::{
+    error::AdapterError,
+    types::{Breakpoints, Instruction, SourceMap},
+};
 use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
 use forc_test::{execute::TestExecutor, setup::TestSetup, TestResult};
@@ -71,7 +73,6 @@ impl ServerState {
                         return Some((source_path, line));
                     }
                 }
-
                 None
             })
             .ok_or(AdapterError::MissingSourceMap { pc })

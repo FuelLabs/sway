@@ -51,6 +51,11 @@ impl Default for DapServer {
 }
 
 impl DapServer {
+    /// Creates a new DAP server with custom input and output streams.
+    ///
+    /// # Arguments
+    /// * `input` - Source of DAP protocol messages (usually stdin)
+    /// * `output` - Destination for DAP protocol messages (usually stdout)
     pub fn new(input: Box<dyn Read>, output: Box<dyn Write>) -> Self {
         let server = Server::new(BufReader::new(input), BufWriter::new(output));
         DapServer {
@@ -60,42 +65,42 @@ impl DapServer {
         }
     }
 
+    /// Runs the debug server event loop, handling client requests until completion or error.
     pub fn start(&mut self) -> error::Result<()> {
         loop {
-            match self.server.poll_request()? {
-                Some(req) => {
-                    let rsp = self.handle_request(req)?;
-                    self.server.respond(rsp)?;
-
-                    if !self.state.initialized_event_sent {
-                        let _ = self.server.send_event(Event::Initialized);
-                        self.state.initialized_event_sent = true;
-                    }
-                    if self.state.configuration_done && !self.state.started_debugging {
-                        if let Some(StartDebuggingRequestKind::Launch) = self.state.mode {
-                            self.state.started_debugging = true;
-                            match self.handle_launch() {
-                                Ok(true) => {}
-                                Ok(false) => {
-                                    // The tests finished executing
-                                    self.exit(0);
-                                }
-                                Err(e) => {
-                                    self.error(format!("Launch error: {e:?}"));
-                                    self.exit(1);
-                                }
-                            }
-                        }
-                    }
-                }
+            let req = match self.server.poll_request()? {
+                Some(req) => req,
                 None => return Err(Error::AdapterError(AdapterError::MissingCommand)),
             };
+
+            // Handle the request and send response
+            let response = self.handle_request(req)?;
+            self.server.respond(response)?;
+
+            // Handle one-time initialization
+            if !self.state.initialized_event_sent {
+                let _ = self.server.send_event(Event::Initialized);
+                self.state.initialized_event_sent = true;
+            }
+
+            // Handle launch after configuration is complete
+            if self.should_launch() {
+                self.state.started_debugging = true;
+                match self.handle_launch() {
+                    Ok(true) => continue,
+                    Ok(false) => self.exit(0), // The tests finished executing
+                    Err(e) => {
+                        self.error(format!("Launch error: {e:?}"));
+                        self.exit(1);
+                    }
+                }
+            }
         }
     }
 
+    /// Processes a debug adapter request and generates appropriate response.
     fn handle_request(&mut self, req: Request) -> error::Result<Response> {
-        let command = req.command.clone();
-        let (result, exit_code) = self.handle_command(command);
+        let (result, exit_code) = self.handle_command(&req.command);
         let response = match result {
             Ok(rsp) => Ok(req.success(rsp)),
             Err(e) => {
@@ -112,7 +117,7 @@ impl DapServer {
     /// Handles a command and returns the result and exit code, if any.
     pub fn handle_command(
         &mut self,
-        command: Command,
+        command: &Command,
     ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
         match command {
             Command::Attach(_) => {
@@ -271,8 +276,20 @@ impl DapServer {
                 ),
                 Err(e) => (Err(e), None),
             },
-            _ => (Err(AdapterError::UnhandledCommand { command }), None),
+            _ => (
+                Err(AdapterError::UnhandledCommand {
+                    command: command.clone(),
+                }),
+                None,
+            ),
         }
+    }
+
+    /// Checks whether debug session is ready to begin launching tests.
+    fn should_launch(&self) -> bool {
+        self.state.configuration_done
+            && !self.state.started_debugging
+            && matches!(self.state.mode, Some(StartDebuggingRequestKind::Launch))
     }
 
     /// Logs a message to the client's debugger console output.
@@ -312,10 +329,14 @@ impl DapServer {
             })
             .collect::<Vec<_>>()
             .join("\n");
-    
+
         let passed = test_results.iter().filter(|r| r.passed()).count();
-        let final_outcome = if passed == test_results.len() { "OK" } else { "FAILED" };
-        
+        let final_outcome = if passed == test_results.len() {
+            "OK"
+        } else {
+            "FAILED"
+        };
+
         self.log(format!(
             "{test_lines}\nResult: {final_outcome}. {passed} passed. {} failed.\n",
             test_results.len() - passed
