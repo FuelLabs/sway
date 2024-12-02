@@ -1,6 +1,5 @@
 use dap::types::Breakpoint;
-use std::collections::HashMap;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 pub type DynResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub type Line = i64;

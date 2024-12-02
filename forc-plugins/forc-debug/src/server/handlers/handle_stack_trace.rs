@@ -1,8 +1,5 @@
-use crate::server::util;
-use crate::server::AdapterError;
-use crate::server::DapServer;
-use dap::types::StackFrame;
-use dap::types::StackFramePresentationhint;
+use crate::server::{util, AdapterError, DapServer};
+use dap::types::{StackFrame, StackFramePresentationhint};
 
 impl DapServer {
     /// Handles a `stack_trace` request. Returns the list of [StackFrame]s for the current execution state.

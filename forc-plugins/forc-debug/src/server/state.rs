@@ -1,12 +1,8 @@
 use super::AdapterError;
-use crate::types::Breakpoints;
-use crate::types::Instruction;
-use crate::types::SourceMap;
+use crate::types::{Breakpoints, Instruction, SourceMap};
 use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
-use forc_test::execute::TestExecutor;
-use forc_test::setup::TestSetup;
-use forc_test::TestResult;
+use forc_test::{execute::TestExecutor, setup::TestSetup, TestResult};
 use std::path::PathBuf;
 
 #[derive(Default, Debug, Clone)]

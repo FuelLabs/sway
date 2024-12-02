@@ -1,7 +1,5 @@
-use crate::server::AdapterError;
-use crate::server::DapServer;
-use dap::requests::BreakpointLocationsArguments;
-use dap::types::BreakpointLocation;
+use crate::server::{AdapterError, DapServer};
+use dap::{requests::BreakpointLocationsArguments, types::BreakpointLocation};
 use std::path::PathBuf;
 
 impl DapServer {

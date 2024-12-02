@@ -1,5 +1,4 @@
-use crate::server::AdapterError;
-use crate::server::DapServer;
+use crate::server::{AdapterError, DapServer};
 
 impl DapServer {
     /// Handles a `continue` request. Returns true if the server should continue running.

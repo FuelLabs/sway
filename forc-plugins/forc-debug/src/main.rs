@@ -109,20 +109,6 @@ struct State {
     session_id: String,
 }
 
-fn pretty_print_run_result(rr: &RunResult) {
-    for receipt in rr.receipts() {
-        println!("Receipt: {receipt:?}");
-    }
-    if let Some(bp) = &rr.breakpoint {
-        println!(
-            "Stopped on breakpoint at address {} of contract {}",
-            bp.pc.0, bp.contract
-        );
-    } else {
-        println!("Terminated");
-    }
-}
-
 async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
     args.remove(0); // Remove the command name
     ArgumentError::ensure_arg_count(&args, 1, 1)?; // Ensure exactly one argument
@@ -298,6 +284,24 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> error::Result<(
         println!();
     }
     Ok(())
+}
+
+/// Pretty-prints the result of a run, including receipts and breakpoint information.
+///
+/// Outputs each receipt in the `RunResult` and details about the breakpoint if present.
+/// If the execution terminated without hitting a breakpoint, it prints "Terminated".
+fn pretty_print_run_result(rr: &RunResult) {
+    for receipt in rr.receipts() {
+        println!("Receipt: {receipt:?}");
+    }
+    if let Some(bp) = &rr.breakpoint {
+        println!(
+            "Stopped on breakpoint at address {} of contract {}",
+            bp.pc.0, bp.contract
+        );
+    } else {
+        println!("Terminated");
+    }
 }
 
 /// Parses a string representing a number and returns it as a `usize`.

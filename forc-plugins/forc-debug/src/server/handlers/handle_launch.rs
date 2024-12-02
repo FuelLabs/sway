@@ -1,11 +1,13 @@
-use crate::server::{AdapterError, DapServer};
-use crate::types::Instruction;
-use forc_pkg::manifest::GenericManifestFile;
-use forc_pkg::source::IPFSNode;
-use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
-use forc_test::execute::TestExecutor;
-use forc_test::setup::TestSetup;
-use forc_test::BuiltTests;
+use crate::{
+    server::{AdapterError, DapServer},
+    types::Instruction,
+};
+use forc_pkg::{
+    manifest::GenericManifestFile,
+    source::IPFSNode,
+    {self, BuildProfile, Built, BuiltPackage, PackageManifestFile},
+};
+use forc_test::{execute::TestExecutor, setup::TestSetup, BuiltTests};
 use std::{collections::HashMap, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::LineCol;

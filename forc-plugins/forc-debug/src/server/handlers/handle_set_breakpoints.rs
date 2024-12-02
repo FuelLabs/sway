@@ -1,7 +1,8 @@
-use crate::server::AdapterError;
-use crate::server::DapServer;
-use dap::requests::SetBreakpointsArguments;
-use dap::types::{Breakpoint, StartDebuggingRequestKind};
+use crate::server::{AdapterError, DapServer};
+use dap::{
+    requests::SetBreakpointsArguments,
+    types::{Breakpoint, StartDebuggingRequestKind},
+};
 use std::path::PathBuf;
 
 impl DapServer {

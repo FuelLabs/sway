@@ -1,17 +1,9 @@
-use crate::names::register_name;
-use crate::server::AdapterError;
-use crate::server::DapServer;
-use crate::server::INSTRUCTIONS_VARIABLE_REF;
-use crate::server::REGISTERS_VARIABLE_REF;
-use dap::requests::VariablesArguments;
-use dap::types::Variable;
-use fuel_vm::fuel_asm::Imm06;
-use fuel_vm::fuel_asm::Imm12;
-use fuel_vm::fuel_asm::Imm18;
-use fuel_vm::fuel_asm::Imm24;
-use fuel_vm::fuel_asm::Instruction;
-use fuel_vm::fuel_asm::RawInstruction;
-use fuel_vm::fuel_asm::RegId;
+use crate::{
+    names::register_name,
+    server::{AdapterError, DapServer, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF},
+};
+use dap::{requests::VariablesArguments, types::Variable};
+use fuel_vm::fuel_asm::{Imm06, Imm12, Imm18, Imm24, Instruction, RawInstruction, RegId};
 
 impl DapServer {
     /// Handles a `variables` request. Returns the list of [Variable]s for the current execution state.

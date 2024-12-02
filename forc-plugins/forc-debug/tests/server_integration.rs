@@ -7,8 +7,12 @@ use dap::{
 use forc_debug::server::{
     AdditionalData, DapServer, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF,
 };
-use std::sync::Mutex;
-use std::{env, io::Write, path::PathBuf, sync::Arc};
+use std::{
+    env,
+    io::Write,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 pub fn sway_workspace_dir() -> PathBuf {
     env::current_dir().unwrap().parent().unwrap().to_path_buf()

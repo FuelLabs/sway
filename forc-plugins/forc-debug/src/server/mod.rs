@@ -3,20 +3,17 @@ mod handlers;
 mod state;
 mod util;
 
-use self::error::AdapterError;
-use self::state::ServerState;
-use self::util::IdGenerator;
-use crate::types::DynResult;
-use crate::types::Instruction;
-use dap::events::OutputEventBody;
-use dap::events::{ExitedEventBody, StoppedEventBody};
-use dap::prelude::*;
-use dap::types::{Scope, StartDebuggingRequestKind};
+use self::{error::AdapterError, state::ServerState, util::IdGenerator};
+use crate::types::{DynResult, Instruction};
+use dap::{
+    events::{ExitedEventBody, OutputEventBody, StoppedEventBody},
+    prelude::*,
+    types::{Scope, StartDebuggingRequestKind},
+};
 use forc_test::execute::DebugResult;
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
 use std::{
-    io::{BufReader, BufWriter},
+    io::{BufReader, BufWriter, Read, Write},
     path::PathBuf,
     process,
 };
