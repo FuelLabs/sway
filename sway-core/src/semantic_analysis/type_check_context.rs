@@ -82,7 +82,7 @@ pub struct TypeCheckContext<'a> {
     /// Whether or not a const declaration shadows previous const declarations sequentially.
     ///
     /// This is `Sequential` while checking const declarations in functions, otherwise `ItemStyle`.
-    const_shadowing_mode: ConstShadowingMode,
+    pub(crate) const_shadowing_mode: ConstShadowingMode,
     /// Whether or not a generic type parameters shadows previous generic type parameters.
     ///
     /// This is `Disallow` everywhere except while checking type parameters bounds in struct instantiation.

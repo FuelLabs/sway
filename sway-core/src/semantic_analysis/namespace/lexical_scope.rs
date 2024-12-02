@@ -644,6 +644,9 @@ impl Items {
              is_alias: bool,
              item: &ResolvedDeclaration,
              const_shadowing_mode: ConstShadowingMode| {
+                if const_shadowing_mode == ConstShadowingMode::Allow {
+                    return;
+                }
                 match (decl, item) {
                     // TODO: Do not handle any shadowing errors while handling parsed declarations yet,
                     // or else we will emit errors in a different order from the source code order.
