@@ -1,10 +1,12 @@
-mod error;
 mod handlers;
 mod state;
 mod util;
 
-use self::{error::AdapterError, state::ServerState, util::IdGenerator};
-use crate::types::{DynResult, Instruction};
+use self::{state::ServerState, util::IdGenerator};
+use crate::{
+    error::AdapterError,
+    types::{DynResult, Instruction},
+};
 use dap::{
     events::{ExitedEventBody, OutputEventBody, StoppedEventBody},
     prelude::*,
