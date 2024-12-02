@@ -2522,6 +2522,7 @@ pub fn abi_decode_in_place<T>(ptr: raw_ptr, len: u64, target: raw_ptr)
 where
     T: AbiDecode,
 {
+    asm(ptr: ptr) { log ptr ptr ptr ptr; }
     let mut buffer = BufferReader::from_parts(ptr, len);
     let temp = T::abi_decode(buffer);
     asm(
@@ -2635,6 +2636,7 @@ impl AbiDecode for str {
     fn abi_decode(ref mut buffer: BufferReader) -> str {
         let len = buffer.read_8_bytes::<u64>();
         let data = buffer.read_bytes(len);
+        asm(data: data, len: len, a: 0) { log data len a a; };
         asm(s: (data.ptr(), len)) {
             s: str
         }
