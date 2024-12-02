@@ -1390,22 +1390,16 @@ impl TraitMap {
         type_id: TypeId,
         engines: &Engines,
     ) -> BTreeSet<(Ident, TypeId)> {
-        let mut lexical_scope_opt = Some(module.current_lexical_scope());
         let mut all_impld_traits: BTreeSet<(Ident, TypeId)> = Default::default();
-        while let Some(lexical_scope) = lexical_scope_opt {
+        let _ = module.walk_scope_chain(|lexical_scope| {
             all_impld_traits.extend(
                 lexical_scope
                     .items
                     .implemented_traits
                     .get_implemented_traits(type_id, engines),
             );
-            if let Some(parent_scope_id) = lexical_scope.parent {
-                lexical_scope_opt = module.get_lexical_scope(parent_scope_id);
-            } else {
-                lexical_scope_opt = None;
-            }
-        }
-
+            Ok(Some(()))
+        });
         all_impld_traits
     }
 

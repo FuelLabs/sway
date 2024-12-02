@@ -2416,31 +2416,26 @@ impl ty::TyExpression {
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
-        let mut lexical_scope_opt = Some(module.current_lexical_scope());
-        while let Some(lexical_scope) = lexical_scope_opt {
-            let result = Self::find_subfield_type_helper(
+        let ret = module.walk_scope_chain(|lexical_scope| {
+            Self::find_subfield_type_helper(
                 lexical_scope,
                 handler,
                 engines,
                 namespace,
                 base_name,
                 projections,
-            )?;
-            if let Some(result) = result {
-                return Ok(result);
-            }
-            if let Some(parent_scope_id) = lexical_scope.parent {
-                lexical_scope_opt = module.get_lexical_scope(parent_scope_id);
-            } else {
-                lexical_scope_opt = None;
-            }
-        }
+            )
+        })?;
 
-        // Symbol not found
-        Err(handler.emit_err(CompileError::UnknownVariable {
-            var_name: base_name.clone(),
-            span: base_name.span(),
-        }))
+        if let Some(ret) = ret {
+            Ok(ret)
+        } else {
+            // Symbol not found
+            Err(handler.emit_err(CompileError::UnknownVariable {
+                var_name: base_name.clone(),
+                span: base_name.span(),
+            }))
+        }
     }
 
     /// Returns a tuple where the first element is the [TypeId] of the actual expression, and
