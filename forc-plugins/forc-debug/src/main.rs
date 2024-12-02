@@ -1,13 +1,13 @@
 use clap::Parser;
 use forc_debug::{
+    error::{self, ArgumentError, ForcDebugError},
     names::{register_index, register_name},
     server::DapServer,
     ContractId, FuelClient, RunResult, Transaction,
 };
 use forc_tracing::{init_tracing_subscriber, println_error, TracingSubscriberOptions};
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
-use shellfish::{async_fn, Command as ShCommand, Shell};
-use std::error::Error;
+use shellfish::{Command as ShCommand, Shell};
 
 #[derive(Parser, Debug)]
 #[clap(name = "forc-debug", version)]
@@ -45,12 +45,21 @@ async fn run(config: &Opt) -> Result<(), Box<dyn std::error::Error>> {
         ">> ",
     );
 
+    // Registers an async command by wrapping the handler function `$f`,
+    // converting its error type into `Box<dyn std::error::Error>`, and
+    // associating it with the provided command names.
     macro_rules! command {
         ($f:ident, $help:literal, $names:expr) => {
             for c in $names {
                 shell.commands.insert(
                     c,
-                    ShCommand::new_async($help.to_string(), async_fn!(State, $f)),
+                    ShCommand::new_async($help.to_string(), |state, args| {
+                        Box::pin(async move {
+                            $f(state, args)
+                                .await
+                                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                        })
+                    }),
                 );
             }
         };
@@ -100,16 +109,6 @@ struct State {
     session_id: String,
 }
 
-#[derive(Debug, thiserror::Error)]
-enum ArgError {
-    #[error("Invalid argument")]
-    Invalid,
-    #[error("Not enough arguments")]
-    NotEnough,
-    #[error("Too many arguments")]
-    TooMany,
-}
-
 fn pretty_print_run_result(rr: &RunResult) {
     for receipt in rr.receipts() {
         println!("Receipt: {receipt:?}");
@@ -124,152 +123,173 @@ fn pretty_print_run_result(rr: &RunResult) {
     }
 }
 
-async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    args.remove(0);
-    let path_to_tx_json = args.pop().ok_or_else(|| Box::new(ArgError::NotEnough))?;
-    if !args.is_empty() {
-        return Err(Box::new(ArgError::TooMany));
-    }
+async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
+    args.remove(0); // Remove the command name
+    ArgumentError::ensure_arg_count(&args, 1, 1)?; // Ensure exactly one argument
 
-    let tx_json = std::fs::read(path_to_tx_json)?;
-    let tx: Transaction = serde_json::from_slice(&tx_json)?;
-    let status = state.client.start_tx(&state.session_id, &tx).await?;
+    let path_to_tx_json = args.pop().unwrap(); // Safe due to arg count check
+
+    // Read and parse the transaction JSON
+    let tx_json = std::fs::read(&path_to_tx_json).map_err(ForcDebugError::IoError)?;
+    let tx: Transaction = serde_json::from_slice(&tx_json).map_err(ForcDebugError::JsonError)?;
+
+    // Start the transaction
+    let status = state
+        .client
+        .start_tx(&state.session_id, &tx)
+        .await
+        .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
+
     pretty_print_run_result(&status);
-
     Ok(())
 }
 
-async fn cmd_reset(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    args.remove(0);
-    if !args.is_empty() {
-        return Err(Box::new(ArgError::TooMany));
-    }
+async fn cmd_reset(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
+    args.remove(0); // Remove the command name
+    ArgumentError::ensure_arg_count(&args, 0, 0)?; // Ensure no extra arguments
 
-    let _ = state.client.reset(&state.session_id).await?;
-
-    Ok(())
-}
-
-async fn cmd_continue(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    args.remove(0);
-    if !args.is_empty() {
-        return Err(Box::new(ArgError::TooMany));
-    }
-
-    let status = state.client.continue_tx(&state.session_id).await?;
-    pretty_print_run_result(&status);
-
-    Ok(())
-}
-
-async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    args.remove(0);
-    if args.len() > 1 {
-        return Err(Box::new(ArgError::TooMany));
-    }
-
+    // Reset the session
     state
         .client
-        .set_single_stepping(
-            &state.session_id,
-            args.first()
-                .map_or(true, |v| !["off", "no", "disable"].contains(&v.as_str())),
-        )
-        .await?;
+        .reset(&state.session_id)
+        .await
+        .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
+
     Ok(())
 }
 
-async fn cmd_breakpoint(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    args.remove(0);
-    let offset = args.pop().ok_or_else(|| Box::new(ArgError::NotEnough))?;
-    let contract_id = args.pop();
+async fn cmd_continue(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
+    args.remove(0); // Remove the command name
+    ArgumentError::ensure_arg_count(&args, 0, 0)?; // Ensure no extra arguments
 
-    if !args.is_empty() {
-        return Err(Box::new(ArgError::TooMany));
-    }
+    // Continue the transaction
+    let status = state
+        .client
+        .continue_tx(&state.session_id)
+        .await
+        .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
 
-    let offset = if let Some(offset) = parse_int(&offset) {
-        offset as u64
-    } else {
-        return Err(Box::new(ArgError::Invalid));
-    };
+    pretty_print_run_result(&status);
+    Ok(())
+}
 
-    let contract = if let Some(contract_id) = contract_id {
-        if let Ok(contract_id) = contract_id.parse::<ContractId>() {
-            contract_id
-        } else {
-            return Err(Box::new(ArgError::Invalid));
-        }
-    } else {
-        ContractId::zeroed() // Current script
-    };
+async fn cmd_step(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
+    args.remove(0); // Remove the command name
+    ArgumentError::ensure_arg_count(&args, 0, 1)?; // Ensure the argument count is at most 1
 
+    // Determine whether to enable or disable single stepping
+    let enable = args
+        .first()
+        .map_or(true, |v| !["off", "no", "disable"].contains(&v.as_str()));
+
+    // Call the client
     state
         .client
-        .set_breakpoint(&state.session_id, contract, offset)
-        .await?;
+        .set_single_stepping(&state.session_id, enable)
+        .await
+        .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
 
     Ok(())
 }
 
-async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    args.remove(0);
+async fn cmd_breakpoint(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
+    args.remove(0); // Remove command name
+    ArgumentError::ensure_arg_count(&args, 1, 2)?;
+
+    let offset_str = args.pop().unwrap(); // Safe due to arg count check
+    let offset = parse_int(&offset_str).ok_or_else(|| ArgumentError::InvalidNumber(offset_str))?;
+
+    let contract = if let Some(contract_id) = args.pop() {
+        contract_id
+            .parse::<ContractId>()
+            .map_err(|_| ArgumentError::Invalid(format!("Invalid contract ID: {}", contract_id)))?
+    } else {
+        ContractId::zeroed()
+    };
+
+    // Call client
+    state
+        .client
+        .set_breakpoint(&state.session_id, contract, offset as u64)
+        .await
+        .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
+
+    Ok(())
+}
+
+async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
+    args.remove(0); // Remove the command name
 
     if args.is_empty() {
+        // Print all registers
         for r in 0..VM_REGISTER_COUNT {
-            let value = state.client.register(&state.session_id, r as u32).await?;
+            let value = state
+                .client
+                .register(&state.session_id, r as u32)
+                .await
+                .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
             println!("reg[{:#x}] = {:<8} # {}", r, value, register_name(r));
         }
     } else {
+        // Process specific registers provided as arguments
         for arg in &args {
             if let Some(v) = parse_int(arg) {
                 if v < VM_REGISTER_COUNT {
-                    let value = state.client.register(&state.session_id, v as u32).await?;
+                    let value = state
+                        .client
+                        .register(&state.session_id, v as u32)
+                        .await
+                        .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
                     println!("reg[{:#02x}] = {:<8} # {}", v, value, register_name(v));
                 } else {
-                    println!("Register index too large {v}");
-                    return Ok(());
+                    return Err(ArgumentError::InvalidNumber(format!(
+                        "Register index too large: {v}"
+                    ))
+                    .into());
                 }
             } else if let Some(index) = register_index(arg) {
                 let value = state
                     .client
                     .register(&state.session_id, index as u32)
-                    .await?;
+                    .await
+                    .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
                 println!("reg[{index:#02x}] = {value:<8} # {arg}");
             } else {
-                println!("Unknown register name {arg}");
-                return Ok(());
+                return Err(ArgumentError::Invalid(format!("Unknown register name: {arg}")).into());
             }
         }
     }
-
     Ok(())
 }
 
-async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<(), Box<dyn Error>> {
-    args.remove(0);
+async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> error::Result<()> {
+    args.remove(0); // Remove the command name
 
+    // Parse limit argument or use the default
     let limit = args
         .pop()
-        .map(|a| parse_int(&a).ok_or(ArgError::Invalid))
+        .map(|a| parse_int(&a).ok_or_else(|| ArgumentError::InvalidNumber(a)))
         .transpose()?
         .unwrap_or(WORD_SIZE * (VM_MAX_RAM as usize));
 
+    // Parse offset argument or use the default
     let offset = args
         .pop()
-        .map(|a| parse_int(&a).ok_or(ArgError::Invalid))
+        .map(|a| parse_int(&a).ok_or_else(|| ArgumentError::InvalidNumber(a)))
         .transpose()?
         .unwrap_or(0);
 
-    if !args.is_empty() {
-        return Err(Box::new(ArgError::TooMany));
-    }
+    // Ensure no extra arguments
+    ArgumentError::ensure_arg_count(&args, 0, 0)?;
 
+    // Fetch memory from the client
     let mem = state
         .client
         .memory(&state.session_id, offset as u32, limit as u32)
-        .await?;
+        .await
+        .map_err(|e| ForcDebugError::FuelClientError(e.to_string()))?;
 
+    // Print memory contents
     for (i, chunk) in mem.chunks(WORD_SIZE).enumerate() {
         print!(" {:06x}:", offset + i * WORD_SIZE);
         for byte in chunk {
@@ -277,18 +297,40 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<(), Box<
         }
         println!();
     }
-
     Ok(())
 }
 
+/// Parses a string representing a number and returns it as a `usize`.
+///
+/// The input string can be in decimal or hexadecimal format:
+/// - Decimal numbers are parsed normally (e.g., `"123"`).
+/// - Hexadecimal numbers must be prefixed with `"0x"` (e.g., `"0x7B"`).
+/// - Underscores can be used as visual separators (e.g., `"1_000"` or `"0x1_F4"`).
+///
+/// If the input string is not a valid number in the specified format, `None` is returned.
+///
+/// # Examples
+///
+/// ```
+/// /// Use underscores as separators in decimal and hexadecimal numbers
+/// assert_eq!(parse_int("123"), Some(123));
+/// assert_eq!(parse_int("1_000"), Some(1000));
+///
+/// /// Parse hexadecimal numbers with "0x" prefix
+/// assert_eq!(parse_int("0x7B"), Some(123));
+/// assert_eq!(parse_int("0x1_F4"), Some(500));
+///
+/// /// Handle invalid inputs gracefully
+/// assert_eq!(parse_int("abc"), None);
+/// assert_eq!(parse_int("0xZZZ"), None);
+/// assert_eq!(parse_int(""), None);
+/// ```
+///
+/// # Errors
+///
+/// Returns `None` if the input string contains invalid characters,
+/// is not properly formatted, or cannot be parsed into a `usize`.
 fn parse_int(s: &str) -> Option<usize> {
-    let (s, radix) = if let Some(stripped) = s.strip_prefix("0x") {
-        (stripped, 16)
-    } else {
-        (s, 10)
-    };
-
-    let s = s.replace('_', "");
-
-    usize::from_str_radix(&s, radix).ok()
+    let (s, radix) = s.strip_prefix("0x").map_or((s, 10), |s| (s, 16));
+    usize::from_str_radix(&s.replace('_', ""), radix).ok()
 }

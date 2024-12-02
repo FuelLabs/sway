@@ -1,3 +1,4 @@
+pub mod error;
 pub mod names;
 pub mod server;
 pub mod types;
