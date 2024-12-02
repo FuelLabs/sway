@@ -2,9 +2,9 @@ use anyhow::Context;
 use forc_tracing::println_green;
 
 use crate::{
-    op::HumanReadableCommand,
-    pkg::{create_chainconfig_dir, ChainConfig},
+    chain_config::{create_chainconfig_dir, ChainConfig},
     run_opts::{DbType, RunOpts},
+    util::HumanReadableCommand,
 };
 use std::process::{Child, Command};
 

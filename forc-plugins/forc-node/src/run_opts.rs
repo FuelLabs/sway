@@ -33,9 +33,6 @@ pub struct RunOpts {
     pub(crate) poa_instant: bool,
     /// Enable P2P. By default, P2P is disabled.
     pub(crate) enable_p2p: bool,
-    /// Addresses of the reserved nodes.
-    /// They should contain PeerId within their `Multiaddr.`
-    pub(crate) reserved_nodes: Option<String>,
     /// Addresses of the bootstrap nodes
     /// They should contain PeerId within their `Multiaddr`.
     pub(crate) bootstrap_nodes: Option<String>,
@@ -118,9 +115,6 @@ impl RunOpts {
         }
         if self.enable_p2p {
             params.push("--enable-p2p".to_string());
-        }
-        if let Some(node) = self.reserved_nodes {
-            params.push(format!("--reserved-nodes {node}"));
         }
         if let Some(node) = self.bootstrap_nodes {
             params.push(format!("--bootstrap-nodes {node}"));

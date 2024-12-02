@@ -1,6 +1,5 @@
 use crate::{ignition::cmd::IgnitionCmd, local::cmd::LocalCmd, testnet::cmd::TestnetCmd};
 use clap::{Parser, Subcommand};
-use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password};
 
 #[derive(Debug, Parser)]
 #[clap(name = "forc node", version)]
@@ -22,27 +21,4 @@ pub enum Mode {
     Testnet(TestnetCmd),
     /// Starts a node that will connect to ignition network.
     Ignition(IgnitionCmd),
-}
-
-pub(crate) fn ask_user_yes_no_question(question: &str) -> anyhow::Result<bool> {
-    let answer = Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt(question)
-        .default(false)
-        .show_default(false)
-        .interact()?;
-    Ok(answer)
-}
-
-pub(crate) fn ask_user_discreetly(question: &str) -> anyhow::Result<String> {
-    let discrete = Password::with_theme(&ColorfulTheme::default())
-        .with_prompt(question)
-        .interact()?;
-    Ok(discrete)
-}
-
-pub(crate) fn ask_user_string(question: &str) -> anyhow::Result<String> {
-    let response = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt(question)
-        .interact_text()?;
-    Ok(response)
 }
