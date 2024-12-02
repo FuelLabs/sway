@@ -43,6 +43,7 @@ configurable {
     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
     STR_4: str[4] = __to_str_array("abcd"),
     VEC_U8: Vec<u8> = Vec::new(),
+    STRING_SLICE: str = "Hello, Sway",
 
     // The test runner does not have a way to calculate the dynamic part of the data section
     // This configurable guarantee that all the others have their buffer size calculated correctly.
@@ -74,6 +75,8 @@ fn main() {
     assert(TUPLE_BOOL_U64.1 == 11);
     assert(sha256_str_array(STR_4) == sha256("abcd"));
     assert(VEC_U8.len() == 0);
+    //__log(STRING_SLICE);
+    //assert(sha256(STRING_SLICE) == sha256("Hello, Sway"));
 
     // Assert address do not change
     let addr_1 = asm(addr: __addr_of(&BOOL)) {
