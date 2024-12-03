@@ -307,6 +307,7 @@ fn pretty_print_run_result(rr: &RunResult) {
 /// # Examples
 ///
 /// ```
+/// use forc_debug::cli::parse_int;
 /// /// Use underscores as separators in decimal and hexadecimal numbers
 /// assert_eq!(parse_int("123"), Some(123));
 /// assert_eq!(parse_int("1_000"), Some(1000));
@@ -325,7 +326,7 @@ fn pretty_print_run_result(rr: &RunResult) {
 ///
 /// Returns `None` if the input string contains invalid characters,
 /// is not properly formatted, or cannot be parsed into a `usize`.
-fn parse_int(s: &str) -> Option<usize> {
+pub fn parse_int(s: &str) -> Option<usize> {
     let (s, radix) = s.strip_prefix("0x").map_or((s, 10), |s| (s, 16));
     usize::from_str_radix(&s.replace('_', ""), radix).ok()
 }
