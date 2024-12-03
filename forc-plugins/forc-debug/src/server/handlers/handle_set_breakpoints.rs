@@ -1,4 +1,4 @@
-use crate::server::{AdapterError, DapServer};
+use crate::server::{AdapterError, DapServer, HandlerResult};
 use dap::{
     requests::SetBreakpointsArguments,
     responses::ResponseBody,
@@ -11,11 +11,14 @@ impl DapServer {
     pub(crate) fn handle_set_breakpoints_command(
         &mut self,
         args: &SetBreakpointsArguments,
-    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    ) -> HandlerResult {
         let result = self.set_breakpoints(args).map(|breakpoints| {
             ResponseBody::SetBreakpoints(dap::responses::SetBreakpointsResponse { breakpoints })
         });
-        (result, None)
+        match result {
+            Ok(result) => HandlerResult::ok(result),
+            Err(e) => HandlerResult::err_with_exit(e, 1),
+        }
     }
 
     fn set_breakpoints(

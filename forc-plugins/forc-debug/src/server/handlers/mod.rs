@@ -1,7 +1,8 @@
 use crate::{
     error::AdapterError,
     server::{
-        AdditionalData, DapServer, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF, THREAD_ID,
+        AdditionalData, DapServer, HandlerResult, INSTRUCTIONS_VARIABLE_REF,
+        REGISTERS_VARIABLE_REF, THREAD_ID,
     },
 };
 use dap::{
@@ -17,138 +18,113 @@ pub(crate) mod handle_stack_trace;
 pub(crate) mod handle_variables;
 
 impl DapServer {
-    pub(crate) fn handle_attach(&mut self) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_attach(&mut self) -> HandlerResult {
         self.state.mode = Some(StartDebuggingRequestKind::Attach);
         self.error("This feature is not currently supported.".into());
-        (Ok(ResponseBody::Attach), Some(0))
+        HandlerResult::ok_with_exit(ResponseBody::Attach, 0)
     }
 
-    pub(crate) fn handle_initialize(
-        &mut self,
-    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
-        (
-            Ok(ResponseBody::Initialize(types::Capabilities {
-                supports_breakpoint_locations_request: Some(true),
-                supports_configuration_done_request: Some(true),
-                ..Default::default()
-            })),
-            None,
-        )
+    pub(crate) fn handle_initialize(&mut self) -> HandlerResult {
+        HandlerResult::ok(ResponseBody::Initialize(types::Capabilities {
+            supports_breakpoint_locations_request: Some(true),
+            supports_configuration_done_request: Some(true),
+            ..Default::default()
+        }))
     }
 
-    pub(crate) fn handle_configuration_done(
-        &mut self,
-    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_configuration_done(&mut self) -> HandlerResult {
         self.state.configuration_done = true;
-        (Ok(ResponseBody::ConfigurationDone), None)
+        HandlerResult::ok(ResponseBody::ConfigurationDone)
     }
 
-    pub(crate) fn handle_launch(
-        &mut self,
-        args: &LaunchRequestArguments,
-    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_launch(&mut self, args: &LaunchRequestArguments) -> HandlerResult {
         self.state.mode = Some(StartDebuggingRequestKind::Launch);
         if let Some(additional_data) = &args.additional_data {
             if let Ok(data) = serde_json::from_value::<AdditionalData>(additional_data.clone()) {
                 self.state.program_path = PathBuf::from(data.program);
-                return (Ok(ResponseBody::Launch), None);
+                return HandlerResult::ok(ResponseBody::Launch);
             }
         }
-        (Err(AdapterError::MissingConfiguration), Some(1))
+        HandlerResult::err_with_exit(AdapterError::MissingConfiguration, 1)
     }
 
     /// Handles a `next` request. Returns true if the server should continue running.
-    pub(crate) fn handle_next(&mut self) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_next(&mut self) -> HandlerResult {
         match self.continue_debugging_tests(true) {
-            Ok(true) => (Ok(ResponseBody::Next), None),
+            Ok(true) => HandlerResult::ok(ResponseBody::Next),
             Ok(false) => {
                 // The tests finished executing
-                (Ok(ResponseBody::Next), Some(0))
+                HandlerResult::ok_with_exit(ResponseBody::Next, 0)
             }
-            Err(e) => (Err(e), Some(1)),
+            Err(e) => HandlerResult::err_with_exit(e, 1),
         }
     }
 
     /// Handles a `continue` request. Returns true if the server should continue running.
-    pub(crate) fn handle_continue(&mut self) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_continue(&mut self) -> HandlerResult {
         match self.continue_debugging_tests(false) {
-            Ok(true) => (
-                Ok(ResponseBody::Continue(responses::ContinueResponse {
+            Ok(true) => HandlerResult::ok(ResponseBody::Continue(responses::ContinueResponse {
+                all_threads_continued: Some(true),
+            })),
+            Ok(false) => HandlerResult::ok_with_exit(
+                ResponseBody::Continue(responses::ContinueResponse {
                     all_threads_continued: Some(true),
-                })),
-                None,
+                }),
+                0,
             ),
-            Ok(false) => (
-                Ok(ResponseBody::Continue(responses::ContinueResponse {
-                    all_threads_continued: Some(true),
-                })),
-                Some(0),
-            ),
-            Err(e) => (Err(e), Some(1)),
+            Err(e) => HandlerResult::err_with_exit(e, 1),
         }
     }
 
-    pub(crate) fn handle_evaluate(
-        &mut self,
-        args: &EvaluateArguments,
-    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_evaluate(&mut self, args: &EvaluateArguments) -> HandlerResult {
         let result = match args.context {
             Some(types::EvaluateArgumentsContext::Variables) => args.expression.clone(),
             _ => "Evaluate expressions not supported in this context".into(),
         };
-        (
-            Ok(ResponseBody::Evaluate(responses::EvaluateResponse {
-                result,
-                ..Default::default()
-            })),
-            None,
-        )
+        HandlerResult::ok(ResponseBody::Evaluate(responses::EvaluateResponse {
+            result,
+            ..Default::default()
+        }))
     }
 
-    pub(crate) fn handle_pause(&mut self) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_pause(&mut self) -> HandlerResult {
         // TODO: interpreter pause function
         if let Some(executor) = self.state.executor() {
             executor.interpreter.set_single_stepping(true);
         }
-        (Ok(ResponseBody::Pause), None)
+        HandlerResult::ok(ResponseBody::Pause)
     }
 
-    pub(crate) fn handle_restart(&mut self) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_restart(&mut self) -> HandlerResult {
         self.state.reset();
-        (Ok(ResponseBody::Restart), None)
+        HandlerResult::ok(ResponseBody::Restart)
     }
 
-    pub(crate) fn handle_scopes(&mut self) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
-        (
-            Ok(ResponseBody::Scopes(responses::ScopesResponse {
-                scopes: vec![
-                    Scope {
-                        name: "Current VM Instruction".into(),
-                        presentation_hint: Some(types::ScopePresentationhint::Registers),
-                        variables_reference: INSTRUCTIONS_VARIABLE_REF,
-                        ..Default::default()
-                    },
-                    Scope {
-                        name: "Registers".into(),
-                        presentation_hint: Some(types::ScopePresentationhint::Registers),
-                        variables_reference: REGISTERS_VARIABLE_REF,
-                        ..Default::default()
-                    },
-                ],
-            })),
-            None,
-        )
+    pub(crate) fn handle_scopes(&mut self) -> HandlerResult {
+        HandlerResult::ok(ResponseBody::Scopes(responses::ScopesResponse {
+            scopes: vec![
+                Scope {
+                    name: "Current VM Instruction".into(),
+                    presentation_hint: Some(types::ScopePresentationhint::Registers),
+                    variables_reference: INSTRUCTIONS_VARIABLE_REF,
+                    ..Default::default()
+                },
+                Scope {
+                    name: "Registers".into(),
+                    presentation_hint: Some(types::ScopePresentationhint::Registers),
+                    variables_reference: REGISTERS_VARIABLE_REF,
+                    ..Default::default()
+                },
+            ],
+        }))
     }
 
-    pub(crate) fn handle_threads(&mut self) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
-        (
-            Ok(ResponseBody::Threads(responses::ThreadsResponse {
-                threads: vec![types::Thread {
-                    id: THREAD_ID,
-                    name: "main".into(),
-                }],
-            })),
-            None,
-        )
+    pub(crate) fn handle_threads(&mut self) -> HandlerResult {
+        HandlerResult::ok(ResponseBody::Threads(responses::ThreadsResponse {
+            threads: vec![types::Thread {
+                id: THREAD_ID,
+                name: "main".into(),
+            }],
+        }))
     }
 }

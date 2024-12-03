@@ -1,4 +1,4 @@
-use crate::server::{util, AdapterError, DapServer};
+use crate::server::{util, AdapterError, DapServer, HandlerResult};
 use dap::{
     responses::ResponseBody,
     types::{StackFrame, StackFramePresentationhint},
@@ -6,16 +6,17 @@ use dap::{
 
 impl DapServer {
     /// Handles a `stack_trace` request. Returns the list of [StackFrame]s for the current execution state.
-    pub(crate) fn handle_stack_trace_command(
-        &self,
-    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub(crate) fn handle_stack_trace_command(&self) -> HandlerResult {
         let result = self.stack_trace().map(|stack_frames| {
             ResponseBody::StackTrace(dap::responses::StackTraceResponse {
                 stack_frames,
                 total_frames: None,
             })
         });
-        (result, None)
+        match result {
+            Ok(result) => HandlerResult::ok(result),
+            Err(e) => HandlerResult::err_with_exit(e, 1),
+        }
     }
 
     fn stack_trace(&self) -> Result<Vec<StackFrame>, AdapterError> {

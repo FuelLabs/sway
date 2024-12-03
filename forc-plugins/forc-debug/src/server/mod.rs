@@ -5,7 +5,7 @@ mod util;
 use crate::{
     error::{self, AdapterError, Error},
     server::{state::ServerState, util::IdGenerator},
-    types::Instruction,
+    types::{ExitCode, Instruction},
 };
 use dap::{
     events::{ExitedEventBody, OutputEventBody, StoppedEventBody},
@@ -112,7 +112,7 @@ impl DapServer {
 
     /// Processes a debug adapter request and generates appropriate response.
     fn handle_request(&mut self, req: Request) -> error::Result<Response> {
-        let (result, exit_code) = self.handle_command(&req.command);
+        let (result, exit_code) = self.handle_command(&req.command).into_tuple();
         let response = match result {
             Ok(rsp) => Ok(req.success(rsp)),
             Err(e) => {
@@ -127,10 +127,7 @@ impl DapServer {
     }
 
     /// Handles a command and returns the result and exit code, if any.
-    pub fn handle_command(
-        &mut self,
-        command: &Command,
-    ) -> (Result<ResponseBody, AdapterError>, Option<i64>) {
+    pub fn handle_command(&mut self, command: &Command) -> HandlerResult {
         match command {
             Command::Attach(_) => self.handle_attach(),
             Command::BreakpointLocations(ref args) => {
@@ -138,7 +135,7 @@ impl DapServer {
             }
             Command::ConfigurationDone => self.handle_configuration_done(),
             Command::Continue(_) => self.handle_continue(),
-            Command::Disconnect(_) => (Ok(ResponseBody::Disconnect), Some(0)),
+            Command::Disconnect(_) => HandlerResult::ok_with_exit(ResponseBody::Disconnect, 0),
             Command::Evaluate(args) => self.handle_evaluate(args),
             Command::Initialize(_) => self.handle_initialize(),
             Command::Launch(ref args) => self.handle_launch(args),
@@ -150,22 +147,21 @@ impl DapServer {
             Command::StackTrace(_) => self.handle_stack_trace_command(),
             Command::StepIn(_) => {
                 self.error("This feature is not currently supported.".into());
-                (Ok(ResponseBody::StepIn), None)
+                HandlerResult::ok(ResponseBody::StepIn)
             }
             Command::StepOut(_) => {
                 self.error("This feature is not currently supported.".into());
-                (Ok(ResponseBody::StepOut), None)
+                HandlerResult::ok(ResponseBody::StepOut)
             }
-            Command::Terminate(_) => (Ok(ResponseBody::Terminate), Some(0)),
-            Command::TerminateThreads(_) => (Ok(ResponseBody::TerminateThreads), Some(0)),
+            Command::Terminate(_) => HandlerResult::ok_with_exit(ResponseBody::Terminate, 0),
+            Command::TerminateThreads(_) => {
+                HandlerResult::ok_with_exit(ResponseBody::TerminateThreads, 0)
+            }
             Command::Threads => self.handle_threads(),
             Command::Variables(ref args) => self.handle_variables_command(args),
-            _ => (
-                Err(AdapterError::UnhandledCommand {
-                    command: command.clone(),
-                }),
-                None,
-            ),
+            _ => HandlerResult::err(AdapterError::UnhandledCommand {
+                command: command.clone(),
+            }),
         }
     }
 
@@ -479,5 +475,51 @@ impl DapServer {
         }
         self.log_test_results();
         Ok(false)
+    }
+}
+
+/// Represents the result of a DAP handler operation, combining the response/error and an optional exit code
+#[derive(Debug)]
+pub struct HandlerResult {
+    response: Result<ResponseBody, AdapterError>,
+    exit_code: Option<ExitCode>,
+}
+
+impl HandlerResult {
+    /// Creates a new successful result with no exit code
+    pub fn ok(response: ResponseBody) -> Self {
+        Self {
+            response: Ok(response),
+            exit_code: None,
+        }
+    }
+
+    /// Creates a new successful result with an exit code
+    pub fn ok_with_exit(response: ResponseBody, code: ExitCode) -> Self {
+        Self {
+            response: Ok(response),
+            exit_code: Some(code),
+        }
+    }
+
+    /// Creates a new error result with an exit code
+    pub fn err_with_exit(error: AdapterError, code: ExitCode) -> Self {
+        Self {
+            response: Err(error),
+            exit_code: Some(code),
+        }
+    }
+
+    /// Creates a new error result with no exit code
+    pub fn err(error: AdapterError) -> Self {
+        Self {
+            response: Err(error),
+            exit_code: None,
+        }
+    }
+
+    /// Deconstructs the result into its original tuple form
+    pub fn into_tuple(self) -> (Result<ResponseBody, AdapterError>, Option<ExitCode>) {
+        (self.response, self.exit_code)
     }
 }
