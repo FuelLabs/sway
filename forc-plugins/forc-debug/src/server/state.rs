@@ -1,12 +1,10 @@
-use super::AdapterError;
-use crate::types::Breakpoints;
-use crate::types::Instruction;
-use crate::types::SourceMap;
+use crate::{
+    error::AdapterError,
+    types::{Breakpoints, Instruction, SourceMap},
+};
 use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
-use forc_test::execute::TestExecutor;
-use forc_test::setup::TestSetup;
-use forc_test::TestResult;
+use forc_test::{execute::TestExecutor, setup::TestSetup, TestResult};
 use std::path::PathBuf;
 
 #[derive(Default, Debug, Clone)]
@@ -65,7 +63,7 @@ impl ServerState {
         self.source_map
             .iter()
             .find_map(|(source_path, source_map)| {
-                for (&line, instructions) in source_map.iter() {
+                for (&line, instructions) in source_map {
                     // Divide by 4 to get the opcode offset rather than the program counter offset.
                     let instruction_offset = pc / 4;
                     if instructions
@@ -75,7 +73,6 @@ impl ServerState {
                         return Some((source_path, line));
                     }
                 }
-
                 None
             })
             .ok_or(AdapterError::MissingSourceMap { pc })
