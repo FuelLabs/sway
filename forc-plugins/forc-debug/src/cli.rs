@@ -174,7 +174,7 @@ async fn cmd_breakpoint(state: &mut State, mut args: Vec<String>) -> Result<()> 
     ArgumentError::ensure_arg_count(&args, 1, 2)?;
 
     let offset_str = args.pop().unwrap(); // Safe due to arg count check
-    let offset = parse_int(&offset_str).ok_or_else(|| ArgumentError::InvalidNumber(offset_str))?;
+    let offset = parse_int(&offset_str).ok_or(ArgumentError::InvalidNumber(offset_str))?;
 
     let contract = if let Some(contract_id) = args.pop() {
         contract_id
@@ -245,14 +245,14 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> {
     // Parse limit argument or use the default
     let limit = args
         .pop()
-        .map(|a| parse_int(&a).ok_or_else(|| ArgumentError::InvalidNumber(a)))
+        .map(|a| parse_int(&a).ok_or(ArgumentError::InvalidNumber(a)))
         .transpose()?
         .unwrap_or(WORD_SIZE * (VM_MAX_RAM as usize));
 
     // Parse offset argument or use the default
     let offset = args
         .pop()
-        .map(|a| parse_int(&a).ok_or_else(|| ArgumentError::InvalidNumber(a)))
+        .map(|a| parse_int(&a).ok_or(ArgumentError::InvalidNumber(a)))
         .transpose()?
         .unwrap_or(0);
 
