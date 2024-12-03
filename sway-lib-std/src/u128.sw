@@ -144,13 +144,13 @@ impl From<U128> for (u64, u64) {
     }
 }
 
-impl core::ops::Eq for U128 {
+impl ::ops::Eq for U128 {
     fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
 
-impl core::ops::Ord for U128 {
+impl ::ops::Ord for U128 {
     fn gt(self, other: Self) -> bool {
         self.upper > other.upper || self.upper == other.upper && self.lower > other.lower
     }
@@ -160,7 +160,7 @@ impl core::ops::Ord for U128 {
     }
 }
 
-impl core::ops::OrdEq for U128 {}
+impl ::ops::OrdEq for U128 {}
 
 impl u64 {
     /// Performs addition between two `u64` values, returning a `U128`.
@@ -481,19 +481,19 @@ impl U128 {
     }
 }
 
-impl core::ops::BitwiseAnd for U128 {
+impl ::ops::BitwiseAnd for U128 {
     fn binary_and(self, other: Self) -> Self {
         Self::from((self.upper & other.upper, self.lower & other.lower))
     }
 }
 
-impl core::ops::BitwiseOr for U128 {
+impl ::ops::BitwiseOr for U128 {
     fn binary_or(self, other: Self) -> Self {
         Self::from((self.upper | other.upper, self.lower | other.lower))
     }
 }
 
-impl core::ops::Shift for U128 {
+impl ::ops::Shift for U128 {
     fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
@@ -543,7 +543,7 @@ impl core::ops::Shift for U128 {
     }
 }
 
-impl core::ops::Not for U128 {
+impl ::ops::Not for U128 {
     fn not(self) -> Self {
         Self {
             upper: !self.upper,
@@ -552,7 +552,7 @@ impl core::ops::Not for U128 {
     }
 }
 
-impl core::ops::Add for U128 {
+impl ::ops::Add for U128 {
     /// Add a `U128` to a `U128`. Reverts on overflow.
     fn add(self, other: Self) -> Self {
         let mut upper_128 = self.upper.overflowing_add(other.upper);
@@ -582,7 +582,7 @@ impl core::ops::Add for U128 {
     }
 }
 
-impl core::ops::Subtract for U128 {
+impl ::ops::Subtract for U128 {
     /// Subtract a `U128` from a `U128`. Reverts on underflow.
     fn subtract(self, other: Self) -> Self {
         // panic_on_overflow_enabled is also for underflow
@@ -605,7 +605,7 @@ impl core::ops::Subtract for U128 {
         Self { upper, lower }
     }
 }
-impl core::ops::Multiply for U128 {
+impl ::ops::Multiply for U128 {
     /// Multiply a `U128` with a `U128`. Reverts of overflow.
     fn multiply(self, other: Self) -> Self {
         // in case both of the `U128` upper parts are bigger than zero,
@@ -628,7 +628,7 @@ impl core::ops::Multiply for U128 {
     }
 }
 
-impl core::ops::Divide for U128 {
+impl ::ops::Divide for U128 {
     /// Divide a `U128` by a `U128`. Reverts if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = Self::from((0, 0));
@@ -865,7 +865,7 @@ impl Logarithm for U128 {
     }
 }
 
-impl core::ops::TotalOrd for U128 {
+impl ::ops::TotalOrd for U128 {
     fn min(self, other: Self) -> Self {
         if self < other { self } else { other }
     }

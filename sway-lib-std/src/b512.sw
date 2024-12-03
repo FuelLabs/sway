@@ -10,7 +10,7 @@ pub struct B512 {
     bits: [b256; 2],
 }
 
-impl core::ops::Eq for B512 {
+impl ::ops::Eq for B512 {
     fn eq(self, other: Self) -> bool {
         (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
     }

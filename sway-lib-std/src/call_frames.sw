@@ -122,7 +122,7 @@ pub fn second_param() -> u64 {
 
 /// Get the called method name from the current call frame.
 pub fn called_method() -> str {
-    use core::codec::decode_first_param;
+    use ::codec::decode_first_param;
     decode_first_param::<str>()
 }
 
@@ -131,7 +131,7 @@ pub fn called_args<T>() -> T
 where
     T: AbiDecode,
 {
-    use core::codec::decode_second_param;
+    use ::codec::decode_second_param;
     decode_second_param::<T>()
 }
 

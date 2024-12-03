@@ -1,5 +1,10 @@
 library;
 
+pub mod r#str;
+pub mod raw_ptr;
+pub mod raw_slice;
+pub mod primitives;
+pub mod slice;
 pub mod constants;
 pub mod error_signals;
 pub mod logging;
@@ -15,10 +20,13 @@ pub mod iterator;
 pub mod vec;
 pub mod bytes;
 pub mod flags;
+pub mod ops;
+pub mod never;
 pub mod math;
 pub mod u128;
 pub mod b512;
 pub mod primitive_conversions;
+pub mod codec;
 pub mod alias;
 pub mod hash;
 pub mod asset_id;
