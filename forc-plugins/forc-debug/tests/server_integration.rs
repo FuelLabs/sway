@@ -63,12 +63,16 @@ fn test_server_attach_mode() {
     let mut server = DapServer::new(input, output);
 
     // Initialize request
-    let (result, exit_code) = server.handle_command(&Command::Initialize(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Initialize(Default::default()))
+        .into_tuple();
     assert!(matches!(result, Ok(ResponseBody::Initialize(_))));
     assert!(exit_code.is_none());
 
     // Attach request
-    let (result, exit_code) = server.handle_command(&Command::Attach(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Attach(Default::default()))
+        .into_tuple();
     assert!(matches!(result, Ok(ResponseBody::Attach)));
     assert_eq!(exit_code, Some(0));
     assert_not_supported_event(output_capture.take_event());
@@ -85,7 +89,9 @@ fn test_server_launch_mode() {
     let source_str = program_path.to_string_lossy().to_string();
 
     // Initialize request
-    let (result, exit_code) = server.handle_command(&Command::Initialize(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Initialize(Default::default()))
+        .into_tuple();
     assert!(matches!(result, Ok(ResponseBody::Initialize(_))));
     assert!(exit_code.is_none());
 
@@ -94,16 +100,18 @@ fn test_server_launch_mode() {
         program: source_str.clone(),
     })
     .unwrap();
-    let (result, exit_code) = server.handle_command(&Command::Launch(LaunchRequestArguments {
-        additional_data: Some(additional_data),
-        ..Default::default()
-    }));
+    let (result, exit_code) = server
+        .handle_command(&Command::Launch(LaunchRequestArguments {
+            additional_data: Some(additional_data),
+            ..Default::default()
+        }))
+        .into_tuple();
     assert!(matches!(result, Ok(ResponseBody::Launch)));
     assert!(exit_code.is_none());
 
     // Set Breakpoints
-    let (result, exit_code) =
-        server.handle_command(&Command::SetBreakpoints(SetBreakpointsArguments {
+    let (result, exit_code) = server
+        .handle_command(&Command::SetBreakpoints(SetBreakpointsArguments {
             source: Source {
                 path: Some(source_str.clone()),
                 ..Default::default()
@@ -123,7 +131,8 @@ fn test_server_launch_mode() {
                 },
             ]),
             ..Default::default()
-        }));
+        }))
+        .into_tuple();
     match result.expect("set breakpoints result") {
         ResponseBody::SetBreakpoints(res) => {
             assert!(res.breakpoints.len() == 3);
@@ -133,7 +142,9 @@ fn test_server_launch_mode() {
     assert!(exit_code.is_none());
 
     // Configuration Done request
-    let (result, exit_code) = server.handle_command(&Command::ConfigurationDone);
+    let (result, exit_code) = server
+        .handle_command(&Command::ConfigurationDone)
+        .into_tuple();
     assert!(matches!(result, Ok(ResponseBody::ConfigurationDone)));
     assert!(exit_code.is_none());
 
@@ -143,7 +154,7 @@ fn test_server_launch_mode() {
     assert_stopped_breakpoint_event(output_capture.take_event(), 0);
 
     // Threads request
-    let (result, exit_code) = server.handle_command(&Command::Threads);
+    let (result, exit_code) = server.handle_command(&Command::Threads).into_tuple();
     match result.expect("threads result") {
         ResponseBody::Threads(res) => {
             assert_eq!(res.threads.len(), 1);
@@ -153,7 +164,9 @@ fn test_server_launch_mode() {
     assert!(exit_code.is_none());
 
     // Stack Trace request
-    let (result, exit_code) = server.handle_command(&Command::StackTrace(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::StackTrace(Default::default()))
+        .into_tuple();
     match result.expect("stack trace result") {
         ResponseBody::StackTrace(res) => {
             assert_eq!(res.stack_frames.len(), 1);
@@ -163,7 +176,9 @@ fn test_server_launch_mode() {
     assert!(exit_code.is_none());
 
     // Scopes request
-    let (result, exit_code) = server.handle_command(&Command::Scopes(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Scopes(Default::default()))
+        .into_tuple();
     match result.expect("scopes result") {
         ResponseBody::Scopes(res) => {
             assert_eq!(res.scopes.len(), 2);
@@ -173,10 +188,12 @@ fn test_server_launch_mode() {
     assert!(exit_code.is_none());
 
     // Variables request - registers
-    let (result, exit_code) = server.handle_command(&Command::Variables(VariablesArguments {
-        variables_reference: REGISTERS_VARIABLE_REF,
-        ..Default::default()
-    }));
+    let (result, exit_code) = server
+        .handle_command(&Command::Variables(VariablesArguments {
+            variables_reference: REGISTERS_VARIABLE_REF,
+            ..Default::default()
+        }))
+        .into_tuple();
     match result.expect("registers variables result") {
         ResponseBody::Variables(res) => {
             assert_eq!(res.variables.len(), 64);
@@ -186,10 +203,12 @@ fn test_server_launch_mode() {
     assert!(exit_code.is_none());
 
     // Variables request - VM instructions
-    let (result, exit_code) = server.handle_command(&Command::Variables(VariablesArguments {
-        variables_reference: INSTRUCTIONS_VARIABLE_REF,
-        ..Default::default()
-    }));
+    let (result, exit_code) = server
+        .handle_command(&Command::Variables(VariablesArguments {
+            variables_reference: INSTRUCTIONS_VARIABLE_REF,
+            ..Default::default()
+        }))
+        .into_tuple();
     match result.expect("instructions variables result") {
         ResponseBody::Variables(res) => {
             let expected = vec![
@@ -205,37 +224,49 @@ fn test_server_launch_mode() {
     assert!(exit_code.is_none());
 
     // Next request
-    let (result, exit_code) = server.handle_command(&Command::Next(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Next(Default::default()))
+        .into_tuple();
     assert!(result.is_ok());
     assert!(exit_code.is_none());
     assert_stopped_next_event(output_capture.take_event());
 
     // Step In request
-    let (result, exit_code) = server.handle_command(&Command::StepIn(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::StepIn(Default::default()))
+        .into_tuple();
     assert!(result.is_ok());
     assert!(exit_code.is_none());
     assert_not_supported_event(output_capture.take_event());
 
     // Step Out request
-    let (result, exit_code) = server.handle_command(&Command::StepOut(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::StepOut(Default::default()))
+        .into_tuple();
     assert!(result.is_ok());
     assert!(exit_code.is_none());
     assert_not_supported_event(output_capture.take_event());
 
     // Continue request, should hit 2nd breakpoint
-    let (result, exit_code) = server.handle_command(&Command::Continue(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Continue(Default::default()))
+        .into_tuple();
     assert!(result.is_ok());
     assert!(exit_code.is_none());
     assert_stopped_breakpoint_event(output_capture.take_event(), 1);
 
     // Continue request, should hit 3rd breakpoint
-    let (result, exit_code) = server.handle_command(&Command::Continue(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Continue(Default::default()))
+        .into_tuple();
     assert!(result.is_ok());
     assert!(exit_code.is_none());
     assert_stopped_breakpoint_event(output_capture.take_event(), 2);
 
     // Continue request, should exit cleanly
-    let (result, exit_code) = server.handle_command(&Command::Continue(Default::default()));
+    let (result, exit_code) = server
+        .handle_command(&Command::Continue(Default::default()))
+        .into_tuple();
     assert!(result.is_ok());
     assert_eq!(exit_code, Some(0));
 
