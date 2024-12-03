@@ -77,7 +77,7 @@ impl TyDecl {
 
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: &mut TypeCheckContext,
         decl: parsed::Declaration,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -157,7 +157,7 @@ impl TyDecl {
                 let fn_decl = engines.pe().get_function(&decl_id);
                 let span = fn_decl.span.clone();
 
-                let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
+                let mut ctx = ctx.by_ref().with_type_annotation(type_engine.new_unknown());
                 let fn_decl = match ty::TyFunctionDecl::type_check(
                     handler,
                     ctx.by_ref(),

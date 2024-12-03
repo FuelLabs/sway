@@ -127,7 +127,7 @@ impl ty::TyMatchBranch {
             )?;
 
         // create a new namespace for this branch result
-        ctx.scoped(handler, Some(branch_span.clone()), |mut scoped_ctx| {
+        ctx.scoped(handler, Some(branch_span.clone()), |scoped_ctx| {
             // for every variable that comes into result block, create a variable declaration,
             // insert it into the branch namespace, and add it to the block of code statements
             let mut code_block_contents: Vec<ty::TyAstNode> = vec![];

@@ -331,8 +331,7 @@ where
             return Err(handler);
         }
 
-        let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
+        let (r, lexical_scope_id) = self.ctx.scoped_and_lexical_scope_id(&handler, None, |ctx| {
             TyDecl::type_check(
                 &handler,
                 ctx,
@@ -343,12 +342,15 @@ where
         // Uncomment this to understand why an entry function was not generated
         //println!("{:#?}", handler);
 
-        let (decl, namespace) = r.map_err(|_| handler.clone())?;
+        let decl = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            *self.ctx.namespace = namespace;
+            self.ctx
+                .namespace
+                .module_mut(engines)
+                .current_lexical_scope_id = lexical_scope_id;
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
@@ -393,19 +395,22 @@ where
             return Err(handler);
         }
 
-        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
+        let (r, lexical_scope_id) = self.ctx.scoped_and_lexical_scope_id(&handler, None, |ctx| {
             TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 
         // Uncomment this to understand why auto impl failed for a type.
         //println!("{:#?}", handler);
 
-        let (decl, namespace) = r.map_err(|_| handler.clone())?;
+        let decl = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            *self.ctx.namespace = namespace;
+            self.ctx
+                .namespace
+                .module_mut(engines)
+                .current_lexical_scope_id = lexical_scope_id;
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
