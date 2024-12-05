@@ -452,7 +452,7 @@ impl Root {
             }
         } else {
             // Symbol not found
-//	    dbg!("item lookup");
+	    //	    dbg!("item lookup");
 //	    dbg!(&item);
             return Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: item.clone(),
@@ -868,13 +868,17 @@ impl Root {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+//	let problem = call_path.suffix.as_str() == "MyStruct";
+//	if problem {
+//	    dbg!(&mod_path);
+//	    dbg!(&call_path);
+//	}
+
         let (decl, _) =
             self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
         Ok(decl)
     }
 
-    // TODO: Move this into root, and separate into two: Check if call_path can be resolved in the local scope, otherwise check if it can be resolved as an absolute path.
-    // TODO: Move type_check_context::resolve_call_path_with_visibility_check_and_modpath to here, to avoid external mod_paths to be decontextualized.
     pub(crate) fn resolve_call_path_and_mod_path(
         &self,
         handler: &Handler,
@@ -896,6 +900,15 @@ impl Root {
 //	    .chain(&call_path.prefixes)
 //	    .cloned()
 	//	    .collect();
+
+//	let problem = call_path.suffix.as_str() == "MyStruct";
+//
+//	if problem {
+//	    dbg!(&mod_path);
+//	    dbg!(&call_path);
+//	    // b::MyStruct is not resolved correctly
+//	}
+
 	assert!(matches!(call_path.callpath_type, CallPathType::Full));
         self.resolve_symbol_and_mod_path(
             handler,
@@ -967,6 +980,18 @@ impl Root {
     ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
 	assert!(!mod_path.is_empty());
 	assert!(mod_path[0] == *self.current_package_name());
+
+//	let problem = symbol.as_str() == "MyStruct"
+//	    && mod_path.len() == 1
+//	    && mod_path[0].as_str() == "import_star_name_clash";
+	
+
+//	if problem {
+//	    dbg!(&mod_path);
+//	    dbg!(&symbol);
+//	    // b::MyStruct is not resolved correctly
+//	}
+
         // This block tries to resolve associated types
         let mut module = &self.current_package;
         let mut current_mod_path = vec![mod_path[0].clone()];
@@ -1001,11 +1026,25 @@ impl Root {
 
         self.require_module(handler, &mod_path.to_vec())
             .and_then(|module| {
-                let decl = module
+//                let decl = module
+//                    .current_lexical_scope()
+//                    .items
+		//                    .resolve_symbol(handler, engines, symbol, self.current_package_name())?;
+		// Ok((decl, mod_path.to_vec()))
+		match module
                     .current_lexical_scope()
                     .items
-                    .resolve_symbol(handler, engines, symbol, self.current_package_name())?;
-                Ok((decl, mod_path.to_vec()))
+		    .resolve_symbol(handler, engines, symbol, self.current_package_name()) {
+			Err(err) => {
+//			    if problem {
+//				dbg!(&mod_path);
+//				dbg!(&symbol);
+//				panic!();
+//			    }
+			    return Err(err);
+			}
+			Ok(decl) => Ok((decl, mod_path.to_vec()))
+		    }
             })
     }
 }

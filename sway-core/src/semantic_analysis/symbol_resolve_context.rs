@@ -208,6 +208,14 @@ impl<'a> SymbolResolveContext<'a> {
         call_path: &CallPath,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
 	let full_path = call_path.to_fullpath(&self.engines, &self.namespace());
+
+//	let problem = call_path.suffix.as_str() == "MyStruct";
+//	if problem {
+//	    dbg!(&mod_path);
+//	    dbg!(&call_path);
+//	    dbg!(&full_path);
+//	}
+	
         let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
             handler,
             self.engines,

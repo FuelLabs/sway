@@ -165,7 +165,10 @@ impl TyImplSelfOrTrait {
                     .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
 
+//		let problem = trait_name.suffix().as_str() == "Eq";
+//		if problem {
 //		dbg!(&trait_name);
+//		}
                 let impl_trait = match ctx
                     .namespace()
                     .resolve_call_path_typed(handler, engines, &trait_name, ctx.self_type())

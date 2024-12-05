@@ -183,6 +183,7 @@ impl Items {
                     symbol.span(),
                 )));
             } else {
+		//panic!();
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
                     name: symbol.clone(),
                     paths: decls
@@ -195,7 +196,7 @@ impl Items {
         }
 
         // Symbol not found
-//	let problem = symbol.as_str() == "codec";
+//	let problem = symbol.as_str() == "core";
 //	if problem {
 //	    dbg!("resolve symbol");
 //	    dbg!(&symbol);

@@ -229,9 +229,13 @@ impl Namespace {
 	self.module_from_absolute_path(&vec![name.clone()]).is_some()
     }
     
-    pub(crate) fn current_module_has_binding(&self, engines: &Engines, symbol: &Ident) -> bool {
+//    pub(crate) fn current_module_has_binding(&self, engines: &Engines, symbol: &Ident) -> bool {
+//	self.module_has_binding(engines, self.current_mod_path(), symbol)
+//    }
+
+    pub(crate) fn module_has_binding(&self, engines: &Engines, mod_path: &ModulePathBuf, symbol: &Ident) -> bool {
 	let dummy_handler = Handler::default();
-	self.root.item_lookup(&dummy_handler, engines, symbol, &self.current_mod_path, &self.current_mod_path, true).is_ok()
+	self.root.item_lookup(&dummy_handler, engines, symbol, mod_path, &self.current_mod_path, true).is_ok()
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
@@ -292,13 +296,14 @@ impl Namespace {
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
 	let full_path = call_path.to_fullpath(engines, &self);
 //	let problem =
-//	    call_path.suffix.as_str() == "Some"
-//	    && self.current_mod_path.len() == 2
-//	    && self.current_mod_path[0].as_str() == "std"
-//	    && self.current_mod_path[1].as_str() == "vec";
+//	    call_path.suffix.as_str() == "Eq"
+//	    && call_path.prefixes.len() == 2
+//	    && call_path.prefixes[0].as_str() == "core"
+//	    && call_path.prefixes[1].as_str() == "ops";
 //	if problem {
 //	    dbg!(call_path);
 //	    dbg!(&full_path);
+//	    dbg!(self.current_mod_path());
 //	};
         self.root.resolve_call_path(
             handler,

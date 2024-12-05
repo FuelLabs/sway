@@ -261,14 +261,27 @@ pub fn resolve_call_path(
     call_path: &CallPath,
     self_type: Option<TypeId>,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-    let full_path = call_path.to_fullpath(engines, namespace);
-    let (decl, mod_path) = namespace
+//    let full_path = call_path.to_fullpath(engines, namespace);
+
+//    let problem = call_path.suffix.as_str() == "MyStruct"
+//	&& full_path.prefixes.len() == 1
+//	&& full_path.prefixes[0].as_str() == "import_star_name_clash";
+//    if problem {
+//	dbg!(&mod_path);
+//	dbg!(&call_path);
+//	dbg!(&full_path);
+//	dbg!(&namespace.current_mod_path());
+//    }
+
+    let full_path = call_path.to_fullpath_from_mod_path(engines, namespace, &mod_path.to_vec());
+    
+    let (decl, decl_mod_path) = namespace
         .root
         .resolve_call_path_and_mod_path(handler, engines, mod_path, &full_path, self_type)?;
 
     // Private declarations are visibile within their own module, so no need to check for
     // visibility in that case
-    if mod_path == full_path.prefixes {
+    if decl_mod_path == *namespace.current_mod_path() {
 	return Ok(decl);
     }
 
@@ -320,7 +333,7 @@ pub fn decl_to_type_info(
             ty::TyDecl::GenericTypeForFunctionScope(decl) => {
                 (*engines.te().get(decl.type_id)).clone()
             }
-            _ => {
+            _ =>{ 
 //		    dbg!("decl_to_type_info");
 //		    dbg!(&symbol);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
