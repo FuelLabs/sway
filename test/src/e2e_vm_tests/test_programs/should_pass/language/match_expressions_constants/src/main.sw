@@ -1,6 +1,6 @@
 script;
 
-mod lib;
+pub mod lib;
 mod top_level;
 mod in_structs;
 

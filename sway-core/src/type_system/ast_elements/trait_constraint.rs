@@ -1,28 +1,27 @@
+use crate::{
+    engine_threading::*,
+    language::{parsed::Supertrait, ty, CallPath},
+    semantic_analysis::{
+        declaration::{insert_supertraits_into_namespace, SupertraitOf},
+        TypeCheckContext,
+    },
+    type_system::priv_prelude::*,
+    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
+    EnforceTypeArguments,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
 };
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::Spanned;
 
-use crate::{
-    engine_threading::*,
-    language::{parsed::Supertrait, ty, CallPath},
-    semantic_analysis::{
-        declaration::{insert_supertraits_into_namespace, SupertraitOf},
-        type_check_context::EnforceTypeArguments,
-        TypeCheckContext,
-    },
-    type_system::priv_prelude::*,
-    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
-};
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitConstraint {
     pub trait_name: CallPath,
     pub type_arguments: Vec<TypeArgument>,
@@ -98,8 +97,8 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_arguments.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_arguments.subst(ctx)
     }
 }
 
@@ -137,7 +136,7 @@ impl TraitConstraint {
     pub(crate) fn type_check(
         &mut self,
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         // Right now we don't have the ability to support defining a type for a
         // trait constraint using a callpath directly, so we check to see if the
@@ -170,11 +169,7 @@ impl TraitConstraint {
                     EnforceTypeArguments::Yes,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    ctx.engines
-                        .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
         }
 
         Ok(())
@@ -197,9 +192,8 @@ impl TraitConstraint {
         let mut type_arguments = type_arguments.clone();
 
         match ctx
-            .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path(&Handler::default(), trait_name)
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

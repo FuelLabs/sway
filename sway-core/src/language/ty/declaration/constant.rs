@@ -1,11 +1,3 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
@@ -15,8 +7,15 @@ use crate::{
     transform,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyConstantDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
@@ -93,11 +92,11 @@ impl IsConcrete for TyConstantDecl {
 }
 
 impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.return_type.subst(type_mapping, ctx);
-            self.type_ascription.subst(type_mapping, ctx);
-            self.value.subst(type_mapping, ctx);
+            self.return_type.subst(ctx);
+            self.type_ascription.subst(ctx);
+            self.value.subst(ctx);
         }
     }
 }

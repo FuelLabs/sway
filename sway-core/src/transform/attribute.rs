@@ -21,18 +21,17 @@
 //!   #[foo(bar, bar)]
 
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
+use std::{hash::Hash, sync::Arc};
 use sway_ast::Literal;
 use sway_types::{
     constants::{
-        ALLOW_DEAD_CODE_NAME, ALLOW_DEPRECATED_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
-        CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
+        ALLOW_DEAD_CODE_NAME, ALLOW_DEPRECATED_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
     },
     Ident, Span, Spanned,
 };
 
-use std::{hash::Hash, sync::Arc};
-
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AttributeArg {
     pub name: Ident,
     pub value: Option<Literal>,
@@ -48,7 +47,7 @@ impl Spanned for AttributeArg {
 /// An attribute has a name (i.e "doc", "storage"),
 /// a vector of possible arguments and
 /// a span from its declaration.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Attribute {
     pub name: Ident,
     pub args: Vec<AttributeArg>,
@@ -56,7 +55,7 @@ pub struct Attribute {
 }
 
 /// Valid kinds of attributes supported by the compiler
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum AttributeKind {
     Doc,
     DocComment,
@@ -92,17 +91,20 @@ impl AttributeKind {
                 ALLOW_DEAD_CODE_NAME.to_string(),
                 ALLOW_DEPRECATED_NAME.to_string(),
             ]),
-            Cfg => Some(vec![
-                CFG_TARGET_ARG_NAME.to_string(),
-                CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
-                CFG_EXPERIMENTAL_NEW_ENCODING.to_string(),
-            ]),
+            Cfg => {
+                let mut cfgs = vec![
+                    CFG_TARGET_ARG_NAME.to_string(),
+                    CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
+                ];
+                cfgs.extend(sway_features::CFG.iter().map(|x| x.to_string()));
+                Some(cfgs)
+            }
         }
     }
 }
 
 /// Stores the attributes associated with the type.
-#[derive(Default, Clone, Debug, Eq, PartialEq)]
+#[derive(Default, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AttributesMap(Arc<IndexMap<AttributeKind, Vec<Attribute>>>);
 
 impl AttributesMap {

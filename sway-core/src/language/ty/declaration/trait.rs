@@ -1,11 +1,3 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::{
         DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
@@ -15,19 +7,26 @@ use crate::{
     has_changes,
     language::{
         parsed::{self, TraitDeclaration},
+        ty::{TyDecl, TyDeclParsedType},
         CallPath, Visibility,
     },
     semantic_analysis::{
-        type_check_context::MonomorphizeHelper, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext,
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
     },
     transform,
     type_system::*,
 };
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyDecl, TyDeclParsedType};
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTraitDecl {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -45,7 +44,7 @@ impl TyDeclParsedType for TyTraitDecl {
     type ParsedType = TraitDeclaration;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyTraitInterfaceItem {
     TraitFn(DeclRefTraitFn),
     Constant(DeclRefConstant),
@@ -81,7 +80,7 @@ impl DebugWithEngines for TyTraitInterfaceItem {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),
@@ -276,16 +275,16 @@ impl Spanned for TyTraitItem {
 }
 
 impl SubstTypes for TyTraitDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.type_parameters.subst(type_mapping, ctx);
+            self.type_parameters.subst(ctx);
             self.interface_surface
                 .iter_mut()
                 .fold(HasChanges::No, |has_changes, item| match item {
                     TyTraitInterfaceItem::TraitFn(item_ref) => {
                         if let Some(new_item_ref) = item_ref
                             .clone()
-                            .subst_types_and_insert_new_with_parent(type_mapping, ctx) {
+                            .subst_types_and_insert_new_with_parent(ctx) {
                             item_ref.replace_id(*new_item_ref.id());
                             HasChanges::Yes
                         } else {
@@ -295,7 +294,7 @@ impl SubstTypes for TyTraitDecl {
                     TyTraitInterfaceItem::Constant(decl_ref) => {
                         if let Some(new_decl_ref) = decl_ref
                             .clone()
-                            .subst_types_and_insert_new(type_mapping, ctx) {
+                            .subst_types_and_insert_new(ctx) {
                             decl_ref.replace_id(*new_decl_ref.id());
                             HasChanges::Yes
                         } else{
@@ -305,7 +304,7 @@ impl SubstTypes for TyTraitDecl {
                     TyTraitInterfaceItem::Type(decl_ref) => {
                         if let Some(new_decl_ref) = decl_ref
                             .clone()
-                            .subst_types_and_insert_new(type_mapping, ctx) {
+                            .subst_types_and_insert_new(ctx) {
                             decl_ref.replace_id(*new_decl_ref.id());
                             HasChanges::Yes
                         } else{
@@ -317,7 +316,7 @@ impl SubstTypes for TyTraitDecl {
                 TyTraitItem::Fn(item_ref) => {
                     if let Some(new_item_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new_with_parent(type_mapping, ctx)
+                        .subst_types_and_insert_new_with_parent(ctx)
                     {
                         item_ref.replace_id(*new_item_ref.id());
                         HasChanges::Yes
@@ -328,7 +327,7 @@ impl SubstTypes for TyTraitDecl {
                 TyTraitItem::Constant(item_ref) => {
                     if let Some(new_decl_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new_with_parent(type_mapping, ctx)
+                        .subst_types_and_insert_new_with_parent(ctx)
                     {
                         item_ref.replace_id(*new_decl_ref.id());
                         HasChanges::Yes
@@ -339,7 +338,7 @@ impl SubstTypes for TyTraitDecl {
                 TyTraitItem::Type(item_ref) => {
                     if let Some(new_decl_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new_with_parent(type_mapping, ctx)
+                        .subst_types_and_insert_new_with_parent(ctx)
                     {
                         item_ref.replace_id(*new_decl_ref.id());
                         HasChanges::Yes
@@ -353,11 +352,11 @@ impl SubstTypes for TyTraitDecl {
 }
 
 impl SubstTypes for TyTraitItem {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, ctx),
-            TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, ctx),
-            TyTraitItem::Type(type_decl) => type_decl.subst(type_mapping, ctx),
+            TyTraitItem::Fn(fn_decl) => fn_decl.subst(ctx),
+            TyTraitItem::Constant(const_decl) => const_decl.subst(ctx),
+            TyTraitItem::Type(type_decl) => type_decl.subst(ctx),
         }
     }
 }

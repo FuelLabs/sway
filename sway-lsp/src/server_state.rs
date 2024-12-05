@@ -126,9 +126,6 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
-        let experimental = sway_core::ExperimentalFlags {
-            new_encoding: false,
-        };
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
@@ -150,11 +147,11 @@ impl ServerState {
                                 );
                             }
                         }
-
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
                             file_versions: ctx.file_versions,
                         });
+
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
@@ -163,14 +160,13 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
-                            experimental,
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
-                                // Find the module id from the path
+                                // Find the program id from the path
                                 match session::program_id_from_path(&path, &engines_clone) {
                                     Ok(program_id) => {
-                                        // Use the module id to get the metrics for the module
+                                        // Use the program id to get the metrics for the program
                                         if let Some(metrics) = session.metrics.get(&program_id) {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines

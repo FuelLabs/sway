@@ -5,12 +5,11 @@ use lsp_types::{
 };
 use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl, TyFunctionParameter},
-    namespace::Items,
-    Engines, TypeId, TypeInfo,
+    Engines, Namespace, TypeId, TypeInfo,
 };
 
 pub(crate) fn to_completion_items(
-    namespace: &Items,
+    namespace: &Namespace,
     engines: &Engines,
     ident_to_complete: &TokenIdent,
     fn_decl: &TyFunctionDecl,
@@ -24,7 +23,7 @@ pub(crate) fn to_completion_items(
 /// Gathers the given [`TypeId`] struct's fields and methods and builds completion items.
 fn completion_items_for_type_id(
     engines: &Engines,
-    namespace: &Items,
+    namespace: &Namespace,
     type_id: TypeId,
     position: Position,
 ) -> Vec<CompletionItem> {
@@ -46,7 +45,10 @@ fn completion_items_for_type_id(
         }
     }
 
-    for method in namespace.get_methods_for_type(engines, type_id) {
+    for method in namespace
+        .module(engines)
+        .get_methods_for_type(engines, type_id)
+    {
         let method = method.expect_typed();
         let fn_decl = engines.de().get_function(&method.id().clone());
         let params = &fn_decl.parameters;
@@ -134,7 +136,7 @@ fn replace_self_with_type_str(
 /// if it can resolve `a` in the given function.
 fn type_id_of_raw_ident(
     engines: &Engines,
-    namespace: &Items,
+    namespace: &Namespace,
     ident_name: &str,
     fn_decl: &TyFunctionDecl,
 ) -> Option<TypeId> {
@@ -152,6 +154,7 @@ fn type_id_of_raw_ident(
         if parts[i].ends_with(')') {
             let method_name = parts[i].split_at(parts[i].find('(').unwrap_or(0)).0;
             curr_type_id = namespace
+                .module(engines)
                 .get_methods_for_type(engines, curr_type_id?)
                 .into_iter()
                 .find_map(|method| {

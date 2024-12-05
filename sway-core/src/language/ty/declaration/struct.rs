@@ -1,24 +1,21 @@
-use std::{
-    cmp::Ordering,
-    hash::{Hash, Hasher},
-};
-
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{parsed::StructDeclaration, CallPath, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
+    language::{parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
     type_system::*,
     Namespace,
 };
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStructDecl {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
@@ -68,10 +65,10 @@ impl HashWithEngines for TyStructDecl {
 }
 
 impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.fields.subst(type_mapping, ctx);
-            self.type_parameters.subst(type_mapping, ctx);
+            self.fields.subst(ctx);
+            self.type_parameters.subst(ctx);
         }
     }
 }
@@ -182,7 +179,7 @@ impl From<StructAccessInfo> for (bool, bool) {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyStructField {
     pub visibility: Visibility,
     pub name: Ident,
@@ -279,7 +276,7 @@ impl OrdWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.subst_inner(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(ctx)
     }
 }

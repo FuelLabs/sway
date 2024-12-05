@@ -250,7 +250,6 @@ impl Scrutinee {
                 let name = vec![TypeInfo::Custom {
                     qualified_call_path: struct_name.clone().into(),
                     type_arguments: None,
-                    root_type_id: None,
                 }];
                 let fields = fields
                     .iter()
@@ -271,7 +270,6 @@ impl Scrutinee {
                 let name = vec![TypeInfo::Custom {
                     qualified_call_path: enum_name.clone().into(),
                     type_arguments: None,
-                    root_type_id: None,
                 }];
                 let value = value.gather_approximate_typeinfo_dependencies();
                 [name, value].concat()

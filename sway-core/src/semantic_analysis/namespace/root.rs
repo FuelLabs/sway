@@ -1,24 +1,22 @@
 use std::fmt;
 
-use super::{
-    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
-};
+use super::{module::Module, trait_map::TraitMap, Ident};
 use crate::{
     decl_engine::{DeclEngine, DeclRef},
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, StructDecl, TyDecl, TyTraitItem},
-        CallPath, Visibility,
+        ty::{self, StructDecl, TyDecl},
+        Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    TypeId, TypeInfo,
+    TypeId,
 };
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Named, Spanned};
+use sway_types::Spanned;
 use sway_utils::iter_prefixes;
 
 #[derive(Clone, Debug)]
@@ -181,7 +179,7 @@ impl Root {
         dst: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
@@ -303,8 +301,8 @@ impl Root {
                 (decl.clone(), path.clone(), *reexport)
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
-			"The name {symbol} was bound in a star import, but no corresponding module paths were found",
-			item.span(),
+            "The name {symbol} was bound in a star import, but no corresponding module paths were found",
+            item.span(),
                     )));
             } else {
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
@@ -358,7 +356,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
@@ -445,7 +443,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
 
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
@@ -610,7 +608,7 @@ impl Root {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, engines, src, dst)?;
 
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
@@ -684,405 +682,51 @@ impl Root {
         Ok(())
     }
 
+    /// Check that all accessed modules in the src path are visible from the dst path.
+    /// If src and dst have a common ancestor module that is private, this privacy modifier is
+    /// ignored for visibility purposes, since src and dst are both behind that private visibility
+    /// modifier.  Additionally, items in a private module are visible to its immediate parent.
     fn check_module_privacy(
         &self,
         handler: &Handler,
         engines: &Engines,
         src: &ModulePath,
+        dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let dst = self.module.mod_path();
-        // you are always allowed to access your ancestor's symbols
-        if !is_ancestor(src, dst) {
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(src).skip(1) {
-                let module = self.module.lookup_submodule(handler, engines, prefix)?;
-                if module.visibility().is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    handler.emit_err(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
-            }
-        }
-        Ok(())
-    }
+        // Calculate the number of src prefixes whose privacy is ignored.
+        let mut ignored_prefixes = 0;
 
-    ////// NAME RESOLUTION //////
-
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
-        Ok(decl)
-    }
-
-    pub(crate) fn resolve_call_path_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-        let symbol_path: Vec<_> = mod_path
+        // Ignore visibility of common ancestors
+        ignored_prefixes += src
             .iter()
-            .chain(&call_path.prefixes)
-            .cloned()
-            .collect();
-        self.resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            &symbol_path,
-            &call_path.suffix,
-            self_type,
-        )
-    }
+            .zip(dst)
+            .position(|(src_id, dst_id)| src_id != dst_id)
+            .unwrap_or(dst.len());
 
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_call_path_and_root_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        root_type_id: TypeId,
-        mut as_trait: Option<CallPath>,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        // This block tries to resolve associated types
-        let mut decl_opt = None;
-        let mut type_id_opt = Some(root_type_id);
-        for ident in call_path.prefixes.iter() {
-            if let Some(type_id) = type_id_opt {
-                type_id_opt = None;
-                decl_opt = Some(self.resolve_associated_type_from_type_id(
-                    handler,
-                    engines,
-                    module,
-                    ident,
-                    type_id,
-                    as_trait.clone(),
-                    self_type,
-                )?);
-                as_trait = None;
-            } else if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(
-                    handler,
-                    engines,
-                    module,
-                    ident,
-                    decl,
-                    as_trait.clone(),
-                    self_type,
-                )?);
-                as_trait = None;
+        // Ignore visibility of direct submodules of the destination module
+        if dst.len() == ignored_prefixes {
+            ignored_prefixes += 1;
+        }
+
+        // Check visibility of remaining submodules in the source path
+        for prefix in iter_prefixes(src).skip(ignored_prefixes) {
+            let module = self.module.lookup_submodule(handler, engines, prefix)?;
+            if module.visibility().is_private() {
+                let prefix_last = prefix[prefix.len() - 1].clone();
+                handler.emit_err(CompileError::ImportPrivateModule {
+                    span: prefix_last.span(),
+                    name: prefix_last,
+                });
             }
         }
-        if let Some(type_id) = type_id_opt {
-            let decl = self.resolve_associated_type_from_type_id(
-                handler,
-                engines,
-                module,
-                &call_path.suffix,
-                type_id,
-                as_trait,
-                self_type,
-            )?;
-            return Ok(decl);
-        }
-        if let Some(decl) = decl_opt {
-            let decl = self.resolve_associated_item(
-                handler,
-                engines,
-                module,
-                &call_path.suffix,
-                decl,
-                as_trait,
-                self_type,
-            )?;
-            Ok(decl)
-        } else {
-            Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
-        }
-    }
 
-    /// Given a path to a module and the identifier of a symbol within that module, resolve its
-    /// declaration.
-    ///
-    /// If the symbol is within the given module's namespace via import, we recursively traverse
-    /// imports until we find the original declaration.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
-        Ok(decl)
-    }
-
-    fn resolve_symbol_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-        // This block tries to resolve associated types
-        let mut module = &self.module;
-        let mut current_mod_path = vec![];
-        let mut decl_opt = None;
-        for ident in mod_path.iter() {
-            if let Some(decl) = decl_opt {
-                decl_opt = Some(self.resolve_associated_type(
-                    handler, engines, module, ident, decl, None, self_type,
-                )?);
-            } else {
-                match module.submodules.get(ident.as_str()) {
-                    Some(ns) => {
-                        module = ns;
-                        current_mod_path.push(ident.clone());
-                    }
-                    None => {
-                        decl_opt =
-                            Some(self.resolve_symbol_helper(handler, engines, ident, module)?);
-                    }
-                }
-            }
-        }
-        if let Some(decl) = decl_opt {
-            let decl = self
-                .resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
-            return Ok((decl, current_mod_path));
-        }
-
-        self.module
-            .lookup_submodule(handler, engines, mod_path)
-            .and_then(|module| {
-                let decl = self.resolve_symbol_helper(handler, engines, symbol, module)?;
-                Ok((decl, mod_path.to_vec()))
-            })
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_type(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
-        let type_id = engines
-            .te()
-            .insert(engines, type_info, symbol.span().source_id());
-
-        self.resolve_associated_type_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_item(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
-        let type_id = engines
-            .te()
-            .insert(engines, type_info, symbol.span().source_id());
-
-        self.resolve_associated_item_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )
-    }
-
-    fn decl_to_type_info(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        decl: ResolvedDeclaration,
-    ) -> Result<TypeInfo, ErrorEmitted> {
-        match decl {
-            ResolvedDeclaration::Parsed(_decl) => todo!(),
-            ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
-                ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
-                ty::TyDecl::TraitTypeDecl(type_decl) => {
-                    let type_decl = engines.de().get_type(&type_decl.decl_id);
-                    if type_decl.ty.is_none() {
-                        return Err(handler.emit_err(CompileError::Internal(
-                            "Trait type declaration has no type",
-                            symbol.span(),
-                        )));
-                    }
-                    (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
-                }
-                _ => {
-                    return Err(handler.emit_err(CompileError::SymbolNotFound {
-                        name: symbol.clone(),
-                        span: symbol.span(),
-                    }))
-                }
-            }),
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_type_from_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        type_id: TypeId,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let item_decl = self.resolve_associated_item_from_type_id(
-            handler, engines, module, symbol, type_id, as_trait, self_type,
-        )?;
-        Ok(item_decl)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn resolve_associated_item_from_type_id(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        module: &Module,
-        symbol: &Ident,
-        type_id: TypeId,
-        as_trait: Option<CallPath>,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let type_id = if engines.te().get(type_id).is_self_type() {
-            if let Some(self_type) = self_type {
-                self_type
-            } else {
-                return Err(handler.emit_err(CompileError::Internal(
-                    "Self type not provided.",
-                    symbol.span(),
-                )));
-            }
-        } else {
-            type_id
-        };
-        let item_ref = module
-            .current_items()
-            .implemented_traits
-            .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
-        match item_ref {
-            ResolvedTraitImplItem::Parsed(_item) => todo!(),
-            ResolvedTraitImplItem::Typed(item) => match item {
-                TyTraitItem::Fn(fn_ref) => Ok(ResolvedDeclaration::Typed(fn_ref.into())),
-                TyTraitItem::Constant(const_ref) => {
-                    Ok(ResolvedDeclaration::Typed(const_ref.into()))
-                }
-                TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
-            },
-        }
-    }
-
-    fn resolve_symbol_helper(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        module: &Module,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        // Check locally declared items. Any name clash with imports will have already been reported as an error.
-        if let Some(decl) = module.current_items().symbols.get(symbol) {
-            return Ok(decl.clone());
-        }
-        // Check item imports
-        if let Some((_, _, decl, _)) = module.current_items().use_item_synonyms.get(symbol) {
-            return Ok(decl.clone());
-        }
-        // Check glob imports
-        if let Some(decls) = module.current_items().use_glob_synonyms.get(symbol) {
-            if decls.len() == 1 {
-                return Ok(decls[0].1.clone());
-            } else if decls.is_empty() {
-                return Err(handler.emit_err(CompileError::Internal(
-                    "The name {symbol} was bound in a star import, but no corresponding module paths were found",
-                    symbol.span(),
-                )));
-            } else {
-                return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
-                    name: symbol.clone(),
-                    paths: decls
-                        .iter()
-                        .map(|(path, decl, _)| {
-                            let mut path_strs =
-                                path.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-                            // Add the enum name to the path if the decl is an enum variant.
-                            match decl {
-                                ResolvedDeclaration::Parsed(decl) => {
-                                    if let Declaration::EnumVariantDeclaration(decl) = decl {
-                                        let enum_ref = engines.pe().get_enum(&decl.enum_ref);
-                                        path_strs.push(enum_ref.name().to_string())
-                                    };
-                                }
-                                ResolvedDeclaration::Typed(decl) => {
-                                    if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                        enum_ref,
-                                        ..
-                                    }) = decl
-                                    {
-                                        path_strs.push(enum_ref.name().to_string())
-                                    };
-                                }
-                            }
-                            path_strs.join("::")
-                        })
-                        .collect(),
-                    span: symbol.span(),
-                }));
-            }
-        }
-        // Symbol not found
-        Err(handler.emit_err(CompileError::SymbolNotFound {
-            name: symbol.clone(),
-            span: symbol.span(),
-        }))
+        Ok(())
     }
 }
 
 impl From<Module> for Root {
     fn from(module: Module) -> Self {
         Root { module }
-    }
-}
-
-impl From<Namespace> for Root {
-    fn from(namespace: Namespace) -> Self {
-        namespace.root
     }
 }
 

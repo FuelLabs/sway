@@ -274,7 +274,7 @@ fn config_to_doc(
                     "{} = config {}, {}, 0x{}",
                     name,
                     ty,
-                    decode_fn.get_name(context),
+                    decode_fn.get().get_name(context),
                     bytes,
                 ))
                 .append(md_namer.md_idx_to_doc(context, opt_metadata)),

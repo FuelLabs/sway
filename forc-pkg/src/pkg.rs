@@ -1,10 +1,7 @@
 use crate::manifest::GenericManifestFile;
 use crate::{
     lock::Lock,
-    manifest::{
-        build_profile::ExperimentalFlags, Dependency, ManifestFile, MemberManifestFiles,
-        PackageManifestFile,
-    },
+    manifest::{Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
     source::{self, IPFSNode, Source},
     BuildProfile,
 };
@@ -49,8 +46,9 @@ use sway_core::{
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{PrintAsm, PrintIr};
+use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_features::ExperimentalFeatures;
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
@@ -302,6 +300,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Profile the build process.
+    pub profile: bool,
     /// If set, outputs compilation metrics info in JSON format.
     pub metrics_outfile: Option<String>,
     /// Warnings must be treated as compiler errors.
@@ -310,8 +310,10 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
-    /// Set of experimental flags
-    pub experimental: ExperimentalFlags,
+    /// Set of enabled experimental flags
+    pub experimental: Vec<sway_features::Feature>,
+    /// Set of disabled experimental flags
+    pub no_experimental: Vec<sway_features::Feature>,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -893,22 +895,19 @@ fn validate_version(member_manifests: &MemberManifestFiles) -> Result<()> {
 /// If required minimum forc version is higher than current forc version return an error with
 /// upgrade instructions
 fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
-    match &pkg_manifest.project.forc_version {
-        Some(min_forc_version) => {
-            // Get the current version of the toolchain
-            let crate_version = env!("CARGO_PKG_VERSION");
-            let toolchain_version = semver::Version::parse(crate_version)?;
-            if toolchain_version < *min_forc_version {
-                bail!(
-                    "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
-                    pkg_manifest.project.name,
-                    min_forc_version,
-                    crate_version,
-                    crate_version
-                );
-            }
+    if let Some(min_forc_version) = &pkg_manifest.project.forc_version {
+        // Get the current version of the toolchain
+        let crate_version = env!("CARGO_PKG_VERSION");
+        let toolchain_version = semver::Version::parse(crate_version)?;
+        if toolchain_version < *min_forc_version {
+            bail!(
+                "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
+                pkg_manifest.project.name,
+                min_forc_version,
+                crate_version,
+                crate_version
+            );
         }
-        None => {}
     };
     Ok(())
 }
@@ -1564,11 +1563,9 @@ pub fn sway_build_config(
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
+    .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
-    .with_optimization_level(build_profile.optimization_level)
-    .with_experimental(sway_core::ExperimentalFlags {
-        new_encoding: build_profile.experimental.new_encoding,
-    });
+    .with_optimization_level(build_profile.optimization_level);
     Ok(build_config)
 }
 
@@ -1594,7 +1591,7 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1760,6 +1757,7 @@ pub fn compile(
     engines: &Engines,
     namespace: &mut namespace::Root,
     source_map: &mut SourceMap,
+    experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
 
@@ -1785,6 +1783,7 @@ pub fn compile(
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
+        pkg.name,
         "compile to ast",
         "compile_to_ast",
         sway_core::compile_to_ast(
@@ -1795,6 +1794,7 @@ pub fn compile(
             Some(&sway_build_config),
             &pkg.name,
             None,
+            experimental
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -1823,20 +1823,28 @@ pub fn compile(
     }
 
     let asm_res = time_expr!(
+        pkg.name,
         "compile ast to asm",
         "compile_ast_to_asm",
-        sway_core::ast_to_asm(&handler, engines, &programs, &sway_build_config),
+        sway_core::ast_to_asm(
+            &handler,
+            engines,
+            &programs,
+            &sway_build_config,
+            experimental
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
 
-    const OLD_ENCODING_VERSION: &str = "0";
-    const NEW_ENCODING_VERSION: &str = "1";
+    const ENCODING_V0: &str = "0";
+    const ENCODING_V1: &str = "1";
     const SPEC_VERSION: &str = "1";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let program_abi_res = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 fuel_abi::generate_program_abi(
@@ -1847,11 +1855,11 @@ pub fn compile(
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
-                    profile
-                        .experimental
-                        .new_encoding
-                        .then(|| NEW_ENCODING_VERSION.into())
-                        .unwrap_or(OLD_ENCODING_VERSION.into()),
+                    if experimental.new_encoding {
+                        ENCODING_V1.into()
+                    } else {
+                        ENCODING_V0.into()
+                    },
                     SPEC_VERSION.into(),
                 ),
                 Some(sway_build_config.clone()),
@@ -1875,6 +1883,7 @@ pub fn compile(
             };
 
             let abi = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 evm_abi::generate_abi_program(typed_program, engines),
@@ -1886,8 +1895,6 @@ pub fn compile(
 
             ProgramABI::Evm(ops)
         }
-
-        BuildTarget::MidenVM => ProgramABI::MidenVM(()),
     };
 
     let entries = asm_res
@@ -1899,22 +1906,29 @@ pub fn compile(
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
 
-    let asm = match asm_res {
+    let mut asm = match asm_res {
         Err(_) => return fail(handler),
         Ok(asm) => asm,
     };
 
     let bc_res = time_expr!(
+        pkg.name,
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se(), &sway_build_config),
+        sway_core::asm_to_bytecode(
+            &handler,
+            &mut asm,
+            source_map,
+            engines.se(),
+            &sway_build_config
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
 
     let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
-    let compiled = match bc_res {
+    let mut compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };
@@ -1923,9 +1937,12 @@ pub fn compile(
 
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
+    // Metadata to be placed into the binary.
+    let mut md = [0u8, 0, 0, 0, 0, 0, 0, 0];
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
+        let mut configurables_offset = compiled.bytecode.len() as u64;
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
             configurables.retain(|c| {
@@ -1934,12 +1951,22 @@ pub fn compile(
                     .contains_key(&c.name)
             });
             // Set the actual offsets in the JSON object
-            for (config, offset) in compiled.named_data_section_entries_offsets {
-                if let Some(idx) = configurables.iter().position(|c| c.name == config) {
-                    configurables[idx].offset = offset;
+            for (config, offset) in &compiled.named_data_section_entries_offsets {
+                if *offset < configurables_offset {
+                    configurables_offset = *offset;
+                }
+                if let Some(idx) = configurables.iter().position(|c| &c.name == config) {
+                    configurables[idx].offset = *offset;
                 }
             }
         }
+
+        md = configurables_offset.to_be_bytes();
+    }
+
+    // We know to set the metadata only for fuelvm right now.
+    if let BuildTarget::Fuel = pkg.target {
+        set_bytecode_configurables_offset(&mut compiled, &md);
     }
 
     metrics.bytecode_size = compiled.bytecode.len();
@@ -1957,7 +1984,81 @@ pub fn compile(
         warnings,
         metrics,
     };
+    if sway_build_config.profile {
+        report_assembly_information(&asm, &compiled_package);
+    }
+
     Ok(compiled_package)
+}
+
+/// Reports assembly information for a compiled package to an external `dyno` process through `stdout`.
+fn report_assembly_information(
+    compiled_asm: &sway_core::CompiledAsm,
+    compiled_package: &CompiledPackage,
+) {
+    // Get the bytes of the compiled package.
+    let mut bytes = compiled_package.bytecode.bytes.clone();
+
+    // Attempt to get the data section offset out of the compiled package bytes.
+    let data_offset = u64::from_be_bytes(
+        bytes
+            .iter()
+            .skip(8)
+            .take(8)
+            .cloned()
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+    );
+    let data_section_size = bytes.len() as u64 - data_offset;
+
+    // Remove the data section from the compiled package bytes.
+    bytes.truncate(data_offset as usize);
+
+    // Calculate the unpadded size of each data section section.
+    // Implementation based directly on `sway_core::asm_generation::Entry::to_bytes`, referenced here:
+    // https://github.com/FuelLabs/sway/blob/afd6a6709e7cb11c676059a5004012cc466e653b/sway-core/src/asm_generation/fuel/data_section.rs#L147
+    fn calculate_entry_size(entry: &sway_core::asm_generation::Entry) -> u64 {
+        match &entry.value {
+            sway_core::asm_generation::Datum::Byte(value) => std::mem::size_of_val(value) as u64,
+
+            sway_core::asm_generation::Datum::Word(value) => std::mem::size_of_val(value) as u64,
+
+            sway_core::asm_generation::Datum::ByteArray(bytes)
+            | sway_core::asm_generation::Datum::Slice(bytes) => {
+                if bytes.len() % 8 == 0 {
+                    bytes.len() as u64
+                } else {
+                    ((bytes.len() + 7) & 0xfffffff8_usize) as u64
+                }
+            }
+
+            sway_core::asm_generation::Datum::Collection(items) => {
+                items.iter().map(calculate_entry_size).sum()
+            }
+        }
+    }
+
+    // Compute the assembly information to be reported.
+    let asm_information = sway_core::asm_generation::AsmInformation {
+        bytecode_size: bytes.len() as _,
+        data_section: sway_core::asm_generation::DataSectionInformation {
+            size: data_section_size,
+            used: compiled_asm
+                .0
+                .data_section
+                .iter_all_entries()
+                .map(|entry| calculate_entry_size(&entry))
+                .sum(),
+            value_pairs: compiled_asm.0.data_section.iter_all_entries().collect(),
+        },
+    };
+
+    // Report the assembly information to the `dyno` process through `stdout`.
+    println!(
+        "/dyno info {}",
+        serde_json::to_string(&asm_information).unwrap()
+    );
 }
 
 impl PkgEntry {
@@ -2062,12 +2163,12 @@ fn build_profile_from_opts(
         pkg,
         print,
         time_phases,
+        profile: profile_opt,
         build_profile,
         release,
         metrics_outfile,
         tests,
         error_on_warnings,
-        experimental,
         ..
     } = build_options;
 
@@ -2103,14 +2204,13 @@ fn build_profile_from_opts(
     profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
+    profile.profile |= profile_opt;
     if profile.metrics_outfile.is_none() {
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental = ExperimentalFlags {
-        new_encoding: experimental.new_encoding,
-    };
+    // profile.experimental = *experimental;
 
     Ok(profile)
 }
@@ -2149,6 +2249,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         build_target,
         member_filter,
         experimental,
+        no_experimental,
         ..
     } = &build_options;
 
@@ -2194,9 +2295,8 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         *build_target,
         &build_profile,
         &outputs,
-        sway_core::ExperimentalFlags {
-            new_encoding: experimental.new_encoding,
-        },
+        experimental,
+        no_experimental,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2247,13 +2347,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
 
 fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
     let prog_ty_str = forc_util::program_type_str(&built_pkg.tree_type);
-    // The ansi_term formatters ignore the `std::fmt` right-align
+    // The ansiterm formatters ignore the `std::fmt` right-align
     // formatter, so we manually calculate the padding to align the program
     // type and name around the 10th column ourselves.
     let padded_ty_str = format!("{prog_ty_str:>10}");
     let padding = &padded_ty_str[..padded_ty_str.len() - prog_ty_str.len()];
-    let ty_ansi = ansi_term::Colour::Green.bold().paint(prog_ty_str);
-    let name_ansi = ansi_term::Style::new()
+    let ty_ansi = ansiterm::Colour::Green.bold().paint(prog_ty_str);
+    let name_ansi = ansiterm::Style::new()
         .bold()
         .paint(&built_pkg.descriptor.name);
     debug!("{padding}{ty_ansi} {name_ansi}");
@@ -2307,7 +2407,8 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2341,6 +2442,13 @@ pub fn build(
             &pkg.name,
             &pkg.source.display_compiling(manifest.dir()),
         );
+
+        let experimental = ExperimentalFeatures::new(
+            &manifest.project.experimental,
+            experimental,
+            no_experimental,
+        )
+        .map_err(|err| anyhow!("{err}"))?;
 
         let descriptor = PackageDescriptor {
             name: pkg.name.clone(),
@@ -2399,6 +2507,7 @@ pub fn build(
                 &engines,
                 &mut dep_namespace,
                 &mut source_map,
+                experimental,
             )?;
 
             if let Some(outfile) = profile.metrics_outfile {
@@ -2472,6 +2581,7 @@ pub fn build(
             &engines,
             &mut dep_namespace,
             &mut source_map,
+            experimental,
         )?;
 
         if let Some(outfile) = profile.metrics_outfile {
@@ -2517,7 +2627,8 @@ pub fn check(
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    experimental: sway_core::ExperimentalFlags,
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
@@ -2528,6 +2639,13 @@ pub fn check(
     for (idx, &node) in plan.compilation_order.iter().enumerate() {
         let pkg = &plan.graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+
+        let experimental = ExperimentalFeatures::new(
+            &manifest.project.experimental,
+            experimental,
+            no_experimental,
+        )
+        .map_err(|err| anyhow!("{err}"))?;
 
         // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
         // compiler's namespace. Although we only know the contract id during building, we are
@@ -2576,6 +2694,7 @@ pub fn check(
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
+            experimental,
         );
 
         if retrigger_compilation

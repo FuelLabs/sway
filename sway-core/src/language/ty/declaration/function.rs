@@ -1,37 +1,31 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sha2::{Digest, Sha256};
-use sway_error::handler::{ErrorEmitted, Handler};
-
 use crate::{
+    decl_engine::*,
+    engine_threading::*,
     has_changes,
+    language::{parsed, ty::*, Inline, Purity, Visibility},
     language::{
         parsed::{FunctionDeclaration, FunctionDeclarationKind},
         CallPath,
     },
-    semantic_analysis::type_check_context::MonomorphizeHelper,
-    transform::AttributeKind,
-};
-
-use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    language::{parsed, ty::*, Inline, Purity, Visibility},
     semantic_analysis::TypeCheckContext,
-    transform,
+    transform::{self, AttributeKind},
     type_system::*,
     types::*,
 };
-
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{
     constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
     Ident, Named, Span, Spanned,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyFunctionDeclKind {
     Default,
     Entry,
@@ -39,7 +33,7 @@ pub enum TyFunctionDeclKind {
     Test,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyFunctionDecl {
     pub name: Ident,
     pub body: TyCodeBlock,
@@ -220,21 +214,21 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         if ctx.subst_function_body {
             has_changes! {
-                self.type_parameters.subst(type_mapping, ctx);
-                self.parameters.subst(type_mapping, ctx);
-                self.return_type.subst(type_mapping, ctx);
-                self.body.subst(type_mapping, ctx);
-                self.implementing_for_typeid.subst(type_mapping, ctx);
+                self.type_parameters.subst(ctx);
+                self.parameters.subst(ctx);
+                self.return_type.subst(ctx);
+                self.body.subst(ctx);
+                self.implementing_for_typeid.subst(ctx);
             }
         } else {
             has_changes! {
-                self.type_parameters.subst(type_mapping, ctx);
-                self.parameters.subst(type_mapping, ctx);
-                self.return_type.subst(type_mapping, ctx);
-                self.implementing_for_typeid.subst(type_mapping, ctx);
+                self.type_parameters.subst(ctx);
+                self.parameters.subst(ctx);
+                self.return_type.subst(ctx);
+                self.implementing_for_typeid.subst(ctx);
             }
         }
     }
@@ -489,7 +483,7 @@ impl TyFunctionDecl {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,
@@ -527,8 +521,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.type_id.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.type_id.subst(ctx)
     }
 }
 

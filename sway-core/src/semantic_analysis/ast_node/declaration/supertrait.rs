@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
-use crate::semantic_analysis::type_check_context::EnforceTypeArguments;
+use crate::EnforceTypeArguments;
 use crate::{
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -53,14 +53,8 @@ pub(crate) fn insert_supertraits_into_namespace(
             }
 
             let decl = ctx
-                .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-                .resolve_call_path_typed(
-                    &Handler::default(),
-                    engines,
-                    &supertrait.name,
-                    ctx.self_type(),
-                )
+                .resolve_call_path(&Handler::default(), &supertrait.name)
                 .ok();
 
             match (decl.clone(), supertraits_of) {

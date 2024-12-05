@@ -1,17 +1,14 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     engine_threading::*,
-    language::{parsed::TypeAliasDeclaration, CallPath, Visibility},
+    language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub call_path: CallPath,
@@ -57,22 +54,16 @@ impl HashWithEngines for TyTypeAliasDecl {
 }
 
 impl SubstTypes for TyTypeAliasDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.ty.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.ty.subst(ctx)
     }
 }
 
 impl CreateTypeId for TyTypeAliasDecl {
     fn create_type_id(&self, engines: &Engines) -> TypeId {
-        let type_engine = engines.te();
-        type_engine.insert(
-            engines,
-            TypeInfo::Alias {
-                name: self.name.clone(),
-                ty: self.ty.clone(),
-            },
-            self.name.span().source_id(),
-        )
+        engines
+            .te()
+            .new_alias(engines, self.name.clone(), self.ty.clone())
     }
 }
 

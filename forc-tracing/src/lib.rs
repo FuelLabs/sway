@@ -1,6 +1,6 @@
 //! Utility items shared between forc crates.
 
-use ansi_term::Colour;
+use ansiterm::Colour;
 use std::str;
 use std::{env, io};
 use tracing::{Level, Metadata};

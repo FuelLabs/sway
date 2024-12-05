@@ -1,18 +1,15 @@
+use crate::{
+    engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration,
+    language::ty::TyDeclParsedType, transform, type_system::*,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
-
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration, transform,
-    type_system::*,
-};
-
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTraitType {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
@@ -74,10 +71,10 @@ impl HashWithEngines for TyTraitType {
 }
 
 impl SubstTypes for TyTraitType {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.ty.subst(type_mapping, ctx);
-            self.implementing_type.subst(type_mapping, ctx);
+            self.ty.subst(ctx);
+            self.implementing_type.subst(ctx);
         }
     }
 }

@@ -1,10 +1,9 @@
+use crate::{engine_threading::*, language::ty::*, type_system::*};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-
 use sway_types::Ident;
 
-use crate::{engine_threading::*, language::ty::*, type_system::*};
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyAsmRegisterDeclaration {
     pub initializer: Option<TyExpression>,
     pub(crate) name: Ident,
@@ -32,7 +31,7 @@ impl HashWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl SubstTypes for TyAsmRegisterDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.initializer.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.initializer.subst(ctx)
     }
 }

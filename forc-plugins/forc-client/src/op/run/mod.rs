@@ -23,7 +23,7 @@ use fuels::{
     },
 };
 use fuels_accounts::{provider::Provider, Account};
-use pkg::{manifest::build_profile::ExperimentalFlags, BuiltPackage};
+use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
@@ -267,13 +267,13 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         release: cmd.build_profile.release,
         error_on_warnings: cmd.build_profile.error_on_warnings,
         time_phases: cmd.print.time_phases,
+        profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile.clone(),
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }

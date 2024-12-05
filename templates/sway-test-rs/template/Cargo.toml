@@ -7,7 +7,7 @@ authors = ["{{authors}}"]
 license = "Apache-2.0"
 
 [dev-dependencies]
-fuels = "0.66.1"
+fuels = "0.66.2"
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [[test]]

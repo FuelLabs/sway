@@ -1,7 +1,4 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Named, Span, Spanned};
-
+use super::{TyDeclParsedType, TyTraitItem};
 use crate::{
     decl_engine::DeclRefMixedInterface,
     engine_threading::*,
@@ -9,13 +6,14 @@ use crate::{
     language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
-
-use super::{TyDeclParsedType, TyTraitItem};
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Named, Span, Spanned};
 
 pub type TyImplItem = TyTraitItem;
 
 // impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyImplSelfOrTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
@@ -88,11 +86,11 @@ impl HashWithEngines for TyImplSelfOrTrait {
 }
 
 impl SubstTypes for TyImplSelfOrTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.impl_type_parameters.subst(type_mapping, ctx);
-            self.implementing_for.subst_inner(type_mapping, ctx);
-            self.items.subst(type_mapping, ctx);
+            self.impl_type_parameters.subst(ctx);
+            self.implementing_for.subst_inner(ctx);
+            self.items.subst(ctx);
         }
     }
 }

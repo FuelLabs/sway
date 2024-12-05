@@ -1,26 +1,23 @@
+use crate::{
+    engine_threading::*,
+    has_changes,
+    language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    transform,
+    type_system::*,
+};
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
 };
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    has_changes,
-    language::{parsed::EnumDeclaration, CallPath, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
-    transform,
-    type_system::*,
-};
-
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
@@ -70,10 +67,10 @@ impl HashWithEngines for TyEnumDecl {
 }
 
 impl SubstTypes for TyEnumDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.variants.subst(type_mapping, ctx);
-            self.type_parameters.subst(type_mapping, ctx);
+            self.variants.subst(ctx);
+            self.type_parameters.subst(ctx);
         }
     }
 }
@@ -133,7 +130,7 @@ impl Spanned for TyEnumVariant {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyEnumVariant {
     pub name: Ident,
     pub type_argument: TypeArgument,
@@ -186,7 +183,7 @@ impl OrdWithEngines for TyEnumVariant {
 }
 
 impl SubstTypes for TyEnumVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.subst_inner(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(ctx)
     }
 }

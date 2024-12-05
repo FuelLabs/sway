@@ -17,7 +17,7 @@ use crate::{
         ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars, TyExpression},
     },
     semantic_analysis::*,
-    Engines, TypeArgument, TypeInfo, UnifyCheck,
+    Engines, TypeInfo, UnifyCheck,
 };
 
 use super::{instantiate::Instantiate, matcher::matcher, ReqDeclTree};
@@ -92,9 +92,8 @@ impl ty::TyMatchBranch {
             for (ident, is_struct_field) in variables {
                 let default_handler = &Handler::default();
                 // If there exist a configurable with the same name as the pattern variable.
-                if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) = ctx
-                    .namespace()
-                    .resolve_symbol_typed(default_handler, engines, &ident, ctx.self_type())
+                if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) =
+                    ctx.resolve_symbol(default_handler, &ident)
                 {
                     let name = (&ident).into();
                     let configurable_span = engines
@@ -252,12 +251,12 @@ type CarryOverTupleDeclarations = Vec<VarDecl>;
 /// via [ty::TyMatchBranch]:
 /// - branch condition: Overall condition that must be `true` for the branch to match.
 /// - result variable declarations: Variable declarations that needs to be added to the
-/// match branch result, before the actual body. Here we distinguish between the variables
-/// actually declared in the match arm pattern and so called "tuple variables" that are
-/// compiler generated and contain values for variables extracted out of individual OR variants.
+///   match branch result, before the actual body. Here we distinguish between the variables
+///   actually declared in the match arm pattern and so called "tuple variables" that are
+///   compiler generated and contain values for variables extracted out of individual OR variants.
 /// - OR variant index variables: Variable declarations that are generated in case of having
-/// variables in OR patterns. Index variables hold 1-based index of the OR variant being matched
-/// or zero if non of the OR variants has matched.
+///   variables in OR patterns. Index variables hold 1-based index of the OR variant being matched
+///   or zero if non of the OR variants has matched.
 ///
 /// ## Algorithm Overview
 /// The algorithm traverses the `req_decl_tree` bottom up from left to right and collects the
@@ -619,7 +618,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
         ) -> Result<(VarDecl, Vec<VarDecl>), ErrorEmitted> {
             let type_engine = ctx.engines.te();
             // At this point we have the guarantee that we have:
-            // - exactly the same variables in each OR variant
+            // - exactly the same variables in each of the OR variants
             // - that variables of the same name are of the same type
             // - that we do not have duplicates in variable names inside of alternatives
 
@@ -645,18 +644,10 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
             // All variants have same variable types and names, thus we pick them from the first alternative.
             let tuple_field_types = carry_over_vars[0]
                 .iter()
-                .map(|(_, var_body)| TypeArgument {
-                    type_id: var_body.return_type,
-                    initial_type_id: var_body.return_type,
-                    span: var_body.span.clone(), // Although not needed, this span can be mapped to var declaration.
-                    call_path_tree: None,
-                })
+                .map(|(_, var_body)| var_body.return_type)
                 .collect();
-            let tuple_type = type_engine.insert(
-                ctx.engines,
-                TypeInfo::Tuple(tuple_field_types),
-                instantiate.dummy_span().source_id(),
-            );
+            let tuple_type =
+                type_engine.insert_tuple_without_annotations(ctx.engines, tuple_field_types);
             let variable_names = carry_over_vars[0]
                 .iter()
                 .map(|(ident, _)| ident.clone())

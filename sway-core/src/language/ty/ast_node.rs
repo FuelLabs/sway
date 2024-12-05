@@ -1,11 +1,3 @@
-use std::{
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Span};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -18,12 +10,19 @@ use crate::{
     type_system::*,
     types::*,
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Span};
 
 pub trait GetDeclIdent {
     fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
     pub span: Span,
@@ -61,10 +60,10 @@ impl DebugWithEngines for TyAstNode {
 }
 
 impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self.content {
-            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, ctx),
-            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, ctx),
+            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(ctx),
+            TyAstNodeContent::Expression(ref mut expr) => expr.subst(ctx),
             TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => HasChanges::No,
         }
     }
@@ -353,13 +352,13 @@ impl TyAstNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Expression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect(TySideEffect),
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 
 impl EqWithEngines for TyAstNodeContent {}

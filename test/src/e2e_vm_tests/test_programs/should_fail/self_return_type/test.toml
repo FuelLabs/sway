@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()fn foo(self, other: Self) -> self {
+# nextln: $()Unknown type name "self". A self type with a similar name exists (notice the capitalization): `Self`

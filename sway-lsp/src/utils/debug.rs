@@ -14,7 +14,7 @@ where
     tokens
         .filter_map(|entry| {
             let (ident, token) = entry.pair();
-            if token.typed.is_none() {
+            if token.as_parsed().is_some() {
                 Some(warning_from_ident(ident))
             } else {
                 None
@@ -39,7 +39,7 @@ where
     tokens
         .filter_map(|entry| {
             let (ident, token) = entry.pair();
-            if token.typed.is_some() {
+            if token.as_typed().is_some() {
                 Some(warning_from_ident(ident))
             } else {
                 None

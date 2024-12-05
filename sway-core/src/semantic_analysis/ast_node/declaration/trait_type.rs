@@ -11,12 +11,10 @@ use crate::{
         ty::{self, TyTraitType},
     },
     semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext,
-        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext,
+        symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckContext,
     },
-    type_system::*,
-    Engines,
+    EnforceTypeArguments, Engines,
 };
 
 impl ty::TyTraitType {
@@ -37,7 +35,7 @@ impl ty::TyTraitType {
 
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         trait_type: parsed::TraitTypeDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let parsed::TraitTypeDeclaration {
@@ -59,9 +57,7 @@ impl ty::TyTraitType {
                     EnforceTypeArguments::No,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
             Some(ty)
         } else {
             None
@@ -93,11 +89,7 @@ impl ty::TyTraitType {
             name,
             attributes,
             ty: ty_opt,
-            implementing_type: engines.te().insert(
-                engines,
-                TypeInfo::new_self_type(Span::dummy()),
-                None,
-            ),
+            implementing_type: engines.te().new_self_type(engines, Span::dummy()),
             span,
         }
     }

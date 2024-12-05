@@ -1,21 +1,26 @@
-use crate::names::register_name;
-use crate::server::AdapterError;
-use crate::server::DapServer;
-use crate::server::INSTRUCTIONS_VARIABLE_REF;
-use crate::server::REGISTERS_VARIABLE_REF;
-use dap::requests::VariablesArguments;
-use dap::types::Variable;
-use fuel_vm::fuel_asm::Imm06;
-use fuel_vm::fuel_asm::Imm12;
-use fuel_vm::fuel_asm::Imm18;
-use fuel_vm::fuel_asm::Imm24;
-use fuel_vm::fuel_asm::Instruction;
-use fuel_vm::fuel_asm::RawInstruction;
-use fuel_vm::fuel_asm::RegId;
+use crate::{
+    names::register_name,
+    server::{
+        AdapterError, DapServer, HandlerResult, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF,
+    },
+};
+use dap::{requests::VariablesArguments, responses::ResponseBody, types::Variable};
+use fuel_vm::fuel_asm::{Imm06, Imm12, Imm18, Imm24, Instruction, RawInstruction, RegId};
 
 impl DapServer {
-    /// Handles a `variables` request. Returns the list of [Variable]s for the current execution state.
-    pub(crate) fn handle_variables(
+    /// Processes a variables request, returning all variables and their current values.
+    pub(crate) fn handle_variables_command(&self, args: &VariablesArguments) -> HandlerResult {
+        let result = self.get_variables(args).map(|variables| {
+            ResponseBody::Variables(dap::responses::VariablesResponse { variables })
+        });
+        match result {
+            Ok(result) => HandlerResult::ok(result),
+            Err(e) => HandlerResult::err_with_exit(e, 1),
+        }
+    }
+
+    /// Returns the list of [Variable]s for the current execution state.
+    pub(crate) fn get_variables(
         &self,
         args: &VariablesArguments,
     ) -> Result<Vec<Variable>, AdapterError> {
@@ -32,7 +37,7 @@ impl DapServer {
             .enumerate()
             .map(|(index, value)| Variable {
                 name: register_name(index),
-                value: format!("0x{:X?}", value),
+                value: format!("0x{value:X?}"),
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -56,7 +61,7 @@ impl DapServer {
             .iter()
             .filter_map(|(name, value)| {
                 value.as_ref().map(|value| Variable {
-                    name: name.to_string(),
+                    name: (*name).to_string(),
                     value: value.to_string(),
                     ..Default::default()
                 })

@@ -10,6 +10,7 @@ anyhow.workspace = true
 bytes.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 colored.workspace = true
+duct = "0.13.7"
 filecheck.workspace = true
 forc = { workspace = true, features = ["test"] }
 forc-client.workspace = true
@@ -23,7 +24,7 @@ glob.workspace = true
 hex.workspace = true
 insta.workspace = true
 libtest-mimic.workspace = true
-miden.workspace = true
+normalize-path.workspace = true
 prettydiff.workspace = true
 rand.workspace = true
 regex.workspace = true
@@ -31,6 +32,7 @@ revm.workspace = true
 serde_json.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true
+sway-features.workspace = true
 sway-ir.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true

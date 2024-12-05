@@ -1,11 +1,10 @@
 use crate::cli;
-use ansi_term::Colour;
+use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
-use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::fuel_prelude::fuel_tx::Receipt;
 use tracing::info;
 
@@ -52,9 +51,8 @@ pub struct Command {
     /// threads available in your system.
     pub test_threads: Option<usize>,
 
-    /// Disable the "new encoding" feature
-    #[clap(long)]
-    pub no_encoding_v1: bool,
+    #[clap(flatten)]
+    pub experimental: sway_features::CliFields,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -245,6 +243,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             reverse_order: cmd.build.print.reverse_order,
         },
         time_phases: cmd.build.print.time_phases,
+        profile: cmd.build.print.profile,
         metrics_outfile: cmd.build.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,
@@ -256,9 +255,8 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental,
+        no_experimental: cmd.experimental.no_experimental,
     }
 }
 

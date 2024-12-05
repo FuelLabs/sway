@@ -1,14 +1,13 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Named, Spanned};
-
 use crate::{
     engine_threading::*,
     language::{parsed::VariableDeclaration, ty::*},
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Named, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyVariableDecl {
     pub name: Ident,
     pub body: TyExpression,
@@ -66,9 +65,9 @@ impl HashWithEngines for TyVariableDecl {
 }
 
 impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.return_type.subst(type_mapping, ctx);
-        self.type_ascription.subst(type_mapping, ctx);
-        self.body.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.return_type.subst(ctx);
+        self.type_ascription.subst(ctx);
+        self.body.subst(ctx)
     }
 }

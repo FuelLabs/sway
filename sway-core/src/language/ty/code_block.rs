@@ -1,14 +1,13 @@
-use std::hash::Hasher;
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Span;
-
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::Hasher;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Span;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
     pub(crate) whole_block_span: Span,
@@ -38,8 +37,8 @@ impl HashWithEngines for TyCodeBlock {
 }
 
 impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
-        self.contents.subst(type_mapping, ctx)
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.contents.subst(ctx)
     }
 }
 

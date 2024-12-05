@@ -117,10 +117,12 @@ pub enum ConvertParseTreeError {
     InvalidCfgProgramTypeArgValue { span: Span, value: String },
     #[error("Expected a value for the program_type argument")]
     ExpectedCfgProgramTypeArgValue { span: Span },
-    #[error("Expected \"true\" or \"false\" for experimental_new_encoding")]
-    ExpectedExperimentalNewEncodingArgValue { span: Span },
+    #[error("Expected \"true\" or \"false\" for experimental conditional compilation")]
+    UnexpectedValueForCfgExperimental { span: Span },
     #[error("Unexpected attribute value: \"{value}\" for attribute: \"cfg\"")]
     InvalidCfgArg { span: Span, value: String },
+    #[error("Unknown type name \"self\". A self type with a similar name exists (notice the capitalization): `Self`")]
+    UnknownTypeNameSelf { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -183,8 +185,9 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
-            ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue { span } => span.clone(),
+            ConvertParseTreeError::UnexpectedValueForCfgExperimental { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgArg { span, .. } => span.clone(),
+            ConvertParseTreeError::UnknownTypeNameSelf { span } => span.clone(),
         }
     }
 }

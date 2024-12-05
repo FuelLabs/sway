@@ -1,18 +1,18 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
 use crate::{
     abi_generation::abi_str::AbiStrContext, engine_threading::*, has_changes, language::ty::*,
     type_system::*, types::*,
 };
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
@@ -73,10 +73,10 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, ctx: &SubstTypesContext) -> HasChanges {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
-            self.arguments.subst(type_mapping, ctx);
-            self.type_arguments.subst(type_mapping, ctx);
+            self.arguments.subst(ctx);
+            self.type_arguments.subst(ctx);
         }
     }
 }

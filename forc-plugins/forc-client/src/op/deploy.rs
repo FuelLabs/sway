@@ -7,8 +7,8 @@ use crate::{
         pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
         tx::{
-            prompt_forc_wallet_password, select_account, update_proxy_contract_target,
-            SignerSelectionMode,
+            check_and_create_wallet_at_default_path, prompt_forc_wallet_password, select_account,
+            update_proxy_contract_target, SignerSelectionMode,
         },
     },
 };
@@ -38,7 +38,7 @@ use fuels::{
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
-use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
+use pkg::{BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -47,8 +47,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sway_core::BuildTarget;
-use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget};
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -192,7 +191,7 @@ async fn deploy_chunked(
 
     let storage_slots = resolve_storage_slots(command, compiled)?;
     let chain_info = provider.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let contract_url = match target.explorer_url() {
         Some(explorer_url) => format!("{explorer_url}/contract/0x"),
         None => "".to_string(),
@@ -257,7 +256,7 @@ async fn deploy_new_proxy(
     .into();
 
     let chain_info = provider.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let contract_url = match target.explorer_url() {
         Some(explorer_url) => format!("{explorer_url}/contract/0x"),
         None => "".to_string(),
@@ -914,6 +913,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
             reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
+        profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile.clone(),
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
@@ -927,9 +927,8 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
         build_target: BuildTarget::default(),
         tests: false,
         member_filter,
-        experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_encoding_v1,
-        },
+        experimental: cmd.experimental.experimental.clone(),
+        no_experimental: cmd.experimental.no_experimental.clone(),
     }
 }
 
@@ -948,7 +947,7 @@ fn create_deployment_artifact(
     let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
     let pkg_name = manifest.project_name();
 
-    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
     let (contract_url, block_url) = match target.explorer_url() {
         Some(explorer_url) => (
             format!("{explorer_url}/contract/0x"),
@@ -1004,6 +1003,11 @@ async fn setup_deployment_account(
     } else if let Some(arn) = &command.aws_kms_signer {
         SignerSelectionMode::AwsSigner(arn.clone())
     } else {
+        // Check if we have a wallet in the default path
+        // If there is one we will ask for the password
+        // If not we will ask the user to either create a new one or import one
+        let wallet_path = default_wallet_path();
+        check_and_create_wallet_at_default_path(&wallet_path)?;
         println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
         let password = prompt_forc_wallet_password()?;
         SignerSelectionMode::ForcWallet(password)
