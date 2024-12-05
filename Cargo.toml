@@ -256,5 +256,5 @@ whoami = "1.5"
 wiremock = "0.6"
 
 [patch.crates-io]
-fuel-abi-types = { path = "/home/xunilrj/github/fuel-abi-types" }
-fuels-core = { path = "/home/xunilrj/github/fuels-rs/packages/fuels-core" }
+fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "xunilrj/indirect-configurables" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
