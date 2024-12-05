@@ -374,15 +374,15 @@ pub(crate) fn compile_configurables(
                     _ => unreachable!(),
                 };
 
+                // Some enum variants are bigger than others. Buffer needs to be big enough
+                // for any.
                 let config_type_info = engines.te().get(decl.type_ascription.type_id());
-                let indirect = match config_type_info.abi_encode_size_hint(engines) {
-                    AbiEncodeSizeHint::Exact(len) | AbiEncodeSizeHint::Range(_, len) => {
-                        encoded_bytes.extend([0].repeat(len - encoded_bytes.len()));
-                        assert!(encoded_bytes.len() == len);
-                        false
-                    }
-                    _ => true,
-                };
+                if let AbiEncodeSizeHint::Exact(len) | AbiEncodeSizeHint::Range(_, len) =
+                    config_type_info.abi_encode_size_hint(engines)
+                {
+                    encoded_bytes.extend([0].repeat(len - encoded_bytes.len()));
+                    assert!(encoded_bytes.len() == len);
+                }
 
                 let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
                 let decode_fn = cache.ty_function_decl_to_unique_function(
@@ -406,7 +406,7 @@ pub(crate) fn compile_configurables(
                         encoded_bytes,
                         decode_fn: Cell::new(decode_fn),
                         opt_metadata,
-                        indirect,
+                        indirect: decl.is_indirect(engines),
                     },
                 );
             } else {

@@ -254,3 +254,7 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuel-abi-types = { path = "/home/xunilrj/github/fuel-abi-types" }
+fuels-core = { path = "/home/xunilrj/github/fuels-rs/packages/fuels-core" }

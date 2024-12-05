@@ -564,6 +564,7 @@ fn generate_configurables(
                     decl.type_ascription.type_id(),
                 )?,
                 offset: 0,
+                indirect: decl.is_indirect(engines),
             })
         })
         .collect::<Result<Vec<_>, _>>()
