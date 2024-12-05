@@ -357,7 +357,7 @@ mod ir_builder {
                 }
 
             rule op_mem_copy_bytes() -> IrAstOperation
-                = "mem_copy_bytes" _ dst_name:id() comma() src_name:id() comma() len:decimal() {
+                = "mem_copy_bytes" _ dst_name:id() comma() src_name:id() comma() len:id() {
                     IrAstOperation::MemCopyBytes(dst_name, src_name, len)
                 }
 
@@ -753,7 +753,7 @@ mod ir_builder {
         IntToPtr(String, IrAstTy),
         Load(String),
         Log(IrAstTy, String, String),
-        MemCopyBytes(String, String, u64),
+        MemCopyBytes(String, String, String),
         MemCopyVal(String, String),
         Nop,
         PtrToInt(String, IrAstTy),
@@ -1343,7 +1343,7 @@ mod ir_builder {
                         .mem_copy_bytes(
                             *val_map.get(&dst_name).unwrap(),
                             *val_map.get(&src_name).unwrap(),
-                            len,
+                            *val_map.get(&len).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::MemCopyVal(dst_name, src_name) => block

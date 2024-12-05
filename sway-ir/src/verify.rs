@@ -333,8 +333,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                 InstOp::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
-                    byte_len,
-                } => self.verify_mem_copy_bytes(dst_val_ptr, src_val_ptr, byte_len)?,
+                    byte_len: _,
+                } => self.verify_mem_copy_bytes(dst_val_ptr, src_val_ptr)?,
                 InstOp::MemCopyVal {
                     dst_val_ptr,
                     src_val_ptr,
@@ -892,7 +892,6 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         &self,
         dst_val_ptr: &Value,
         src_val_ptr: &Value,
-        _byte_len: &u64,
     ) -> Result<(), IrError> {
         // Just confirm both values are pointers.
         self.get_ptr_type(dst_val_ptr, IrError::VerifyMemcopyNonPointer)

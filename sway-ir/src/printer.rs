@@ -998,7 +998,7 @@ fn instruction_to_doc<'a>(
                     "mem_copy_bytes {}, {}, {}",
                     namer.name(context, dst_val_ptr),
                     namer.name(context, src_val_ptr),
-                    byte_len,
+                    namer.name(context, byte_len),
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),

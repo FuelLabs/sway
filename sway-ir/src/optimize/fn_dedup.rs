@@ -7,14 +7,20 @@
 //! generating a new function for each instantiation even when the exact
 //! same instantiation exists.
 
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    iter,
+};
 
+use itertools::Itertools;
+use prettydiff::format_table::new;
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 use crate::{
-    build_call_graph, callee_first_order, function_print, AnalysisResults, Block, Context,
-    DebugWithContext, Function, InstOp, Instruction, IrError, LocalVar, MetadataIndex, Metadatum,
-    Module, Pass, PassMutability, ScopedPass, Type, Value,
+    build_call_graph, callee_first_order, function, function_print, AnalysisResults, Block,
+    BlockArgument, Constant, Context, DebugWithContext, Function, InstOp, Instruction,
+    InstructionInserter, IrError, LocalVar, MetadataIndex, Metadatum, Module, Pass, PassMutability,
+    ScopedPass, Type, Value, ValueDatum,
 };
 
 pub const FN_DEDUP_DEBUG_PROFILE_NAME: &str = "fn-dedup-debug";
@@ -413,6 +419,8 @@ fn dedup_fn_demonomorphize(
     _analysis_results: &AnalysisResults,
     module: Module,
 ) -> Result<bool, IrError> {
+    // println!("{}", context);
+
     let modified = false;
     let eq_class = &mut EqClass {
         hash_set_map: FxHashMap::default(),
@@ -471,26 +479,482 @@ fn dedup_fn_demonomorphize(
                     local.0 == other_local.0,
                     "If names differed, then the functions wouldn't be in the same class"
                 );
-                other_locals.push(other_local.1);
+                other_locals.push(*other_local.1);
                 let other_local_ty = other_local.1.get_inner_type(context);
                 if ty != other_local_ty {
                     shift_to_arg = true;
                 }
             }
             if shift_to_arg {
-                locals_to_args.insert(local.1, other_locals);
+                locals_to_args.insert(*local.1, other_locals);
             }
         }
-        for (idx_in_block, (inst, block)) in leader
-            .block_iter(context)
-            .map(|b| {
-                b.instruction_iter(context)
-                    .map(move |inst| (inst, b))
-                    .enumerate()
-            })
-            .flatten()
+
+        let mut can_optimize = true;
+
+        #[derive(Default)]
+        struct ChangeInstrs {
+            // all the CastPtr/IntToPtr that need change in the leader
+            cast_to_ptr: FxHashSet<Value>,
+            // all the GetLocal that need change in the leader
+            get_local: FxHashSet<Value>,
+            // All the GEPs Map<in the leader, in others> that need to become a
+            // "add pointer + offset", where offset if parameterized instruction.
+            gep: FxHashMap<Value, Vec<Value>>,
+            // All the MemCopyVals Map<in the leader, in others> that need to become
+            // MemCopyBytes with the size parameterized.
+            mem_copy_val: FxHashMap<Value, Vec<Value>>,
+        }
+
+        let mut change_instrs = ChangeInstrs::default();
+        'leader_loop: for (_, inst) in leader.instruction_iter(context) {
+            for other_func in others.iter_mut() {
+                let (_other_block, other_instr) = other_func.1.instr_iter.next().unwrap();
+                // Throughout this loop we check only for differing types between the leader and
+                // its followers. Other differences aren't checked for because then the hashes would
+                // be different and they wouldn't be in the same class.
+                match &inst.get_instruction(context).unwrap().op {
+                    InstOp::AsmBlock(asm_block, _args) => {
+                        let InstOp::AsmBlock(other_asm_block, _) =
+                            &other_instr.get_instruction(context).unwrap().op
+                        else {
+                            panic!("Leader and follower are different instructions in same class");
+                        };
+                        if asm_block.return_type != other_asm_block.return_type {
+                            can_optimize = false;
+                            break 'leader_loop;
+                        }
+                    }
+                    InstOp::UnaryOp { .. } => {}
+                    InstOp::BinaryOp { .. } => {}
+                    InstOp::BitCast(_value, ty) => {
+                        let InstOp::BitCast(_other_value, other_ty) =
+                            &other_instr.get_instruction(context).unwrap().op
+                        else {
+                            panic!("Leader and follower are different instructions in same class");
+                        };
+                        if ty != other_ty {
+                            can_optimize = false;
+                            break 'leader_loop;
+                        }
+                    }
+                    InstOp::Branch(..) => {}
+                    InstOp::Call(..) => {}
+                    InstOp::CastPtr(_, target_ty) | InstOp::IntToPtr(_, target_ty) => {
+                        match &other_instr.get_instruction(context).unwrap().op {
+                            InstOp::CastPtr(_, other_target_ty)
+                            | InstOp::IntToPtr(_, other_target_ty) => {
+                                if target_ty != other_target_ty {
+                                    change_instrs.cast_to_ptr.insert(inst);
+                                }
+                            }
+                            _ => {
+                                panic!(
+                                    "Leader and follower are different instructions in same class"
+                                );
+                            }
+                        }
+                    }
+                    InstOp::Cmp(..) => {}
+                    InstOp::ConditionalBranch { .. } => {}
+                    InstOp::ContractCall { .. } => {}
+                    InstOp::FuelVm(_fuel_vm_instruction) => {}
+                    InstOp::GetLocal(local_var) => {
+                        if locals_to_args.contains_key(local_var) {
+                            change_instrs.get_local.insert(inst);
+                        }
+                    }
+                    InstOp::GetConfig(..) => {}
+                    InstOp::GetElemPtr {
+                        elem_ptr_ty: _,
+                        indices,
+                        base,
+                    } => {
+                        let InstOp::GetElemPtr {
+                            elem_ptr_ty: _,
+                            indices: other_indices,
+                            base: other_base,
+                        } = &other_instr.get_instruction(context).unwrap().op
+                        else {
+                            panic!("Leader and follower are different instructions in same class");
+                        };
+                        let base_ty = base
+                            .get_type(context)
+                            .unwrap()
+                            .get_pointee_type(context)
+                            .unwrap();
+                        let other_base_ty = other_base
+                            .get_type(context)
+                            .unwrap()
+                            .get_pointee_type(context)
+                            .unwrap();
+                        if base_ty != other_base_ty {
+                            // If we can't determine the offset to a compile time constant,
+                            // we cannot do the optimization.
+                            if base_ty.get_value_indexed_offset(context, indices).is_none()
+                                || other_base_ty
+                                    .get_value_indexed_offset(context, &other_indices)
+                                    .is_none()
+                            {
+                                can_optimize = false;
+                                break 'leader_loop;
+                            }
+                            change_instrs
+                                .gep
+                                .entry(inst)
+                                .and_modify(|others| others.push(other_instr))
+                                .or_insert(vec![other_instr]);
+                        }
+                    }
+                    InstOp::Load(_value) => {}
+                    InstOp::MemCopyBytes { .. } => {}
+                    InstOp::MemCopyVal { dst_val_ptr, .. } => {
+                        let InstOp::MemCopyVal {
+                            dst_val_ptr: other_dst_val_ptr,
+                            ..
+                        } = &other_instr.get_instruction(context).unwrap().op
+                        else {
+                            panic!("Leader and follower are different instructions in same class");
+                        };
+                        let copied_ty = dst_val_ptr.get_type(context).unwrap();
+                        let other_copied_ty = other_dst_val_ptr.get_type(context).unwrap();
+                        if copied_ty != other_copied_ty {
+                            change_instrs
+                                .mem_copy_val
+                                .entry(inst)
+                                .and_modify(|others| others.push(other_instr))
+                                .or_insert(vec![other_instr]);
+                        }
+                    }
+                    InstOp::Nop => {}
+                    InstOp::PtrToInt(..) => {}
+                    InstOp::Ret(..) => {}
+                    InstOp::Store { .. } => {}
+                }
+            }
+        }
+
+        if !can_optimize {
+            continue;
+        }
+
+        if change_instrs.cast_to_ptr.is_empty()
+            && change_instrs.gep.is_empty()
+            && change_instrs.get_local.is_empty()
+            && change_instrs.mem_copy_val.is_empty()
         {
-            
+            continue;
+        }
+
+        // Map every function in the class to an index. Useful later on.
+        let class_fn_to_idx: FxHashMap<_, _> = iter::once(leader)
+            .chain(others.keys())
+            .enumerate()
+            .map(|(idx, f)| (*f, idx))
+            .collect();
+
+        // Note down all call sites for later use.
+        let call_sites = context
+            .module_iter()
+            .flat_map(|module| module.function_iter(context))
+            .flat_map(|ref call_from_func| {
+                call_from_func
+                    .block_iter(context)
+                    .flat_map(|ref block| {
+                        block
+                            .instruction_iter(context)
+                            .filter_map(|instr_val| {
+                                if let Instruction {
+                                    op: InstOp::Call(call_to_func, _),
+                                    ..
+                                } = instr_val
+                                    .get_instruction(context)
+                                    .expect("`instruction_iter()` must return instruction values.")
+                                {
+                                    iter::once(leader)
+                                        .chain(others.keys())
+                                        .contains(call_to_func)
+                                        .then_some((*call_from_func, *block, instr_val))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        // `others` captures `context`, so let's drop it now.
+        drop(others);
+
+        let unit_ptr_ty = Type::new_ptr(context, Type::get_unit(context));
+
+        // Track the additional arguments we're adding.
+        #[derive(Clone)]
+        enum NewArg {
+            // A local which is now allocated in the caller and
+            // whose pointer is passed as parameter.
+            CallerAllocatedLocal(LocalVar),
+            // A u64 value
+            Size(u64),
+        }
+        // New arguments for the leader followed by every other.
+        let mut new_args: Vec<Vec<NewArg>> = vec![Vec::new(); class.len()];
+        // Argument number for a local
+        let mut local_to_argno = FxHashMap::default();
+
+        // We'll collect all the new arguments first,
+        // and then actually add them and modify the instructions.
+        for (local, other_locals) in locals_to_args {
+            new_args[0].push(NewArg::CallerAllocatedLocal(local));
+            for (i, ty) in other_locals
+                .iter()
+                .map(|other_local| NewArg::CallerAllocatedLocal(*other_local))
+                .enumerate()
+            {
+                new_args[i + 1].push(ty);
+            }
+            local_to_argno.insert(local, new_args[0].len() - 1);
+        }
+
+        // Map a GEP or MemCopyVal to the new size parameter.
+        let mut gep_memcpyval_to_argno = FxHashMap::default();
+
+        for (inst, other_insts) in change_instrs
+            .gep
+            .iter()
+            .chain(change_instrs.mem_copy_val.iter())
+        {
+            let mut this_params: Vec<u64> = Vec::new();
+            for inst in std::iter::once(inst).chain(other_insts) {
+                match &inst.get_instruction(context).unwrap().op {
+                    InstOp::GetElemPtr {
+                        elem_ptr_ty: _,
+                        indices,
+                        base,
+                    } => {
+                        let base_ty = base
+                            .get_type(context)
+                            .unwrap()
+                            .get_pointee_type(context)
+                            .unwrap();
+                        let offset = base_ty.get_value_indexed_offset(context, indices).unwrap();
+                        this_params.push(offset);
+                    }
+                    InstOp::MemCopyVal {
+                        dst_val_ptr,
+                        src_val_ptr: _,
+                    } => {
+                        let copied_ty = dst_val_ptr.get_type(context).unwrap();
+                        let size_copied_type_bytes = copied_ty.size(context).in_bytes();
+                        this_params.push(size_copied_type_bytes);
+                    }
+                    _ => {
+                        unreachable!("Expected only GEPs or MemCopyVals")
+                    }
+                }
+            }
+            assert!(this_params.len() == class.len());
+            // Check if any row in new_args is already the same as this_params,
+            // in which case we can reuse that parameter.
+            let argno = (0..new_args[0].len()).find_map(|i| {
+                if matches!(new_args[0][i], NewArg::CallerAllocatedLocal(..)) {
+                    return None;
+                }
+                let ith_params: Vec<_> = new_args
+                    .iter()
+                    .map(|params| {
+                        let NewArg::Size(size_param) = params[i] else {
+                            panic!("We just filtered for Size parameters above");
+                        };
+                        size_param
+                    })
+                    .collect();
+                (this_params == ith_params).then_some(i)
+            });
+            if let Some(argno) = argno {
+                gep_memcpyval_to_argno.insert(inst, argno);
+            } else {
+                let argno = new_args[0].len();
+                gep_memcpyval_to_argno.insert(inst, argno);
+
+                // Let's add a new row to new_args.
+                for (i, param) in this_params.iter().enumerate() {
+                    new_args[i].push(NewArg::Size(*param));
+                }
+            }
+        }
+
+        // We are now equipped to actually modify the program.
+        // 1. Add the new arguments.
+        let mut new_arg_values = Vec::with_capacity(new_args[0].len());
+        let entry_block = leader.get_entry_block(context);
+        for new_arg in &new_args[0] {
+            let (new_block_arg, new_arg_name) = match new_arg {
+                NewArg::CallerAllocatedLocal(..) => (
+                    BlockArgument {
+                        block: entry_block,
+                        idx: leader.num_args(context),
+                        ty: unit_ptr_ty,
+                    },
+                    "demonomorphize_alloca_arg",
+                ),
+                NewArg::Size(_) => (
+                    BlockArgument {
+                        block: entry_block,
+                        idx: leader.num_args(context),
+                        ty: Type::get_uint64(context),
+                    },
+                    "demonomorphize_size_arg",
+                ),
+            };
+            let new_arg_value = Value::new_argument(context, new_block_arg);
+            leader.add_arg(context, new_arg_name, new_arg_value);
+            entry_block.add_arg(context, new_arg_value);
+            new_arg_values.push(new_arg_value);
+        }
+
+        // 2. Modify pointer casts.
+        for cast_to_ptr in change_instrs.cast_to_ptr {
+            let instr = cast_to_ptr.get_instruction(context).unwrap();
+            let new_instr = match &instr.op {
+                InstOp::CastPtr(source, _target_ty) => InstOp::CastPtr(*source, unit_ptr_ty),
+                InstOp::IntToPtr(source, _target_ty) => InstOp::IntToPtr(*source, unit_ptr_ty),
+                _ => unreachable!(),
+            };
+            let new_instr = ValueDatum::Instruction(Instruction {
+                op: new_instr,
+                parent: instr.parent,
+            });
+            cast_to_ptr.replace(context, new_instr);
+        }
+
+        // 3. Modify GEPs.
+        for (gep, _) in &change_instrs.gep {
+            let instr = gep.get_instruction(context).unwrap();
+            let InstOp::GetElemPtr {
+                elem_ptr_ty,
+                indices: _,
+                base,
+            } = instr.op
+            else {
+                panic!("Should be GEP");
+            };
+            let arg_idx = gep_memcpyval_to_argno[gep];
+            let arg_value = new_arg_values[arg_idx];
+            let parent_block = instr.parent;
+
+            let replacement_add = Value::new_instruction(
+                context,
+                parent_block,
+                InstOp::BinaryOp {
+                    op: crate::BinaryOpKind::Add,
+                    arg1: base,
+                    arg2: arg_value,
+                },
+            );
+            let mut inserter = InstructionInserter::new(
+                context,
+                parent_block,
+                crate::InsertionPosition::Before(*gep),
+            );
+            inserter.insert(replacement_add);
+            let ptr_cast = ValueDatum::Instruction(Instruction {
+                parent: parent_block,
+                op: InstOp::CastPtr(replacement_add, elem_ptr_ty),
+            });
+
+            gep.replace(context, ptr_cast);
+        }
+
+        // 4. Modify MemCopyVals
+        for (mem_copy_val, _) in &change_instrs.mem_copy_val {
+            let instr = mem_copy_val.get_instruction(context).unwrap();
+            let InstOp::MemCopyVal {
+                dst_val_ptr,
+                src_val_ptr,
+            } = &instr.op
+            else {
+                panic!("Should be MemCopyVal");
+            };
+            let arg_idx = gep_memcpyval_to_argno[mem_copy_val];
+            let arg_value = new_arg_values[arg_idx];
+            let replacement_memcpybyte = ValueDatum::Instruction(Instruction {
+                op: InstOp::MemCopyBytes {
+                    dst_val_ptr: *dst_val_ptr,
+                    src_val_ptr: *src_val_ptr,
+                    byte_len: arg_value,
+                },
+                parent: instr.parent,
+            });
+            mem_copy_val.replace(context, replacement_memcpybyte);
+        }
+
+        // 5. Update the uses of get_local instructions to directly use the argument.
+        let mut replacements = FxHashMap::default();
+        for get_local in &change_instrs.get_local {
+            let InstOp::GetLocal(local_var) = get_local.get_instruction(context).unwrap().op else {
+                panic!("Expected GetLocal");
+            };
+            let arg = local_to_argno.get(&local_var).unwrap();
+            replacements.insert(*get_local, new_arg_values[*arg]);
+        }
+        leader.replace_values(context, &replacements, None);
+
+        // 6. Finally modify calls to each function in the class.
+        for (caller, call_block, call_inst) in call_sites {
+            // Update the callee in call_inst first, all calls go to the leader now.
+            let InstOp::Call(callee, _) = &mut call_inst.get_instruction_mut(context).unwrap().op
+            else {
+                panic!("Expected Call");
+            };
+            *callee = *leader;
+            let callee = *callee;
+
+            // Now add the new args.
+            let callee_idx = class_fn_to_idx[&callee];
+            let new_args = &new_args[callee_idx];
+            for new_arg in new_args {
+                match new_arg {
+                    NewArg::CallerAllocatedLocal(original_local) => {
+                        let name = callee
+                            .lookup_local_name(context, original_local)
+                            .cloned()
+                            .unwrap_or("".to_string())
+                            + "_demonomorphized";
+                        let new_local = caller.new_unique_local_var(
+                            context,
+                            name,
+                            original_local.get_type(context),
+                            original_local.get_initializer(context).cloned(),
+                            original_local.is_mutable(context),
+                        );
+                        let inserter = InstructionInserter::new(
+                            context,
+                            call_block,
+                            crate::InsertionPosition::Before(call_inst),
+                        );
+                        let new_local_ptr = inserter.get_local(new_local);
+                        let InstOp::Call(_, args) =
+                            &mut call_inst.get_instruction_mut(context).unwrap().op
+                        else {
+                            panic!("Expected Call");
+                        };
+                        args.push(new_local_ptr);
+                    }
+                    NewArg::Size(val) => {
+                        let new_size_const = Constant::new_uint(context, 64, *val);
+                        let new_size_arg = Value::new_constant(context, new_size_const);
+                        let InstOp::Call(_, args) =
+                            &mut call_inst.get_instruction_mut(context).unwrap().op
+                        else {
+                            panic!("Expected Call");
+                        };
+                        args.push(new_size_arg);
+                    }
+                }
+            }
         }
     }
 
