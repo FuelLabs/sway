@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use parsed_id::ParsedDeclId;
 use sway_error::{
@@ -6,7 +6,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_upper_camel_case, Ident, Spanned};
+use sway_types::{style::is_upper_camel_case, Ident, Named, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -510,6 +510,8 @@ impl TyTraitDecl {
                 .collect(),
         );
 
+        let mut const_symbols = HashMap::<Ident, ty::TyDecl>::new();
+
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
@@ -527,11 +529,10 @@ impl TyTraitDecl {
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(decl_ref);
-                    let const_name = const_decl.call_path.suffix.clone();
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
-                    let _ = ctx.insert_symbol(
-                        handler,
-                        const_name.clone(),
+                    let const_name = const_decl.call_path.suffix.clone();
+                    const_symbols.insert(
+                        const_name,
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                             decl_id: *decl_ref.id(),
                         }),
@@ -568,10 +569,24 @@ impl TyTraitDecl {
                         &type_mapping,
                         !ctx.code_block_first_pass(),
                     ));
-                    all_items.push(TyImplItem::Constant(decl_engine.insert(
+                    let const_name = const_decl.name().clone();
+                    let const_has_value = const_decl.value.is_some();
+                    let decl_id = decl_engine.insert(
                         const_decl,
                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                    )));
+                    );
+                    all_items.push(TyImplItem::Constant(decl_id.clone()));
+
+                    // If this non-interface item has a value, then we want to overwrite the
+                    // the previously inserted constant symbol from the interface surface.
+                    if const_has_value {
+                        const_symbols.insert(
+                            const_name,
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                decl_id: *decl_id.id(),
+                            }),
+                        );
+                    }
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
@@ -586,6 +601,11 @@ impl TyTraitDecl {
                     )));
                 }
             }
+        }
+
+        // Insert the constants into the namespace.
+        for (name, decl) in const_symbols.into_iter() {
+            let _ = ctx.insert_symbol(handler, name, decl);
         }
 
         // Insert the methods of the trait into the namespace.

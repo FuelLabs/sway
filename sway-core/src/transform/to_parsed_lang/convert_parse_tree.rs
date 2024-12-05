@@ -765,7 +765,7 @@ pub fn item_impl_to_declaration(
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context, handler, engines, const_item, attributes, true,
+                    context, handler, engines, const_item, attributes, false,
                 )
                 .map(ImplItem::Constant),
                 sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
