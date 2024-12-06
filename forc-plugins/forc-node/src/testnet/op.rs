@@ -7,7 +7,7 @@ use crate::{
         TESTNET_SYNC_HEADER_BATCH_SIZE,
     },
     run_opts::{DbType, RunOpts},
-    util::{ask_user_keypair, ask_user_string, HumanReadableCommand, KeyPair},
+    util::{ask_user_keypair, ask_user_string, update_chain_config, HumanReadableCommand, KeyPair},
 };
 use anyhow::Context;
 use forc_tracing::println_green;
@@ -19,8 +19,9 @@ use std::{
 
 /// Configures the node with testnet configuration to connect the node to latest testnet.
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
-pub(crate) fn run(cmd: TestnetCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
+pub(crate) async fn run(cmd: TestnetCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
     create_chainconfig_dir(ChainConfig::Testnet)?;
+    update_chain_config(ChainConfig::Testnet).await?;
     let keypair = if let (Some(peer_id), Some(secret)) = (&cmd.peer_id, &cmd.secret) {
         KeyPair {
             peer_id: peer_id.clone(),
