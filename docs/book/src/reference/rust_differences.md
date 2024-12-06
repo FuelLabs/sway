@@ -35,7 +35,7 @@ struct MyStruct {
 }
 ```
 
-## Borrow Checker
+## Memory Allocation
 
 In Rust, the borrow checker implements Rust's [ownership system](https://doc.rust-lang.org/1.8.0/book/ownership.html)
 
