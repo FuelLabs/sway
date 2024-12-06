@@ -1726,10 +1726,10 @@ impl<'eng> FnCompiler<'eng> {
                         len,
                         Type::get_uint8(context),
                     );
-                    let len = Constant::get_uint(context, 64, 8 - offset);
+                    let len_const = Constant::get_uint(context, 64, 8 - offset);
                     s.current_block
                         .append(context)
-                        .mem_copy_bytes(addr, item_ptr, len);
+                        .mem_copy_bytes(addr, item_ptr, len_const);
                     Ok(increase_len(&mut s.current_block, context, len, 8 - offset))
                 }
 
@@ -1998,10 +1998,10 @@ impl<'eng> FnCompiler<'eng> {
                             len,
                             Type::get_uint8(context),
                         );
-                        let len = Constant::get_uint(context, 64, 32);
+                        let len_32 = Constant::get_uint(context, 64, 32);
                         self.current_block
                             .append(context)
-                            .mem_copy_bytes(addr, item_ptr, len);
+                            .mem_copy_bytes(addr, item_ptr, len_32);
                         increase_len(&mut self.current_block, context, len, 32)
                     }
                     TypeInfo::StringArray(string_len) => {
