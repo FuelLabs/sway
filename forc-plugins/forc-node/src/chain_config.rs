@@ -2,16 +2,13 @@
 //! will always have a pinned instance of a chain config for given `Mode`.
 use forc_util::user_forc_directory;
 use include_dir::{include_dir, Dir};
-use std::path::PathBuf;
+use std::{fmt::Display, path::PathBuf};
+
+use crate::consts::{CONFIG_FOLDER, DB_FOLDER, IGNITION, LOCAL, TESTNET};
 
 static CHAINCONFIG_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/chain_configs");
 
-const CONFIG_FOLDER: &str = "chainspecs";
-const LOCAL: &str = "local";
-const TESTNET: &str = "testnet";
-const IGNITION: &str = "ignition";
-const DB_FOLDER: &str = "db";
-
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChainConfig {
     Local,
     Testnet,
@@ -26,6 +23,16 @@ impl From<ChainConfig> for PathBuf {
             ChainConfig::Local => user_forc_dir.join(LOCAL),
             ChainConfig::Testnet => user_forc_dir.join(TESTNET),
             ChainConfig::Ignition => user_forc_dir.join(IGNITION),
+        }
+    }
+}
+
+impl Display for ChainConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChainConfig::Local => write!(f, "local"),
+            ChainConfig::Testnet => write!(f, "testnet"),
+            ChainConfig::Ignition => write!(f, "ignition"),
         }
     }
 }
