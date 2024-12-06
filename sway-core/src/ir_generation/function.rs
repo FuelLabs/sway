@@ -2014,10 +2014,10 @@ impl<'eng> FnCompiler<'eng> {
                             len,
                             Type::get_uint8(context),
                         );
-                        let len = Constant::get_uint(context, 64, string_len.val() as u64);
+                        let len_const = Constant::get_uint(context, 64, string_len.val() as u64);
                         self.current_block
                             .append(context)
-                            .mem_copy_bytes(addr, item_ptr, len);
+                            .mem_copy_bytes(addr, item_ptr, len_const);
                         increase_len(
                             &mut self.current_block,
                             context,
