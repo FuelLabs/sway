@@ -4178,7 +4178,7 @@ impl<'eng> FnCompiler<'eng> {
                     .get_elem_ptr_with_idx(tuple_value, field_type, idx as u64)
                     .add_metadatum(context, span_md_idx)
             })
-            .ok_or_else(|| {
+            .ok_or({
                 CompileError::Internal(
                     "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
                     span,
