@@ -39,4 +39,4 @@ struct MyStruct {
 
 In Rust, the borrow checker implements Rust's [ownership system](https://doc.rust-lang.org/1.8.0/book/ownership.html)
 
-In Sway, there is no borrow checker.  This means there is no concept of ownership, borrowing, or lifetimes.  Instead, objects are copied and moved similar to C++.  Also Sway does not have any destructors nor `Drop` traits.  This means allocated memory lives for the entire transaction and is not deallocated until the end of the transaction.  A transaction can contain 65 MB of memory.
+In Sway, there is no borrow checker.  This means there is no concept of ownership, borrowing, or lifetimes.  Instead, objects are copied and moved similar to C++.  Also Sway does not have any destructors nor `Drop` traits.  This means allocated memory lives for the entire transaction and is not deallocated until the end of the transaction.  A transaction may allocate up to 64 MB of memory.
