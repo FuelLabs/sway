@@ -47,6 +47,8 @@ use std::{
     collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr, sync::Arc,
 };
 
+type AnnotatedItem = Option<Annotated<ItemKind>>;
+
 pub fn convert_parse_tree(
     context: &mut Context,
     handler: &Handler,
@@ -78,7 +80,7 @@ pub fn module_to_sway_parse_tree(
     let span = module.span();
     let root_nodes = {
         let mut root_nodes: Vec<AstNode> = vec![];
-        let mut prev_item: Option<Annotated<ItemKind>> = None;
+        let mut prev_item: AnnotatedItem = None;
         for item in module.items {
             let ast_nodes = item_to_ast_nodes(
                 context,
@@ -113,7 +115,7 @@ pub fn item_to_ast_nodes(
     engines: &Engines,
     item: Item,
     is_root: bool,
-    prev_item: Option<Annotated<ItemKind>>,
+    prev_item: AnnotatedItem,
     override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
@@ -1834,13 +1836,12 @@ fn expr_func_app_to_expression_kind(
     } = match *func {
         Expr::Path(path_expr) => path_expr,
         Expr::Error(_, err) => {
-            // FIXME we can do better here and return function application expression here
-            // if there are no parsing errors in the arguments
             return Ok(ExpressionKind::Error(Box::new([span]), err));
         }
         _ => {
-            let error = ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
-            return Err(handler.emit_err(error.into()));
+            return Err(handler.emit_err(
+                ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() }.into(),
+            ));
         }
     };
 
@@ -1848,14 +1849,10 @@ fn expr_func_app_to_expression_kind(
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
     let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
-        Ok(match generics_opt {
-            Some((_, generic_args)) => {
-                let span = generic_args.span();
-                let ty_args =
-                    generic_args_to_type_arguments(context, handler, engines, generic_args)?;
-                (ty_args, Some(span))
-            }
-            None => <_>::default(),
+        generics_opt.map_or(Ok((Vec::new(), None)), |(_, generic_args)| {
+            let ty_args =
+                generic_args_to_type_arguments(context, handler, engines, generic_args.clone())?;
+            Ok((ty_args, Some(generic_args.span())))
         })
     };
 
@@ -2492,20 +2489,20 @@ fn op_call(
     span: Span,
     args: &[Expression],
 ) -> Result<Expression, ErrorEmitted> {
+    let call_path = CallPath {
+        prefixes: vec![
+            Ident::new_with_override("core".into(), op_span.clone()),
+            Ident::new_with_override("ops".into(), op_span.clone()),
+        ],
+        suffix: Ident::new_with_override(name.into(), op_span.clone()),
+        is_absolute: true,
+    };
     let method_name_binding = TypeBinding {
-        inner: MethodName::FromTrait {
-            call_path: CallPath {
-                prefixes: vec![
-                    Ident::new_with_override("core".into(), op_span.clone()),
-                    Ident::new_with_override("ops".into(), op_span.clone()),
-                ],
-                suffix: Ident::new_with_override(name.into(), op_span.clone()),
-                is_absolute: true,
-            },
-        },
+        inner: MethodName::FromTrait { call_path },
         type_arguments: TypeArgs::Regular(vec![]),
         span: op_span,
     };
+
     Ok(Expression {
         kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
             method_name_binding,
@@ -2570,10 +2567,10 @@ fn storage_field_to_storage_field(
     attributes: AttributesMap,
 ) -> Result<StorageField, ErrorEmitted> {
     let span = storage_field.span();
-    let mut key_expr_opt = None;
-    if let Some(key_expr) = storage_field.key_expr {
-        key_expr_opt = Some(expr_to_expression(context, handler, engines, key_expr)?);
-    }
+    let key_expr_opt = storage_field
+        .key_expr
+        .map(|key_expr| expr_to_expression(context, handler, engines, key_expr))
+        .transpose()?;
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
