@@ -1,6 +1,10 @@
 library;
 
 impl raw_ptr {
+    pub fn null() -> raw_ptr {
+        __transmute::<u64, raw_ptr>(0)
+    }
+
     /// Returns `true` if the pointer is null.
     ///
     /// # Returns
