@@ -33,7 +33,10 @@ impl TyConfigurableDecl {
     // cannot be known at compilation time
     pub fn is_indirect(&self, engines: &Engines) -> bool {
         let type_info = engines.te().get(self.type_ascription.type_id);
-        matches!(type_info.abi_encode_size_hint(engines), AbiEncodeSizeHint::PotentiallyInfinite | AbiEncodeSizeHint::CustomImpl)
+        matches!(
+            type_info.abi_encode_size_hint(engines),
+            AbiEncodeSizeHint::PotentiallyInfinite | AbiEncodeSizeHint::CustomImpl
+        )
     }
 }
 

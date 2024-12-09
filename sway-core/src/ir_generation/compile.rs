@@ -363,9 +363,11 @@ pub(crate) fn compile_configurables(
                 // Some enum variants are bigger than others. Buffer needs to be big enough
                 // for any.
                 let config_type_info = engines.te().get(decl.type_ascription.type_id);
-                if let AbiEncodeSizeHint::Exact(len) | AbiEncodeSizeHint::Range(_, len) = config_type_info.abi_encode_size_hint(engines) {
-                        encoded_bytes.extend([0].repeat(len - encoded_bytes.len()));
-                        assert!(encoded_bytes.len() == len);
+                if let AbiEncodeSizeHint::Exact(len) | AbiEncodeSizeHint::Range(_, len) =
+                    config_type_info.abi_encode_size_hint(engines)
+                {
+                    encoded_bytes.extend([0].repeat(len - encoded_bytes.len()));
+                    assert!(encoded_bytes.len() == len);
                 }
 
                 let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
