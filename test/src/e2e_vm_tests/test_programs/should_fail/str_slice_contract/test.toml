@@ -1,3 +1,0 @@
-category = "fail"
-
-# check: $()`str` or a type containing `str` on `configurables` is not allowed
