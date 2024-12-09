@@ -15,7 +15,7 @@
 // }
 
 contract {
-    CONFIG = config u64, abi_decode_in_place_0, 0x00000000000004d2
+    CONFIG = config u64, abi_decode_in_place_0, 0x00000000000004d2, 0x00
 
     pub fn abi_decode_in_place_0(ptr: u64, len: u64, target: u64) -> () {
         entry(ptr: u64, len: u64, target: u64):
