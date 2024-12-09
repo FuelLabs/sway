@@ -3067,7 +3067,7 @@ dependencies = [
 [[package]]
 name = "fuel-abi-types"
 version = "0.8.0"
-source = "git+https://github.com/FuelLabs/fuel-abi-types?branch=xunilrj/indirect-configurables#fd1be3841db866a533214e06800ecd423f2c390e"
+source = "git+https://github.com/FuelLabs/fuel-abi-types?branch=xunilrj%2Findirect-configurables#fd1be3841db866a533214e06800ecd423f2c390e"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -3401,7 +3401,7 @@ dependencies = [
 [[package]]
 name = "fuels"
 version = "0.66.10"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/dynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
 dependencies = [
  "fuel-core-client",
  "fuel-crypto",
@@ -3416,7 +3416,7 @@ dependencies = [
 [[package]]
 name = "fuels-accounts"
 version = "0.66.10"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/dynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
 dependencies = [
  "async-trait",
  "chrono",
@@ -3441,7 +3441,7 @@ dependencies = [
 [[package]]
 name = "fuels-code-gen"
 version = "0.66.10"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/dynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -3456,7 +3456,7 @@ dependencies = [
 [[package]]
 name = "fuels-core"
 version = "0.66.10"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/dynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
 dependencies = [
  "async-trait",
  "bech32",
@@ -3484,7 +3484,7 @@ dependencies = [
 [[package]]
 name = "fuels-macros"
 version = "0.66.10"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/dynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
 dependencies = [
  "fuels-code-gen",
  "itertools 0.12.1",
@@ -3496,7 +3496,7 @@ dependencies = [
 [[package]]
 name = "fuels-programs"
 version = "0.66.10"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/dynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
 dependencies = [
  "async-trait",
  "fuel-abi-types",
@@ -3514,7 +3514,7 @@ dependencies = [
 [[package]]
 name = "fuels-test-helpers"
 version = "0.66.10"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e/dynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#8715d1c2bb47e952d9c6e4f163f9284f3321e5ab"
 dependencies = [
  "fuel-core-chain-config",
  "fuel-core-client",
