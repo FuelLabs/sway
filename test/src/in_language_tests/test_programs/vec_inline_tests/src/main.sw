@@ -617,7 +617,7 @@ fn vec_ptr() {
 
     let mut new_vec: Vec<u64> = Vec::new();
     let new_vec_ptr = new_vec.ptr();
-    assert(!new_vec_ptr.is_null());
+    assert(new_vec_ptr.is_null());
 
     let mut capacity_vec: Vec<u64> = Vec::with_capacity(16);
     let capacity_vec_ptr = capacity_vec.ptr();
