@@ -1,7 +1,6 @@
 use crate::{
     language::{parsed::Declaration, Visibility},
-    namespace::LexicalScopeId,
-    namespace::ModulePath,
+    namespace::{LexicalScopeId, ModulePath, ResolvedDeclaration},
     semantic_analysis::Namespace,
     Engines,
 };
@@ -41,12 +40,14 @@ impl SymbolCollectionContext {
         &mut self,
         engines: &Engines,
         span: Span,
+        decl: Option<Declaration>,
         with_scoped_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
-        let lexical_scope_id: LexicalScopeId = self
-            .namespace
-            .module_mut(engines)
-            .write(engines, |m| m.push_new_lexical_scope(span.clone()));
+        let decl = decl.map(ResolvedDeclaration::Parsed);
+        let lexical_scope_id: LexicalScopeId =
+            self.namespace.module_mut(engines).write(engines, |m| {
+                m.push_new_lexical_scope(span.clone(), decl.clone())
+            });
         let ret = with_scoped_ctx(self);
         self.namespace
             .module_mut(engines)

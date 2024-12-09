@@ -39,14 +39,10 @@ impl ty::TyAbiDecl {
         decl_id: &ParsedDeclId<AbiDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let abi_decl = engines.pe().get_abi(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            abi_decl.name.clone(),
-            Declaration::AbiDeclaration(*decl_id),
-        )?;
+        let decl = Declaration::AbiDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, abi_decl.name.clone(), decl.clone())?;
 
-        let _ = ctx.scoped(engines, abi_decl.span.clone(), |scoped_ctx| {
+        let _ = ctx.scoped(engines, abi_decl.span.clone(), Some(decl), |scoped_ctx| {
             abi_decl.interface_surface.iter().for_each(|item| {
                 let _ = TyTraitItem::collect(handler, engines, scoped_ctx, item);
             });
