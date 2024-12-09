@@ -257,4 +257,7 @@ wiremock = "0.6"
 
 [patch.crates-io]
 fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "xunilrj/indirect-configurables" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
 fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
+fuels-code-gen = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
