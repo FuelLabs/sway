@@ -244,8 +244,8 @@ script {
 !12 = span !3 64967 64973
 !13 = span !3 64953 64974
 !14 = fn_call_path_span !3 64953 64966
-!15 = span !3 102722 102743
-!16 = fn_call_path_span !3 102722 102735
+!15 = span !3 102115 102136
+!16 = fn_call_path_span !3 102115 102128
 !17 = (!13 !14 !15 !16)
 !18 = span !3 64942 64975
 !19 = span !3 65033 65037
@@ -257,12 +257,12 @@ script {
 !25 = span !3 634 729
 !26 = fn_name_span !3 641 651
 !27 = (!25 !26)
-!28 = span !3 66134 66140
-!29 = span !3 66112 66207
-!30 = fn_name_span !3 66115 66125
+!28 = span !3 65527 65533
+!29 = span !3 65505 65600
+!30 = fn_name_span !3 65508 65518
 !31 = (!29 !30)
-!32 = span !3 66173 66201
-!33 = fn_call_path_span !3 66180 66192
+!32 = span !3 65566 65594
+!33 = fn_call_path_span !3 65573 65585
 !34 = span !3 593 605
 !35 = (!32 !33 !34)
 !36 = (!32 !33)
@@ -546,8 +546,8 @@ poph i524288                  ; restore registers 40..64
 popl i7                       ; restore registers 16..40
 jmp $$reta                    ; return from call
 .data:
-data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
-data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
+data_Configurable_TUPLE (0) .bytes[8] 00 00 00 00 00 00 00 02  ........
+data_Configurable_WRAPPED (1) .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
     Finished release [optimized + fuel] target(s) [752 B] in ???
