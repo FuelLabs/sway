@@ -402,7 +402,7 @@ pub fn traverse(
         let ctx = ParseContext::new(
             &session.token_map,
             engines,
-            typed_program.root.namespace.module(engines),
+            typed_program.root.namespace.current_module(),
         );
 
         // The final element in the results is the main program.

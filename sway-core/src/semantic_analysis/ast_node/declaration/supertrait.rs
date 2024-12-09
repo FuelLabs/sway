@@ -157,6 +157,8 @@ pub(crate) fn insert_supertraits_into_namespace(
                     });
                 }
                 _ => {
+//		    println!("supertrait");
+//		    dbg!(&supertrait.name);
                     handler.emit_err(CompileError::TraitNotFound {
                         name: supertrait.name.to_string(),
                         span: supertrait.name.span(),

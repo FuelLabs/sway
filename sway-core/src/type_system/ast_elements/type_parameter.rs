@@ -444,11 +444,15 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx.namespace().module(ctx.engines()).resolve_symbol(
-                handler,
-                ctx.engines(),
-                name,
-            )?;
+            let sy = ctx
+                .namespace()
+                .current_module()
+		.resolve_symbol(
+                    handler,
+                    ctx.engines(),
+                    name,
+		    ctx.namespace().current_package_name(),
+		)?;
 
             match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -530,7 +534,7 @@ impl TypeParameter {
                     if !type_id.is_concrete(engines, TreatNumericAs::Concrete) && trait_constraints.len() == 1 {
                         let concrete_trait_type_ids : Vec<(TypeId, String)>= ctx
                             .namespace_mut()
-                            .module(engines)
+                            .current_module_mut()
                             .current_items()
                             .implemented_traits
                             .get_trait_constraints_are_satisfied_for_types(
@@ -571,7 +575,7 @@ impl TypeParameter {
                     // Check to see if the trait constraints are satisfied.
                     match TraitMap::check_if_trait_constraints_are_satisfied_for_type(
                             handler,
-                            ctx.namespace_mut().module_mut(engines),
+                            ctx.namespace_mut().current_module_mut(),
                             *type_id,
                             trait_constraints,
                             access_span,
