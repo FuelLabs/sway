@@ -257,6 +257,7 @@ script {
 !26 = fn_name_span !3 673 683
 !27 = (!25 !26)
 <<<<<<< HEAD
+<<<<<<< HEAD
 !28 = span !3 68767 68773
 !29 = span !3 68745 68840
 !30 = fn_name_span !3 68748 68758
@@ -266,6 +267,8 @@ script {
 !34 = span !3 625 637
 =======
 <<<<<<< HEAD
+=======
+>>>>>>> d62a6dd9d (fix tests)
 !28 = span !3 68735 68741
 !29 = span !3 68713 68808
 !30 = fn_name_span !3 68716 68726
@@ -279,7 +282,12 @@ script {
 !31 = (!29 !30)
 !32 = span !3 66173 66201
 !33 = fn_call_path_span !3 66180 66192
->>>>>>> 86c719807 (allow indirect configurables for dynamic types such as vec, slices etc...)
+!28 = span !3 65527 65533
+!29 = span !3 65505 65600
+!30 = fn_name_span !3 65508 65518
+!31 = (!29 !30)
+!32 = span !3 65566 65594
+!33 = fn_call_path_span !3 65573 65585
 !34 = span !3 593 605
 >>>>>>> b03b5d371 (allow indirect configurables for dynamic types such as vec, slices etc...)
 !35 = (!32 !33 !34)
@@ -540,8 +548,8 @@ poph i524288                  ; restore registers 40..64
 popl i3                       ; restore registers 16..40
 jmp $$reta                    ; return from call
 .data:
-data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
-data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
+data_Configurable_TUPLE (0) .bytes[8] 00 00 00 00 00 00 00 02  ........
+data_Configurable_WRAPPED (1) .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
     Finished release [optimized + fuel] target(s) [648 B] in ???
