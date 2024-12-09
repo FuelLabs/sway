@@ -765,7 +765,7 @@ pub fn item_impl_to_declaration(
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context, handler, engines, const_item, attributes, true,
+                    context, handler, engines, const_item, attributes, false,
                 )
                 .map(ImplItem::Constant),
                 sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
@@ -1448,7 +1448,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
-        "Self" | "self" => Some(TypeInfo::new_self_type(name.span())),
+        "Self" => Some(TypeInfo::new_self_type(name.span())),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
     }
@@ -2139,6 +2139,7 @@ fn expr_to_expression(
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
                 body: braced_code_block_contents_to_code_block(context, handler, engines, block)?,
+                is_desugared_for_loop: false,
             }),
             span,
         },
@@ -3287,6 +3288,7 @@ fn for_expr_to_expression(
                                 span: Span::dummy(),
                             }),
                             body: while_body,
+                            is_desugared_for_loop: true,
                         }),
                         span: Span::dummy(),
                     }),
@@ -3342,22 +3344,18 @@ fn path_root_opt_to_bool_and_qualified_path_root(
                 close_angle_bracket_token: _,
             }),
             _,
-        )) => (
-            false,
-            if let Some((_, path_type)) = as_trait {
-                Some(QualifiedPathType {
-                    ty: ty_to_type_argument(context, handler, engines, *ty)?,
-                    as_trait: engines.te().insert(
-                        engines,
-                        path_type_to_type_info(context, handler, engines, *path_type.clone())?,
-                        path_type.span().source_id(),
-                    ),
-                    as_trait_span: path_type.span(),
-                })
-            } else {
-                None
-            },
-        ),
+        )) => (false, {
+            let (_, path_type) = as_trait;
+            Some(QualifiedPathType {
+                ty: ty_to_type_argument(context, handler, engines, *ty)?,
+                as_trait: engines.te().insert(
+                    engines,
+                    path_type_to_type_info(context, handler, engines, *path_type.clone())?,
+                    path_type.span().source_id(),
+                ),
+                as_trait_span: path_type.span(),
+            })
+        }),
     })
 }
 
@@ -4609,7 +4607,10 @@ fn path_type_to_type_info(
             }
         }
         None => {
-            if name.as_str() == "ContractCaller" {
+            if name.as_str() == "self" {
+                let error = ConvertParseTreeError::UnknownTypeNameSelf { span };
+                return Err(handler.emit_err(error.into()));
+            } else if name.as_str() == "ContractCaller" {
                 if root_opt.is_some() || !suffix.is_empty() {
                     let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
                     return Err(handler.emit_err(error.into()));

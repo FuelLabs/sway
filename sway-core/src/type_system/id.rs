@@ -1,5 +1,6 @@
 #![allow(clippy::mutable_key_type)]
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -34,7 +35,7 @@ pub enum TreatNumericAs {
 }
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, Deserialize, Serialize)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
@@ -94,7 +95,10 @@ impl CollectTypesMetadata for TypeId {
 impl SubstTypes for TypeId {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let type_engine = ctx.engines.te();
-        if let Some(matching_id) = ctx.type_subst_map.find_match(*self, ctx.engines) {
+        if let Some(matching_id) = ctx
+            .type_subst_map
+            .and_then(|tsm| tsm.find_match(*self, ctx.engines))
+        {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
                 HasChanges::Yes

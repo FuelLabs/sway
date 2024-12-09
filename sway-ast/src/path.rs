@@ -110,5 +110,5 @@ impl Spanned for PathTypeSegment {
 #[derive(Clone, Debug, Serialize)]
 pub struct QualifiedPathRoot {
     pub ty: Box<Ty>,
-    pub as_trait: Option<(AsToken, Box<PathType>)>,
+    pub as_trait: (AsToken, Box<PathType>),
 }

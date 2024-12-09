@@ -30,7 +30,7 @@ use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
     symbol_collection_context::SymbolCollectionContext,
-    type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type},
+    type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
     GenericShadowingMode,
 };
 
@@ -82,7 +82,7 @@ pub struct TypeCheckContext<'a> {
     /// Whether or not a const declaration shadows previous const declarations sequentially.
     ///
     /// This is `Sequential` while checking const declarations in functions, otherwise `ItemStyle`.
-    const_shadowing_mode: ConstShadowingMode,
+    pub(crate) const_shadowing_mode: ConstShadowingMode,
     /// Whether or not a generic type parameters shadows previous generic type parameters.
     ///
     /// This is `Disallow` everywhere except while checking type parameters bounds in struct instantiation.
@@ -677,30 +677,15 @@ impl<'a> TypeCheckContext<'a> {
             type_info_prefix,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
     }
 
-    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_with_visibility_check(
-        &self,
-        handler: &Handler,
-        call_path: &CallPath,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        resolve_call_path(
-            handler,
-            self.engines(),
-            self.namespace(),
-            &self.namespace().current_mod_path(),
-            call_path,
-            self.self_type(),
-        )
-    }
-
-    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+    pub(crate) fn resolve_qualified_call_path(
         &mut self,
         handler: &Handler,
         qualified_call_path: &QualifiedCallPath,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
         resolve_qualified_call_path(
             handler,
             self.engines(),
@@ -709,7 +694,63 @@ impl<'a> TypeCheckContext<'a> {
             qualified_call_path,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
+        .map(|d| d.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        symbol: &Ident,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path(
+            handler,
+            self.engines(),
+            self.namespace(),
+            self.namespace().current_mod_path(),
+            &symbol.clone().into(),
+            self.self_type(),
+            VisibilityCheck::No,
+        )
+        .map(|d| d.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        handler: &Handler,
+        call_path: &CallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path(
+            handler,
+            self.engines(),
+            self.namespace(),
+            &self.namespace().current_mod_path(),
+            call_path,
+            self.self_type(),
+            VisibilityCheck::Yes,
+        )
+        .map(|d| d.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        call_path: &CallPath,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        resolve_call_path(
+            handler,
+            self.engines(),
+            self.namespace(),
+            self.namespace().current_mod_path(),
+            call_path,
+            self.self_type(),
+            VisibilityCheck::No,
+        )
+        .map(|d| d.expect_typed())
     }
 
     /// Given a name and a type (plus a `self_type` to potentially
@@ -742,9 +783,7 @@ impl<'a> TypeCheckContext<'a> {
         )?;
 
         // grab the local items from the local module
-        let local_items = local_module
-            .current_items()
-            .get_items_for_type(self.engines, type_id);
+        let local_items = local_module.get_items_for_type(self.engines, type_id);
 
 //	if problem { dbg!(&local_items); };
 
@@ -760,6 +799,7 @@ impl<'a> TypeCheckContext<'a> {
             None,
             self.self_type(),
             &self.subst_ctx(),
+            VisibilityCheck::Yes,
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
@@ -770,9 +810,7 @@ impl<'a> TypeCheckContext<'a> {
         )?;
 
         // grab the items from where the type is declared
-        let mut type_items = type_module
-            .current_items()
-            .get_items_for_type(self.engines, type_id);
+        let mut type_items = type_module.get_items_for_type(self.engines, type_id);
 
 //	if problem { dbg!(&type_items); };
 	
@@ -1401,19 +1439,16 @@ impl<'a> TypeCheckContext<'a> {
         let handler = Handler::default();
         let engines = self.engines;
         let code_block_first_pass = self.code_block_first_pass();
-        self.namespace_mut()
-            .current_module_mut()
-            .current_items_mut()
-            .implemented_traits
-            .check_if_trait_constraints_are_satisfied_for_type(
-                &handler,
-                type_id,
-                constraints,
-                &Span::dummy(),
-                engines,
-                crate::namespace::TryInsertingTraitImplOnFailure::Yes,
-                code_block_first_pass.into(),
-            )
-            .is_ok()
+        TraitMap::check_if_trait_constraints_are_satisfied_for_type(
+            &handler,
+            self.namespace_mut().current_module_mut(),
+            type_id,
+            constraints,
+            &Span::dummy(),
+            engines,
+            crate::namespace::TryInsertingTraitImplOnFailure::Yes,
+            code_block_first_pass.into(),
+        )
+        .is_ok()
     }
 }

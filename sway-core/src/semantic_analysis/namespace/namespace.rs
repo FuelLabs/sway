@@ -1,12 +1,7 @@
-use crate::{
-    language::{ty, CallPath, Visibility},
-    Engines, Ident, TypeId,
-};
+use crate::{language::Visibility, Engines, Ident};
 
 use super::{
-    module::Module,
-    root::{ResolvedDeclaration, Root},
-    ModulePath, ModulePathBuf,
+    module::Module, root::Root, ModulePath, ModulePathBuf,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -69,6 +64,10 @@ impl Namespace {
 
     pub fn root(self) -> Root {
         self.root
+    }
+
+    pub fn borrow_root(&self) -> &Root {
+	&self.root
     }
 
     pub fn current_module(&self) -> &Module {
@@ -237,95 +236,6 @@ impl Namespace {
 	let dummy_handler = Handler::default();
 	self.root.item_lookup(&dummy_handler, engines, symbol, mod_path, &self.current_mod_path, true).is_ok()
     }
-
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.resolve_symbol_with_path(handler, engines, &self.current_mod_path, symbol, self_type)
-    }
-
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol_with_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-	mod_path: &ModulePathBuf,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .resolve_symbol(handler, engines, mod_path, symbol, self_type)
-    }
-
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol_typed(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_symbol(handler, engines, symbol, self_type)
-            .map(|resolved_decl| resolved_decl.expect_typed())
-    }
-
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_typed(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_call_path(handler, engines, call_path, self_type)
-            .map(|resolved_decl| resolved_decl.expect_typed())
-    }
-
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-	let full_path = call_path.to_fullpath(engines, &self);
-//	let problem =
-//	    call_path.suffix.as_str() == "Eq"
-//	    && call_path.prefixes.len() == 2
-//	    && call_path.prefixes[0].as_str() == "core"
-//	    && call_path.prefixes[1].as_str() == "ops";
-//	if problem {
-//	    dbg!(call_path);
-//	    dbg!(&full_path);
-//	    dbg!(self.current_mod_path());
-//	};
-        self.root.resolve_call_path(
-            handler,
-            engines,
-            &self.current_mod_path,
-            &full_path,
-            self_type,
-        )
-    }
-
-//    /// Short-hand for calling [Root::resolve_call_and_root_type_id] on `root` with the `mod_path`.
-//    pub fn resolve_call_path_and_root_type_id(
-//        &self,
-//        handler: &Handler,
-//        engines: &Engines,
-//	root_type_id: TypeId,
-//	as_trait: Option<CallPath>,
-//	call_path: &CallPath,
-//        self_type: Option<TypeId>,
-//    ) -> Result<ty::TyDecl, ErrorEmitted> {
-//        self.root.resolve_call_path_and_root_type_id(handler, engines, self.current_module(), root_type_id, as_trait, call_path, self_type).map(|decl| decl.expect_typed())
-//    }
 
     // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
     fn import_implicits(

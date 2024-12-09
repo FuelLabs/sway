@@ -16,8 +16,9 @@ pub(super) use trait_map::CodeBlockFirstPass;
 pub(super) use trait_map::IsExtendingExistingImpl;
 pub(super) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
-pub(super) use trait_map::TraitMap;
+pub use trait_map::TraitMap;
 pub use trait_map::TryInsertingTraitImplOnFailure;
+pub use module::module_not_found;
 
 use sway_types::Ident;
 

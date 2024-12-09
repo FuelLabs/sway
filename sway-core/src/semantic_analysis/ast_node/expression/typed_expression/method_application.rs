@@ -225,13 +225,10 @@ pub(crate) fn type_check_method_application(
         // if the coins contract call parameter is not specified
         // it's considered to be zero and hence no error needs to be reported
         if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
-            if coins_analysis::possibly_nonzero_u64_expression(
-                ctx.namespace(),
-                ctx.engines,
-                coins_expr,
-            ) && !method
-                .attributes
-                .contains_key(&crate::transform::AttributeKind::Payable)
+            if coins_analysis::possibly_nonzero_u64_expression(&ctx, coins_expr)
+                && !method
+                    .attributes
+                    .contains_key(&crate::transform::AttributeKind::Payable)
             {
                 return Err(
                     handler.emit_err(CompileError::CoinsPassedToNonPayableMethod {
@@ -288,12 +285,7 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl = ctx.namespace().resolve_symbol_typed(
-                    &Handler::default(),
-                    ctx.engines,
-                    name,
-                    ctx.self_type(),
-                )?;
+                let unknown_decl = ctx.resolve_symbol(&Handler::default(), name)?;
 
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,
@@ -823,7 +815,7 @@ pub(crate) fn resolve_method_name(
 //            let type_info_prefix = ctx
 //                .namespace()
 	    //                .prepend_module_path(&call_path_binding.inner.prefixes);
-	    let type_info_prefix = call_path_binding.inner.to_fullpath(engines, ctx.namespace()).prefixes.clone();
+ 	    let type_info_prefix = call_path_binding.inner.to_fullpath(engines, ctx.namespace()).prefixes.clone();
             ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method

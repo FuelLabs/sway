@@ -1,18 +1,18 @@
 use crate::{
     engine_threading::*,
     language::{CallPath, Visibility},
-    namespace::{ModulePath, ResolvedDeclaration},
+    namespace::ResolvedDeclaration,
     semantic_analysis::{ast_node::ConstShadowingMode, Namespace},
     type_system::TypeId,
 };
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::{span::Span, Ident, Spanned};
-use sway_utils::iter_prefixes;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{span::Span, Ident};
 
-use super::{symbol_collection_context::SymbolCollectionContext, GenericShadowingMode};
+use super::{
+    symbol_collection_context::SymbolCollectionContext,
+    type_resolve::{resolve_call_path, VisibilityCheck},
+    GenericShadowingMode,
+};
 
 /// Contextual state tracked and accumulated throughout symbol resolving.
 pub struct SymbolResolveContext<'a> {
@@ -186,78 +186,14 @@ impl<'a> SymbolResolveContext<'a> {
         handler: &Handler,
         call_path: &CallPath,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.resolve_call_path_with_visibility_check_and_modpath(
+        resolve_call_path(
             handler,
+            self.engines(),
+            self.namespace(),
             &self.namespace().current_mod_path,
             call_path,
+            self.self_type(),
+            VisibilityCheck::Yes,
         )
-    }
-
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    ///
-    /// The `mod_path` is significant here as we assume the resolution is done within the
-    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
-    /// and the symbol's own visibility.
-    pub(crate) fn resolve_call_path_with_visibility_check_and_modpath(
-        &self,
-        handler: &Handler,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-	let full_path = call_path.to_fullpath(&self.engines, &self.namespace());
-
-//	let problem = call_path.suffix.as_str() == "MyStruct";
-//	if problem {
-//	    dbg!(&mod_path);
-//	    dbg!(&call_path);
-//	    dbg!(&full_path);
-//	}
-	
-        let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
-            handler,
-            self.engines,
-            mod_path,
-            &full_path,
-            self.self_type,
-        )?;
-
-        // In case there is no mod path we don't need to check visibility
-        if mod_path.is_empty() {
-            return Ok(decl);
-        }
-
-        // In case there are no prefixes we don't need to check visibility
-        if call_path.prefixes.is_empty() {
-            return Ok(decl);
-        }
-
-        // check the visibility of the call path elements
-        // we don't check the first prefix because direct children are always accessible
-        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-            let module = self.namespace().require_module_from_absolute_path(
-                handler,
-                &prefix.to_vec(),
-            )?;
-            if module.visibility().is_private() {
-                let prefix_last = prefix[prefix.len() - 1].clone();
-                handler.emit_err(CompileError::ImportPrivateModule {
-                    span: prefix_last.span(),
-                    name: prefix_last,
-                });
-            }
-        }
-
-        // check the visibility of the symbol itself
-        if !decl.visibility(self.engines).is_public() {
-            handler.emit_err(CompileError::ImportPrivateSymbol {
-                name: call_path.suffix.clone(),
-                span: call_path.suffix.span(),
-            });
-        }
-
-        Ok(decl)
     }
 }
