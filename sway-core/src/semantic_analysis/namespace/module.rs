@@ -277,11 +277,16 @@ impl Module {
     }
 
     /// Pushes a new scope to the module's lexical scope hierarchy.
-    pub fn push_new_lexical_scope(&mut self, span: Span) -> LexicalScopeId {
+    pub fn push_new_lexical_scope(
+        &mut self,
+        span: Span,
+        declaration: Option<ResolvedDeclaration>,
+    ) -> LexicalScopeId {
         let previous_scope_id = self.current_lexical_scope_id();
         let new_scoped_id = {
             self.lexical_scopes.push(LexicalScope {
                 parent: Some(previous_scope_id),
+                declaration,
                 ..Default::default()
             });
             self.lexical_scopes.len() - 1
