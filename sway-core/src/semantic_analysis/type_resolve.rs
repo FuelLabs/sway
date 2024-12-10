@@ -308,23 +308,27 @@ pub fn resolve_call_path(
         return Ok(decl);
     }
 
+    // Check that the modules in full_path are visible from the current module.
+    let _ = namespace.borrow_root().check_module_privacy(handler, &full_path.prefixes, namespace.current_mod_path());
+    
+//
+//    // check the visibility of the call path elements
+//    // we don't check the first prefix because direct children are always accessible
+//    for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+//        let module = namespace.require_module_from_absolute_path(handler, &prefix.to_vec())?;
+//        if module.visibility().is_private() {
+//            let prefix_last = prefix[prefix.len() - 1].clone();
+//            handler.emit_err(CompileError::ImportPrivateModule {
+//                span: prefix_last.span(),
+//                name: prefix_last,
+//            });
+//        }
+//    }
+
     // Private declarations are visibile within their own module, so no need to check for
     // visibility in that case
     if decl_mod_path == *namespace.current_mod_path() {
 	return Ok(decl);
-    }
-
-    // check the visibility of the call path elements
-    // we don't check the first prefix because direct children are always accessible
-    for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-        let module = namespace.require_module_from_absolute_path(handler, &prefix.to_vec())?;
-        if module.visibility().is_private() {
-            let prefix_last = prefix[prefix.len() - 1].clone();
-            handler.emit_err(CompileError::ImportPrivateModule {
-                span: prefix_last.span(),
-                name: prefix_last,
-            });
-        }
     }
 
     // check the visibility of the symbol itself

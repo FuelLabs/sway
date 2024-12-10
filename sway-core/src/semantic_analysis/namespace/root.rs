@@ -826,7 +826,7 @@ impl Root {
     /// If src and dst have a common ancestor module that is private, this privacy modifier is
     /// ignored for visibility purposes, since src and dst are both behind that private visibility
     /// modifier.  Additionally, items in a private module are visible to its immediate parent.
-    fn check_module_privacy(
+    pub(crate) fn check_module_privacy(
         &self,
         handler: &Handler,
         src: &ModulePath,
