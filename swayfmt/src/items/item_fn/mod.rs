@@ -156,7 +156,9 @@ fn format_fn_sig(
         write!(formatted_code, "{} ", visibility_token.span().as_str())?;
     }
     // `fn ` + name
-    write!(formatted_code, "{} ", fn_sig.fn_token.span().as_str())?;
+    // TODO: This is a temporary solution.
+    //       The proper implementation will come as a part of https://github.com/FuelLabs/sway/issues/6779.
+    write!(formatted_code, "fn ")?;
     fn_sig.name.format(formatted_code, formatter)?;
     // `<T>`
     if let Some(generics) = &fn_sig.generics {

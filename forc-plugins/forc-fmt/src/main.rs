@@ -7,7 +7,7 @@ use forc_pkg::{
     WorkspaceManifestFile,
 };
 use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
-use forc_util::fs_locking::PidFileLocking;
+use forc_util::fs_locking::is_file_dirty;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -103,15 +103,6 @@ fn run() -> Result<()> {
         }
     }
     Ok(())
-}
-
-/// Checks if the specified file is marked as "dirty".
-/// This is used to prevent formatting files that are currently open in an editor
-/// with unsaved changes.
-///
-/// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
-fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
-    PidFileLocking::lsp(path.as_ref()).is_locked()
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.

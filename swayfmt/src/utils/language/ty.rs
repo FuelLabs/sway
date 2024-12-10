@@ -55,8 +55,10 @@ impl Format for Ty {
                 mut_token.clone(),
                 ty.clone(),
             ),
-            Self::Never { bang_token } => {
-                write!(formatted_code, "{}", bang_token.span().as_str(),)?;
+            Self::Never { bang_token: _ } => {
+                // TODO: This is a temporary solution.
+                //       The proper implementation will come as a part of https://github.com/FuelLabs/sway/issues/6779.
+                write!(formatted_code, "!")?;
                 Ok(())
             }
         }
@@ -136,18 +138,21 @@ fn format_slice(
 
 fn format_ref(
     formatted_code: &mut FormattedCode,
-    ampersand_token: AmpersandToken,
+    _ampersand_token: AmpersandToken,
     mut_token: Option<MutToken>,
     ty: Box<Ty>,
 ) -> Result<(), FormatterError> {
     write!(
         formatted_code,
-        "{}{}{}",
-        ampersand_token.span().as_str(),
-        if let Some(mut_token) = mut_token {
-            format!("{} ", mut_token.span().as_str())
+        "&{}{}",
+        // TODO: This is a temporary solution.
+        //       The proper implementation will come as a part of https://github.com/FuelLabs/sway/issues/6779.
+        if let Some(_mut_token) = mut_token {
+            // TODO: This is a temporary solution.
+            //       The proper implementation will come as a part of https://github.com/FuelLabs/sway/issues/6779.
+            "mut "
         } else {
-            "".to_string()
+            ""
         },
         ty.span().as_str()
     )?;
