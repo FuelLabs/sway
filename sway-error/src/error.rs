@@ -1036,10 +1036,7 @@ pub enum CompileError {
         trait_types_and_names: Vec<(String, String)>,
     },
     #[error("Multiple contracts methods with the same name.")]
-    MultipleContractsMethodsWithTheSameName {
-        span: Span,
-    },
-
+    MultipleContractsMethodsWithTheSameName { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
