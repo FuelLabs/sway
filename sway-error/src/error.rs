@@ -1035,6 +1035,11 @@ pub enum CompileError {
         trait_names: Vec<String>,
         trait_types_and_names: Vec<(String, String)>,
     },
+    #[error("Multiple contracts methods with the same name.")]
+    MultipleContractsMethodsWithTheSameName {
+        span: Span,
+    },
+
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1255,6 +1260,7 @@ impl Spanned for CompileError {
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
             MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
+            MultipleContractsMethodsWithTheSameName { span } => span.clone(),
         }
     }
 }

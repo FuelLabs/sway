@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
     decl_engine::{DeclEngineGet, DeclId},
@@ -340,7 +341,7 @@ where
         });
 
         // Uncomment this to understand why an entry function was not generated
-        //println!("{:#?}", handler);
+        // println!("{:#?}", handler);
 
         let decl = r.map_err(|_| handler.clone())?;
 
@@ -396,7 +397,7 @@ where
         });
 
         // Uncomment this to understand why auto impl failed for a type.
-        //println!("{:#?}", handler);
+        // println!("{:#?}", handler);
 
         let decl = r.map_err(|_| handler.clone())?;
 
@@ -540,8 +541,19 @@ where
         let mut reads = false;
         let mut writes = false;
 
+        // used to check for name collisions
+        let mut names = BTreeMap::new();
+
+        // generate code
         for r in contract_fns {
             let decl = engines.de().get(r);
+
+            // Contract methods must be unique
+            if let Some(old) = names.insert(decl.name.as_str().to_string(), decl.name.span()) {
+                return Err(handler.emit_err(CompileError::MultipleContractsMethodsWithTheSameName {
+                    span: old,
+                }));
+            }
 
             match decl.purity {
                 Purity::Pure => {}
