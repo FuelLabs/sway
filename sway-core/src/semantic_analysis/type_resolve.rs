@@ -296,7 +296,7 @@ pub fn resolve_call_path(
     let (decl, decl_mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
-        namespace.borrow_root(),
+        namespace.root_ref(),
 //	symbol_path,
         &full_path.prefixes,
 //        &call_path.suffix,
@@ -309,7 +309,7 @@ pub fn resolve_call_path(
     }
 
     // Check that the modules in full_path are visible from the current module.
-    let _ = namespace.borrow_root().check_module_privacy(handler, &full_path.prefixes, namespace.current_mod_path());
+    let _ = namespace.root_ref().check_module_privacy(handler, &full_path.prefixes, namespace.current_mod_path());
     
 //
 //    // check the visibility of the call path elements

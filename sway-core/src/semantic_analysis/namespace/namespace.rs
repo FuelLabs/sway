@@ -66,7 +66,7 @@ impl Namespace {
         self.root
     }
 
-    pub fn borrow_root(&self) -> &Root {
+    pub fn root_ref(&self) -> &Root {
 	&self.root
     }
 
