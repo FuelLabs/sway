@@ -5,7 +5,7 @@ use std::outputs::*;
 
 abi TxOutputContract {
     fn send_assets_change(to: Address, asset: AssetId, amount: u64);
-    fn send_assets_variable(to: Address, asset: AssetId, inex: u64) -> (Address, AssetId, u64);
+    fn send_assets_variable(to: Address, asset: AssetId, index: u64) -> (Address, AssetId, u64);
 }
 
 impl TxOutputContract for Contract {
