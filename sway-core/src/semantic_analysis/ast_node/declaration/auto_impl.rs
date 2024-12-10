@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
     decl_engine::{DeclEngineGet, DeclId},
@@ -11,6 +10,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     Engines, TypeArgument, TypeInfo, TypeParameter,
 };
+use std::collections::BTreeMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -550,9 +550,9 @@ where
 
             // Contract methods must be unique
             if let Some(old) = names.insert(decl.name.as_str().to_string(), decl.name.span()) {
-                return Err(handler.emit_err(CompileError::MultipleContractsMethodsWithTheSameName {
-                    span: old,
-                }));
+                return Err(handler.emit_err(
+                    CompileError::MultipleContractsMethodsWithTheSameName { span: old },
+                ));
             }
 
             match decl.purity {
