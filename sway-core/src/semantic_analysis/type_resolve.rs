@@ -412,6 +412,12 @@ fn resolve_symbol_and_mod_path_inner(
                     current_mod_path.push(ident.clone());
                 }
                 None => {
+		    if ident.as_str() == "core" {
+			dbg!("resolve_symbol_and_mod_path_inner");
+			dbg!(&mod_path);
+			dbg!(&symbol);
+			dbg!(&current_mod_path);
+		    }
                     decl_opt = Some(current_module.resolve_symbol(handler, engines, ident, root.current_package_name())?);
                 }
             }
@@ -462,8 +468,8 @@ fn decl_to_type_info(
                 (*engines.te().get(decl.type_id)).clone()
             }
             _ =>{ 
-//		    dbg!("decl_to_type_info");
-//		    dbg!(&symbol);
+//		dbg!("decl_to_type_info");
+//		dbg!(&symbol);
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),

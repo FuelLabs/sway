@@ -1599,6 +1599,13 @@ pub fn dependency_namespace(
 	} else {
 	    namespace::namespace_without_contract_id(name.clone())
 	};
+
+//    dbg!(&name);
+//    dbg!("root namespace created");
+//    dbg!("externals:");
+//    for n in root_namespace.external_packages().keys() {
+//	dbg!(n);
+//    }
     
     // Add direct dependencies.
     let mut core_added = false;
@@ -1626,6 +1633,11 @@ pub fn dependency_namespace(
             }
         };
         root_namespace.add_external(dep_name, dep_namespace);
+//	dbg!("external added");
+//	dbg!("externals:");
+//	for n in root_namespace.external_packages().keys() {
+//	    dbg!(n);
+//	}
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1638,6 +1650,11 @@ pub fn dependency_namespace(
             let core_namespace = &lib_namespace_map[&core_node];
             root_namespace.add_external(CORE.to_string(), core_namespace.clone());
 //            core_added = true;
+//	    dbg!("core added explicitly");
+//	    dbg!("externals:");
+//	    for n in root_namespace.external_packages().keys() {
+//		dbg!(n);
+//	    }
         }
     }
 

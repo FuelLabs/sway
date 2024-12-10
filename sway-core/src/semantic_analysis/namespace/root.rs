@@ -207,6 +207,11 @@ impl Root {
     pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
 	self.get_external_package(package_name).is_some()
     }
+
+    // TODO: Remove this
+    pub fn external_packages(&self) -> &im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>> {
+	&self.external_packages
+    }
     
 //    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
 //	// TODO: reject if the new package name already exist
@@ -455,7 +460,7 @@ impl Root {
             }
         } else {
             // Symbol not found
-	    //	    dbg!("item lookup");
+//	    dbg!("item lookup");
 //	    dbg!(&item);
             return Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: item.clone(),

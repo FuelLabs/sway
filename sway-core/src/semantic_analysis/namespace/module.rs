@@ -123,6 +123,10 @@ impl Module {
         &self.submodules
     }
 
+    pub fn has_submodule(&self, name: &Ident) -> bool {
+	self.submodule(&[name.clone()]).is_some()
+    }
+	
     /// Mutable access to this module's submodules.
     pub fn submodules_mut(
         &mut self,
@@ -310,6 +314,11 @@ impl Module {
             Ok(ret)
         } else {
             // Symbol not found
+	    if symbol.as_str() == "core" {
+		dbg!("resolve_symbol");
+		dbg!(&symbol);
+		panic!();
+	    }
             Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),

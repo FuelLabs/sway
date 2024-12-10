@@ -397,9 +397,18 @@ impl Namespace {
 
     /// Pops the current submodule from the namespace's module hierarchy.
     pub fn pop_submodule(&mut self) {
-//        println!("Popping: Leaving module {:?}.", self.current_mod_path);
+//	dbg!("Leaving module");
+//	dbg!(self.current_mod_path());
+//	dbg!("submodules:");
+//	for n in self.current_module().submodules().keys() {
+//	    dbg!(n);
+//	}
+//	dbg!("externals:");
+//	for n in self.root.external_packages().keys() {
+//	    dbg!(n);
+//	}
+	
         self.current_mod_path.pop();
-//        println!("New module path is {:?}.", self.current_mod_path);
     }
 
     pub(crate) fn star_import_to_current_module(

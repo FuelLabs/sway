@@ -533,7 +533,7 @@ impl<T: Clone> CallPath<T> {
 // 		} else if namespace.current_module_has_submodule(&self.prefixes[0])
 //		    || namespace.current_module_has_binding(engines, &self.prefixes[0])
 //		{
-		} else if namespace.module_from_absolute_path(mod_path).unwrap().submodule(&self.prefixes[0..0]).is_some()
+		} else if namespace.module_from_absolute_path(mod_path).unwrap().has_submodule(&self.prefixes[0])
 		    || namespace.module_has_binding(engines, mod_path, &self.prefixes[0])
 		{
 		    // The first identifier in the prefix is either a submodule of the current
