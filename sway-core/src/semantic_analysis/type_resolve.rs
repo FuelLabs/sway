@@ -3,7 +3,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Span, Spanned};
-use sway_utils::iter_prefixes;
 
 use crate::{
     language::{
