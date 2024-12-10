@@ -228,6 +228,10 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
     match output_type(index) {
         Some(Output::Coin) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         Some(Output::Change) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        Some(Output::Variable) => {
+            let ptr = output_pointer(index).unwrap();
+            Some(AssetId::from(ptr.add_uint_offset(48).read::<b256>()))
+        },
         _ => None,
     }
 }
@@ -260,6 +264,10 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
     match output_type(index) {
         Some(Output::Coin) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         Some(Output::Change) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
+        Some(Output::Variable) => {
+            let ptr = output_pointer(index).unwrap();
+            Some(Address::from(ptr.add_uint_offset(8).read::<b256>()))
+        },
         _ => None,
     }
 }
