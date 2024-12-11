@@ -36,14 +36,14 @@ impl ResolvedFunctionDecl {
     }
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
-pub(super) type SymbolUniqueMap = im::OrdMap<IdentUnique, ResolvedDeclaration>;
+pub(super) type SymbolMap = HashMap<Ident, ResolvedDeclaration>;
+pub(super) type SymbolUniqueMap = HashMap<IdentUnique, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
 pub(super) type GlobSynonyms =
-    im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
-pub(super) type ItemSynonyms = im::HashMap<
+    HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
+pub(super) type ItemSynonyms = HashMap<
     Ident,
     (
         Option<SourceIdent>,
