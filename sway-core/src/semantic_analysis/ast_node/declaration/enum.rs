@@ -16,15 +16,13 @@ impl ty::TyEnumDecl {
         decl_id: &ParsedDeclId<EnumDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let enum_decl = engines.pe().get_enum(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            enum_decl.name.clone(),
-            Declaration::EnumDeclaration(*decl_id),
-        )?;
+        let decl = Declaration::EnumDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl.clone())?;
 
         // create a namespace for the decl, used to create a scope for generics
-        let _ = ctx.scoped(engines, enum_decl.span.clone(), |mut _ctx| Ok(()));
+        let _ = ctx.scoped(engines, enum_decl.span.clone(), Some(decl), |mut _ctx| {
+            Ok(())
+        });
         Ok(())
     }
 
