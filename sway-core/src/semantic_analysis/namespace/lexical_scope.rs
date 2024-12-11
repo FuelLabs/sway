@@ -770,27 +770,6 @@ impl Items {
             .clear();
     }
 
-    pub fn get_impl_spans_for_decl(&self, engines: &Engines, ty_decl: &TyDecl) -> Vec<Span> {
-        let handler = Handler::default();
-        ty_decl
-            .return_type(&handler, engines)
-            .map(|type_id| {
-                self.implemented_traits
-                    .get_impl_spans_for_type(engines, &type_id)
-            })
-            .unwrap_or_default()
-    }
-
-    pub fn get_impl_spans_for_type(&self, engines: &Engines, type_id: &TypeId) -> Vec<Span> {
-        self.implemented_traits
-            .get_impl_spans_for_type(engines, type_id)
-    }
-
-    pub fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
-        self.implemented_traits
-            .get_impl_spans_for_trait_name(trait_name)
-    }
-
     pub(crate) fn has_storage_declared(&self) -> bool {
         self.declared_storage.is_some()
     }

@@ -328,22 +328,31 @@ impl Module {
         Ok(None)
     }
 
+    pub fn walk_scope_chain_mut<T>(
+        &mut self,
+        mut f: impl FnMut(&mut LexicalScope) -> Result<Option<T>, ErrorEmitted>,
+    ) -> Result<Option<T>, ErrorEmitted> {
+        let mut lexical_scope_opt = Some(self.current_lexical_scope_mut());
+        while let Some(lexical_scope) = lexical_scope_opt {
+            let result = f(lexical_scope)?;
+            if let Some(result) = result {
+                return Ok(Some(result));
+            }
+            if let Some(parent_scope_id) = lexical_scope.parent {
+                lexical_scope_opt = self.get_lexical_scope_mut(parent_scope_id);
+            } else {
+                lexical_scope_opt = None;
+            }
+        }
+        Ok(None)
+    }
+
     pub fn get_items_for_type(
         &self,
         engines: &Engines,
         type_id: TypeId,
     ) -> Vec<ResolvedTraitImplItem> {
-        let mut vec = vec![];
-        let _ = self.walk_scope_chain(|lexical_scope| {
-            vec.extend(
-                lexical_scope
-                    .items
-                    .implemented_traits
-                    .get_items_for_type(engines, type_id),
-            );
-            Ok(Some(()))
-        });
-        vec
+        TraitMap::get_items_for_type(self, engines, type_id)
     }
 
     pub fn resolve_symbol(
@@ -383,6 +392,14 @@ impl Module {
                 },
             })
             .collect::<Vec<_>>()
+    }
+
+    pub fn get_impl_spans_for_decl(&self, engines: &Engines, ty_decl: &TyDecl) -> Vec<Span> {
+        let handler = Handler::default();
+        ty_decl
+            .return_type(&handler, engines)
+            .map(|type_id| TraitMap::get_impl_spans_for_type(self, engines, &type_id))
+            .unwrap_or_default()
     }
 }
 

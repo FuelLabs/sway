@@ -1230,13 +1230,20 @@ impl<'a> TypeCheckContext<'a> {
             return;
         };
 
-        impls_to_insert.extend(
-            src_mod
-                .current_items()
-                .implemented_traits
-                .filter_by_type_item_import(type_id, engines, self.code_block_first_pass().into()),
-            engines,
-        );
+        let _ = src_mod.walk_scope_chain(|lexical_scope| {
+            impls_to_insert.extend(
+                lexical_scope
+                    .items
+                    .implemented_traits
+                    .filter_by_type_item_import(
+                        type_id,
+                        engines,
+                        self.code_block_first_pass().into(),
+                    ),
+                engines,
+            );
+            Ok(None::<()>)
+        });
 
         let dst_mod = self.namespace_mut().module_mut(engines);
         dst_mod
@@ -1343,26 +1350,24 @@ impl<'a> TypeCheckContext<'a> {
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self.engines(), self.namespace());
 
-        self.namespace()
-            .module(self.engines())
-            .current_items()
-            .implemented_traits
-            .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
-                self.engines,
-                type_id,
-                &trait_name,
-                trait_type_args,
-            )
+        TraitMap::get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
+            self.namespace().module(self.engines()),
+            self.engines,
+            type_id,
+            &trait_name,
+            trait_type_args,
+        )
     }
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
         let code_block_first_pass = self.code_block_first_pass();
-        self.namespace_mut()
-            .module_mut(engines)
-            .current_items_mut()
-            .implemented_traits
-            .insert_for_type(engines, type_id, code_block_first_pass.into());
+        TraitMap::insert_for_type(
+            engines,
+            self.namespace_mut().module_mut(engines),
+            type_id,
+            code_block_first_pass.into(),
+        );
     }
 
     pub fn check_type_impls_traits(
