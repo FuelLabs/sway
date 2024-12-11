@@ -19,9 +19,11 @@ pub const MAINNET_RELAYER_LOG_PAGE_SIZE: u32 = 100;
 /// Name of the folder for testnet at the configuration repo:
 /// https://github.com/fuelLabs/chain-configuration/
 pub const TESTNET_CONFIG_FOLDER_NAME: &str = "ignition-test";
-/// Name of the folder for mainnet at the configuration repo:
+/// Name of the folder for ignition mainnet at the configuration repo:
 /// https://github.com/fuelLabs/chain-configuration/
-pub const MAINNET_CONFIG_FOLDER_NAME: &str = "ignition";
+pub const IGNITION_CONFIG_FOLDER_NAME: &str = "ignition";
+/// Name of the folder for local configuration repo:
+pub const LOCAL_CONFIG_FOLDER_NAME: &str = "local";
 /// Name of the github repository that hosts chain-configurations.
 pub const CHAIN_CONFIG_REPO_NAME: &str = "chain-configuration";
 
@@ -29,7 +31,4 @@ pub const DEFAULT_PORT: u16 = 4000;
 pub const DEFAULT_PEERING_PORT: u16 = 30333;
 
 pub const CONFIG_FOLDER: &str = "chainspecs";
-pub const LOCAL: &str = "local";
-pub const TESTNET: &str = "testnet";
-pub const IGNITION: &str = "ignition";
 pub const DB_FOLDER: &str = "db";

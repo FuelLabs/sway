@@ -1,6 +1,6 @@
 use super::cmd::IgnitionCmd;
 use crate::{
-    chain_config::{create_chainconfig_dir, ChainConfig},
+    chain_config::{check_and_update_chain_config, ChainConfig},
     consts::{
         MAINNET_BOOTSTRAP_NODE, MAINNET_RELAYER_DA_DEPLOY_HEIGHT,
         MAINNET_RELAYER_LISTENING_CONTRACT, MAINNET_RELAYER_LOG_PAGE_SIZE, MAINNET_SERVICE_NAME,
@@ -18,8 +18,8 @@ use std::{
 };
 /// Configures the node with testnet configuration to connect the node to latest testnet.
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
-pub(crate) fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
-    create_chainconfig_dir(ChainConfig::Ignition)?;
+pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
+    check_and_update_chain_config(ChainConfig::Testnet).await?;
     let keypair = if let (Some(peer_id), Some(secret)) = (&cmd.peer_id, &cmd.secret) {
         KeyPair {
             peer_id: peer_id.to_string(),

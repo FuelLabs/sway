@@ -1,6 +1,6 @@
 use crate::{
-    chain_config::DbConfig,
     consts::{DEFAULT_PEERING_PORT, DEFAULT_PORT, MAINNET_BOOTSTRAP_NODE},
+    util::DbConfig,
 };
 use clap::Parser;
 use std::{net::IpAddr, path::PathBuf};
