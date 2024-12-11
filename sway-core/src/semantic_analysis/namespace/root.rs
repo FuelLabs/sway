@@ -202,7 +202,7 @@ impl Root {
         };
 
         // Collect all items declared in the source module
-        for (symbol, decl) in src_mod.current_items().symbols.iter() {
+        for (symbol, decl) in src_mod.root_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(engines).is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), src.to_vec()));
             }
@@ -210,7 +210,7 @@ impl Root {
         // Collect those item-imported items that the source module reexports
         // These live in the same namespace as local declarations, so no shadowing is possible
         for (symbol, (_, path, decl, src_visibility)) in
-            src_mod.current_items().use_item_synonyms.iter()
+            src_mod.root_items().use_item_synonyms.iter()
         {
             if src_visibility.is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), get_path(path.clone())))
@@ -221,7 +221,7 @@ impl Root {
         // by local declarations and item imports in the source module, so they are treated
         // separately.
         let mut glob_imports = vec![];
-        for (symbol, bindings) in src_mod.current_items().use_glob_synonyms.iter() {
+        for (symbol, bindings) in src_mod.root_items().use_glob_synonyms.iter() {
             // Ignore if the symbol is shadowed by a local declaration or an item import in the source module
             if !decls_and_item_imports
                 .iter()
@@ -235,7 +235,7 @@ impl Root {
             }
         }
 
-        let implemented_traits = src_mod.current_items().implemented_traits.clone();
+        let implemented_traits = src_mod.root_items().implemented_traits.clone();
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
         dst_mod
             .current_items_mut()
@@ -284,7 +284,7 @@ impl Root {
         dst: &ModulePath,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
-        let src_items = src_mod.current_items();
+        let src_items = src_mod.root_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
             let visibility = if is_ancestor(src, dst) {
@@ -371,7 +371,7 @@ impl Root {
             if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
                 impls_to_insert.extend(
                     src_mod
-                        .current_items()
+                        .root_items()
                         .implemented_traits
                         .filter_by_type_item_import(
                             type_id,
@@ -388,7 +388,7 @@ impl Root {
                 // this is okay for now but we'll need to device some mechanism to collect all available trait impls
                 impls_to_insert.extend(
                     src_mod
-                        .current_items()
+                        .root_items()
                         .implemented_traits
                         .filter_by_trait_decl_span(decl_span),
                     engines,
