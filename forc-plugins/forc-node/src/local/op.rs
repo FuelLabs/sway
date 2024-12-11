@@ -1,21 +1,18 @@
-use anyhow::Context;
-use forc_tracing::println_green;
-
+use super::cmd::LocalCmd;
 use crate::{
-    chain_config::{create_chainconfig_dir, ChainConfig},
+    chain_config::{check_and_update_chain_config, ChainConfig},
     run_opts::{DbType, RunOpts},
     util::HumanReadableCommand,
 };
+use anyhow::Context;
+use forc_tracing::println_green;
 use std::process::{Child, Command};
-
-use super::cmd::LocalCmd;
 
 /// Local is a local node suited for local development.
 /// By default, the node is in `debug` mode and the db used is `in-memory`.
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
-pub(crate) fn run(cmd: LocalCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
-    create_chainconfig_dir(ChainConfig::Local)
-        .context("Failed to create chain config directory")?;
+pub(crate) async fn run(cmd: LocalCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
+    check_and_update_chain_config(ChainConfig::Local).await?;
 
     let run_opts = RunOpts::from(cmd);
     let params = run_opts.generate_params();

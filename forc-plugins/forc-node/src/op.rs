@@ -20,9 +20,9 @@ pub(crate) async fn run(cmd: ForcNodeCmd) -> anyhow::Result<Option<Child>> {
         ));
     }
     let forc_node_handle = match cmd.mode {
-        Mode::Local(local) => crate::local::op::run(local, cmd.dry_run)?,
+        Mode::Local(local) => crate::local::op::run(local, cmd.dry_run).await?,
         Mode::Testnet(testnet) => crate::testnet::op::run(testnet, cmd.dry_run).await?,
-        Mode::Ignition(ignition) => crate::ignition::op::run(ignition, cmd.dry_run)?,
+        Mode::Ignition(ignition) => crate::ignition::op::run(ignition, cmd.dry_run).await?,
     };
     Ok(forc_node_handle)
 }
