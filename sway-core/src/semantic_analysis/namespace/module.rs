@@ -1,6 +1,9 @@
 use crate::{
     engine_threading::Engines,
-    language::{ty, Visibility},
+    language::{
+        ty::{self, TyDecl},
+        Visibility,
+    },
     Ident, TypeId,
 };
 
@@ -8,7 +11,7 @@ use super::{
     lexical_scope::{Items, LexicalScope, ResolvedFunctionDecl},
     root::Root,
     LexicalScopeId, ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration,
-    ResolvedTraitImplItem,
+    ResolvedTraitImplItem, TraitMap,
 };
 
 use rustc_hash::FxHasher;
