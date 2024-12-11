@@ -16,15 +16,16 @@ impl ty::TyStructDecl {
         decl_id: &ParsedDeclId<StructDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let struct_decl = engines.pe().get_struct(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            struct_decl.name.clone(),
-            Declaration::StructDeclaration(*decl_id),
-        )?;
+        let decl = Declaration::StructDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, struct_decl.name.clone(), decl.clone())?;
 
         // create a namespace for the decl, used to create a scope for generics
-        let _ = ctx.scoped(engines, struct_decl.span.clone(), |_scoped_ctx| Ok(()));
+        let _ = ctx.scoped(
+            engines,
+            struct_decl.span.clone(),
+            Some(decl),
+            |_scoped_ctx| Ok(()),
+        );
         Ok(())
     }
 
