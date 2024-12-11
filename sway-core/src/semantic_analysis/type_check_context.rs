@@ -239,8 +239,8 @@ impl<'a> TypeCheckContext<'a> {
         with_scoped_ctx: impl FnOnce(&mut TypeCheckContext) -> Result<T, ErrorEmitted>,
     ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
         let engines = self.engines;
-        self.namespace_scoped(engines, |ctx| {
-            if let Some(span) = span {
+        if let Some(span) = span {
+            self.namespace_scoped(engines, |ctx| {
                 ctx.collection_ctx.enter_lexical_scope(
                     handler,
                     ctx.engines,
@@ -269,10 +269,10 @@ impl<'a> TypeCheckContext<'a> {
                         with_scoped_ctx(&mut ctx)
                     },
                 )
-            } else {
-                with_scoped_ctx(ctx)
-            }
-        })
+            })
+        } else {
+            self.namespace_scoped(engines, |ctx| with_scoped_ctx(ctx))
+        }
     }
 
     /// Scope the `CollectionContext` with a new lexical scope.
@@ -284,7 +284,7 @@ impl<'a> TypeCheckContext<'a> {
         let lexical_scope_id: LexicalScopeId = self
             .namespace
             .module_mut(engines)
-            .write(engines, |m| m.push_new_lexical_scope(Span::dummy())); // TODO remove spans from lexical scopes and use scope ids directly
+            .write(engines, |m| m.push_new_lexical_scope(Span::dummy()));
         let ret = with_scoped_ctx(self);
         self.namespace
             .module_mut(engines)
