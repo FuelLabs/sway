@@ -81,6 +81,7 @@ fn default_with_contract_id_inner(
         handler,
         engines,
         const_item,
+        Visibility::Private,
         attributes,
         true,
     )?;
