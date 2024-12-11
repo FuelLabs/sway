@@ -372,9 +372,17 @@ impl Module {
         engines: &Engines,
         symbol: &Ident,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let mut last_handler = Handler::default();
         let ret = self.walk_scope_chain(|lexical_scope| {
-            lexical_scope.items.resolve_symbol(handler, engines, symbol)
+            last_handler = Handler::default();
+            Ok(lexical_scope
+                .items
+                .resolve_symbol(&last_handler, engines, symbol)
+                .ok()
+                .flatten())
         })?;
+
+        handler.append(last_handler);
 
         if let Some(ret) = ret {
             Ok(ret)
