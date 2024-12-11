@@ -274,8 +274,11 @@ impl Module {
         let id_opt = self.lexical_scopes_spans.get(&span);
         match id_opt {
             Some(id) => {
+                let visitor_parent = self.current_lexical_scope_id;
                 self.current_lexical_scope_id = *id;
-                Ok(*id)
+                self.current_lexical_scope_mut().visitor_parent = Some(visitor_parent);
+
+                Ok(self.current_lexical_scope_id)
             }
             None => Err(handler.emit_err(CompileError::Internal(
                 "Could not find a valid lexical scope for this source location.",
@@ -295,6 +298,7 @@ impl Module {
         let new_scoped_id = {
             self.lexical_scopes.push(LexicalScope {
                 parent: Some(previous_scope_id),
+                visitor_parent: Some(previous_scope_id),
                 items: Items {
                     symbols_unique_while_collecting_unifications: previous_scope
                         .items
@@ -316,8 +320,8 @@ impl Module {
 
     /// Pops the current scope from the module's lexical scope hierarchy.
     pub fn pop_lexical_scope(&mut self) {
-        let parent_scope_id = self.current_lexical_scope().parent;
-        self.current_lexical_scope_id = parent_scope_id.unwrap_or(0);
+        let parent_scope_id = self.current_lexical_scope().visitor_parent;
+        self.current_lexical_scope_id = parent_scope_id.unwrap(); // panics if pops do not match pushes
     }
 
     pub fn walk_scope_chain<T>(
