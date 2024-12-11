@@ -28,6 +28,9 @@ pub const GTF_OUTPUT_COIN_ASSET_ID = 0x303;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x307;
 // pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x308;
 
+const OUTPUT_VARIABLE_ASSET_ID_OFFSET = 48;
+const OUTPUT_VARIABLE_TO_OFFSET = 8;
+
 /// The output type for a transaction.
 pub enum Output {
     /// A coin output.
@@ -230,7 +233,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
         Some(Output::Change) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         Some(Output::Variable) => {
             let ptr = output_pointer(index).unwrap();
-            Some(AssetId::from(ptr.add_uint_offset(48).read::<b256>()))
+            Some(AssetId::from(ptr.add_uint_offset(OUTPUT_VARIABLE_ASSET_ID_OFFSET).read::<b256>()))
         },
         _ => None,
     }
@@ -266,7 +269,7 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
         Some(Output::Change) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         Some(Output::Variable) => {
             let ptr = output_pointer(index).unwrap();
-            Some(Address::from(ptr.add_uint_offset(8).read::<b256>()))
+            Some(Address::from(ptr.add_uint_offset(OUTPUT_VARIABLE_TO_OFFSET).read::<b256>()))
         },
         _ => None,
     }
