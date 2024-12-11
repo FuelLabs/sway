@@ -291,9 +291,17 @@ impl Module {
         declaration: Option<ResolvedDeclaration>,
     ) -> LexicalScopeId {
         let previous_scope_id = self.current_lexical_scope_id();
+        let previous_scope = self.lexical_scopes.get(previous_scope_id).unwrap();
         let new_scoped_id = {
             self.lexical_scopes.push(LexicalScope {
                 parent: Some(previous_scope_id),
+                items: Items {
+                    symbols_unique_while_collecting_unifications: previous_scope
+                        .items
+                        .symbols_unique_while_collecting_unifications
+                        .clone(),
+                    ..Default::default()
+                },
                 declaration,
                 ..Default::default()
             });
