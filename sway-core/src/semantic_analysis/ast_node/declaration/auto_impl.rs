@@ -320,7 +320,7 @@ where
         }
         assert!(!handler.has_warnings(), "{:?}", handler);
 
-        let ctx = self.ctx.by_ref();
+        let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
             &handler,
             engines,
@@ -331,7 +331,7 @@ where
             return Err(handler);
         }
 
-        let (r, lexical_scope_id) = self.ctx.scoped_and_lexical_scope_id(&handler, None, |ctx| {
+        let r = ctx.scoped(&handler, None, |ctx| {
             TyDecl::type_check(
                 &handler,
                 ctx,
@@ -347,10 +347,6 @@ where
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            self.ctx
-                .namespace
-                .module_mut(engines)
-                .current_lexical_scope_id = lexical_scope_id;
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
@@ -384,7 +380,7 @@ where
 
         assert!(!handler.has_errors(), "{:?}", handler);
 
-        let ctx = self.ctx.by_ref();
+        let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
             &handler,
             engines,
@@ -395,7 +391,7 @@ where
             return Err(handler);
         }
 
-        let (r, lexical_scope_id) = self.ctx.scoped_and_lexical_scope_id(&handler, None, |ctx| {
+        let r = ctx.scoped(&handler, None, |ctx| {
             TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 
@@ -407,10 +403,28 @@ where
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            self.ctx
-                .namespace
-                .module_mut(engines)
-                .current_lexical_scope_id = lexical_scope_id;
+            let impl_trait = if let TyDecl::ImplSelfOrTrait(impl_trait_id) = &decl {
+                engines.de().get_impl_self_or_trait(&impl_trait_id.decl_id)
+            } else {
+                unreachable!();
+            };
+
+            ctx.insert_trait_implementation(
+                &handler,
+                impl_trait.trait_name.clone(),
+                impl_trait.trait_type_arguments.clone(),
+                impl_trait.implementing_for.type_id,
+                &impl_trait.items,
+                &impl_trait.span,
+                impl_trait
+                    .trait_decl_ref
+                    .as_ref()
+                    .map(|decl_ref| decl_ref.decl_span().clone()),
+                crate::namespace::IsImplSelf::No,
+                crate::namespace::IsExtendingExistingImpl::No,
+            )
+            .ok();
+
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
