@@ -4,7 +4,7 @@ use crate::{
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, TyDecl, TyStorageDecl},
-        CallPath, Visibility,
+        Visibility,
     },
     namespace::*,
     semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
@@ -20,7 +20,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, IdentUnique, Named, Spanned};
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 pub enum ResolvedFunctionDecl {
     Parsed(ParsedDeclId<FunctionDeclaration>),
