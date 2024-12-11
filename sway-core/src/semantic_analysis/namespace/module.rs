@@ -247,6 +247,11 @@ impl Module {
         &self.current_lexical_scope().items
     }
 
+    /// The collection of items declared by this module's root lexical scope.
+    pub fn root_items(&self) -> &Items {
+        &self.root_lexical_scope().items
+    }
+
     /// The mutable collection of items declared by this module's current lexical scope.
     pub fn current_items_mut(&mut self) -> &mut Items {
         &mut self.current_lexical_scope_mut().items
