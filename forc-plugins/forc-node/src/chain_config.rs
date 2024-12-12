@@ -34,15 +34,15 @@ impl Display for ChainConfig {
         }
     }
 }
+
 impl From<ChainConfig> for PathBuf {
     fn from(value: ChainConfig) -> Self {
-        let user_forc_dir = user_forc_directory().join(CONFIG_FOLDER);
-
-        match value {
-            ChainConfig::Local => user_forc_dir.join(LOCAL_CONFIG_FOLDER_NAME),
-            ChainConfig::Testnet => user_forc_dir.join(TESTNET_CONFIG_FOLDER_NAME),
-            ChainConfig::Ignition => user_forc_dir.join(IGNITION_CONFIG_FOLDER_NAME),
-        }
+        let folder_name = match value {
+            ChainConfig::Local => LOCAL_CONFIG_FOLDER_NAME,
+            ChainConfig::Testnet => TESTNET_CONFIG_FOLDER_NAME,
+            ChainConfig::Ignition => IGNITION_CONFIG_FOLDER_NAME,
+        };
+        user_forc_directory().join(CONFIG_FOLDER).join(folder_name)
     }
 }
 
