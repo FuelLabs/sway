@@ -284,7 +284,7 @@ impl<'a> TypeCheckContext<'a> {
         let lexical_scope_id: LexicalScopeId = self
             .namespace
             .module_mut(engines)
-            .write(engines, |m| m.push_new_lexical_scope(Span::dummy()));
+            .write(engines, |m| m.push_new_lexical_scope(Span::dummy(), None));
         let ret = with_scoped_ctx(self);
         self.namespace
             .module_mut(engines)
