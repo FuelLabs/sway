@@ -202,16 +202,30 @@ impl Root {
         };
 
         // Collect all items declared in the source module
-        for (symbol, decl) in src_mod.root_items().symbols.iter() {
+        let mut symbols = src_mod
+            .root_items()
+            .symbols
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let decl = &src_mod.root_items().symbols[symbol];
             if is_ancestor(src, dst) || decl.visibility(engines).is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), src.to_vec()));
             }
         }
         // Collect those item-imported items that the source module reexports
         // These live in the same namespace as local declarations, so no shadowing is possible
-        for (symbol, (_, path, decl, src_visibility)) in
-            src_mod.root_items().use_item_synonyms.iter()
-        {
+        let mut symbols = src_mod
+            .root_items()
+            .use_item_synonyms
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let (_, path, decl, src_visibility) = &src_mod.root_items().use_item_synonyms[symbol];
             if src_visibility.is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), get_path(path.clone())))
             }
@@ -221,7 +235,15 @@ impl Root {
         // by local declarations and item imports in the source module, so they are treated
         // separately.
         let mut glob_imports = vec![];
-        for (symbol, bindings) in src_mod.root_items().use_glob_synonyms.iter() {
+        let mut symbols = src_mod
+            .root_items()
+            .use_glob_synonyms
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let bindings = &src_mod.root_items().use_glob_synonyms[symbol];
             // Ignore if the symbol is shadowed by a local declaration or an item import in the source module
             if !decls_and_item_imports
                 .iter()

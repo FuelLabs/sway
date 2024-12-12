@@ -156,7 +156,7 @@ struct TraitEntry {
 /// don't need to traverse every TraitEntry.
 type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
 
-#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialOrd, Ord, PartialEq, Debug)]
 enum TypeRootFilter {
     Unknown,
     Never,
@@ -379,7 +379,10 @@ impl TraitMap {
                 } else if types_are_subset
                     && (traits_are_subset || matches!(is_impl_self, IsImplSelf::Yes))
                 {
-                    for (name, item) in trait_items.iter() {
+                    let mut names = trait_items.keys().clone().collect::<Vec<_>>();
+                    names.sort();
+                    for name in names {
+                        let item = &trait_items[name];
                         match item {
                             ResolvedTraitImplItem::Parsed(_item) => todo!(),
                             ResolvedTraitImplItem::Typed(item) => match item {
@@ -474,8 +477,7 @@ impl TraitMap {
         let entry = TraitEntry { key, value };
         let mut trait_impls: TraitImpls = HashMap::<TypeRootFilter, Vec<TraitEntry>>::new();
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
-        let mut impls_vector = Vec::<TraitEntry>::new();
-        impls_vector.push(entry);
+        let impls_vector = vec![entry];
         trait_impls.insert(type_root_filter, impls_vector);
 
         let trait_map = TraitMap {
@@ -601,7 +603,10 @@ impl TraitMap {
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap, engines: &Engines) {
-        for (impls_key, oe_vec) in other.trait_impls.iter() {
+        let mut impls_keys = other.trait_impls.keys().clone().collect::<Vec<_>>();
+        impls_keys.sort();
+        for impls_key in impls_keys {
+            let oe_vec = &other.trait_impls[impls_key];
             let self_vec = if let Some(self_vec) = self.trait_impls.get_mut(impls_key) {
                 self_vec
             } else {
@@ -630,7 +635,10 @@ impl TraitMap {
     /// the entries from `self` that implement a trait from the declaration with that span.
     pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {
         let mut trait_map = TraitMap::default();
-        for (key, vec) in self.trait_impls.iter() {
+        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
+        keys.sort();
+        for key in keys {
+            let vec = &self.trait_impls[key];
             for entry in vec {
                 if entry
                     .key
@@ -1115,8 +1123,8 @@ impl TraitMap {
                     .items
                     .implemented_traits
                     .trait_impls
-                    .iter()
-                    .map(|(_, impls)| {
+                    .values()
+                    .map(|impls| {
                         impls
                             .iter()
                             .filter_map(|entry| {

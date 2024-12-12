@@ -71,7 +71,7 @@ pub struct LexicalScope {
     pub children: Vec<LexicalScopeId>,
     /// The parent scope associated with this scope. Will be None for a root scope.
     pub parent: Option<LexicalScopeId>,
-    /// The parent while visiting scopes and push poping scopes from a stack.
+    /// The parent while visiting scopes and push popping scopes from a stack.
     /// This may differ from parent as we may revisit the scope in a different order during type check.
     pub visitor_parent: Option<LexicalScopeId>,
     /// The declaration associated with this scope. This will initially be a [ParsedDeclId],
