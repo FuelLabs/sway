@@ -19,7 +19,7 @@ serde.workspace = true
 serde_json.workspace = true
 semver.workspace = true
 reqwest = { workspace = true, features = ["json"] }
-sha1 = "0.10.6"
+sha1.workspace = true
 
 [dev-dependencies]
 wiremock = "0.5"
