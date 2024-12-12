@@ -143,7 +143,6 @@ struct TraitValue {
     trait_items: TraitItems,
     /// The span of the entire impl block.
     impl_span: Span,
-    is_impl_type_changeable: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -271,7 +270,6 @@ impl TraitMap {
                     TraitValue {
                         trait_items: map_trait_items,
                         impl_span: existing_impl_span,
-                        is_impl_type_changeable: _,
                     },
             } in trait_impls.iter()
             {
@@ -441,17 +439,12 @@ impl TraitMap {
                 is_absolute: trait_name.is_absolute,
             });
 
-            let is_impl_type_changeable = engines
-                .te()
-                .is_type_changeable(engines, &engines.te().get(type_id));
-
             // even if there is a conflicting definition, add the trait anyway
             self.insert_inner(
                 trait_name,
                 impl_span.clone(),
                 trait_decl_span,
                 type_id,
-                is_impl_type_changeable,
                 trait_items,
                 engines,
             );
@@ -466,7 +459,6 @@ impl TraitMap {
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
-        is_impl_type_changeable: bool,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
@@ -478,7 +470,6 @@ impl TraitMap {
         let value = TraitValue {
             trait_items: trait_methods,
             impl_span,
-            is_impl_type_changeable,
         };
         let entry = TraitEntry { key, value };
         let mut trait_impls: TraitImpls = HashMap::<TypeRootFilter, Vec<TraitEntry>>::new();
@@ -594,7 +585,7 @@ impl TraitMap {
             let trait_map = &mut lexical_scope.items.implemented_traits;
 
             base_trait_map.extend(
-                trait_map.filter_by_type(type_id, engines, true, code_block_first_pass.clone()),
+                trait_map.filter_by_type(type_id, engines, code_block_first_pass.clone()),
                 engines,
             );
             Ok(None::<()>)
@@ -775,7 +766,6 @@ impl TraitMap {
         &self,
         type_id: TypeId,
         engines: &Engines,
-        consider_only_type_changeable: bool,
         code_block_first_pass: CodeBlockFirstPass,
     ) -> TraitMap {
         let unify_checker = UnifyCheck::constraint_subset(engines);
@@ -785,13 +775,7 @@ impl TraitMap {
         let mut all_types = type_id.extract_inner_types(engines, IncludeSelf::No);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
-        self.filter_by_type_inner(
-            engines,
-            all_types,
-            decider,
-            consider_only_type_changeable,
-            code_block_first_pass,
-        )
+        self.filter_by_type_inner(engines, all_types, decider, code_block_first_pass)
     }
 
     /// Filters the entries in `self` with the given [TypeId] `type_id` and
@@ -869,7 +853,6 @@ impl TraitMap {
             engines,
             vec![type_id],
             decider,
-            false,
             code_block_first_pass.clone(),
         );
         let all_types = type_id
@@ -880,7 +863,7 @@ impl TraitMap {
         let decider2 = |left: TypeId, right: TypeId| unify_checker.check(left, right);
 
         trait_map.extend(
-            self.filter_by_type_inner(engines, all_types, decider2, false, code_block_first_pass),
+            self.filter_by_type_inner(engines, all_types, decider2, code_block_first_pass),
             engines,
         );
         trait_map
@@ -891,7 +874,6 @@ impl TraitMap {
         engines: &Engines,
         mut all_types: Vec<TypeId>,
         decider: impl Fn(TypeId, TypeId) -> bool,
-        consider_only_type_changeable: bool,
         code_block_first_pass: CodeBlockFirstPass,
     ) -> TraitMap {
         let type_engine = engines.te();
@@ -911,14 +893,9 @@ impl TraitMap {
                     TraitValue {
                         trait_items: map_trait_items,
                         impl_span,
-                        is_impl_type_changeable,
                     },
             } in impls.iter()
             {
-                if consider_only_type_changeable && !is_impl_type_changeable {
-                    continue;
-                }
-
                 if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
                 {
                     trait_map.insert_inner(
@@ -926,7 +903,6 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
-                        false,
                         map_trait_items.clone(),
                         engines,
                     );
@@ -1020,14 +996,11 @@ impl TraitMap {
                         })
                         .collect();
 
-                    let is_impl_type_changeable =
-                        type_engine.is_type_changeable(engines, &type_info);
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
-                        is_impl_type_changeable,
                         trait_items,
                         engines,
                     );
