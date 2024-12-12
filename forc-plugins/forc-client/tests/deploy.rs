@@ -1303,7 +1303,7 @@ async fn offset_shifted_abi_works() {
     let loader_with_configs_from_sdk =
         call_with_sdk_generated_overrides(&node_url, contract_id).await;
 
-    // Genearating the forc-deploy loader bytecode and loader abi.
+    // Generating the forc-deploy loader bytecode and loader abi.
     let loader_with_configs_from_forc =
         call_with_forc_generated_overrides(&node_url, contract_id).await;
     pretty_assertions::assert_eq!(loader_with_configs_from_forc, loader_with_configs_from_sdk);
