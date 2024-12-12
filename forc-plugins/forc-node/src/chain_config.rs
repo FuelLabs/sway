@@ -165,7 +165,7 @@ impl ConfigFetcher {
         Ok(Some(files))
     }
 
-    /// Checks if a fetch is requried by comparing the hashes of indivual files
+    /// Checks if a fetch is required by comparing the hashes of individual files
     /// of the given chain config in the local instance to the one in github by
     /// utilizing the github content abi.
     pub async fn check_fetch_required(&self, conf: &ChainConfig) -> anyhow::Result<bool> {

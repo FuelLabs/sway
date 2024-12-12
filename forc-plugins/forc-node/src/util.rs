@@ -33,7 +33,7 @@ pub struct KeyPair {
     pub secret: String,
 }
 
-/// Checks the local fuel-core's version that `forc-node` will be runnning.
+/// Checks the local fuel-core's version that `forc-node` will be running.
 pub(crate) fn get_fuel_core_version() -> anyhow::Result<Version> {
     let version_cmd = Command::new("fuel-core")
         .arg("--version")

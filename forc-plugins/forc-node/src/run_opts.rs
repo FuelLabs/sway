@@ -140,7 +140,7 @@ impl RunOpts {
         if let Some(sync_block) = self.sync_block_stream_buffer_size {
             params.push(format!("--sync-block-stream-buffer-size {sync_block}"));
         }
-        // Split run_cmd so that each arg is actually send as a seperate
+        // Split run_cmd so that each arg is actually send as a separate
         // arg. To correctly parse the args in the system level, each
         // part of an arg should go to different indices of "argv". This
         // means "--db-layer in-memory" needs to be interpreted as:
