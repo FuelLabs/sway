@@ -73,4 +73,4 @@ category = "fail"
 # nextln: $()expected: MyEnumVariants
 # nextln: $()found:    MyOtherEnumVariants.
 
-# check: $()Aborting due to 23 errors.
+# check: $()Aborting due to 32 errors.
