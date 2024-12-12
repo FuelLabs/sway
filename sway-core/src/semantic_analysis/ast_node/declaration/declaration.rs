@@ -12,7 +12,7 @@ use crate::{
         },
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, Items},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, ConstShadowingMode,
         GenericShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -276,9 +276,10 @@ impl TyDecl {
                             let decl = engines.de().get(f.id());
                             let collecting_unifications = ctx.collecting_unifications();
                             let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
-                                m.current_items_mut().insert_typed_symbol(
+                                Items::insert_typed_symbol(
                                     handler,
                                     engines,
+                                    m,
                                     Ident::new_no_span(format!(
                                         "__contract_entry_{}",
                                         decl.name.clone()

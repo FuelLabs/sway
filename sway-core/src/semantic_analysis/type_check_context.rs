@@ -29,7 +29,7 @@ use sway_features::ExperimentalFeatures;
 use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
-    namespace::LexicalScopeId,
+    namespace::{Items, LexicalScopeId},
     symbol_collection_context::SymbolCollectionContext,
     type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
     GenericShadowingMode,
@@ -585,18 +585,17 @@ impl<'a> TypeCheckContext<'a> {
         let generic_shadowing_mode = self.generic_shadowing_mode;
         let collecting_unifications = self.collecting_unifications;
         let engines = self.engines();
-        self.namespace_mut()
-            .module_mut(engines)
-            .current_items_mut()
-            .insert_symbol(
-                handler,
-                engines,
-                name,
-                ResolvedDeclaration::Typed(item),
-                const_shadowing_mode,
-                generic_shadowing_mode,
-                collecting_unifications,
-            )
+
+        Items::insert_symbol(
+            handler,
+            engines,
+            self.namespace_mut().module_mut(engines),
+            name,
+            ResolvedDeclaration::Typed(item),
+            const_shadowing_mode,
+            generic_shadowing_mode,
+            collecting_unifications,
+        )
     }
 
     /// Short-hand for calling [resolve_type] on `root` with the `mod_path`.
