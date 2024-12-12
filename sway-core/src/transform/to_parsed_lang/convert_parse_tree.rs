@@ -13,18 +13,7 @@ use crate::{
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
-    assignable::ElementAccess,
-    attribute::Annotated,
-    expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
-    ty::TyTupleDescriptor,
-    AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
-    CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
-    FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
-    Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
-    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
-    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
-    PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
-    Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
+    assignable::ElementAccess, attribute::Annotated, expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant}, generics::GenericParam, ty::TyTupleDescriptor, AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents, CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
@@ -1250,7 +1239,11 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .parameters
             .into_inner()
             .into_iter()
-            .map(|ident| {
+            .map(|param| {
+                let ident = match param {
+                    GenericParam::Trait { ident } => ident.clone(),
+                    GenericParam::Const { ident, .. } => ident.clone(),
+                };
                 let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
                 TypeParameter {
                     type_id: custom_type,
