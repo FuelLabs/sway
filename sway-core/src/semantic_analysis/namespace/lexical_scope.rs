@@ -203,17 +203,18 @@ impl Items {
     }
 
     pub(crate) fn insert_parsed_symbol(
-        &mut self,
         handler: &Handler,
         engines: &Engines,
+        module: &mut Module,
         name: Ident,
         item: Declaration,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
-        self.insert_symbol(
+        Self::insert_symbol(
             handler,
             engines,
+            module,
             name,
             ResolvedDeclaration::Parsed(item),
             const_shadowing_mode,
@@ -224,18 +225,19 @@ impl Items {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_typed_symbol(
-        &mut self,
         handler: &Handler,
         engines: &Engines,
+        module: &mut Module,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
         collecting_unifications: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.insert_symbol(
+        Self::insert_symbol(
             handler,
             engines,
+            module,
             name,
             ResolvedDeclaration::Typed(item),
             const_shadowing_mode,
@@ -246,9 +248,9 @@ impl Items {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_symbol(
-        &mut self,
         handler: &Handler,
         engines: &Engines,
+        module: &mut Module,
         name: Ident,
         item: ResolvedDeclaration,
         const_shadowing_mode: ConstShadowingMode,
@@ -669,36 +671,42 @@ impl Items {
                 }
             };
 
-        if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
-            append_shadowing_error(
-                ident,
-                decl,
-                false,
-                false,
-                &item.clone(),
-                const_shadowing_mode,
-            );
-        }
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            if let Some((ident, decl)) = lexical_scope.items.symbols.get_key_value(&name) {
+                append_shadowing_error(
+                    ident,
+                    decl,
+                    false,
+                    false,
+                    &item.clone(),
+                    const_shadowing_mode,
+                );
+            }
 
-        if let Some((ident, (imported_ident, _, decl, _))) =
-            self.use_item_synonyms.get_key_value(&name)
-        {
-            append_shadowing_error(
-                ident,
-                decl,
-                true,
-                imported_ident.is_some(),
-                &item,
-                const_shadowing_mode,
-            );
-        }
+            if let Some((ident, (imported_ident, _, decl, _))) =
+                lexical_scope.items.use_item_synonyms.get_key_value(&name)
+            {
+                append_shadowing_error(
+                    ident,
+                    decl,
+                    true,
+                    imported_ident.is_some(),
+                    &item,
+                    const_shadowing_mode,
+                );
+            }
+            Ok(None::<()>)
+        });
 
         if collecting_unifications {
-            self.symbols_unique_while_collecting_unifications
+            module
+                .current_items_mut()
+                .symbols_unique_while_collecting_unifications
                 .write()
                 .insert(name.clone().into(), item.clone());
         }
-        self.symbols.insert(name, item);
+
+        module.current_items_mut().symbols.insert(name, item);
 
         Ok(())
     }
