@@ -10,8 +10,8 @@ repository.workspace = true
 [dependencies] 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "string"] }
-forc-util.workspace = true
 forc-tracing.workspace = true
+forc-util.workspace = true
 include_dir.workspace = true
 tokio = { workspace = true, features = ["macros", "signal", "rt-multi-thread"] }
 dialoguer.workspace = true
