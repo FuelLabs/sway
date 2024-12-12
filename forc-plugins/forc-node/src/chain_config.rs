@@ -18,11 +18,13 @@ use std::{
 };
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+/// Different chain configuration options.
 pub enum ChainConfig {
     Local,
     Testnet,
     Ignition,
 }
+
 impl Display for ChainConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -44,8 +46,10 @@ impl From<ChainConfig> for PathBuf {
     }
 }
 
+/// A github api, content query response.
+/// Mainly used for fetching a download url and hash for configuration files.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct GithubContentDetails {
+struct GithubContentDetails {
     name: String,
     sha: String,
     download_url: Option<String>,
@@ -53,6 +57,15 @@ pub struct GithubContentDetails {
     content_type: String,
 }
 
+/// `ConfigFetcher` is responsible for github api integration related to the
+/// configuration operations.
+/// Basically checks remote hash of the corresponding chain configuration.
+/// If there is a mismatch between local and remote instance, overrides the
+/// local instance with remote changes for testnet and mainnet configurations.
+///
+/// For local chain configuration, we only check for existence of it locally.
+/// If the local chain configuration is missing in user's local,
+/// `ConfigFetcher` fetches it but remote updates are not tracked for it.
 pub struct ConfigFetcher {
     client: reqwest::Client,
     #[cfg(test)]
@@ -61,6 +74,8 @@ pub struct ConfigFetcher {
 }
 
 impl ConfigFetcher {
+    /// Creates a new fetcher to interact with github.
+    /// By default user's chain configuration vault is at: `~/.forc/chainspecs`
     pub fn new() -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -71,6 +86,7 @@ impl ConfigFetcher {
     }
 
     #[cfg(test)]
+    /// Override the base url, to be used in tests.
     pub fn with_base_url(base_url: String) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -80,6 +96,7 @@ impl ConfigFetcher {
     }
 
     #[cfg(test)]
+    /// To OVER
     pub fn with_test_config(base_url: String, config_vault: PathBuf) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -105,6 +122,9 @@ impl ConfigFetcher {
         )
     }
 
+    /// Fetches contents from github to get hashes and download urls for
+    /// contents of the remote configuration repo at:
+    /// https://github.com/FuelLabs/chain-configuration/
     async fn check_github_files(
         &self,
         conf: &ChainConfig,
@@ -131,6 +151,9 @@ impl ConfigFetcher {
         Ok(contents)
     }
 
+    /// Calculates the hash for the local configuration instance.
+    /// The hash calculation is based on github's hash calculation to match the
+    /// github api response.
     fn check_local_files(&self, conf: &ChainConfig) -> Result<Option<HashMap<String, String>>> {
         let folder_name = match conf {
             ChainConfig::Local => bail!("Local configuration should not be checked"),
@@ -149,7 +172,7 @@ impl ConfigFetcher {
             let entry = entry?;
             if entry.path().is_file() {
                 let content = std::fs::read(entry.path())?;
-                // Calculate SHA1 the same way GitHub does
+                // Calculate SHA1 the same way github does
                 let mut hasher = Sha1::new();
                 hasher.update(b"blob ");
                 hasher.update(content.len().to_string().as_bytes());
@@ -206,7 +229,8 @@ impl ConfigFetcher {
         Ok(false)
     }
 
-    /// Download the chain config for given mode
+    /// Download the chain config for given mode. Fetches the corresponding
+    /// directory from: https://github.com/FuelLabs/chain-configuration/.
     pub async fn download_config(&self, conf: &ChainConfig) -> anyhow::Result<()> {
         let folder_name = match conf {
             ChainConfig::Local => LOCAL_CONFIG_FOLDER_NAME,
@@ -247,7 +271,7 @@ impl ConfigFetcher {
         Ok(())
     }
 
-    /// Helper function to fetch folder contents from GitHub
+    /// Helper function to fetch folder contents from github.
     async fn fetch_folder_contents(&self, url: &str) -> anyhow::Result<Vec<GithubContentDetails>> {
         let response = self
             .client
@@ -329,11 +353,32 @@ pub async fn check_and_update_chain_config(conf: ChainConfig) -> anyhow::Result<
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    use tokio;
     use wiremock::{
         matchers::{method, path},
         Mock, MockServer, ResponseTemplate,
     };
+
+    // Helper function to create dummy github response
+    fn create_github_response(files: &[(&str, &str)]) -> Vec<GithubContentDetails> {
+        files
+            .iter()
+            .map(|(name, content)| {
+                let mut hasher = Sha1::new();
+                hasher.update(b"blob ");
+                hasher.update(content.len().to_string().as_bytes());
+                hasher.update([0]);
+                hasher.update(content.as_bytes());
+                let sha = format!("{:x}", hasher.finalize());
+
+                GithubContentDetails {
+                    name: name.to_string(),
+                    sha,
+                    download_url: Some(format!("https://raw.githubusercontent.com/test/{}", name)),
+                    content_type: "file".to_string(),
+                }
+            })
+            .collect()
+    }
 
     #[tokio::test]
     async fn test_fetch_not_required_when_files_match() {
@@ -525,27 +570,5 @@ mod tests {
             needs_fetch,
             "Fetch should be required when there are extra local files"
         );
-    }
-
-    // Helper function to create GitHub response
-    fn create_github_response(files: &[(&str, &str)]) -> Vec<GithubContentDetails> {
-        files
-            .iter()
-            .map(|(name, content)| {
-                let mut hasher = Sha1::new();
-                hasher.update(b"blob ");
-                hasher.update(content.len().to_string().as_bytes());
-                hasher.update(&[0]);
-                hasher.update(content.as_bytes());
-                let sha = format!("{:x}", hasher.finalize());
-
-                GithubContentDetails {
-                    name: name.to_string(),
-                    sha,
-                    download_url: Some(format!("https://raw.githubusercontent.com/test/{}", name)),
-                    content_type: "file".to_string(),
-                }
-            })
-            .collect()
     }
 }
