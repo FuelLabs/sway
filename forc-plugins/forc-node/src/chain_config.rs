@@ -17,8 +17,8 @@ use std::{
     path::PathBuf,
 };
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 /// Different chain configuration options.
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum ChainConfig {
     Local,
     Testnet,
@@ -68,7 +68,6 @@ struct GithubContentDetails {
 /// `ConfigFetcher` fetches it but remote updates are not tracked for it.
 pub struct ConfigFetcher {
     client: reqwest::Client,
-    #[cfg(test)]
     base_url: String,
     config_vault: PathBuf,
 }
@@ -79,7 +78,6 @@ impl ConfigFetcher {
     pub fn new() -> Self {
         Self {
             client: reqwest::Client::new(),
-            #[cfg(test)]
             base_url: "https://api.github.com".to_string(),
             config_vault: user_forc_directory().join(CONFIG_FOLDER),
         }
@@ -96,7 +94,6 @@ impl ConfigFetcher {
     }
 
     #[cfg(test)]
-    /// To OVER
     pub fn with_test_config(base_url: String, config_vault: PathBuf) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -106,10 +103,6 @@ impl ConfigFetcher {
     }
 
     fn get_base_url(&self) -> &str {
-        #[cfg(not(test))]
-        return "https://api.github.com";
-
-        #[cfg(test)]
         return &self.base_url;
     }
 
@@ -288,67 +281,77 @@ impl ConfigFetcher {
     }
 }
 
-/// Check local state of the configuration file in the vault (if they exists)
-/// and compare them to the remote one in github. If a change is detected asks
-/// user if they want to update, and does the update for them.
-///
-/// Exception is local configuration. For local configurations we are expecting
-/// users to alter their network configs as they see fit. So we only check if
-/// the configuration exists or not, and if it does we do not alter with it.
-/// If the chain config is missing, we are unpacking the one we embedded into
-/// forc-node.
-pub async fn check_and_update_chain_config(conf: ChainConfig) -> anyhow::Result<()> {
-    let fetcher = ConfigFetcher::new();
-    // If chain config is local we will only check if it exists.
-    // If it does not exists we will unpack the one embedded into forc-node.
-    // Otherwise we will continue with what we have in the path without
-    // overriding it.
-    if conf == ChainConfig::Local {
-        let user_conf_dir = user_forc_directory().join(CONFIG_FOLDER);
-        let local_conf_dir = user_conf_dir.join(LOCAL_CONFIG_FOLDER_NAME);
-        if !local_conf_dir.exists() {
-            println_warning(&format!(
-                "Local node configuration files are missing at {}",
-                local_conf_dir.display()
-            ));
-            // Ask user if they want to update the chain config.
-            let update =
-                ask_user_yes_no_question("Would you like to download network configuration?")?;
-            if update {
-                fetcher.download_config(&conf).await?;
-            } else {
-                bail!(
-                    "Missing local network configuration, create one at {}",
-                    local_conf_dir.display()
-                );
-            }
-        }
-    } else {
-        // For testnet and mainnet configs, we need to check online.
-        println_action_green("Checking", "for network configuration updates.");
-
-        if fetcher.check_fetch_required(&conf).await? {
-            println_warning(&format!(
-            "A network configuration update detected for {}, this might create problems while syncing with rest of the network",
-            conf
+/// Local configuration is validated based on its existance. Meaning that if
+/// the configuration exists in user's local it is validated. If it is missing
+/// the configuration files are fetched from remote.
+async fn validate_local_chainconfig(fetcher: &ConfigFetcher) -> anyhow::Result<()> {
+    let user_conf_dir = user_forc_directory().join(CONFIG_FOLDER);
+    let local_conf_dir = user_conf_dir.join(LOCAL_CONFIG_FOLDER_NAME);
+    if !local_conf_dir.exists() {
+        println_warning(&format!(
+            "Local node configuration files are missing at {}",
+            local_conf_dir.display()
         ));
-            // Ask user if they want to update the chain config.
-            let update =
-                ask_user_yes_no_question("Would you like to update network configuration?")?;
-            if update {
-                println_action_green("Updating", &format!("configuration files for {conf}",));
-                fetcher.download_config(&conf).await?;
-                println_action_green(
-                    "Finished",
-                    &format!("updating configuration files for {conf}",),
-                );
-            }
+        // Ask user if they want to update the chain config.
+        let update = ask_user_yes_no_question("Would you like to download network configuration?")?;
+        if update {
+            fetcher.download_config(&ChainConfig::Local).await?;
         } else {
-            println_action_green(&format!("{conf}"), "is up-to-date.");
+            bail!(
+                "Missing local network configuration, create one at {}",
+                local_conf_dir.display()
+            );
         }
     }
     Ok(())
 }
+
+/// Testnet and mainnet chain configurations are validated against the remote
+/// versions from github. If local files exists for these configurations, hash
+/// values are collected from remote, and compared to find out if there any
+/// changes introduced in remote. If there is the chain configuration is
+/// fetched again to ensure, the bootstrapped node can sync with the rest of
+/// the network without any issues related to a different chain configuration.
+async fn validate_remote_chainconfig(
+    fetcher: &ConfigFetcher,
+    conf: &ChainConfig,
+) -> anyhow::Result<()> {
+    // For testnet and mainnet configs, we need to check online.
+    println_action_green("Checking", "for network configuration updates.");
+
+    if fetcher.check_fetch_required(&conf).await? {
+        println_warning(&format!(
+            "A network configuration update detected for {}, this might create problems while syncing with rest of the network",
+            conf
+        ));
+        // Ask user if they want to update the chain config.
+        let update = ask_user_yes_no_question("Would you like to update network configuration?")?;
+        if update {
+            println_action_green("Updating", &format!("configuration files for {conf}",));
+            fetcher.download_config(&conf).await?;
+            println_action_green(
+                "Finished",
+                &format!("updating configuration files for {conf}",),
+            );
+        }
+    } else {
+        println_action_green(&format!("{conf}"), "is up-to-date.");
+    }
+    Ok(())
+}
+
+/// Check local state of the configuration file in the vault (if they exists)
+/// and compare them to the remote one in github. If a change is detected asks
+/// user if they want to update, and does the update for them.
+pub async fn check_and_update_chain_config(conf: ChainConfig) -> anyhow::Result<()> {
+    let fetcher = ConfigFetcher::new();
+    match conf {
+        ChainConfig::Local => validate_local_chainconfig(&fetcher).await?,
+        remote_config => validate_remote_chainconfig(&fetcher, &remote_config).await?,
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

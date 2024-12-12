@@ -1,4 +1,3 @@
-use super::cmd::TestnetCmd;
 use crate::{
     chain_config::{check_and_update_chain_config, ChainConfig},
     consts::{
@@ -7,6 +6,7 @@ use crate::{
         TESTNET_SYNC_HEADER_BATCH_SIZE,
     },
     run_opts::{DbType, RunOpts},
+    testnet::cmd::TestnetCmd,
     util::{ask_user_keypair, ask_user_string, HumanReadableCommand, KeyPair},
 };
 use anyhow::Context;
@@ -30,11 +30,9 @@ pub(crate) async fn run(cmd: TestnetCmd, dry_run: bool) -> anyhow::Result<Option
         ask_user_keypair()?
     };
 
-    let relayer = if let Some(relayer) = cmd.relayer {
-        relayer
-    } else {
-        ask_user_string("Ethereum RPC (Sepolia) Endpoint:")?
-    };
+    let relayer = cmd.relayer.unwrap_or_else(|| {
+        ask_user_string("Ethereum RPC (Sepolia) Endpoint:").expect("Failed to get RPC endpoint")
+    });
 
     let opts = TestnetOpts {
         keypair,
