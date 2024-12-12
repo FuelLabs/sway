@@ -1,6 +1,5 @@
 ---
 source: test/tests/tests.rs
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
@@ -34,22 +33,22 @@ script {
         v7 = get_elem_ptr v5, ptr u64, v6
         store v4 to v7
         v8 = get_local ptr { u64 }, buffer, !12
-        v9 = call abi_decode_3(v8), !17
-        v10 = get_local ptr { u64 }, temp, !18
+        v9 = call abi_decode_4(v8), !20
+        v10 = get_local ptr { u64 }, temp, !21
         v11 = const u64 0
         v12 = get_elem_ptr v10, ptr u64, v11
         store v9 to v12
-        v13 = get_local ptr { u64 }, temp, !19
-        v14 = ptr_to_int v13 to u64, !20
+        v13 = get_local ptr { u64 }, temp, !22
+        v14 = ptr_to_int v13 to u64, !23
         v15 = const u64 8
-        v16 = asm(target: target, temp: v14, size: v15) -> (), !21 {
-            mcp    target temp size, !22
+        v16 = asm(target: target, temp: v14, size: v15) -> (), !24 {
+            mcp    target temp size, !25
         }
         v17 = const unit ()
         ret () v17
     }
 
-    pub fn from_parts_1(ptr !23: u64, _len !24: u64, __ret_value: ptr { u64 }) -> ptr { u64 }, !27 {
+    pub fn from_parts_1(ptr !26: u64, _len !27: u64, __ret_value: ptr { u64 }) -> ptr { u64 }, !30 {
         entry(ptr: u64, _len: u64, __ret_value: ptr { u64 }):
         v0 = const u64 0
         v1 = get_elem_ptr __ret_value, ptr u64, v0
@@ -57,22 +56,22 @@ script {
         ret ptr { u64 } __ret_value
     }
 
-    pub fn abi_decode_3(buffer !28: ptr { u64 }) -> u64, !31 {
+    pub fn abi_decode_4(buffer !31: ptr { u64 }) -> u64, !34 {
         entry(buffer: ptr { u64 }):
         v0 = const u64 0
-        v1 = get_elem_ptr buffer, ptr u64, v0, !35
-        v2 = load v1, !36
-        v3 = asm(ptr: v2, val) -> u64 val, !38 {
-            lw     val ptr i0, !39
+        v1 = get_elem_ptr buffer, ptr u64, v0, !38
+        v2 = load v1, !39
+        v3 = asm(ptr: v2, val) -> u64 val, !41 {
+            lw     val ptr i0, !42
         }
-        v4 = load v1, !36
-        v5 = const u64 8, !36
-        v6 = add v4, v5, !36
-        store v6 to v1, !41
+        v4 = load v1, !39
+        v5 = const u64 8, !39
+        v6 = add v4, v5, !39
+        store v6 to v1, !44
         ret u64 v3
     }
 
-    pub entry fn __entry() -> ptr slice, !45 {
+    pub entry fn __entry() -> ptr slice, !47 {
         local mut { u64, u64, u64 } __aggr_memcpy_0
         local mut { u64, u64, u64 } __aggr_memcpy_00
         local mut { u64, u64, u64 } __aggr_memcpy_01
@@ -92,110 +91,110 @@ script {
 
         entry():
         v0 = get_local ptr slice, __ret_value
-        v1 = call main_8(), !48
+        v1 = call main_8(), !50
         v2 = const u64 1024
-        v3 = asm(cap: v2) -> u64 hp, !53 {
+        v3 = asm(cap: v2) -> u64 hp, !55 {
             aloc   cap
         }
-        v4 = int_to_ptr v3 to ptr u8, !54
-        v5 = ptr_to_int v4 to u64, !55
-        v6 = get_local ptr { u64, u64, u64 }, __anon_0, !56
+        v4 = int_to_ptr v3 to ptr u8, !56
+        v5 = ptr_to_int v4 to u64, !57
+        v6 = get_local ptr { u64, u64, u64 }, __anon_0, !58
         v7 = const u64 0
-        v8 = get_elem_ptr v6, ptr u64, v7, !57
-        store v5 to v8, !58
+        v8 = get_elem_ptr v6, ptr u64, v7, !59
+        store v5 to v8, !60
         v9 = const u64 1
-        v10 = get_elem_ptr v6, ptr u64, v9, !59
-        store v2 to v10, !60
+        v10 = get_elem_ptr v6, ptr u64, v9, !61
+        store v2 to v10, !62
         v11 = const u64 2
-        v12 = get_elem_ptr v6, ptr u64, v11, !61
+        v12 = get_elem_ptr v6, ptr u64, v11, !63
         v13 = const u64 0
-        store v13 to v12, !62
+        store v13 to v12, !64
         v14 = asm(buffer: v6) -> ptr { u64, u64, u64 } buffer {
         }
         v15 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_0
         mem_copy_val v15, v14
-        v16 = get_local ptr { { u64, u64, u64 } }, __anon_1, !64
+        v16 = get_local ptr { { u64, u64, u64 } }, __anon_1, !66
         v17 = const u64 0
-        v18 = get_elem_ptr v16, ptr { u64, u64, u64 }, v17, !65
+        v18 = get_elem_ptr v16, ptr { u64, u64, u64 }, v17, !67
         mem_copy_val v18, v15
-        v19 = ptr_to_int v16 to u64, !68
-        v20 = int_to_ptr v19 to ptr { { u64, u64, u64 } }, !69
+        v19 = ptr_to_int v16 to u64, !70
+        v20 = int_to_ptr v19 to ptr { { u64, u64, u64 } }, !71
         v21 = const u64 0
-        v22 = get_elem_ptr v20, ptr { u64, u64, u64 }, v21, !71
+        v22 = get_elem_ptr v20, ptr { u64, u64, u64 }, v21, !73
         v23 = get_local ptr { u64, u64, u64 }, __asm_arg
         mem_copy_val v23, v22
         v24 = asm(buffer: v23) -> ptr { u64, u64, u64 } buffer {
         }
         v25 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_00
         mem_copy_val v25, v24
-        v26 = get_local ptr { u64, u64, u64 }, __anon_00, !72
+        v26 = get_local ptr { u64, u64, u64 }, __anon_00, !74
         mem_copy_val v26, v25
         v27 = const u64 0
-        v28 = get_elem_ptr v26, ptr u64, v27, !73
-        v29 = load v28, !74
-        v30 = int_to_ptr v29 to ptr u8, !75
+        v28 = get_elem_ptr v26, ptr u64, v27, !75
+        v29 = load v28, !76
+        v30 = int_to_ptr v29 to ptr u8, !77
         v31 = const u64 1
-        v32 = get_elem_ptr v26, ptr u64, v31, !76
-        v33 = load v32, !77
+        v32 = get_elem_ptr v26, ptr u64, v31, !78
+        v33 = load v32, !79
         v34 = const u64 2
-        v35 = get_elem_ptr v26, ptr u64, v34, !78
-        v36 = load v35, !79
+        v35 = get_elem_ptr v26, ptr u64, v34, !80
+        v36 = load v35, !81
         v37 = const u64 8
-        v38 = add v36, v37, !80
-        v39 = cmp gt v38 v33, !81
-        cbr v39, encode_10_abi_encode_11_block1(), encode_10_abi_encode_11_block0(v30, v33), !82
+        v38 = add v36, v37, !82
+        v39 = cmp gt v38 v33, !83
+        cbr v39, encode_10_abi_encode_11_block1(), encode_10_abi_encode_11_block0(v30, v33), !84
 
         encode_10_abi_encode_11_block0(v40: ptr u8, v41: u64):
-        v42 = ptr_to_int v40 to u64, !83
-        v43 = add v42, v36, !84
-        v44 = int_to_ptr v43 to ptr u64, !85
-        store v1 to v44, !86
-        v45 = get_local ptr { u64, u64, u64 }, __anon_10, !87
+        v42 = ptr_to_int v40 to u64, !85
+        v43 = add v42, v36, !86
+        v44 = int_to_ptr v43 to ptr u64, !87
+        store v1 to v44, !88
+        v45 = get_local ptr { u64, u64, u64 }, __anon_10, !89
         v46 = const u64 0
-        v47 = get_elem_ptr v45, ptr u64, v46, !88
-        store v42 to v47, !89
+        v47 = get_elem_ptr v45, ptr u64, v46, !90
+        store v42 to v47, !91
         v48 = const u64 1
-        v49 = get_elem_ptr v45, ptr u64, v48, !90
-        store v41 to v49, !91
+        v49 = get_elem_ptr v45, ptr u64, v48, !92
+        store v41 to v49, !93
         v50 = const u64 2
-        v51 = get_elem_ptr v45, ptr u64, v50, !92
-        store v38 to v51, !93
+        v51 = get_elem_ptr v45, ptr u64, v50, !94
+        store v38 to v51, !95
         v52 = asm(buffer: v45) -> ptr { u64, u64, u64 } buffer {
         }
         v53 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_01
         mem_copy_val v53, v52
-        v54 = get_local ptr { { u64, u64, u64 } }, __anon_2, !95
+        v54 = get_local ptr { { u64, u64, u64 } }, __anon_2, !97
         v55 = const u64 0
-        v56 = get_elem_ptr v54, ptr { u64, u64, u64 }, v55, !96
+        v56 = get_elem_ptr v54, ptr { u64, u64, u64 }, v55, !98
         mem_copy_val v56, v53
-        v57 = get_local ptr { { u64, u64, u64 } }, buffer, !98
+        v57 = get_local ptr { { u64, u64, u64 } }, buffer, !100
         mem_copy_val v57, v54
-        v58 = get_local ptr { { u64, u64, u64 } }, buffer, !100
-        v59 = ptr_to_int v58 to u64, !103
-        v60 = int_to_ptr v59 to ptr { { u64, u64, u64 } }, !104
+        v58 = get_local ptr { { u64, u64, u64 } }, buffer, !102
+        v59 = ptr_to_int v58 to u64, !105
+        v60 = int_to_ptr v59 to ptr { { u64, u64, u64 } }, !106
         v61 = const u64 0
-        v62 = get_elem_ptr v60, ptr { u64, u64, u64 }, v61, !105
+        v62 = get_elem_ptr v60, ptr { u64, u64, u64 }, v61, !107
         v63 = get_local ptr { u64, u64, u64 }, __asm_arg0
         mem_copy_val v63, v62
         v64 = asm(buffer: v63) -> ptr { u64, u64, u64 } buffer {
         }
         v65 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_02
         mem_copy_val v65, v64
-        v66 = get_local ptr { u64, u64, u64 }, __anon_01, !106
+        v66 = get_local ptr { u64, u64, u64 }, __anon_01, !108
         mem_copy_val v66, v65
         v67 = const u64 0
-        v68 = get_elem_ptr v66, ptr u64, v67, !107
-        v69 = load v68, !108
-        v70 = int_to_ptr v69 to ptr u8, !109
+        v68 = get_elem_ptr v66, ptr u64, v67, !109
+        v69 = load v68, !110
+        v70 = int_to_ptr v69 to ptr u8, !111
         v71 = const u64 2
-        v72 = get_elem_ptr v66, ptr u64, v71, !110
-        v73 = ptr_to_int v70 to u64, !111
-        v74 = get_local ptr { u64, u64 }, __anon_11, !112
+        v72 = get_elem_ptr v66, ptr u64, v71, !112
+        v73 = ptr_to_int v70 to u64, !113
+        v74 = get_local ptr { u64, u64 }, __anon_11, !114
         v75 = const u64 0
-        v76 = get_elem_ptr v74, ptr u64, v75, !113
-        store v73 to v76, !114
+        v76 = get_elem_ptr v74, ptr u64, v75, !115
+        store v73 to v76, !116
         v77 = const u64 1
-        v78 = get_elem_ptr v74, ptr u64, v77, !115
+        v78 = get_elem_ptr v74, ptr u64, v77, !117
         mem_copy_val v78, v72
         v79 = asm(s: v74) -> ptr slice s {
         }
@@ -206,26 +205,26 @@ script {
 
         encode_10_abi_encode_11_block1():
         v81 = const u64 2
-        v82 = mul v33, v81, !116
-        v83 = add v82, v37, !117
-        v84 = asm(new_cap: v83, old_ptr: v30, len: v36) -> ptr u8 hp, !118 {
+        v82 = mul v33, v81, !118
+        v83 = add v82, v37, !119
+        v84 = asm(new_cap: v83, old_ptr: v30, len: v36) -> ptr u8 hp, !120 {
             aloc   new_cap
             mcp    hp old_ptr len
         }
-        br encode_10_abi_encode_11_block0(v84, v83), !119
+        br encode_10_abi_encode_11_block0(v84, v83), !121
     }
 
-    entry_orig fn main_8() -> u64, !122 {
+    entry_orig fn main_8() -> u64, !124 {
         entry():
-        v0 = get_config ptr { u64 }, WRAPPED, !123
+        v0 = get_config ptr { u64 }, WRAPPED, !125
         v1 = const u64 0
-        v2 = get_elem_ptr v0, ptr u64, v1, !124
+        v2 = get_elem_ptr v0, ptr u64, v1, !126
         v3 = load v2
-        v4 = get_config ptr { u64 }, TUPLE, !125
+        v4 = get_config ptr { u64 }, TUPLE, !127
         v5 = const u64 0
-        v6 = get_elem_ptr v4, ptr u64, v5, !126
+        v6 = get_elem_ptr v4, ptr u64, v5, !128
         v7 = load v6
-        v8 = add v3, v7, !129
+        v8 = add v3, v7, !131
         ret u64 v8
     }
 }
@@ -245,121 +244,123 @@ script {
 !12 = span !3 64967 64973
 !13 = span !3 64953 64974
 !14 = fn_call_path_span !3 64953 64966
-!15 = span !3 102115 102136
-!16 = fn_call_path_span !3 102115 102128
-!17 = (!13 !14 !15 !16)
-!18 = span !3 64942 64975
-!19 = span !3 65033 65037
-!20 = span !3 65023 65038
-!21 = span !3 64980 65115
-!22 = span !3 65088 65108
-!23 = span !3 652 655
-!24 = span !3 666 670
-!25 = span !3 634 729
-!26 = fn_name_span !3 641 651
-!27 = (!25 !26)
-!28 = span !3 65527 65533
-!29 = span !3 65505 65600
-!30 = fn_name_span !3 65508 65518
-!31 = (!29 !30)
-!32 = span !3 65566 65594
-!33 = fn_call_path_span !3 65573 65585
-!34 = span !3 593 605
-!35 = (!32 !33 !34)
-!36 = (!32 !33)
-!37 = span !3 2734 2815
-!38 = (!32 !33 !37)
-!39 = span !3 2772 2785
-!40 = span !3 2825 2864
-!41 = (!32 !33 !40)
-!42 = "<autogenerated>"
-!43 = span !42 0 125
-!44 = fn_name_span !42 7 14
-!45 = (!43 !44)
-!46 = span !42 66 72
-!47 = fn_call_path_span !42 66 70
-!48 = (!46 !47)
-!49 = span !42 90 111
-!50 = fn_call_path_span !42 90 96
-!51 = span !3 64530 64543
-!52 = fn_call_path_span !3 64530 64541
-!53 = (!49 !50 !51 !52)
-!54 = (!49 !50 !51 !52)
-!55 = (!49 !50 !51 !52)
-!56 = (!49 !50 !51 !52)
-!57 = (!49 !50 !51 !52)
-!58 = (!49 !50 !51 !52)
-!59 = (!49 !50 !51 !52)
-!60 = (!49 !50 !51 !52)
-!61 = (!49 !50 !51 !52)
-!62 = (!49 !50 !51 !52)
-!63 = span !3 159 222
-!64 = (!49 !50 !51 !52 !63)
-!65 = (!49 !50 !51 !52)
-!66 = span !3 64514 64544
-!67 = fn_call_path_span !3 64519 64529
-!68 = (!49 !50 !66 !67)
-!69 = (!49 !50 !66 !67)
-!70 = span !3 55 82
-!71 = (!49 !50 !66 !67 !70)
-!72 = (!49 !50 !66 !67)
-!73 = (!49 !50 !66 !67)
-!74 = (!49 !50 !66 !67)
-!75 = (!49 !50 !66 !67)
-!76 = (!49 !50 !66 !67)
-!77 = (!49 !50 !66 !67)
-!78 = (!49 !50 !66 !67)
-!79 = (!49 !50 !66 !67)
-!80 = (!49 !50 !66 !67)
-!81 = (!49 !50 !66 !67)
-!82 = (!49 !50 !66 !67)
-!83 = (!49 !50 !66 !67)
-!84 = (!49 !50 !66 !67)
-!85 = (!49 !50 !66 !67)
-!86 = (!49 !50 !66 !67)
-!87 = (!49 !50 !66 !67)
-!88 = (!49 !50 !66 !67)
-!89 = (!49 !50 !66 !67)
-!90 = (!49 !50 !66 !67)
-!91 = (!49 !50 !66 !67)
-!92 = (!49 !50 !66 !67)
-!93 = (!49 !50 !66 !67)
-!94 = span !3 4684 4767
-!95 = (!49 !50 !66 !67 !94)
-!96 = (!49 !50 !66 !67)
-!97 = span !3 64501 64545
-!98 = (!49 !50 !97)
-!99 = span !3 64550 64556
-!100 = (!49 !50 !99)
-!101 = span !3 64550 64571
-!102 = fn_call_path_span !3 64557 64569
-!103 = (!49 !50 !101 !102)
-!104 = (!49 !50 !101 !102)
-!105 = (!49 !50 !101 !102 !70)
-!106 = (!49 !50 !101 !102)
-!107 = (!49 !50 !101 !102)
-!108 = (!49 !50 !101 !102)
-!109 = (!49 !50 !101 !102)
-!110 = (!49 !50 !101 !102)
-!111 = (!49 !50 !101 !102)
-!112 = (!49 !50 !101 !102)
-!113 = (!49 !50 !101 !102)
-!114 = (!49 !50 !101 !102)
-!115 = (!49 !50 !101 !102)
-!116 = (!49 !50 !66 !67)
-!117 = (!49 !50 !66 !67)
-!118 = (!49 !50 !66 !67)
-!119 = (!49 !50 !66 !67)
-!120 = span !0 202 246
-!121 = fn_name_span !0 205 209
-!122 = (!120 !121)
-!123 = span !0 225 232
-!124 = span !0 30 36
-!125 = span !0 237 242
-!126 = span !0 243 244
-!127 = span !0 225 244
-!128 = fn_call_path_span !0 235 236
-!129 = (!127 !128)
+!15 = "<autogenerated>"
+!16 = span !15 185 207
+!17 = fn_call_path_span !15 192 198
+!18 = span !3 3927 3946
+!19 = fn_call_path_span !3 3927 3940
+!20 = (!13 !14 !16 !17 !18 !19)
+!21 = span !3 64942 64975
+!22 = span !3 65033 65037
+!23 = span !3 65023 65038
+!24 = span !3 64980 65115
+!25 = span !3 65088 65108
+!26 = span !3 652 655
+!27 = span !3 666 670
+!28 = span !3 634 729
+!29 = fn_name_span !3 641 651
+!30 = (!28 !29)
+!31 = span !3 65527 65533
+!32 = span !3 65505 65600
+!33 = fn_name_span !3 65508 65518
+!34 = (!32 !33)
+!35 = span !3 65566 65594
+!36 = fn_call_path_span !3 65573 65585
+!37 = span !3 593 605
+!38 = (!35 !36 !37)
+!39 = (!35 !36)
+!40 = span !3 2734 2815
+!41 = (!35 !36 !40)
+!42 = span !3 2772 2785
+!43 = span !3 2825 2864
+!44 = (!35 !36 !43)
+!45 = span !15 0 125
+!46 = fn_name_span !15 7 14
+!47 = (!45 !46)
+!48 = span !15 66 72
+!49 = fn_call_path_span !15 66 70
+!50 = (!48 !49)
+!51 = span !15 90 111
+!52 = fn_call_path_span !15 90 96
+!53 = span !3 64530 64543
+!54 = fn_call_path_span !3 64530 64541
+!55 = (!51 !52 !53 !54)
+!56 = (!51 !52 !53 !54)
+!57 = (!51 !52 !53 !54)
+!58 = (!51 !52 !53 !54)
+!59 = (!51 !52 !53 !54)
+!60 = (!51 !52 !53 !54)
+!61 = (!51 !52 !53 !54)
+!62 = (!51 !52 !53 !54)
+!63 = (!51 !52 !53 !54)
+!64 = (!51 !52 !53 !54)
+!65 = span !3 159 222
+!66 = (!51 !52 !53 !54 !65)
+!67 = (!51 !52 !53 !54)
+!68 = span !3 64514 64544
+!69 = fn_call_path_span !3 64519 64529
+!70 = (!51 !52 !68 !69)
+!71 = (!51 !52 !68 !69)
+!72 = span !3 55 82
+!73 = (!51 !52 !68 !69 !72)
+!74 = (!51 !52 !68 !69)
+!75 = (!51 !52 !68 !69)
+!76 = (!51 !52 !68 !69)
+!77 = (!51 !52 !68 !69)
+!78 = (!51 !52 !68 !69)
+!79 = (!51 !52 !68 !69)
+!80 = (!51 !52 !68 !69)
+!81 = (!51 !52 !68 !69)
+!82 = (!51 !52 !68 !69)
+!83 = (!51 !52 !68 !69)
+!84 = (!51 !52 !68 !69)
+!85 = (!51 !52 !68 !69)
+!86 = (!51 !52 !68 !69)
+!87 = (!51 !52 !68 !69)
+!88 = (!51 !52 !68 !69)
+!89 = (!51 !52 !68 !69)
+!90 = (!51 !52 !68 !69)
+!91 = (!51 !52 !68 !69)
+!92 = (!51 !52 !68 !69)
+!93 = (!51 !52 !68 !69)
+!94 = (!51 !52 !68 !69)
+!95 = (!51 !52 !68 !69)
+!96 = span !3 4684 4767
+!97 = (!51 !52 !68 !69 !96)
+!98 = (!51 !52 !68 !69)
+!99 = span !3 64501 64545
+!100 = (!51 !52 !99)
+!101 = span !3 64550 64556
+!102 = (!51 !52 !101)
+!103 = span !3 64550 64571
+!104 = fn_call_path_span !3 64557 64569
+!105 = (!51 !52 !103 !104)
+!106 = (!51 !52 !103 !104)
+!107 = (!51 !52 !103 !104 !72)
+!108 = (!51 !52 !103 !104)
+!109 = (!51 !52 !103 !104)
+!110 = (!51 !52 !103 !104)
+!111 = (!51 !52 !103 !104)
+!112 = (!51 !52 !103 !104)
+!113 = (!51 !52 !103 !104)
+!114 = (!51 !52 !103 !104)
+!115 = (!51 !52 !103 !104)
+!116 = (!51 !52 !103 !104)
+!117 = (!51 !52 !103 !104)
+!118 = (!51 !52 !68 !69)
+!119 = (!51 !52 !68 !69)
+!120 = (!51 !52 !68 !69)
+!121 = (!51 !52 !68 !69)
+!122 = span !0 202 246
+!123 = fn_name_span !0 205 209
+!124 = (!122 !123)
+!125 = span !0 225 232
+!126 = span !0 30 36
+!127 = span !0 237 242
+!128 = span !0 243 244
+!129 = span !0 225 244
+!130 = fn_call_path_span !0 235 236
+!131 = (!129 !130)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -494,7 +495,7 @@ move $$arg0 $r0               ; [call]: pass argument 0
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; [call]: set new return address
-jmpf $zero i23                ; [call]: call abi_decode_3
+jmpf $zero i23                ; [call]: call abi_decode_4
 move $r0 $$retv               ; [call]: copy the return value
 sw   $$locbase $r0 i2         ; store word
 addi $r0 $$locbase i16        ; get offset to local
@@ -520,7 +521,7 @@ popl i7                       ; restore registers 16..40
 jmp $$reta                    ; return from call
 pshl i31                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function abi_decode_3
+move $$locbase $sp            ; save locals base register for function abi_decode_4
 move $r0 $$arg0               ; save argument 0 (buffer)
 move $r1 $$reta               ; save return address
 lw   $r2 $r0 i0               ; load word
