@@ -7,7 +7,7 @@ use crate::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
-use super::{ConstShadowingMode, GenericShadowingMode};
+use super::{namespace::Items, ConstShadowingMode, GenericShadowingMode};
 
 #[derive(Clone)]
 /// Contextual state tracked and accumulated throughout symbol collecting.
@@ -106,9 +106,10 @@ impl SymbolCollectionContext {
         item: Declaration,
     ) -> Result<(), ErrorEmitted> {
         self.namespace.module_mut(engines).write(engines, |m| {
-            m.current_items_mut().insert_parsed_symbol(
+            Items::insert_parsed_symbol(
                 handler,
                 engines,
+                m,
                 name.clone(),
                 item.clone(),
                 self.const_shadowing_mode,

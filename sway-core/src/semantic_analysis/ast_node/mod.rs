@@ -77,9 +77,9 @@ impl ty::TyAstNode {
                         ),
                     })
                 }
-                AstNodeContent::Declaration(decl) => {
-                    ty::TyAstNodeContent::Declaration(ty::TyDecl::type_check(handler, ctx, decl)?)
-                }
+                AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(
+                    ty::TyDecl::type_check(handler, &mut ctx, decl)?,
+                ),
                 AstNodeContent::Expression(expr) => {
                     let mut ctx = ctx;
                     match expr.kind {

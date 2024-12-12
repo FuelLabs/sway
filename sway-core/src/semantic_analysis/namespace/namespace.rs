@@ -225,7 +225,7 @@ impl Namespace {
             .submodules
             .entry(mod_name.to_string())
             .or_insert(Module::new(mod_name.clone(), visibility, Some(module_span)));
-        self.mod_path.push(mod_name);
+        self.mod_path.push(mod_name.clone());
     }
 
     /// Pops the current submodule from the namespace's module hierarchy.

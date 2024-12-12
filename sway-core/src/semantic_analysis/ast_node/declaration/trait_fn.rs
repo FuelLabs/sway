@@ -49,7 +49,7 @@ impl ty::TyTraitFn {
         let type_engine = ctx.engines.te();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().scoped(handler, Some(span.clone()), |mut ctx| {
+        ctx.by_ref().scoped(handler, Some(span.clone()), |ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.
