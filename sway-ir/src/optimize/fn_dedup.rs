@@ -478,7 +478,6 @@ fn dedup_fn_demonomorphize(
         struct OthersTracker<'a> {
             locals_iter: Box<dyn Iterator<Item = (&'a String, &'a LocalVar)> + 'a>,
             instr_iter: Box<dyn Iterator<Item = (Block, Value)> + 'a>,
-            args_iter: Box<dyn Iterator<Item = (String, Value)> + 'a>,
         }
         let mut class_iter = class.iter();
         let leader = class_iter.next().unwrap();
@@ -489,7 +488,6 @@ fn dedup_fn_demonomorphize(
                     OthersTracker {
                         locals_iter: Box::new(f.locals_iter(context)),
                         instr_iter: Box::new(f.instruction_iter(context)),
-                        args_iter: Box::new(f.args_iter(context).cloned()),
                     },
                 )
             })
@@ -504,8 +502,8 @@ fn dedup_fn_demonomorphize(
                 continue;
             }
             for other_func in others.iter_mut() {
-                let other_arg = other_func.1.args_iter.next().unwrap();
-                let other_arg_ty = other_arg.1.get_type(context).unwrap();
+                let other_arg = other_func.0.get_ith_arg(context, arg_idx);
+                let other_arg_ty = other_arg.get_type(context).unwrap();
                 assert!(
                     other_arg_ty.is_ptr(context),
                     "Functions wouldn't be in the same class if args differ"
