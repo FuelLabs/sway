@@ -993,15 +993,15 @@ fn instruction_to_doc<'a>(
                 dst_val_ptr,
                 src_val_ptr,
                 byte_len,
-            } => Doc::line(
+            } => maybe_constant_to_doc(context, md_namer, namer, byte_len).append(Doc::line(
                 Doc::text(format!(
                     "mem_copy_bytes {}, {}, {}",
                     namer.name(context, dst_val_ptr),
                     namer.name(context, src_val_ptr),
-                    byte_len,
+                    namer.name(context, byte_len),
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
-            ),
+            )),
             InstOp::MemCopyVal {
                 dst_val_ptr,
                 src_val_ptr,

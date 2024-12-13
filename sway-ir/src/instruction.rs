@@ -101,7 +101,7 @@ pub enum InstOp {
     MemCopyBytes {
         dst_val_ptr: Value,
         src_val_ptr: Value,
-        byte_len: u64,
+        byte_len: Value,
     },
     /// Copy a value from one pointer to another.
     MemCopyVal {
@@ -1063,7 +1063,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         )
     }
 
-    pub fn mem_copy_bytes(self, dst_val_ptr: Value, src_val_ptr: Value, byte_len: u64) -> Value {
+    pub fn mem_copy_bytes(self, dst_val_ptr: Value, src_val_ptr: Value, byte_len: Value) -> Value {
         insert_instruction!(
             self,
             InstOp::MemCopyBytes {

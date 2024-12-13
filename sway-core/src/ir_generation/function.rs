@@ -460,9 +460,10 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // copy the value of the struct variable into the slice
+        let c_16 = Constant::get_uint(context, 64, 16);
         self.current_block
             .append(context)
-            .mem_copy_bytes(slice_val, struct_val, 16);
+            .mem_copy_bytes(slice_val, struct_val, c_16);
 
         // return the slice
         Ok(TerminatorValue::new(slice_val, context))
@@ -1725,9 +1726,10 @@ impl<'eng> FnCompiler<'eng> {
                         len,
                         Type::get_uint8(context),
                     );
+                    let len_const = Constant::get_uint(context, 64, 8 - offset);
                     s.current_block
                         .append(context)
-                        .mem_copy_bytes(addr, item_ptr, 8 - offset);
+                        .mem_copy_bytes(addr, item_ptr, len_const);
                     Ok(increase_len(&mut s.current_block, context, len, 8 - offset))
                 }
 
@@ -1996,9 +1998,10 @@ impl<'eng> FnCompiler<'eng> {
                             len,
                             Type::get_uint8(context),
                         );
+                        let len_32 = Constant::get_uint(context, 64, 32);
                         self.current_block
                             .append(context)
-                            .mem_copy_bytes(addr, item_ptr, 32);
+                            .mem_copy_bytes(addr, item_ptr, len_32);
                         increase_len(&mut self.current_block, context, len, 32)
                     }
                     TypeInfo::StringArray(string_len) => {
@@ -2011,11 +2014,10 @@ impl<'eng> FnCompiler<'eng> {
                             len,
                             Type::get_uint8(context),
                         );
-                        self.current_block.append(context).mem_copy_bytes(
-                            addr,
-                            item_ptr,
-                            string_len.val() as u64,
-                        );
+                        let len_const = Constant::get_uint(context, 64, string_len.val() as u64);
+                        self.current_block
+                            .append(context)
+                            .mem_copy_bytes(addr, item_ptr, len_const);
                         increase_len(
                             &mut self.current_block,
                             context,

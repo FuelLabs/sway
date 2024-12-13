@@ -47,8 +47,8 @@ use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
     PrintPassesOpts, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, FN_DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
-    RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
+    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_DEMONOMORPHIZE_NAME, FN_INLINE_NAME, MEM2REG_NAME,
+    MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -949,6 +949,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
                 pass_group.append_pass(SROA_NAME);
                 pass_group.append_pass(MEM2REG_NAME);
                 pass_group.append_pass(DCE_NAME);
+                pass_group.append_pass(FN_DEDUP_DEMONOMORPHIZE_NAME);
+                pass_group.append_pass(DCE_NAME);
+                pass_group.append_pass(FN_DCE_NAME);
             }
             OptLevel::Opt0 => {}
         }

@@ -350,7 +350,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     dst_val_ptr,
                     src_val_ptr,
                     byte_len,
-                } => self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, *byte_len),
+                } => self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len),
                 InstOp::MemCopyVal {
                     dst_val_ptr,
                     src_val_ptr,
@@ -506,7 +506,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         instr_val: &Value,
         dst_val_ptr: &Value,
         src_val_ptr: &Value,
-        byte_len: u64,
+        byte_len: &Value,
     ) {
         todo!();
     }

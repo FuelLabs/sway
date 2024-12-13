@@ -488,7 +488,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     dst_val_ptr,
                     src_val_ptr,
                     byte_len,
-                } => self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, *byte_len),
+                } => self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len),
                 InstOp::MemCopyVal {
                     dst_val_ptr,
                     src_val_ptr,
@@ -1449,6 +1449,40 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         instr_val: &Value,
         dst_val_ptr: &Value,
         src_val_ptr: &Value,
+        byte_len: &Value,
+    ) -> Result<(), CompileError> {
+        if let Some(byte_len_const) = byte_len
+            .get_constant(self.context)
+            .and_then(|c| c.as_uint())
+        {
+            return self.compile_mem_copy_const_bytes(
+                instr_val,
+                dst_val_ptr,
+                src_val_ptr,
+                byte_len_const,
+            );
+        }
+
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let dst_reg = self.value_to_register(dst_val_ptr)?;
+        let src_reg = self.value_to_register(src_val_ptr)?;
+        let len_reg = self.value_to_register(byte_len)?;
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
+            comment: "copy memory".into(),
+            owning_span,
+        });
+
+        Ok(())
+    }
+
+    fn compile_mem_copy_const_bytes(
+        &mut self,
+        instr_val: &Value,
+        dst_val_ptr: &Value,
+        src_val_ptr: &Value,
         byte_len: u64,
     ) -> Result<(), CompileError> {
         if byte_len == 0 {
@@ -1460,6 +1494,18 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         let dst_reg = self.value_to_register(dst_val_ptr)?;
         let src_reg = self.value_to_register(src_val_ptr)?;
+
+        // If we can use an MCPI instead of MOVI + MCP, do that.
+        if let Ok(byte_len_imm) =
+            VirtualImmediate12::new(byte_len, owning_span.clone().unwrap_or(Span::dummy()))
+        {
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MCPI(dst_reg, src_reg, byte_len_imm)),
+                comment: "copy memory".into(),
+                owning_span,
+            });
+            return Ok(());
+        }
 
         let len_reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
@@ -1500,7 +1546,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 )
             })?;
         let byte_len = dst_ty.size(self.context).in_bytes();
-        self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len)
+        self.compile_mem_copy_const_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len)
     }
 
     fn compile_log(
@@ -2137,6 +2183,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 })
             })
             .ok_or_else(|| {
+                dbg!(value);
                 let span = self.md_mgr.val_to_span(self.context, *value);
                 CompileError::Internal(
                     "An attempt to get register for unknown Value.",
