@@ -706,7 +706,12 @@ fn dedup_fn_demonomorphize(
                                 .or_insert(vec![other_instr]);
                         }
                     }
-                    InstOp::Load(_value) => {}
+                    InstOp::Load(_value) => {
+                        if inst.get_type(context) != other_instr.get_type(context) {
+                            can_optimize = false;
+                            break 'leader_loop;
+                        }
+                    }
                     InstOp::MemCopyBytes { .. } => {}
                     InstOp::MemCopyVal { dst_val_ptr, .. } => {
                         let InstOp::MemCopyVal {
@@ -729,7 +734,19 @@ fn dedup_fn_demonomorphize(
                     InstOp::Nop => {}
                     InstOp::PtrToInt(..) => {}
                     InstOp::Ret(..) => {}
-                    InstOp::Store { .. } => {}
+                    InstOp::Store { stored_val, .. } => {
+                        let InstOp::Store {
+                            stored_val: other_stored_val,
+                            ..
+                        } = &other_instr.get_instruction(context).unwrap().op
+                        else {
+                            panic!("Leader and follower are different instructions in same class");
+                        };
+                        if stored_val.get_type(context) != other_stored_val.get_type(context) {
+                            can_optimize = false;
+                            break 'leader_loop;
+                        }
+                    }
                 }
             }
         }
