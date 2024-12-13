@@ -478,6 +478,7 @@ fn dedup_fn_demonomorphize(
         struct OthersTracker<'a> {
             locals_iter: Box<dyn Iterator<Item = (&'a String, &'a LocalVar)> + 'a>,
             instr_iter: Box<dyn Iterator<Item = (Block, Value)> + 'a>,
+            args_iter: Box<dyn Iterator<Item = (String, Value)> + 'a>,
         }
         let mut class_iter = class.iter();
         let leader = class_iter.next().unwrap();
@@ -488,10 +489,54 @@ fn dedup_fn_demonomorphize(
                     OthersTracker {
                         locals_iter: Box::new(f.locals_iter(context)),
                         instr_iter: Box::new(f.instruction_iter(context)),
+                        args_iter: Box::new(f.args_iter(context).cloned()),
                     },
                 )
             })
             .collect();
+
+        // Note down arguments and retun value that need to be type erased.
+        let mut type_erase_args = vec![];
+        let mut type_erase_ret = false;
+        for (arg_idx, arg) in leader.args_iter(context).enumerate() {
+            let ty = arg.1.get_type(context).unwrap();
+            if !ty.is_ptr(context) {
+                continue;
+            }
+            for other_func in others.iter_mut() {
+                let other_arg = other_func.1.args_iter.next().unwrap();
+                let other_arg_ty = other_arg.1.get_type(context).unwrap();
+                assert!(
+                    other_arg_ty.is_ptr(context),
+                    "Functions wouldn't be in the same class if args differ"
+                );
+                if ty.get_pointee_type(context).unwrap()
+                    != other_arg_ty.get_pointee_type(context).unwrap()
+                {
+                    type_erase_args.push(arg_idx);
+                    break;
+                }
+            }
+        }
+
+        let ret_ty = leader.get_return_type(context);
+        let mut ret_ty_map = FxHashMap::default();
+        ret_ty_map.insert(*leader, ret_ty);
+        if ret_ty.is_ptr(context) {
+            for other_func in others.iter_mut() {
+                let other_ret_ty = other_func.0.get_return_type(context);
+                ret_ty_map.insert(*other_func.0, other_ret_ty);
+                assert!(
+                    other_ret_ty.is_ptr(context),
+                    "Function't wouldn't be in the same class if ret type differs"
+                );
+                if ret_ty.get_pointee_type(context).unwrap()
+                    != other_ret_ty.get_pointee_type(context).unwrap()
+                {
+                    type_erase_ret = true;
+                }
+            }
+        }
 
         // Collect those locals that need to be shifted to an argument.
         // The key is a local from the leader and the value is a list of
@@ -537,10 +582,36 @@ fn dedup_fn_demonomorphize(
             mem_copy_val: FxHashMap<Value, Vec<Value>>,
         }
 
+        let mut type_erase_block_args = FxHashSet::default();
         let mut change_instrs = ChangeInstrs::default();
-        'leader_loop: for (_, inst) in leader.instruction_iter(context) {
+        'leader_loop: for (block, inst) in leader.instruction_iter(context) {
+            let mut block_args_checked = false;
             for other_func in others.iter_mut() {
-                let (_other_block, other_instr) = other_func.1.instr_iter.next().unwrap();
+                let (other_block, other_instr) = other_func.1.instr_iter.next().unwrap();
+                // Check if any of the block args (except for the entry block) need their type erased.
+                if !block_args_checked && leader.get_entry_block(context) != block {
+                    block_args_checked = true;
+                    for (arg_idx, arg) in block.arg_iter(context).enumerate() {
+                        let ty = arg.get_type(context).unwrap();
+                        if !ty.is_ptr(context) {
+                            continue;
+                        }
+                        let other_ty = other_block
+                            .get_arg(context, arg_idx)
+                            .unwrap()
+                            .get_type(context)
+                            .unwrap();
+                        assert!(
+                            other_ty.is_ptr(context),
+                            "If this isn't a pointer, functions shouldn't be in same class"
+                        );
+                        if ty.get_pointee_type(context).unwrap()
+                            != other_ty.get_pointee_type(context).unwrap()
+                        {
+                            type_erase_block_args.insert(*arg);
+                        }
+                    }
+                }
                 // Throughout this loop we check only for differing types between the leader and
                 // its followers. Other differences aren't checked for because then the hashes would
                 // be different and they wouldn't be in the same class.
@@ -777,7 +848,11 @@ fn dedup_fn_demonomorphize(
                         dst_val_ptr,
                         src_val_ptr: _,
                     } => {
-                        let copied_ty = dst_val_ptr.get_type(context).unwrap();
+                        let copied_ty = dst_val_ptr
+                            .get_type(context)
+                            .unwrap()
+                            .get_pointee_type(context)
+                            .unwrap();
                         let size_copied_type_bytes = copied_ty.size(context).in_bytes();
                         this_params.push(size_copied_type_bytes);
                     }
@@ -818,10 +893,24 @@ fn dedup_fn_demonomorphize(
         }
 
         // We are now equipped to actually modify the program.
-        // 1. Add the new arguments.
+        // 1(a) Type erase existing arguments / return type if necessary
+        for arg_idx in &type_erase_args {
+            let arg_val = leader.get_ith_arg(context, *arg_idx);
+            let arg = arg_val.get_argument_mut(context).unwrap();
+            arg.ty = unit_ptr_ty;
+        }
+        for block_arg in type_erase_block_args {
+            let arg = block_arg.get_argument_mut(context).unwrap();
+            arg.ty = unit_ptr_ty;
+        }
+        if type_erase_ret {
+            leader.set_return_type(context, unit_ptr_ty);
+        }
+
+        // 1(b) Add the new arguments.
         let mut new_arg_values = Vec::with_capacity(new_args[0].len());
         let entry_block = leader.get_entry_block(context);
-        for new_arg in &new_args[0] {
+        for (arg_idx, new_arg) in (&new_args[0]).iter().enumerate() {
             let (new_block_arg, new_arg_name) = match new_arg {
                 NewArg::CallerAllocatedLocal(..) => (
                     BlockArgument {
@@ -829,7 +918,7 @@ fn dedup_fn_demonomorphize(
                         idx: leader.num_args(context),
                         ty: unit_ptr_ty,
                     },
-                    "demonomorphize_alloca_arg",
+                    "demonomorphize_alloca_arg_".to_string() + &arg_idx.to_string(),
                 ),
                 NewArg::Size(_) => (
                     BlockArgument {
@@ -837,7 +926,7 @@ fn dedup_fn_demonomorphize(
                         idx: leader.num_args(context),
                         ty: Type::get_uint64(context),
                     },
-                    "demonomorphize_size_arg",
+                    "demonomorphize_size_arg_".to_string() + &arg_idx.to_string(),
                 ),
             };
             let new_arg_value = Value::new_argument(context, new_block_arg);
@@ -936,12 +1025,41 @@ fn dedup_fn_demonomorphize(
         // 6. Finally modify calls to each function in the class.
         for (caller, call_block, call_inst) in call_sites {
             // Update the callee in call_inst first, all calls go to the leader now.
-            let InstOp::Call(callee, _) = &mut call_inst.get_instruction_mut(context).unwrap().op
+            let (callee, params) = {
+                let InstOp::Call(callee, params) =
+                    &mut call_inst.get_instruction_mut(context).unwrap().op
+                else {
+                    panic!("Expected Call");
+                };
+                let original_callee = *callee;
+                *callee = *leader;
+                (original_callee, params)
+            };
+
+            // Update existing params to erase type, if necessary.
+            let mut new_params = params.clone();
+            let mut new_instrs = vec![];
+            for arg_idx in &type_erase_args {
+                let new_param = Value::new_instruction(
+                    context,
+                    call_block,
+                    InstOp::CastPtr(new_params[*arg_idx], unit_ptr_ty),
+                );
+                new_instrs.push(new_param);
+                new_params[*arg_idx] = new_param;
+            }
+            let mut inserter = InstructionInserter::new(
+                context,
+                call_block,
+                crate::InsertionPosition::Before(call_inst),
+            );
+            inserter.insert_slice(&new_instrs);
+            let InstOp::Call(_callee, params) =
+                &mut call_inst.get_instruction_mut(context).unwrap().op
             else {
                 panic!("Expected Call");
             };
-            *callee = *leader;
-            let callee = *callee;
+            *params = new_params;
 
             // Now add the new args.
             let callee_idx = class_fn_to_idx[&callee];
@@ -957,22 +1075,35 @@ fn dedup_fn_demonomorphize(
                         let new_local = caller.new_unique_local_var(
                             context,
                             name,
-                            original_local.get_type(context),
+                            original_local
+                                .get_type(context)
+                                .get_pointee_type(context)
+                                .unwrap(),
                             original_local.get_initializer(context).cloned(),
                             original_local.is_mutable(context),
                         );
-                        let inserter = InstructionInserter::new(
+                        let new_local_ptr = Value::new_instruction(
+                            context,
+                            call_block,
+                            InstOp::GetLocal(new_local),
+                        );
+                        let new_local_ptr_casted = Value::new_instruction(
+                            context,
+                            call_block,
+                            InstOp::CastPtr(new_local_ptr, unit_ptr_ty),
+                        );
+                        let mut inserter = InstructionInserter::new(
                             context,
                             call_block,
                             crate::InsertionPosition::Before(call_inst),
                         );
-                        let new_local_ptr = inserter.get_local(new_local);
+                        inserter.insert_slice(&[new_local_ptr, new_local_ptr_casted]);
                         let InstOp::Call(_, args) =
                             &mut call_inst.get_instruction_mut(context).unwrap().op
                         else {
                             panic!("Expected Call");
                         };
-                        args.push(new_local_ptr);
+                        args.push(new_local_ptr_casted);
                     }
                     NewArg::Size(val) => {
                         let new_size_const = Constant::new_uint(context, 64, *val);
@@ -984,6 +1115,40 @@ fn dedup_fn_demonomorphize(
                         };
                         args.push(new_size_arg);
                     }
+                }
+            }
+            if type_erase_ret {
+                let inserter = InstructionInserter::new(
+                    context,
+                    call_block,
+                    crate::InsertionPosition::After(call_inst),
+                );
+                let ret_cast = inserter.cast_ptr(call_inst, ret_ty_map[&callee]);
+                caller.replace_value(context, call_inst, ret_cast, None);
+                // caller.replace_value will replace call_inst in the just inserted cast. Fix it.
+                let Instruction {
+                    op: InstOp::CastPtr(ptr, _),
+                    ..
+                } = ret_cast.get_instruction_mut(context).unwrap()
+                else {
+                    panic!("We just created this to be a Castptr");
+                };
+                *ptr = call_inst;
+
+                // Modify all return instructions
+                for (_, ret) in leader
+                    .instruction_iter(context)
+                    .filter(|inst| {
+                        matches!(inst.1.get_instruction(context).unwrap().op, InstOp::Ret(..))
+                    })
+                    .collect::<Vec<_>>()
+                {
+                    let InstOp::Ret(__entry, ty) =
+                        &mut ret.get_instruction_mut(context).unwrap().op
+                    else {
+                        panic!("We just filtered for Rets")
+                    };
+                    *ty = unit_ptr_ty;
                 }
             }
         }

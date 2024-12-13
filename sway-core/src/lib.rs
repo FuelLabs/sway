@@ -950,6 +950,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
                 pass_group.append_pass(MEM2REG_NAME);
                 pass_group.append_pass(DCE_NAME);
                 pass_group.append_pass(FN_DEDUP_DEMONOMORPHIZE_NAME);
+                pass_group.append_pass(DCE_NAME);
                 pass_group.append_pass(FN_DCE_NAME);
             }
             OptLevel::Opt0 => {}

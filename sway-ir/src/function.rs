@@ -358,6 +358,11 @@ impl Function {
             .copied()
     }
 
+    /// Get the i'th arg value
+    pub fn get_ith_arg(&self, context: &Context, i: usize) -> Value {
+        context.functions[self.0].arguments[i].1
+    }
+
     /// Append an extra argument to the function signature.
     ///
     /// NOTE: `arg` must be a `BlockArgument` value with the correct index otherwise `add_arg` will
