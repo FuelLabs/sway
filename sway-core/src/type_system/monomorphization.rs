@@ -11,7 +11,7 @@ use crate::{
         CallPath,
     },
     namespace::{ModulePath, ResolvedDeclaration},
-    semantic_analysis::type_resolve::resolve_type,
+    semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
     type_system::ast_elements::create_type_id::CreateTypeId,
     EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
     TypeParameter, TypeSubstMap,
@@ -129,6 +129,7 @@ where
                     None,
                     self_type,
                     subst_ctx,
+                    VisibilityCheck::Yes,
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }

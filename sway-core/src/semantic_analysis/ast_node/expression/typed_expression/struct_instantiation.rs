@@ -42,7 +42,7 @@ pub(crate) fn struct_instantiation(
 
     let TypeBinding {
         inner: CallPath {
-            prefixes, suffix, ..
+            suffix, ..
         },
         type_arguments,
         span: inner_span,
@@ -74,7 +74,8 @@ pub(crate) fn struct_instantiation(
     };
 
     // find the module that the struct decl is in
-    let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
+    //    let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
+    let type_info_prefix = call_path_binding.inner.to_fullpath(engines, ctx.namespace()).prefixes;
     ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
 
 //    if problem {
@@ -353,8 +354,7 @@ fn collect_struct_constructors(
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
     namespace.current_module().read(engines, |m| {
-        m.current_items()
-            .get_items_for_type(engines, struct_type_id)
+        m.get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),

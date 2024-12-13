@@ -9,10 +9,9 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructDecl, TyDecl, },
-        CallPath, CallPathType, Visibility,
+        Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    semantic_analysis::type_resolve::{resolve_associated_item, resolve_associated_type},
     TypeId,
 };
 use sway_error::{
@@ -201,8 +200,17 @@ impl Root {
 	self.external_packages.insert(package_name, external_package);
     }
 
+    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Root> {
+	self.external_packages.get(package_name)
+    }
+    
     pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
-	self.external_packages.contains_key(package_name)
+	self.get_external_package(package_name).is_some()
+    }
+
+    // TODO: Remove this
+    pub fn external_packages(&self) -> &im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>> {
+	&self.external_packages
     }
     
 //    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
@@ -212,11 +220,11 @@ impl Root {
 //	self.external_packages.insert(old_package.name().to_string(), old_package);
 //    }
 
-    pub(super) fn current_package_root_module(&self) -> &Module {
+    pub(crate) fn current_package_root_module(&self) -> &Module {
 	&self.current_package
     }
     
-    pub(super) fn current_package_name(&self) -> &Ident {
+    pub(crate) fn current_package_name(&self) -> &Ident {
 	self.current_package.name()
     }
 
@@ -251,7 +259,7 @@ impl Root {
 
     // Find module in the current environment. `mod_path` must be a fully qualified path.
     // Throw an error if the module doesn't exist
-    pub(super) fn require_module(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+    pub(crate) fn require_module(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
 	match self.module_from_absolute_path(mod_path) {
 	    Some(module) => Ok(module),
 	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path))),
@@ -818,7 +826,7 @@ impl Root {
     /// If src and dst have a common ancestor module that is private, this privacy modifier is
     /// ignored for visibility purposes, since src and dst are both behind that private visibility
     /// modifier.  Additionally, items in a private module are visible to its immediate parent.
-    fn check_module_privacy(
+    pub(crate) fn check_module_privacy(
         &self,
         handler: &Handler,
         src: &ModulePath,
@@ -852,161 +860,6 @@ impl Root {
         }
 
         Ok(())
-    }
-
-    ////// NAME RESOLUTION //////
-
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
-        Ok(decl)
-    }
-
-    // TODO: Move this into root, and separate into two: Check if call_path can be resolved in the local scope, otherwise check if it can be resolved as an absolute path.
-    // TODO: Move type_check_context::resolve_call_path_with_visibility_check_and_modpath to here, to avoid external mod_paths to be decontextualized.
-    pub(crate) fn resolve_call_path_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        _mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-//	if call_path.prefixes.len() > 1 && call_path.prefixes[0].as_str() == "core" && call_path.prefixes[1].as_str() == "core" {
-//	    panic!();
-//	}
-//	let problem = call_path.suffix.as_str() == "AbiEncode";
-//	if problem {
-//	    dbg!(call_path);
-//	    dbg!(mod_path);
-//	};
-//        let symbol_path: Vec<_> = mod_path
-//	    .iter()
-//	    .chain(&call_path.prefixes)
-//	    .cloned()
-	//	    .collect();
-	assert!(matches!(call_path.callpath_type, CallPathType::Full));
-        self.resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            //&symbol_path,
-	    &call_path.prefixes,
-            &call_path.suffix,
-            self_type,
-        )
-    }
-
-    /// Given a path to a module and the identifier of a symbol within that module, resolve its
-    /// declaration.
-    ///
-    /// If the symbol is within the given module's namespace via import, we recursively traverse
-    /// imports until we find the original declaration.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
-        Ok(decl)
-    }
-
-    // Resolve a path. The first identifier in the path is the package name, which may be the
-    // current package or an external one.
-    fn resolve_symbol_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-	assert!(!mod_path.is_empty());
-	if mod_path[0] == *self.current_package_name() {
-	    self.resolve_symbol_and_mod_path_inner(handler, engines, mod_path, symbol, self_type)
-	} else {
-	    match self.external_packages.get(mod_path[0].as_str()) {
-		Some(ext_root) => {
-		    // The path must be resolved in an external package.
-		    // The root module in that package may have a different name than the name we
-		    // use to refer to the package, so replace it.
-		    let mut new_mod_path = vec!(ext_root.current_package_name().clone());
-		    for id in mod_path.iter().skip(1) {
-			new_mod_path.push(id.clone());
-		    }
-		    ext_root.resolve_symbol_and_mod_path_inner(handler, engines, &new_mod_path, symbol, self_type)
-		},
-		None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path)))
-	    }
-	}
-    }
-
-    // Resolve a path within the current package. External packages are not considered. The path
-    // must still contain the package name as its first identifier.
-    fn resolve_symbol_and_mod_path_inner(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-	assert!(!mod_path.is_empty());
-	assert!(mod_path[0] == *self.current_package_name());
-        // This block tries to resolve associated types
-        let mut module = &self.current_package;
-        let mut current_mod_path = vec![mod_path[0].clone()];
-        let mut decl_opt = None;
-        for ident in mod_path.iter().skip(1) {
-            if let Some(decl) = decl_opt {
-                decl_opt = Some(resolve_associated_type(
-                    handler, engines, module, ident, decl, None, self_type,
-                )?);
-            } else {
-                match module.submodule(&[ident.clone()]) {
-                    Some(ns) => {
-                        module = ns;
-                        current_mod_path.push(ident.clone());
-                    }
-                    None => {
-                        decl_opt = Some(
-                            module
-                                .current_lexical_scope()
-                                .items
-                                .resolve_symbol(handler, engines, ident, self.current_package_name())?,
-                        );
-                    }
-                }
-            }
-        }
-        if let Some(decl) = decl_opt {
-            let decl =
-                resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
-            return Ok((decl, current_mod_path));
-        }
-
-        self.require_module(handler, &mod_path.to_vec())
-            .and_then(|module| {
-                let decl = module
-                    .current_lexical_scope()
-                    .items
-                    .resolve_symbol(handler, engines, symbol, self.current_package_name())?;
-                Ok((decl, mod_path.to_vec()))
-            })
     }
 }
 

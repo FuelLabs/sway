@@ -9,7 +9,7 @@ use sway_error::{
     error::{CompileError, InterfaceName},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, *},
@@ -17,12 +17,12 @@ use crate::{
     language::{
         parsed::*,
         ty::{
-            self, TyConstantDecl, TyDecl, TyFunctionDecl, TyImplItem, TyImplSelfOrTrait,
-            TyTraitInterfaceItem, TyTraitItem, TyTraitType,
+            self, ConstantDecl, TyConstantDecl, TyDecl, TyFunctionDecl, TyImplItem,
+            TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
         },
         *,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, AbiMode, ConstShadowingMode,
         TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -165,12 +165,11 @@ impl TyImplSelfOrTrait {
                     .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
 
+//		let problem = trait_name.suffix().as_str() == "Eq";
+//		if problem {
 //		dbg!(&trait_name);
-                let impl_trait = match ctx
-                    .namespace()
-                    .resolve_call_path_typed(handler, engines, &trait_name, ctx.self_type())
-                    .ok()
-                {
+//		}
+                let impl_trait = match ctx.resolve_call_path(handler, &trait_name).ok() {
                     Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                         let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
 
@@ -700,20 +699,19 @@ fn type_check_trait_implementation(
     ctx.namespace_mut()
         .current_module_mut()
         .write(engines, |m| {
-            m.current_items_mut()
-                .implemented_traits
-                .check_if_trait_constraints_are_satisfied_for_type(
-                    handler,
-                    implementing_for,
-                    &trait_supertraits
-                        .iter()
-                        .map(|x| x.into())
-                        .collect::<Vec<_>>(),
-                    block_span,
-                    engines,
-                    TryInsertingTraitImplOnFailure::Yes,
-                    code_block_first_pass.into(),
-                )
+            TraitMap::check_if_trait_constraints_are_satisfied_for_type(
+                handler,
+                m,
+                implementing_for,
+                &trait_supertraits
+                    .iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<_>>(),
+                block_span,
+                engines,
+                TryInsertingTraitImplOnFailure::Yes,
+                code_block_first_pass.into(),
+            )
         })?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
@@ -900,6 +898,54 @@ fn type_check_trait_implementation(
 
     for item in impl_items {
         match item {
+            ImplItem::Fn(_impl_method_id) => {}
+            ImplItem::Constant(decl_id) => {
+                let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
+                let mut const_decl = type_check_const_decl(
+                    handler,
+                    ctx.by_ref().with_type_subst(&trait_type_mapping),
+                    &const_decl,
+                    trait_name,
+                    is_contract,
+                    &impld_item_refs,
+                    &constant_checklist,
+                )
+                .unwrap_or_else(|_| ty::TyConstantDecl::error(ctx.engines(), const_decl.clone()));
+
+                const_decl.subst(&SubstTypesContext::new(
+                    engines,
+                    &trait_type_mapping,
+                    !ctx.code_block_first_pass(),
+                ));
+
+                // Remove this constant from the checklist.
+                let name = const_decl.call_path.suffix.clone();
+                constant_checklist.remove(&name);
+
+                // Add this constant to the "impld decls".
+                let decl_ref = decl_engine.insert(const_decl, Some(decl_id));
+                impld_item_refs.insert(
+                    (name.clone(), implementing_for),
+                    TyTraitItem::Constant(decl_ref.clone()),
+                );
+
+                let prev_const_shadowing_mode = ctx.const_shadowing_mode;
+                ctx.const_shadowing_mode = ConstShadowingMode::Allow;
+                let _ = ctx.insert_symbol(
+                    handler,
+                    name,
+                    TyDecl::ConstantDecl(ConstantDecl {
+                        decl_id: *decl_ref.id(),
+                    }),
+                );
+                ctx.const_shadowing_mode = prev_const_shadowing_mode;
+            }
+            ImplItem::Type(_) => {}
+        }
+    }
+
+    for item in impl_items {
+        match item {
             ImplItem::Fn(impl_method_id) => {
                 let impl_method = engines.pe().get_function(impl_method_id);
                 let mut impl_method = type_check_impl_method(
@@ -929,33 +975,7 @@ fn type_check_trait_implementation(
                 let decl_ref = decl_engine.insert(impl_method, Some(impl_method_id));
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Fn(decl_ref));
             }
-            ImplItem::Constant(decl_id) => {
-                let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
-                let mut const_decl = type_check_const_decl(
-                    handler,
-                    ctx.by_ref().with_type_subst(&trait_type_mapping),
-                    &const_decl,
-                    trait_name,
-                    is_contract,
-                    &impld_item_refs,
-                    &constant_checklist,
-                )
-                .unwrap_or_else(|_| ty::TyConstantDecl::error(ctx.engines(), const_decl.clone()));
-
-                const_decl.subst(&SubstTypesContext::new(
-                    engines,
-                    &trait_type_mapping,
-                    !ctx.code_block_first_pass(),
-                ));
-
-                // Remove this constant from the checklist.
-                let name = const_decl.call_path.suffix.clone();
-                constant_checklist.remove(&name);
-
-                // Add this constant to the "impld decls".
-                let decl_ref = decl_engine.insert(const_decl, Some(decl_id));
-                impld_item_refs.insert((name, implementing_for), TyTraitItem::Constant(decl_ref));
-            }
+            ImplItem::Constant(_decl_id) => {}
             ImplItem::Type(_) => {}
         }
     }
@@ -1315,6 +1335,50 @@ fn type_check_impl_method(
     })
 }
 
+fn trait_const_item_value(
+    trait_decl: TyDecl,
+    engines: &Engines,
+    const_decl: &TyConstantDecl,
+) -> Option<ty::TyExpression> {
+    fn get_const_decl_from_trait_items(
+        engines: &Engines,
+        items: &[TyTraitInterfaceItem],
+        name: &Ident,
+    ) -> Option<Arc<TyConstantDecl>> {
+        for item in items.iter() {
+            match item {
+                TyTraitInterfaceItem::Constant(decl) => {
+                    let const_decl = engines.de().get_constant(decl.id());
+                    if const_decl.name() == name {
+                        return Some(const_decl);
+                    }
+                }
+                _ => continue,
+            }
+        }
+        None
+    }
+
+    let trait_or_abi_const_decl = match trait_decl {
+        TyDecl::TraitDecl(decl) => get_const_decl_from_trait_items(
+            engines,
+            &engines.de().get_trait(&decl.decl_id).interface_surface,
+            const_decl.name(),
+        ),
+        TyDecl::AbiDecl(decl) => get_const_decl_from_trait_items(
+            engines,
+            &engines.de().get_abi(&decl.decl_id).interface_surface,
+            const_decl.name(),
+        ),
+        _ => unreachable!(),
+    };
+
+    match trait_or_abi_const_decl {
+        Some(trait_or_abi_const_decl) => trait_or_abi_const_decl.value.clone(),
+        None => None,
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn type_check_const_decl(
     handler: &Handler,
@@ -1346,9 +1410,24 @@ fn type_check_const_decl(
     };
 
     // type check the constant declaration
-    let const_decl = ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
+    let mut const_decl = ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
 
     let const_name = const_decl.call_path.suffix.clone();
+
+    // Ensure that there is an expression if the constant in the base trait is not defined.
+    let trait_decl = ctx.resolve_call_path(handler, trait_name)?;
+
+    let trait_const_item_value = trait_const_item_value(trait_decl, engines, &const_decl);
+    if trait_const_item_value.is_none() && const_decl.value.is_none() {
+        return Err(handler.emit_err(CompileError::ConstantRequiresExpression {
+            span: const_decl.span.clone(),
+        }));
+    }
+
+    // Ensure the constant decl has a value, if none was set then it inherits the base trait/abi value.
+    if const_decl.value.is_none() {
+        const_decl.value = trait_const_item_value;
+    }
 
     // Ensure that there aren't multiple definitions of this constant
     if impld_constant_ids.contains_key(&(const_name.clone(), self_type_id)) {
@@ -1574,14 +1653,8 @@ fn handle_supertraits(
 	    //dbg!(&supertrait.name);
 	    
             match ctx
-                .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-                .resolve_call_path_typed(
-                    &Handler::default(),
-                    engines,
-                    &supertrait.name,
-                    ctx.self_type(),
-                )
+                .resolve_call_path(&Handler::default(), &supertrait.name)
                 .ok()
             {
                 Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

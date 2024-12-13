@@ -1,27 +1,25 @@
+use crate::{
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    parsed::QualifiedPathType,
+    Engines, Ident, Namespace,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
     sync::Arc,
 };
-
-use crate::{
-    engine_threading::{
-        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
-    },
-    Engines, Ident, Namespace,
-};
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, Spanned};
 
-use super::parsed::QualifiedPathType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CallPathTree {
     pub qualified_call_path: QualifiedCallPath,
     pub children: Vec<CallPathTree>,
@@ -75,7 +73,7 @@ impl OrdWithEngines for CallPathTree {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct QualifiedCallPath {
     pub call_path: CallPath,
@@ -177,7 +175,7 @@ impl DebugWithEngines for QualifiedCallPath {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub enum CallPathType {
     /// An unresolved path on the form `::X::Y::Z`. The path must be resolved relative to the package
     /// root module.
@@ -200,7 +198,7 @@ pub enum CallPathType {
 
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,
@@ -394,17 +392,54 @@ impl CallPath {
 
 impl<T: Clone> CallPath<T> {
     /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
-    /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
+    /// in which the symbol is declared.
+    ///
+    /// The [CallPath] is converted within the current module of the supplied namespace.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
     /// `my_project::pkga::SOME_CONST`.
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
     pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath<T> {
+	self.to_fullpath_from_mod_path(engines, namespace, namespace.current_mod_path())
+    }
+    
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
+    /// in which the symbol is declared.
+    ///
+    /// The [CallPath] is converted within the module reference by the supplied mod_path. 
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga`
+    /// is an _internal_ library of a package named `my_project`, the corresponding call path is
+    /// `my_project::pkga::SOME_CONST`.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
+    /// and are left unchanged since `std` is a root of the package `std`.
+    pub fn to_fullpath_from_mod_path(&self, engines: &Engines, namespace: &Namespace, mod_path: &Vec<Ident>) -> CallPath<T> {
+
+//	let problem =
+//	    namespace.current_mod_path().len() == 2
+//	    && namespace.current_mod_path()[0].as_str() == "std"
+//	    && namespace.current_mod_path()[1].as_str() == "option"
+//	    && self.prefixes.len() == 2
+//	    && self.prefixes[0].as_str() == "core"
+//	    && self.prefixes[1].as_str() == "ops";
+//
+//
+//	std::option appears to have "core" as a submodule. This definitely needs to be fixed.
+//	if problem {
+//	    dbg!(mod_path);
+//	    dbg!(namespace.module_from_absolute_path(mod_path).unwrap().submodule(&self.prefixes[0..0]).is_some());
+//	    dbg!(namespace.module_has_binding(engines, mod_path, &self.prefixes[0]));
+//	}
+	
 	match self.callpath_type {
 	    CallPathType::Full => self.clone(),
 	    CallPathType::RelativeToPackageRoot => {
-		let mut prefixes = vec!();
+		// TODO: This isn't right. The package name from namespace should be the first prefix
+		let mut prefixes = vec!(mod_path[0].clone());
 		for ident in self.prefixes.iter() {
 		    prefixes.push(ident.clone());
 		}
@@ -466,7 +501,7 @@ impl<T: Clone> CallPath<T> {
 // 		    }
 // 		    else {
 			CallPath {
-			    prefixes: namespace.current_mod_path.clone(),
+			    prefixes: mod_path.clone(),
 			    suffix: self.suffix.clone(),
 			    callpath_type: CallPathType::Full,
 			}
@@ -494,8 +529,12 @@ impl<T: Clone> CallPath<T> {
 // //			suffix: self.suffix.clone(),
 // //			callpath_type: CallPathType::Full,
 // //		    }
-		} else if namespace.current_module_has_submodule(&self.prefixes[0])
-		    || namespace.current_module_has_binding(engines, &self.prefixes[0])
+
+// 		} else if namespace.current_module_has_submodule(&self.prefixes[0])
+//		    || namespace.current_module_has_binding(engines, &self.prefixes[0])
+//		{
+		} else if namespace.module_from_absolute_path(mod_path).unwrap().has_submodule(&self.prefixes[0])
+		    || namespace.module_has_binding(engines, mod_path, &self.prefixes[0])
 		{
 		    // The first identifier in the prefix is either a submodule of the current
 		    // module, or is bound in the current module (typically as an enum name, where
@@ -514,7 +553,7 @@ impl<T: Clone> CallPath<T> {
 //		    prefixes.extend(self.prefixes.clone());
 
 		    CallPath {
-			prefixes: namespace.prepend_module_path(&self.prefixes),
+			prefixes: mod_path.iter().chain(&self.prefixes).cloned().collect(),
 			suffix: self.suffix.clone(),
 			callpath_type: CallPathType::Full,
 		    }

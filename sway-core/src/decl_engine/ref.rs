@@ -20,11 +20,6 @@
 //! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
 //! application `my_function()`.
 
-use std::hash::{Hash, Hasher};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -35,6 +30,10 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
 pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
 pub type DeclRefTrait = DeclRef<DeclId<TyTraitDecl>>;
@@ -53,7 +52,7 @@ pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
 /// Represents the use of / syntactic reference to a declaration. A
 /// smart-wrapper around a [DeclId], containing additional information about a
 /// declaration.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeclRef<I> {
     /// The name of the declaration.
     // NOTE: In the case of storage, the name is "storage".
@@ -103,7 +102,7 @@ where
         let decl_engine = ctx.engines.de();
         if ctx
             .type_subst_map
-            .source_ids_contains_concrete_type(ctx.engines)
+            .is_some_and(|tsm| tsm.source_ids_contains_concrete_type(ctx.engines))
             || !decl_engine.get(&self.id).is_concrete(ctx.engines)
         {
             let mut decl = (*decl_engine.get(&self.id)).clone();
