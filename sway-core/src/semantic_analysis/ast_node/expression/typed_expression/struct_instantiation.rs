@@ -48,6 +48,8 @@ pub(crate) fn struct_instantiation(
         span: inner_span,
     } = &call_path_binding;
 
+//    let problem = suffix.as_str() == "LibOnlyPrivateFields";
+    
     if let TypeArgs::Prefix(_) = type_arguments {
         return Err(
             handler.emit_err(CompileError::DoesNotTakeTypeArgumentsAsPrefix {
@@ -75,6 +77,10 @@ pub(crate) fn struct_instantiation(
     let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
     ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
 
+//    if problem {
+//	dbg!(&type_info_prefix);
+//    }
+    
     // resolve the type of the struct decl
     let type_id = ctx
         .resolve_type(
@@ -91,6 +97,10 @@ pub(crate) fn struct_instantiation(
     let struct_id = type_info.expect_struct(handler, engines, &span)?;
     let struct_decl = decl_engine.get_struct(&struct_id);
 
+//    if problem {
+//	dbg!(&struct_decl);
+//    }
+
     let (struct_can_be_changed, is_public_struct_access) =
         StructAccessInfo::get_info(engines, &struct_decl, ctx.namespace()).into();
     let struct_has_private_fields = struct_decl.has_private_fields();
@@ -99,6 +109,17 @@ pub(crate) fn struct_instantiation(
     let struct_is_empty = struct_decl.is_empty();
     let struct_name = struct_decl.call_path.suffix.clone();
     let struct_decl_span = struct_decl.span();
+
+//    if problem {
+//	dbg!(&struct_decl.call_path);
+//	dbg!(&ctx.namespace().current_mod_path());
+//	dbg!(&struct_can_be_changed);
+//	dbg!(&is_public_struct_access);
+//	dbg!(&struct_has_private_fields);
+//	dbg!(&struct_can_be_instantiated);
+//	dbg!(&all_fields_are_private);
+//	dbg!(&struct_name);
+//    }
 
     // Before we do the type check, let's first check for the field related errors (privacy issues, non-existing fields, ...).
     // These errors are independent of the type check, so we can collect all of them and then proceed with the type check.

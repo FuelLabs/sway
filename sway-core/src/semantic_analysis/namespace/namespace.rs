@@ -201,6 +201,10 @@ impl Namespace {
         absolute_module_path: &ModulePath,
         true_if_same: bool,
     ) -> bool {
+	if self.current_mod_path.len() < absolute_module_path.len() {
+	    return false;
+	}
+	
         let is_submodule = absolute_module_path
             .iter()
             .zip(self.current_mod_path.iter())
