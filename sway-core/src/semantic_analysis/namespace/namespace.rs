@@ -144,7 +144,7 @@ impl Namespace {
     }
 
     /// Convert a parsed path to a full path.
-    pub fn parsed_path_to_full_path(&self, parsed_path: &ModulePathBuf, is_relative_to_package_root: bool) -> ModulePathBuf {
+    pub fn parsed_path_to_full_path(&self, engines: &Engines, parsed_path: &ModulePathBuf, is_relative_to_package_root: bool) -> ModulePathBuf {
 	if is_relative_to_package_root {
 	    // Path is relative to the root module in the current package. Prepend the package name
 	    let mut path = vec!(self.current_package_name().clone());
@@ -152,8 +152,9 @@ impl Namespace {
 		path.push(ident.clone())
 	    }
 	    path
-	} else if self.current_module_has_submodule(&parsed_path[0]) {
-	    // A submodule exists matching the first identifier in the parsed path.
+	} else if self.current_module_has_submodule(&parsed_path[0])
+	    || self.current_module_has_binding(engines, &parsed_path[0]) {
+	    // The first identifier is bound in the current module, either as a submodule or as a normal binding
 	    // The path is therefore assumed to be relative to the current module, so prepend the current module path.
 	    self.prepend_module_path(parsed_path)
 	} else {
@@ -232,9 +233,9 @@ impl Namespace {
 	self.module_from_absolute_path(&vec![name.clone()]).is_some()
     }
     
-//    pub(crate) fn current_module_has_binding(&self, engines: &Engines, symbol: &Ident) -> bool {
-//	self.module_has_binding(engines, self.current_mod_path(), symbol)
-//    }
+    pub(crate) fn current_module_has_binding(&self, engines: &Engines, symbol: &Ident) -> bool {
+	self.module_has_binding(engines, self.current_mod_path(), symbol)
+    }
 
     pub(crate) fn module_has_binding(&self, engines: &Engines, mod_path: &ModulePathBuf, symbol: &Ident) -> bool {
 	let dummy_handler = Handler::default();

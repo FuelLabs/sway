@@ -136,7 +136,18 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let path = ctx.namespace.parsed_path_to_full_path(&stmt.call_path, stmt.is_relative_to_package_root);
+    let path = ctx.namespace.parsed_path_to_full_path(engines, &stmt.call_path, stmt.is_relative_to_package_root);
+
+//    let current_mod_path = ctx.namespace.current_mod_path();
+//    let problem = current_mod_path.len() == 1
+// 	&& current_mod_path[0].as_str() == "dependency_not_at_beginning";
+// 
+//    if problem {
+// 	dbg!(&current_mod_path);
+// 	dbg!(&stmt.call_path);
+// 	dbg!(&stmt.is_relative_to_package_root);
+// 	dbg!(&path);
+//    }
 //    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
 //    let path = if is_external || stmt.is_absolute {
 //        stmt.call_path.clone()
@@ -193,8 +204,9 @@ fn collect_use_statement(
             if import.is_ok() {
                 handler.append(item_import_handler);
                 import
-            } else {
+            } else if path.len() > 2 {
                 // if it doesn't work it could be an enum variant import
+		// For this to work the path must have at least 3 elements: The current package name, the enum name, and the variant name.
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
@@ -217,7 +229,10 @@ fn collect_use_statement(
                     handler.append(item_import_handler);
                     import
                 }
-            }
+            } else {
+                handler.append(item_import_handler);
+                import
+	    }
         }
     };
 }
@@ -228,7 +243,7 @@ fn handle_use_statement(
     stmt: &UseStatement,
     handler: &Handler,
 ) {
-    let path = ctx.namespace.parsed_path_to_full_path(&stmt.call_path, stmt.is_relative_to_package_root);
+    let path = ctx.namespace.parsed_path_to_full_path(&ctx.engines, &stmt.call_path, stmt.is_relative_to_package_root);
 //    let is_external = !ctx
 //        .namespace()
 //        .current_module_has_submodule(&stmt.call_path[0]);
@@ -285,8 +300,9 @@ fn handle_use_statement(
             if import.is_ok() {
                 handler.append(item_import_handler);
                 import
-            } else {
+            } else if path.len() > 2 {
                 // if it doesn't work it could be an enum variant import
+		// For this to work the path must have at least 3 elements: The current package name, the enum name, and the variant name.
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
@@ -306,8 +322,11 @@ fn handle_use_statement(
                     }
                 } else {
                     handler.append(item_import_handler);
-                    import
+                    import 
                 }
+            } else {
+                handler.append(item_import_handler);
+                import
             }
         }
     };
