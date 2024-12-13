@@ -867,10 +867,15 @@ impl<'a> TypeCheckContext<'a> {
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
 
-//        let type_name = self.engines.help_out(type_id).to_string();
-//	let problem = type_name == "Bytes" && method_name.as_str() == "len";
+//	let type_name = self.engines.help_out(type_id).to_string();
+//	let current_mod_path = self.namespace().current_mod_path();
+//	let problem = current_mod_path.len() == 1
+//	    && current_mod_path[0].as_str() == "multiple_supertraits_for_abis1";
+//	
 //	if problem {
+//	    dbg!(&type_name);
 //	    dbg!(&method_prefix);
+//	    dbg!(&method_name);
 //	}
 	
         let eq_check = UnifyCheck::non_dynamic_equality(self.engines);
