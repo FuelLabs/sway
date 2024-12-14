@@ -434,7 +434,7 @@ impl<T: Clone> CallPath<T> {
 //	    dbg!(namespace.module_from_absolute_path(mod_path).unwrap().submodule(&self.prefixes[0..0]).is_some());
 //	    dbg!(namespace.module_has_binding(engines, mod_path, &self.prefixes[0]));
 //	}
-	
+
 	match self.callpath_type {
 	    CallPathType::Full => self.clone(),
 	    CallPathType::RelativeToPackageRoot => {
@@ -533,12 +533,14 @@ impl<T: Clone> CallPath<T> {
 // 		} else if namespace.current_module_has_submodule(&self.prefixes[0])
 //		    || namespace.current_module_has_binding(engines, &self.prefixes[0])
 //		{
-		} else if namespace.module_from_absolute_path(mod_path).unwrap().has_submodule(&self.prefixes[0])
+		} else if self.prefixes[0].as_str() == "Contract"
+		    || namespace.module_from_absolute_path(mod_path).unwrap().has_submodule(&self.prefixes[0])
 		    || namespace.module_has_binding(engines, mod_path, &self.prefixes[0])
 		{
-		    // The first identifier in the prefix is either a submodule of the current
-		    // module, or is bound in the current module (typically as an enum name, where
-		    // the suffix is a variant of the enum).
+		    // The first identifier in the prefix is either
+		    // - The Contract type name
+		    // - a submodule of the current module, or
+		    // - bound in the current module (typically as an enum name, where the suffix is a variant of the enum).
 		    //
 		    // The path is a qualified path relative to the current module
 		    //

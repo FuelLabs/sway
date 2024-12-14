@@ -432,6 +432,14 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
+//	let current_mod_path = ctx.namespace().current_mod_path();
+//	let problem = current_mod_path.len() == 1
+//	    && current_mod_path[0].as_str() == "abi_associated_const_access_with_impl_in_contract";
+//	if problem {
+//	    dbg!(&self.inner);
+//	    let full_path = self.inner.to_fullpath(engines, ctx.namespace());
+//	    dbg!(&full_path);
+//	}
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Get a new copy from the declaration engine.
