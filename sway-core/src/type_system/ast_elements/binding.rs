@@ -221,9 +221,10 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
 	//        let type_info_prefix = ctx.namespace().prepend_module_path(&self.inner.prefixes);
 //	if self.inner.prefixes.is_empty() {
 //	    dbg!(&self.inner);
-//	}
+	//	}
+	let full_path = self.inner.to_fullpath(engines, ctx.namespace());
         ctx.namespace()
-            .require_module_from_absolute_path(handler, &self.inner.prefixes/*&type_info_prefix*/)?;
+            .require_module_from_absolute_path(handler, &full_path.prefixes /* &self.inner.prefixes */ /*&type_info_prefix*/)?;
 
         // create the type info object
         let type_info = type_info.apply_type_arguments(
@@ -239,7 +240,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
                 type_engine.insert(engines, type_info, type_info_span.source_id()),
                 &type_info_span,
                 EnforceTypeArguments::No,
-                Some(&self.inner.prefixes /*&type_info_prefix*/),
+                Some(&full_path.prefixes /* &self.inner.prefixes */ /*&type_info_prefix*/),
             )
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
