@@ -18,6 +18,28 @@
             "name": "Attach to forc-lsp",
             "pid": "${command:pickProcess}",
             "program": "${env:HOME}/.cargo/bin/forc-lsp"
-        }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'forc'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=forc",
+                    "--package=forc"
+                ],
+                "filter": {
+                    "name": "forc",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "build",
+                "--path",
+                "const_rec"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
     ]
 }
