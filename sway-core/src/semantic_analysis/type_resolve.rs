@@ -7,6 +7,7 @@ use sway_utils::iter_prefixes;
 
 use crate::{
     language::{
+        parsed::Declaration,
         ty::{self, TyTraitItem},
         CallPath, QualifiedCallPath,
     },
@@ -396,7 +397,29 @@ fn decl_to_type_info(
     decl: ResolvedDeclaration,
 ) -> Result<TypeInfo, ErrorEmitted> {
     match decl {
-        ResolvedDeclaration::Parsed(_decl) => todo!(),
+        ResolvedDeclaration::Parsed(decl) => Ok(match decl.clone() {
+            Declaration::StructDeclaration(decl_id) => TypeInfo::UntypedStruct(decl_id),
+            Declaration::EnumDeclaration(decl_id) => TypeInfo::UntypedEnum(decl_id),
+            Declaration::TraitTypeDeclaration(decl_id) => {
+                let trait_type_decl = engines.pe().get_trait_type(&decl_id);
+                if trait_type_decl.ty_opt.is_none() {
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "Trait type declaration has no type",
+                        symbol.span(),
+                    )));
+                }
+                (*engines
+                    .te()
+                    .get(trait_type_decl.ty_opt.clone().unwrap().type_id))
+                .clone()
+            }
+            _ => {
+                return Err(handler.emit_err(CompileError::SymbolNotFound {
+                    name: symbol.clone(),
+                    span: symbol.span(),
+                }))
+            }
+        }),
         ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
             ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
             ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),

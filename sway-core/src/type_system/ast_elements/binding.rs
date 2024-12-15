@@ -4,19 +4,20 @@ use crate::{
     },
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
-        parsed::{FunctionDeclaration, StructDeclaration},
+        parsed::{
+            ConstantDeclaration, Declaration, EnumDeclaration, EnumVariantDeclaration,
+            FunctionDeclaration, StructDeclaration,
+        },
         ty, CallPath, QualifiedCallPath,
     },
-    semantic_analysis::{
-        symbol_resolve::ResolveSymbols, symbol_resolve_context::SymbolResolveContext,
-        TypeCheckContext,
-    },
+    semantic_analysis::{symbol_resolve_context::SymbolResolveContext, TypeCheckContext},
+    transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::priv_prelude::*,
     EnforceTypeArguments, Ident,
 };
 use serde::{Deserialize, Serialize};
 use sway_ast::Intrinsic;
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError, handler::{ErrorEmitted, Handler}};
 use sway_types::{Span, Spanned};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
@@ -192,17 +193,6 @@ impl<T> TypeBinding<T> {
             span: self.span,
         }
     }
-
-    pub(crate) fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext<'_>) {
-        match self.type_arguments {
-            TypeArgs::Regular(ref mut args) => args
-                .iter_mut()
-                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
-            TypeArgs::Prefix(ref mut args) => args
-                .iter_mut()
-                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
-        }
-    }
 }
 
 impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
@@ -275,10 +265,10 @@ pub trait SymbolResolveTypeBinding<T> {
         &mut self,
         handler: &Handler,
         ctx: SymbolResolveContext,
-    ) -> Result<ParsedDeclId<T>, ErrorEmitted>;
+    ) -> Result<T, ErrorEmitted>;
 }
 
-impl SymbolResolveTypeBinding<FunctionDeclaration> for TypeBinding<CallPath> {
+impl SymbolResolveTypeBinding<ParsedDeclId<FunctionDeclaration>> for TypeBinding<CallPath> {
     fn resolve_symbol(
         &mut self,
         handler: &Handler,
@@ -291,8 +281,37 @@ impl SymbolResolveTypeBinding<FunctionDeclaration> for TypeBinding<CallPath> {
         // Check to see if this is a function declaration.
         let fn_decl = unknown_decl
             .resolve_parsed(engines.de())
-            .to_fn_ref(handler, engines)?;
+            .to_fn_decl(handler, engines)?;
         Ok(fn_decl)
+    }
+}
+
+impl SymbolResolveTypeBinding<ParsedDeclId<EnumDeclaration>> for TypeBinding<CallPath> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
+        let engines = ctx.engines();
+
+        // Grab the declaration.
+        let unknown_decl = ctx
+            .resolve_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_parsed();
+
+        // Check to see if this is a enum declaration.
+        let enum_decl = if let Declaration::EnumVariantDeclaration(EnumVariantDeclaration {
+            enum_ref,
+            ..
+        }) = &unknown_decl
+        {
+            *enum_ref
+        } else {
+            // Check to see if this is a enum declaration.
+            unknown_decl.to_enum_decl(handler, engines)?
+        };
+
+        Ok(enum_decl)
     }
 }
 
@@ -354,7 +373,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     }
 }
 
-impl SymbolResolveTypeBinding<StructDeclaration> for TypeBinding<CallPath> {
+impl SymbolResolveTypeBinding<ParsedDeclId<StructDeclaration>> for TypeBinding<CallPath> {
     fn resolve_symbol(
         &mut self,
         handler: &Handler,
@@ -456,6 +475,238 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             decl_engine.insert(new_copy, decl_engine.get_parsed_decl_id(&enum_id).as_ref());
         let type_id = type_engine.insert_enum(engines, *new_enum_ref.id());
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
+    }
+}
+
+impl TypeBinding<QualifiedCallPath> {
+    pub fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        mut ctx: SymbolResolveContext,
+        span: Span,
+    ) -> Result<Declaration, ErrorEmitted> {
+        let engines = ctx.engines();
+
+        println!("resolve_symbol {:?}", self.inner);
+
+        // The first step is to determine if the call path refers to a module,
+        // enum, function or constant.
+        // If only one exists, then we use that one. Otherwise, if more than one exist, it is
+        // an ambiguous reference error.
+
+        let mut is_module = false;
+        let mut maybe_function: Option<(ParsedDeclId<FunctionDeclaration>, _)> = None;
+        let mut maybe_enum: Option<(ParsedDeclId<EnumDeclaration>, _, _)> = None;
+
+        let module_probe_handler = Handler::default();
+        let function_probe_handler = Handler::default();
+        let enum_probe_handler = Handler::default();
+        let const_probe_handler = Handler::default();
+
+        if self.inner.qualified_path_root.is_none() {
+            // Check if this could be a module
+            is_module = {
+                let call_path_binding = self.clone();
+                ctx.namespace().program_id(engines).read(engines, |m| {
+                    m.lookup_submodule(
+                        &module_probe_handler,
+                        engines,
+                        &[
+                            call_path_binding.inner.call_path.prefixes.clone(),
+                            vec![call_path_binding.inner.call_path.suffix.clone()],
+                        ]
+                        .concat(),
+                    )
+                    .ok()
+                    .is_some()
+                })
+            };
+
+            // Check if this could be a function
+            maybe_function = {
+                let call_path_binding = self.clone();
+                let mut call_path_binding = TypeBinding {
+                    inner: call_path_binding.inner.call_path,
+                    type_arguments: call_path_binding.type_arguments,
+                    span: call_path_binding.span,
+                };
+
+                let result: Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> =
+                    SymbolResolveTypeBinding::resolve_symbol(
+                        &mut call_path_binding,
+                        &function_probe_handler,
+                        ctx.by_ref(),
+                    );
+
+                result.ok().map(|fn_ref| (fn_ref, call_path_binding))
+            };
+
+            // Check if this could be an enum
+            maybe_enum = {
+                let call_path_binding = self.clone();
+                let variant_name = call_path_binding.inner.call_path.suffix.clone();
+                let enum_call_path = call_path_binding.inner.call_path.rshift();
+
+                let mut call_path_binding = TypeBinding {
+                    inner: enum_call_path,
+                    type_arguments: call_path_binding.type_arguments,
+                    span: call_path_binding.span,
+                };
+
+                let result: Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> =
+                    SymbolResolveTypeBinding::resolve_symbol(
+                        &mut call_path_binding,
+                        &enum_probe_handler,
+                        ctx.by_ref(),
+                    );
+
+                result
+                    .ok()
+                    .map(|enum_ref| (enum_ref, variant_name, call_path_binding))
+            };
+        };
+
+        // Check if this could be a constant
+        let maybe_const = SymbolResolveTypeBinding::<(
+            ParsedDeclId<ConstantDeclaration>,
+            TypeBinding<CallPath>,
+        )>::resolve_symbol(self, &const_probe_handler, ctx.by_ref())
+        .ok();
+
+        // compare the results of the checks
+        let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
+            (false, None, Some((enum_ref, _variant_name, _call_path_binding)), None) => {
+                handler.append(enum_probe_handler);
+                Declaration::EnumDeclaration(enum_ref)
+            }
+            (false, Some((fn_ref, call_path_binding)), None, None) => {
+                handler.append(function_probe_handler);
+                // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
+                if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
+                    handler.emit_err(
+                        ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: call_path_binding.type_arguments.span(),
+                        }
+                        .into(),
+                    );
+                }
+                Declaration::FunctionDeclaration(fn_ref)
+            }
+            (true, None, None, None) => {
+                handler.append(module_probe_handler);
+                return Err(handler.emit_err(CompileError::ModulePathIsNotAnExpression {
+                    module_path: self.inner.call_path.to_string(),
+                    span,
+                }));
+            }
+            (false, None, None, Some((const_ref, call_path_binding))) => {
+                handler.append(const_probe_handler);
+                if !call_path_binding.type_arguments.to_vec().is_empty() {
+                    // In case `foo::bar::CONST::<TyArgs>` throw an error.
+                    // In case `foo::bar::<TyArgs>::CONST` throw an error.
+                    handler.emit_err(
+                        ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: self.type_arguments.span(),
+                        }
+                        .into(),
+                    );
+                }
+                Declaration::ConstantDeclaration(const_ref)
+            }
+            (false, None, None, None) => {
+                return Err(handler.emit_err(CompileError::SymbolNotFound {
+                    name: self.inner.call_path.suffix.clone(),
+                    span: self.inner.call_path.suffix.span(),
+                }));
+            }
+            _ => {
+                return Err(handler.emit_err(CompileError::AmbiguousPath { span }));
+            }
+        };
+
+        Ok(exp)
+    }
+}
+
+impl SymbolResolveTypeBinding<ParsedDeclId<ConstantDeclaration>> for TypeBinding<CallPath> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
+        println!(
+            "resolve_symbol SymbolResolveTypeBinding Constant {:?}",
+            self
+        );
+
+        // Grab the declaration.
+        let unknown_decl = ctx
+            .resolve_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_parsed();
+
+        // Check to see if this is a const declaration.
+        let const_ref = unknown_decl.to_const_decl(handler, ctx.engines())?;
+
+        Ok(const_ref)
+    }
+}
+
+impl SymbolResolveTypeBinding<(ParsedDeclId<ConstantDeclaration>, TypeBinding<CallPath>)>
+    for TypeBinding<QualifiedCallPath>
+{
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        mut ctx: SymbolResolveContext,
+    ) -> Result<(ParsedDeclId<ConstantDeclaration>, TypeBinding<CallPath>), ErrorEmitted> {
+        let mut call_path_binding = TypeBinding {
+            inner: self.inner.call_path.clone(),
+            type_arguments: self.type_arguments.clone(),
+            span: self.span.clone(),
+        };
+
+        println!(
+            "resolve_symbol SymbolResolveTypeBinding Constant {:?}",
+            call_path_binding
+        );
+
+        let type_info_opt = call_path_binding
+            .clone()
+            .inner
+            .prefixes
+            .last()
+            .map(|type_name| {
+                type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
+                    qualified_call_path: type_name.clone().into(),
+                    type_arguments: None,
+                })
+            });
+
+        if let Some(type_info) = type_info_opt {
+            if TypeInfo::is_self_type(&type_info) {
+                call_path_binding.strip_prefixes();
+            }
+        }
+
+        let const_res: Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> =
+            SymbolResolveTypeBinding::resolve_symbol(
+                &mut call_path_binding,
+                &Handler::default(),
+                ctx.by_ref(),
+            );
+        if const_res.is_ok() {
+            return const_res.map(|const_ref| (const_ref, call_path_binding.clone()));
+        }
+
+        // If we didn't find a constant, check for the constant inside the impl.
+        let unknown_decl = ctx
+            .resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_parsed();
+
+        // Check to see if this is a const declaration.
+        let const_ref = unknown_decl.to_const_decl(handler, ctx.engines())?;
+
+        Ok((const_ref, call_path_binding.clone()))
     }
 }
 

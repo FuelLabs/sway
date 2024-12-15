@@ -1,16 +1,16 @@
 use crate::{
     engine_threading::*,
-    language::{CallPath, Visibility},
+    language::{CallPath, QualifiedCallPath, Visibility},
     namespace::ResolvedDeclaration,
     semantic_analysis::{ast_node::ConstShadowingMode, Namespace},
-    type_system::TypeId,
+    type_system::TypeId, SubstTypesContext,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
 use super::{
     symbol_collection_context::SymbolCollectionContext,
-    type_resolve::{resolve_call_path, VisibilityCheck},
+    type_resolve::{resolve_call_path, resolve_qualified_call_path, VisibilityCheck},
     GenericShadowingMode,
 };
 
@@ -191,6 +191,24 @@ impl<'a> SymbolResolveContext<'a> {
             &self.namespace().mod_path,
             call_path,
             self.self_type(),
+            VisibilityCheck::Yes,
+        )
+    }
+
+    /// Short-hand for calling [Root::resolve_qualified_call_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+        &self,
+        handler: &Handler,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        resolve_qualified_call_path(
+            handler,
+            self.engines(),
+            self.namespace(),
+            &self.namespace().mod_path.clone(),
+            qualified_call_path,
+            self.self_type(),
+            &SubstTypesContext::dummy(self.engines()),
             VisibilityCheck::Yes,
         )
     }
