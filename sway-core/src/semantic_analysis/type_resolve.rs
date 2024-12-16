@@ -278,19 +278,17 @@ pub fn resolve_call_path(
     self_type: Option<TypeId>,
     check_visibility: VisibilityCheck,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-    //    let full_path = call_path.to_fullpath(engines, namespace);
-    
-    //    let problem = call_path.suffix.as_str() == "MyStruct"
-    //	&& full_path.prefixes.len() == 1
-    //	&& full_path.prefixes[0].as_str() == "import_star_name_clash";
-    //    if problem {
-    //	dbg!(&mod_path);
-    //	dbg!(&call_path);
-    //	dbg!(&full_path);
-    //	dbg!(&namespace.current_mod_path());
-    //    }
-
     let full_path = call_path.to_fullpath_from_mod_path(engines, namespace, &mod_path.to_vec());
+
+//    let problem = mod_path.len() == 1
+//    	&& mod_path[0].as_str() == "enum_variant_unit";
+//    if problem {
+//    	dbg!(&mod_path);
+//    	dbg!(&call_path);
+//    	dbg!(&full_path);
+//    	dbg!(&namespace.current_mod_path());
+//    }
+
 
     let (decl, decl_mod_path) = resolve_symbol_and_mod_path(
         handler,

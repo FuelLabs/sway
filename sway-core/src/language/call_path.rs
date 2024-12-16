@@ -319,9 +319,13 @@ impl CallPath {
     }
 
     /// Shifts the last prefix into the suffix, and removes the old suffix.
-    /// Does nothing if prefixes are empty.
+    /// Does nothing if prefixes are empty, or if the path is a full path and there is only a single prefix (which must be the package name, which is obligatory for full paths)
     pub fn rshift(&self) -> CallPath {
-        if self.prefixes.is_empty() {
+	if self.prefixes.is_empty()
+//	||
+//	    (matches!(self.callpath_type, CallPathType::Full) &&
+//	     self.prefixes.len() == 1)
+	{
             self.clone()
         } else {
             CallPath {
@@ -417,7 +421,7 @@ impl<T: Clone> CallPath<T> {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath_from_mod_path(&self, engines: &Engines, namespace: &Namespace, mod_path: &Vec<Ident>) -> CallPath<T> {
+    pub fn to_fullpath_from_mod_path(&self, _engines: &Engines, namespace: &Namespace, mod_path: &Vec<Ident>) -> CallPath<T> {
 
 //	let problem =
 //	    namespace.current_mod_path().len() == 2
@@ -499,7 +503,7 @@ impl<T: Clone> CallPath<T> {
 // //			is_absolute = true;
 // //			is_external = namespace.module_is_external(&mod_path);
 // 		    }
-// 		    else {
+		    // 		    else {
 			CallPath {
 			    prefixes: mod_path.clone(),
 			    suffix: self.suffix.clone(),
@@ -534,11 +538,9 @@ impl<T: Clone> CallPath<T> {
 //		    || namespace.current_module_has_binding(engines, &self.prefixes[0])
 //		{
 		} else if namespace.module_from_absolute_path(mod_path).unwrap().has_submodule(&self.prefixes[0])
-		    || namespace.module_has_binding(engines, mod_path, &self.prefixes[0])
 		{
-		    // The first identifier in the prefix is either a submodule of the current
-		    // module, or is bound in the current module (typically as an enum name, where
-		    // the suffix is a variant of the enum).
+		    // The first identifier in the prefix is a submodule of the current
+		    // module.
 		    //
 		    // The path is a qualified path relative to the current module
 		    //
@@ -557,10 +559,19 @@ impl<T: Clone> CallPath<T> {
 			suffix: self.suffix.clone(),
 			callpath_type: CallPathType::Full,
 		    }
-		} else {
-		    // Fully qualified path 
+		} else if namespace.package_exists(&self.prefixes[0])
+		{
+		    // The first identifier refers to an external package. The path is already fully qualified.
 		    CallPath {
 			prefixes: self.prefixes.clone(),
+			suffix: self.suffix.clone(),
+			callpath_type: CallPathType::Full,
+		    }
+		} else {
+		    // The first identifier in the prefix is neither a submodule of the current module nor the name of an external package.
+		    // It must therefore refer to an item bound in the current module.
+		    CallPath {
+			prefixes: mod_path.iter().chain(&self.prefixes).cloned().collect(),
 			suffix: self.suffix.clone(),
 			callpath_type: CallPathType::Full,
 		    }

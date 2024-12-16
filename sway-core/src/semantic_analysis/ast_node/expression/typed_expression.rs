@@ -1637,33 +1637,38 @@ impl ty::TyExpression {
                 let variant_name = call_path_binding.inner.call_path.suffix.clone();
                 let enum_call_path = call_path_binding.inner.call_path.to_fullpath(ctx.engines(), ctx.namespace()).rshift();
 
-//		let mod_path = ctx.namespace().current_mod_path();
-//		let problem = variant_name.as_str() == "Ok"
-//		    && mod_path.len() == 2
-//		    && mod_path[0].as_str() == "std"
-//		    && mod_path[1].as_str() == "option"
-//		    ;
-//		if problem {
-//		    dbg!("maybe enum");
-//		    dbg!(&unknown_call_path_binding);
-//		    dbg!(&enum_call_path);
-//		}
+// 		let mod_path = ctx.namespace().current_mod_path();
+// 		let problem = mod_path.len() == 1
+// 		    && mod_path[0].as_str() == "abi_associated_const_access_with_impl_in_contract"
+// 		    ;
+// 		if problem {
+// 		    dbg!("maybe enum");
+// 		    dbg!(&unknown_call_path_binding);
+// 		    dbg!(&enum_call_path);
+// 		}
 
-                let mut call_path_binding = TypeBinding {
-                    inner: enum_call_path,
-                    type_arguments: call_path_binding.type_arguments,
-                    span: call_path_binding.span,
-                };
-                TypeBinding::type_check(&mut call_path_binding, &variant_with_enum_probe_handler, ctx.by_ref())
-                    .ok()
-                    .map(|(enum_ref, _, ty_decl)| {
-                        (
-                            enum_ref,
-                            variant_name,
-                            call_path_binding,
-                            ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
-                        )
-                    })
+		if enum_call_path.prefixes.is_empty() {
+		    // If the path has no prefixes after the rshift, then the package name is the
+		    // new suffix, and so the path is not an enum variant.
+		    None
+		} else {
+		    
+                    let mut call_path_binding = TypeBinding {
+			inner: enum_call_path,
+			type_arguments: call_path_binding.type_arguments,
+			span: call_path_binding.span,
+                    };
+                    TypeBinding::type_check(&mut call_path_binding, &variant_with_enum_probe_handler, ctx.by_ref())
+			.ok()
+			.map(|(enum_ref, _, ty_decl)| {
+                            (
+				enum_ref,
+				variant_name,
+				call_path_binding,
+				ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                            )
+			})
+		}
             };
 
             // Check if this could be an enum variant without the enum name. This can happen when
