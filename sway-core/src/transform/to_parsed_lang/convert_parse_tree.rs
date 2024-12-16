@@ -781,6 +781,7 @@ pub fn item_impl_to_declaration(
             let impl_trait = ImplSelfOrTrait {
                 is_self: false,
                 impl_type_parameters,
+                impl_const_generics_parameters: vec![],
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
                 trait_decl_ref: None,
@@ -806,6 +807,7 @@ pub fn item_impl_to_declaration(
                     trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
+                    impl_const_generics_parameters: vec![],
                     items,
                     block_span,
                 };

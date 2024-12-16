@@ -13,10 +13,10 @@ impl Parse for GenericParam {
             let ident = parser.parse::<Ident>()?;
             let _ = parser.parse::<ColonToken>()?;
             let ty = parser.parse::<Ident>()?;
-            dbg!(Ok(GenericParam::Const {
+            Ok(GenericParam::Const {
                 ident,
                 ty,
-            }))
+            })
         } else {
             let ident = parser.parse::<Ident>()?;
             Ok(GenericParam::Trait { ident })

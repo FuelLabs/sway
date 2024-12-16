@@ -708,3 +708,9 @@ fn handle_trait(
         Ok((interface_item_refs, item_refs, impld_item_refs))
     })
 }
+
+#[derive(Debug, Clone)]
+pub struct ConstGenericParameter {
+    pub name: Ident,
+    pub ty: Ident,
+}

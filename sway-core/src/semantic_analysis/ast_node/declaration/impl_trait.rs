@@ -39,6 +39,16 @@ impl TyImplSelfOrTrait {
         decl_id: &ParsedDeclId<ImplSelfOrTrait>,
     ) -> Result<(), ErrorEmitted> {
         let impl_trait = engines.pe().get_impl_self_or_trait(decl_id);
+
+        for const_parameter in &impl_trait.impl_const_generics_parameters {
+            ctx.insert_parsed_symbol(
+                handler,
+                engines,
+                const_parameter.name.clone(),
+                Declaration::ConstantDeclaration(()),
+            )?;
+        }
+
         ctx.insert_parsed_symbol(
             handler,
             engines,
