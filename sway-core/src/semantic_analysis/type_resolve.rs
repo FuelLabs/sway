@@ -8,7 +8,7 @@ use sway_utils::iter_prefixes;
 use crate::{
     language::{
         ty::{self, TyTraitItem},
-        CallPath, QualifiedCallPath,
+        CallPath, QualifiedCallPath, Visibility,
     },
     monomorphization::type_decl_opt_to_type_id,
     namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem, Root},
@@ -39,6 +39,7 @@ pub fn resolve_type(
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
     check_visibility: VisibilityCheck,
+    visibility_level: Visibility,
 ) -> Result<TypeId, ErrorEmitted> {
     let type_engine = engines.te();
     let module_path = type_info_prefix.unwrap_or(mod_path);
@@ -56,6 +57,7 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                visibility_level,
             )
             .ok();
             type_decl_opt_to_type_id(
@@ -85,6 +87,7 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                Visibility::Public,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -103,6 +106,7 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                Visibility::Public,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -122,6 +126,7 @@ pub fn resolve_type(
                     self_type,
                     subst_ctx,
                     check_visibility,
+                    Visibility::Public,
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
@@ -169,6 +174,7 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                Visibility::Public,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -193,6 +199,7 @@ pub fn resolve_qualified_call_path(
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
     check_visibility: VisibilityCheck,
+    visibility_level: Visibility,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let type_engine = engines.te();
     if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
@@ -210,6 +217,7 @@ pub fn resolve_qualified_call_path(
                     &qualified_call_path.clone().to_call_path(handler)?,
                     self_type,
                     check_visibility,
+                    visibility_level,
                 )?;
                 type_decl_opt_to_type_id(
                     handler,
@@ -250,6 +258,7 @@ pub fn resolve_qualified_call_path(
             &qualified_call_path.call_path,
             self_type,
         )
+        .map(|(d, _)| d)
     } else {
         resolve_call_path(
             handler,
@@ -259,6 +268,7 @@ pub fn resolve_qualified_call_path(
             &qualified_call_path.call_path,
             self_type,
             check_visibility,
+            visibility_level,
         )
     }
 }
@@ -271,6 +281,7 @@ pub fn resolve_qualified_call_path(
 /// The `mod_path` is significant here as we assume the resolution is done within the
 /// context of the module pointed to by `mod_path` and will only check the call path prefixes
 /// and the symbol's own visibility.
+#[allow(clippy::too_many_arguments)]
 pub fn resolve_call_path(
     handler: &Handler,
     engines: &Engines,
@@ -279,6 +290,7 @@ pub fn resolve_call_path(
     call_path: &CallPath,
     self_type: Option<TypeId>,
     check_visibility: VisibilityCheck,
+    mut visibility_level: Visibility,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let symbol_path: Vec<_> = mod_path
         .iter()
@@ -286,7 +298,7 @@ pub fn resolve_call_path(
         .cloned()
         .collect();
 
-    let (decl, mod_path) = resolve_symbol_and_mod_path(
+    let (decl, is_self_type, mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
         &root.module,
@@ -294,6 +306,10 @@ pub fn resolve_call_path(
         &call_path.suffix,
         self_type,
     )?;
+
+    if is_self_type == IsSelfType::Yes {
+        visibility_level = Visibility::Private;
+    }
 
     if check_visibility == VisibilityCheck::No {
         return Ok(decl);
@@ -323,7 +339,7 @@ pub fn resolve_call_path(
     }
 
     // check the visibility of the symbol itself
-    if !decl.visibility(engines).is_public() {
+    if !decl.visibility(engines).is_public() && visibility_level.is_public() {
         handler.emit_err(CompileError::ImportPrivateSymbol {
             name: call_path.suffix.clone(),
             span: call_path.suffix.span(),
@@ -340,14 +356,15 @@ fn resolve_symbol_and_mod_path(
     mod_path: &ModulePath,
     symbol: &Ident,
     self_type: Option<TypeId>,
-) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+) -> Result<(ResolvedDeclaration, IsSelfType, Vec<Ident>), ErrorEmitted> {
     let mut current_module = module;
     // This block tries to resolve associated types
     let mut current_mod_path = vec![];
     let mut decl_opt = None;
+    let mut is_self_type = IsSelfType::No;
     for ident in mod_path.iter() {
         if let Some(decl) = decl_opt {
-            decl_opt = Some(resolve_associated_type_or_item(
+            let (decl, ret_is_self_type) = resolve_associated_type_or_item(
                 handler,
                 engines,
                 current_module,
@@ -355,7 +372,11 @@ fn resolve_symbol_and_mod_path(
                 decl,
                 None,
                 self_type,
-            )?);
+            )?;
+            decl_opt = Some(decl);
+            if ret_is_self_type == IsSelfType::Yes {
+                is_self_type = IsSelfType::Yes;
+            }
         } else {
             match current_module.submodules.get(ident.as_str()) {
                 Some(ns) => {
@@ -363,13 +384,16 @@ fn resolve_symbol_and_mod_path(
                     current_mod_path.push(ident.clone());
                 }
                 None => {
+                    if ident.as_str() == "Self" {
+                        is_self_type = IsSelfType::Yes;
+                    }
                     decl_opt = Some(current_module.resolve_symbol(handler, engines, ident)?);
                 }
             }
         }
     }
     if let Some(decl) = decl_opt {
-        let decl = resolve_associated_type_or_item(
+        let (decl, ret_is_self_type) = resolve_associated_type_or_item(
             handler,
             engines,
             current_module,
@@ -378,14 +402,17 @@ fn resolve_symbol_and_mod_path(
             None,
             self_type,
         )?;
-        return Ok((decl, current_mod_path));
+        if ret_is_self_type == IsSelfType::Yes {
+            is_self_type = IsSelfType::Yes;
+        }
+        return Ok((decl, is_self_type, current_mod_path));
     }
 
     module
         .lookup_submodule(handler, engines, mod_path)
         .and_then(|module| {
             let decl = module.resolve_symbol(handler, engines, symbol)?;
-            Ok((decl, mod_path.to_vec()))
+            Ok((decl, is_self_type, mod_path.to_vec()))
         })
 }
 
@@ -423,6 +450,12 @@ fn decl_to_type_info(
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum IsSelfType {
+    Yes,
+    No,
+}
+
 #[allow(clippy::too_many_arguments)]
 fn resolve_associated_item_from_type_id(
     handler: &Handler,
@@ -432,9 +465,11 @@ fn resolve_associated_item_from_type_id(
     type_id: TypeId,
     as_trait: Option<CallPath>,
     self_type: Option<TypeId>,
-) -> Result<ResolvedDeclaration, ErrorEmitted> {
+) -> Result<(ResolvedDeclaration, IsSelfType), ErrorEmitted> {
+    let mut is_self_type = IsSelfType::No;
     let type_id = if engines.te().get(type_id).is_self_type() {
         if let Some(self_type) = self_type {
+            is_self_type = IsSelfType::Yes;
             self_type
         } else {
             return Err(handler.emit_err(CompileError::Internal(
@@ -449,14 +484,15 @@ fn resolve_associated_item_from_type_id(
         .current_items()
         .implemented_traits
         .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
-    match item_ref {
+    let resolved = match item_ref {
         ResolvedTraitImplItem::Parsed(_item) => todo!(),
         ResolvedTraitImplItem::Typed(item) => match item {
-            TyTraitItem::Fn(fn_ref) => Ok(ResolvedDeclaration::Typed(fn_ref.into())),
-            TyTraitItem::Constant(const_ref) => Ok(ResolvedDeclaration::Typed(const_ref.into())),
-            TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
+            TyTraitItem::Fn(fn_ref) => ResolvedDeclaration::Typed(fn_ref.into()),
+            TyTraitItem::Constant(const_ref) => ResolvedDeclaration::Typed(const_ref.into()),
+            TyTraitItem::Type(type_ref) => ResolvedDeclaration::Typed(type_ref.into()),
         },
-    }
+    };
+    Ok((resolved, is_self_type))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -468,7 +504,7 @@ fn resolve_associated_type_or_item(
     decl: ResolvedDeclaration,
     as_trait: Option<CallPath>,
     self_type: Option<TypeId>,
-) -> Result<ResolvedDeclaration, ErrorEmitted> {
+) -> Result<(ResolvedDeclaration, IsSelfType), ErrorEmitted> {
     let type_info = decl_to_type_info(handler, engines, symbol, decl)?;
     let type_id = engines
         .te()
@@ -488,10 +524,11 @@ fn resolve_call_path_and_root_type_id(
     mut as_trait: Option<CallPath>,
     call_path: &CallPath,
     self_type: Option<TypeId>,
-) -> Result<ResolvedDeclaration, ErrorEmitted> {
+) -> Result<(ResolvedDeclaration, IsSelfType), ErrorEmitted> {
     // This block tries to resolve associated types
     let mut decl_opt = None;
     let mut type_id_opt = Some(root_type_id);
+    let mut is_self_type = IsSelfType::No;
     for ident in call_path.prefixes.iter() {
         if let Some(type_id) = type_id_opt {
             type_id_opt = None;
@@ -505,7 +542,10 @@ fn resolve_call_path_and_root_type_id(
                 self_type,
             )?);
             as_trait = None;
-        } else if let Some(decl) = decl_opt {
+        } else if let Some((decl, ret_is_self_type)) = decl_opt {
+            if ret_is_self_type == IsSelfType::Yes {
+                is_self_type = IsSelfType::Yes;
+            }
             decl_opt = Some(resolve_associated_type_or_item(
                 handler,
                 engines,
@@ -519,7 +559,7 @@ fn resolve_call_path_and_root_type_id(
         }
     }
     if let Some(type_id) = type_id_opt {
-        let decl = resolve_associated_item_from_type_id(
+        let (decl, ret_is_self_type) = resolve_associated_item_from_type_id(
             handler,
             engines,
             module,
@@ -528,10 +568,16 @@ fn resolve_call_path_and_root_type_id(
             as_trait,
             self_type,
         )?;
-        return Ok(decl);
+        if ret_is_self_type == IsSelfType::Yes {
+            is_self_type = IsSelfType::Yes;
+        }
+        return Ok((decl, is_self_type));
     }
-    if let Some(decl) = decl_opt {
-        let decl = resolve_associated_type_or_item(
+    if let Some((decl, ret_is_self_type)) = decl_opt {
+        if ret_is_self_type == IsSelfType::Yes {
+            is_self_type = IsSelfType::Yes;
+        }
+        let (decl, ret_is_self_type) = resolve_associated_type_or_item(
             handler,
             engines,
             module,
@@ -540,7 +586,10 @@ fn resolve_call_path_and_root_type_id(
             as_trait,
             self_type,
         )?;
-        Ok(decl)
+        if ret_is_self_type == IsSelfType::Yes {
+            is_self_type = IsSelfType::Yes;
+        }
+        Ok((decl, is_self_type))
     } else {
         Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
     }

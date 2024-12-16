@@ -1259,6 +1259,7 @@ impl ty::TyExpression {
             &storage_key_ident.into(),
             None,
             VisibilityCheck::No,
+            Visibility::Public,
         )?;
 
         let storage_key_struct_decl_id = storage_key_decl

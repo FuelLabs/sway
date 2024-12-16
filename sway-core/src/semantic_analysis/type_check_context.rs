@@ -110,6 +110,9 @@ pub struct TypeCheckContext<'a> {
     // In some nested places of the first pass we want to disable the first pass optimizations
     // To disable those optimizations we can set this to false.
     code_block_first_pass: bool,
+
+    /// Visibility checking level for the current scope.
+    visibility_level: Visibility,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -139,6 +142,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental,
             collecting_unifications: false,
             code_block_first_pass: false,
+            visibility_level: Visibility::Public,
         }
     }
 
@@ -183,6 +187,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental,
             collecting_unifications: false,
             code_block_first_pass: false,
+            visibility_level: Visibility::Public,
         }
     }
 
@@ -214,6 +219,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
             code_block_first_pass: self.code_block_first_pass,
+            visibility_level: self.visibility_level,
         }
     }
 
@@ -251,6 +257,7 @@ impl<'a> TypeCheckContext<'a> {
                         experimental: self.experimental,
                         collecting_unifications: self.collecting_unifications,
                         code_block_first_pass: self.code_block_first_pass,
+                        visibility_level: self.visibility_level,
                     };
                     with_scoped_ctx(ctx)
                 },
@@ -275,6 +282,7 @@ impl<'a> TypeCheckContext<'a> {
                 experimental: self.experimental,
                 collecting_unifications: self.collecting_unifications,
                 code_block_first_pass: self.code_block_first_pass,
+                visibility_level: self.visibility_level,
             };
             with_scoped_ctx(ctx)
         }
@@ -315,6 +323,7 @@ impl<'a> TypeCheckContext<'a> {
                         experimental: self.experimental,
                         collecting_unifications: self.collecting_unifications,
                         code_block_first_pass: self.code_block_first_pass,
+                        visibility_level: self.visibility_level,
                     };
                     Ok((with_scoped_ctx(ctx)?, namespace))
                 },
@@ -339,6 +348,7 @@ impl<'a> TypeCheckContext<'a> {
                 experimental: self.experimental,
                 collecting_unifications: self.collecting_unifications,
                 code_block_first_pass: self.code_block_first_pass,
+                visibility_level: self.visibility_level,
             };
             Ok((with_scoped_ctx(ctx)?, namespace))
         }
@@ -565,6 +575,10 @@ impl<'a> TypeCheckContext<'a> {
         self.code_block_first_pass
     }
 
+    pub(crate) fn visibility_level(&self) -> Visibility {
+        self.visibility_level
+    }
+
     /// Get the engines needed for engine threading.
     pub(crate) fn engines(&self) -> &'a Engines {
         self.engines
@@ -672,6 +686,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
             VisibilityCheck::Yes,
+            Visibility::Public,
         )
     }
 
@@ -689,6 +704,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
             VisibilityCheck::Yes,
+            self.visibility_level(),
         )
         .map(|d| d.expect_typed())
     }
@@ -707,6 +723,7 @@ impl<'a> TypeCheckContext<'a> {
             &symbol.clone().into(),
             self.self_type(),
             VisibilityCheck::No,
+            Visibility::Public,
         )
         .map(|d| d.expect_typed())
     }
@@ -725,6 +742,7 @@ impl<'a> TypeCheckContext<'a> {
             call_path,
             self.self_type(),
             VisibilityCheck::Yes,
+            self.visibility_level(),
         )
         .map(|d| d.expect_typed())
     }
@@ -743,6 +761,7 @@ impl<'a> TypeCheckContext<'a> {
             call_path,
             self.self_type(),
             VisibilityCheck::No,
+            self.visibility_level(),
         )
         .map(|d| d.expect_typed())
     }
@@ -789,6 +808,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
             VisibilityCheck::Yes,
+            Visibility::Public,
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
