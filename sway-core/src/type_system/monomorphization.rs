@@ -8,7 +8,7 @@ use crate::{
     decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert},
     language::{
         ty::{self},
-        CallPath,
+        CallPath, Visibility,
     },
     namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
@@ -130,6 +130,7 @@ where
                     self_type,
                     subst_ctx,
                     VisibilityCheck::Yes,
+                    Visibility::Public,
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }

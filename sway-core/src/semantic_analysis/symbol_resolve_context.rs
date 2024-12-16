@@ -43,6 +43,8 @@ pub struct SymbolResolveContext<'a> {
     ///
     /// This is `Disallow` everywhere except while checking type parameters bounds in struct instantiation.
     generic_shadowing_mode: GenericShadowingMode,
+    /// Visibility checking level for the current scope.
+    visibility_level: Visibility,
 }
 
 impl<'a> SymbolResolveContext<'a> {
@@ -57,6 +59,7 @@ impl<'a> SymbolResolveContext<'a> {
             self_type: None,
             const_shadowing_mode: ConstShadowingMode::ItemStyle,
             generic_shadowing_mode: GenericShadowingMode::Disallow,
+            visibility_level: Visibility::Public,
         }
     }
 
@@ -75,6 +78,7 @@ impl<'a> SymbolResolveContext<'a> {
             self_type: self.self_type,
             const_shadowing_mode: self.const_shadowing_mode,
             generic_shadowing_mode: self.generic_shadowing_mode,
+            visibility_level: Visibility::Public,
         }
     }
 
@@ -156,6 +160,15 @@ impl<'a> SymbolResolveContext<'a> {
         }
     }
 
+    /// Map this `SymbolResolveContext` instance to a new one with the given visibility level.
+    #[allow(unused)]
+    pub(crate) fn with_visibility_level(self, visibility_level: Visibility) -> Self {
+        Self {
+            visibility_level,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `SymbolResolveContext`.
     #[allow(unused)]
@@ -171,6 +184,10 @@ impl<'a> SymbolResolveContext<'a> {
     #[allow(unused)]
     pub(crate) fn generic_shadowing_mode(&self) -> GenericShadowingMode {
         self.generic_shadowing_mode
+    }
+
+    pub(crate) fn visibility_level(&self) -> Visibility {
+        self.visibility_level
     }
 
     /// Get the engines needed for engine threading.
@@ -192,6 +209,7 @@ impl<'a> SymbolResolveContext<'a> {
             call_path,
             self.self_type(),
             VisibilityCheck::Yes,
+            self.visibility_level(),
         )
     }
 }
