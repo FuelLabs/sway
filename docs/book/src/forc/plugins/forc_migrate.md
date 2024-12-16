@@ -29,7 +29,7 @@ Breaking change features:
   - storage_domains    (https://github.com/FuelLabs/sway/issues/6701)
   - references         (https://github.com/FuelLabs/sway/issues/5063)
 
-Migration steps (1 [M]anual and 1 [S]emiautomatic):
+Migration steps (1 manual and 1 semiautomatic):
 storage_domains
   [M] Review explicitly defined slot keys in storage declarations (`in` keywords)
 

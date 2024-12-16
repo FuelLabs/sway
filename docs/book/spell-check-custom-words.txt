@@ -228,3 +228,8 @@ forc-client
 crypto
 doc
 fmt
+semiautomatically
+FuelLabs
+github
+toml
+hardcoded

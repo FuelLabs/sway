@@ -72,9 +72,9 @@ pub(crate) fn exec(_command: Command) -> Result<()> {
             format!(
                 "{count} {}",
                 match execution {
-                    MigrationStepExecution::Manual => "[M]anual",
-                    MigrationStepExecution::Semiautomatic => "[S]emiautomatic",
-                    MigrationStepExecution::Automatic => "[A]utomatic",
+                    MigrationStepExecution::Manual => "manual",
+                    MigrationStepExecution::Semiautomatic => "semiautomatic",
+                    MigrationStepExecution::Automatic => "automatic",
                 },
             )
         })
