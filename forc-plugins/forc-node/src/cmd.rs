@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 /// Forc node is a wrapper around fuel-core with sensible defaults to provide
 /// easy way of bootstrapping a node for local development, testnet or mainnet.
 pub struct ForcNodeCmd {
-    /// Instead of directly running the fuel-core instance print the command.
+    /// Print the fuel-core command without running it.
     #[arg(long)]
     pub dry_run: bool,
     #[command(subcommand)]
@@ -15,7 +15,7 @@ pub struct ForcNodeCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum Mode {
-    /// Start a local node for development purposes.
+    /// Starts a local node for development purposes.
     Local(LocalCmd),
     /// Starts a node that will connect to latest testnet.
     Testnet(TestnetCmd),
