@@ -2709,6 +2709,7 @@ dependencies = [
  "clap",
  "devault",
  "dialoguer",
+ "either",
  "forc",
  "forc-pkg",
  "forc-tracing 0.66.5",
@@ -2731,18 +2732,23 @@ dependencies = [
  "pretty_assertions",
  "rand",
  "regex",
+ "reqwest 0.12.9",
  "rexpect 0.5.0",
  "rpassword",
  "serde",
  "serde_json",
+ "sway-ast",
  "sway-core",
  "sway-features",
+ "sway-parse",
  "sway-types",
  "sway-utils",
+ "swayfmt",
  "tempfile",
  "tokio",
  "toml_edit",
  "tracing",
+ "url",
 ]
 
 [[package]]
@@ -3072,9 +3078,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-chain-config"
-version = "0.40.0"
+version = "0.40.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "990db3029efd3766c4ae7c92a53c159ae66abf6f568ac6a3d58354f11400e6e2"
+checksum = "85352d00503d5e9a353d1fdacf68400a626cbf84b30e8b1040dd30d1377e02c5"
 dependencies = [
  "anyhow",
  "bech32",
@@ -3092,9 +3098,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-client"
-version = "0.40.0"
+version = "0.40.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f09b3a35e82226d77b10653829beb508dc4bcf698fbdaa96610faf894e794444"
+checksum = "7a10ccde16fd926137070d3baa77a1096c2ff6cdca26d14177139c16e59e697d"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3168,9 +3174,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-storage"
-version = "0.40.0"
+version = "0.40.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bda9242ebc9e8ef3251b9eae85f4ce5cdb376348baa30925606f3ce602db7ec5"
+checksum = "1c4ee0bb50989c14e87104f79da550c2bd4303a141157bd453646450a8abafa9"
 dependencies = [
  "anyhow",
  "derive_more 0.99.18",
@@ -3190,15 +3196,16 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-types"
-version = "0.40.0"
+version = "0.40.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ee3a95b189bf729d21354a761862bb481298cbd883550adc3fef1bc7beb0b67"
+checksum = "b12856dc5d6939c9ca341dd3a277fb40978bb78463da6d168dee771d2a3b810e"
 dependencies = [
  "anyhow",
  "bs58",
  "derivative",
  "derive_more 0.99.18",
  "fuel-vm",
+ "k256",
  "rand",
  "secrecy",
  "serde",
@@ -8020,9 +8027,9 @@ dependencies = [
 
 [[package]]
 name = "tai64"
-version = "4.1.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "014639506e4f425c78e823eabf56e71c093f940ae55b43e58f682e7bc2f5887a"
+checksum = "ed7401421025f4132e6c1f7af5e7f8287383969f36e6628016cd509b8d3da9dc"
 dependencies = [
  "serde",
 ]
