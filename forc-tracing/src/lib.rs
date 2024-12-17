@@ -23,20 +23,24 @@ fn get_action_indentation(action: &str) -> String {
 
 /// Prints an action message with a green-bold prefix like "   Compiling ".
 pub fn println_action_green(action: &str, txt: &str) {
-    tracing::info!(
-        "{}{} {}",
-        get_action_indentation(action),
-        Colour::Green.bold().paint(action),
-        txt
-    );
+    println_action(action, txt, Colour::Green);
 }
 
 /// Prints an action message with a red-bold prefix like "   Removing ".
 pub fn println_action_red(action: &str, txt: &str) {
+    println_action(action, txt, Colour::Red);
+}
+
+/// Prints an action message with a yellow-bold prefix like "   Finished ".
+pub fn println_action_yellow(action: &str, txt: &str) {
+    println_action(action, txt, Colour::Yellow);
+}
+
+fn println_action(action: &str, txt: &str, color: Colour) {
     tracing::info!(
         "{}{} {}",
         get_action_indentation(action),
-        Colour::Red.bold().paint(action),
+        color.bold().paint(action),
         txt
     );
 }
@@ -62,6 +66,18 @@ pub fn println_red(txt: &str) {
 
 pub fn println_green(txt: &str) {
     println_std_out(txt, Colour::Green);
+}
+
+pub fn println_yellow(txt: &str) {
+    println_std_out(txt, Colour::Yellow);
+}
+
+pub fn println_green_bold(txt: &str) {
+    tracing::info!("{}", Colour::Green.bold().paint(txt));
+}
+
+pub fn println_yellow_bold(txt: &str) {
+    tracing::info!("{}", Colour::Yellow.bold().paint(txt));
 }
 
 pub fn println_yellow_err(txt: &str) {

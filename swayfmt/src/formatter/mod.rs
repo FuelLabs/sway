@@ -8,6 +8,8 @@ pub use crate::{
     error::{ConfigError, FormatterError},
 };
 use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
+use sway_ast::attribute::Annotated;
+use sway_ast::Module;
 use sway_core::BuildConfig;
 use sway_types::{SourceEngine, Spanned};
 
@@ -137,6 +139,73 @@ impl Formatter {
 
         Ok(formatted_code)
     }
+
+    // TODO: This is currently a deliberate copy of the `format` method.
+    //       The copy covers the need of the `forc migrate` tool.
+    //       The unification of these two methods and an additional
+    //       refactoring of the `Formatter` will be done as a part of
+    //       https://github.com/FuelLabs/sway/issues/6779
+    pub fn format_module(&mut self, module: &Module) -> Result<FormattedCode, FormatterError> {
+        // apply the width heuristics settings from the `Config`
+        self.shape.apply_width_heuristics(
+            self.config
+                .heuristics
+                .heuristics_pref
+                .to_width_heuristics(self.config.whitespace.max_width),
+        );
+
+        // Get the original trimmed source code.
+        let module_kind_span = module.kind.span();
+        let src = module_kind_span.src().trim();
+
+        // Formatted code will be pushed here with raw newline style.
+        // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
+        // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
+        // which will reduce the number of reallocations
+        let mut raw_formatted_code = String::with_capacity(src.len());
+
+        self.with_comments_context(src)?;
+
+        let annotated_module = Annotated {
+            attribute_list: vec![],
+            value: module.clone(),
+        };
+
+        annotated_module.format(&mut raw_formatted_code, self)?;
+
+        let mut formatted_code = String::from(&raw_formatted_code);
+
+        // Write post-module comments
+        write_comments(
+            &mut formatted_code,
+            annotated_module.value.span().end()..src.len() + 1,
+            self,
+        )?;
+
+        // Add newline sequences
+        handle_newlines(
+            &self.source_engine,
+            Arc::from(src),
+            &annotated_module.value,
+            Arc::from(formatted_code.clone()),
+            None,
+            &mut formatted_code,
+            self,
+        )?;
+
+        // Replace newlines with specified `NewlineStyle`
+        apply_newline_style(
+            self.config.whitespace.newline_style,
+            &mut formatted_code,
+            &raw_formatted_code,
+        )?;
+        if !formatted_code.ends_with('\n') {
+            writeln!(formatted_code)?;
+        }
+
+        Ok(formatted_code)
+    }
+
     pub(crate) fn with_shape<F, O>(&mut self, new_shape: Shape, f: F) -> O
     where
         F: FnOnce(&mut Self) -> O,

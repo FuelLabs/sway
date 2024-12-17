@@ -1,3 +1,5 @@
+use sway_types::SourceId;
+
 use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
@@ -16,6 +18,10 @@ impl Module {
                 None
             }
         })
+    }
+
+    pub fn source_id(&self) -> Option<SourceId> {
+        self.kind.span().source_id().copied()
     }
 }
 

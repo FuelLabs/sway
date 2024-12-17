@@ -43,7 +43,6 @@ pub enum CommentKind {
     ///
     /// ```sway
     /// pub fn main() -> bool {
-    ///
     ///     // Newlined comment
     ///     true
     /// }

@@ -9,6 +9,7 @@ members = [
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
+    "forc-plugins/forc-migrate",
     "forc-plugins/forc-tx",
     "forc-test",
     "forc-tracing",

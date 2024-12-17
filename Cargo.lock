@@ -2857,6 +2857,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-migrate"
+version = "0.66.5"
+dependencies = [
+ "anyhow",
+ "clap",
+ "forc-pkg",
+ "forc-tracing 0.66.5",
+ "forc-util",
+ "itertools 0.13.0",
+ "sway-ast",
+ "sway-core",
+ "sway-error",
+ "sway-features",
+ "sway-types",
+ "swayfmt",
+]
+
+[[package]]
 name = "forc-pkg"
 version = "0.66.5"
 dependencies = [

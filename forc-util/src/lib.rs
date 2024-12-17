@@ -448,7 +448,7 @@ pub fn create_diagnostics_renderer() -> Renderer {
         )
 }
 
-fn format_diagnostic(diagnostic: &Diagnostic) {
+pub fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
     const SHOW_DIAGNOSTIC_CODE: bool = false;
@@ -500,6 +500,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     let renderer = create_diagnostics_renderer();
     match diagnostic.level() {
+        Level::Info => tracing::info!("{}\n____\n", renderer.render(snippet)),
         Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
         Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
     }
@@ -561,6 +562,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
         match level {
+            Level::Info => AnnotationType::Info,
             Level::Warning => AnnotationType::Warning,
             Level::Error => AnnotationType::Error,
         }

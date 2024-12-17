@@ -192,7 +192,7 @@ impl Format for Ident {
     ) -> Result<(), FormatterError> {
         match self.is_raw_ident() {
             true => write!(formatted_code, "{}{}", RAW_MODIFIER, self.span().as_str())?,
-            false => write!(formatted_code, "{}", self.span().as_str())?,
+            false => write!(formatted_code, "{}", self.as_str())?,
         }
 
         Ok(())
@@ -258,7 +258,7 @@ impl Format for StorageField {
         formatter.with_shape(
             formatter.shape.with_default_code_line(),
             |formatter| -> Result<(), FormatterError> {
-                write!(formatted_code, "{}", self.name.span().as_str())?;
+                write!(formatted_code, "{}", self.name.as_str())?;
                 if let Some(in_token) = &self.in_token {
                     write!(formatted_code, " {}", in_token.span().as_str())?;
                 }

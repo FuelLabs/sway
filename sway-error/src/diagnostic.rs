@@ -5,10 +5,10 @@ use sway_types::{SourceEngine, Span};
 /// Provides detailed, rich description of a compile error or warning.
 #[derive(Debug, Default)]
 pub struct Diagnostic {
-    pub(crate) reason: Option<Reason>, // TODO: Make mandatory once we remove all old-style warnings and errors.
-    pub(crate) issue: Issue,
-    pub(crate) hints: Vec<Hint>,
-    pub(crate) help: Vec<String>,
+    pub reason: Option<Reason>, // TODO: Make mandatory once we remove all old-style warnings and errors.
+    pub issue: Issue,
+    pub hints: Vec<Hint>,
+    pub help: Vec<String>,
 }
 
 impl Diagnostic {
@@ -23,7 +23,8 @@ impl Diagnostic {
         match self.issue.label_type {
             LabelType::Error => Level::Error,
             LabelType::Warning => Level::Warning,
-            _ => unreachable!("The diagnostic level can be only Error or Warning, and this is enforced via Diagnostics API.")
+            LabelType::Info => Level::Info,
+            _ => unreachable!("The diagnostic level can be only Error, Warning, or Info, and this is enforced via Diagnostics API.")
         }
     }
 
@@ -122,6 +123,7 @@ impl Diagnostic {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Level {
+    Info,
     Warning,
     #[default]
     Error,
@@ -248,6 +250,12 @@ impl Issue {
     pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
             label: Label::error(source_engine, span, text),
+        }
+    }
+
+    pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Self {
+        Self {
+            label: Label::info(source_engine, span, text),
         }
     }
 }
@@ -377,6 +385,7 @@ pub enum DiagnosticArea {
     TypeChecking,
     SemanticAnalysis,
     Warnings,
+    Migrations,
 }
 
 impl DiagnosticArea {
@@ -388,6 +397,7 @@ impl DiagnosticArea {
             Self::TypeChecking => "E3",
             Self::SemanticAnalysis => "E4",
             Self::Warnings => "W0",
+            Self::Migrations => "M0",
         }
     }
 }
@@ -422,6 +432,10 @@ impl Code {
 
     pub fn warnings(number: u16) -> Code {
         Self::new(DiagnosticArea::Warnings, number)
+    }
+
+    pub fn migrations(number: u16) -> Code {
+        Self::new(DiagnosticArea::Migrations, number)
     }
 
     fn new(area: DiagnosticArea, number: u16) -> Self {

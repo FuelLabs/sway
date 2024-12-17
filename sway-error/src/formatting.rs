@@ -1,5 +1,4 @@
-//! This module contains various helper functions for easier formatting and creation of user-friendly
-//! diagnostic messages.
+//! This module contains various helper functions for easier formatting and creation of user-friendly messages.
 
 use std::{
     borrow::Cow,
@@ -12,10 +11,7 @@ use sway_types::{SourceEngine, SourceId};
 /// Returns the file name (with extension) for the provided `source_id`,
 /// or `None` if the `source_id` is `None` or the file name cannot be
 /// obtained.
-pub(crate) fn get_file_name(
-    source_engine: &SourceEngine,
-    source_id: Option<&SourceId>,
-) -> Option<String> {
+pub fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> Option<String> {
     match source_id {
         Some(source_id) => source_engine.get_file_name(source_id),
         None => None,
@@ -24,7 +20,7 @@ pub(crate) fn get_file_name(
 
 /// Returns reading-friendly textual representation for `number` smaller than or equal to 10
 /// or its numeric representation if it is greater than 10.
-pub(crate) fn number_to_str(number: usize) -> String {
+pub fn number_to_str(number: usize) -> String {
     match number {
         0 => "zero".to_string(),
         1 => "one".to_string(),
@@ -41,7 +37,7 @@ pub(crate) fn number_to_str(number: usize) -> String {
     }
 }
 
-pub(crate) enum Enclosing {
+pub enum Enclosing {
     #[allow(dead_code)]
     None,
     DoubleQuote,
@@ -60,7 +56,7 @@ impl Display for Enclosing {
     }
 }
 
-pub(crate) enum Indent {
+pub enum Indent {
     #[allow(dead_code)]
     None,
     Single,
@@ -87,14 +83,14 @@ impl Display for Indent {
 /// with the text "and <number> more".
 ///
 /// E.g.:
-/// [a] => "a"
-/// [a, b] => "a" and "b"
-/// [a, b, c] => "a", "b" and "c"
-/// [a, b, c, d] => "a", "b", "c" and one more
-/// [a, b, c, d, e] => "a", "b", "c" and two more
+/// - \[a\] => "a"
+/// - \[a, b\] => "a" and "b"
+/// - \[a, b, c\] => "a", "b" and "c"
+/// - \[a, b, c, d\] => "a", "b", "c" and one more
+/// - \[a, b, c, d, e\] => "a", "b", "c" and two more
 ///
 /// Panics if the `sequence` is empty, or `max_items` is zero.
-pub(crate) fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items: usize) -> String
+pub fn sequence_to_str<T>(sequence: &[T], enclosing: Enclosing, max_items: usize) -> String
 where
     T: Display,
 {
@@ -107,18 +103,14 @@ where
 /// with the text "or <number> more".
 ///
 /// E.g.:
-/// [a] => "a"
-/// [a, b] => "a" or "b"
-/// [a, b, c] => "a", "b" or "c"
-/// [a, b, c, d] => "a", "b", "c" or one more
-/// [a, b, c, d, e] => "a", "b", "c" or two more
+/// - \[a\] => "a"
+/// - \[a, b\] => "a" or "b"
+/// - \[a, b, c\] => "a", "b" or "c"
+/// - \[a, b, c, d\] => "a", "b", "c" or one more
+/// - \[a, b, c, d, e\] => "a", "b", "c" or two more
 ///
 /// Panics if the `sequence` is empty, or `max_items` is zero.
-pub(crate) fn sequence_to_str_or<T>(
-    sequence: &[T],
-    enclosing: Enclosing,
-    max_items: usize,
-) -> String
+pub fn sequence_to_str_or<T>(sequence: &[T], enclosing: Enclosing, max_items: usize) -> String
 where
     T: Display,
 {
@@ -195,18 +187,18 @@ where
 /// with the text "and <number> more".
 ///
 /// E.g.:
-/// * [a] =>
+/// * \[a\] =>
 ///     - a
-/// * [a, b] =>
+/// * \[a, b\] =>
 ///     - a
 ///     - b
-/// * [a, b, c, d, e] =>
+/// * \[a, b, c, d, e\] =>
 ///     - a
 ///     - b
 ///     - and three more
 ///
 /// Panics if the `sequence` is empty, or `max_items` is zero.
-pub(crate) fn sequence_to_list<T>(sequence: &[T], indent: Indent, max_items: usize) -> Vec<String>
+pub fn sequence_to_list<T>(sequence: &[T], indent: Indent, max_items: usize) -> Vec<String>
 where
     T: Display,
 {
@@ -238,7 +230,7 @@ where
 
 /// Returns "s" if `count` is different than 1, otherwise empty string.
 /// Convenient for building simple plural of words.
-pub(crate) fn plural_s(count: usize) -> &'static str {
+pub fn plural_s(count: usize) -> &'static str {
     if count == 1 {
         ""
     } else {
@@ -247,7 +239,7 @@ pub(crate) fn plural_s(count: usize) -> &'static str {
 }
 
 /// Returns "is" if `count` is 1, otherwise "are".
-pub(crate) fn is_are(count: usize) -> &'static str {
+pub fn is_are(count: usize) -> &'static str {
     if count == 1 {
         "is"
     } else {
@@ -256,7 +248,7 @@ pub(crate) fn is_are(count: usize) -> &'static str {
 }
 
 /// Returns `singular` if `count` is 1, otherwise `plural`.
-pub(crate) fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {
+pub fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {
     if count == 1 {
         singular
     } else {
@@ -274,7 +266,7 @@ pub(crate) fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a s
 /// SomeName<T> -> SomeName<T>
 /// std::ops::Eq -> Eq
 /// some_lib::Struct<A, B> -> Struct<A, B>
-pub(crate) fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
+pub fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
     match call_path.rfind(':') {
         Some(index) if index < call_path.len() - 1 => {
             Cow::Owned(call_path.split_at(index + 1).1.to_string())
@@ -290,7 +282,7 @@ pub(crate) fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
 /// `word` is in singular.
 ///
 /// If an article is returned, it is followed by a space, e.g. "a ".
-pub(crate) fn a_or_an(word: &'static str) -> &'static str {
+pub fn a_or_an(word: &'static str) -> &'static str {
     let is_a = in_definite::is_an(word);
     match is_a {
         in_definite::Is::An => "an ",
@@ -300,7 +292,7 @@ pub(crate) fn a_or_an(word: &'static str) -> &'static str {
 }
 
 /// Returns `text` with the first character turned into ASCII uppercase.
-pub(crate) fn ascii_sentence_case(text: &String) -> Cow<String> {
+pub fn ascii_sentence_case(text: &String) -> Cow<String> {
     if text.is_empty() || text.chars().next().unwrap().is_uppercase() {
         Cow::Borrowed(text)
     } else {
@@ -325,7 +317,7 @@ pub(crate) fn ascii_sentence_case(text: &String) -> Cow<String> {
 ///   }
 ///  the returned value, with ellipses, will be:
 ///   if x {...
-pub(crate) fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
+pub fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
     if !text.contains('\n') {
         Cow::Borrowed(text)
     } else {
@@ -340,11 +332,7 @@ pub(crate) fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
 /// at most `max_num_of_suggestions` elements.
 ///
 /// The implementation is taken and adapted from the [Clap project](https://github.com/clap-rs/clap/blob/50f7646cf72dd7d4e76d9284d76bdcdaceb7c049/clap_builder/src/parser/features/suggestions.rs#L11).
-pub(crate) fn did_you_mean<T, I>(
-    v: &str,
-    possible_values: I,
-    max_num_of_suggestions: usize,
-) -> Vec<String>
+pub fn did_you_mean<T, I>(v: &str, possible_values: I, max_num_of_suggestions: usize) -> Vec<String>
 where
     T: AsRef<str>,
     I: IntoIterator<Item = T>,
