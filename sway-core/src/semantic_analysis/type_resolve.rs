@@ -280,13 +280,16 @@ pub fn resolve_call_path(
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let full_path = call_path.to_fullpath_from_mod_path(engines, namespace, &mod_path.to_vec());
 
-//    let problem = mod_path.len() == 1
-//    	&& mod_path[0].as_str() == "enum_variant_unit";
+//    let problem = call_path.suffix.as_str() == "from_parts"
+//    	&& call_path.prefixes.len() == 1
+//	&& call_path.prefixes[0].as_str() == "raw_slice"
+//	;
 //    if problem {
 //    	dbg!(&mod_path);
 //    	dbg!(&call_path);
 //    	dbg!(&full_path);
 //    	dbg!(&namespace.current_mod_path());
+//	dbg!(&namespace.module_has_binding(engines, &mod_path.to_vec(), &full_path.prefixes[0]));
 //    }
 
 
@@ -380,17 +383,14 @@ fn resolve_symbol_and_mod_path_inner(
     assert!(!mod_path.is_empty());
     assert!(mod_path[0] == *root.current_package_name());
 
-    //	let problem = symbol.as_str() == "MyStruct"
-    //	    && mod_path.len() == 1
-    //	    && mod_path[0].as_str() == "import_star_name_clash";
+//    let problem = symbol.as_str() == "from_parts"
+//    	&& root.current_package_name().as_str() == "raw_slice";
+//    
+//    if problem {
+//    	dbg!(&mod_path);
+//    	dbg!(&symbol);
+//    }
     
-    
-    //	if problem {
-    //	    dbg!(&mod_path);
-    //	    dbg!(&symbol);
-    //	    // b::MyStruct is not resolved correctly
-    //	}
-
     // This block tries to resolve associated types
     let mut current_module = root.current_package_root_module();
     let mut current_mod_path = vec![mod_path[0].clone()];
@@ -413,12 +413,12 @@ fn resolve_symbol_and_mod_path_inner(
                     current_mod_path.push(ident.clone());
                 }
                 None => {
-		    if ident.as_str() == "core" {
-			dbg!("resolve_symbol_and_mod_path_inner");
-			dbg!(&mod_path);
-			dbg!(&symbol);
-			dbg!(&current_mod_path);
-		    }
+//		    if ident.as_str() == "core" {
+//			dbg!("resolve_symbol_and_mod_path_inner");
+//			dbg!(&mod_path);
+//			dbg!(&symbol);
+//			dbg!(&current_mod_path);
+//		    }
                     decl_opt = Some(current_module.resolve_symbol(handler, engines, ident, root.current_package_name())?);
                 }
             }

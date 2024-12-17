@@ -314,11 +314,13 @@ impl Module {
             Ok(ret)
         } else {
             // Symbol not found
-	    if symbol.as_str() == "core" {
-		dbg!("resolve_symbol");
-		dbg!(&symbol);
-		panic!();
-	    }
+//	    if symbol.as_str() == "from_parts" && package_name.as_str() == "raw_slice" {
+//		dbg!("resolve_symbol");
+//		dbg!(&symbol);
+//		dbg!(&package_name);
+//		dbg!(&self.mod_path);
+//		panic!();
+//	    }
             Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),

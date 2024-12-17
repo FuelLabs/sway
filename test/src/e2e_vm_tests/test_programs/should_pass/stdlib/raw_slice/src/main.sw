@@ -19,7 +19,7 @@ fn main() -> raw_slice {
     // Get a slice to it
     let foo_ptr = __addr_of(foo);
     let buf_len = foo_len / size_of::<u64>();
-    let foo_buf = raw_slice::from_parts::<u64>(foo_ptr, buf_len);
+    let foo_buf = core::raw_slice::raw_slice::from_parts::<u64>(foo_ptr, buf_len);
     assert(foo_buf.ptr() == foo_ptr);
     assert(foo_buf.len::<u64>() == 2);
 

@@ -239,11 +239,11 @@ impl Namespace {
 //    pub(crate) fn current_module_has_binding(&self, engines: &Engines, symbol: &Ident) -> bool {
 //	self.module_has_binding(engines, self.current_mod_path(), symbol)
 //    }
-//
-//    pub(crate) fn module_has_binding(&self, engines: &Engines, mod_path: &ModulePathBuf, symbol: &Ident) -> bool {
-//	let dummy_handler = Handler::default();
-//	self.root.item_lookup(&dummy_handler, engines, symbol, mod_path, &self.current_mod_path, true).is_ok()
-//    }
+
+    pub(crate) fn module_has_binding(&self, engines: &Engines, mod_path: &ModulePathBuf, symbol: &Ident) -> bool {
+	let dummy_handler = Handler::default();
+	self.root.item_lookup(&dummy_handler, engines, symbol, mod_path, &self.current_mod_path, true).is_ok()
+    }
 
     // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
     fn import_implicits(

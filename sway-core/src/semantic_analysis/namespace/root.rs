@@ -417,8 +417,30 @@ impl Root {
         dst: &ModulePath,
 	ignore_visibility: bool,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
+//	let problem = src.len() == 1
+//	    && src[0].as_str() == "raw_slice"
+//	    && dst.len() == 1
+//	    && dst[0].as_str() == "raw_slice"
+//	    && item.as_str() == "raw_slice"
+//	    ;
+	
         let src_mod = self.require_module(handler, &src.to_vec())?;
         let src_items = src_mod.current_items();
+
+//	if problem {
+//	    dbg!("symbols:");
+//	    for item in src_items.symbols.keys() {
+//		dbg!(&item);
+//	    }
+//	    dbg!("use_item_synonyms");
+//	    for item in src_items.use_item_synonyms.keys() {
+//		dbg!(&item);
+//	    }
+//	    dbg!("use_glob_synonyms");
+//	    for item in src_items.use_glob_synonyms.keys() {
+//		dbg!(&item);
+//	    }
+//	}
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
             let visibility = if is_ancestor(src, dst) {

@@ -421,8 +421,10 @@ impl<T: Clone> CallPath<T> {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath_from_mod_path(&self, _engines: &Engines, namespace: &Namespace, mod_path: &Vec<Ident>) -> CallPath<T> {
+    pub fn to_fullpath_from_mod_path(&self, engines: &Engines, namespace: &Namespace, mod_path: &Vec<Ident>) -> CallPath<T> {
 
+	let mod_path_module = namespace.module_from_absolute_path(mod_path);
+	
 //	let problem =
 //	    namespace.current_mod_path().len() == 2
 //	    && namespace.current_mod_path()[0].as_str() == "std"
@@ -442,7 +444,6 @@ impl<T: Clone> CallPath<T> {
 	match self.callpath_type {
 	    CallPathType::Full => self.clone(),
 	    CallPathType::RelativeToPackageRoot => {
-		// TODO: This isn't right. The package name from namespace should be the first prefix
 		let mut prefixes = vec!(mod_path[0].clone());
 		for ident in self.prefixes.iter() {
 		    prefixes.push(ident.clone());
@@ -537,7 +538,9 @@ impl<T: Clone> CallPath<T> {
 // 		} else if namespace.current_module_has_submodule(&self.prefixes[0])
 //		    || namespace.current_module_has_binding(engines, &self.prefixes[0])
 //		{
-		} else if namespace.module_from_absolute_path(mod_path).unwrap().has_submodule(&self.prefixes[0])
+		} else if mod_path_module.is_some()  
+		    && (mod_path_module.unwrap().has_submodule(&self.prefixes[0])
+			|| namespace.module_has_binding(engines, mod_path, &self.prefixes[0]))
 		{
 		    // The first identifier in the prefix is a submodule of the current
 		    // module.
@@ -560,6 +563,7 @@ impl<T: Clone> CallPath<T> {
 			callpath_type: CallPathType::Full,
 		    }
 		} else if namespace.package_exists(&self.prefixes[0])
+		    && namespace.module_is_external(&self.prefixes)
 		{
 		    // The first identifier refers to an external package. The path is already fully qualified.
 		    CallPath {
