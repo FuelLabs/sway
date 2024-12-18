@@ -53,15 +53,11 @@ impl TyTraitDecl {
         decl_id: &ParsedDeclId<TraitDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let trait_decl = engines.pe().get_trait(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            trait_decl.name.clone(),
-            Declaration::TraitDeclaration(*decl_id),
-        )?;
+        let decl = Declaration::TraitDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, trait_decl.name.clone(), decl.clone())?;
 
         // A temporary namespace for checking within the trait's scope.
-        let _ = ctx.scoped(engines, trait_decl.span.clone(), |scoped_ctx| {
+        let _ = ctx.scoped(engines, trait_decl.span.clone(), Some(decl), |scoped_ctx| {
             trait_decl.interface_surface.iter().for_each(|item| {
                 let _ = TyTraitItem::collect(handler, engines, scoped_ctx, item);
             });

@@ -71,6 +71,9 @@ pub struct LexicalScope {
     pub children: Vec<LexicalScopeId>,
     /// The parent scope associated with this scope. Will be None for a root scope.
     pub parent: Option<LexicalScopeId>,
+    /// The declaration associated with this scope. This will initially be a [ParsedDeclId],
+    /// but can be replaced to be a [DeclId] once the declaration is type checked.
+    pub declaration: Option<ResolvedDeclaration>,
 }
 
 /// The set of items that exist within some lexical scope via declaration or importing.

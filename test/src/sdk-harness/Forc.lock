@@ -420,7 +420,7 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "tx_output_change_contract"
+name = "tx_output_contract"
 source = "member"
 dependencies = ["std"]
 
