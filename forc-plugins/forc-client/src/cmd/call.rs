@@ -55,15 +55,28 @@ pub struct Command {
     #[clap(flatten)]
     pub node: NodeTarget,
 
-    /// Sign the transaction with default signer that is pre-funded by fuel-core. Useful for testing against local node.
-    #[clap(long, default_value = "true")]
-    pub default_signer: bool,
+    /// Select the caller to use for the call
+    #[clap(flatten)]
+    pub caller: Caller,
 
-    /// Set the key to be used for signing; required if default_signer is false
-    #[clap(long, required = false, required_if_eq("default_signer", "false"))]
-    pub signing_key: Option<SecretKey>,
+    /// Dry run the transaction by default; set --no-dry-run to disable
+    #[clap(long, default_value = "false")]
+    pub no_dry_run: bool,
+
     // #[clap(flatten)]
     // pub experimental: sway_features::CliFields,
+}
+
+/// Flags for specifying the caller.
+#[derive(Debug, Default, Parser, serde::Deserialize, serde::Serialize)]
+pub struct Caller {
+    /// Derive an account from a secret key to make the call
+    #[clap(long, env = "SIGNING_KEY")]
+    pub signing_key: Option<SecretKey>,
+
+    /// Use forc-wallet to make the call
+    #[clap(long, default_value = "false")]
+    pub wallet: bool,
 }
 
 fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {

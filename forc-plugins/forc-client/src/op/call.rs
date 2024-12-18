@@ -1,11 +1,10 @@
 use crate::{
     cmd,
+    constants::DEFAULT_PRIVATE_KEY,
     util::{
-        account::ForcClientAccount,
         node_url::get_node_url,
-        tx::{prompt_forc_wallet_password, select_account, SignerSelectionMode},
+        tx::{prompt_forc_wallet_password, select_local_wallet_account},
     },
-    NodeTarget,
 };
 use anyhow::{anyhow, bail, Result};
 use either::Either;
@@ -34,12 +33,14 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         function,
         args,
         node,
-        default_signer,
-        signing_key,
+        caller,
+        no_dry_run,
         ..
     } = cmd;
+    let node_url = get_node_url(&node, &None)?;
+    let provider: Provider = Provider::connect(node_url.clone()).await?;
 
-    let wallet = get_wallet(&node, default_signer, signing_key).await?;
+    let wallet = get_wallet(caller, provider).await?;
 
     if let Some(abi) = abi {
         // If ABI is provided, ensure funtion signature is just the selector
@@ -123,24 +124,38 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                 VariableOutputPolicy::default(),
                 &wallet,
             )
-            .await?;
+            .await
+            .expect("Failed to build transaction");
         let provider = wallet.provider().unwrap();
         // TODO: log decoding would be required for verbose debugging mode
         let log_decoder = fuels::core::codec::LogDecoder::new(
             fuels::core::codec::log_formatters_lookup(vec![], contract_id.into()),
         );
-        let tx_status = provider
-            .send_transaction_and_await_commit(tx)
-            .await
-            .unwrap();
-        let receipts = tx_status.take_receipts_checked(Some(&log_decoder)).unwrap();
+
+        let tx_status = if no_dry_run {
+            forc_tracing::println_warning("Sending transaction...");
+            provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .expect("Failed to send transaction")
+        } else {
+            provider
+                .dry_run(tx)
+                .await
+                .expect("Failed to dry run transaction")
+        };
+
+        let receipts = tx_status.take_receipts_checked(Some(&log_decoder)).expect("Failed to take receipts");
 
         let data = ReceiptParser::new(&receipts, DecoderConfig::default())
             .extract_contract_call_data(contract_id.into())
-            .unwrap();
-        let token = ABIDecoder::default().decode(&output_param, &data).unwrap();
+            .expect("Failed to extract contract call data");
+        let token = ABIDecoder::default().decode(&output_param, &data).expect("Failed to decode output");
 
-        return Ok(token_to_string(&token).expect("Failed to convert token to string"));
+        let result = token_to_string(&token).expect("Failed to convert token to string");
+
+        println!("{}", result);
+        return Ok(result);
     }
 
     let cmd::call::FuncType::Signature(function_signature) = function else {
@@ -175,32 +190,30 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     // r.unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
 }
 
-async fn get_wallet(
-    node: &NodeTarget,
-    default_signer: bool,
-    signing_key: Option<SecretKey>,
-) -> Result<WalletUnlocked> {
-    let wallet_mode = if default_signer || signing_key.is_some() {
-        SignerSelectionMode::Manual
-    } else {
-        let password = prompt_forc_wallet_password()?;
-        SignerSelectionMode::ForcWallet(password)
-    };
-    let node_url = get_node_url(&node, &None)?;
-    let provider = Provider::connect(node_url.clone()).await?;
-    let tx_count = 1;
-    let account = select_account(
-        &wallet_mode,
-        default_signer,
-        signing_key,
-        &provider,
-        tx_count,
-    )
-    .await?;
-    let ForcClientAccount::Wallet(wallet) = account else {
-        bail!("Account is not a wallet");
-    };
-    Ok(wallet)
+async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<WalletUnlocked> {
+    match (caller.signing_key, caller.wallet) {
+        (None, false) => {
+            let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap();
+            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            forc_tracing::println_warning(&format!("No signing key or wallet flag provided. Using default signer: {}", wallet.address().hash()));
+            Ok(wallet)
+        }
+        (Some(secret_key), false) => {
+            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            forc_tracing::println_warning(&format!("Using account {} derived from signing key...", wallet.address().hash()));
+            Ok(wallet)
+        }
+        (None, true) => {
+            let password = prompt_forc_wallet_password()?;
+            let wallet = select_local_wallet_account(&password, &provider).await?;
+            Ok(wallet)
+        }
+        (Some(secret_key), true) => {
+            forc_tracing::println_warning("Signing key is provided while requesting to use forc-wallet. Using signing key...");
+            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            Ok(wallet)
+        }
+    }
 }
 
 /// Converts a ParamType and associated value into a Token
@@ -658,12 +671,15 @@ mod tests {
             function: FuncType::Selector(selector.into()),
             args: vec_args,
             gas: None,
-            node: NodeTarget {
+            node: crate::NodeTarget {
                 node_url: Some(wallet.provider().unwrap().url().to_owned()),
                 ..Default::default()
             },
-            signing_key: Some(secret_key),
-            default_signer: false,
+            caller: cmd::call::Caller {
+                signing_key: Some(secret_key),
+                wallet: false,
+            },
+            no_dry_run: false,
         }
     }
 
