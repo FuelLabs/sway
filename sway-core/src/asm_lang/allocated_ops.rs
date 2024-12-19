@@ -782,7 +782,7 @@ fn addr_of(
             Imm12::new(offset_bytes.try_into().unwrap()),
         ))]
     } else {
-        // Offset to large to fit into ADDI immediate, so we need to use MOVI first
+        // Offset too large to fit into ADDI immediate, so we need to use MOVI first
         vec![
             fuel_asm::Instruction::MOVI(MOVI::new(
                 dest.to_reg_id(),
