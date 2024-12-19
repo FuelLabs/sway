@@ -281,17 +281,17 @@ pub fn resolve_call_path(
     let full_path = call_path.to_fullpath_from_mod_path(engines, namespace, &mod_path.to_vec());
 
 //    let problem = call_path.suffix.as_str() == "from_parts"
-//    	&& call_path.prefixes.len() == 1
-//	&& call_path.prefixes[0].as_str() == "raw_slice"
-//	;
+//   	&& call_path.prefixes.len() == 1
+// 	&& call_path.prefixes[0].as_str() == "raw_slice"
+// 	;
 //    if problem {
-//    	dbg!(&mod_path);
-//    	dbg!(&call_path);
-//    	dbg!(&full_path);
-//    	dbg!(&namespace.current_mod_path());
-//	dbg!(&namespace.module_has_binding(engines, &mod_path.to_vec(), &full_path.prefixes[0]));
+//   	dbg!(&mod_path);
+//   	dbg!(&call_path);
+//   	dbg!(&full_path);
+//   	dbg!(&namespace.current_mod_path());
+// 	dbg!(&namespace.module_has_binding(engines, &mod_path.to_vec(), &full_path.prefixes[0]));
+//	dbg!(&std::backtrace::Backtrace::capture());
 //    }
-
 
     let (decl, decl_mod_path) = resolve_symbol_and_mod_path(
         handler,
@@ -468,9 +468,11 @@ fn decl_to_type_info(
             ty::TyDecl::GenericTypeForFunctionScope(decl) => {
                 (*engines.te().get(decl.type_id)).clone()
             }
-            _ =>{ 
-//		dbg!("decl_to_type_info");
-//		dbg!(&symbol);
+            _ =>{
+//		if symbol.as_str() == "from_parts" {
+//		    dbg!("decl_to_type_info");
+//		    dbg!(&symbol);
+//		}
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),

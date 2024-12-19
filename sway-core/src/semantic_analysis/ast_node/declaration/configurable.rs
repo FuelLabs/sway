@@ -172,7 +172,11 @@ impl ty::TyConfigurableDecl {
         };
 
         let mut call_path: CallPath = name.into();
+//	dbg!(&call_path);
+
         call_path = call_path.to_fullpath(engines, ctx.namespace());
+
+//	dbg!(&call_path);
 
         Ok(ty::TyConfigurableDecl {
             call_path,

@@ -482,8 +482,10 @@ impl Root {
             }
         } else {
             // Symbol not found
-//	    dbg!("item lookup");
-//	    dbg!(&item);
+//	    if item.as_str() == "from_parts" {
+//		dbg!("item lookup");
+//		dbg!(&item);
+//	    }
             return Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: item.clone(),
                 span: item.span(),
@@ -670,8 +672,10 @@ impl Root {
                             }
                         };
                     } else {
-//			dbg!("variant import parsed");
-//			dbg!(&variant_name);
+//			if variant_name.as_str() == "from_parts" {
+//			    dbg!("variant import parsed");
+//			    dbg!(&variant_name);
+//			}
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
@@ -740,8 +744,10 @@ impl Root {
                             }
                         };
                     } else {
-//			dbg!("variant import typed");
-//			dbg!(&variant_name);
+//			if variant_name.as_str() == "from_parts" {
+//			    dbg!("variant import typed");
+//			    dbg!(&variant_name);
+//			}
                             return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),

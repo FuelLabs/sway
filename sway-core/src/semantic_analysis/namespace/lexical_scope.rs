@@ -744,8 +744,10 @@ impl Items {
             .get(name)
             .cloned()
             .ok_or_else(|| {
-//		dbg!("check symbol");
-//		dbg!(&name);
+//		if name.as_str() == "from_parts" {
+//		    dbg!("check symbol");
+//		    dbg!(&name);
+//		}
 		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
@@ -761,8 +763,10 @@ impl Items {
             .get(&name.into())
             .cloned()
             .ok_or_else(|| {
-//		dbg!("check symbols unique while collecting unifications");
-//		dbg!(&name);
+//		if name.as_str() == "from_parts" {
+//		    dbg!("check symbols unique while collecting unifications");
+//		    dbg!(&name);
+//		}
 		CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),

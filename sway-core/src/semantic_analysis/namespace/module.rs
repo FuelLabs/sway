@@ -314,13 +314,16 @@ impl Module {
             Ok(ret)
         } else {
             // Symbol not found
-//	    if symbol.as_str() == "from_parts" && package_name.as_str() == "raw_slice" {
+//	    if symbol.as_str() == "from_parts" {
 //		dbg!("resolve_symbol");
 //		dbg!(&symbol);
 //		dbg!(&package_name);
 //		dbg!(&self.mod_path);
-//		panic!();
+//		//		panic!();
+//		dbg!(&std::backtrace::Backtrace::capture());
 //	    }
+//	    dbg!("resolve_symbol");
+//	    dbg!(&symbol);
             Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),

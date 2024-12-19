@@ -446,6 +446,8 @@ impl ty::TyExpression {
                     ref args,
                     qualified_path_root,
                 } = *e.clone();
+//		dbg!(&call_path_binding);
+//		dbg!(&qualified_path_root);
                 Self::type_check_ambiguous_path(
                     handler,
                     ctx.by_ref(),
@@ -1466,27 +1468,32 @@ impl ty::TyExpression {
         path.push(before.inner.clone());
 
 //	let mod_path = ctx.namespace.current_mod_path();
-//	let problem = before.inner.as_str() == "codec"
-//	    && mod_path.len() == 2
-//	    && mod_path[0].as_str() == "std"
-//	    && mod_path[1].as_str() == "inputs";
+//	let problem = before.inner.as_str() == "raw_slice"
+//	    && mod_path.len() == 1
+//	    && mod_path[0].as_str() == "raw_slice"
+//	    ;
 //	if problem {
+//	    dbg!(&prefixes);
+//	    dbg!(&before);
+//	    dbg!(&callpath_type);
+//	    dbg!(&qualified_path_root);
 //	    dbg!(&path);
 //	}
 
-        let not_module = {
+        let is_module = {
             let h = Handler::default();
 	    // The path may be relative to the current module,
-	    // or may be a full path
+	    // or may be a full path to an external module
             ctx.namespace()
                 .current_module()
-                .read(engines, |m| m.lookup_submodule(&h, &path).is_err())
-		&& ctx.namespace().module_from_absolute_path(&path).is_none()
+                .read(engines, |m| m.lookup_submodule(&h, &path).is_ok())
+		|| (ctx.namespace().module_from_absolute_path(&path).is_some() &&
+		    ctx.namespace().module_is_external(&path))
         };
 
         // Not a module? Not a `Enum::Variant` either?
         // Type check as an associated function call instead.
-        let is_associated_call = not_module && {
+        let is_associated_call = !is_module && {
             let probe_call_path = CallPath {
                 prefixes: prefixes.clone(),
                 suffix: before.inner.clone(),
@@ -1586,7 +1593,9 @@ impl ty::TyExpression {
         let variant_without_enum_probe_handler = Handler::default();
         let const_probe_handler = Handler::default();
 
-        if unknown_call_path_binding
+//	let problem = unknown_call_path_binding.inner.call_path.suffix.as_str() == "from_parts";
+	
+	if unknown_call_path_binding
             .inner
             .qualified_path_root
             .is_none()
@@ -1723,6 +1732,7 @@ impl ty::TyExpression {
 		None,
                 None,
             ) => {
+//		if problem { dbg!("maybe_enum_variant_with_enum_name"); }
                 handler.append(variant_with_enum_probe_handler);
                 instantiate_enum(
                     handler,
@@ -1741,6 +1751,7 @@ impl ty::TyExpression {
                 Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
                 None,
             ) => {
+//		if problem { dbg!("maybe_enum_variant_without_enum_name"); }
                 handler.append(variant_without_enum_probe_handler);
                 instantiate_enum(
                     handler,
@@ -1753,6 +1764,7 @@ impl ty::TyExpression {
                 )?
             }
             (false, Some((fn_ref, call_path_binding)), None, None, None) => {
+//		if problem { dbg!("maybe_function"); }
                 handler.append(function_probe_handler);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
                 if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
@@ -1773,6 +1785,7 @@ impl ty::TyExpression {
                 )?
             }
             (true, None, None, None, None) => {
+//		if problem { dbg!("maybe_module"); }
                 handler.append(module_probe_handler);
                 return Err(handler.emit_err(CompileError::ModulePathIsNotAnExpression {
                     module_path: unknown_call_path_binding.inner.call_path.to_string(),
@@ -1780,6 +1793,7 @@ impl ty::TyExpression {
                 }));
             }
             (false, None, None, None, Some((const_ref, call_path_binding))) => {
+//		if problem { dbg!("maybe_const"); }
                 handler.append(const_probe_handler);
                 if !call_path_binding.type_arguments.to_vec().is_empty() {
                     // In case `foo::bar::CONST::<TyArgs>` throw an error.
@@ -1794,16 +1808,19 @@ impl ty::TyExpression {
                 instantiate_constant_expression(ctx, const_ref, call_path_binding)
             }
             (false, None, None, None, None) => {
-//		let mod_path = ctx.namespace().current_mod_path();
-//		let problem = unknown_call_path_binding.inner.call_path.suffix.as_str() == "codec"
-//		    && mod_path.len() == 2
-//		    && mod_path[0].as_str() == "std"
-//		    && mod_path[1].as_str() == "inputs"
-//		    ;
-//		if problem {
-//		    dbg!("typecheck delineated path");
-//		    dbg!(&unknown_call_path_binding);
-//		}
+//		if problem { dbg!("neither"); }
+//      	let mod_path = ctx.namespace().current_mod_path();
+//      	let problem = unknown_call_path_binding.inner.call_path.suffix.as_str() == "from_parts"
+//      	    && mod_path.len() == 2
+//      	    && mod_path[0].as_str() == "std"
+//      	    && mod_path[1].as_str() == "inputs"
+//      	    ;
+//      	if problem {
+//      	    dbg!("typecheck delineated path");
+//      	    dbg!(&mod_path);
+//      	    dbg!(&unknown_call_path_binding);
+//      	    dbg!(&std::backtrace::Backtrace::capture());
+//      	}
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: unknown_call_path_binding.inner.call_path.suffix.clone(),
                     span: unknown_call_path_binding.inner.call_path.suffix.span(),
