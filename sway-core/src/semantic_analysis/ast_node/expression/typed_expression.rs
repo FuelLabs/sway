@@ -709,6 +709,21 @@ impl ty::TyExpression {
                     span,
                 }
             }
+            Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
+                let decl = engines.pe().get(&decl_id);
+                let decl_name = decl.name().clone();
+                ty::TyExpression {
+                    return_type: decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstantExpression {
+                        decl: Box::new(decl),
+                        span: name.span(),
+                        call_path: Some(
+                            CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
+                        ),
+                    },
+                    span,
+                }
+            }
             Some(a) => {
                 let err = handler.emit_err(CompileError::NotAVariable {
                     name: name.clone(),

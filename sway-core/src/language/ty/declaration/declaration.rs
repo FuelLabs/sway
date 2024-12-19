@@ -1,7 +1,11 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{parsed::Declaration, ty::*, Visibility},
+    language::{
+        parsed::{ConstGenericDeclaration, Declaration},
+        ty::*,
+        Visibility,
+    },
     type_system::*,
     types::*,
 };
@@ -21,6 +25,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub enum TyDecl {
     VariableDecl(Box<TyVariableDecl>),
     ConstantDecl(ConstantDecl),
+    ConstGenericDecl(ConstGenericDecl),
     ConfigurableDecl(ConfigurableDecl),
     TraitTypeDecl(TraitTypeDecl),
     FunctionDecl(FunctionDecl),
@@ -44,6 +49,11 @@ pub enum TyDecl {
 /// typed to parsed node maps.
 pub trait TyDeclParsedType {
     type ParsedType;
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConstGenericDecl {
+    pub decl_id: DeclId<TyConstGenericDecl>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
