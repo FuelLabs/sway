@@ -30,7 +30,7 @@ impl ContractId {
     }
 }
 
-impl core::ops::Eq for ContractId {
+impl ::ops::Eq for ContractId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }

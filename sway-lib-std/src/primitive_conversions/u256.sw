@@ -5,6 +5,29 @@ use ::option::Option::{self, *};
 use ::u128::U128;
 use ::b512::B512;
 
+impl u256 {
+    /// Converts a `u256` to a `b256`.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The converted `u256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val: u256 = 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20u256;
+    ///     let result = val.as_b256();
+    ///     assert(result == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20);
+    /// }
+    /// ```
+    pub fn as_b256(self) -> b256 {
+        asm(input: self) {
+            input: b256
+        }
+    }
+}
+
 impl TryFrom<B512> for u256 {
     /// Attempts conversion from a `B512` to a `u256`.
     ///

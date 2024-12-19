@@ -5,6 +5,30 @@ use ::option::Option::{self, *};
 use ::u128::U128;
 
 impl u64 {
+    /// Extends a `u64` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u64` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self);
+        asm(input: input) {
+            input: u256
+        }
+    }
+}
+
+impl u64 {
     /// Attempts to convert the u64 value into a u8 value.
     ///
     /// # Additional Information

@@ -75,7 +75,7 @@ impl EvmAddress {
     }
 }
 
-impl core::ops::Eq for EvmAddress {
+impl ::ops::Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }

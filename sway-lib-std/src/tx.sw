@@ -62,7 +62,7 @@ pub enum Transaction {
     Blob: (),
 }
 
-impl core::ops::Eq for Transaction {
+impl ::ops::Eq for Transaction {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Transaction::Script, Transaction::Script) => true,

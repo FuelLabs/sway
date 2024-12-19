@@ -2,7 +2,7 @@
 //! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
 library;
 
-use core::codec::*;
+use ::codec::*;
 use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
@@ -19,7 +19,7 @@ pub enum Identity {
 }
 // ANCHOR_END: docs_identity
 
-impl core::ops::Eq for Identity {
+impl ::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,

@@ -6,6 +6,7 @@ use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
+use ::codec::AbiEncode;
 
 /// A UTF-8 encoded growable string. It has ownership over its buffer.
 ///
