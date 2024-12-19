@@ -246,7 +246,6 @@ impl TypeParameter {
 
         handler.scope(|handler| {
             for type_param in type_params {
-                dbg!(&type_param);
                 new_type_params.push(
                     match TypeParameter::type_check(handler, ctx.by_ref(), type_param) {
                         Ok(res) => res,
@@ -713,5 +712,7 @@ fn handle_trait(
 #[derive(Debug, Clone)]
 pub struct ConstGenericParameter {
     pub name: Ident,
-    pub ty: Ident,
+    pub ty: TypeId,
+    pub is_from_parent: bool,
+    pub span: Span,
 }

@@ -15,7 +15,7 @@ use std::fmt;
 
 pub use abi::*;
 pub use configurable::*;
-use const_generic::ConstGenericDeclaration;
+pub use const_generic::*;
 pub use constant::*;
 pub use function::*;
 pub use impl_trait::*;

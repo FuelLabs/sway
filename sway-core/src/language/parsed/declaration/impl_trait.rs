@@ -1,8 +1,15 @@
-use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
+use super::{
+    ConstGenericDeclaration, ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration,
+};
 use crate::{
-    ast_elements::type_parameter::ConstGenericParameter, decl_engine::{parsed_id::ParsedDeclId, ParsedInterfaceDeclId}, engine_threading::{
+    ast_elements::type_parameter::ConstGenericParameter,
+    decl_engine::{parsed_id::ParsedDeclId, ParsedInterfaceDeclId},
+    engine_threading::{
         DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
-    }, language::CallPath, type_system::TypeArgument, Engines, TypeParameter
+    },
+    language::CallPath,
+    type_system::TypeArgument,
+    Engines, TypeParameter,
 };
 
 use sway_types::{span::Span, Named, Spanned};
@@ -63,7 +70,7 @@ impl DebugWithEngines for ImplItem {
 pub struct ImplSelfOrTrait {
     pub is_self: bool,
     pub impl_type_parameters: Vec<TypeParameter>,
-    pub impl_const_generics_parameters: Vec<ConstGenericParameter>,
+    pub impl_const_generics_parameters: Vec<ParsedDeclId<ConstGenericDeclaration>>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub trait_decl_ref: Option<ParsedInterfaceDeclId>,
