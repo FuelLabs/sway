@@ -10,10 +10,23 @@ use crate::{
     BuildTarget, Engines,
 };
 
+use ast_elements::type_parameter::ConstGenericParameter;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
-    assignable::ElementAccess, attribute::Annotated, expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant}, generics::GenericParam, ty::TyTupleDescriptor, AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents, CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause
+    assignable::ElementAccess,
+    attribute::Annotated,
+    expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
+    generics::GenericParam,
+    ty::TyTupleDescriptor,
+    AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
+    CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
+    FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
+    Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
+    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
+    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
+    PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
+    Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
@@ -430,17 +443,18 @@ fn item_struct_to_struct_declaration(
         return Err(emitted);
     }
 
+    let (type_parameters, const_generic_parameters) = generic_params_opt_to_type_parameters(
+        context,
+        handler,
+        engines,
+        item_struct.generics,
+        item_struct.where_clause_opt,
+    )?;
     let struct_declaration_id = engines.pe().insert(StructDeclaration {
         name: item_struct.name,
         attributes,
         fields,
-        type_parameters: generic_params_opt_to_type_parameters(
-            context,
-            handler,
-            engines,
-            item_struct.generics,
-            item_struct.where_clause_opt,
-        )?,
+        type_parameters,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
     });
@@ -499,15 +513,16 @@ fn item_enum_to_enum_declaration(
         return Err(emitted);
     }
 
+    let (type_parameters, const_generic_parameters) = generic_params_opt_to_type_parameters(
+        context,
+        handler,
+        engines,
+        item_enum.generics,
+        item_enum.where_clause_opt,
+    )?;
     let enum_declaration_id = engines.pe().insert(EnumDeclaration {
         name: item_enum.name,
-        type_parameters: generic_params_opt_to_type_parameters(
-            context,
-            handler,
-            engines,
-            item_enum.generics,
-            item_enum.where_clause_opt,
-        )?,
+        type_parameters,
         variants,
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
@@ -550,6 +565,16 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
+    let (type_parameters, const_generic_parameters) =
+        generic_params_opt_to_type_parameters_with_parent(
+            context,
+            handler,
+            engines,
+            item_fn.fn_signature.generics,
+            parent_generic_params_opt,
+            item_fn.fn_signature.where_clause_opt.clone(),
+            parent_where_clause_opt,
+        )?;
     let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
@@ -564,15 +589,7 @@ pub fn item_fn_to_function_declaration(
         )?,
         span,
         return_type,
-        type_parameters: generic_params_opt_to_type_parameters_with_parent(
-            context,
-            handler,
-            engines,
-            item_fn.fn_signature.generics,
-            parent_generic_params_opt,
-            item_fn.fn_signature.where_clause_opt.clone(),
-            parent_where_clause_opt,
-        )?,
+        type_parameters,
         where_clause: item_fn
             .fn_signature
             .where_clause_opt
@@ -648,7 +665,7 @@ fn item_trait_to_trait_declaration(
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
-    let type_parameters = generic_params_opt_to_type_parameters(
+    let (type_parameters, const_generic_parameters) = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -766,13 +783,14 @@ pub fn item_impl_to_declaration(
         .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
 
-    let impl_type_parameters = generic_params_opt_to_type_parameters(
-        context,
-        handler,
-        engines,
-        item_impl.generic_params_opt,
-        item_impl.where_clause_opt,
-    )?;
+    let (impl_type_parameters, impl_const_generics_parameters) =
+        generic_params_opt_to_type_parameters(
+            context,
+            handler,
+            engines,
+            item_impl.generic_params_opt,
+            item_impl.where_clause_opt,
+        )?;
 
     match item_impl.trait_opt {
         Some((path_type, _)) => {
@@ -1194,7 +1212,7 @@ fn generic_params_opt_to_type_parameters(
     engines: &Engines,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
     generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
@@ -1214,7 +1232,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
     parent_generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
     parent_where_clause_opt: Option<WhereClause>,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
     let type_engine = engines.te();
 
     let trait_constraints = match where_clause_opt {
@@ -1241,25 +1259,25 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .parameters
             .into_inner()
             .into_iter()
-            .map(|param| {
-                let ident = match param {
-                    GenericParam::Trait { ident } => ident.clone(),
-                    GenericParam::Const { ident, .. } => ident.clone(),
+            .filter_map(|param| {
+                let GenericParam::Trait { ident } = param else {
+                    return None;
                 };
                 let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
-                TypeParameter {
+                Some(TypeParameter {
                     type_id: custom_type,
                     initial_type_id: custom_type,
                     name: ident,
                     trait_constraints: Vec::new(),
                     trait_constraints_span: Span::dummy(),
                     is_from_parent,
-                }
+                })
             })
             .collect::<Vec<_>>(),
         None => Vec::new(),
     };
 
+    let const_generic_params = vec![];
     let mut params = generics_to_params(generic_params_opt, false);
     let parent_params = generics_to_params(parent_generic_params_opt, true);
 
@@ -1299,7 +1317,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
         return Err(errors);
     }
 
-    Ok(params)
+    Ok((params, const_generic_params))
 }
 
 fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
@@ -1467,13 +1485,16 @@ fn ty_to_type_info(
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
                 ty_to_type_argument(context, handler, engines, *ty_array_descriptor.ty)?,
-                expr_to_length(context, handler, *ty_array_descriptor.length)?,
+                expr_to_length(context, engines, handler, *ty_array_descriptor.length)?,
             )
         }
         Ty::StringSlice(..) => TypeInfo::StringSlice,
-        Ty::StringArray { length, .. } => {
-            TypeInfo::StringArray(expr_to_length(context, handler, *length.into_inner())?)
-        }
+        Ty::StringArray { length, .. } => TypeInfo::StringArray(expr_to_length(
+            context,
+            engines,
+            handler,
+            *length.into_inner(),
+        )?),
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
@@ -2727,14 +2748,20 @@ fn fn_arg_to_function_parameter(
 
 fn expr_to_length(
     context: &mut Context,
+    engines: &Engines,
     handler: &Handler,
     expr: Expr,
 ) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
-    Ok(Length::from_numeric_literal(
-        expr_to_usize(context, handler, expr)?,
-        span,
-    ))
+    Ok(match &expr {
+        Expr::Literal(..) => {
+            Length::from_numeric_literal(expr_to_usize(context, handler, expr)?, span)
+        }
+        _ => {
+            let expr = expr_to_expression(context, handler, engines, expr)?;
+            Length::Expression { expr }
+        }
+    })
 }
 
 fn expr_to_usize(

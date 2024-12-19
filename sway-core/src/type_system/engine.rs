@@ -557,7 +557,7 @@ impl TypeEngine {
         elem_type: TypeId,
         length: usize,
     ) -> TypeId {
-        self.insert_array(engines, elem_type.into(), Length::new(length))
+        self.insert_array(engines, elem_type.into(), Length::literal(length))
     }
 
     /// Inserts a new [TypeInfo::StringArray] into the [TypeEngine] and returns
@@ -584,7 +584,7 @@ impl TypeEngine {
         engines: &Engines,
         length: usize,
     ) -> TypeId {
-        self.insert_string_array(engines, Length::new(length))
+        self.insert_string_array(engines, Length::literal(length))
     }
 
     /// Inserts a new [TypeInfo::ContractCaller] into the [TypeEngine] and returns its [TypeId].

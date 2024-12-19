@@ -1,5 +1,6 @@
 mod abi;
 mod configurable;
+mod const_generic;
 mod constant;
 mod r#enum;
 pub mod function;
@@ -14,6 +15,7 @@ use std::fmt;
 
 pub use abi::*;
 pub use configurable::*;
+use const_generic::ConstGenericDeclaration;
 pub use constant::*;
 pub use function::*;
 pub use impl_trait::*;
@@ -59,6 +61,7 @@ pub enum Declaration {
     TypeAliasDeclaration(ParsedDeclId<TypeAliasDeclaration>),
     TraitTypeDeclaration(ParsedDeclId<TraitTypeDeclaration>),
     TraitFnDeclaration(ParsedDeclId<TraitFn>),
+    ConstGenericDeclaration(ParsedDeclId<ConstGenericDeclaration>),
 }
 
 #[derive(Debug, Clone)]
@@ -98,6 +101,7 @@ impl Declaration {
             AbiDeclaration(_) => "abi",
             StorageDeclaration(_) => "contract storage",
             TypeAliasDeclaration(_) => "type alias",
+            ConstGenericDeclaration(parsed_decl_id) => todo!(),
         }
     }
 
@@ -119,6 +123,7 @@ impl Declaration {
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
             TraitFnDeclaration(decl_id) => pe.get_trait_fn(decl_id).span(),
+            ConstGenericDeclaration(parsed_decl_id) => todo!(),
         }
     }
 
@@ -193,6 +198,7 @@ impl Declaration {
             | Declaration::AbiDeclaration(_)
             | Declaration::TraitTypeDeclaration(_)
             | Declaration::TraitFnDeclaration(_) => Visibility::Public,
+            Declaration::ConstGenericDeclaration(_) => todo!(),
         }
     }
 }

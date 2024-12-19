@@ -41,12 +41,13 @@ impl TyImplSelfOrTrait {
         let impl_trait = engines.pe().get_impl_self_or_trait(decl_id);
 
         for const_parameter in &impl_trait.impl_const_generics_parameters {
-            ctx.insert_parsed_symbol(
-                handler,
-                engines,
-                const_parameter.name.clone(),
-                Declaration::ConstantDeclaration(()),
-            )?;
+            todo!()
+            // ctx.insert_parsed_symbol(
+            //     handler,
+            //     engines,
+            //     const_parameter.name.clone(),
+            //     Declaration::ConstGenericDeclaration(()),
+            // )?;
         }
 
         ctx.insert_parsed_symbol(
@@ -1586,6 +1587,7 @@ fn check_for_unconstrained_type_parameters(
             .map(|x| ((*engines.te().get(x.type_id)).clone(), x.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
+    dbg!(&defined_generics);
 
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();

@@ -70,6 +70,7 @@ impl TyDecl {
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
                 TyTypeAliasDecl::collect(handler, engines, ctx, decl_id)?
             }
+            parsed::Declaration::ConstGenericDeclaration(_) => todo!(),
         };
 
         Ok(())
@@ -537,6 +538,7 @@ impl TyDecl {
             parsed::Declaration::TraitFnDeclaration(_decl_id) => {
                 unreachable!();
             }
+            parsed::Declaration::ConstGenericDeclaration(_) => todo!(),
         };
 
         Ok(decl)

@@ -450,6 +450,7 @@ impl Dependencies {
                 let TypeAliasDeclaration { ty, .. } = &*engines.pe().get_type_alias(decl_id);
                 self.gather_from_type_argument(engines, ty)
             }
+            Declaration::ConstGenericDeclaration(_) => todo!(),
         }
     }
 
@@ -990,6 +991,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::VariableDeclaration(_) => None,
         // Storage cannot be depended upon or exported
         Declaration::StorageDeclaration(_) => None,
+        Declaration::ConstGenericDeclaration(_) => todo!(),
     }
 }
 

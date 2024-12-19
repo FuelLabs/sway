@@ -217,9 +217,9 @@ impl HashWithEngines for TypeInfo {
                 call_path.hash(state, engines);
                 type_arguments.as_deref().hash(state, engines);
             }
-            TypeInfo::Array(elem_ty, count) => {
+            TypeInfo::Array(elem_ty, length) => {
                 elem_ty.hash(state, engines);
-                count.hash(state);
+                length.hash(state);
             }
             TypeInfo::Placeholder(ty) => {
                 ty.hash(state, engines);
@@ -1620,7 +1620,7 @@ impl TypeInfo {
             Placeholder(_) => "_".to_string(),
             TypeParam(n) => format!("typeparam({n})"),
             StringSlice => "str".into(),
-            StringArray(x) => format!("str[{}]", x.val()),
+            StringArray(x) => format!("str[{}]", x.get_length_str()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -1716,7 +1716,7 @@ impl TypeInfo {
                 format!(
                     "[{}; {}]",
                     elem_ty.type_id.get_type_str(engines),
-                    length.val()
+                    length.get_length_str()
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),

@@ -1,7 +1,7 @@
 script;
 
 trait A {
-    fn len() -> u64;
+    fn len(self) -> u64;
 }
 
 impl<T, const N: u64> A for [T; N] {

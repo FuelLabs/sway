@@ -129,7 +129,7 @@ impl<'a> Unifier<'a> {
             (RawUntypedSlice, RawUntypedSlice) => (),
             (StringSlice, StringSlice) => (),
             (StringArray(l), StringArray(r)) => {
-                self.unify_strs(handler, received, expected, span, l.val(), r.val());
+                self.unify_strs(handler, received, expected, span, l, r);
             }
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
@@ -358,10 +358,10 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: usize,
-        e: usize,
+        r: &Length,
+        e: &Length,
     ) {
-        if r != e {
+        if !r.same_length_as(e) {
             let (received, expected) = self.assign_args(received, expected);
             handler.emit_err(
                 TypeError::MismatchedType {

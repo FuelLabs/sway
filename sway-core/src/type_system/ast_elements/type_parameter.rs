@@ -246,6 +246,7 @@ impl TypeParameter {
 
         handler.scope(|handler| {
             for type_param in type_params {
+                dbg!(&type_param);
                 new_type_params.push(
                     match TypeParameter::type_check(handler, ctx.by_ref(), type_param) {
                         Ok(res) => res,

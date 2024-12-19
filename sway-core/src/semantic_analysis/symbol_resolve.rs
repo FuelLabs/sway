@@ -87,6 +87,7 @@ impl ResolveSymbols for Declaration {
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::TraitFnDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
+            Declaration::ConstGenericDeclaration(parsed_decl_id) => todo!(),
         }
     }
 }
