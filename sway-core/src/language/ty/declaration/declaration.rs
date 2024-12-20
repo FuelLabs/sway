@@ -212,6 +212,9 @@ impl HashWithEngines for TyDecl {
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
+            TyDecl::ConstGenericDecl(..) => {
+                todo!()
+            }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
@@ -290,6 +293,7 @@ impl SubstTypes for TyDecl {
             // generics in an ABI is unsupported by design
             TyDecl::AbiDecl(_)
             | TyDecl::ConstantDecl(_)
+            | TyDecl::ConstGenericDecl(_)
             | TyDecl::ConfigurableDecl(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
@@ -304,6 +308,9 @@ impl SpannedWithEngines for TyDecl {
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
                 let decl = engines.de().get(decl_id);
                 decl.span.clone()
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
                 let decl = engines.de().get(decl_id);
@@ -436,6 +443,9 @@ impl CollectTypesMetadata for TyDecl {
                     return Ok(vec![]);
                 }
             }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
+            }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_configurable(decl_id);
                 let TyConfigurableDecl { value, .. } = &*decl;
@@ -466,6 +476,9 @@ impl GetDeclIdent for TyDecl {
         match self {
             TyDecl::ConstantDecl(ConstantDecl { decl_id }) => {
                 Some(engines.de().get_constant(decl_id).name().clone())
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id }) => {
                 Some(engines.de().get_configurable(decl_id).name().clone())
@@ -510,6 +523,7 @@ impl TyDecl {
         match self {
             TyDecl::VariableDecl(_decl) => None,
             TyDecl::ConstantDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::ConstGenericDecl(decl) => todo!(),
             TyDecl::ConfigurableDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::TraitTypeDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::FunctionDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
@@ -713,6 +727,7 @@ impl TyDecl {
         match self {
             VariableDecl(_) => "variable",
             ConstantDecl(_) => "constant",
+            ConstGenericDecl(_) => "const generic",
             ConfigurableDecl(_) => "configurable",
             TraitTypeDecl(_) => "type",
             FunctionDecl(_) => "function",
@@ -778,6 +793,9 @@ impl TyDecl {
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
                 decl_engine.get_constant(decl_id).visibility
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
                 decl_engine.get_configurable(decl_id).visibility

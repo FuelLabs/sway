@@ -254,6 +254,9 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
                 }
+                ty::TyDecl::ConstGenericDecl(_) => {
+                    todo!()
+                }
                 ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
                     unreachable!()
                 }
@@ -539,6 +542,9 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::ConstantExpression {
                 decl: const_decl, ..
             } => self.compile_const_expr(context, md_mgr, const_decl, span_md_idx),
+            ty::TyExpressionVariant::ConstGenericExpression { .. } => {
+                todo!()
+            }
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),

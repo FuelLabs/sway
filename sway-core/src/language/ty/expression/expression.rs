@@ -348,6 +348,7 @@ impl CollectTypesMetadata for TyExpression {
             // `TyExpression::return_type`. Variable expressions are just names of variables.
             VariableExpression { .. }
             | ConstantExpression { .. }
+            | ConstGenericExpression { .. }
             | ConfigurableExpression { .. }
             | StorageAccess { .. }
             | Literal(_)

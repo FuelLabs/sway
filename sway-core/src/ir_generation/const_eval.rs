@@ -321,6 +321,9 @@ fn const_eval_typed_expr(
                 }
             }
         }
+        ty::TyExpressionVariant::ConstGenericExpression { .. } => {
+            todo!()
+        }
         ty::TyExpressionVariant::ConfigurableExpression { span, .. } => {
             return Err(ConstEvalError::CannotBeEvaluatedToConst { span: span.clone() });
         }

@@ -211,6 +211,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaf_opt),
         ty::TyDecl::VariableDecl(_)
         | ty::TyDecl::ConstantDecl(_)
+        | ty::TyDecl::ConstGenericDecl(_)
         | ty::TyDecl::ConfigurableDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             if let Some(leaf) = leaf_opt {

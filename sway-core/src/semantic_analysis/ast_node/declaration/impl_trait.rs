@@ -17,8 +17,9 @@ use crate::{
     language::{
         parsed::*,
         ty::{
-            self, ConstantDecl, TyConstantDecl, TyDecl, TyFunctionDecl, TyImplItem,
-            TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
+            self, ConstGenericDecl, ConstantDecl, TyConstGenericDecl, TyConstantDecl, TyDecl,
+            TyFunctionDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem,
+            TyTraitType,
         },
         *,
     },
@@ -338,6 +339,7 @@ impl TyImplSelfOrTrait {
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let ImplSelfOrTrait {
             impl_type_parameters,
+            impl_const_generics_parameters,
             mut implementing_for,
             items,
             block_span,
@@ -368,6 +370,32 @@ impl TyImplSelfOrTrait {
                     _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
                 };
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
+
+                for pe_decl_id in impl_const_generics_parameters.iter() {
+                    let pe_decl = engines.pe().get(pe_decl_id);
+
+                    let decl_ref = engines.de().insert(
+                        TyConstGenericDecl {
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: pe_decl.name.clone(),
+                                is_absolute: false,
+                            },
+                            return_type: pe_decl.ty.clone(),
+                            span: pe_decl.span.clone(),
+                        },
+                        Some(pe_decl_id),
+                    );
+
+                    dbg!();
+                    ctx.insert_symbol(
+                        handler,
+                        pe_decl.name.clone(),
+                        TyDecl::ConstGenericDecl(ConstGenericDecl {
+                            decl_id: decl_ref.id().clone(),
+                        }),
+                    )?;
+                }
 
                 // Type check the type parameters.
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(

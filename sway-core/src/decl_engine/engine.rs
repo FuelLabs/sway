@@ -13,15 +13,15 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::{
-            AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, Declaration,
-            EnumDeclaration, FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration,
+            AbiDeclaration, ConfigurableDeclaration, ConstGenericDeclaration, ConstantDeclaration,
+            Declaration, EnumDeclaration, FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration,
             StructDeclaration, TraitDeclaration, TraitFn, TraitTypeDeclaration,
             TypeAliasDeclaration,
         },
         ty::{
-            self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl,
-            TyFunctionDecl, TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn,
-            TyTraitType, TyTypeAliasDecl,
+            self, TyAbiDecl, TyConfigurableDecl, TyConstGenericDecl, TyConstantDecl,
+            TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStorageDecl,
+            TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl,
         },
     },
 };
@@ -38,6 +38,7 @@ pub struct DeclEngine {
     storage_slab: ConcurrentSlab<TyStorageDecl>,
     abi_slab: ConcurrentSlab<TyAbiDecl>,
     constant_slab: ConcurrentSlab<TyConstantDecl>,
+    const_generic_slab: ConcurrentSlab<TyConstGenericDecl>,
     configurable_slab: ConcurrentSlab<TyConfigurableDecl>,
     enum_slab: ConcurrentSlab<TyEnumDecl>,
     type_alias_slab: ConcurrentSlab<TyTypeAliasDecl>,
@@ -57,6 +58,8 @@ pub struct DeclEngine {
     abi_parsed_decl_id_map: RwLock<HashMap<DeclId<TyAbiDecl>, ParsedDeclId<AbiDeclaration>>>,
     constant_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyConstantDecl>, ParsedDeclId<ConstantDeclaration>>>,
+    const_generic_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyConstGenericDecl>, ParsedDeclId<ConstGenericDeclaration>>>,
     configurable_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyConfigurableDecl>, ParsedDeclId<ConfigurableDeclaration>>>,
     enum_parsed_decl_id_map: RwLock<HashMap<DeclId<TyEnumDecl>, ParsedDeclId<EnumDeclaration>>>,
@@ -78,6 +81,7 @@ impl Clone for DeclEngine {
             storage_slab: self.storage_slab.clone(),
             abi_slab: self.abi_slab.clone(),
             constant_slab: self.constant_slab.clone(),
+            const_generic_slab: self.const_generic_slab.clone(),
             configurable_slab: self.configurable_slab.clone(),
             enum_slab: self.enum_slab.clone(),
             type_alias_slab: self.type_alias_slab.clone(),
@@ -99,6 +103,9 @@ impl Clone for DeclEngine {
             abi_parsed_decl_id_map: RwLock::new(self.abi_parsed_decl_id_map.read().clone()),
             constant_parsed_decl_id_map: RwLock::new(
                 self.constant_parsed_decl_id_map.read().clone(),
+            ),
+            const_generic_parsed_decl_id_map: RwLock::new(
+                self.const_generic_parsed_decl_id_map.read().clone(),
             ),
             configurable_parsed_decl_id_map: RwLock::new(
                 self.configurable_parsed_decl_id_map.read().clone(),
@@ -186,6 +193,7 @@ decl_engine_get!(struct_slab, ty::TyStructDecl);
 decl_engine_get!(storage_slab, ty::TyStorageDecl);
 decl_engine_get!(abi_slab, ty::TyAbiDecl);
 decl_engine_get!(constant_slab, ty::TyConstantDecl);
+decl_engine_get!(const_generic_slab, ty::TyConstGenericDecl);
 decl_engine_get!(configurable_slab, ty::TyConfigurableDecl);
 decl_engine_get!(enum_slab, ty::TyEnumDecl);
 decl_engine_get!(type_alias_slab, ty::TyTypeAliasDecl);
@@ -252,6 +260,11 @@ decl_engine_insert!(
     constant_slab,
     constant_parsed_decl_id_map,
     ty::TyConstantDecl
+);
+decl_engine_insert!(
+    const_generic_slab,
+    const_generic_parsed_decl_id_map,
+    ty::TyConstGenericDecl
 );
 decl_engine_insert!(
     configurable_slab,

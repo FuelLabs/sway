@@ -45,6 +45,11 @@ pub enum TyExpressionVariant {
         decl: Box<TyConstantDecl>,
         call_path: Option<CallPath>,
     },
+    ConstGenericExpression {
+        span: Span,
+        decl: Box<TyConstGenericDecl>,
+        call_path: Option<CallPath>,
+    },
     ConfigurableExpression {
         span: Span,
         decl: Box<TyConfigurableDecl>,
@@ -474,6 +479,9 @@ impl HashWithEngines for TyExpressionVariant {
             } => {
                 const_decl.hash(state, engines);
             }
+            Self::ConstGenericExpression { .. } => {
+                todo!()
+            }
             Self::ConfigurableExpression {
                 decl: const_decl,
                 span: _,
@@ -675,6 +683,9 @@ impl SubstTypes for TyExpressionVariant {
                 rhs.subst(ctx);
             },
             ConstantExpression { decl, .. } => decl.subst(ctx),
+            ConstGenericExpression { .. } => {
+                todo!()
+            }
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
@@ -864,6 +875,9 @@ impl ReplaceDecls for TyExpressionVariant {
                     Ok(has_changes)
                 }
                 ConstantExpression { decl, .. } => decl.replace_decls(decl_mapping, handler, ctx),
+                ConstGenericExpression { .. } => {
+                    todo!()
+                }
                 ConfigurableExpression { decl, .. } => {
                     decl.replace_decls(decl_mapping, handler, ctx)
                 }
@@ -1046,6 +1060,9 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::ConstantExpression { decl, .. } => {
                 decl.type_check_analyze(handler, ctx)?
             }
+            TyExpressionVariant::ConstGenericExpression { .. } => {
+                todo!()
+            }
             TyExpressionVariant::ConfigurableExpression { decl, .. } => {
                 decl.type_check_analyze(handler, ctx)?
             }
@@ -1157,6 +1174,9 @@ impl TypeCheckFinalization for TyExpressionVariant {
                 }
                 TyExpressionVariant::ConstantExpression { decl, .. } => {
                     decl.type_check_finalize(handler, ctx)?
+                }
+                TyExpressionVariant::ConstGenericExpression { .. } => {
+                    todo!()
                 }
                 TyExpressionVariant::ConfigurableExpression { decl, .. } => {
                     decl.type_check_finalize(handler, ctx)?
@@ -1277,6 +1297,9 @@ impl UpdateConstantExpression for TyExpressionVariant {
                 {
                     *decl = Box::new(impl_const);
                 }
+            }
+            ConstGenericExpression { .. } => {
+                todo!()
             }
             ConfigurableExpression { .. } => {
                 unreachable!()
@@ -1466,6 +1489,9 @@ impl DebugWithEngines for TyExpressionVariant {
             }
             TyExpressionVariant::ConstantExpression { decl, .. } => {
                 format!("\"{}\" constant exp", decl.name().as_str())
+            }
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                format!("\"{}\" const generic exp", decl.name().as_str())
             }
             TyExpressionVariant::ConfigurableExpression { decl, .. } => {
                 format!("\"{}\" configurable exp", decl.name().as_str())

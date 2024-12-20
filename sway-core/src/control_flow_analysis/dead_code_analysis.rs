@@ -572,6 +572,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 Ok(leaves.to_vec())
             }
         }
+        ty::TyDecl::ConstGenericDecl(_) => {
+            todo!()
+        }
         ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
             let config_decl = decl_engine.get_configurable(decl_id);
             let ty::TyConfigurableDecl {
@@ -1502,6 +1505,9 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 graph.add_edge(*leaf, node, "".into());
             }
             Ok(vec![node])
+        }
+        ConstGenericExpression { decl, .. } => {
+            todo!()
         }
         ConfigurableExpression { decl, .. } => {
             let Some(node) = graph.namespace.get_configurable(decl).cloned() else {
@@ -2519,6 +2525,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::VariableDecl(_) => false,
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_constant(decl_id).attributes.clone())
+            }
+            ty::TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())

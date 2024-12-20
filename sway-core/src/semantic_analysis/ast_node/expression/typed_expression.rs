@@ -646,6 +646,7 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
+        dbg!(&name);
         let exp = match ctx.resolve_symbol(&Handler::default(), &name).ok() {
             Some(ty::TyDecl::VariableDecl(decl)) => {
                 let ty::TyVariableDecl {
@@ -683,6 +684,21 @@ impl ty::TyExpression {
                     span,
                 }
             }
+            Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
+                let decl = (*decl_engine.get(&decl_id)).clone();
+                let decl_name = decl.name().clone();
+                ty::TyExpression {
+                    return_type: decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstGenericExpression {
+                        decl: Box::new(decl),
+                        span: name.span(),
+                        call_path: Some(
+                            CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
+                        ),
+                    },
+                    span,
+                }
+            }
             Some(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. })) => {
                 let decl = (*decl_engine.get_configurable(&decl_id)).clone();
                 let decl_name = decl.name().clone();
@@ -709,22 +725,8 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
-                let decl = engines.pe().get(&decl_id);
-                let decl_name = decl.name().clone();
-                ty::TyExpression {
-                    return_type: decl.return_type,
-                    expression: ty::TyExpressionVariant::ConstantExpression {
-                        decl: Box::new(decl),
-                        span: name.span(),
-                        call_path: Some(
-                            CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
-                        ),
-                    },
-                    span,
-                }
-            }
             Some(a) => {
+                dbg!();
                 let err = handler.emit_err(CompileError::NotAVariable {
                     name: name.clone(),
                     what_it_is: a.friendly_type_name_with_acronym(),
@@ -733,6 +735,7 @@ impl ty::TyExpression {
                 ty::TyExpression::error(err, name.span(), engines)
             }
             None => {
+                dbg!();
                 let err = handler.emit_err(CompileError::UnknownVariable {
                     var_name: name.clone(),
                     span,

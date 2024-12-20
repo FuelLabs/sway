@@ -350,6 +350,13 @@ impl ParsedDeclEngine {
         self.get(index)
     }
 
+    pub fn get_const_generic<I>(&self, index: &I) -> Arc<ConstGenericDeclaration>
+    where
+        ParsedDeclEngine: ParsedDeclEngineGet<I, ConstGenericDeclaration>,
+    {
+        self.get(index)
+    }
+
     /// Friendly helper method for calling the `get` method from the
     /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
     ///
