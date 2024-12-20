@@ -421,13 +421,13 @@ impl TypeEngine {
         name: Ident,
         trait_constraints: VecSet<TraitConstraint>,
         parent: Option<TypeId>,
-        is_from_type_parameter: bool,
+        is_from_type_parameter: IsTypeParameter,
     ) -> TypeId {
         self.new_unknown_generic_impl(TypeInfo::UnknownGeneric {
             name,
             trait_constraints,
             parent,
-            is_from_type_parameter,
+            is_from_type_parameter: is_from_type_parameter,
         })
     }
 
@@ -455,7 +455,7 @@ impl TypeEngine {
     pub(crate) fn new_unknown_generic_self(
         &self,
         use_site_span: Span,
-        is_from_type_parameter: bool,
+        is_from_type_parameter: IsTypeParameter,
     ) -> (TypeId, Ident) {
         let name = Ident::new_with_override("Self".into(), use_site_span);
         let type_id =
