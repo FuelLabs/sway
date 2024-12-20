@@ -70,6 +70,33 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub enum IsTypeParameter {
+    #[default]
+    No,
+    Yes,
+}
+
+impl IsTypeParameter {
+    pub fn as_bool(&self) -> bool {
+        match self {
+            IsTypeParameter::Yes => true,
+            IsTypeParameter::No => false,
+        }
+    }
+}
+
+impl std::ops::Not for IsTypeParameter {
+    type Output = IsTypeParameter;
+
+    fn not(self) -> Self::Output {
+        match self {
+            IsTypeParameter::No => IsTypeParameter::Yes,
+            IsTypeParameter::Yes => IsTypeParameter::No,
+        }
+    }
+}
+
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Debug, Clone, Default)]
 pub enum TypeInfo {
@@ -87,7 +114,7 @@ pub enum TypeInfo {
         // Methods can have type parameters with unknown generic that extend the trait constraints of a parent unknown generic.
         parent: Option<TypeId>,
         // This is true when the UnknownGeneric is used in a type parameter.
-        is_from_type_parameter: bool,
+        is_from_type_parameter: IsTypeParameter,
     },
     /// Represents a type that will be inferred by the Sway compiler. This type
     /// is created when the user writes code that creates a new ADT that has

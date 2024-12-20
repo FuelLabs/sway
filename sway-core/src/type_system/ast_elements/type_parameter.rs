@@ -176,7 +176,8 @@ impl TypeParameter {
     pub(crate) fn new_self_type(engines: &Engines, use_site_span: Span) -> TypeParameter {
         let type_engine = engines.te();
 
-        let (type_id, name) = type_engine.new_unknown_generic_self(use_site_span, true);
+        let (type_id, name) =
+            type_engine.new_unknown_generic_self(use_site_span, IsTypeParameter::Yes);
         TypeParameter {
             type_id,
             initial_type_id: type_id,
@@ -339,7 +340,7 @@ impl TypeParameter {
             name.clone(),
             VecSet(trait_constraints_with_supertraits.clone()),
             parent,
-            true,
+            IsTypeParameter::Yes,
         );
 
         let type_parameter = TypeParameter {
@@ -399,7 +400,7 @@ impl TypeParameter {
                 name: type_parameter.name.clone(),
                 trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
                 parent,
-                is_from_type_parameter: true,
+                is_from_type_parameter: IsTypeParameter::Yes,
             },
         );
 

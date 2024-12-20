@@ -900,7 +900,7 @@ impl TraitMap {
                         ..
                     } = *engines.te().get(*map_type_id)
                     {
-                        insertable = !is_from_type_parameter
+                        insertable = !is_from_type_parameter.as_bool()
                             || matches!(
                                 *engines.te().get(*type_id),
                                 TypeInfo::UnknownGeneric { .. }
