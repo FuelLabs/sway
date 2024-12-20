@@ -62,8 +62,9 @@ pub(crate) fn check_script_opcodes(
 /// Checks if an opcode is one that cannot be executed from within a predicate.
 /// If so, throw an error.
 ///
-/// All contract opcodes are not allowed in predicates. Except for RVRT that can
-/// be used to abort the predicate. One example of disallowed code is as follows:
+/// All contract opcodes are not allowed in predicates, including RVRT that causes
+/// a panic according to https://github.com/FuelLabs/fuel-vm/blob/master/fuel-asm/src/lib.rs#L984. 
+/// One example of disallowed code is as follows:
 /// ```ignore
 /// pub fn burn(sub_id: SubId, amount: u64) {
 ///   asm(r1: amount) {
@@ -120,6 +121,7 @@ pub(crate) fn check_predicate_opcodes(
                 TIME(..) => invalid_opcode("TIME"),
                 TR(..) => invalid_opcode("TR"),
                 TRO(..) => invalid_opcode("TRO"),
+                RVRT(..) => invalid_opcode("RVRT"),
                 _ => (),
             };
         }
