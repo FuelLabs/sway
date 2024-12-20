@@ -21,7 +21,7 @@ fn test_impl_traits_default() {
     let doc_dir_name: &str = "impl_traits_default";
     let project_name = "impl_traits";
     let command = Command {
-        manifest_path: Some(format!("{}/{}", DATA_DIR, project_name)),
+        path: Some(format!("{}/{}", DATA_DIR, project_name)),
         doc_path: Some(doc_dir_name.into()),
         ..Default::default()
     };
@@ -171,7 +171,7 @@ fn test_impl_traits_no_deps() {
     let doc_dir_name: &str = "impl_traits_no_deps";
     let project_name: &str = "impl_traits_clone";
     let command = Command {
-        manifest_path: Some(format!("{}/{}", DATA_DIR, project_name)),
+        path: Some(format!("{}/{}", DATA_DIR, project_name)),
         doc_path: Some(doc_dir_name.into()),
         no_deps: true,
         ..Default::default()

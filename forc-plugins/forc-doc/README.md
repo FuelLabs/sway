@@ -78,7 +78,7 @@ $ cargo install --path forc-plugins/forc-doc
 Great! Let's check everything is working as intended. Try running `forc doc` on one of the test directories:
 
 ```sh
-$ forc doc --manifest-path src/tests/data/impl_traits --open
+$ forc doc --path src/tests/data/impl_traits --open
 ```
 
 If it succeeded, you should be seeing the test docs in your browser.
@@ -274,10 +274,10 @@ Now we can call this function anytime we need to generate a searchbar for our we
 Once you've made some changes, run the `forc doc` binary, passing it a path containing a `Forc.toml`:
 
 ```sh
-cargo run -- --manifest-path path/to/manifest --open
+cargo run -- --path path/to/manifest --open
 ```
 
-> **Tip:** VS Code user? Try the Live Server plugin to make viewing changes even easier. It will reload a webpage on updates, so you only need to rebuild the docs (`cargo run -- --manifest-path path/to/manifest`). Just right click the index file of docs produced by `forc doc` which can be found in the `out/doc` directory, and choose the option "open with Live Server". Voila!
+> **Tip:** VS Code user? Try the Live Server plugin to make viewing changes even easier. It will reload a webpage on updates, so you only need to rebuild the docs (`cargo run -- --path path/to/manifest`). Just right click the index file of docs produced by `forc doc` which can be found in the `out/doc` directory, and choose the option "open with Live Server". Voila!
 
 [forc-reference]: https://fuellabs.github.io/sway/master/book/forc/index.html "forc reference"
 [manifest-reference]: https://fuellabs.github.io/sway/master/book/forc/manifest_reference.html "manifest reference"

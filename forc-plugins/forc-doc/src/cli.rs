@@ -6,7 +6,7 @@ forc_util::cli_examples! {
     crate::cli::Command {
         [ Build the docs for a project in the current path => "forc doc"]
         [ Build the docs for a project in the current path and open it in the browser => "forc doc --open" ]
-        [ Build the docs for a project located in another path => "forc doc --manifest-path {path}" ]
+        [ Build the docs for a project located in another path => "forc doc --path {path}" ]
         [ Build the docs for the current project exporting private types => "forc doc --document-private-items" ]
         [ Build the docs offline without downloading any dependency from the network => "forc doc --offline" ]
     }
@@ -22,8 +22,8 @@ forc_util::cli_examples! {
 pub struct Command {
     /// Path to the Forc.toml file. By default, forc-doc searches for the Forc.toml
     /// file in the current directory or any parent directory.
-    #[clap(long)]
-    pub manifest_path: Option<String>,
+    #[clap(long, alias = "manifest-path")]
+    pub path: Option<String>,
     /// Include non-public items in the documentation.
     #[clap(long)]
     pub document_private_items: bool,
