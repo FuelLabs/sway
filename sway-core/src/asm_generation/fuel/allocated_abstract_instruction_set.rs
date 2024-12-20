@@ -13,6 +13,7 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
+use fuel_vm::fuel_asm::Imm12;
 use indexmap::{IndexMap, IndexSet};
 use sway_types::span::Span;
 
@@ -457,7 +458,13 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            Either::Left(AllocatedOpcode::AddrDataId(_, ref _data_id)) => 2,
+            Either::Left(AllocatedOpcode::AddrDataId(_, ref id)) => {
+                if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) {
+                    2
+                } else {
+                    1
+                }
+            }
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedOpcode::CFEI(ref op))
