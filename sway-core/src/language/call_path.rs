@@ -395,14 +395,18 @@ impl CallPath {
 }
 
 impl<T: Clone> CallPath<T> {
-    /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
-    /// in which the symbol is declared.
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] to a program point in which the
+    /// symbol can be resolved (assuming the given [CallPath] is a legal Sway path).
+    ///
+    /// The resulting [CallPath] is not guaranteed to be located in the package where the symbol is
+    /// declared. To obtain the path to the declaration, use [to_canonical_path].
     ///
     /// The [CallPath] is converted within the current module of the supplied namespace.
     ///
-    /// For example, given a path `pkga::SOME_CONST` where `pkga`
-    /// is an _internal_ library of a package named `my_project`, the corresponding call path is
-    /// `my_project::pkga::SOME_CONST`.
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ module of a
+    /// package named `my_project`, the corresponding call path is
+    /// `my_project::pkga::SOME_CONST`. This does not imply that `SOME_CONST` is declared in the
+    /// `my_project::pkga`, but only that the name `SOME_CONST` is bound in `my_project::pkga`.
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
@@ -410,14 +414,19 @@ impl<T: Clone> CallPath<T> {
 	self.to_fullpath_from_mod_path(engines, namespace, namespace.current_mod_path())
     }
     
-    /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
-    /// in which the symbol is declared.
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] to a program point in which the
+    /// symbol can be resolved (assuming the given [CallPath] is a legal Sway path).
     ///
-    /// The [CallPath] is converted within the module reference by the supplied mod_path. 
+    /// The resulting [CallPath] is not guaranteed to be located in the package where the symbol is
+    /// declared. To obtain the path to the declaration, use [to_canonical_path].
     ///
-    /// For example, given a path `pkga::SOME_CONST` where `pkga`
-    /// is an _internal_ library of a package named `my_project`, the corresponding call path is
-    /// `my_project::pkga::SOME_CONST`.
+    /// The [CallPath] is converted within the module given by `mod_path`, which must be a legal
+    /// path to a module.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ module of a
+    /// package named `my_project`, the corresponding call path is
+    /// `my_project::pkga::SOME_CONST`. This does not imply that `SOME_CONST` is declared in the
+    /// `my_project::pkga`, but only that the name `SOME_CONST` is bound in `my_project::pkga`.
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
@@ -580,6 +589,52 @@ impl<T: Clone> CallPath<T> {
 			callpath_type: CallPathType::Full,
 		    }
 		}
+	    },
+	}
+    }
+}
+
+impl CallPath {
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] to where the symbol is declared
+    /// (assuming the given [CallPath] is a legal Sway path).
+    ///
+    /// The [CallPath] is converted within the current module of the supplied namespace.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ module of a
+    /// package named `my_project`, and `SOME_CONST` is bound in the module `my_project::pkga`, then
+    /// the corresponding call path is the full callpath to the declaration that `SOME_CONST` is
+    /// bound to. This does not imply that `SOME_CONST` is declared in the `my_project::pkga`, since
+    /// the binding may be the result of an import.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
+    /// and are left unchanged since `std` is a root of the package `std`.
+    pub fn to_canonical_path(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
+	// Generate a full path to a module where the suffix can be resolved
+	let full_path = self.to_fullpath(engines, namespace);
+
+	match namespace.module_from_absolute_path(&full_path.prefixes) {
+	    Some(module) => {
+		// Resolve the path suffix in the found module
+		match module.resolve_symbol(&Handler::default(), engines, &full_path.suffix) {
+		    Ok((_, decl_path)) => {
+			// Replace the resolvable path with the declaration's path
+			CallPath {
+			    prefixes: decl_path,
+			    suffix: full_path.suffix.clone(),
+			    callpath_type: full_path.callpath_type.clone(),
+			}
+		    },
+		    Err(_) => {
+			// The symbol does not resolve. The symbol isn't bound, so the best bet is
+			// the full path.
+			full_path
+		    },
+		}
+	    },
+	    None => {
+		// The resolvable module doesn't exist. The symbol probably doesn't exist, so
+		// the best bet is the full path.
+		full_path
 	    },
 	}
     }

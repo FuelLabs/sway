@@ -1370,10 +1370,39 @@ impl<'a> TypeCheckContext<'a> {
         is_impl_self: IsImplSelf,
         is_extending_existing_impl: IsExtendingExistingImpl,
     ) -> Result<(), ErrorEmitted> {
-        // Use trait name with full path, improves consistency between
-        // this inserting and getting in `get_methods_for_type_and_trait_name`.
-        let full_trait_name = trait_name.to_fullpath(self.engines(), self.namespace());
         let engines = self.engines;
+        // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
+	// to the actual trait declaration. Since the path of the trait declaration is used as a key
+	// in the trait map, we need to find the actual declaration path.
+
+	// First, generate a resolvable path
+//	let full_trait_path = trait_name.to_fullpath(engines, self.namespace());
+//	let canonical_trait_path = 
+//	    match self.namespace.module_from_absolute_path(&full_trait_path.prefixes) {
+//		Some(module) => {
+//		    // Resolve the path suffix in the found module
+//		    match module.resolve_symbol(&Handler::default(), engines, &full_trait_path.suffix) {
+//			Ok((_, decl_path)) => {
+//			    // Replace the resolvable path with the declaration's path
+//			    CallPath {
+//				prefixes: decl_path,
+//				suffix: full_trait_path.suffix.clone(),
+//				callpath_type: full_trait_path.callpath_type.clone(),
+//			    }
+//			},
+//			Err(_) => {
+//			    // The symbol does not resolve. The trait probably doesn't exist, so just use the resolvable path
+//			    full_trait_path
+//			},
+//		    }
+//		},
+//		None => {
+//		    // The resolvable module doesn't exist. The trait probably doesn't exist, so just use the resolvable path
+//		    full_trait_path
+//		},
+//	    };
+
+	let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
         let items = items
             .iter()
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
@@ -1384,7 +1413,8 @@ impl<'a> TypeCheckContext<'a> {
             .implemented_traits
             .insert(
                 handler,
-                full_trait_name,
+                //full_trait_name,
+		canonical_trait_path,
                 trait_type_args,
                 type_id,
                 &items,
@@ -1417,47 +1447,46 @@ impl<'a> TypeCheckContext<'a> {
 //	    dbg!(&trait_name);
 //	}
 	
-        // Use trait name with full path, improves consistency between
-        // this get and inserting in `insert_trait_implementation`.
-
 	// CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
 	// to the actual trait declaration. Since the path of the trait declaration is used as a key
 	// in the trait map, we need to find the actual declaration path.
 
 	// First, generate a resolvable path
-        let full_trait_path = trait_name.to_fullpath(self.engines(), self.namespace());
+//        let full_trait_path = trait_name.to_fullpath(self.engines(), self.namespace());
+//
+////	if problem {
+////	    dbg!(&full_trait_path);
+////	}
+//
+//	// Resolve the path
+//	// The prefix of hte resolvable path is a module path
+//	let canonical_trait_path = 
+//	    match self.namespace.module_from_absolute_path(&full_trait_path.prefixes) {
+//		Some(module) => {
+//		    // Resolve the path suffix in the found module
+//		    match module.resolve_symbol(&Handler::default(), self.engines(), &full_trait_path.suffix) {
+//			Ok((_, decl_path)) => {
+//			    // Replace the resolvable path with the declaration's path
+//			    CallPath {
+//				prefixes: decl_path,
+//				suffix: full_trait_path.suffix.clone(),
+//				callpath_type: full_trait_path.callpath_type.clone(),
+//			    }
+//			},
+//			Err(_) => {
+//			    // The symbol does not resolve. The trait probably doesn't exist, so just use the resolvable path
+//			    full_trait_path
+//			},
+//		    }
+//		},
+//		None => {
+//		    // The resolvable module doesn't exist. The trait probably doesn't exist, so just use the resolvable path
+//		    full_trait_path
+//		},
+//	    };
 
-//	if problem {
-//	    dbg!(&full_trait_path);
-//	}
+	let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
 
-	// Resolve the path
-	// The prefix of hte resolvable path is a module path
-	let canonical_trait_path = 
-	    match self.namespace.module_from_absolute_path(&full_trait_path.prefixes) {
-		Some(module) => {
-		    // Resolve the path suffix in the found module
-		    match module.resolve_symbol(&Handler::default(), self.engines(), &full_trait_path.suffix) {
-			Ok((_, decl_path)) => {
-			    // Replace the resolvable path with the declaration's path
-			    CallPath {
-				prefixes: decl_path,
-				suffix: full_trait_path.suffix.clone(),
-				callpath_type: full_trait_path.callpath_type.clone(),
-			    }
-			},
-			Err(_) => {
-			    // The symbol does not resolve. The trait probably doesn't exist, so just use the resolvable path
-			    full_trait_path
-			},
-		    }
-		},
-		None => {
-		    // The resolvable module doesn't exist. The trait probably doesn't exist, so just use the resolvable path
-		    full_trait_path
-		},
-	    };
-	
 //	to_fullpath converts the ambiguous path AbiEncode to shadowed_glob_imports::AbiEncode, which the trait map then compares to core::codec::AbiEncode. This obviously fails.
 //	    We therefore need the declaration path for AbiEncode instead.
 //	    Consider whether this needs to happen in to_fullpath
