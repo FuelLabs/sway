@@ -1119,6 +1119,16 @@ impl TraitMap {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut items = vec![];
+//	let problem = trait_name.suffix.as_str() == "AbiEncode"
+//	    && trait_name.prefixes.len() == 2
+//	    && trait_name.prefixes[0].as_str() == "core"
+//	    && trait_name.prefixes[1].as_str() == "codec"
+//	    ;
+//	if problem {
+//	    dbg!(type_id);
+//	    dbg!(&engines.help_out(type_id));
+//	}
+	
         // small performance gain in bad case
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
@@ -1130,6 +1140,11 @@ impl TraitMap {
                 suffix: e.key.name.suffix.name.clone(),
                 callpath_type: e.key.name.callpath_type,
             };
+//	    if problem && &map_trait_name == trait_name {
+//		dbg!(&map_trait_name);
+//		dbg!(&e.key.name.suffix.args);
+//		dbg!(unify_check.check(type_id, e.key.type_id));
+//	    }
             if &map_trait_name == trait_name
                 && unify_check.check(type_id, e.key.type_id)
                 && trait_type_args.len() == e.key.name.suffix.args.len()

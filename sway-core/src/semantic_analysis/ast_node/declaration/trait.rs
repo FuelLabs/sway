@@ -90,6 +90,8 @@ impl TyTraitDecl {
             span,
         } = trait_decl;
 
+//	let problem = name.as_str() == "AbiEncode";
+	
         if !is_upper_camel_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
                 span: name.span(),
@@ -166,8 +168,11 @@ impl TyTraitDecl {
 
                 // insert placeholder functions representing the interface surface
                 // to allow methods to use those functions
-		//	    let path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace);
-		//	    dbg!(path);
+//		if problem {
+//		    let path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace);
+//		    dbg!(path);
+//		}
+		
                 ctx.insert_trait_implementation(
                     handler,
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace),
@@ -358,6 +363,16 @@ impl TyTraitDecl {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
+//	let problem = call_path.suffix.as_str() == "AbiEncode";
+	//The returned ItemMap should contain a concrete instantiation of abi_encode (decl_id = 706), but it ends up being empty.
+//	if problem {
+//	    dbg!(ctx.namespace().current_mod_path());
+//	    dbg!(type_id);
+//	    dbg!(engines.help_out(type_id));
+//	    dbg!(&call_path);
+//	    dbg!(&type_arguments);
+//	}
+	
         // Retrieve the interface surface for this trait.
         for item in interface_surface.iter() {
             match item {
@@ -402,6 +417,18 @@ impl TyTraitDecl {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
+
+//	if problem {
+//	    dbg!(&type_mapping);
+//	    let found_items = ctx
+//		.get_items_for_type_and_trait_name_and_trait_type_arguments(
+//                    type_id,
+//                    call_path,
+//                    type_arguments,
+//		);
+//	    dbg!(&found_items);
+//	}
+	
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,

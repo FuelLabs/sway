@@ -444,14 +444,13 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx
+            let (sy, _) = ctx
                 .namespace()
                 .current_module()
 		.resolve_symbol(
                     handler,
                     ctx.engines(),
                     name,
-		    ctx.namespace().current_package_name(),
 		)?;
 
             match sy.expect_typed_ref() {
@@ -518,6 +517,16 @@ impl TypeParameter {
         let mut impld_item_refs: ItemMap = BTreeMap::new();
         let engines = ctx.engines();
 
+//	let problem = function_name == "encode"
+//	    && type_parameters[0].name.as_str() == "T"
+//	    && access_span.as_str() == "X3"
+//	    ;
+//
+//	if problem {
+//	    dbg!(&function_name);
+//	    dbg!(&type_parameters);
+//	}
+	
         handler.scope(|handler| {
             for type_param in type_parameters {
                 let TypeParameter {
@@ -526,6 +535,11 @@ impl TypeParameter {
                     ..
                 } = type_param;
 
+//		if problem {
+//		    dbg!(&type_id);
+//		    dbg!(engines.help_out(&trait_constraints));
+//		}
+			
                 let code_block_first_pass = ctx.code_block_first_pass();
                 if !code_block_first_pass {
                     // Tries to unify type id with a single existing trait implementation.
@@ -549,6 +563,10 @@ impl TypeParameter {
                                 }
                             }).collect();
 
+//			if problem {
+//			    dbg!("not concrete");
+//			}
+			
                         match concrete_trait_type_ids.len().cmp(&1) {
                             Ordering::Equal => {
                                 ctx.engines.te().unify_with_generic(
@@ -583,7 +601,14 @@ impl TypeParameter {
                             TryInsertingTraitImplOnFailure::Yes,
                             code_block_first_pass.into(),
                         ) {
-                        Ok(res) => res,
+                        Ok(res) =>
+//			{
+//			    if problem {
+//				dbg!(&res);
+//			    }
+			    res
+//		    }
+		    ,
                         Err(_) => continue,
                     }
                 }
@@ -604,7 +629,14 @@ impl TypeParameter {
                             function_name,
                             access_span.clone(),
                         ) {
-                            Ok(res) => res,
+                            Ok(res) =>
+//			    {
+//				if problem {
+//				    dbg!(&res);
+//				}
+				res
+//			    }
+			    ,
                             Err(_) => continue,
                         };
                     interface_item_refs.extend(trait_interface_item_refs);
@@ -639,6 +671,12 @@ fn handle_trait(
     let mut item_refs: ItemMap = BTreeMap::new();
     let mut impld_item_refs: ItemMap = BTreeMap::new();
 
+//    let problem = trait_name.prefixes.is_empty()
+//	&& trait_name.suffix.as_str() == "AbiEncode"
+//	&& function_name == "encode"
+//	&& access_span.as_str() == "X3"
+//	;
+    
     handler.scope(|handler| {
         match ctx
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
@@ -648,6 +686,10 @@ fn handle_trait(
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let trait_decl = decl_engine.get_trait(&decl_id);
 
+//		if problem {
+//		    dbg!(&trait_decl);
+//		}
+		
                 let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
                     trait_decl.retrieve_interface_surface_and_items_and_implemented_items_for_type(
                         ctx,
@@ -655,6 +697,13 @@ fn handle_trait(
                         trait_name,
                         type_arguments,
                     );
+
+// 		if problem {
+//		    dbg!(&trait_interface_item_refs);
+//		    dbg!(&trait_item_refs);
+//		    dbg!(&trait_impld_item_refs);
+//		}
+		
                 interface_item_refs.extend(trait_interface_item_refs);
                 item_refs.extend(trait_item_refs);
                 impld_item_refs.extend(trait_impld_item_refs);
@@ -687,15 +736,15 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl
-                            .call_path
-                            .to_import_path(ctx.engines(), ctx.namespace());
-                        if import_path == trait_decl.call_path {
-                            // If external library.
-                            import_path.to_string()
-                        } else {
-                            format!("::{import_path}")
-                        }
+			let full_path = trait_decl.call_path.to_fullpath(ctx.engines(), ctx.namespace());
+			if ctx.namespace().module_is_external(&full_path.prefixes) {
+			    full_path.to_string()
+			} else {
+			    let import_path = trait_decl
+				.call_path
+				.to_import_path(ctx.engines(), ctx.namespace());
+			    format!("::{import_path}")
+			}
                     })
                     .collect();
 

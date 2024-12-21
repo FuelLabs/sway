@@ -161,22 +161,22 @@ impl Items {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-	package_name: &Ident,
-    ) -> Result<Option<ResolvedDeclaration>, ErrorEmitted> {
+	current_mod_path: &ModulePathBuf,
+    ) -> Result<Option<(ResolvedDeclaration, ModulePathBuf)>, ErrorEmitted> {
         // Check locally declared items. Any name clash with imports will have already been reported as an error.
         if let Some(decl) = self.symbols.get(symbol) {
-            return Ok(Some(decl.clone()));
+            return Ok(Some((decl.clone(), current_mod_path.clone())));
         }
 
         // Check item imports
-        if let Some((_, _, decl, _)) = self.use_item_synonyms.get(symbol) {
-            return Ok(Some(decl.clone()));
+        if let Some((_, decl_path, decl, _)) = self.use_item_synonyms.get(symbol) {
+            return Ok(Some((decl.clone(), decl_path.clone())));
         }
 
         // Check glob imports
         if let Some(decls) = self.use_glob_synonyms.get(symbol) {
             if decls.len() == 1 {
-                return Ok(Some(decls[0].1.clone()));
+                return Ok(Some((decls[0].1.clone(), decls[0].0.clone())));
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
                     "The name {symbol} was bound in a star import, but no corresponding module paths were found",
@@ -188,7 +188,7 @@ impl Items {
                     name: symbol.clone(),
                     paths: decls
                         .iter()
-                        .map(|(path, decl, _)| get_path_for_decl(path, decl, engines, package_name).join("::"))
+                        .map(|(path, decl, _)| get_path_for_decl(path, decl, engines, &current_mod_path[0]).join("::"))
                         .collect(),
                     span: symbol.span(),
                 }));

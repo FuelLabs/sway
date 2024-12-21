@@ -698,7 +698,6 @@ impl ty::TyExpression {
             Some(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. })) => {
                 let decl = (*decl_engine.get_configurable(&decl_id)).clone();
                 let decl_name = decl.name().clone();
-
                 ty::TyExpression {
                     return_type: decl.return_type,
                     expression: ty::TyExpressionVariant::ConfigurableExpression {

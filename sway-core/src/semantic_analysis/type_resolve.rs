@@ -344,7 +344,7 @@ pub fn resolve_call_path(
 
 // Resolve a path. The first identifier in the path is the package name, which may be the
 // current package or an external one.
-fn resolve_symbol_and_mod_path(
+pub(super) fn resolve_symbol_and_mod_path(
     handler: &Handler,
     engines: &Engines,
     root: &Root,
@@ -418,8 +418,9 @@ fn resolve_symbol_and_mod_path_inner(
 //			dbg!(&mod_path);
 //			dbg!(&symbol);
 //			dbg!(&current_mod_path);
-//		    }
-                    decl_opt = Some(current_module.resolve_symbol(handler, engines, ident, root.current_package_name())?);
+		    //		    }
+		    let (decl, _) = current_module.resolve_symbol(handler, engines, ident)?;
+                    decl_opt = Some(decl);
                 }
             }
         }
@@ -439,8 +440,8 @@ fn resolve_symbol_and_mod_path_inner(
 
     root.require_module(handler, &mod_path.to_vec())
         .and_then(|module| {
-            let decl = module.resolve_symbol(handler, engines, symbol, root.current_package_name())?;
-            Ok((decl, mod_path.to_vec()))
+            let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
+            Ok((decl, decl_path))
         })
 }
 

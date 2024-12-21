@@ -209,6 +209,17 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
+//    let problem = match const_expr.expression {
+//	ty::TyExpressionVariant::FunctionApplication { .. } => {	
+//	    true
+//	},
+//	_ => { false },
+//    };
+//    
+//    if problem {
+//	dbg!(&const_expr);
+//    }
+    
     let lookup = &mut LookupEnv {
         engines,
         context,
@@ -277,6 +288,7 @@ fn const_eval_typed_expr(
             for arg in arguments {
                 let (name, sub_expr) = arg;
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
+		//dbg!(&eval_expr_opt);
                 if let Some(sub_const) = eval_expr_opt {
                     actuals_const.push((name, sub_const));
                 } else {
@@ -295,7 +307,9 @@ fn const_eval_typed_expr(
             }
 
             let function_decl = lookup.engines.de().get_function(fn_ref);
+//	    dbg!(&function_decl);
             let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
+//	    dbg!(&res);
 
             for (name, _) in arguments {
                 known_consts.pop(name);

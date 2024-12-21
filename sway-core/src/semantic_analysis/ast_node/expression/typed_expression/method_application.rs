@@ -104,6 +104,8 @@ pub(crate) fn type_check_method_application(
         method_name_binding.type_arguments.to_vec_mut(),
     )?;
 
+//    dbg!(&fn_ref);
+    
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
 
     // unify method return type with current ctx.type_annotation().

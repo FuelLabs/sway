@@ -304,10 +304,9 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-	package_name: &Ident,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let ret = self.walk_scope_chain(|lexical_scope| {
-            lexical_scope.items.resolve_symbol(handler, engines, symbol, package_name)
+            lexical_scope.items.resolve_symbol(handler, engines, symbol, &self.mod_path)
         })?;
 
         if let Some(ret) = ret {
