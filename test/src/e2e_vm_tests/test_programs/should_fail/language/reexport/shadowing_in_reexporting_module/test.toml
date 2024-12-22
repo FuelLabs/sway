@@ -107,6 +107,12 @@ category = "fail"
 #nextln: $()found:    bool.
 
 #check: $()error
+#check: $()items_1_function()
+#check: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    bool.
+
+#check: $()error
 #check: $()fn items_1_trait_function(self, x: TestStruct2) -> u64 {
 #nextln: $()expected: bool
 #nextln: $()found:    u64
@@ -146,9 +152,32 @@ category = "fail"
 #nextln: $()found:    bool.
 
 #check: $()error
+#check: $()items_2_function()
+#check: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    bool.
+
+#check: $()error
 #check: $()fn items_2_trait_function(self, x: TestStruct2) -> u64 {
 #nextln: $()expected: bool
 #nextln: $()found:    u64
+
+#check: $()error
+#check: $()fn project_items_3_struct(input: Items3_Struct) -> u64 {
+#nextln: $()Symbol "Items3_Struct" is private.
+
+#check: $()error
+#check: $()fn project_items_3_enum(input: Items3_Enum) -> u64 {
+#nextln: $()Symbol "Items3_Enum" is private.
+
+#check: $()error
+#check: $()fn project_items_3_variants(input: Items3_Variants) -> u64 {
+#nextln: $()Symbol "Items3_Variants" is private.
+
+#check: $()error
+#check: $()fn call_items_3_function() -> u64 {
+#nextln: $()items_3_function()
+#nextln: $()Symbol "items_3_function" is private.
 
 #check: $()error
 #check: $()let items_1_struct = Items1_Struct { a: 123 };
@@ -192,4 +221,5 @@ category = "fail"
 #check: $()error
 #check: $()This path must return a value of type "u64" from function "items_2_trait_function", but it does not.
 
-#check: $()Aborting due to 44 errors.
+#check: $()Aborting due to 57 errors.
+

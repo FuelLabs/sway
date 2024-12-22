@@ -367,7 +367,7 @@ pub(super) fn resolve_symbol_and_mod_path(
 		}
 		resolve_symbol_and_mod_path_inner(handler, engines, &ext_root, &new_mod_path, symbol, self_type)
 	    },
-	    None => Err(handler.emit_err(crate::namespace::module_not_found(mod_path)))
+	    None => Err(handler.emit_err(crate::namespace::module_not_found(mod_path, mod_path[0] == *root.current_package_name())))
 	}
     }
 }

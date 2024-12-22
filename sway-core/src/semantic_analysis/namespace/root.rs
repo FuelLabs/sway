@@ -260,9 +260,10 @@ impl Root {
     // Find module in the current environment. `mod_path` must be a fully qualified path.
     // Throw an error if the module doesn't exist
     pub(crate) fn require_module(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+	let is_in_current_package = self.check_path_is_in_current_package(mod_path);
 	match self.module_from_absolute_path(mod_path) {
 	    Some(module) => Ok(module),
-	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path))),
+	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path, is_in_current_package))),
 	}
     }
 
@@ -290,9 +291,10 @@ impl Root {
     // Find mutable module in the current environment. `mod_path` must be a fully qualified path.
     // Throw an error if the module doesn't exist
     pub(super) fn require_module_mut(&mut self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&mut Module, ErrorEmitted> {
+	let is_in_current_package = self.check_path_is_in_current_package(mod_path);
 	match self.module_mut_from_absolute_path(mod_path) {
 	    Some(module) => Ok(module),
-	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path))),
+	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path, is_in_current_package))),
 	}
     }
 

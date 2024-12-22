@@ -167,7 +167,7 @@ impl Module {
         path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
         match self.submodule(path) {
-            None => Err(handler.emit_err(module_not_found(path))),
+            None => Err(handler.emit_err(module_not_found(path, true))),
             Some(module) => Ok(module),
         }
     }
@@ -349,7 +349,11 @@ impl Module {
     }
 }
 
-pub fn module_not_found(path: &[Ident]) -> CompileError {
+/// Create a ModuleNotFound error.
+/// If skip_package_name is true, then the package name is not emitted as part of the error
+/// message. This is used when the module was supposed to be found in the current package rather
+/// than in an external one.
+pub fn module_not_found(path: &[Ident], skip_package_name: bool) -> CompileError {
 //    let problem = path.len() == 4
 //	&& path[0].as_str() == "core"
 //	&& path[1].as_str() == "ops"
@@ -360,7 +364,7 @@ pub fn module_not_found(path: &[Ident]) -> CompileError {
 //	panic!();
 //    }
     CompileError::ModuleNotFound {
-        span: path.iter().fold(path[0].span(), |acc, this_one| {
+        span: path.iter().skip(if skip_package_name { 1 } else { 0 }).fold(path.last().unwrap().span(), |acc, this_one| {
             if acc.source_id() == this_one.span().source_id() {
                 Span::join(acc, &this_one.span())
             } else {
@@ -369,6 +373,7 @@ pub fn module_not_found(path: &[Ident]) -> CompileError {
         }),
         name: path
             .iter()
+	    .skip(if skip_package_name { 1 } else { 0 })
             .map(|x| x.as_str())
             .collect::<Vec<_>>()
             .join("::"),
