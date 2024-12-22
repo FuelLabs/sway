@@ -10,7 +10,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::ExprStructField;
+use sway_ast::{
+    keywords::{ColonToken, Token},
+    ExprStructField,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for ExprStructField {
@@ -19,8 +22,8 @@ impl Format for ExprStructField {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", self.field_name.span().as_str())?;
-        if let Some((colon_token, expr)) = &self.expr_opt {
+        write!(formatted_code, "{}", self.field_name.as_str())?;
+        if let Some((_colon_token, expr)) = &self.expr_opt {
             formatter.with_shape(
                 formatter
                     .shape
@@ -37,12 +40,7 @@ impl Format for ExprStructField {
                     } else {
                         expr_str
                     };
-                    write!(
-                        formatted_code,
-                        "{} {}",
-                        colon_token.span().as_str(),
-                        expr_str
-                    )?;
+                    write!(formatted_code, "{} {}", ColonToken::AS_STR, expr_str,)?;
                     Ok(())
                 },
             )?;

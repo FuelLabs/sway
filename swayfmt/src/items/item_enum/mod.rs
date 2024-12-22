@@ -11,11 +11,11 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::ItemEnum;
-use sway_types::{
-    ast::{Delimiter, PunctKind},
-    Spanned,
+use sway_ast::{
+    keywords::{ColonToken, EnumToken, Keyword, Token},
+    CommaToken, ItemEnum, PubToken,
 };
+use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -34,11 +34,11 @@ impl Format for ItemEnum {
                 // Required for comment formatting
                 let start_len = formatted_code.len();
                 // If there is a visibility token add it to the formatted_code with a ` ` after it.
-                if let Some(visibility) = &self.visibility {
-                    write!(formatted_code, "{} ", visibility.span().as_str())?;
+                if self.visibility.is_some() {
+                    write!(formatted_code, "{} ", PubToken::AS_STR)?;
                 }
                 // Add enum token and name
-                write!(formatted_code, "{} ", self.enum_token.span().as_str())?;
+                write!(formatted_code, "{} ", EnumToken::AS_STR)?;
                 self.name.format(formatted_code, formatter)?;
                 // Format `GenericParams`, if any
                 if let Some(generics) = &self.generics {
@@ -55,21 +55,22 @@ impl Format for ItemEnum {
                 match formatter.config.structures.field_alignment {
                     FieldAlignment::AlignFields(enum_variant_align_threshold) => {
                         writeln!(formatted_code)?;
-                        let value_pairs = &fields
+                        let type_fields = &fields
                             .value_separator_pairs
                             .iter()
-                            // TODO: Handle annotations instead of stripping them
-                            .map(|pair| (&pair.0.value, &pair.1))
+                            // TODO: Handle annotations instead of stripping them.
+                            //       See: https://github.com/FuelLabs/sway/issues/6802
+                            .map(|(type_field, _comma_token)| &type_field.value)
                             .collect::<Vec<_>>();
                         // In first iteration we are going to be collecting the lengths of the enum variants.
-                        let variant_length: Vec<usize> = value_pairs
+                        let variants_lengths: Vec<usize> = type_fields
                             .iter()
-                            .map(|(type_field, _)| type_field.name.as_str().len())
+                            .map(|type_field| type_field.name.as_str().len())
                             .collect();
 
-                        // Find the maximum length in the variant_length vector that is still smaller than enum_field_align_threshold.
+                        // Find the maximum length that is still smaller than the align threshold.
                         let mut max_valid_variant_length = 0;
-                        variant_length.iter().for_each(|length| {
+                        variants_lengths.iter().for_each(|length| {
                             if *length > max_valid_variant_length
                                 && *length < enum_variant_align_threshold
                             {
@@ -77,13 +78,12 @@ impl Format for ItemEnum {
                             }
                         });
 
-                        let value_pairs_iter = value_pairs.iter().enumerate();
-                        for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
-                            write!(formatted_code, "{}", &formatter.indent_to_str()?)?;
+                        for (var_index, type_field) in type_fields.iter().enumerate() {
+                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
 
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
-                            let current_variant_length = variant_length[var_index];
+                            let current_variant_length = variants_lengths[var_index];
                             if current_variant_length < max_valid_variant_length {
                                 // We need to add alignment between : and ty
                                 // max_valid_variant_length: the length of the variant that we are taking as a reference to align
@@ -96,23 +96,13 @@ impl Format for ItemEnum {
                                 }
                             }
                             // Add `:`, ty & `CommaToken`
-                            write!(
-                                formatted_code,
-                                " {} ",
-                                type_field.colon_token.span().as_str(),
-                            )?;
+                            write!(formatted_code, " {} ", ColonToken::AS_STR,)?;
                             type_field.ty.format(formatted_code, formatter)?;
-                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+                            writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
                         }
                         if let Some(final_value) = &fields.final_value_opt {
-                            // TODO: Handle annotation
-                            let final_value = &final_value.value;
-                            writeln!(
-                                formatted_code,
-                                "{}{}",
-                                final_value.span().as_str(),
-                                PunctKind::Comma.as_char(),
-                            )?;
+                            final_value.format(formatted_code, formatter)?;
+                            writeln!(formatted_code)?;
                         }
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,
@@ -164,6 +154,7 @@ impl CurlyBrace for ItemEnum {
         Ok(())
     }
 }
+
 impl LeafSpans for ItemEnum {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();

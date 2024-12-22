@@ -10,7 +10,11 @@ use crate::{
     },
 };
 use std::{fmt::Write, ops::Range};
-use sway_ast::{expr::LoopControlFlow, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
+use sway_ast::{
+    expr::LoopControlFlow,
+    keywords::{ElseToken, EqToken, FatRightArrowToken, IfToken, Keyword, LetToken, Token},
+    CommaToken, IfCondition, IfExpr, MatchBranch, MatchBranchKind,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for IfExpr {
@@ -125,7 +129,7 @@ fn format_if_condition(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
-    write!(formatted_code, "{} ", if_expr.if_token.span().as_str())?;
+    write!(formatted_code, "{} ", IfToken::AS_STR)?;
     if formatter.shape.code_line.line_style == LineStyle::Multiline {
         formatter.indent();
         if_expr.condition.format(formatted_code, formatter)?;
@@ -185,7 +189,7 @@ fn format_else_opt(
         } else {
             write!(else_if_str, " ")?;
         }
-        write!(else_if_str, "{}", else_token.span().as_str())?;
+        write!(else_if_str, "{}", ElseToken::AS_STR)?;
         match &control_flow {
             LoopControlFlow::Continue(if_expr) => {
                 write!(else_if_str, " ")?;
@@ -263,14 +267,14 @@ impl Format for IfCondition {
                 expr.format(formatted_code, formatter)?;
             }
             Self::Let {
-                let_token,
+                let_token: _,
                 lhs,
-                eq_token,
+                eq_token: _,
                 rhs,
             } => {
-                write!(formatted_code, "{} ", let_token.span().as_str())?;
+                write!(formatted_code, "{} ", LetToken::AS_STR)?;
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", eq_token.span().as_str())?;
+                write!(formatted_code, " {} ", EqToken::AS_STR)?;
                 rhs.format(formatted_code, formatter)?;
             }
         }
@@ -286,11 +290,7 @@ impl Format for MatchBranch {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.pattern.format(formatted_code, formatter)?;
-        write!(
-            formatted_code,
-            " {} ",
-            self.fat_right_arrow_token.span().as_str()
-        )?;
+        write!(formatted_code, " {} ", FatRightArrowToken::AS_STR,)?;
         self.kind.format(formatted_code, formatter)?;
 
         Ok(())
@@ -348,13 +348,16 @@ impl Format for MatchBranchKind {
                     write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                 }
                 Self::close_curly_brace(formatted_code, formatter)?;
-                if let Some(comma_token) = comma_token_opt {
-                    write!(formatted_code, "{}", comma_token.span().as_str())?;
+                if comma_token_opt.is_some() {
+                    write!(formatted_code, "{}", CommaToken::AS_STR)?;
                 }
             }
-            Self::Expr { expr, comma_token } => {
+            Self::Expr {
+                expr,
+                comma_token: _,
+            } => {
                 expr.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", comma_token.span().as_str())?;
+                write!(formatted_code, "{}", CommaToken::AS_STR)?;
             }
         }
 
