@@ -90,7 +90,7 @@ impl TyTraitDecl {
             span,
         } = trait_decl;
 
-//	let problem = name.as_str() == "AbiEncode";
+//	let problem = name.as_str() == "GenericConstantIdWithDefault";
 	
         if !is_upper_camel_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
@@ -171,6 +171,7 @@ impl TyTraitDecl {
 //		if problem {
 //		    let path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace);
 //		    dbg!(path);
+//		    dbg!(&new_type_parameters);
 //		}
 		
                 ctx.insert_trait_implementation(
@@ -539,6 +540,14 @@ impl TyTraitDecl {
                 .collect(),
         );
 
+//	let problem = trait_name.suffix.as_str() == "GenericConstantIdWithDefault";
+//	if problem {
+//	    dbg!(&trait_name);
+//	    dbg!(&engines.help_out(type_id));
+//	    dbg!(&type_arguments);
+//	    dbg!(&type_mapping);
+//	}
+	
         let mut const_symbols = HashMap::<Ident, ty::TyDecl>::new();
 
         for item in interface_surface.iter() {

@@ -1534,6 +1534,7 @@ impl TraitMap {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));
                     }
 
+		    //dbg!("check_if_trait_constraints_are_satisfied_for_type_inner");
                     // TODO: use a better span
                     handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                         type_id: type_id.index(),

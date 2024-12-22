@@ -165,9 +165,10 @@ impl TyImplSelfOrTrait {
                     .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
 
-//		let problem = trait_name.suffix().as_str() == "Eq";
+//		let problem = trait_name.suffix.as_str() == "Default";
 //		if problem {
-//		dbg!(&trait_name);
+//		    dbg!(&trait_name);
+//		    dbg!(&engines.help_out(implementing_for.type_id));
 //		}
                 let impl_trait = match ctx.resolve_call_path(handler, &trait_name).ok() {
                     Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

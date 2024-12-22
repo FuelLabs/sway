@@ -1403,6 +1403,14 @@ impl<'a> TypeCheckContext<'a> {
 //	    };
 
 	let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
+
+//	let problem = trait_name.suffix.as_str() == "Default";
+//	if problem {
+//	    dbg!(&trait_name);
+//	    dbg!(&canonical_trait_path);
+//	    dbg!(engines.help_out(type_id));
+//	}
+	
         let items = items
             .iter()
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))

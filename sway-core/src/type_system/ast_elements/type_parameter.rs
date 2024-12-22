@@ -316,6 +316,12 @@ impl TypeParameter {
             type_id,
         } = type_parameter;
 
+//	dbg!(&name);
+//	dbg!(&trait_constraints);
+//	dbg!(&trait_constraints_span);
+//	dbg!(&ctx.engines().help_out(&initial_type_id));
+//	dbg!(&ctx.engines().help_out(&type_id));
+	
         let trait_constraints_with_supertraits: Vec<TraitConstraint> = trait_constraints
             .iter()
             .flat_map(|tc| TypeParameter::expand_trait_constraints(handler, &ctx, tc))

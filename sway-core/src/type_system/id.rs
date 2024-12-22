@@ -562,6 +562,8 @@ impl TypeId {
 
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
 
+// 	let type_param_clone = type_param.clone();
+	
         if let Some(type_param) = type_param {
             if !type_param.trait_constraints.is_empty() {
                 structure_generics.insert(self, type_param.trait_constraints);
@@ -632,7 +634,13 @@ impl TypeId {
                                         )
                                     );
                                 }
-                                handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+
+//				dbg!(&type_param_clone);
+//				dbg!(engines.help_out(structure_type_id));
+//				dbg!(&structure_trait_constraint);
+//				dbg!(&structure_type_info);
+
+				handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                                     type_id: structure_type_id.index(),
                                     ty: structure_type_info_with_engines.to_string(),
                                     trait_name: format!(
@@ -660,6 +668,9 @@ impl TypeId {
         f: impl Fn(&TraitConstraint),
     ) -> bool {
         let engines = ctx.engines();
+
+//	let problem = format!("{:?}", engines.help_out(structure_type_id)) == "bool";
+	
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut found_error = false;
         let generic_trait_constraints_trait_names_and_args = ctx
@@ -668,11 +679,21 @@ impl TypeId {
             .current_items()
             .implemented_traits
             .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
+
+//	if problem {
+//	    dbg!(&generic_trait_constraints_trait_names_and_args);
+//	}
+	
         for structure_trait_constraint in structure_trait_constraints {
             let structure_trait_constraint_trait_name = &structure_trait_constraint
                 .trait_name
-                .to_fullpath(ctx.engines(), ctx.namespace());
-            if !generic_trait_constraints_trait_names_and_args.iter().any(
+                .to_canonical_path(ctx.engines(), ctx.namespace());
+
+//	    if problem {
+//		dbg!(&structure_trait_constraint_trait_name);
+//	    }
+
+	    if !generic_trait_constraints_trait_names_and_args.iter().any(
                 |(trait_name, trait_args)| {
                     trait_name == structure_trait_constraint_trait_name
                         && trait_args.len() == structure_trait_constraint.type_arguments.len()
