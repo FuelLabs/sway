@@ -201,12 +201,16 @@ fn collect_use_statement(
                 stmt.reexport,
             );
 
+//	    dbg!(&stmt);
+//	    dbg!(&path);
+//	    dbg!(&import.is_ok());
+	    
             if import.is_ok() {
                 handler.append(item_import_handler);
                 import
-            } else if path.len() > 2 {
+            } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum variant import
-		// For this to work the path must have at least 3 elements: The current package name, the enum name, and the variant name.
+		// For this to work the path must have at least 2 elements: The current package name and the enum name
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
@@ -218,6 +222,9 @@ fn collect_use_statement(
                         stmt.alias.clone(),
                         stmt.reexport,
                     );
+//		    dbg!(&path);
+//		    dbg!(&enum_name);
+			
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -288,6 +295,8 @@ fn handle_use_statement(
         }
         ImportType::Item(ref s) => {
             // try a standard item import first
+//	    dbg!(&s);
+	    
             let item_import_handler = Handler::default();
             let import = ctx.item_import(
                 &item_import_handler,
@@ -298,12 +307,17 @@ fn handle_use_statement(
             );
 
             if import.is_ok() {
+//		dbg!("item import succeeded");
                 handler.append(item_import_handler);
                 import
-            } else if path.len() > 2 {
+            } else if path.len() >= 2 {
+		dbg!("item import failed - path >= 2");
                 // if it doesn't work it could be an enum variant import
-		// For this to work the path must have at least 3 elements: The current package name, the enum name, and the variant name.
+		// For this to work the path must have at least 2 elements: The current package name and the enum name.
                 if let Some((enum_name, path)) = path.split_last() {
+//		    dbg!("path split");
+//		    dbg!(&enum_name);
+//		    dbg!(&path);
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
                         &variant_import_handler,
@@ -314,17 +328,21 @@ fn handle_use_statement(
                         stmt.reexport,
                     );
                     if variant_import.is_ok() {
+//			dbg!("variant import succeeded");
                         handler.append(variant_import_handler);
                         variant_import
                     } else {
+//			dbg!("variant import failed");
                         handler.append(item_import_handler);
                         import
                     }
                 } else {
+//		    dbg!("path split failed");
                     handler.append(item_import_handler);
                     import 
                 }
             } else {
+//		dbg!("path length < 2");
                 handler.append(item_import_handler);
                 import
             }
