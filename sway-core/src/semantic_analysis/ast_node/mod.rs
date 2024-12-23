@@ -311,7 +311,7 @@ fn handle_use_statement(
                 handler.append(item_import_handler);
                 import
             } else if path.len() >= 2 {
-		dbg!("item import failed - path >= 2");
+//		dbg!("item import failed - path >= 2");
                 // if it doesn't work it could be an enum variant import
 		// For this to work the path must have at least 2 elements: The current package name and the enum name.
                 if let Some((enum_name, path)) = path.split_last() {
