@@ -234,7 +234,7 @@ pub fn resolve_qualified_call_path(
                 call_path
                     .clone()
                     .to_call_path(handler)?
-                    .to_fullpath(engines, namespace),
+                    .to_canonical_path(engines, namespace),
             ),
             _ => None,
         };

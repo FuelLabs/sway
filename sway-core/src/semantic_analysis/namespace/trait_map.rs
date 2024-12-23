@@ -1222,8 +1222,19 @@ impl TraitMap {
         type_id: TypeId,
         as_trait: Option<CallPath>,
     ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
+//	let problem = symbol.as_str() == "ID";
+//	if problem {
+//	    dbg!(symbol);
+//	    dbg!(&engines.help_out(type_id));
+//	    dbg!(&as_trait);
+//	}
+	
         let mut candidates = HashMap::<String, ResolvedTraitImplItem>::new();
         for (trait_item, trait_key) in self.get_items_and_trait_key_for_type(engines, type_id) {
+//	    if problem {
+//		dbg!(&trait_item);
+//		dbg!(&trait_key);
+//	    }
             match trait_item {
                 ResolvedTraitImplItem::Parsed(impl_item) => match impl_item {
                     ImplItem::Fn(fn_ref) => {
@@ -1337,6 +1348,10 @@ impl TraitMap {
 //		    dbg!("get_trait_item_for_type");
 //		    dbg!(&symbol);
 //		}
+//		dbg!(&std::backtrace::Backtrace::capture());
+//		dbg!(symbol);
+//		dbg!(&engines.help_out(type_id));
+//		dbg!(&as_trait);
 		Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),
