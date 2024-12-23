@@ -853,16 +853,23 @@ impl Root {
     }
 
     /// Check that all accessed modules in the src path are visible from the dst path.
+    ///
+    /// Only the module part of the src path will be checked. If the src path contains identifiers
+    /// that refer to non-modules, e.g., enum names or associated types, then the visibility of
+    /// those items will not be checked.
+    ///
     /// If src and dst have a common ancestor module that is private, this privacy modifier is
     /// ignored for visibility purposes, since src and dst are both behind that private visibility
     /// modifier.  Additionally, items in a private module are visible to its immediate parent.
+    ///
+    /// The returned path is the part of the src path that refers to modules.
     pub(crate) fn check_module_privacy(
         &self,
         handler: &Handler,
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        // Calculate the number of src prefixes whose privacy is ignored.
+        // Calculate the number of src prefixes whose visibility is ignored.
         let mut ignored_prefixes = 0;
 
         // Ignore visibility of common ancestors
@@ -879,14 +886,17 @@ impl Root {
 
         // Check visibility of remaining submodules in the source path
         for prefix in iter_prefixes(src).skip(ignored_prefixes) {
-            let module = self.require_module(handler, &prefix.to_vec())?;
-            if module.visibility().is_private() {
-                let prefix_last = prefix[prefix.len() - 1].clone();
-                handler.emit_err(CompileError::ImportPrivateModule {
-                    span: prefix_last.span(),
-                    name: prefix_last,
-                });
-            }
+            if let Some(module) = self.module_from_absolute_path(&prefix.to_vec()) {
+		if module.visibility().is_private() {
+                    let prefix_last = prefix[prefix.len() - 1].clone();
+                    handler.emit_err(CompileError::ImportPrivateModule {
+			span: prefix_last.span(),
+			name: prefix_last,
+                    });
+		}
+	    } else {
+		return Ok(());
+	    }
         }
 
         Ok(())

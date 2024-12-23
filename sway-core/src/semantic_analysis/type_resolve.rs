@@ -308,9 +308,13 @@ pub fn resolve_call_path(
         return Ok(decl);
     }
 
+//    This check doesn't work. full_path.prefixes may contain names that do not refer to modules, and the privacy of the non-module names also need to be checked.
+//	Furthermore, the check for decl_mod-path == *namespace.current_mod_path() also doesn't work, since the visibility of the declaration is irrelevant when accessed through a different path. It should be full_path.prefixes == current_mod_path(), except that we run into the non-module issue again.
+    //
+    
     // Check that the modules in full_path are visible from the current module.
     let _ = namespace.root_ref().check_module_privacy(handler, &full_path.prefixes, namespace.current_mod_path());
-    
+
 //
 //    // check the visibility of the call path elements
 //    // we don't check the first prefix because direct children are always accessible
@@ -325,6 +329,16 @@ pub fn resolve_call_path(
 //        }
 //    }
 
+    // TODO: This visibility check is insufficient.
+    //
+    // The modules in the path are checked correctly by the previous line, but the visibility of any
+    // enum names or associated types is not checked.
+    //
+    // Also, the visibility of the original declaration is only relevant if the entity is accessed
+    // through the module path (the canonical path) of the declaration. If the entity is accessed
+    // through another path, e.g., through a reexport, then it is the visibility of the reexport
+    // that is relevant.
+    
     // Private declarations are visibile within their own module, so no need to check for
     // visibility in that case
     if decl_mod_path == *namespace.current_mod_path() {
