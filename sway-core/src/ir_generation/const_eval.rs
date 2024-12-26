@@ -64,6 +64,14 @@ pub(crate) fn compile_const_decl(
     call_path: &CallPath,
     const_decl: &Option<TyConstantDecl>,
 ) -> Result<Option<Value>, CompileError> {
+//    let problem = call_path.suffix.as_str() == "GTF_WITNESS_DATA"
+//	;
+//
+//    if problem {
+//	dbg!(&call_path);
+//	dbg!(&env.module);
+//    }
+
     // Check if it's a processed local constant.
     if let Some(fn_compiler) = env.function_compiler {
         let mut found_local = false;
@@ -115,21 +123,42 @@ pub(crate) fn compile_const_decl(
         }
     }
 
+//    if problem {
+//	dbg!(&call_path.as_vec_string());
+//    }
+    
     // Check if it's a processed global constant.
     match (
         env.module
             .get_global_constant(env.context, &call_path.as_vec_string()),
         env.module_ns,
     ) {
-        (Some(const_val), _) => Ok(Some(const_val)),
+        (Some(const_val), _) => {
+//	    if problem {
+//		dbg!("get_global_constant is (some_, )");
+//	    }
+	    Ok(Some(const_val))
+	},
         (None, Some(module_ns)) => {
+//	    if problem {
+//		dbg!("get_global_constant is (none, some )");
+//	    }
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.current_items().check_symbol(&call_path.suffix);
+//	    if problem {
+//		dbg!(&decl);
+//	    }
+	    
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
             };
-            let const_decl = match decl {
+
+//            if problem {
+//		dbg!(&const_decl);
+//	    }
+	    
+	    let const_decl = match decl {
                 Ok(decl) => match decl.expect_typed() {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                         Some((*env.engines.de().get_constant(&decl_id)).clone())
@@ -138,12 +167,21 @@ pub(crate) fn compile_const_decl(
                 },
                 Err(_) => const_decl.cloned(),
             };
+
+//	    if problem {
+//		dbg!(&const_decl);
+//	    }
+
             match const_decl {
                 Some(const_decl) => {
                     let ty::TyConstantDecl {
                         call_path, value, ..
                     } = const_decl;
 
+//		    if problem {
+//			dbg!(&call_path);
+//			dbg!(&value);
+//		    }
                     let Some(value) = value else {
                         return Ok(None);
                     };
@@ -159,17 +197,40 @@ pub(crate) fn compile_const_decl(
                         &value,
                     )?;
 
+//		    dbg!("adding global constant");
+//		    dbg!(&call_path);
+//		    dbg!(&call_path.as_vec_string().to_vec());
+//		    dbg!(&const_val);
+//		    dbg!(&env.module);
+//		    if let Some(ns) = env.module_ns {
+//			dbg!(&ns.mod_path());
+//		    } else {
+//			dbg!("no namespace");
+//		    }
+		    
+// 		    if problem {
+//			dbg!(&const_val);
+//			dbg!(&call_path.as_vec_string().to_vec());
+//		    }
+//		    Soemthing isn't working here. The constant ins't being found correctly later, so presumably it's not being added correctly. It does look liek the callpath and the const_val are correct, so presumably it's the module that is wrong?
+//			I wonder if it's the callpath that is wrong? The debug code checks for the callpath std::tx::GTF_WITNESS_DATA, but if it's inserted or looked up as program_name::GTF_WITNESS_DATA, then it will go wrong.
                     env.module.add_global_constant(
                         env.context,
                         call_path.as_vec_string().to_vec(),
                         const_val,
                     );
+
                     Ok(Some(const_val))
                 }
                 None => Ok(None),
             }
         }
-        _ => Ok(None),
+        _ => {
+//	    if problem {
+//		dbg!("get_global_constant is (none, none )");
+//	    }
+	    Ok(None)
+	},
     }
 }
 
@@ -215,7 +276,7 @@ pub(crate) fn compile_constant_expression_to_constant(
 //	},
 //	_ => { false },
 //    };
-//    
+    
 //    if problem {
 //	dbg!(&const_expr);
 //    }
@@ -250,7 +311,11 @@ pub(crate) fn compile_constant_expression_to_constant(
 
     match const_eval_typed_expr(lookup, &mut known_consts, const_expr) {
         Ok(Some(constant)) => Ok(constant),
-        Ok(None) => err,
+        Ok(None) => {
+//	    dbg!(&const_expr);
+//	    dbg!(&function_compiler.is_some());
+	    err
+	},
         Err(_) => err,
     }
 }

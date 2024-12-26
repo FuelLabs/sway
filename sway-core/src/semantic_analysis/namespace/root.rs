@@ -208,7 +208,6 @@ impl Root {
 	self.get_external_package(package_name).is_some()
     }
 
-    // TODO: Remove this
     pub fn external_packages(&self) -> &im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>> {
 	&self.external_packages
     }

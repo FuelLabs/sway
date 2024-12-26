@@ -983,6 +983,19 @@ fn type_check_gtf(
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
+//    let problem = tx_field_id.span.as_str() == "GTF_WITNESS_DATA";
+//
+//    if problem {
+//	dbg!(ctx.namespace().current_mod_path());
+//    }
+    
+//    let problem = tx_field_id.span.as_str() == "GTF_WITNESS_DATA";
+//
+//    if problem {
+//	dbg!(&tx_field_id);
+//	dbg!(&targ);
+//    }
+    
     Ok((
         ty::TyIntrinsicFunctionKind {
             kind,

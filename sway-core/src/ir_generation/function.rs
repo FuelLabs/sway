@@ -1027,6 +1027,10 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
+
+//		We've got a problem here. We need to pass a namespace object (as the argument after self.module), but we're passing None. Why the hell has that worked before?
+//		    Clearly this is only supposed to be called after all the constants have been added to the module, so we don't end up in the (None, None) case, but why have the constant disappeared from the global constants?
+//		    There's another call in compile_array_index
                 let tx_field_id_constant = compile_constant_expression_to_constant(
                     engines,
                     context,

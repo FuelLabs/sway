@@ -27,7 +27,7 @@ pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
@@ -36,13 +36,18 @@ pub(super) fn compile_script(
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    // Collect constants and tests for all dependencies
+    for ext_package in namespace.external_packages().values() {
+	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+    }
+    
+    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
         cache,
@@ -78,7 +83,7 @@ pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
@@ -87,13 +92,18 @@ pub(super) fn compile_predicate(
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    // Collect constants and tests for all dependencies
+    for ext_package in namespace.external_packages().values() {
+	let _ = compile_external(engines, context, module, ext_package, logged_types, messages_types, test_fns, cache);
+    }
+    
+    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types,
         messages_types,
         cache,
@@ -129,7 +139,7 @@ pub(super) fn compile_contract(
     context: &mut Context,
     entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -140,13 +150,18 @@ pub(super) fn compile_contract(
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    // Collect constants and tests for all dependencies
+    for ext_package in namespace.external_packages().values() {
+	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+    }
+    
+    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
         cache,
@@ -218,7 +233,7 @@ pub(super) fn compile_contract(
 pub(super) fn compile_library(
     engines: &Engines,
     context: &mut Context,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
@@ -227,7 +242,45 @@ pub(super) fn compile_library(
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    // Collect constants and tests for all dependencies
+    for ext_package in namespace.external_packages().values() {
+	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+    }
+    
+    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
+    compile_tests(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        logged_types_map,
+        messages_types_map,
+        test_fns,
+        cache,
+    )?;
+
+    Ok(module)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn compile_external(
+    engines: &Engines,
+    context: &mut Context,
+    module: Module,
+    namespace: &namespace::Root,
+    logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
+    cache: &mut CompiledFunctionCache,
+) -> Result<Module, Vec<CompileError>> {
+    let mut md_mgr = MetadataManager::default();
+
+    // Collect constants and tests for all dependencies
+    for ext_package in namespace.external_packages().values() {
+	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+    }
+    
+    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
     compile_tests(
         engines,
         context,
