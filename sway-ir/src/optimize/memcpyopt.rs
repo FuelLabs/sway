@@ -286,7 +286,7 @@ fn local_copy_prop(
     fn kill_defined_symbol(
         context: &Context,
         value: Value,
-        len: u64,
+        len: Option<u64>,
         available_copies: &mut FxHashSet<Value>,
         src_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
         dest_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
@@ -297,7 +297,16 @@ fn local_copy_prop(
                     if let Some(copies) = src_to_copies.get_mut(&sym) {
                         for copy in &*copies {
                             let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
-                            if memory_utils::may_alias(context, value, len, src_ptr, copy_size) {
+                            if len.is_none()
+                                || copy_size.is_none()
+                                || memory_utils::may_alias(
+                                    context,
+                                    value,
+                                    len.unwrap(),
+                                    src_ptr,
+                                    copy_size.unwrap(),
+                                )
+                            {
                                 available_copies.remove(copy);
                             }
                         }
@@ -315,7 +324,10 @@ fn local_copy_prop(
                                             byte_len,
                                         },
                                     ..
-                                } => (*dst_val_ptr, *byte_len),
+                                } => (
+                                    *dst_val_ptr,
+                                    byte_len.get_constant(context).and_then(|c| c.as_uint()),
+                                ),
                                 Instruction {
                                     op:
                                         InstOp::MemCopyVal {
@@ -325,11 +337,22 @@ fn local_copy_prop(
                                     ..
                                 } => (
                                     *dst_val_ptr,
-                                    memory_utils::pointee_size(context, *dst_val_ptr),
+                                    Some(memory_utils::pointee_size(context, *dst_val_ptr)),
                                 ),
                                 _ => panic!("Unexpected copy instruction"),
                             };
-                            if memory_utils::may_alias(context, value, len, dest_ptr, copy_size) {
+                            // If we don't know the copy size or there's a possible alias,
+                            // we decide that this copy won't be available.
+                            if len.is_none()
+                                || copy_size.is_none()
+                                || memory_utils::may_alias(
+                                    context,
+                                    value,
+                                    len.unwrap(),
+                                    dest_ptr,
+                                    copy_size.unwrap(),
+                                )
+                            {
                                 available_copies.remove(copy);
                             }
                         }
@@ -381,7 +404,7 @@ fn local_copy_prop(
     }
 
     // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
-    fn deconstruct_memcpy(context: &Context, inst: Value) -> (Value, Value, u64) {
+    fn deconstruct_memcpy(context: &Context, inst: Value) -> (Value, Value, Option<u64>) {
         match inst.get_instruction(context).unwrap() {
             Instruction {
                 op:
@@ -391,7 +414,11 @@ fn local_copy_prop(
                         byte_len,
                     },
                 ..
-            } => (*dst_val_ptr, *src_val_ptr, *byte_len),
+            } => (
+                *dst_val_ptr,
+                *src_val_ptr,
+                byte_len.get_constant(context).and_then(|c| c.as_uint()),
+            ),
             Instruction {
                 op:
                     InstOp::MemCopyVal {
@@ -402,7 +429,7 @@ fn local_copy_prop(
             } => (
                 *dst_val_ptr,
                 *src_val_ptr,
-                memory_utils::pointee_size(context, *dst_val_ptr),
+                Some(memory_utils::pointee_size(context, *dst_val_ptr)),
             ),
             _ => unreachable!("Only memcpy instructions handled"),
         }
@@ -445,13 +472,15 @@ fn local_copy_prop(
                 // matches. This isn't really needed as the copy happens and the
                 // data we want is safe to access. But we just don't know how to
                 // generate the right GEP always. So that's left for another day.
-                if memory_utils::must_alias(
-                    context,
-                    src_val_ptr,
-                    memory_utils::pointee_size(context, src_val_ptr),
-                    dst_ptr_memcpy,
-                    copy_len,
-                ) {
+                if copy_len.is_some_and(|copy_len| {
+                    memory_utils::must_alias(
+                        context,
+                        src_val_ptr,
+                        memory_utils::pointee_size(context, src_val_ptr),
+                        dst_ptr_memcpy,
+                        copy_len,
+                    )
+                }) {
                     // Replace src_val_ptr with src_ptr_memcpy.
                     if src_val_ptr.get_type(context) == src_ptr_memcpy.get_type(context) {
                         replacements.insert(inst, Replacement::OldGep(src_ptr_memcpy));
@@ -474,7 +503,9 @@ fn local_copy_prop(
                             .get_pointee_type(context)
                             .unwrap();
                         if memcpy_src_sym_type == memcpy_dst_sym_type
-                            && memcpy_dst_sym_type.size(context).in_bytes() == copy_len
+                            && copy_len.is_some_and(|copy_len| {
+                                memcpy_dst_sym_type.size(context).in_bytes() == copy_len
+                            })
                         {
                             replacements.insert(
                                 inst,
@@ -533,7 +564,7 @@ fn local_copy_prop(
                             kill_defined_symbol(
                                 context,
                                 *arg,
-                                max_size,
+                                Some(max_size),
                                 available_copies,
                                 src_to_copies,
                                 dest_to_copies,
@@ -644,7 +675,7 @@ fn local_copy_prop(
                         kill_defined_symbol(
                             context,
                             *dst_val_ptr,
-                            memory_utils::pointee_size(context, *dst_val_ptr),
+                            Some(memory_utils::pointee_size(context, *dst_val_ptr)),
                             &mut available_copies,
                             &mut src_to_copies,
                             &mut dest_to_copies,
@@ -665,7 +696,7 @@ fn local_copy_prop(
                         kill_defined_symbol(
                             context,
                             *result,
-                            memory_utils::pointee_size(context, *result),
+                            Some(memory_utils::pointee_size(context, *result)),
                             &mut available_copies,
                             &mut src_to_copies,
                             &mut dest_to_copies,
