@@ -275,22 +275,12 @@ pub(super) fn compile_external(
 ) -> Result<Module, Vec<CompileError>> {
     let mut md_mgr = MetadataManager::default();
 
-    // Collect constants and tests for all dependencies
+    // Collect constant for all dependencies
     for ext_package in namespace.external_packages().values() {
 	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
     }
     
     compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
-    compile_tests(
-        engines,
-        context,
-        &mut md_mgr,
-        module,
-        logged_types_map,
-        messages_types_map,
-        test_fns,
-        cache,
-    )?;
 
     Ok(module)
 }
