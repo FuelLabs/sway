@@ -39,27 +39,34 @@ impl TyImplSelfOrTrait {
         decl_id: &ParsedDeclId<ImplSelfOrTrait>,
     ) -> Result<(), ErrorEmitted> {
         let impl_trait = engines.pe().get_impl_self_or_trait(decl_id);
+
+        let decl = Declaration::ImplSelfOrTrait(*decl_id);
         ctx.insert_parsed_symbol(
             handler,
             engines,
             impl_trait.trait_name.suffix.clone(),
-            Declaration::ImplSelfOrTrait(*decl_id),
+            decl.clone(),
         )?;
 
-        let _ = ctx.scoped(engines, impl_trait.block_span.clone(), |scoped_ctx| {
-            impl_trait.items.iter().for_each(|item| match item {
-                ImplItem::Fn(decl_id) => {
-                    let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
-                }
-                ImplItem::Constant(decl_id) => {
-                    let _ = TyConstantDecl::collect(handler, engines, scoped_ctx, decl_id);
-                }
-                ImplItem::Type(decl_id) => {
-                    let _ = TyTraitType::collect(handler, engines, scoped_ctx, decl_id);
-                }
-            });
-            Ok(())
-        });
+        let _ = ctx.scoped(
+            engines,
+            impl_trait.block_span.clone(),
+            Some(decl),
+            |scoped_ctx| {
+                impl_trait.items.iter().for_each(|item| match item {
+                    ImplItem::Fn(decl_id) => {
+                        let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
+                    }
+                    ImplItem::Constant(decl_id) => {
+                        let _ = TyConstantDecl::collect(handler, engines, scoped_ctx, decl_id);
+                    }
+                    ImplItem::Type(decl_id) => {
+                        let _ = TyTraitType::collect(handler, engines, scoped_ctx, decl_id);
+                    }
+                });
+                Ok(())
+            },
+        );
         Ok(())
     }
 

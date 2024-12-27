@@ -216,7 +216,7 @@ impl ty::TyExpression {
                     .iter()
                     .map(|branch| {
                         // create a new namespace for this branch result
-                        ctx.scoped(engines, branch.span.clone(), |scoped_ctx| {
+                        ctx.scoped(engines, branch.span.clone(), None, |scoped_ctx| {
                             Self::collect(handler, engines, scoped_ctx, &branch.result)
                         })
                         .0
