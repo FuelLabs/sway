@@ -179,7 +179,7 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_root = compile_core(/*core_lib_name, */ build_target, &engines, run_config);
+    let core_root = compile_core(build_target, &engines, run_config);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -528,7 +528,6 @@ fn discover_test_files() -> Vec<PathBuf> {
 }
 
 fn compile_core(
-//    lib_name: sway_types::Ident,
     build_target: BuildTarget,
     engines: &Engines,
     run_config: &RunConfig,
@@ -556,30 +555,6 @@ fn compile_core(
 
     match res.0 {
         Some(typed_program) => {
-//            // Create a module for core and copy the compiled modules into it.  Unfortunately we
-//            // can't get mutable access to move them out so they're cloned.
-//            let core_module = typed_program
-//                .root
-//                .namespace
-//                .module(engines)
-//                .submodules()
-//                .into_iter()
-//                .fold(
-//                    namespace::Module::new(
-//                        sway_types::Ident::new_no_span("core".to_string()),
-//                        Visibility::Private,
-//                        None,
-//                    ),
-//                    |mut core_mod, (name, sub_mod)| {
-//                        core_mod.insert_submodule(name.clone(), sub_mod.clone());
-//                        core_mod
-//                    },
-//                );
-//
-//            // Create a module for std and insert the core module.
-//            let mut std_module = namespace::Module::new(lib_name, Visibility::Private, None);
-//            std_module.insert_submodule("core".to_owned(), core_module);
-	    //            std_module
 	    typed_program.root.namespace.root().clone()
         }
         _ => {

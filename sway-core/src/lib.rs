@@ -565,7 +565,6 @@ pub fn parsed_to_ast(
     let mut collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, collection_namespace)?;
 
-    // TODO: Eliminate this cloning step?
     let typecheck_namespace = Namespace::new(handler, engines, initial_namespace, true)?;
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(

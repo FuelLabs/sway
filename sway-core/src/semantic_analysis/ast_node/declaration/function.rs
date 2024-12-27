@@ -79,18 +79,6 @@ impl ty::TyFunctionDecl {
             ..
         } = fn_decl;
 
-//	let current_mod_path = ctx.namespace().current_mod_path();
-//	let problem = name.as_str() == "from_parts"
-//	    && current_mod_path.len() == 2
-//	    && current_mod_path[0].as_str() == "core"
-//	    && current_mod_path[1].as_str() == "raw_slice"
-//	    ;
-//
-//	if problem {
-//	    dbg!(&parameters);
-//	    dbg!(&visibility);
-//	}
-	
         let mut return_type = fn_decl.return_type.clone();
 
         let type_engine = ctx.engines.te();

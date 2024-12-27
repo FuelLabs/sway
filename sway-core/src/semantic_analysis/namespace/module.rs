@@ -54,12 +54,6 @@ pub struct Module {
     mod_path: ModulePathBuf,
 }
 
-//impl Default for Module {
-//    fn default() -> Self {
-//        Self::new(Ident::dummy(), Visibility::Public, None)
-//    }
-//}
-
 impl Module {
     pub(super) fn new(name: Ident, visibility: Visibility, span: Option<Span>, parent_mod_path: &ModulePathBuf) -> Self {
 	let mut mod_path = parent_mod_path.clone();
@@ -318,16 +312,6 @@ impl Module {
             Ok(ret)
         } else {
             // Symbol not found
-//	    if symbol.as_str() == "from_parts" {
-//		dbg!("resolve_symbol");
-//		dbg!(&symbol);
-//		dbg!(&package_name);
-//		dbg!(&self.mod_path);
-//		//		panic!();
-//		dbg!(&std::backtrace::Backtrace::capture());
-//	    }
-//	    dbg!("resolve_symbol");
-//	    dbg!(&symbol);
             Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),
@@ -359,14 +343,6 @@ impl Module {
 /// message. This is used when the module was supposed to be found in the current package rather
 /// than in an external one.
 pub fn module_not_found(path: &[Ident], skip_package_name: bool) -> CompileError {
-//    let problem = path.len() == 2
-//	&& path[0].as_str() == "ext_3_items"
-//	&& path[1].as_str() == "Items3_Variants"
-//	;
-//    if problem {
-//	dbg!(&std::backtrace::Backtrace::capture());
-//    }
-    
     CompileError::ModuleNotFound {
         span: path.iter().skip(if skip_package_name { 1 } else { 0 }).fold(path.last().unwrap().span(), |acc, this_one| {
             if acc.source_id() == this_one.span().source_id() {

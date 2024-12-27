@@ -108,7 +108,6 @@ impl ty::TyAbiDecl {
                         if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             self_type_id,
-                            //&[],     <---- This doesn't look right
 			    &mod_path,
                             &method_name.clone(),
                             ctx.type_annotation(),
@@ -275,7 +274,6 @@ impl ty::TyAbiDecl {
                             if let Ok(superabi_method_ref) = ctx.find_method_for_type(
                                 &Handler::default(),
                                 type_id,
-				//&[],
                                 &mod_path,
                                 &method.name.clone(),
                                 ctx.type_annotation(),
@@ -352,7 +350,6 @@ impl ty::TyAbiDecl {
                         if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             type_id,
-                            //&[],
 			    &current_mod_path,
                             &method.name.clone(),
                             ctx.type_annotation(),

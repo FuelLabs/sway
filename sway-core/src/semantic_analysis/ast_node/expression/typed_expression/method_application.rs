@@ -104,8 +104,6 @@ pub(crate) fn type_check_method_application(
         method_name_binding.type_arguments.to_vec_mut(),
     )?;
 
-//    dbg!(&fn_ref);
-    
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
 
     // unify method return type with current ctx.type_annotation().
@@ -800,23 +798,12 @@ pub(crate) fn resolve_method_name(
             call_path_binding,
             method_name,
         } => {
-//	    dbg!("FromType");
             // type check the call path
-// 	    let mod_path = ctx.namespace().current_mod_path(); 
-// 	    let problem = mod_path.len() == 1
-// 		&& mod_path[0].as_str() == "trait_method_ambiguous";
-// 	    if problem {
-// 		dbg!(&call_path_binding);
-// 		dbg!(&method_name);
-// 	    }
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
                 .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             // find the module that the symbol is in
-//            let type_info_prefix = ctx
-//                .namespace()
-	    //                .prepend_module_path(&call_path_binding.inner.prefixes);
  	    let type_info_prefix = call_path_binding.inner.to_fullpath(engines, ctx.namespace()).prefixes.clone();
             ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
 
@@ -835,7 +822,6 @@ pub(crate) fn resolve_method_name(
             (decl_ref, type_id)
         }
         MethodName::FromTrait { call_path } => {
-//	    dbg!("FromTrait");
             // find the module that the symbol is in
             let module_path =
 		match call_path.callpath_type {
@@ -877,10 +863,8 @@ pub(crate) fn resolve_method_name(
             (decl_ref, type_id)
         }
         MethodName::FromModule { method_name } => {
-//	    dbg!("FromModule");
             // find the module that the symbol is in
             let module_path = ctx.namespace().current_mod_path().clone();
-//	    dbg!(&module_path);
 
             // find the type of the first argument
             let type_id = arguments_types
@@ -907,7 +891,6 @@ pub(crate) fn resolve_method_name(
             as_trait,
             method_name,
         } => {
-//	    dbg!("FromQualifiedPathRoot");
             // type check the call path
             let type_id = ty.type_id;
 

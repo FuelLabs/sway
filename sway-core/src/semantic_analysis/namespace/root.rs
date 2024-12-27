@@ -212,13 +212,6 @@ impl Root {
 	&self.external_packages
     }
     
-//    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
-//	// TODO: reject if the new package name already exist
-//	let new_package = Module::new(next_package_name, Visibility::Public, span, &vec!());
-//	let old_package = std::mem::replace(&mut self.current_package, new_package);
-//	self.external_packages.insert(old_package.name().to_string(), old_package);
-//    }
-
     pub(crate) fn current_package_root_module(&self) -> &Module {
 	&self.current_package
     }
@@ -268,8 +261,6 @@ impl Root {
 
     // Find a module in the current package. `mod_path` must be a fully qualified path
     pub(super) fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-//	dbg!(mod_path);
-//	dbg!(self.current_package_name());
 	assert!(self.check_path_is_in_current_package(mod_path));
 	self.module_from_absolute_path(mod_path)
     }
@@ -299,7 +290,6 @@ impl Root {
 
     // Find a mutable module in the current package. `mod_path` must be a fully qualified path
     pub(super) fn module_mut_in_current_package(&mut self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
-//	dbg!(mod_path);
 	assert!(self.check_path_is_in_current_package(mod_path));
 	self.module_mut_from_absolute_path(mod_path)
     }
@@ -418,30 +408,8 @@ impl Root {
         dst: &ModulePath,
 	ignore_visibility: bool,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-//	let problem = src.len() == 1
-//	    && src[0].as_str() == "raw_slice"
-//	    && dst.len() == 1
-//	    && dst[0].as_str() == "raw_slice"
-//	    && item.as_str() == "raw_slice"
-//	    ;
-	
         let src_mod = self.require_module(handler, &src.to_vec())?;
         let src_items = src_mod.current_items();
-
-//	if problem {
-//	    dbg!("symbols:");
-//	    for item in src_items.symbols.keys() {
-//		dbg!(&item);
-//	    }
-//	    dbg!("use_item_synonyms");
-//	    for item in src_items.use_item_synonyms.keys() {
-//		dbg!(&item);
-//	    }
-//	    dbg!("use_glob_synonyms");
-//	    for item in src_items.use_glob_synonyms.keys() {
-//		dbg!(&item);
-//	    }
-//	}
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
             let visibility = if is_ancestor(src, dst) {
@@ -483,10 +451,6 @@ impl Root {
             }
         } else {
             // Symbol not found
-//	    if item.as_str() == "from_parts" {
-//		dbg!("item lookup");
-//		dbg!(&item);
-//	    }
             return Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: item.clone(),
                 span: item.span(),
@@ -609,8 +573,7 @@ impl Root {
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
 
-        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst, false)?;
-	//path.push(enum_name.clone());
+        let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst, false)?;
 	
         match decl {
             ResolvedDeclaration::Parsed(decl) => {
@@ -673,10 +636,6 @@ impl Root {
                             }
                         };
                     } else {
-//			if variant_name.as_str() == "from_parts" {
-//			    dbg!("variant import parsed");
-//			    dbg!(&variant_name);
-//			}
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
@@ -745,10 +704,6 @@ impl Root {
                             }
                         };
                     } else {
-//			if variant_name.as_str() == "from_parts" {
-//			    dbg!("variant import typed");
-//			    dbg!(&variant_name);
-//			}
                             return Err(handler.emit_err(CompileError::SymbolNotFound {
                             name: variant_name.clone(),
                             span: variant_name.span(),
@@ -783,8 +738,7 @@ impl Root {
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
 
-        let (decl, /*mut*/ path) = self.item_lookup(handler, engines, enum_name, src, dst, false)?;
-//	path.push(enum_name.clone());
+        let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst, false)?;
 
         match decl {
             ResolvedDeclaration::Parsed(Declaration::EnumDeclaration(decl_id)) => {

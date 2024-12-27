@@ -1119,16 +1119,6 @@ impl TraitMap {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut items = vec![];
-//	let problem = trait_name.suffix.as_str() == "AbiEncode"
-//	    && trait_name.prefixes.len() == 2
-//	    && trait_name.prefixes[0].as_str() == "core"
-//	    && trait_name.prefixes[1].as_str() == "codec"
-//	    ;
-//	if problem {
-//	    dbg!(type_id);
-//	    dbg!(&engines.help_out(type_id));
-//	}
-	
         // small performance gain in bad case
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
@@ -1140,11 +1130,6 @@ impl TraitMap {
                 suffix: e.key.name.suffix.name.clone(),
                 callpath_type: e.key.name.callpath_type,
             };
-//	    if problem && &map_trait_name == trait_name {
-//		dbg!(&map_trait_name);
-//		dbg!(&e.key.name.suffix.args);
-//		dbg!(unify_check.check(type_id, e.key.type_id));
-//	    }
             if &map_trait_name == trait_name
                 && unify_check.check(type_id, e.key.type_id)
                 && trait_type_args.len() == e.key.name.suffix.args.len()
@@ -1222,19 +1207,8 @@ impl TraitMap {
         type_id: TypeId,
         as_trait: Option<CallPath>,
     ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
-//	let problem = symbol.as_str() == "ID";
-//	if problem {
-//	    dbg!(symbol);
-//	    dbg!(&engines.help_out(type_id));
-//	    dbg!(&as_trait);
-//	}
-	
         let mut candidates = HashMap::<String, ResolvedTraitImplItem>::new();
         for (trait_item, trait_key) in self.get_items_and_trait_key_for_type(engines, type_id) {
-//	    if problem {
-//		dbg!(&trait_item);
-//		dbg!(&trait_key);
-//	    }
             match trait_item {
                 ResolvedTraitImplItem::Parsed(impl_item) => match impl_item {
                     ImplItem::Fn(fn_ref) => {
@@ -1344,14 +1318,6 @@ impl TraitMap {
                 },
             )),
             Ordering::Less => {
-//		if symbol.as_str() == "from_parts" {
-//		    dbg!("get_trait_item_for_type");
-//		    dbg!(&symbol);
-//		}
-//		dbg!(&std::backtrace::Backtrace::capture());
-//		dbg!(symbol);
-//		dbg!(&engines.help_out(type_id));
-//		dbg!(&as_trait);
 		Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),
@@ -1549,7 +1515,6 @@ impl TraitMap {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));
                     }
 
-		    //dbg!("check_if_trait_constraints_are_satisfied_for_type_inner");
                     // TODO: use a better span
                     handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                         type_id: type_id.index(),

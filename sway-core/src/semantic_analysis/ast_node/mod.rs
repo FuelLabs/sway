@@ -138,22 +138,6 @@ fn collect_use_statement(
 ) {
     let path = ctx.namespace.parsed_path_to_full_path(engines, &stmt.call_path, stmt.is_relative_to_package_root);
 
-//    let current_mod_path = ctx.namespace.current_mod_path();
-//    let problem = current_mod_path.len() == 1
-// 	&& current_mod_path[0].as_str() == "dependency_not_at_beginning";
-// 
-//    if problem {
-// 	dbg!(&current_mod_path);
-// 	dbg!(&stmt.call_path);
-// 	dbg!(&stmt.is_relative_to_package_root);
-// 	dbg!(&path);
-//    }
-//    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
-//    let path = if is_external || stmt.is_absolute {
-//        stmt.call_path.clone()
-//    } else {
-//        ctx.namespace.prepend_module_path(&stmt.call_path)
-//    };
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first
@@ -201,10 +185,6 @@ fn collect_use_statement(
                 stmt.reexport,
             );
 
-//	    dbg!(&stmt);
-//	    dbg!(&path);
-//	    dbg!(&import.is_ok());
-	    
             if import.is_ok() {
                 handler.append(item_import_handler);
                 import
@@ -222,8 +202,6 @@ fn collect_use_statement(
                         stmt.alias.clone(),
                         stmt.reexport,
                     );
-//		    dbg!(&path);
-//		    dbg!(&enum_name);
 			
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
@@ -251,14 +229,6 @@ fn handle_use_statement(
     handler: &Handler,
 ) {
     let path = ctx.namespace.parsed_path_to_full_path(&ctx.engines, &stmt.call_path, stmt.is_relative_to_package_root);
-//    let is_external = !ctx
-//        .namespace()
-//        .current_module_has_submodule(&stmt.call_path[0]);
-//    let path = if is_external || stmt.is_absolute {
-//        stmt.call_path.clone()
-//    } else {
-//        ctx.namespace().prepend_module_path(&stmt.call_path)
-//    };
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first
@@ -295,8 +265,6 @@ fn handle_use_statement(
         }
         ImportType::Item(ref s) => {
             // try a standard item import first
-//	    dbg!(&s);
-	    
             let item_import_handler = Handler::default();
             let import = ctx.item_import(
                 &item_import_handler,
@@ -307,17 +275,12 @@ fn handle_use_statement(
             );
 
             if import.is_ok() {
-//		dbg!("item import succeeded");
                 handler.append(item_import_handler);
                 import
             } else if path.len() >= 2 {
-//		dbg!("item import failed - path >= 2");
                 // if it doesn't work it could be an enum variant import
 		// For this to work the path must have at least 2 elements: The current package name and the enum name.
                 if let Some((enum_name, path)) = path.split_last() {
-//		    dbg!("path split");
-//		    dbg!(&enum_name);
-//		    dbg!(&path);
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
                         &variant_import_handler,
@@ -328,21 +291,17 @@ fn handle_use_statement(
                         stmt.reexport,
                     );
                     if variant_import.is_ok() {
-//			dbg!("variant import succeeded");
                         handler.append(variant_import_handler);
                         variant_import
                     } else {
-//			dbg!("variant import failed");
                         handler.append(item_import_handler);
                         import
                     }
                 } else {
-//		    dbg!("path split failed");
                     handler.append(item_import_handler);
                     import 
                 }
             } else {
-//		dbg!("path length < 2");
                 handler.append(item_import_handler);
                 import
             }

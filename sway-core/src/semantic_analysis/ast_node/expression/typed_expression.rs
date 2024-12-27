@@ -313,17 +313,8 @@ impl ty::TyExpression {
 			prefixes: vec![],
 			suffix: name.clone(),
 			callpath_type: CallPathType::Ambiguous,
-                    };//.to_fullpath(engines, ctx.namespace());
+                    };
 
-//		    let problem =
-//			name.as_str() == "None"
-//			&& ctx.namespace().current_mod_path().len() == 2
-//			&& ctx.namespace().current_mod_path()[0].as_str() == "std"
-//			&& ctx.namespace().current_mod_path()[1].as_str() == "vec";
-//		    if problem {
-//			dbg!(&call_path);
-//		    };
-		    
                     Self::type_check_delineated_path(
                         handler,
                         ctx.by_ref(),
@@ -446,8 +437,6 @@ impl ty::TyExpression {
                     ref args,
                     qualified_path_root,
                 } = *e.clone();
-//		dbg!(&call_path_binding);
-//		dbg!(&qualified_path_root);
                 Self::type_check_ambiguous_path(
                     handler,
                     ctx.by_ref(),
@@ -1466,19 +1455,6 @@ impl ty::TyExpression {
         path.extend(prefixes.iter().cloned());
         path.push(before.inner.clone());
 
-//	let mod_path = ctx.namespace.current_mod_path();
-//	let problem = before.inner.as_str() == "raw_slice"
-//	    && mod_path.len() == 1
-//	    && mod_path[0].as_str() == "raw_slice"
-//	    ;
-//	if problem {
-//	    dbg!(&prefixes);
-//	    dbg!(&before);
-//	    dbg!(&callpath_type);
-//	    dbg!(&qualified_path_root);
-//	    dbg!(&path);
-//	}
-
         let is_module = {
             let h = Handler::default();
 	    // The path may be relative to the current module,
@@ -1592,8 +1568,6 @@ impl ty::TyExpression {
         let variant_without_enum_probe_handler = Handler::default();
         let const_probe_handler = Handler::default();
 
-//	let problem = unknown_call_path_binding.inner.call_path.suffix.as_str() == "from_parts";
-	
 	if unknown_call_path_binding
             .inner
             .qualified_path_root
@@ -1645,16 +1619,6 @@ impl ty::TyExpression {
                 let variant_name = call_path_binding.inner.call_path.suffix.clone();
                 let enum_call_path = call_path_binding.inner.call_path.to_fullpath(ctx.engines(), ctx.namespace()).rshift();
 
-// 		let mod_path = ctx.namespace().current_mod_path();
-// 		let problem = mod_path.len() == 1
-// 		    && mod_path[0].as_str() == "abi_associated_const_access_with_impl_in_contract"
-// 		    ;
-// 		if problem {
-// 		    dbg!("maybe enum");
-// 		    dbg!(&unknown_call_path_binding);
-// 		    dbg!(&enum_call_path);
-// 		}
-
 		if enum_call_path.prefixes.is_empty() {
 		    // If the path has no prefixes after the rshift, then the package name is the
 		    // new suffix, and so the path is not an enum variant.
@@ -1688,18 +1652,6 @@ impl ty::TyExpression {
                 let variant_name = call_path_binding.inner.call_path.suffix.clone();
                 let enum_call_path = call_path_binding.inner.call_path.to_fullpath(ctx.engines(), ctx.namespace());
 
-//		let mod_path = ctx.namespace().current_mod_path();
-//		let problem = variant_name.as_str() == "Ok"
-//		    && mod_path.len() == 2
-//		    && mod_path[0].as_str() == "std"
-//		    && mod_path[1].as_str() == "option"
-//		    ;
-//		if problem {
-//		    dbg!("maybe enum");
-//		    dbg!(&unknown_call_path_binding);
-//		    dbg!(&enum_call_path);
-//		}
-
                 let mut call_path_binding = TypeBinding {
                     inner: enum_call_path,
                     type_arguments: call_path_binding.type_arguments,
@@ -1731,7 +1683,6 @@ impl ty::TyExpression {
 		None,
                 None,
             ) => {
-//		if problem { dbg!("maybe_enum_variant_with_enum_name"); }
                 handler.append(variant_with_enum_probe_handler);
                 instantiate_enum(
                     handler,
@@ -1750,7 +1701,6 @@ impl ty::TyExpression {
                 Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
                 None,
             ) => {
-//		if problem { dbg!("maybe_enum_variant_without_enum_name"); }
                 handler.append(variant_without_enum_probe_handler);
                 instantiate_enum(
                     handler,
@@ -1763,7 +1713,6 @@ impl ty::TyExpression {
                 )?
             }
             (false, Some((fn_ref, call_path_binding)), None, None, None) => {
-//		if problem { dbg!("maybe_function"); }
                 handler.append(function_probe_handler);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
                 if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
@@ -1784,7 +1733,6 @@ impl ty::TyExpression {
                 )?
             }
             (true, None, None, None, None) => {
-//		if problem { dbg!("maybe_module"); }
                 handler.append(module_probe_handler);
                 return Err(handler.emit_err(CompileError::ModulePathIsNotAnExpression {
                     module_path: unknown_call_path_binding.inner.call_path.to_string(),
@@ -1792,7 +1740,6 @@ impl ty::TyExpression {
                 }));
             }
             (false, None, None, None, Some((const_ref, call_path_binding))) => {
-//		if problem { dbg!("maybe_const"); }
                 handler.append(const_probe_handler);
                 if !call_path_binding.type_arguments.to_vec().is_empty() {
                     // In case `foo::bar::CONST::<TyArgs>` throw an error.
@@ -1807,19 +1754,6 @@ impl ty::TyExpression {
                 instantiate_constant_expression(ctx, const_ref, call_path_binding)
             }
             (false, None, None, None, None) => {
-//		if problem { dbg!("neither"); }
-//      	let mod_path = ctx.namespace().current_mod_path();
-//      	let problem = unknown_call_path_binding.inner.call_path.suffix.as_str() == "from_parts"
-//      	    && mod_path.len() == 2
-//      	    && mod_path[0].as_str() == "std"
-//      	    && mod_path[1].as_str() == "inputs"
-//      	    ;
-//      	if problem {
-//      	    dbg!("typecheck delineated path");
-//      	    dbg!(&mod_path);
-//      	    dbg!(&unknown_call_path_binding);
-//      	    dbg!(&std::backtrace::Backtrace::capture());
-//      	}
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: unknown_call_path_binding.inner.call_path.suffix.clone(),
                     span: unknown_call_path_binding.inner.call_path.suffix.span(),

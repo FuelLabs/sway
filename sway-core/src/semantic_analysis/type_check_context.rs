@@ -765,10 +765,6 @@ impl<'a> TypeCheckContext<'a> {
         let type_engine = self.engines.te();
         let _decl_engine = self.engines.de();
 
-//        let type_name = self.engines.help_out(type_id).to_string();
-//	let problem = type_name == "Bytes" && item_name.as_str() == "len";
-//	if problem { dbg!(&item_prefix); };
-
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
         // message.
@@ -784,8 +780,6 @@ impl<'a> TypeCheckContext<'a> {
 
         // grab the local items from the local module
         let local_items = local_module.get_items_for_type(self.engines, type_id);
-
-//	if problem { dbg!(&local_items); };
 
         // resolve the type
         let type_id = resolve_type(
@@ -812,8 +806,6 @@ impl<'a> TypeCheckContext<'a> {
         // grab the items from where the type is declared
         let mut type_items = type_module.get_items_for_type(self.engines, type_id);
 
-//	if problem { dbg!(&type_items); };
-	
         let mut items = local_items;
         items.append(&mut type_items);
 
@@ -867,23 +859,11 @@ impl<'a> TypeCheckContext<'a> {
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
 
-//	let type_name = self.engines.help_out(type_id).to_string();
-//	let current_mod_path = self.namespace().current_mod_path();
-//	let problem = current_mod_path.len() == 1
-//	    && current_mod_path[0].as_str() == "multiple_supertraits_for_abis1";
-//	
-//	if problem {
-//	    dbg!(&type_name);
-//	    dbg!(&method_prefix);
-//	    dbg!(&method_name);
-//	}
-	
         let eq_check = UnifyCheck::non_dynamic_equality(self.engines);
         let coercion_check = UnifyCheck::coercion(self.engines);
 
         // default numeric types to u64
         if type_engine.contains_numeric(self.engines, type_id) {
-//	    if problem { dbg!("contains numeric"); };
             // While collecting unification we don't decay numeric and will ignore this error.
             if self.collecting_unifications {
                 return Err(handler.emit_err(CompileError::MethodNotFound {
@@ -898,8 +878,6 @@ impl<'a> TypeCheckContext<'a> {
 
         let mut matching_item_decl_refs =
             self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
-
-//	if problem { dbg!(&matching_item_decl_refs); }
 
         // This code path tries to get items of specific implementation of the annotation type that is a superset of type id.
         // This allows the following associated method to be found:
@@ -931,8 +909,6 @@ impl<'a> TypeCheckContext<'a> {
                 ty::TyTraitItem::Type(_) => None,
             })
             .collect::<Vec<_>>();
-
-//	if problem { dbg!(&matching_method_decl_refs); }
 
         let mut qualified_call_path = None;
         let matching_method_decl_ref = {
@@ -966,8 +942,6 @@ impl<'a> TypeCheckContext<'a> {
                     maybe_method_decl_refs.push(decl_ref);
                 }
             }
-
-//	    if problem { dbg!(&maybe_method_decl_refs); }
 
             if !maybe_method_decl_refs.is_empty() {
                 let mut trait_methods = HashMap::<
@@ -1216,9 +1190,6 @@ impl<'a> TypeCheckContext<'a> {
                 self.engines.help_out(type_id).to_string()
             };
 
-	    //	    dbg!("end");
-//	    if problem { panic!(); };
-
             Err(handler.emit_err(CompileError::MethodNotFound {
                 method: format!(
                     "{}({}){}",
@@ -1300,7 +1271,6 @@ impl<'a> TypeCheckContext<'a> {
 
         let mut impls_to_insert = TraitMap::default();
 
-	// TODO: prepend current package name?
 	let Some(src_mod) = &self.namespace().module_from_absolute_path(&decl_call_path.prefixes)
         else {
             return;
@@ -1374,43 +1344,8 @@ impl<'a> TypeCheckContext<'a> {
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
 	// to the actual trait declaration. Since the path of the trait declaration is used as a key
 	// in the trait map, we need to find the actual declaration path.
-
-	// First, generate a resolvable path
-//	let full_trait_path = trait_name.to_fullpath(engines, self.namespace());
-//	let canonical_trait_path = 
-//	    match self.namespace.module_from_absolute_path(&full_trait_path.prefixes) {
-//		Some(module) => {
-//		    // Resolve the path suffix in the found module
-//		    match module.resolve_symbol(&Handler::default(), engines, &full_trait_path.suffix) {
-//			Ok((_, decl_path)) => {
-//			    // Replace the resolvable path with the declaration's path
-//			    CallPath {
-//				prefixes: decl_path,
-//				suffix: full_trait_path.suffix.clone(),
-//				callpath_type: full_trait_path.callpath_type.clone(),
-//			    }
-//			},
-//			Err(_) => {
-//			    // The symbol does not resolve. The trait probably doesn't exist, so just use the resolvable path
-//			    full_trait_path
-//			},
-//		    }
-//		},
-//		None => {
-//		    // The resolvable module doesn't exist. The trait probably doesn't exist, so just use the resolvable path
-//		    full_trait_path
-//		},
-//	    };
-
 	let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
 
-//	let problem = trait_name.suffix.as_str() == "Default";
-//	if problem {
-//	    dbg!(&trait_name);
-//	    dbg!(&canonical_trait_path);
-//	    dbg!(engines.help_out(type_id));
-//	}
-	
         let items = items
             .iter()
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
@@ -1421,7 +1356,6 @@ impl<'a> TypeCheckContext<'a> {
             .implemented_traits
             .insert(
                 handler,
-                //full_trait_name,
 		canonical_trait_path,
                 trait_type_args,
                 type_id,
@@ -1448,61 +1382,11 @@ impl<'a> TypeCheckContext<'a> {
         trait_name: &CallPath,
         trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
-//	let problem = trait_name.suffix.as_str() == "AbiEncode";
-//	if problem {
-//	    dbg!(&type_id);
-//	    dbg!(&trait_type_args);
-//	    dbg!(&trait_name);
-//	}
-	
 	// CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
 	// to the actual trait declaration. Since the path of the trait declaration is used as a key
 	// in the trait map, we need to find the actual declaration path.
-
-	// First, generate a resolvable path
-//        let full_trait_path = trait_name.to_fullpath(self.engines(), self.namespace());
-//
-////	if problem {
-////	    dbg!(&full_trait_path);
-////	}
-//
-//	// Resolve the path
-//	// The prefix of hte resolvable path is a module path
-//	let canonical_trait_path = 
-//	    match self.namespace.module_from_absolute_path(&full_trait_path.prefixes) {
-//		Some(module) => {
-//		    // Resolve the path suffix in the found module
-//		    match module.resolve_symbol(&Handler::default(), self.engines(), &full_trait_path.suffix) {
-//			Ok((_, decl_path)) => {
-//			    // Replace the resolvable path with the declaration's path
-//			    CallPath {
-//				prefixes: decl_path,
-//				suffix: full_trait_path.suffix.clone(),
-//				callpath_type: full_trait_path.callpath_type.clone(),
-//			    }
-//			},
-//			Err(_) => {
-//			    // The symbol does not resolve. The trait probably doesn't exist, so just use the resolvable path
-//			    full_trait_path
-//			},
-//		    }
-//		},
-//		None => {
-//		    // The resolvable module doesn't exist. The trait probably doesn't exist, so just use the resolvable path
-//		    full_trait_path
-//		},
-//	    };
-
 	let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
 
-//	to_fullpath converts the ambiguous path AbiEncode to shadowed_glob_imports::AbiEncode, which the trait map then compares to core::codec::AbiEncode. This obviously fails.
-//	    We therefore need the declaration path for AbiEncode instead.
-//	    Consider whether this needs to happen in to_fullpath
-	    
-//	if problem {
-//	    dbg!(&canonical_trait_path);
-//	}
-	
         self.namespace()
             .current_module()
             .current_items()
@@ -1510,7 +1394,6 @@ impl<'a> TypeCheckContext<'a> {
             .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
                 self.engines,
                 type_id,
-		//                &trait_name,
 		&canonical_trait_path,
                 trait_type_args,
             )

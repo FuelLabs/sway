@@ -64,14 +64,6 @@ pub(crate) fn compile_const_decl(
     call_path: &CallPath,
     const_decl: &Option<TyConstantDecl>,
 ) -> Result<Option<Value>, CompileError> {
-//    let problem = call_path.suffix.as_str() == "GTF_WITNESS_DATA"
-//	;
-//
-//    if problem {
-//	dbg!(&call_path);
-//	dbg!(&env.module);
-//    }
-
     // Check if it's a processed local constant.
     if let Some(fn_compiler) = env.function_compiler {
         let mut found_local = false;
@@ -123,10 +115,6 @@ pub(crate) fn compile_const_decl(
         }
     }
 
-//    if problem {
-//	dbg!(&call_path.as_vec_string());
-//    }
-    
     // Check if it's a processed global constant.
     match (
         env.module
@@ -134,30 +122,17 @@ pub(crate) fn compile_const_decl(
         env.module_ns,
     ) {
         (Some(const_val), _) => {
-//	    if problem {
-//		dbg!("get_global_constant is (some_, )");
-//	    }
 	    Ok(Some(const_val))
 	},
         (None, Some(module_ns)) => {
-//	    if problem {
-//		dbg!("get_global_constant is (none, some )");
-//	    }
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.current_items().check_symbol(&call_path.suffix);
-//	    if problem {
-//		dbg!(&decl);
-//	    }
 	    
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
             };
 
-//            if problem {
-//		dbg!(&const_decl);
-//	    }
-	    
 	    let const_decl = match decl {
                 Ok(decl) => match decl.expect_typed() {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
@@ -168,20 +143,12 @@ pub(crate) fn compile_const_decl(
                 Err(_) => const_decl.cloned(),
             };
 
-//	    if problem {
-//		dbg!(&const_decl);
-//	    }
-
             match const_decl {
                 Some(const_decl) => {
                     let ty::TyConstantDecl {
                         call_path, value, ..
                     } = const_decl;
 
-//		    if problem {
-//			dbg!(&call_path);
-//			dbg!(&value);
-//		    }
                     let Some(value) = value else {
                         return Ok(None);
                     };
@@ -197,23 +164,6 @@ pub(crate) fn compile_const_decl(
                         &value,
                     )?;
 
-//		    dbg!("adding global constant");
-//		    dbg!(&call_path);
-//		    dbg!(&call_path.as_vec_string().to_vec());
-//		    dbg!(&const_val);
-//		    dbg!(&env.module);
-//		    if let Some(ns) = env.module_ns {
-//			dbg!(&ns.mod_path());
-//		    } else {
-//			dbg!("no namespace");
-//		    }
-		    
-// 		    if problem {
-//			dbg!(&const_val);
-//			dbg!(&call_path.as_vec_string().to_vec());
-//		    }
-//		    Soemthing isn't working here. The constant ins't being found correctly later, so presumably it's not being added correctly. It does look liek the callpath and the const_val are correct, so presumably it's the module that is wrong?
-//			I wonder if it's the callpath that is wrong? The debug code checks for the callpath std::tx::GTF_WITNESS_DATA, but if it's inserted or looked up as program_name::GTF_WITNESS_DATA, then it will go wrong.
                     env.module.add_global_constant(
                         env.context,
                         call_path.as_vec_string().to_vec(),
@@ -225,12 +175,7 @@ pub(crate) fn compile_const_decl(
                 None => Ok(None),
             }
         }
-        _ => {
-//	    if problem {
-//		dbg!("get_global_constant is (none, none )");
-//	    }
-	    Ok(None)
-	},
+        _ => Ok(None),
     }
 }
 
@@ -270,17 +215,6 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
-//    let problem = match const_expr.expression {
-//	ty::TyExpressionVariant::FunctionApplication { .. } => {	
-//	    true
-//	},
-//	_ => { false },
-//    };
-    
-//    if problem {
-//	dbg!(&const_expr);
-//    }
-    
     let lookup = &mut LookupEnv {
         engines,
         context,
@@ -311,11 +245,7 @@ pub(crate) fn compile_constant_expression_to_constant(
 
     match const_eval_typed_expr(lookup, &mut known_consts, const_expr) {
         Ok(Some(constant)) => Ok(constant),
-        Ok(None) => {
-//	    dbg!(&const_expr);
-//	    dbg!(&function_compiler.is_some());
-	    err
-	},
+        Ok(None) => err,
         Err(_) => err,
     }
 }
@@ -353,7 +283,6 @@ fn const_eval_typed_expr(
             for arg in arguments {
                 let (name, sub_expr) = arg;
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
-		//dbg!(&eval_expr_opt);
                 if let Some(sub_const) = eval_expr_opt {
                     actuals_const.push((name, sub_const));
                 } else {
@@ -372,9 +301,7 @@ fn const_eval_typed_expr(
             }
 
             let function_decl = lookup.engines.de().get_function(fn_ref);
-//	    dbg!(&function_decl);
             let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
-//	    dbg!(&res);
 
             for (name, _) in arguments {
                 known_consts.pop(name);

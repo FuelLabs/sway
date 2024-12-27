@@ -172,11 +172,6 @@ impl TyImplSelfOrTrait {
                     .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
 
-//		let problem = trait_name.suffix.as_str() == "Default";
-//		if problem {
-//		    dbg!(&trait_name);
-//		    dbg!(&engines.help_out(implementing_for.type_id));
-//		}
                 let impl_trait = match ctx.resolve_call_path(handler, &trait_name).ok() {
                     Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                         let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
@@ -368,11 +363,7 @@ impl TyImplSelfOrTrait {
                     } => call_path.call_path.suffix.clone(),
                     _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
                 };
-//		let problem = suffix.as_str() == "Bytes";
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
-//		if problem {
-//		    dbg!(&trait_name);
-//		}
                 // Type check the type parameters.
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -441,7 +432,6 @@ impl TyImplSelfOrTrait {
                         match item {
                             ImplItem::Fn(fn_decl_id) => {
                                 let fn_decl = engines.pe().get_function(fn_decl_id);
-//				if problem { dbg!(&fn_decl); };
                                 let fn_decl = match ty::TyFunctionDecl::type_check_signature(
                                     handler,
                                     ctx.by_ref(),
@@ -1658,8 +1648,6 @@ fn handle_supertraits(
                 continue;
             }
 
-	    //dbg!(&supertrait.name);
-	    
             match ctx
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
                 .resolve_call_path(&Handler::default(), &supertrait.name)
@@ -1710,7 +1698,6 @@ fn handle_supertraits(
                     // we allow ABIs as superABIs now
                 }
                 _ => {
-//		    println!("impl_trait");
                     handler.emit_err(CompileError::TraitNotFound {
                         name: supertrait.name.to_string(),
                         span: supertrait.name.span(),

@@ -31,17 +31,6 @@ pub(crate) fn instantiate_function_application(
 
     let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
 
-//    let problem = function_decl.name.as_str() == "encode"
-//	&& span.as_str() == "X3"
-//	;
-//    if problem {
-//	//dbg!(&function_decl);
-//	dbg!(&arguments);
-//	dbg!(&call_path_binding);
-//	dbg!(&ctx.namespace().current_mod_path());
-//	//dbg!(&span.as_str());
-//    }
-    
     if arguments.is_none() {
         return Err(
             handler.emit_err(CompileError::MissingParenthesesForFunction {
@@ -65,22 +54,12 @@ pub(crate) fn instantiate_function_application(
     let typed_arguments =
         type_check_arguments(handler, ctx.by_ref(), arguments, &function_decl.parameters)?;
 
-//    if problem {
-//	dbg!(&typed_arguments);
-//	dbg!(engines.help_out(typed_arguments[0].return_type));
-//    }
-    
     let typed_arguments_with_names = unify_arguments_and_parameters(
         handler,
         ctx.by_ref(),
         typed_arguments,
         &function_decl.parameters,
     )?;
-
-//    if problem {
-//	dbg!(&typed_arguments_with_names);
-//	dbg!(engines.help_out(typed_arguments_with_names[0].1.return_type));
-//    }
 
     // unify function return type with current ctx.type_annotation().
     engines.te().unify_with_generic(
@@ -98,13 +77,6 @@ pub(crate) fn instantiate_function_application(
     let function_ident: IdentUnique = function_decl.name.clone().into();
     let function_sig = TyFunctionSig::from_fn_decl(&function_decl);
 
-//    if problem {
-//	dbg!(&function_ident);
-//	dbg!(&function_sig);
-//	dbg!(&engines.help_out(function_sig.parameters[0]));
-//	dbg!(&engines.help_out(function_sig.type_parameters[0]));
-//    }
-    
     let new_decl_ref = if let Some(cached_fn_ref) =
         ctx.engines()
             .qe()
@@ -124,14 +96,6 @@ pub(crate) fn instantiate_function_application(
                 &call_path_binding.span(),
             )?;
 	    
-//	    if problem {
-//		// decl_mapping should be 
-//		// [sway-core/src/semantic_analysis/ast_node/expression/typed_expression/function_application.rs:104:3] &decl_mapping = DeclMapping { (TraitFn(DeclId(119)), TypeId(7)) -> Function(DeclId(706)) }
-//		// but is empty
-////		Check gather_decl_mapping_from_trait_constraints on master to see what ought to happen
-//		dbg!(&decl_mapping);
-//	    }
-
             function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
         }
 

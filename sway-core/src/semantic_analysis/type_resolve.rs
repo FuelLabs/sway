@@ -280,26 +280,11 @@ pub fn resolve_call_path(
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let full_path = call_path.to_fullpath_from_mod_path(engines, namespace, &mod_path.to_vec());
 
-//    let problem = call_path.suffix.as_str() == "from_parts"
-//   	&& call_path.prefixes.len() == 1
-// 	&& call_path.prefixes[0].as_str() == "raw_slice"
-// 	;
-//    if problem {
-//   	dbg!(&mod_path);
-//   	dbg!(&call_path);
-//   	dbg!(&full_path);
-//   	dbg!(&namespace.current_mod_path());
-// 	dbg!(&namespace.module_has_binding(engines, &mod_path.to_vec(), &full_path.prefixes[0]));
-//	dbg!(&std::backtrace::Backtrace::capture());
-//    }
-
     let (decl, decl_mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
         namespace.root_ref(),
-//	symbol_path,
         &full_path.prefixes,
-//        &call_path.suffix,
         &full_path.suffix,
         self_type,
     )?;
@@ -308,26 +293,8 @@ pub fn resolve_call_path(
         return Ok(decl);
     }
 
-//    This check doesn't work. full_path.prefixes may contain names that do not refer to modules, and the privacy of the non-module names also need to be checked.
-//	Furthermore, the check for decl_mod-path == *namespace.current_mod_path() also doesn't work, since the visibility of the declaration is irrelevant when accessed through a different path. It should be full_path.prefixes == current_mod_path(), except that we run into the non-module issue again.
-    //
-    
     // Check that the modules in full_path are visible from the current module.
     let _ = namespace.root_ref().check_module_privacy(handler, &full_path.prefixes, namespace.current_mod_path());
-
-//
-//    // check the visibility of the call path elements
-//    // we don't check the first prefix because direct children are always accessible
-//    for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-//        let module = namespace.require_module_from_absolute_path(handler, &prefix.to_vec())?;
-//        if module.visibility().is_private() {
-//            let prefix_last = prefix[prefix.len() - 1].clone();
-//            handler.emit_err(CompileError::ImportPrivateModule {
-//                span: prefix_last.span(),
-//                name: prefix_last,
-//            });
-//        }
-//    }
 
     // TODO: This visibility check is insufficient.
     //
@@ -397,14 +364,6 @@ fn resolve_symbol_and_mod_path_inner(
     assert!(!mod_path.is_empty());
     assert!(mod_path[0] == *root.current_package_name());
 
-//    let problem = symbol.as_str() == "from_parts"
-//    	&& root.current_package_name().as_str() == "raw_slice";
-//    
-//    if problem {
-//    	dbg!(&mod_path);
-//    	dbg!(&symbol);
-//    }
-    
     // This block tries to resolve associated types
     let mut current_module = root.current_package_root_module();
     let mut current_mod_path = vec![mod_path[0].clone()];
@@ -427,12 +386,6 @@ fn resolve_symbol_and_mod_path_inner(
                     current_mod_path.push(ident.clone());
                 }
                 None => {
-//		    if ident.as_str() == "core" {
-//			dbg!("resolve_symbol_and_mod_path_inner");
-//			dbg!(&mod_path);
-//			dbg!(&symbol);
-//			dbg!(&current_mod_path);
-		    //		    }
 		    let (decl, _) = current_module.resolve_symbol(handler, engines, ident)?;
                     decl_opt = Some(decl);
                 }
@@ -484,10 +437,6 @@ fn decl_to_type_info(
                 (*engines.te().get(decl.type_id)).clone()
             }
             _ =>{
-//		if symbol.as_str() == "from_parts" {
-//		    dbg!("decl_to_type_info");
-//		    dbg!(&symbol);
-//		}
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),
