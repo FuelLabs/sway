@@ -310,8 +310,8 @@ pub fn resolve_call_path(
     // through another path, e.g., through a reexport, then it is the visibility of the reexport
     // that is relevant.
 
-    // Private declarations are visibile within their own module, so no need to check for
-    // visibility in that case
+    // Private declarations are visible within their own module, so no need to check for visibility
+    // in that case
     if decl_mod_path == *namespace.current_mod_path() {
         return Ok(decl);
     }

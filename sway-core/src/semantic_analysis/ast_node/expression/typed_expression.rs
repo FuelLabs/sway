@@ -1611,7 +1611,7 @@ impl ty::TyExpression {
                 .map(|(fn_ref, _, _)| (fn_ref, call_path_binding))
             };
 
-            // Check if this could be an enum variant preceeded by its enum name.
+            // Check if this could be an enum variant preceded by its enum name.
             // For instance, the enum `Option` contains two variants, `None` and `Some`.
             // The full path for `None` would be current_mod_path::Option::None.
             maybe_enum_variant_with_enum_name = {
