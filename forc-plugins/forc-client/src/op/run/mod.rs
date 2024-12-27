@@ -30,6 +30,7 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
+use fuels_accounts::ViewOnlyAccount;
 
 use self::encode::ScriptCallHandler;
 
