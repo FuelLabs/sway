@@ -21,16 +21,14 @@ pub struct AbiContext<'a> {
 }
 
 impl<'a> AbiContext<'a> {
-    fn to_str_context(
-        &self,
-        abi_full: bool,
-    ) -> AbiStrContext {
+    fn to_str_context(&self, abi_full: bool) -> AbiStrContext {
         AbiStrContext {
             program_name: self
                 .program
                 .root
                 .namespace
-		.current_package_name().to_string(),
+                .current_package_name()
+                .to_string(),
             abi_with_callpaths: self.abi_with_callpaths,
             abi_with_fully_specified_types: abi_full,
             abi_root_type_without_generic_type_parameters: !abi_full,
@@ -53,7 +51,7 @@ impl TypeId {
                     .root
                     .namespace
                     .current_package_name()
-		    .to_string(),
+                    .to_string(),
                 abi_with_callpaths: true,
                 abi_with_fully_specified_types: true,
                 abi_root_type_without_generic_type_parameters: false,
@@ -383,11 +381,7 @@ fn generate_concrete_type_declaration(
     let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(
-            &ctx.to_str_context(false),
-            engines,
-            resolved_type_id,
-        ),
+        type_field: type_id.get_abi_type_str(&ctx.to_str_context(false), engines, resolved_type_id),
         components: type_id.get_abi_type_components(
             handler,
             ctx,
@@ -477,11 +471,7 @@ fn generate_type_metadata_declaration(
     )?;
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(
-            &ctx.to_str_context(false),
-            engines,
-            resolved_type_id,
-        ),
+        type_field: type_id.get_abi_type_str(&ctx.to_str_context(false), engines, resolved_type_id),
         components,
         type_parameters,
     };

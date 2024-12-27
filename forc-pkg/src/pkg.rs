@@ -1593,12 +1593,16 @@ pub fn dependency_namespace(
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
-    let mut root_namespace =
-	if let Some(contract_id_value) = contract_id_value {
-	    namespace::namespace_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
-	} else {
-	    namespace::namespace_without_contract_id(name.clone())
-	};
+    let mut root_namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::namespace_with_contract_id(
+            engines,
+            name.clone(),
+            contract_id_value,
+            experimental,
+        )?
+    } else {
+        namespace::namespace_without_contract_id(name.clone())
+    };
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1611,7 +1615,7 @@ pub fn dependency_namespace(
                 .get(&dep_node)
                 .cloned()
                 .expect("no root module")
-		.clone(),
+                .clone(),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1622,7 +1626,12 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-		namespace::namespace_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
+                namespace::namespace_with_contract_id(
+                    engines,
+                    name.clone(),
+                    contract_id_value,
+                    experimental,
+                )?
             }
         };
         root_namespace.add_external(dep_name, dep_namespace);
@@ -2660,11 +2669,7 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut lib_root = typed_program
-                    .root
-                    .namespace
-		    .clone()
-                    .root();
+                let mut lib_root = typed_program.root.namespace.clone().root();
                 lib_root.add_span_to_root_module(
                     Span::new(
                         manifest.entry_string()?,

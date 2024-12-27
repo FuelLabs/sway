@@ -136,7 +136,11 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let path = ctx.namespace.parsed_path_to_full_path(engines, &stmt.call_path, stmt.is_relative_to_package_root);
+    let path = ctx.namespace.parsed_path_to_full_path(
+        engines,
+        &stmt.call_path,
+        stmt.is_relative_to_package_root,
+    );
 
     let _ = match stmt.import_type {
         ImportType::Star => {
@@ -190,7 +194,7 @@ fn collect_use_statement(
                 import
             } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum variant import
-		// For this to work the path must have at least 2 elements: The current package name and the enum name
+                // For this to work the path must have at least 2 elements: The current package name and the enum name
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
@@ -202,7 +206,7 @@ fn collect_use_statement(
                         stmt.alias.clone(),
                         stmt.reexport,
                     );
-			
+
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -217,18 +221,18 @@ fn collect_use_statement(
             } else {
                 handler.append(item_import_handler);
                 import
-	    }
+            }
         }
     };
 }
 
 // To be removed once TypeCheckContext is ported to use SymbolCollectionContext.
-fn handle_use_statement(
-    ctx: &mut TypeCheckContext<'_>,
-    stmt: &UseStatement,
-    handler: &Handler,
-) {
-    let path = ctx.namespace.parsed_path_to_full_path(&ctx.engines, &stmt.call_path, stmt.is_relative_to_package_root);
+fn handle_use_statement(ctx: &mut TypeCheckContext<'_>, stmt: &UseStatement, handler: &Handler) {
+    let path = ctx.namespace.parsed_path_to_full_path(
+        ctx.engines,
+        &stmt.call_path,
+        stmt.is_relative_to_package_root,
+    );
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first
@@ -279,7 +283,7 @@ fn handle_use_statement(
                 import
             } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum variant import
-		// For this to work the path must have at least 2 elements: The current package name and the enum name.
+                // For this to work the path must have at least 2 elements: The current package name and the enum name.
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
@@ -299,7 +303,7 @@ fn handle_use_statement(
                     }
                 } else {
                     handler.append(item_import_handler);
-                    import 
+                    import
                 }
             } else {
                 handler.append(item_import_handler);

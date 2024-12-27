@@ -444,14 +444,10 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let (sy, _) = ctx
-                .namespace()
-                .current_module()
-		.resolve_symbol(
-                    handler,
-                    ctx.engines(),
-                    name,
-		)?;
+            let (sy, _) =
+                ctx.namespace()
+                    .current_module()
+                    .resolve_symbol(handler, ctx.engines(), name)?;
 
             match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -687,15 +683,17 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-			let full_path = trait_decl.call_path.to_fullpath(ctx.engines(), ctx.namespace());
-			if ctx.namespace().module_is_external(&full_path.prefixes) {
-			    full_path.to_string()
-			} else {
-			    let import_path = trait_decl
-				.call_path
-				.to_import_path(ctx.engines(), ctx.namespace());
-			    format!("::{import_path}")
-			}
+                        let full_path = trait_decl
+                            .call_path
+                            .to_fullpath(ctx.engines(), ctx.namespace());
+                        if ctx.namespace().module_is_external(&full_path.prefixes) {
+                            full_path.to_string()
+                        } else {
+                            let import_path = trait_decl
+                                .call_path
+                                .to_import_path(ctx.engines(), ctx.namespace());
+                            format!("::{import_path}")
+                        }
                     })
                     .collect();
 

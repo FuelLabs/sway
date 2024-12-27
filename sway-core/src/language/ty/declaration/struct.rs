@@ -2,7 +2,9 @@ use crate::{
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility},
+    language::{
+        parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility,
+    },
     transform,
     type_system::*,
     Namespace,

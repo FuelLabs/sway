@@ -375,7 +375,14 @@ fn use_tree_to_use_statements(
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_relative_to_package_root, reexport, path, ret, item_span);
+            use_tree_to_use_statements(
+                *suffix,
+                is_relative_to_package_root,
+                reexport,
+                path,
+                ret,
+                item_span,
+            );
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
@@ -839,8 +846,12 @@ fn path_type_to_call_path_and_type_arguments(
     let (is_relative_to_root, qualified_path) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
-    let callpath_type = if is_relative_to_root { CallPathType::RelativeToPackageRoot } else { CallPathType::Ambiguous };
-    
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
+
     let qualified_call_path = QualifiedCallPath {
         call_path: CallPath {
             prefixes,
@@ -1549,8 +1560,12 @@ fn ty_to_call_path_tree(
         let (is_relative_to_root, qualified_path) =
             path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
-	let callpath_type = if is_relative_to_root { CallPathType::RelativeToPackageRoot } else { CallPathType::Ambiguous };
-	
+        let callpath_type = if is_relative_to_root {
+            CallPathType::RelativeToPackageRoot
+        } else {
+            CallPathType::Ambiguous
+        };
+
         let call_path = QualifiedCallPath {
             call_path: CallPath {
                 prefixes,
@@ -1682,7 +1697,11 @@ fn path_type_to_call_path(
         mut suffix,
     } = path_type;
     let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
-    let callpath_type = if is_relative_to_root { CallPathType::RelativeToPackageRoot } else { CallPathType::Ambiguous };
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -1943,7 +1962,11 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
-    let callpath_type = if is_relative_to_root { CallPathType::RelativeToPackageRoot } else { CallPathType::Ambiguous };
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
 
     // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
@@ -2792,7 +2815,11 @@ fn path_type_to_supertrait(
         mut suffix,
     } = path_type;
     let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
-    let callpath_type = if is_relative_to_root { CallPathType::RelativeToPackageRoot } else { CallPathType::Ambiguous };
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, call_path_suffix) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -3502,7 +3529,11 @@ fn path_expr_to_qualified_call_path_binding(
     } = path_expr;
     let (is_relative_to_root, qualified_path_root) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
-    let callpath_type = if is_relative_to_root { CallPathType::RelativeToPackageRoot } else { CallPathType::Ambiguous };
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
         Some((_, call_path_suffix)) => {
@@ -3617,7 +3648,11 @@ fn path_expr_to_call_path(
         ..
     } = path_expr;
     let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
-    let callpath_type = if is_relative_to_root { CallPathType::RelativeToPackageRoot } else { CallPathType::Ambiguous };
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];

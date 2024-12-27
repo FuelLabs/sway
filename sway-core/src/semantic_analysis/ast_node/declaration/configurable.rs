@@ -15,7 +15,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyConfigurableDecl, TyExpression},
-        CallPath, CallPathType, 
+        CallPath, CallPathType,
     },
     semantic_analysis::*,
     EnforceTypeArguments, Engines, SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding,
@@ -171,7 +171,8 @@ impl ty::TyConfigurableDecl {
             (value, None)
         };
 
-        let mut call_path: CallPath = name.into().to_fullpath(engines, ctx.namespace());
+        let mut call_path: CallPath = name.into();
+        call_path = call_path.to_fullpath(engines, ctx.namespace());
 
         Ok(ty::TyConfigurableDecl {
             call_path,

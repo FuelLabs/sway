@@ -11,15 +11,15 @@ use crate::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
     },
-    semantic_analysis::{symbol_collection_context::SymbolCollectionContext, TypeCheckContext, namespace::Root},
+    semantic_analysis::{
+        namespace::Root, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
+    },
     transform::to_parsed_lang,
     Engines, Ident, Namespace,
 };
 
 /// Factory function for contracts
-pub fn namespace_without_contract_id(
-    package_name: Ident,
-) -> Root {
+pub fn namespace_without_contract_id(package_name: Ident) -> Root {
     Root::new(package_name, None, false)
 }
 
@@ -33,13 +33,13 @@ pub fn namespace_with_contract_id(
     let root = Root::new(package_name, None, true);
     let handler = <_>::default();
     bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental)
-	.map_err(|_| {
+        .map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
-	    
+
             // Invariant: `.value == None` => `!errors.is_empty()`.
             vec1::Vec1::try_from_vec(errors).unwrap()
-	})
+        })
 }
 
 fn bind_contract_id_in_root_module(
@@ -93,19 +93,21 @@ fn bind_contract_id_in_root_module(
         span: const_item_span.clone(),
     };
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    // The root object 
+    // The root object
     let mut namespace = Namespace::new(handler, engines, root, false)?;
     let mut symbol_ctx = SymbolCollectionContext::new(namespace.clone());
-    let type_check_ctx = TypeCheckContext::from_namespace(&mut namespace, &mut symbol_ctx, engines, experimental);
+    let type_check_ctx =
+        TypeCheckContext::from_namespace(&mut namespace, &mut symbol_ctx, engines, experimental);
     // Typecheck the const declaration. This will add the binding in the supplied namespace
-    match TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap().content {
+    match TyAstNode::type_check(handler, type_check_ctx, &ast_node)
+        .unwrap()
+        .content
+    {
         TyAstNodeContent::Declaration(_) => Ok(namespace.root()),
-        _ => {
-            Err(
-                handler.emit_err(CompileError::ContractIdConstantNotAConstDecl {
-                    span: const_item_span,
-                }),
-            )
-        },
+        _ => Err(
+            handler.emit_err(CompileError::ContractIdConstantNotAConstDecl {
+                span: const_item_span,
+            }),
+        ),
     }
 }

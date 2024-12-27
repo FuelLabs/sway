@@ -1,12 +1,12 @@
-use crate::{
-    engine_threading::Engines,
-    language::{ty, Visibility},
-    Ident, TypeId,
-};
 use super::{
     lexical_scope::{Items, LexicalScope, ResolvedFunctionDecl},
     LexicalScopeId, ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration,
     ResolvedTraitImplItem,
+};
+use crate::{
+    engine_threading::Engines,
+    language::{ty, Visibility},
+    Ident, TypeId,
 };
 
 use rustc_hash::FxHasher;
@@ -55,9 +55,14 @@ pub struct Module {
 }
 
 impl Module {
-    pub(super) fn new(name: Ident, visibility: Visibility, span: Option<Span>, parent_mod_path: &ModulePathBuf) -> Self {
-	let mut mod_path = parent_mod_path.clone();
-	mod_path.push(name.clone());
+    pub(super) fn new(
+        name: Ident,
+        visibility: Visibility,
+        span: Option<Span>,
+        parent_mod_path: &ModulePathBuf,
+    ) -> Self {
+        let mut mod_path = parent_mod_path.clone();
+        mod_path.push(name.clone());
         Self {
             visibility,
             submodules: Default::default(),
@@ -86,12 +91,16 @@ impl Module {
         self.span = Some(span);
     }
 
-    pub(super) fn add_new_submodule(&mut self, name: &Ident, visibility: Visibility, span: Option<Span>) {
-	let module = Self::new(name.clone(), visibility, span, &self.mod_path);
-	self.submodules.insert(name.to_string(), module);
+    pub(super) fn add_new_submodule(
+        &mut self,
+        name: &Ident,
+        visibility: Visibility,
+        span: Option<Span>,
+    ) {
+        let module = Self::new(name.clone(), visibility, span, &self.mod_path);
+        self.submodules.insert(name.to_string(), module);
     }
-	
-    
+
     pub fn read<R>(&self, _engines: &crate::Engines, mut f: impl FnMut(&Module) -> R) -> R {
         f(self)
     }
@@ -118,9 +127,9 @@ impl Module {
     }
 
     pub fn has_submodule(&self, name: &Ident) -> bool {
-	self.submodule(&[name.clone()]).is_some()
+        self.submodule(&[name.clone()]).is_some()
     }
-	
+
     /// Mutable access to this module's submodules.
     pub fn submodules_mut(
         &mut self,
@@ -305,7 +314,9 @@ impl Module {
         symbol: &Ident,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let ret = self.walk_scope_chain(|lexical_scope| {
-            lexical_scope.items.resolve_symbol(handler, engines, symbol, &self.mod_path)
+            lexical_scope
+                .items
+                .resolve_symbol(handler, engines, symbol, &self.mod_path)
         })?;
 
         if let Some(ret) = ret {
@@ -344,16 +355,19 @@ impl Module {
 /// than in an external one.
 pub fn module_not_found(path: &[Ident], skip_package_name: bool) -> CompileError {
     CompileError::ModuleNotFound {
-        span: path.iter().skip(if skip_package_name { 1 } else { 0 }).fold(path.last().unwrap().span(), |acc, this_one| {
-            if acc.source_id() == this_one.span().source_id() {
-                Span::join(acc, &this_one.span())
-            } else {
-                acc
-            }
-        }),
+        span: path
+            .iter()
+            .skip(if skip_package_name { 1 } else { 0 })
+            .fold(path.last().unwrap().span(), |acc, this_one| {
+                if acc.source_id() == this_one.span().source_id() {
+                    Span::join(acc, &this_one.span())
+                } else {
+                    acc
+                }
+            }),
         name: path
             .iter()
-	    .skip(if skip_package_name { 1 } else { 0 })
+            .skip(if skip_package_name { 1 } else { 0 })
             .map(|x| x.as_str())
             .collect::<Vec<_>>()
             .join("::"),

@@ -452,7 +452,7 @@ pub(crate) fn type_check_method_application(
                             inner: CallPath {
                                 prefixes: vec![],
                                 suffix: Ident::new_no_span("contract_call".into()),
-				callpath_type: CallPathType::Ambiguous,
+                                callpath_type: CallPathType::Ambiguous,
                             },
                             type_arguments: TypeArgs::Regular(vec![
                                 TypeArgument {
@@ -804,8 +804,13 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             // find the module that the symbol is in
- 	    let type_info_prefix = call_path_binding.inner.to_fullpath(engines, ctx.namespace()).prefixes.clone();
-            ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
+            let type_info_prefix = call_path_binding
+                .inner
+                .to_fullpath(engines, ctx.namespace())
+                .prefixes
+                .clone();
+            ctx.namespace()
+                .require_module_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -823,24 +828,28 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
-            let module_path =
-		match call_path.callpath_type {
-		    CallPathType::RelativeToPackageRoot => {
-			let mut path = vec!(ctx.namespace().current_package_name().clone());
-			for ident in call_path.prefixes.iter() {
-			    path.push(ident.clone())
-			}
-			path
-		    },
-		    CallPathType::Full => call_path.prefixes.clone(),
-		    CallPathType::Ambiguous => {
-			if ctx.namespace().current_module().submodules().contains_key(call_path.prefixes.first().unwrap().as_str()) {
-			    ctx.namespace().prepend_module_path(&call_path.prefixes)
-			} else {
-			    call_path.prefixes.clone()
-			}
-		    }
-		};
+            let module_path = match call_path.callpath_type {
+                CallPathType::RelativeToPackageRoot => {
+                    let mut path = vec![ctx.namespace().current_package_name().clone()];
+                    for ident in call_path.prefixes.iter() {
+                        path.push(ident.clone())
+                    }
+                    path
+                }
+                CallPathType::Full => call_path.prefixes.clone(),
+                CallPathType::Ambiguous => {
+                    if ctx
+                        .namespace()
+                        .current_module()
+                        .submodules()
+                        .contains_key(call_path.prefixes.first().unwrap().as_str())
+                    {
+                        ctx.namespace().prepend_module_path(&call_path.prefixes)
+                    } else {
+                        call_path.prefixes.clone()
+                    }
+                }
+            };
 
             // find the type of the first argument
             let type_id = arguments_types

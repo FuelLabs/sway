@@ -1085,8 +1085,8 @@ impl TraitMap {
                         let map_trait_name = CallPath {
                             prefixes: entry.key.name.prefixes.clone(),
                             suffix: entry.key.name.suffix.name.clone(),
-			    callpath_type: entry.key.name.callpath_type,
-			};
+                            callpath_type: entry.key.name.callpath_type,
+                        };
                         if &map_trait_name == trait_name {
                             Some(entry.value.impl_span.clone())
                         } else {
@@ -1317,11 +1317,10 @@ impl TraitMap {
                     span: symbol.span(),
                 },
             )),
-            Ordering::Less => {
-		Err(handler.emit_err(CompileError::SymbolNotFound {
+            Ordering::Less => Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
                 span: symbol.span(),
-		}))},
+            })),
             Ordering::Equal => Ok(candidates.values().next().unwrap().clone()),
         }
     }

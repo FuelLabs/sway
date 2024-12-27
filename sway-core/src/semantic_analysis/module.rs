@@ -687,8 +687,8 @@ impl ty::TySubmodule {
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(
-	    handler,
-	    engines,
+            handler,
+            engines,
             mod_name,
             *visibility,
             module.span.clone(),
@@ -710,13 +710,25 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
-        parent_ctx.enter_submodule(handler, mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res =
-                ty::TyModule::type_check(handler, submod_ctx, engines, kind, module, build_config);
-            module_res.map(|module| ty::TySubmodule {
-                module,
-                mod_name_span: mod_name_span.clone(),
-            })
-        })?
+        parent_ctx.enter_submodule(
+            handler,
+            mod_name,
+            *visibility,
+            module.span.clone(),
+            |submod_ctx| {
+                let module_res = ty::TyModule::type_check(
+                    handler,
+                    submod_ctx,
+                    engines,
+                    kind,
+                    module,
+                    build_config,
+                );
+                module_res.map(|module| ty::TySubmodule {
+                    module,
+                    mod_name_span: mod_name_span.clone(),
+                })
+            },
+        )?
     }
 }

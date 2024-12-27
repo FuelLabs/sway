@@ -218,7 +218,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let type_info_span = type_ident.span();
 
         // find the module that the symbol is in
-	let full_path = self.inner.to_fullpath(engines, ctx.namespace());
+        let full_path = self.inner.to_fullpath(engines, ctx.namespace());
         ctx.namespace()
             .require_module_from_absolute_path(handler, &full_path.prefixes)?;
 

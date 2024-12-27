@@ -242,7 +242,7 @@ pub fn resolve_qualified_call_path(
         resolve_call_path_and_root_type_id(
             handler,
             engines,
-            &namespace.current_package_root_module(),
+            namespace.current_package_root_module(),
             root_type_id,
             as_trait_opt,
             &qualified_call_path.call_path,
@@ -294,7 +294,11 @@ pub fn resolve_call_path(
     }
 
     // Check that the modules in full_path are visible from the current module.
-    let _ = namespace.root_ref().check_module_privacy(handler, &full_path.prefixes, namespace.current_mod_path());
+    let _ = namespace.root_ref().check_module_privacy(
+        handler,
+        &full_path.prefixes,
+        namespace.current_mod_path(),
+    );
 
     // TODO: This visibility check is insufficient.
     //
@@ -305,11 +309,11 @@ pub fn resolve_call_path(
     // through the module path (the canonical path) of the declaration. If the entity is accessed
     // through another path, e.g., through a reexport, then it is the visibility of the reexport
     // that is relevant.
-    
+
     // Private declarations are visibile within their own module, so no need to check for
     // visibility in that case
     if decl_mod_path == *namespace.current_mod_path() {
-	return Ok(decl);
+        return Ok(decl);
     }
 
     // check the visibility of the symbol itself
@@ -335,21 +339,31 @@ pub(super) fn resolve_symbol_and_mod_path(
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
     if mod_path[0] == *root.current_package_name() {
-	resolve_symbol_and_mod_path_inner(handler, engines, root, mod_path, symbol, self_type)
+        resolve_symbol_and_mod_path_inner(handler, engines, root, mod_path, symbol, self_type)
     } else {
-	match root.get_external_package(&mod_path[0].to_string()) {
-	    Some(ext_root) => {
-		// The path must be resolved in an external package.
-		// The root module in that package may have a different name than the name we
-		// use to refer to the package, so replace it.
-		let mut new_mod_path = vec!(ext_root.current_package_name().clone());
-		for id in mod_path.iter().skip(1) {
-		    new_mod_path.push(id.clone());
-		}
-		resolve_symbol_and_mod_path_inner(handler, engines, &ext_root, &new_mod_path, symbol, self_type)
-	    },
-	    None => Err(handler.emit_err(crate::namespace::module_not_found(mod_path, mod_path[0] == *root.current_package_name())))
-	}
+        match root.get_external_package(&mod_path[0].to_string()) {
+            Some(ext_root) => {
+                // The path must be resolved in an external package.
+                // The root module in that package may have a different name than the name we
+                // use to refer to the package, so replace it.
+                let mut new_mod_path = vec![ext_root.current_package_name().clone()];
+                for id in mod_path.iter().skip(1) {
+                    new_mod_path.push(id.clone());
+                }
+                resolve_symbol_and_mod_path_inner(
+                    handler,
+                    engines,
+                    ext_root,
+                    &new_mod_path,
+                    symbol,
+                    self_type,
+                )
+            }
+            None => Err(handler.emit_err(crate::namespace::module_not_found(
+                mod_path,
+                mod_path[0] == *root.current_package_name(),
+            ))),
+        }
     }
 }
 
@@ -386,7 +400,7 @@ fn resolve_symbol_and_mod_path_inner(
                     current_mod_path.push(ident.clone());
                 }
                 None => {
-		    let (decl, _) = current_module.resolve_symbol(handler, engines, ident)?;
+                    let (decl, _) = current_module.resolve_symbol(handler, engines, ident)?;
                     decl_opt = Some(decl);
                 }
             }
@@ -436,7 +450,7 @@ fn decl_to_type_info(
             ty::TyDecl::GenericTypeForFunctionScope(decl) => {
                 (*engines.te().get(decl.type_id)).clone()
             }
-            _ =>{
+            _ => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: symbol.clone(),
                     span: symbol.span(),

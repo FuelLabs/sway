@@ -350,7 +350,7 @@ impl<'a> TypeCheckContext<'a> {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         &mut self,
-	handler: &Handler,
+        handler: &Handler,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
@@ -361,8 +361,8 @@ impl<'a> TypeCheckContext<'a> {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
-	self.namespace.enter_submodule(
-	    handler,
+        self.namespace.enter_submodule(
+            handler,
             engines,
             mod_name.clone(),
             visibility,
@@ -370,21 +370,21 @@ impl<'a> TypeCheckContext<'a> {
         )?;
 
         self.collection_ctx.enter_submodule(
-	    handler,
+            handler,
             engines,
             mod_name,
             visibility,
             module_span,
-	    |submod_collection_ctx| {
+            |submod_collection_ctx| {
                 let submod_ctx = TypeCheckContext::from_namespace(
-                    &mut self.namespace,
+                    self.namespace,
                     submod_collection_ctx,
                     engines,
                     experimental,
                 );
                 let ret = with_submod_ctx(submod_ctx);
-		self.namespace.pop_submodule();
- 	        ret
+                self.namespace.pop_submodule();
+                ret
             },
         )
     }
@@ -727,7 +727,7 @@ impl<'a> TypeCheckContext<'a> {
             handler,
             self.engines(),
             self.namespace(),
-            &self.namespace().current_mod_path(),
+            self.namespace().current_mod_path(),
             call_path,
             self.self_type(),
             VisibilityCheck::Yes,
@@ -773,10 +773,9 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // grab the local module
-        let local_module = self.namespace().require_module_from_absolute_path(
-            handler,
-            &self.namespace().current_mod_path,
-        )?;
+        let local_module = self
+            .namespace()
+            .require_module_from_absolute_path(handler, &self.namespace().current_mod_path)?;
 
         // grab the local items from the local module
         let local_items = local_module.get_items_for_type(self.engines, type_id);
@@ -798,10 +797,9 @@ impl<'a> TypeCheckContext<'a> {
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // grab the module where the type itself is declared
-        let type_module = self.namespace().require_module_from_absolute_path(
-            handler,
-            &item_prefix.to_vec(),
-        )?;
+        let type_module = self
+            .namespace()
+            .require_module_from_absolute_path(handler, &item_prefix.to_vec())?;
 
         // grab the items from where the type is declared
         let mut type_items = type_module.get_items_for_type(self.engines, type_id);
@@ -1225,8 +1223,9 @@ impl<'a> TypeCheckContext<'a> {
         src: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-	let engines = self.engines;
-        self.namespace_mut().star_import_to_current_module(handler, engines, src, visibility)
+        let engines = self.engines;
+        self.namespace_mut()
+            .star_import_to_current_module(handler, engines, src, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -1237,8 +1236,9 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-	let engines = self.engines;
-        self.namespace_mut().variant_star_import_to_current_module(handler, engines, src, enum_name, visibility)
+        let engines = self.engines;
+        self.namespace_mut()
+            .variant_star_import_to_current_module(handler, engines, src, enum_name, visibility)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -1249,8 +1249,9 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-	let engines = self.engines;
-        self.namespace_mut().self_import_to_current_module(handler, engines, src, alias, visibility)
+        let engines = self.engines;
+        self.namespace_mut()
+            .self_import_to_current_module(handler, engines, src, alias, visibility)
     }
 
     // Import all impls for a struct/enum. Do nothing for other types.
@@ -1271,7 +1272,9 @@ impl<'a> TypeCheckContext<'a> {
 
         let mut impls_to_insert = TraitMap::default();
 
-	let Some(src_mod) = &self.namespace().module_from_absolute_path(&decl_call_path.prefixes)
+        let Some(src_mod) = &self
+            .namespace()
+            .module_from_absolute_path(&decl_call_path.prefixes)
         else {
             return;
         };
@@ -1300,8 +1303,9 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-	let engines = self.engines;
-        self.namespace_mut().item_import_to_current_module(handler, engines, src, item, alias, visibility)
+        let engines = self.engines;
+        self.namespace_mut()
+            .item_import_to_current_module(handler, engines, src, item, alias, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -1315,7 +1319,7 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-	let engines = self.engines;
+        let engines = self.engines;
         self.namespace_mut().variant_import_to_current_module(
             handler,
             engines,
@@ -1342,9 +1346,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
-	// to the actual trait declaration. Since the path of the trait declaration is used as a key
-	// in the trait map, we need to find the actual declaration path.
-	let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
+        // to the actual trait declaration. Since the path of the trait declaration is used as a key
+        // in the trait map, we need to find the actual declaration path.
+        let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
 
         let items = items
             .iter()
@@ -1356,7 +1360,7 @@ impl<'a> TypeCheckContext<'a> {
             .implemented_traits
             .insert(
                 handler,
-		canonical_trait_path,
+                canonical_trait_path,
                 trait_type_args,
                 type_id,
                 &items,
@@ -1382,10 +1386,10 @@ impl<'a> TypeCheckContext<'a> {
         trait_name: &CallPath,
         trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
-	// CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
-	// to the actual trait declaration. Since the path of the trait declaration is used as a key
-	// in the trait map, we need to find the actual declaration path.
-	let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
+        // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
+        // to the actual trait declaration. Since the path of the trait declaration is used as a key
+        // in the trait map, we need to find the actual declaration path.
+        let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
 
         self.namespace()
             .current_module()
@@ -1394,7 +1398,7 @@ impl<'a> TypeCheckContext<'a> {
             .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
                 self.engines,
                 type_id,
-		&canonical_trait_path,
+                &canonical_trait_path,
                 trait_type_args,
             )
     }

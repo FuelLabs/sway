@@ -80,7 +80,7 @@ impl ty::TyAbiDecl {
         let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
         let self_type_id = self_type_param.type_id;
 
-	let mod_path = ctx.namespace().current_mod_path().clone();
+        let mod_path = ctx.namespace().current_mod_path().clone();
 
         // A temporary namespace for checking within this scope.
         ctx.with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
@@ -108,7 +108,7 @@ impl ty::TyAbiDecl {
                         if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             self_type_id,
-			    &mod_path,
+                            &mod_path,
                             &method_name.clone(),
                             ctx.type_annotation(),
                             &Default::default(),
@@ -261,7 +261,7 @@ impl ty::TyAbiDecl {
             (false, Span::dummy())
         };
 
-	let mod_path = ctx.namespace().current_mod_path().clone();
+        let mod_path = ctx.namespace().current_mod_path().clone();
         let mut const_symbols = HashMap::<Ident, ty::TyDecl>::new();
 
         handler.scope(|handler| {
@@ -343,14 +343,14 @@ impl ty::TyAbiDecl {
                 match item {
                     ty::TyTraitItem::Fn(decl_ref) => {
                         let method = decl_engine.get_function(decl_ref);
-			let current_mod_path = ctx.namespace().current_mod_path().clone();
+                        let current_mod_path = ctx.namespace().current_mod_path().clone();
                         // check if we inherit the same impl method from different branches
                         // XXX this piece of code can be abstracted out into a closure
                         // and reused for interface methods if the issue of mutable ctx is solved
                         if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             type_id,
-			    &current_mod_path,
+                            &current_mod_path,
                             &method.name.clone(),
                             ctx.type_annotation(),
                             &Default::default(),

@@ -121,19 +121,17 @@ pub(crate) fn compile_const_decl(
             .get_global_constant(env.context, &call_path.as_vec_string()),
         env.module_ns,
     ) {
-        (Some(const_val), _) => {
-	    Ok(Some(const_val))
-	},
+        (Some(const_val), _) => Ok(Some(const_val)),
         (None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.current_items().check_symbol(&call_path.suffix);
-	    
+
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
             };
 
-	    let const_decl = match decl {
+            let const_decl = match decl {
                 Ok(decl) => match decl.expect_typed() {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                         Some((*env.engines.de().get_constant(&decl_id)).clone())

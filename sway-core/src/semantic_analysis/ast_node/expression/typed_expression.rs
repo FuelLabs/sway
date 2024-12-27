@@ -306,13 +306,13 @@ impl ty::TyExpression {
             }
             ExpressionKind::AmbiguousVariableExpression(name) => {
                 if matches!(
-                    ctx.resolve_symbol(&Handler::default(), &name,).ok(),
+                    ctx.resolve_symbol(&Handler::default(), name).ok(),
                     Some(ty::TyDecl::EnumVariantDecl { .. })
                 ) {
                     let call_path = CallPath {
-			prefixes: vec![],
-			suffix: name.clone(),
-			callpath_type: CallPathType::Ambiguous,
+                        prefixes: vec![],
+                        suffix: name.clone(),
+                        callpath_type: CallPathType::Ambiguous,
                     };
 
                     Self::type_check_delineated_path(
@@ -1410,8 +1410,9 @@ impl ty::TyExpression {
             let call_path = CallPath {
                 prefixes,
                 suffix,
-		callpath_type,
-            }.to_fullpath(&engines, ctx.namespace());
+                callpath_type,
+            }
+            .to_fullpath(engines, ctx.namespace());
 
             if matches!(
                 ctx.resolve_call_path(&Handler::default(), &call_path,),
@@ -1457,13 +1458,13 @@ impl ty::TyExpression {
 
         let is_module = {
             let h = Handler::default();
-	    // The path may be relative to the current module,
-	    // or may be a full path to an external module
+            // The path may be relative to the current module,
+            // or may be a full path to an external module
             ctx.namespace()
                 .current_module()
                 .read(engines, |m| m.lookup_submodule(&h, &path).is_ok())
-		|| (ctx.namespace().module_from_absolute_path(&path).is_some() &&
-		    ctx.namespace().module_is_external(&path))
+                || (ctx.namespace().module_from_absolute_path(&path).is_some()
+                    && ctx.namespace().module_is_external(&path))
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1472,7 +1473,7 @@ impl ty::TyExpression {
             let probe_call_path = CallPath {
                 prefixes: prefixes.clone(),
                 suffix: before.inner.clone(),
-		callpath_type,
+                callpath_type,
             };
             ctx.resolve_call_path(&Handler::default(), &probe_call_path)
                 .and_then(|decl| decl.to_enum_id(&Handler::default(), ctx.engines()))
@@ -1501,7 +1502,8 @@ impl ty::TyExpression {
                             prefixes,
                             suffix: (type_info, type_name),
                             callpath_type,
-                        }.to_fullpath(engines, ctx.namespace()),
+                        }
+                        .to_fullpath(engines, ctx.namespace()),
                     },
                     method_name: suffix,
                 },
@@ -1568,30 +1570,28 @@ impl ty::TyExpression {
         let variant_without_enum_probe_handler = Handler::default();
         let const_probe_handler = Handler::default();
 
-	if unknown_call_path_binding
+        if unknown_call_path_binding
             .inner
             .qualified_path_root
             .is_none()
         {
             // Check if this could be a module
-	    // TODO: This is no longer correct - an absolute path to an external module can no
-	    // longer be looked up as a submodule of the current module
+            // TODO: This is no longer correct - an absolute path to an external module can no
+            // longer be looked up as a submodule of the current module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
-                ctx.namespace()
-                    .current_module()
-                    .read(ctx.engines(), |m| {
-                        m.lookup_submodule(
-                            &module_probe_handler,
-                            &[
-                                call_path_binding.inner.call_path.prefixes.clone(),
-                                vec![call_path_binding.inner.call_path.suffix.clone()],
-                            ]
-                            .concat(),
-                        )
-                        .ok()
-                        .is_some()
-                    })
+                ctx.namespace().current_module().read(ctx.engines(), |m| {
+                    m.lookup_submodule(
+                        &module_probe_handler,
+                        &[
+                            call_path_binding.inner.call_path.prefixes.clone(),
+                            vec![call_path_binding.inner.call_path.suffix.clone()],
+                        ]
+                        .concat(),
+                    )
+                    .ok()
+                    .is_some()
+                })
             };
 
             // Check if this could be a function
@@ -1612,52 +1612,32 @@ impl ty::TyExpression {
             };
 
             // Check if this could be an enum variant preceeded by its enum name.
-	    // For instance, the enum `Option` contains two variants, `None` and `Some`.
-	    // The full path for `None` would be current_mod_path::Option::None.
+            // For instance, the enum `Option` contains two variants, `None` and `Some`.
+            // The full path for `None` would be current_mod_path::Option::None.
             maybe_enum_variant_with_enum_name = {
                 let call_path_binding = unknown_call_path_binding.clone();
                 let variant_name = call_path_binding.inner.call_path.suffix.clone();
-                let enum_call_path = call_path_binding.inner.call_path.to_fullpath(ctx.engines(), ctx.namespace()).rshift();
+                let enum_call_path = call_path_binding
+                    .inner
+                    .call_path
+                    .to_fullpath(ctx.engines(), ctx.namespace())
+                    .rshift();
 
-		if enum_call_path.prefixes.is_empty() {
-		    // If the path has no prefixes after the rshift, then the package name is the
-		    // new suffix, and so the path is not an enum variant.
-		    None
-		} else {
-		    
+                if enum_call_path.prefixes.is_empty() {
+                    // If the path has no prefixes after the rshift, then the package name is the
+                    // new suffix, and so the path is not an enum variant.
+                    None
+                } else {
                     let mut call_path_binding = TypeBinding {
-			inner: enum_call_path,
-			type_arguments: call_path_binding.type_arguments,
-			span: call_path_binding.span,
+                        inner: enum_call_path,
+                        type_arguments: call_path_binding.type_arguments,
+                        span: call_path_binding.span,
                     };
-                    TypeBinding::type_check(&mut call_path_binding, &variant_with_enum_probe_handler, ctx.by_ref())
-			.ok()
-			.map(|(enum_ref, _, ty_decl)| {
-                            (
-				enum_ref,
-				variant_name,
-				call_path_binding,
-				ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
-                            )
-			})
-		}
-            };
-
-            // Check if this could be an enum variant without the enum name. This can happen when
-            // the variants are imported using a star import
-	    // For instance, `use Option::*` binds the name `None` in the current module, so the
-	    // full path would be current_mod_path::None rather than current_mod_path::Option::None.
-            maybe_enum_variant_without_enum_name = {
-                let call_path_binding = unknown_call_path_binding.clone();
-                let variant_name = call_path_binding.inner.call_path.suffix.clone();
-                let enum_call_path = call_path_binding.inner.call_path.to_fullpath(ctx.engines(), ctx.namespace());
-
-                let mut call_path_binding = TypeBinding {
-                    inner: enum_call_path,
-                    type_arguments: call_path_binding.type_arguments,
-                    span: call_path_binding.span,
-                };
-                TypeBinding::type_check(&mut call_path_binding, &variant_without_enum_probe_handler, ctx.by_ref())
+                    TypeBinding::type_check(
+                        &mut call_path_binding,
+                        &variant_with_enum_probe_handler,
+                        ctx.by_ref(),
+                    )
                     .ok()
                     .map(|(enum_ref, _, ty_decl)| {
                         (
@@ -1667,6 +1647,40 @@ impl ty::TyExpression {
                             ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
                         )
                     })
+                }
+            };
+
+            // Check if this could be an enum variant without the enum name. This can happen when
+            // the variants are imported using a star import
+            // For instance, `use Option::*` binds the name `None` in the current module, so the
+            // full path would be current_mod_path::None rather than current_mod_path::Option::None.
+            maybe_enum_variant_without_enum_name = {
+                let call_path_binding = unknown_call_path_binding.clone();
+                let variant_name = call_path_binding.inner.call_path.suffix.clone();
+                let enum_call_path = call_path_binding
+                    .inner
+                    .call_path
+                    .to_fullpath(ctx.engines(), ctx.namespace());
+
+                let mut call_path_binding = TypeBinding {
+                    inner: enum_call_path,
+                    type_arguments: call_path_binding.type_arguments,
+                    span: call_path_binding.span,
+                };
+                TypeBinding::type_check(
+                    &mut call_path_binding,
+                    &variant_without_enum_probe_handler,
+                    ctx.by_ref(),
+                )
+                .ok()
+                .map(|(enum_ref, _, ty_decl)| {
+                    (
+                        enum_ref,
+                        variant_name,
+                        call_path_binding,
+                        ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                    )
+                })
             };
         }
 
@@ -1675,12 +1689,18 @@ impl ty::TyExpression {
             { Self::probe_const_decl(&unknown_call_path_binding, &mut ctx, &const_probe_handler) };
 
         // compare the results of the checks
-        let exp = match (is_module, maybe_function, maybe_enum_variant_with_enum_name, maybe_enum_variant_without_enum_name, maybe_const) {
+        let exp = match (
+            is_module,
+            maybe_function,
+            maybe_enum_variant_with_enum_name,
+            maybe_enum_variant_without_enum_name,
+            maybe_const,
+        ) {
             (
                 false,
                 None,
                 Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
-		None,
+                None,
                 None,
             ) => {
                 handler.append(variant_with_enum_probe_handler);
@@ -1697,7 +1717,7 @@ impl ty::TyExpression {
             (
                 false,
                 None,
-		None,
+                None,
                 Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
                 None,
             ) => {

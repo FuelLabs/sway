@@ -1,6 +1,9 @@
 use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
-    language::{ty::{TyEnumDecl, TyStructDecl}, CallPathType},
+    language::{
+        ty::{TyEnumDecl, TyStructDecl},
+        CallPathType,
+    },
     type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
 };
 
@@ -735,8 +738,8 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_enums(&self, left: &TyEnumDecl, right: &TyEnumDecl) -> bool {
         assert!(
-            matches!(left.call_path.callpath_type, CallPathType::Full) &&
-		matches!(right.call_path.callpath_type, CallPathType::Full),
+            matches!(left.call_path.callpath_type, CallPathType::Full)
+                && matches!(right.call_path.callpath_type, CallPathType::Full),
             "The call paths of the enum declarations must always be resolved."
         );
 
@@ -796,8 +799,8 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_structs(&self, left: &TyStructDecl, right: &TyStructDecl) -> bool {
         assert!(
-            matches!(left.call_path.callpath_type, CallPathType::Full) &&
-		matches!(right.call_path.callpath_type, CallPathType::Full),
+            matches!(left.call_path.callpath_type, CallPathType::Full)
+                && matches!(right.call_path.callpath_type, CallPathType::Full),
             "The call paths of the enum declarations must always be resolved."
         );
 

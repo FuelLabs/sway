@@ -1,8 +1,6 @@
 use crate::{language::Visibility, Engines, Ident};
 
-use super::{
-    module::Module, root::Root, ModulePath, ModulePathBuf,
-};
+use super::{module::Module, root::Root, ModulePath, ModulePathBuf};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{
@@ -56,7 +54,7 @@ impl Namespace {
     }
 
     pub fn root_ref(&self) -> &Root {
-	&self.root
+        &self.root
     }
 
     pub fn current_module(&self) -> &Module {
@@ -99,30 +97,35 @@ impl Namespace {
     }
 
     /// Convert a parsed path to a full path.
-    pub fn parsed_path_to_full_path(&self, _engines: &Engines, parsed_path: &ModulePathBuf, is_relative_to_package_root: bool) -> ModulePathBuf {
-	if is_relative_to_package_root {
-	    // Path is relative to the root module in the current package. Prepend the package name
-	    let mut path = vec!(self.current_package_name().clone());
-	    for ident in parsed_path.iter() {
-		path.push(ident.clone())
-	    }
-	    path
-	} else if self.current_module_has_submodule(&parsed_path[0]) {
-	    // The first identifier is a submodule of the current module
-	    // The path is therefore assumed to be relative to the current module, so prepend the current module path.
-	    self.prepend_module_path(parsed_path)
-	} else if self.module_is_external(&parsed_path) {
-	    // The path refers to an external module, so the path is already a full path.
-	    parsed_path.to_vec()
-	} else {
-	    // The first identifier is neither a submodule nor an external package. It must
-	    // therefore refer to a binding in the local environment
-	    self.prepend_module_path(parsed_path)
-	}
+    pub fn parsed_path_to_full_path(
+        &self,
+        _engines: &Engines,
+        parsed_path: &ModulePathBuf,
+        is_relative_to_package_root: bool,
+    ) -> ModulePathBuf {
+        if is_relative_to_package_root {
+            // Path is relative to the root module in the current package. Prepend the package name
+            let mut path = vec![self.current_package_name().clone()];
+            for ident in parsed_path.iter() {
+                path.push(ident.clone())
+            }
+            path
+        } else if self.current_module_has_submodule(&parsed_path[0]) {
+            // The first identifier is a submodule of the current module
+            // The path is therefore assumed to be relative to the current module, so prepend the current module path.
+            self.prepend_module_path(parsed_path)
+        } else if self.module_is_external(parsed_path) {
+            // The path refers to an external module, so the path is already a full path.
+            parsed_path.to_vec()
+        } else {
+            // The first identifier is neither a submodule nor an external package. It must
+            // therefore refer to a binding in the local environment
+            self.prepend_module_path(parsed_path)
+        }
     }
-    
+
     pub fn current_package_root_module(&self) -> &Module {
-        &self.root.current_package_root_module()
+        self.root.current_package_root_module()
     }
 
     pub fn module_from_absolute_path(&self, path: &ModulePathBuf) -> Option<&Module> {
@@ -154,10 +157,10 @@ impl Namespace {
         absolute_module_path: &ModulePath,
         true_if_same: bool,
     ) -> bool {
-	if self.current_mod_path.len() < absolute_module_path.len() {
-	    return false;
-	}
-	
+        if self.current_mod_path.len() < absolute_module_path.len() {
+            return false;
+        }
+
         let is_submodule = absolute_module_path
             .iter()
             .zip(self.current_mod_path.iter())
@@ -183,12 +186,27 @@ impl Namespace {
     }
 
     pub fn package_exists(&self, name: &Ident) -> bool {
-	self.module_from_absolute_path(&vec![name.clone()]).is_some()
+        self.module_from_absolute_path(&vec![name.clone()])
+            .is_some()
     }
-    
-    pub(crate) fn module_has_binding(&self, engines: &Engines, mod_path: &ModulePathBuf, symbol: &Ident) -> bool {
-	let dummy_handler = Handler::default();
-	self.root.item_lookup(&dummy_handler, engines, symbol, mod_path, &self.current_mod_path, true).is_ok()
+
+    pub(crate) fn module_has_binding(
+        &self,
+        engines: &Engines,
+        mod_path: &ModulePathBuf,
+        symbol: &Ident,
+    ) -> bool {
+        let dummy_handler = Handler::default();
+        self.root
+            .item_lookup(
+                &dummy_handler,
+                engines,
+                symbol,
+                mod_path,
+                &self.current_mod_path,
+                true,
+            )
+            .is_ok()
     }
 
     // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
@@ -217,14 +235,14 @@ impl Namespace {
         } else {
             // Import core::prelude::* and std::prelude::*
             if self.root.exists_as_external(&core_string) {
-		self.root.star_import(
+                self.root.star_import(
                     handler,
                     engines,
                     &[core_ident, prelude_ident.clone()],
                     &self.current_mod_path,
                     Visibility::Private,
-		)?;
-	    }
+                )?;
+            }
 
             let std_string = STD.to_string();
             // Only import std::prelude::* if std exists as a dependency
@@ -376,6 +394,7 @@ impl Namespace {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn variant_import_to_current_module(
         &mut self,
         handler: &Handler,

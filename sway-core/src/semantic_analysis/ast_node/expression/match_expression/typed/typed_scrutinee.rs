@@ -10,7 +10,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
-        CallPath, CallPathType, 
+        CallPath, CallPathType,
     },
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
@@ -82,7 +82,7 @@ impl TyScrutinee {
                     CallPath {
                         prefixes: vec![],
                         suffix: ident.clone(),
-			callpath_type: CallPathType::Ambiguous,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     Scrutinee::Tuple {
                         elems: vec![],
@@ -419,7 +419,7 @@ fn type_check_struct(
             instantiation_call_path: CallPath {
                 prefixes: vec![],
                 suffix: struct_name,
-		callpath_type: CallPathType::Ambiguous,
+                callpath_type: CallPathType::Ambiguous,
             },
         },
     };

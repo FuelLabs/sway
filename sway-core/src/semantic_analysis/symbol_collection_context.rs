@@ -44,10 +44,10 @@ impl SymbolCollectionContext {
         with_scoped_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
         let decl = decl.map(ResolvedDeclaration::Parsed);
-        let lexical_scope_id: LexicalScopeId = self
-            .namespace
-            .current_module_mut()
-            .write(engines, |m| m.push_new_lexical_scope(span.clone(), decl.clone()));
+        let lexical_scope_id: LexicalScopeId =
+            self.namespace.current_module_mut().write(engines, |m| {
+                m.push_new_lexical_scope(span.clone(), decl.clone())
+            });
         let ret = with_scoped_ctx(self);
         self.namespace
             .current_module_mut()
@@ -68,9 +68,7 @@ impl SymbolCollectionContext {
     ) -> Result<T, ErrorEmitted> {
         self.namespace
             .current_module_mut()
-            .write(engines, |m| {
-		m.enter_lexical_scope(handler, span.clone())
-            })?;
+            .write(engines, |m| m.enter_lexical_scope(handler, span.clone()))?;
         let ret = with_ctx(self);
         self.namespace
             .current_module_mut()
@@ -84,8 +82,8 @@ impl SymbolCollectionContext {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         &mut self,
-	handler: &Handler,
-	engines: &Engines,
+        handler: &Handler,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
@@ -138,7 +136,8 @@ impl SymbolCollectionContext {
         src: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace_mut().star_import_to_current_module(handler, engines, src, visibility)
+        self.namespace_mut()
+            .star_import_to_current_module(handler, engines, src, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -150,7 +149,8 @@ impl SymbolCollectionContext {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace_mut().variant_star_import_to_current_module(handler, engines, src, enum_name, visibility)
+        self.namespace_mut()
+            .variant_star_import_to_current_module(handler, engines, src, enum_name, visibility)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -162,7 +162,8 @@ impl SymbolCollectionContext {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace_mut().self_import_to_current_module(handler, engines, src, alias, visibility)
+        self.namespace_mut()
+            .self_import_to_current_module(handler, engines, src, alias, visibility)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
@@ -175,7 +176,8 @@ impl SymbolCollectionContext {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace_mut().item_import_to_current_module(handler, engines, src, item, alias, visibility)
+        self.namespace_mut()
+            .item_import_to_current_module(handler, engines, src, item, alias, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.

@@ -8,8 +8,8 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program,
-    namespace, BuildTarget, Engines,
+    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program, namespace,
+    BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
 
@@ -241,10 +241,8 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-		
 		let mut initial_namespace = namespace::namespace_without_contract_id(core_lib_name.clone());
 		initial_namespace.add_external("core".to_owned(), core_root.clone());
-		    
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
@@ -554,9 +552,7 @@ fn compile_core(
     };
 
     match res.0 {
-        Some(typed_program) => {
-	    typed_program.root.namespace.root().clone()
-        }
+        Some(typed_program) => typed_program.root.namespace.root().clone(),
         _ => {
             let (errors, _warnings) = res.1.consume();
             for err in errors {

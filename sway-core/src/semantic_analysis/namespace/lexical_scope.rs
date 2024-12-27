@@ -164,7 +164,7 @@ impl Items {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-	current_mod_path: &ModulePathBuf,
+        current_mod_path: &ModulePathBuf,
     ) -> Result<Option<(ResolvedDeclaration, ModulePathBuf)>, ErrorEmitted> {
         // Check locally declared items. Any name clash with imports will have already been reported as an error.
         if let Some(decl) = self.symbols.get(symbol) {
@@ -186,12 +186,14 @@ impl Items {
                     symbol.span(),
                 )));
             } else {
-		//panic!();
+                //panic!();
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
                     name: symbol.clone(),
                     paths: decls
                         .iter()
-                        .map(|(path, decl, _)| get_path_for_decl(path, decl, engines, &current_mod_path[0]).join("::"))
+                        .map(|(path, decl, _)| {
+                            get_path_for_decl(path, decl, engines, &current_mod_path[0]).join("::")
+                        })
                         .collect(),
                     span: symbol.span(),
                 }));
@@ -746,11 +748,10 @@ impl Items {
         self.symbols
             .get(name)
             .cloned()
-            .ok_or_else(|| {
-		CompileError::SymbolNotFound {
+            .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
-		}})
+            })
     }
 
     pub(crate) fn check_symbols_unique_while_collecting_unifications(
@@ -761,11 +762,10 @@ impl Items {
             .read()
             .get(&name.into())
             .cloned()
-            .ok_or_else(|| {
-		CompileError::SymbolNotFound {
+            .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
-		}})
+            })
     }
 
     pub(crate) fn clear_symbols_unique_while_collecting_unifications(&self) {
@@ -829,7 +829,11 @@ pub(super) fn get_path_for_decl(
 ) -> Vec<String> {
     // Do not report the package name as part of the error if the path is in the current package.
     let skip_package_name = path[0] == *package_name;
-    let mut path_names = path.iter().skip(if skip_package_name { 1 } else { 0 }).map(|x| x.to_string()).collect::<Vec<_>>();
+    let mut path_names = path
+        .iter()
+        .skip(if skip_package_name { 1 } else { 0 })
+        .map(|x| x.to_string())
+        .collect::<Vec<_>>();
     match decl {
         ResolvedDeclaration::Parsed(decl) => {
             if let Declaration::EnumVariantDeclaration(decl) = decl {

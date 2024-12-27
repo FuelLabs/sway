@@ -633,7 +633,7 @@ impl TypeId {
                                     );
                                 }
 
-				handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                                handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                                     type_id: structure_type_id.index(),
                                     ty: structure_type_info_with_engines.to_string(),
                                     trait_name: format!(
@@ -676,7 +676,7 @@ impl TypeId {
                 .trait_name
                 .to_canonical_path(ctx.engines(), ctx.namespace());
 
-	    if !generic_trait_constraints_trait_names_and_args.iter().any(
+            if !generic_trait_constraints_trait_names_and_args.iter().any(
                 |(trait_name, trait_args)| {
                     trait_name == structure_trait_constraint_trait_name
                         && trait_args.len() == structure_trait_constraint.type_arguments.len()

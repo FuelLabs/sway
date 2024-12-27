@@ -41,9 +41,7 @@ pub(crate) fn struct_instantiation(
         TypeBinding::type_check(&mut call_path_binding, &Handler::default(), ctx.by_ref());
 
     let TypeBinding {
-        inner: CallPath {
-            suffix, ..
-        },
+        inner: CallPath { suffix, .. },
         type_arguments,
         span: inner_span,
     } = &call_path_binding;
@@ -72,8 +70,12 @@ pub(crate) fn struct_instantiation(
     };
 
     // find the module that the struct decl is in
-    let type_info_prefix = call_path_binding.inner.to_fullpath(engines, ctx.namespace()).prefixes;
-    ctx.namespace().require_module_from_absolute_path(handler, &type_info_prefix)?;
+    let type_info_prefix = call_path_binding
+        .inner
+        .to_fullpath(engines, ctx.namespace())
+        .prefixes;
+    ctx.namespace()
+        .require_module_from_absolute_path(handler, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx

@@ -309,8 +309,8 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = ctx.engines().de().get_enum(l_decl_ref);
                 let r_decl = ctx.engines().de().get_enum(r_decl_ref);
                 assert!(
-                    matches!(l_decl.call_path.callpath_type, CallPathType::Full) &&
-			matches!(r_decl.call_path.callpath_type, CallPathType::Full),
+                    matches!(l_decl.call_path.callpath_type, CallPathType::Full)
+                        && matches!(r_decl.call_path.callpath_type, CallPathType::Full),
                     "The call paths of the enum declarations must always be resolved."
                 );
                 l_decl.call_path == r_decl.call_path
@@ -321,8 +321,8 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = ctx.engines().de().get_struct(l_decl_ref);
                 let r_decl = ctx.engines().de().get_struct(r_decl_ref);
                 assert!(
-                    matches!(l_decl.call_path.callpath_type, CallPathType::Full) &&
-			matches!(r_decl.call_path.callpath_type, CallPathType::Full),
+                    matches!(l_decl.call_path.callpath_type, CallPathType::Full)
+                        && matches!(r_decl.call_path.callpath_type, CallPathType::Full),
                     "The call paths of the struct declarations must always be resolved."
                 );
                 l_decl.call_path == r_decl.call_path

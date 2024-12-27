@@ -38,10 +38,17 @@ pub(super) fn compile_script(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+        let _ = compile_external(engines, context, module, ext_package);
     }
-    
-    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
+
+    compile_constants(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
@@ -94,10 +101,17 @@ pub(super) fn compile_predicate(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-	let _ = compile_external(engines, context, module, ext_package, logged_types, messages_types, test_fns, cache);
+        let _ = compile_external(engines, context, module, ext_package);
     }
-    
-    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
+
+    compile_constants(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
@@ -152,10 +166,17 @@ pub(super) fn compile_contract(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+        let _ = compile_external(engines, context, module, ext_package);
     }
-    
-    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
+
+    compile_constants(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
@@ -244,10 +265,17 @@ pub(super) fn compile_library(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+        let _ = compile_external(engines, context, module, ext_package);
     }
-    
-    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
+
+    compile_constants(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
     compile_tests(
         engines,
         context,
@@ -268,19 +296,22 @@ pub(super) fn compile_external(
     context: &mut Context,
     module: Module,
     namespace: &namespace::Root,
-    logged_types_map: &HashMap<TypeId, LogId>,
-    messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
-    cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let mut md_mgr = MetadataManager::default();
 
     // Collect constant for all dependencies
     for ext_package in namespace.external_packages().values() {
-	let _ = compile_external(engines, context, module, ext_package, logged_types_map, messages_types_map, test_fns, cache);
+        let _ = compile_external(engines, context, module, ext_package);
     }
-    
-    compile_constants(engines, context, &mut md_mgr, module, namespace.current_package_root_module()).map_err(|err| vec![err])?;
+
+    compile_constants(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
 
     Ok(module)
 }
