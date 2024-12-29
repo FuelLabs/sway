@@ -718,6 +718,213 @@ mod tests {
         assert_eq!(result, vec!["\"a:b\"", "c"]);
     }
 
+    #[test]
+    fn param_type_val_to_token_conversion() {
+        // unit
+        let token = param_type_val_to_token(&ParamType::Unit, "").unwrap();
+        assert_eq!(token, Token::Unit);
+
+        // bool
+        let token = param_type_val_to_token(&ParamType::Bool, "true").unwrap();
+        assert_eq!(token, Token::Bool(true));
+
+        // u8
+        let token = param_type_val_to_token(&ParamType::U8, "42").unwrap();
+        assert_eq!(token, Token::U8(42));
+
+        // u16
+        let token = param_type_val_to_token(&ParamType::U16, "42").unwrap();
+        assert_eq!(token, Token::U16(42));
+
+        // u32
+        let token = param_type_val_to_token(&ParamType::U32, "42").unwrap();
+        assert_eq!(token, Token::U32(42));
+
+        // u64
+        let token = param_type_val_to_token(&ParamType::U64, "42").unwrap();
+        assert_eq!(token, Token::U64(42));
+
+        // u128
+        let token = param_type_val_to_token(&ParamType::U128, "42").unwrap();
+        assert_eq!(token, Token::U128(42));
+
+        // u256 - hex string
+        let token = param_type_val_to_token(&ParamType::U256, "0x42").unwrap();
+        assert_eq!(token, Token::U256(66.into()));
+
+        // u256 - decimal string
+        let token = param_type_val_to_token(&ParamType::U256, "42").unwrap();
+        assert_eq!(token, Token::U256(42.into()));
+
+        // u256 - decimal string with leading 0
+        let token = param_type_val_to_token(&ParamType::U256, "0000000000000000000000000000000000000000000000000000000000000042").unwrap();
+        assert_eq!(token, Token::U256(42.into()));
+
+        // b256 - hex string, incorrect length
+        let token_result = param_type_val_to_token(&ParamType::B256, "0x42");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "B256 value must be 64 hex characters: 42");
+
+        // b256 - hex string, correct length
+        let token = param_type_val_to_token(&ParamType::B256, "0x0000000000000000000000000000000000000000000000000000000000000042").unwrap();
+        assert_eq!(token, Token::B256([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,66]));
+
+
+        // b256 - no 0x prefix
+        let token = param_type_val_to_token(&ParamType::B256, "0000000000000000000000000000000000000000000000000000000000000042").unwrap();
+        assert_eq!(token, Token::B256([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,66]));
+
+        // bytes
+        let token = param_type_val_to_token(&ParamType::Bytes, "0x42").unwrap();
+        assert_eq!(token, Token::Bytes(vec![66].try_into().unwrap()));
+
+        // bytes - no 0x prefix
+        let token = param_type_val_to_token(&ParamType::Bytes, "42").unwrap();
+        assert_eq!(token, Token::Bytes(vec![66].try_into().unwrap()));
+
+        // string
+        let token = param_type_val_to_token(&ParamType::String, "fuel").unwrap();
+        assert_eq!(token, Token::String("fuel".to_string()));
+
+        // raw slice
+        let token = param_type_val_to_token(&ParamType::RawSlice, "0x42").unwrap();
+        assert_eq!(token, Token::RawSlice(vec![66].try_into().unwrap()));
+
+        // raw slice - no 0x prefix
+        let token = param_type_val_to_token(&ParamType::RawSlice, "42").unwrap();
+        assert_eq!(token, Token::RawSlice(vec![66].try_into().unwrap()));
+
+        // string array - single val
+        let token = param_type_val_to_token(&ParamType::StringArray(4), "fuel").unwrap();
+        assert_eq!(token, Token::StringArray(StaticStringToken::new("fuel".to_string(), Some(4))));
+
+        // string array - incorrect length fails
+        let token_result = param_type_val_to_token(&ParamType::StringArray(2), "fuel");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "string array length mismatch: expected 2, got 4");
+
+        // string slice
+        let token = param_type_val_to_token(&ParamType::StringSlice, "fuel").unwrap();
+        assert_eq!(token, Token::StringSlice(StaticStringToken::new("fuel".to_string(), None)));
+
+        // tuple - incorrect format
+        let token_result = param_type_val_to_token(&ParamType::Tuple(vec![ParamType::String, ParamType::String]), "fuel, 42");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "input must start with '(' and end with ')': fuel, 42");
+
+        // tuple
+        let token = param_type_val_to_token(&ParamType::Tuple(vec![ParamType::String, ParamType::String]), "(fuel, 42)").unwrap();
+        assert_eq!(token, Token::Tuple(vec![Token::String("fuel".to_string()), Token::String("42".to_string())]));
+
+        // tuple - different param types
+        let token = param_type_val_to_token(&ParamType::Tuple(vec![ParamType::String, ParamType::U8]), "(fuel, 42)").unwrap();
+        assert_eq!(token, Token::Tuple(vec![Token::String("fuel".to_string()), Token::U8(42)]));
+
+        // array
+        let token = param_type_val_to_token(&ParamType::Array(ParamType::String.into(), 3), "[fuel, 42]").unwrap();
+        assert_eq!(token, Token::Array(vec![Token::String("fuel".to_string()), Token::String("42".to_string())]));
+
+        // array - incorrect format
+        let token_result = param_type_val_to_token(&ParamType::Array(ParamType::String.into(), 3), "fuel 42");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "input must start with '[' and end with ']': fuel 42");
+
+        // vector - correct format
+        let token = param_type_val_to_token(&ParamType::Vector(ParamType::String.into()), "[fuel, 42]").unwrap();
+        assert_eq!(token, Token::Vector(vec![Token::String("fuel".to_string()), Token::String("42".to_string())]));
+
+        // vector - incorrect format
+        let token_result = param_type_val_to_token(&ParamType::Vector(ParamType::String.into()), "fuel 42");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "input must start with '[' and end with ']': fuel 42");
+       
+        // struct - correct format; single value
+        let token = param_type_val_to_token(&ParamType::Struct{
+            name: "".to_string(),
+            fields: vec![("".to_string(), ParamType::String)],
+            generics: vec![]
+        }, "{fuel, 42}").unwrap();
+        assert_eq!(token, Token::Struct(vec![Token::String("fuel".to_string())]));
+
+        // struct - correct format; multiple values
+        let token = param_type_val_to_token(&ParamType::Struct{
+            name: "".to_string(),
+            fields: vec![("".to_string(), ParamType::String), ("".to_string(), ParamType::String)],
+            generics: vec![]
+        }, "{fuel, 42}").unwrap();
+        assert_eq!(token, Token::Struct(vec![Token::String("fuel".to_string()), Token::String("42".to_string())]));
+
+        // struct - correct format; multiple values; different param types
+        let token = param_type_val_to_token(&ParamType::Struct{
+            name: "".to_string(),
+            fields: vec![("".to_string(), ParamType::String), ("".to_string(), ParamType::U8)],
+            generics: vec![]
+        }, "{fuel, 42}").unwrap();
+        assert_eq!(token, Token::Struct(vec![Token::String("fuel".to_string()), Token::U8(42)]));
+
+         // struct - incorrect format (same as tuple)
+         let token_result = param_type_val_to_token(&ParamType::Struct{ name: "".to_string(), fields: vec![("a".to_string(), ParamType::String)], generics: vec![] }, "fuel, 42");
+         assert!(token_result.is_err());
+         assert_eq!(token_result.unwrap_err().to_string(), "input must start with '{' and end with '}': fuel, 42");
+
+        // enum - incorrect format
+        let token_result = param_type_val_to_token(&ParamType::Enum{
+            name: "".to_string(),
+            enum_variants: EnumVariants::new(vec![("".to_string(), ParamType::String), ("".to_string(), ParamType::U8)]).unwrap(),
+            generics: vec![]
+        }, "Active: true");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "input must start with '(' and end with ')': Active: true");
+
+        // enum - variant not found
+        let enum_variants = EnumVariants::new(vec![("".to_string(), ParamType::String), ("".to_string(), ParamType::U8)]).unwrap();
+        let token_result = param_type_val_to_token(&ParamType::Enum{
+            name: "".to_string(),
+            enum_variants: enum_variants.clone(),
+            generics: vec![]
+        }, "(Active: true)");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "failed to find index of variant: Active");
+
+        // enum - variant found, incorrect variant value (expect cannot parse u8 as bool)
+        let enum_variants = EnumVariants::new(vec![("Input".to_string(), ParamType::String), ("Active".to_string(), ParamType::U8)]).unwrap();
+        let token_result = param_type_val_to_token(&ParamType::Enum{
+            name: "".to_string(),
+            enum_variants: enum_variants.clone(),
+            generics: vec![]
+        }, "(Active: true)");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "failed to parse `Active` variant enum value: true");
+
+        // enum - variant found, correct variant value
+        let enum_variants = EnumVariants::new(vec![("Input".to_string(), ParamType::String), ("Active".to_string(), ParamType::Bool)]).unwrap();
+        let token = param_type_val_to_token(&ParamType::Enum{
+            name: "".to_string(),
+            enum_variants: enum_variants.clone(),
+            generics: vec![]
+        }, "(Active: true)").unwrap();
+        assert_eq!(token, Token::Enum((1u64, Token::Bool(true), enum_variants).into()));
+
+        // enum - variant found by index, incorrect index type (should be bool)
+        let enum_variants = EnumVariants::new(vec![("Input".to_string(), ParamType::String), ("Active".to_string(), ParamType::Bool)]).unwrap();
+        let token_result = param_type_val_to_token(&ParamType::Enum{
+            name: "".to_string(),
+            enum_variants: enum_variants.clone(),
+            generics: vec![]
+        }, "(1: 1)");
+        assert!(token_result.is_err());
+        assert_eq!(token_result.unwrap_err().to_string(), "failed to parse `1` variant enum value: 1");
+
+        // enum - variant found by index, correct variant value
+        let enum_variants = EnumVariants::new(vec![("Input".to_string(), ParamType::String), ("Active".to_string(), ParamType::Bool)]).unwrap();
+        let token = param_type_val_to_token(&ParamType::Enum{
+            name: "".to_string(),
+            enum_variants: enum_variants.clone(),
+            generics: vec![]
+        }, "(1: true)").unwrap();
+        assert_eq!(token, Token::Enum((1u64, Token::Bool(true), enum_variants).into()));
+    }
+
     #[tokio::test]
     async fn contract_call_with_abi() {
         let (_, id, wallet) = get_contract_instance().await;
