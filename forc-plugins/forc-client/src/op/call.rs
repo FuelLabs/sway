@@ -925,6 +925,148 @@ mod tests {
         assert_eq!(token, Token::Enum((1u64, Token::Bool(true), enum_variants).into()));
     }
 
+    #[test]
+    fn token_to_string_conversion() {
+        // unit
+        let token = Token::Unit;
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "()");
+
+        // bool
+        let token = Token::Bool(true);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "true");
+
+        // u8
+        let token = Token::U8(42);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "42");
+
+        // u16
+        let token = Token::U16(42);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "42");
+
+        // u32
+        let token = Token::U32(42);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "42");
+
+        // u64
+        let token = Token::U64(42);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "42");
+
+        // u128
+        let token = Token::U128(42);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "42");
+
+        // u256
+        let token = Token::U256(42.into());
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "42");
+
+        // b256
+        let token = Token::B256([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,66]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "0x0000000000000000000000000000000000000000000000000000000000000042");
+
+        // bytes
+        let token = Token::Bytes(vec![66].try_into().unwrap());
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "0x42");
+
+        // string
+        let token = Token::String("fuel".to_string());
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "fuel");
+
+        // raw slice
+        let token = Token::RawSlice(vec![66].try_into().unwrap());
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "0x42");
+
+        // string array - fails if length is incorrect
+        let token = Token::StringArray(StaticStringToken::new("fuel".to_string(), Some(1)));
+        let output_res = token_to_string(&token);
+        assert!(output_res.is_err());
+        assert_eq!(output_res.unwrap_err().to_string(), "codec: string data has len 4, but the expected len is 1");
+
+        // string array - fails if length overflows
+        let token = Token::StringArray(StaticStringToken::new("fuel".to_string(), Some(10)));
+        let output_res = token_to_string(&token);
+        assert!(output_res.is_err());
+        assert_eq!(output_res.unwrap_err().to_string(), "codec: string data has len 4, but the expected len is 10");
+
+        // string array - succeeds if length not provided
+        // TODO: probably an issue in the SDK; should fail validation
+        let token = Token::StringArray(StaticStringToken::new("fuel".to_string(), None));
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "fuel");
+
+        // string array - succeeds if length is correct
+        let token = Token::StringArray(StaticStringToken::new("fuel".to_string(), Some(4)));
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "fuel");
+
+        // string slice
+        let token = Token::StringSlice(StaticStringToken::new("fuel".to_string(), None));
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "fuel");
+
+        // tuple
+        let token = Token::Tuple(vec![Token::String("fuel".to_string()), Token::U8(42)]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "(fuel, 42)");
+
+        // array - same param types
+        let token = Token::Array(vec![Token::String("fuel".to_string()), Token::String("rocks".to_string())]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "[fuel, rocks]");
+
+        // array - different param types
+        // TODO: probably an issue in the SDK; should fail validation
+        let token = Token::Array(vec![Token::String("fuel".to_string()), Token::U8(42)]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "[fuel, 42]");
+
+        // vector - same param types
+        let token = Token::Vector(vec![Token::String("fuel".to_string()), Token::String("rocks".to_string())]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "[fuel, rocks]");
+
+        // vector - different param types
+        // TODO: probably an issue in the SDK; should fail validation
+        let token = Token::Vector(vec![Token::String("fuel".to_string()), Token::U8(42)]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "[fuel, 42]");
+
+        // struct - single value
+        let token = Token::Struct(vec![Token::String("fuel".to_string())]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "{fuel}");
+
+        // struct - multiple values
+        let token = Token::Struct(vec![Token::String("fuel".to_string()), Token::U8(42)]);
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "{fuel, 42}");
+
+        // enum - fails if variant incorrect
+        let enum_variants = EnumVariants::new(vec![("Active".to_string(), ParamType::Bool), ("Pending".to_string(), ParamType::U64)]).unwrap();
+        let token = Token::Enum((1u64, Token::Bool(true), enum_variants).into());
+        let output_res = token_to_string(&token);
+        assert!(output_res.is_err());
+        assert_eq!(output_res.unwrap_err().to_string(), "expected type U64 but got Bool");
+
+        // enum - correct variant
+        let enum_variants = EnumVariants::new(vec![("Active".to_string(), ParamType::Bool), ("Pending".to_string(), ParamType::U64)]).unwrap();
+        let token = Token::Enum((1u64, Token::U64(42), enum_variants).into());
+        let output = token_to_string(&token).unwrap();
+        assert_eq!(output, "(Pending:42)");
+    }
+
+
     #[tokio::test]
     async fn contract_call_with_abi() {
         let (_, id, wallet) = get_contract_instance().await;
