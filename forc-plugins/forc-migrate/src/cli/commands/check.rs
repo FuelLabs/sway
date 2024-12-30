@@ -18,7 +18,7 @@ use sway_core::Engines;
 forc_util::cli_examples! {
     crate::cli::Opt {
         [ Check the project in the current path => "forc migrate check"]
-        [ Check the project located in another path => "forc migrate check --manifest-path {path}" ]
+        [ Check the project located in another path => "forc migrate check --path {path}" ]
     }
 }
 

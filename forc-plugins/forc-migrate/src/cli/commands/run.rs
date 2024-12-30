@@ -33,7 +33,7 @@ use crate::{
 forc_util::cli_examples! {
     crate::cli::Opt {
         [ Migrate the project in the current path => "forc migrate run"]
-        [ Migrate the project located in another path => "forc migrate run --manifest-path {path}" ]
+        [ Migrate the project located in another path => "forc migrate run --path {path}" ]
         [ Migrate the project offline without downloading any dependency => "forc migrate run --offline" ]
     }
 }

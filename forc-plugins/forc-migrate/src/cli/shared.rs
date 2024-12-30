@@ -22,10 +22,11 @@ use crate::{
 /// Args that can be shared between all commands that `compile` a package. E.g. `check`, `run`.
 #[derive(Debug, Default, Parser)]
 pub(crate) struct Compile {
-    /// Path to the Forc.toml file. By default, forc-migrate searches for the Forc.toml
-    /// file in the current directory or any parent directory.
-    #[clap(long)]
-    pub manifest_path: Option<String>,
+    /// Path to the project.
+    ///
+    /// If not specified, current working directory will be used.
+    #[clap(short, long)]
+    pub path: Option<String>,
     /// Offline mode, prevents Forc from using the network when managing dependencies.
     /// Meaning it will only try to use previously downloaded dependencies.
     #[clap(long = "offline")]
@@ -47,9 +48,9 @@ pub(crate) struct Compile {
 }
 
 impl Compile {
-    /// Returns the [Compile::manifest_path] if provided, otherwise the current directory.
+    /// Returns the [Compile::path] if provided, otherwise the current directory.
     pub(crate) fn manifest_dir(&self) -> std::io::Result<PathBuf> {
-        if let Some(path) = &self.manifest_path {
+        if let Some(path) = &self.path {
             std::result::Result::Ok(PathBuf::from(path))
         } else {
             std::env::current_dir()
@@ -131,9 +132,9 @@ pub(crate) fn compile_package<'a>(
         engines,
     });
 
-    fn instructive_compilation_error(pkg_manifest_path: &str) -> String {
+    fn instructive_compilation_error(manifest_dir: &str) -> String {
         instructive_error("The Sway project cannot be compiled.", &vec![
-            &format!("`forc migrate` could not compile the Sway project located at \"{pkg_manifest_path}\"."),
+            &format!("`forc migrate` could not compile the Sway project located at \"{manifest_dir}\"."),
             "To see the compilation errors, run `forc build` on the project.",
             "Did you maybe forget to specify experimental features?",
             "If the project uses experimental features, they need to be specified when running `forc migrate`.",
