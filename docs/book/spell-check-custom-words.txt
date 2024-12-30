@@ -228,6 +228,10 @@ forc-client
 crypto
 doc
 fmt
+deallocated
+deallocate
+destructors
+destructor
 semiautomatically
 FuelLabs
 github
