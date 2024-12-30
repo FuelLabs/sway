@@ -14,13 +14,13 @@ Sway provides a stateless [re-entrancy](https://fuellabs.github.io/sway-libs/boo
 To use the guard we must import it.
 
 ```sway
-{{#include ../../code/operations/re_entrancy/src/main.sw:import}}
+{{#include ../../code/operations/re_entrency/src/main.sw:import}}
 ```
 
 Then call it in a contract function.
 
 ```sway
-{{#include ../../code/operations/re_entrancy/src/main.sw:guard}}
+{{#include ../../code/operations/re_entrency/src/main.sw:guard}}
 ```
 
 ## Checks-Effects-Interactions Pattern
@@ -28,5 +28,5 @@ Then call it in a contract function.
 The pattern states that all state (storage) changes should be made before a call is made.
 
 ```sway
-{{#include ../../code/operations/re_entrancy/src/main.sw:check}}
+{{#include ../../code/operations/re_entrency/src/main.sw:check}}
 ```
