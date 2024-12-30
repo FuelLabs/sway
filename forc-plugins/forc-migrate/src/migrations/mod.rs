@@ -112,6 +112,14 @@ impl MigrationStep {
             MigrationStepKind::CodeTransformation(_, _) => Automatic,
         }
     }
+
+    pub(crate) fn has_manual_actions(&self) -> bool {
+        match self.kind {
+            MigrationStepKind::Instruction(_) => true,
+            MigrationStepKind::CodeTransformation(_, []) => false,
+            MigrationStepKind::CodeTransformation(_, _) => true,
+        }
+    }
 }
 
 /// Denotes that a migration step that changes the source code should

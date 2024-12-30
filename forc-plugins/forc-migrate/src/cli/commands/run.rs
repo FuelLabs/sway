@@ -16,6 +16,7 @@ use sway_core::{
 use sway_error::formatting::*;
 use sway_features::Feature;
 use sway_types::{SourceEngine, Span};
+use swayfmt::Formatter;
 
 use crate::{
     cli::{
@@ -151,8 +152,6 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                 MigrationStepKind::CodeTransformation(migration, manual_migration_actions) => {
                     let occurrences_spans = migration(&mut program_info.as_mut(), DryRun::No)?;
 
-                    let has_manual_actions = !manual_migration_actions.is_empty();
-
                     if occurrences_spans.is_empty() {
                         print_checked_action(max_len, feature, migration_step);
                     } else {
@@ -177,7 +176,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                         );
 
                         // Check if we can proceed with the next migration step or break for manual action.
-                        if !has_manual_actions {
+                        if !migration_step.has_manual_actions() {
                             // Mark the feature as having made code changes in the migration, and proceed with the
                             // next migration step *within the same feature*, if any.
                             current_feature_migration_has_code_changes = true;
@@ -247,8 +246,7 @@ fn output_changed_lexed_program(
         lexed_module: &LexedModule,
     ) -> Result<()> {
         if let Some(path) = modified_modules.get_path_if_modified(&lexed_module.tree) {
-            // Formatters have state, e.g. CommentContext, so get a new one for each module.
-            let mut formatter = swayfmt::Formatter::from_dir(manifest_dir)?;
+            let mut formatter = Formatter::from_dir(manifest_dir)?;
 
             let code = formatter.format_module(&lexed_module.tree)?;
 

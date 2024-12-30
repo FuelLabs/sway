@@ -167,6 +167,8 @@ impl Formatter {
         self.with_comments_context(src)?;
 
         let annotated_module = Annotated {
+            // TODO: Handling of annotations on the module level will be done
+            //       in https://github.com/FuelLabs/sway/issues/6802.
             attribute_list: vec![],
             value: module.clone(),
         };
