@@ -22,6 +22,7 @@ use fuels::{
         transaction_builders::{BuildableTransaction, VariableOutputPolicy},
     },
 };
+use fuels_accounts::ViewOnlyAccount;
 use fuels_accounts::{provider::Provider, Account};
 use pkg::BuiltPackage;
 use std::time::Duration;
@@ -30,7 +31,6 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
-use fuels_accounts::ViewOnlyAccount;
 
 use self::encode::ScriptCallHandler;
 
