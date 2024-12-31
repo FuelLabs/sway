@@ -20,8 +20,9 @@ forc_util::cli_examples! {
     version
 )]
 pub struct Command {
-    /// Path to the Forc.toml file. By default, forc-doc searches for the Forc.toml
-    /// file in the current directory or any parent directory.
+    /// Path to the project.
+    ///
+    /// If not specified, current working directory will be used.
     #[clap(short, long, alias = "manifest-path")]
     pub path: Option<String>,
     /// Include non-public items in the documentation.
