@@ -3108,17 +3108,17 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let collection_ctx_ns = Namespace::new();
+        let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
+        let root_module = namespace::Root::new(
+            root_module_name,
+            None,
+	    false,
+        );
+        let collection_ctx_ns = Namespace::new(handler, engines, root_module.clone(), true)?;
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
 
-        let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
-        let mut root_module = namespace::Root::from(namespace::Module::new(
-            root_module_name,
-            Visibility::Private,
-            None,
-        ));
-        let mut namespace = Namespace::init_root(&mut root_module);
-        let ctx = TypeCheckContext::from_namespace(
+        let mut namespace = Namespace::new(handler, engines, root_module, true)?;
+        let ctx = TypeCheckContext::from_root(
             &mut namespace,
             &mut collection_ctx,
             engines,

@@ -159,7 +159,7 @@ impl ResolvedDeclaration {
 /// canonical paths, or that use canonical paths internally, are *only* called from the root. This
 /// normally includes methods that first lookup some canonical path via `use_synonyms` before using
 /// that canonical path to look up the symbol declaration.
-#[derive(Clone, Debug /*Default*/)]
+#[derive(Clone, Debug)]
 pub struct Root {
     // The contents of the package being compiled.
     current_package: Module,
@@ -179,7 +179,7 @@ impl Root {
     // and `package_root_with_contract_id` are supplied in `contract_helpers`.
     //
     // External packages must be added afterwards by calling `add_external`
-    pub(super) fn new(package_name: Ident, span: Option<Span>, is_contract_package: bool) -> Self {
+    pub(crate) fn new(package_name: Ident, span: Option<Span>, is_contract_package: bool) -> Self {
         // The root module must be public
         let module = Module::new(package_name, Visibility::Public, span, &vec![]);
         Self {

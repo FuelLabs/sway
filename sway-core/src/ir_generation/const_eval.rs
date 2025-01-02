@@ -1528,17 +1528,17 @@ mod tests {
         let handler = Handler::default();
         let mut context = Context::new(engines.se(), ExperimentalFeatures::default());
         let mut md_mgr = MetadataManager::default();
-        let mut core_lib = namespace::Root::from(namespace::Module::new(
+        let core_lib = namespace::Root::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
-            crate::Visibility::Private,
             None,
-        ));
+	    false,
+        );
 
         let r = crate::compile_to_ast(
             &handler,
             &engines,
             std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
-            &mut core_lib,
+            core_lib,
             None,
             "test",
             None,
