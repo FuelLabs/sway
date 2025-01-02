@@ -2782,7 +2782,7 @@ impl ToDiagnostic for CompileError {
                 ).collect::<Vec<_>>().join("\n"))],
             },
             MultipleContractsMethodsWithTheSameName { spans } => Diagnostic {
-                reason: Some(Reason::new(code(1), format!("Multiple contracts methods with the same name."))),
+                reason: Some(Reason::new(code(1), "Multiple contracts methods with the same name.".into())),
                 issue: Issue::error(
                     source_engine,
                     spans[0].clone(),

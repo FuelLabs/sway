@@ -428,7 +428,7 @@ impl TyProgram {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
+    ) -> impl 'b + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))

@@ -10,7 +10,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     Engines, TypeArgument, TypeInfo, TypeParameter,
 };
-use std::{collections::BTreeMap, default};
+use std::collections::BTreeMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -630,6 +630,9 @@ where
         }
 
         // check contract methods are unique
+        // we need to allow manual_try_fold to avoid short-circuit and show
+        // all errors.
+        #[allow(clippy::manual_try_fold)]
         contract_methods
             .into_iter()
             .fold(Ok(()), |error, (_, spans)| {
