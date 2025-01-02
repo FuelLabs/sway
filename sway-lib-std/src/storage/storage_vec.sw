@@ -945,7 +945,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// # Returns
     ///
-    /// * [StorageVecIter<V>] - The stuct which can be iterated over.
+    /// * [StorageVecIter<V>] - The struct which can be iterated over.
     ///
     /// # Examples
     ///
