@@ -150,7 +150,7 @@ fn collect_use_statement(
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
-            } else {
+            } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
@@ -172,7 +172,10 @@ fn collect_use_statement(
                     handler.append(star_import_handler);
                     import
                 }
-            }
+            } else {
+                handler.append(star_import_handler);
+                import
+	    }
         }
         ImportType::SelfImport(_) => {
             ctx.self_import(handler, engines, &path, stmt.alias.clone(), stmt.reexport)
@@ -241,7 +244,7 @@ fn handle_use_statement(ctx: &mut TypeCheckContext<'_>, stmt: &UseStatement, han
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
-            } else {
+            } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
@@ -262,7 +265,10 @@ fn handle_use_statement(ctx: &mut TypeCheckContext<'_>, stmt: &UseStatement, han
                     handler.append(star_import_handler);
                     import
                 }
-            }
+	    } else {
+                handler.append(star_import_handler);
+                import
+	    }
         }
         ImportType::SelfImport(_) => {
             ctx.self_import(handler, &path, stmt.alias.clone(), stmt.reexport)
