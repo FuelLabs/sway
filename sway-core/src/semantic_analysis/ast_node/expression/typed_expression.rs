@@ -1655,32 +1655,39 @@ impl ty::TyExpression {
             // For instance, `use Option::*` binds the name `None` in the current module, so the
             // full path would be current_mod_path::None rather than current_mod_path::Option::None.
             maybe_enum_variant_without_enum_name = {
-                let call_path_binding = unknown_call_path_binding.clone();
-                let variant_name = call_path_binding.inner.call_path.suffix.clone();
-                let enum_call_path = call_path_binding
-                    .inner
-                    .call_path
-                    .to_fullpath(ctx.engines(), ctx.namespace());
+                if maybe_enum_variant_with_enum_name.is_some() {
+                    // Corner case. This can happen if the path is just a single identifier
+                    // referring to an enum variant name. In this case we use
+                    // maybe_enum_variant_with_enum_name
+                    None
+                } else {
+                    let call_path_binding = unknown_call_path_binding.clone();
+                    let variant_name = call_path_binding.inner.call_path.suffix.clone();
+                    let enum_call_path = call_path_binding
+                        .inner
+                        .call_path
+                        .to_fullpath(ctx.engines(), ctx.namespace());
 
-                let mut call_path_binding = TypeBinding {
-                    inner: enum_call_path,
-                    type_arguments: call_path_binding.type_arguments,
-                    span: call_path_binding.span,
-                };
-                TypeBinding::type_check(
-                    &mut call_path_binding,
-                    &variant_without_enum_probe_handler,
-                    ctx.by_ref(),
-                )
-                .ok()
-                .map(|(enum_ref, _, ty_decl)| {
-                    (
-                        enum_ref,
-                        variant_name,
-                        call_path_binding,
-                        ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                    let mut call_path_binding = TypeBinding {
+                        inner: enum_call_path,
+                        type_arguments: call_path_binding.type_arguments,
+                        span: call_path_binding.span,
+                    };
+                    TypeBinding::type_check(
+                        &mut call_path_binding,
+                        &variant_without_enum_probe_handler,
+                        ctx.by_ref(),
                     )
-                })
+                    .ok()
+                    .map(|(enum_ref, _, ty_decl)| {
+                        (
+                            enum_ref,
+                            variant_name,
+                            call_path_binding,
+                            ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                        )
+                    })
+                }
             };
         }
 
