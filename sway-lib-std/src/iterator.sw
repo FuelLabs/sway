@@ -8,6 +8,8 @@ pub trait Iterator {
     type Item;
     /// Advances the iterator and returns the next value.
     ///
+    /// # Additional Information
+    ///
     /// Returns [`None`] when iteration is finished. Individual iterator
     /// implementations may choose to resume iteration, and so calling `next()`
     /// again may or may not eventually start returning [`Some(Item)`] again at some
@@ -15,9 +17,7 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
-    /// ```
+    /// ```sway
     /// let mut a = Vec::new();
     ///
     /// a.push(1);
