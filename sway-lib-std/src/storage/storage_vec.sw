@@ -7,6 +7,7 @@ use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::vec::Vec;
+use ::iterator::StorageIterator;
 
 /// A persistent vector struct.
 pub struct StorageVec<V> {}
@@ -937,6 +938,61 @@ impl<V> StorageKey<StorageVec<V>> {
                     )
                 }
             }
+        }
+    }
+
+    /// Returns a `StorageVecIter` to iterate over this `StorageVec`.
+    ///
+    /// # Returns
+    ///
+    /// * [StorageVecIter<V>] - The stuct which can be iterated over.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec..push(15);
+    ///
+    ///     // Get the iterator
+    ///     let iter = storage.vec.iter();
+    ///
+    ///     assert(5 == iter.next().unwrap().read());
+    ///     assert(10 == iter.next().unwrap().read());
+    ///     assert(15 == iter.next().unwrap().read());
+    /// }
+    /// ```
+    pub fn iter(self) -> StorageVecIter<V> {
+        StorageVecIter {
+            values: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct StorageVecIter<V> {
+    values: StorageKey<StorageVec<V>>,
+    index: u64,
+}
+
+impl<V> StorageIterator for StorageVecIter<V> {
+    type Item = StorageKey<V>;
+    #[storage(read)]
+    fn next(ref mut self) -> Option<Self::Item> {
+        if self.index >= self.values.len() {
+            return None
+        }
+
+        self.index += 1;
+        let key = self.values.get(self.index - 1);
+        match key {
+            Some(v) => Some(v),
+            None => None,
         }
     }
 }
