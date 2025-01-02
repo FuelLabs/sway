@@ -1036,7 +1036,7 @@ pub enum CompileError {
         trait_types_and_names: Vec<(String, String)>,
     },
     #[error("Multiple contracts methods with the same name.")]
-    MultipleContractsMethodsWithTheSameName { span: Span },
+    MultipleContractsMethodsWithTheSameName { spans: Vec<Span> },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1257,7 +1257,7 @@ impl Spanned for CompileError {
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
             MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
-            MultipleContractsMethodsWithTheSameName { span } => span.clone(),
+            MultipleContractsMethodsWithTheSameName { spans } => spans[0].clone(),
         }
     }
 }
@@ -2161,16 +2161,16 @@ impl ToDiagnostic for CompileError {
                     ]
                 }
             },
-	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
-		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
-		issue: Issue::error(
-		    source_engine,
-		    span.clone(),
-		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
-		),
-		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
-		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
-	    },
+            SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
+                ),
+                hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
+                help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
+            },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
                 issue: Issue::error(
@@ -2781,7 +2781,19 @@ impl ToDiagnostic for CompileError {
                     format!("#{} {} for {}", e, name, type_id.clone())
                 ).collect::<Vec<_>>().join("\n"))],
             },
-           _ => Diagnostic {
+            MultipleContractsMethodsWithTheSameName { spans } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("Multiple contracts methods with the same name."))),
+                issue: Issue::error(
+                    source_engine,
+                    spans[0].clone(),
+                    "This is the first method".into()
+                ),
+                hints: spans.iter().skip(1).map(|span| {
+                    Hint::error(source_engine, span.clone(), "This is the duplicated method.".into())
+                }).collect(),
+                help: vec!["Contract names must be unique, even when implementing multiple ABIs.".into()],
+            },
+            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
                     //       switch to our own #[error] macro. All the values for the formatting

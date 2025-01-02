@@ -10,7 +10,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     Engines, TypeArgument, TypeInfo, TypeParameter,
 };
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, default};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -542,18 +542,20 @@ where
         let mut writes = false;
 
         // used to check for name collisions
-        let mut names = BTreeMap::new();
+        let mut contract_methods: BTreeMap<String, Vec<Span>> = <_>::default();
 
         // generate code
         for r in contract_fns {
             let decl = engines.de().get(r);
 
-            // Contract methods must be unique
-            if let Some(old) = names.insert(decl.name.as_str().to_string(), decl.name.span()) {
-                return Err(handler.emit_err(
-                    CompileError::MultipleContractsMethodsWithTheSameName { span: old },
-                ));
+            let name = decl.name.as_str();
+            if !contract_methods.contains_key(name) {
+                contract_methods.insert(name.to_string(), vec![]);
             }
+            contract_methods
+                .get_mut(name)
+                .unwrap()
+                .push(decl.name.span());
 
             match decl.purity {
                 Purity::Pure => {}
@@ -626,6 +628,18 @@ where
 
             code.push_str("\n}\n");
         }
+
+        // check contract methods are unique
+        contract_methods
+            .into_iter()
+            .fold(Ok(()), |error, (_, spans)| {
+                if spans.len() > 1 {
+                    Err(handler
+                        .emit_err(CompileError::MultipleContractsMethodsWithTheSameName { spans }))
+                } else {
+                    error
+                }
+            })?;
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);
