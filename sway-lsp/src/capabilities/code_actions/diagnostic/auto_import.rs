@@ -20,7 +20,7 @@ use sway_core::language::{
     ty::{
         TyConstantDecl, TyDecl, TyFunctionDecl, TyIncludeStatement, TyTypeAliasDecl, TyUseStatement,
     },
-    CallPath, CallPathType
+    CallPath,
 };
 use sway_types::{Ident, Spanned};
 
@@ -325,7 +325,7 @@ mod tests {
         CallPath {
             prefixes: get_mock_prefixes(prefixes),
             suffix: Ident::new_no_span(suffix.to_string()),
-            callpath_type: CallPathType::Full,
+            callpath_type: sway_core::language::CallPathType::Full,
         }
     }
 
