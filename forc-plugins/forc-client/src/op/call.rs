@@ -18,7 +18,7 @@ use fuels_core::{
     codec::{encode_fn_selector, ABIDecoder, ABIEncoder, DecoderConfig, EncoderConfig},
     types::{
         param_types::ParamType, transaction::TxPolicies,
-        transaction_builders::VariableOutputPolicy, EnumSelector, StaticStringToken, Token, U256,
+        transaction_builders::{BuildableTransaction, ScriptBuildStrategy, VariableOutputPolicy}, EnumSelector, StaticStringToken, Token, U256,
     },
 };
 use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
@@ -34,8 +34,8 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         args,
         node,
         caller,
-        no_dry_run,
-        ..
+        mode,
+        gas,
     } = cmd;
     let node_url = get_node_url(&node, &None)?;
     let provider: Provider = Provider::connect(node_url.clone()).await?;
@@ -118,31 +118,52 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             is_payable: false,
             custom_assets: Default::default(),
         };
-        let tx = call
-            .build_tx(
-                TxPolicies::default(),
-                VariableOutputPolicy::default(),
-                &wallet,
-            )
-            .await
-            .expect("Failed to build transaction");
+
         let provider = wallet.provider().unwrap();
         // TODO: log decoding would be required for verbose debugging mode
         let log_decoder = fuels::core::codec::LogDecoder::new(
             fuels::core::codec::log_formatters_lookup(vec![], contract_id.into()),
         );
 
-        let tx_status = if no_dry_run {
-            forc_tracing::println_warning("Sending transaction...");
-            provider
-                .send_transaction_and_await_commit(tx)
-                .await
-                .expect("Failed to send transaction")
-        } else {
-            provider
-                .dry_run(tx)
-                .await
-                .expect("Failed to dry run transaction")
+        let tx_status = match mode {
+            cmd::call::ExecutionMode::DryRun => {
+                let tx_policies = gas.map(Into::into).unwrap_or(TxPolicies::default());
+                let tx = call
+                    .build_tx(tx_policies, VariableOutputPolicy::default(), &wallet)
+                    .await
+                    .expect("Failed to build transaction");
+                provider
+                    .dry_run(tx)
+                    .await
+                    .expect("Failed to dry run transaction")
+            },
+            cmd::call::ExecutionMode::Simulate => {
+                forc_tracing::println_warning(&format!("Simulating transaction with wallet... {}", wallet.address().hash()));
+                let tx_policies = gas.clone().map(Into::into).unwrap_or(TxPolicies::default());
+                let tx = call
+                    .transaction_builder(tx_policies, VariableOutputPolicy::default(), &wallet)
+                    .await
+                    .expect("Failed to build transaction")
+                    .with_build_strategy(ScriptBuildStrategy::StateReadOnly)
+                    .build(provider)
+                    .await?;
+                let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
+                provider.dry_run_opt(tx, false, gas_price)
+                    .await
+                    .expect("Failed to simulate transaction")
+            },
+            cmd::call::ExecutionMode::Live => {
+                forc_tracing::println_warning(&format!("Sending transaction with wallet... {}", wallet.address().hash()));
+                let tx_policies = gas.map(Into::into).unwrap_or(TxPolicies::default());
+                let tx = call
+                    .build_tx(tx_policies, VariableOutputPolicy::default(), &wallet)
+                    .await
+                    .expect("Failed to build transaction");
+                provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .expect("Failed to send transaction")
+            },
         };
 
         let receipts = tx_status.take_receipts_checked(Some(&log_decoder)).expect("Failed to take receipts");
@@ -681,7 +702,7 @@ mod tests {
                 signing_key: Some(secret_key),
                 wallet: false,
             },
-            no_dry_run: false,
+            mode: cmd::call::ExecutionMode::DryRun,
         }
     }
 

@@ -14,6 +14,8 @@ forc_util::cli_examples! {
         [ Call a contract with function parameters => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> <ARGS>" ]
         [ Call a contract without function parameters => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE>" ]
         [ Call a contract given an ABI file with function parameters => "forc call <CONTRACT_ID> --abi <ABI_FILE> <FUNCTION_SELECTOR> <ARGS>" ]
+        [ Call a contract in simulation mode => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --simulate" ]
+        [ Call a contract in live mode which performs state changes => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live" ]
     }
 }
 
@@ -42,6 +44,43 @@ impl FromStr for FuncType {
             return Ok(FuncType::Signature(s.to_string()));
         }
         Ok(FuncType::Selector(s.to_string()))
+    }
+}
+
+/// Flags for specifying the caller.
+#[derive(Debug, Default, Parser, serde::Deserialize, serde::Serialize)]
+pub struct Caller {
+    /// Derive an account from a secret key to make the call
+    #[clap(long, env = "SIGNING_KEY")]
+    pub signing_key: Option<SecretKey>,
+
+    /// Use forc-wallet to make the call
+    #[clap(long, default_value = "false")]
+    pub wallet: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum ExecutionMode {
+    /// Execute a dry run - no state changes, no gas fees, wallet is not used or validated
+    #[default]
+    DryRun,
+    /// Execute in simulation mode - no state changes, estimates gas, wallet is used but not validated
+    /// State changes are not applied
+    Simulate,
+    /// Execute live on chain - state changes, gas fees apply, wallet is used and validated
+    /// State changes are applied
+    Live,
+}
+
+impl FromStr for ExecutionMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "dry-run" => Ok(ExecutionMode::DryRun),
+            "simulate" => Ok(ExecutionMode::Simulate),
+            "live" => Ok(ExecutionMode::Live),
+            _ => Err(format!("Invalid execution mode: {}", s)),
+        }
     }
 }
 
@@ -74,24 +113,13 @@ pub struct Command {
     #[clap(flatten)]
     pub caller: Caller,
 
-    /// Dry run the transaction by default; set --no-dry-run to disable
-    #[clap(long, default_value = "false")]
-    pub no_dry_run: bool,
+    /// The execution mode to use for the call; defaults to dry-run; possible values: dry-run, simulate, live
+    #[clap(long, default_value = "dry-run")]
+    pub mode: ExecutionMode,
 
-    // #[clap(flatten)]
-    // pub experimental: sway_features::CliFields,
-}
-
-/// Flags for specifying the caller.
-#[derive(Debug, Default, Parser, serde::Deserialize, serde::Serialize)]
-pub struct Caller {
-    /// Derive an account from a secret key to make the call
-    #[clap(long, env = "SIGNING_KEY")]
-    pub signing_key: Option<SecretKey>,
-
-    /// Use forc-wallet to make the call
-    #[clap(long, default_value = "false")]
-    pub wallet: bool,
+    /// The gas price to use for the call; defaults to 0
+    #[clap(flatten)]
+    pub gas: Option<Gas>,
 }
 
 fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {
