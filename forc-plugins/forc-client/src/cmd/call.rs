@@ -14,6 +14,7 @@ forc_util::cli_examples! {
         [ Call a contract with function parameters => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> <ARGS>" ]
         [ Call a contract without function parameters => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE>" ]
         [ Call a contract given an ABI file with function parameters => "forc call <CONTRACT_ID> --abi <ABI_FILE> <FUNCTION_SELECTOR> <ARGS>" ]
+        [ Call a contract that makes external contract calls => "forc call <CONTRACT_ID> --abi <ABI_FILE> <FUNCTION_SELECTOR> <ARGS> --contracts <CONTRACT_ADDRESS_1> <CONTRACT_ADDRESS_2>..." ]
         [ Call a contract in simulation mode => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --simulate" ]
         [ Call a contract in live mode which performs state changes => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live" ]
     }
@@ -120,6 +121,12 @@ pub struct Command {
     /// The gas price to use for the call; defaults to 0
     #[clap(flatten)]
     pub gas: Option<Gas>,
+
+    /// The external contract addresses to use for the call
+    /// If none are provided, the call will automatically extract contract addresses from the function arguments
+    /// and use them for the call as external contracts
+    #[clap(long, alias = "contracts")]
+    pub external_contracts: Option<Vec<ContractId>>,
 }
 
 fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {
