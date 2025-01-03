@@ -17,10 +17,11 @@ use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
 use fuels_core::{
     codec::{encode_fn_selector, ABIDecoder, ABIEncoder, DecoderConfig, EncoderConfig},
     types::{
+        bech32::Bech32ContractId,
         param_types::ParamType,
         transaction::TxPolicies,
         transaction_builders::{BuildableTransaction, ScriptBuildStrategy, VariableOutputPolicy},
-        EnumSelector, StaticStringToken, Token, U256,
+        ContractId, EnumSelector, StaticStringToken, Token, U256,
     },
 };
 use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
@@ -38,6 +39,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         caller,
         mode,
         gas,
+        external_contracts,
     } = cmd;
     let node_url = get_node_url(&node, &None)?;
     let provider: Provider = Provider::connect(node_url.clone()).await?;
@@ -108,13 +110,33 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         let abi_encoder = ABIEncoder::new(EncoderConfig::default());
         let encoded_data = abi_encoder.encode(&tokens)?;
 
+        let external_contracts = match external_contracts {
+            Some(external_contracts) => external_contracts,
+            None => {
+                // Automatically extract contract addresses from args; provide these as inputs to the call
+                // This makes the CLI more ergonomic
+                let extracted_external_contracts = extract_contract_addresses(&args);
+                if !extracted_external_contracts.is_empty() {
+                    forc_tracing::println_warning(
+                        "Automatically provided external contract addresses with call:",
+                    );
+                    extracted_external_contracts.iter().for_each(|addr| {
+                        forc_tracing::println_warning(&format!("- 0x{}", addr.to_string()));
+                    });
+                }
+                extracted_external_contracts
+            }
+        };
+
         // Create and execute call
         let call = ContractCall {
             contract_id: contract_id.into(),
             encoded_selector: encode_fn_selector(&selector),
             encoded_args: Ok(encoded_data),
-            call_parameters: Default::default(),
-            external_contracts: vec![],
+            external_contracts: external_contracts
+                .iter()
+                .map(|addr| Bech32ContractId::from(*addr))
+                .collect(),
             output_param: output_param.clone(),
             is_payable: false,
             custom_assets: Default::default(),
@@ -698,6 +720,29 @@ fn parse_delimited_string(param_type: &ParamType, input: &str) -> Result<Vec<Str
     Ok(parts)
 }
 
+/// Best-effort to extract contract addresses from args
+/// These must start with 0x and be 42 characters long
+/// Returns a vector of unique contract addresses
+fn extract_contract_addresses(args: &[String]) -> Vec<ContractId> {
+    let contract_regex =
+        regex::Regex::new(r"(?:^|[^a-fA-F0-9])(0x[a-fA-F0-9]{64})(?:$|[^a-fA-F0-9])").unwrap();
+    let mut addresses: Vec<ContractId> = args
+        .iter()
+        .filter_map(|arg| {
+            contract_regex.captures_iter(arg).next().and_then(|cap| {
+                let addr = cap[1].to_string();
+                ContractId::from_str(&addr).ok()
+            })
+        })
+        .collect();
+
+    // Sort and remove duplicates
+    addresses.sort_unstable();
+    addresses.dedup();
+
+    addresses
+}
+
 // pub (crate) fn ty_to_token(ty: &Ty) -> Result<Token> {
 //     match ty {
 //         Ty::Path(path) => {
@@ -716,7 +761,7 @@ mod tests {
     use fuel_crypto::SecretKey;
     use fuels::prelude::*;
     use fuels_accounts::wallet::{Wallet, WalletUnlocked};
-    use fuels_core::types::{param_types::EnumVariants, ContractId};
+    use fuels_core::types::param_types::EnumVariants;
 
     abigen!(Contract(
         name = "TestContract",
@@ -774,7 +819,6 @@ mod tests {
             ))),
             function: FuncType::Selector(selector.into()),
             args: vec_args,
-            gas: None,
             node: crate::NodeTarget {
                 node_url: Some(wallet.provider().unwrap().url().to_owned()),
                 ..Default::default()
@@ -784,6 +828,8 @@ mod tests {
                 wallet: false,
             },
             mode: cmd::call::ExecutionMode::DryRun,
+            gas: None,
+            external_contracts: None,
         }
     }
 
