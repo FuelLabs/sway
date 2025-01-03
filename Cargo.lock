@@ -2948,6 +2948,7 @@ dependencies = [
  "forc-util",
  "fuel-tx",
  "fuel-types",
+ "fuels-core",
  "serde",
  "serde_json",
  "thiserror",
