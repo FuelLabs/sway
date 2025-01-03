@@ -3,7 +3,7 @@ use clap::Parser;
 use either::Either;
 use fuel_crypto::SecretKey;
 use fuels_core::types::ContractId;
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 use url::Url;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
@@ -29,6 +29,22 @@ impl Default for FuncType {
     }
 }
 
+impl FromStr for FuncType {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim().replace(' ', "");
+        if s.is_empty() {
+            return Err("Function signature cannot be empty".to_string());
+        }
+        // Check if function signature is a valid selector (alphanumeric and underscore support)
+        let selector_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
+        if !selector_pattern.is_match(&s) {
+            return Ok(FuncType::Signature(s.to_string()));
+        }
+        Ok(FuncType::Selector(s.to_string()))
+    }
+}
+
 /// Call a contract function.
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc call", version)]
@@ -43,7 +59,6 @@ pub struct Command {
     /// The function signature to call.
     /// When ABI is provided, this should be a selector (e.g. "transfer")
     /// When no ABI is provided, this should be the full function signature (e.g. "transfer(address,u64)")
-    #[arg(value_parser = parse_signature_or_selector)]
     pub function: FuncType,
 
     /// Arguments to pass into main function with forc run.
@@ -88,18 +103,4 @@ fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {
     } else {
         Ok(Either::Left(PathBuf::from(s)))
     }
-}
-
-fn parse_signature_or_selector(s: &str) -> Result<FuncType, String> {
-    // remove all spaces
-    let s = s.trim().replace(' ', "");
-    if s.is_empty() {
-        return Err("Function signature cannot be empty".to_string());
-    }
-    // Check if function signature is a valid selector (alphanumeric and underscore support)
-    let selector_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
-    if !selector_pattern.is_match(&s) {
-        return Ok(FuncType::Signature(s.to_string()));
-    }
-    Ok(FuncType::Selector(s.to_string()))
 }
