@@ -275,12 +275,16 @@ pub(crate) async fn select_account(
     }
 }
 
-pub(crate) async fn select_local_wallet_account(password: &str, provider: &Provider) -> Result<WalletUnlocked> {
+pub(crate) async fn select_local_wallet_account(
+    password: &str,
+    provider: &Provider,
+) -> Result<WalletUnlocked> {
     let wallet_path = default_wallet_path();
     let accounts = collect_user_accounts(&wallet_path, password)?;
     let account_balances = collect_account_balances(&accounts, provider).await?;
     let base_asset_id = provider.base_asset_id();
-    let selections = format_base_asset_account_balances(&accounts, &account_balances, base_asset_id)?;
+    let selections =
+        format_base_asset_account_balances(&accounts, &account_balances, base_asset_id)?;
 
     let mut account_index;
     loop {
