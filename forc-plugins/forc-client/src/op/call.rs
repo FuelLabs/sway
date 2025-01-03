@@ -45,7 +45,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     let wallet = get_wallet(caller, provider).await?;
 
     if let Some(abi) = abi {
-        // If ABI is provided, ensure funtion signature is just the selector
+        // If ABI is provided, ensure function signature is just the selector
         let cmd::call::FuncType::Selector(selector) = function else {
             bail!("Function must be a selector");
         };
