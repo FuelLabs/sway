@@ -43,8 +43,7 @@ pub trait Iterator {
 
 pub trait StorageIterator {
     /// The type of the elements being iterated over.
-    type Item
-;
+    type Item;
     /// Advances the iterator and returns the next value for storage types.
     ///
     /// # Additional Information
