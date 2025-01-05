@@ -202,7 +202,7 @@ impl Format for Expr {
                             .get_line_style(None, Some(body_width), &formatter.config);
 
                         if formatter.shape.code_line.line_style == LineStyle::Multiline {
-                            // Expr needs to be splitted into multiple lines
+                            // Expr needs to be split into multiple lines
                             array_descriptor.format(formatted_code, formatter)?;
                         } else {
                             // Expr fits in a single line
