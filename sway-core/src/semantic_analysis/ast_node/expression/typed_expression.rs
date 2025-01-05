@@ -647,6 +647,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         dbg!(&name);
+        ctx.namespace().module(engines).dump_until_parent();
         let exp = match ctx.resolve_symbol(&Handler::default(), &name).ok() {
             Some(ty::TyDecl::VariableDecl(decl)) => {
                 let ty::TyVariableDecl {

@@ -41,16 +41,6 @@ impl TyImplSelfOrTrait {
     ) -> Result<(), ErrorEmitted> {
         let impl_trait = engines.pe().get_impl_self_or_trait(decl_id);
 
-        for const_generic_parameter in &impl_trait.impl_const_generics_parameters {
-            let const_generic_decl = engines.pe().get(const_generic_parameter);
-            ctx.insert_parsed_symbol(
-                handler,
-                engines,
-                const_generic_decl.name.clone(),
-                Declaration::ConstGenericDeclaration(const_generic_parameter.clone()),
-            )?;
-        }
-
         ctx.insert_parsed_symbol(
             handler,
             engines,
@@ -58,7 +48,19 @@ impl TyImplSelfOrTrait {
             Declaration::ImplSelfOrTrait(*decl_id),
         )?;
 
+        dbg!(&impl_trait.block_span);
         let _ = ctx.scoped(engines, impl_trait.block_span.clone(), |scoped_ctx| {
+            for const_generic_parameter in &impl_trait.impl_const_generics_parameters {
+                let const_generic_decl = engines.pe().get(const_generic_parameter);
+                dbg!(&const_generic_decl.name);
+                scoped_ctx.insert_parsed_symbol(
+                    handler,
+                    engines,
+                    const_generic_decl.name.clone(),
+                    Declaration::ConstGenericDeclaration(const_generic_parameter.clone()),
+                )?;
+            }
+
             impl_trait.items.iter().for_each(|item| match item {
                 ImplItem::Fn(decl_id) => {
                     let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
@@ -70,8 +72,13 @@ impl TyImplSelfOrTrait {
                     let _ = TyTraitType::collect(handler, engines, scoped_ctx, decl_id);
                 }
             });
+            dbg!();
+            scoped_ctx.namespace().module(engines).dump_until_parent();
             Ok(())
         });
+
+        dbg!();
+        ctx.namespace().module(engines).dump_until_parent();
         Ok(())
     }
 
@@ -105,12 +112,15 @@ impl TyImplSelfOrTrait {
         let self_type_id = self_type_param.type_id;
 
         // create a namespace for the impl
+        dbg!(&block_span);
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |mut ctx| {
                 // Type check the type parameters
+                dbg!();
+                ctx.namespace.module(engines).dump_until_parent();
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
