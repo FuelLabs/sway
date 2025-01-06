@@ -243,7 +243,7 @@ fn format_use_stmt(
         write!(formatted_code, "{}", DoubleColonToken::AS_STR)?;
     }
     item_use.tree.format(formatted_code, formatter)?;
-    write!(formatted_code, "{}", SemicolonToken::AS_STR,)?;
+    write!(formatted_code, "{}", SemicolonToken::AS_STR)?;
 
     Ok(())
 }

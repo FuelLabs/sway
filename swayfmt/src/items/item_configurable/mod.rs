@@ -31,7 +31,7 @@ impl Format for ItemConfigurable {
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
                 // Add configurable token
-                write!(formatted_code, "{}", ConfigurableToken::AS_STR,)?;
+                write!(formatted_code, "{}", ConfigurableToken::AS_STR)?;
                 let fields = self.fields.get();
 
                 // Handle opening brace
@@ -91,9 +91,9 @@ impl Format for ItemConfigurable {
                                 }
                             }
                             // Add `:`, `ty` & `CommaToken`
-                            write!(formatted_code, " {} ", ColonToken::AS_STR,)?;
+                            write!(formatted_code, " {} ", ColonToken::AS_STR)?;
                             configurable_field.ty.format(formatted_code, formatter)?;
-                            write!(formatted_code, " {} ", EqToken::AS_STR,)?;
+                            write!(formatted_code, " {} ", EqToken::AS_STR)?;
                             configurable_field
                                 .initializer
                                 .format(formatted_code, formatter)?;

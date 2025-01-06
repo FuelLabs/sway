@@ -40,7 +40,7 @@ impl Format for ExprStructField {
                     } else {
                         expr_str
                     };
-                    write!(formatted_code, "{} {}", ColonToken::AS_STR, expr_str,)?;
+                    write!(formatted_code, "{} {}", ColonToken::AS_STR, expr_str)?;
                     Ok(())
                 },
             )?;

@@ -46,7 +46,7 @@ impl Format for ElementAccess {
                 field_span: _,
             } => {
                 target.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}{}", DotToken::AS_STR, field,)?;
+                write!(formatted_code, "{}{}", DotToken::AS_STR, field)?;
             }
         }
         Ok(())

@@ -302,7 +302,7 @@ impl Format for Expr {
 
                         Self::open_parenthesis(formatted_code, formatter)?;
                         let (_, args_str) = write_function_call_arguments(args.get(), formatter)?;
-                        write!(formatted_code, "{}", args_str,)?;
+                        write!(formatted_code, "{}", args_str)?;
                         Self::close_parenthesis(formatted_code, formatter)?;
 
                         Ok(())
@@ -411,7 +411,7 @@ impl Format for Expr {
                 field_span: _,
             } => {
                 target.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}{}", DotToken::AS_STR, field,)?;
+                write!(formatted_code, "{}{}", DotToken::AS_STR, field)?;
             }
             Self::Ref {
                 ampersand_token: _,
@@ -624,7 +624,7 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", GreaterThanEqToken::AS_STR,)?;
+                write!(formatted_code, " {} ", GreaterThanEqToken::AS_STR)?;
                 rhs.format(formatted_code, formatter)?;
             }
             Self::LogicalAnd {
@@ -914,7 +914,7 @@ fn format_method_call(
 
     Expr::open_parenthesis(formatted_code, formatter)?;
     let (args_inline, args_str) = write_function_call_arguments(args.get(), formatter)?;
-    write!(formatted_code, "{}", args_str,)?;
+    write!(formatted_code, "{}", args_str)?;
     Expr::close_parenthesis(formatted_code, formatter)?;
 
     if formatter.shape.code_line.expr_new_line {

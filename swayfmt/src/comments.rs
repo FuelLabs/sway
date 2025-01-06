@@ -130,7 +130,7 @@ pub fn write_comments(
                     // We do a trim and truncate here to ensure that only a single whitespace separates
                     // the inlined comment from the previous token.
                     formatted_code.truncate(formatted_code.trim_end().len());
-                    write!(formatted_code, " {} ", comment.span().as_str(),)?;
+                    write!(formatted_code, " {} ", comment.span().as_str())?;
                 }
                 CommentKind::Multilined => {
                     write!(

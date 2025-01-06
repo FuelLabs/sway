@@ -163,9 +163,9 @@ impl Format for ItemStorage {
                                     }
                                 }
                                 // Add `:`, `ty` & `CommaToken`
-                                write!(formatted_code, " {} ", ColonToken::AS_STR,)?;
+                                write!(formatted_code, " {} ", ColonToken::AS_STR)?;
                                 storage_field.ty.format(formatted_code, formatter)?;
-                                write!(formatted_code, " {} ", EqToken::AS_STR,)?;
+                                write!(formatted_code, " {} ", EqToken::AS_STR)?;
                                 storage_field
                                     .initializer
                                     .format(formatted_code, formatter)?;

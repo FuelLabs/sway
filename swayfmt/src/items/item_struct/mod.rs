@@ -117,7 +117,7 @@ impl Format for ItemStruct {
                                 }
                             }
                             // Add `:`, ty & `CommaToken`
-                            write!(formatted_code, " {} ", ColonToken::AS_STR,)?;
+                            write!(formatted_code, " {} ", ColonToken::AS_STR)?;
                             type_field.ty.format(formatted_code, formatter)?;
                             writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
                         }

@@ -185,7 +185,7 @@ fn format_else_opt(
         )?;
 
         if comments_written {
-            write!(else_if_str, "{}", formatter.indent_to_str()?,)?;
+            write!(else_if_str, "{}", formatter.indent_to_str()?)?;
         } else {
             write!(else_if_str, " ")?;
         }
@@ -290,7 +290,7 @@ impl Format for MatchBranch {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.pattern.format(formatted_code, formatter)?;
-        write!(formatted_code, " {} ", FatRightArrowToken::AS_STR,)?;
+        write!(formatted_code, " {} ", FatRightArrowToken::AS_STR)?;
         self.kind.format(formatted_code, formatter)?;
 
         Ok(())
