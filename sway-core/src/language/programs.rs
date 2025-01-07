@@ -1,13 +1,6 @@
-use sway_error::handler::ErrorEmitted;
-use sway_utils::PerformanceData;
-
+use super::{lexed::LexedProgram, parsed::ParseProgram, ty::TyProgram};
 use crate::semantic_analysis::program::TypeCheckFailed;
-
-use super::{
-    lexed::LexedProgram,
-    parsed::ParseProgram,
-    ty::{TyModule, TyProgram},
-};
+use sway_utils::PerformanceData;
 
 /// Contains the lexed, parsed, typed compilation stages of a program, as well
 /// as compilation metrics.

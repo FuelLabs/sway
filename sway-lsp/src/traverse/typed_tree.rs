@@ -12,7 +12,7 @@ use sway_core::{
     decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
         parsed::{ImportType, QualifiedPathType, Supertrait},
-        ty::{self, GetDeclIdent, TyModule, TyProgram, TyReassignmentTarget, TySubmodule},
+        ty::{self, GetDeclIdent, TyModule, TyReassignmentTarget, TySubmodule},
         CallPathTree,
     },
     type_system::TypeArgument,
