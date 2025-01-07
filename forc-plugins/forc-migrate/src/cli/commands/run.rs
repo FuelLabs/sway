@@ -8,7 +8,7 @@ use clap::Parser;
 use forc_tracing::{println_action_green, println_action_yellow, println_yellow_bold};
 use forc_util::{format_diagnostic, fs_locking::is_file_dirty};
 use itertools::Itertools;
-use sway_ast::Module;
+use sway_ast::{attribute::Annotated, Module};
 use sway_core::{
     language::lexed::{LexedModule, LexedProgram},
     Engines,
@@ -248,7 +248,14 @@ fn output_changed_lexed_program(
         if let Some(path) = modified_modules.get_path_if_modified(&lexed_module.tree) {
             let mut formatter = Formatter::from_dir(manifest_dir)?;
 
-            let code = formatter.format_module(&lexed_module.tree)?;
+            let annotated_module = Annotated {
+                // TODO: Handle annotations instead of stripping them.
+                //       See: https://github.com/FuelLabs/sway/issues/6802
+                attribute_list: vec![],
+                value: lexed_module.tree.clone(),
+            };
+
+            let code = formatter.format_module(&annotated_module)?;
 
             std::fs::write(path, code)?;
         }
