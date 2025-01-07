@@ -627,8 +627,8 @@ pub(crate) struct Op {
 }
 
 impl Op {
-    pub fn to_var_name(&self) -> Ident {
-        Ident::new_with_override(self.op_variant.as_str().to_string(), self.span.clone())
+    pub fn to_method_name(&self) -> Ident {
+        Ident::new_with_override(self.op_variant.method_name().to_string(), self.span.clone())
     }
 }
 
@@ -653,7 +653,14 @@ pub enum OpVariant {
 }
 
 impl OpVariant {
-    fn as_str(&self) -> &'static str {
+    /// For all the operators except [OpVariant::Or] and [OpVariant::And],
+    /// returns the name of the method that can be found on the corresponding
+    /// operator trait. E.g., for `+` that will be the method `add` defined in
+    /// `core::ops::Add::add`.
+    ///
+    /// [OpVariant::Or] and [OpVariant::And] are lazy and must be handled
+    /// internally by the compiler.
+    fn method_name(&self) -> &'static str {
         use OpVariant::*;
         match self {
             Add => "add",

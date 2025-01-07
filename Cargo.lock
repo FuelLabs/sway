@@ -2158,6 +2158,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "duplicate"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97af9b5f014e228b33e77d75ee0e6e87960124f0f4b16337b586a6bec91867b1"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "proc-macro2-diagnostics",
+]
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2867,6 +2878,7 @@ version = "0.66.7"
 dependencies = [
  "anyhow",
  "clap",
+ "duplicate",
  "forc-pkg",
  "forc-tracing 0.66.7",
  "forc-util",

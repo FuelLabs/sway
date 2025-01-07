@@ -60,12 +60,8 @@ impl ty::TyExpression {
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let engines = ctx.engines;
-        let ctx = ctx.with_type_annotation(engines.te().insert(
-            engines,
-            TypeInfo::Boolean,
-            span.source_id(),
-        ));
+        let type_engine = ctx.engines.te();
+        let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
         Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
     }
 
@@ -75,12 +71,8 @@ impl ty::TyExpression {
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let engines = ctx.engines;
-        let ctx = ctx.with_type_annotation(engines.te().insert(
-            engines,
-            TypeInfo::Boolean,
-            span.source_id(),
-        ));
+        let type_engine = ctx.engines.te();
+        let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
         Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
     }
 
@@ -102,7 +94,7 @@ impl ty::TyExpression {
                 op_variant,
                 span: span.clone(),
             }
-            .to_var_name(),
+            .to_method_name(),
             callpath_type: CallPathType::Full,
         };
         let mut method_name_binding = TypeBinding {

@@ -782,14 +782,15 @@ impl<'a> TypeCheckContext<'a> {
         Ok(matching_item_decl_refs)
     }
 
-    /// Given a name and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
-    /// because of some special casing for the standard library where we pull
-    /// the type from the arguments buffer.
+    /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
+    /// `annotation_type` is the expected method return type. Requires `argument_types` because:
+    /// - standard operations like +, <=, etc. are called like "core::ops::<operation>" and the
+    ///   actual self type of the trait implementation is determined by the passed argument type.
+    /// - we can have several implementations of generic traits for different types, that can
+    ///   result in a method of a same name, but with different type arguments.
     ///
-    /// This function will generate a missing method error if the method is not
-    /// found.
-    #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
+    /// This function will emit a [CompileError::MethodNotFound] if the method is not found.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn find_method_for_type(
         &mut self,
         handler: &Handler,
