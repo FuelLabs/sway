@@ -36,6 +36,8 @@ impl ResolvedFunctionDecl {
     }
 }
 
+// The following types were using im::OrdMap but it revealed to be
+// much slower than using HashMap and sorting on iterationn.
 pub(super) type SymbolMap = HashMap<Ident, ResolvedDeclaration>;
 pub(super) type SymbolUniqueMap = HashMap<IdentUnique, ResolvedDeclaration>;
 
@@ -82,10 +84,10 @@ pub struct LexicalScope {
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Items {
-    /// An ordered map from `Ident`s to their associated declarations.
+    /// An map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
 
-    /// An ordered map from `IdentUnique`s to their associated declarations.
+    /// An map from `IdentUnique`s to their associated declarations.
     /// This uses an Arc<RwLock<SymbolUniqueMap>> so it is shared between all
     /// Items clones. This is intended so we can keep the symbols of previous
     /// lexical scopes while collecting_unifications scopes.
