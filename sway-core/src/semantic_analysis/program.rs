@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use crate::{
     language::{
         parsed::ParseProgram,
-        ty::{self, TyProgram},
+        ty::{self, TyModule, TyProgram},
     },
     metadata::MetadataManager,
     semantic_analysis::{
@@ -18,6 +20,12 @@ use super::{
     symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
     TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
 };
+
+#[derive(Clone, Debug)]
+pub struct TypeCheckFailed {
+    pub root: Option<Arc<TyModule>>,
+    pub error: ErrorEmitted,
+}
 
 impl TyProgram {
     /// Collects the given parsed program to produce a symbol maps.
@@ -51,7 +59,7 @@ impl TyProgram {
         package_name: &str,
         build_config: Option<&BuildConfig>,
         experimental: ExperimentalFeatures,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<Self, TypeCheckFailed> {
         let mut ctx =
             TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
                 .with_kind(parsed.kind);
@@ -65,7 +73,8 @@ impl TyProgram {
             parsed.kind,
             root,
             build_config,
-        )?;
+        )
+        .map_err(|error| TypeCheckFailed { error, root: None })?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
@@ -74,7 +83,11 @@ impl TyProgram {
             *kind,
             package_name,
             ctx.experimental,
-        )?;
+        )
+        .map_err(|error| TypeCheckFailed {
+            error,
+            root: Some(root.clone()),
+        })?;
 
         let program = TyProgram {
             kind,
@@ -90,13 +103,13 @@ impl TyProgram {
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
-        self,
+        &mut self,
         handler: &Handler,
         engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<(), ErrorEmitted> {
         let decl_engine = engines.de();
         match &self.kind {
             ty::TyProgramKind::Contract { .. } => {
@@ -115,21 +128,19 @@ impl TyProgram {
                         // Sort the slots to standardize the output. Not strictly required by the
                         // spec.
                         storage_slots.sort();
-                        Ok(Self {
-                            storage_slots,
-                            ..self
-                        })
+                        self.storage_slots = storage_slots;
+                        Ok(())
                     }
-                    _ => Ok(Self {
-                        storage_slots: vec![],
-                        ..self
-                    }),
+                    _ => {
+                        self.storage_slots = vec![];
+                        Ok(())
+                    }
                 }
             }
-            _ => Ok(Self {
-                storage_slots: vec![],
-                ..self
-            }),
+            _ => {
+                self.storage_slots = vec![];
+                Ok(())
+            }
         }
     }
 }

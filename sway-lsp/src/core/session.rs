@@ -28,6 +28,7 @@ use pkg::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
+    ops::Deref,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
     time::SystemTime,
@@ -320,7 +321,7 @@ pub fn compile(
         engines,
         retrigger_compilation,
         &[],
-        &[sway_features::Feature::NewEncoding],
+        &[],
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -391,19 +392,20 @@ pub fn traverse(
             }
         }
 
-        // Get a reference to the typed program AST.
-        let typed_program = typed
-            .as_ref()
-            .ok()
-            .ok_or_else(|| LanguageServerError::FailedToParse)?;
+        let root = match &typed {
+            Ok(p) => p.root.clone(),
+            Err(e) => {
+                let Some(root) = &e.root else {
+                    return Err(LanguageServerError::FailedToParse);
+                };
+                root.deref().clone()
+            }
+        };
+        let typed = typed.ok();
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(
-            &session.token_map,
-            engines,
-            typed_program.root.namespace.module(engines),
-        );
+        let ctx = ParseContext::new(&session.token_map, engines, root.namespace.module(engines));
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -423,26 +425,27 @@ pub fn traverse(
 
             // Finally, populate our token_map with typed ast nodes.
             let typed_tree = TypedTree::new(&ctx);
-            typed_tree.collect_module_spans(typed_program);
-            parse_ast_to_typed_tokens(typed_program, &ctx, &modified_file, |node, _ctx| {
+            typed_tree.collect_module_spans(&root);
+            parse_ast_to_typed_tokens(&root, &ctx, &modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
 
             let compiled_program = &mut *session.compiled_program.write();
             compiled_program.lexed = Some(lexed);
             compiled_program.parsed = Some(parsed);
-            compiled_program.typed = Some(typed_program.clone());
+            compiled_program.typed = typed;
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, ctx| {
                 dependency::collect_parsed_declaration(an, ctx);
             });
 
-            parse_ast_to_typed_tokens(typed_program, &ctx, &modified_file, |node, ctx| {
+            parse_ast_to_typed_tokens(&root, &ctx, &modified_file, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx);
             });
         }
     }
+
     Ok(Some(diagnostics))
 }
 
@@ -574,7 +577,7 @@ fn parse_ast_to_tokens(
 
 /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
 fn parse_ast_to_typed_tokens(
-    typed_program: &ty::TyProgram,
+    root: &ty::TyModule,
     ctx: &ParseContext,
     modified_file: &Option<PathBuf>,
     f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
@@ -590,14 +593,10 @@ fn parse_ast_to_typed_tokens(
             .unwrap_or(true)
     };
 
-    typed_program
-        .root
-        .all_nodes
+    root.all_nodes
         .iter()
         .chain(
-            typed_program
-                .root
-                .submodules_recursive()
+            root.submodules_recursive()
                 .flat_map(|(_, submodule)| &submodule.module.all_nodes),
         )
         .filter(should_process)

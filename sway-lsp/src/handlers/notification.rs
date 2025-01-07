@@ -8,7 +8,7 @@ use crate::{
 };
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams, FileChangeType, Url,
+    DidSaveTextDocumentParams, FileChangeType, MessageType, Url,
 };
 use std::{
     collections::BTreeMap,

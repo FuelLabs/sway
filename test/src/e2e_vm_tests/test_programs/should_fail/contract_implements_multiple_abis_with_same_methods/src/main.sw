@@ -15,17 +15,13 @@ impl A for Contract {
         3
     }
 
-    fn foo2() {
-
-    }
+    fn foo2() {}
 }
 
 impl B for Contract {
     fn foo() -> u64 {
-        5
+        2
     }
 
-    fn foo2() {
-        
-    }
+    fn foo2() {}
 }

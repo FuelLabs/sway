@@ -2791,7 +2791,7 @@ impl ToDiagnostic for CompileError {
                 hints: spans.iter().skip(1).map(|span| {
                     Hint::error(source_engine, span.clone(), "This is the duplicated method.".into())
                 }).collect(),
-                help: vec!["Contract names must be unique, even when implementing multiple ABIs.".into()],
+                help: vec!["Contract methods names must be unique, even when implementing multiple ABIs.".into()],
             },
             _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
