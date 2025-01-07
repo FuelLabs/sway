@@ -58,7 +58,7 @@ category = "fail"
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const F_X = 7;
+#check: $()const F_X = 8;
 #nextln: $()Shadowed constant "F_X" is declared here.
 #check: $()const F_X = 81;
 #nextln: $()Constant "F_X" shadows constant of the same name.
