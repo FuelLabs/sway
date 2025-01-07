@@ -4,6 +4,7 @@ library;
 use ::logging::log;
 use ::error_signals::{FAILED_REQUIRE_SIGNAL, REVERT_WITH_LOG_SIGNAL};
 use ::codec::AbiEncode;
+use ::never::*;
 
 /// Will either panic or revert with a given number depending on the context.
 ///

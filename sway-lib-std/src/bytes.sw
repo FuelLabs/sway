@@ -7,7 +7,9 @@ use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
-use ::codec::AbiEncode;
+use ::codec::*;
+use ::raw_slice::*;
+use ::ops::*;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -725,7 +727,7 @@ impl Bytes {
     }
 }
 
-impl ::ops::Eq for Bytes {
+impl Eq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
             return false;

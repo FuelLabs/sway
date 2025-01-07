@@ -1,12 +1,6 @@
 library;
 
-use ::ops::Eq;
-
-impl Eq for raw_ptr {
-    fn eq(self, other: Self) -> bool {
-        __eq(self, other)
-    }
-}
+use ::ops::*;
 
 impl raw_ptr {
     /// Returns `true` if the pointer is null.
