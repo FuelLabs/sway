@@ -463,7 +463,6 @@ impl ty::TyModule {
         let ty_module = Arc::new(Self {
             span: span.clone(),
             submodules,
-            namespace: ctx.namespace.clone(),
             all_nodes,
             attributes: attributes.clone(),
         });

@@ -231,7 +231,7 @@ impl Session {
             let program = compiled_program.typed.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
-                &program.root.namespace,
+                &program.namespace,
                 &engines,
                 ident_to_complete,
                 fn_decl,
@@ -245,7 +245,7 @@ impl Session {
     pub fn namespace(&self) -> Option<Namespace> {
         let compiled_program = &*self.compiled_program.read();
         let program = compiled_program.typed.clone()?;
-        Some(program.root.namespace)
+        Some(program.namespace)
     }
 
     /// Generate hierarchical document symbols for the given file.
@@ -402,7 +402,7 @@ pub fn traverse(
         let ctx = ParseContext::new(
             &session.token_map,
             engines,
-            typed_program.root.namespace.current_module(),
+            typed_program.namespace.current_package_root_module(),
         );
 
         // The final element in the results is the main program.
@@ -591,12 +591,12 @@ fn parse_ast_to_typed_tokens(
     };
 
     typed_program
-        .root
+        .root_module
         .all_nodes
         .iter()
         .chain(
             typed_program
-                .root
+                .root_module
                 .submodules_recursive()
                 .flat_map(|(_, submodule)| &submodule.module.all_nodes),
         )

@@ -197,7 +197,7 @@ fn build_docs(
         document_private_items,
     )?;
     let root_attributes =
-        (!ty_program.root.attributes.is_empty()).then_some(ty_program.root.attributes);
+        (!ty_program.root_module.attributes.is_empty()).then_some(ty_program.root_module.attributes);
     let forc_version = pkg_manifest
         .project
         .forc_version

@@ -25,7 +25,6 @@ impl<'a> AbiContext<'a> {
         AbiStrContext {
             program_name: self
                 .program
-                .root
                 .namespace
                 .current_package_name()
                 .to_string(),
@@ -48,7 +47,6 @@ impl TypeId {
             &AbiStrContext {
                 program_name: ctx
                     .program
-                    .root
                     .namespace
                     .current_package_name()
                     .to_string(),

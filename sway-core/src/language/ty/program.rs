@@ -4,6 +4,7 @@ use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
+    semantic_analysis::namespace,
     transform::AllowDeprecatedState,
     type_system::*,
     types::*,
@@ -20,7 +21,8 @@ use sway_types::*;
 #[derive(Debug, Clone)]
 pub struct TyProgram {
     pub kind: TyProgramKind,
-    pub root: TyModule,
+    pub root_module: TyModule,
+    pub namespace: namespace::Namespace,
     pub declarations: Vec<TyDecl>,
     pub configurables: Vec<TyConfigurableDecl>,
     pub storage_slots: Vec<StorageSlot>,
@@ -429,15 +431,15 @@ impl TyProgram {
         &'b self,
         decl_engine: &'a DeclEngine,
     ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
-        self.root
+        self.root_module
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
-            .chain(self.root.test_fns(decl_engine))
+            .chain(self.root_module.test_fns(decl_engine))
     }
 
     pub fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
         let mut allow_deprecated = AllowDeprecatedState::default();
-        self.root
+        self.root_module
             .check_deprecated(engines, handler, &mut allow_deprecated);
     }
 
@@ -446,7 +448,7 @@ impl TyProgram {
         engines: &Engines,
         handler: &Handler,
     ) -> Result<(), ErrorEmitted> {
-        self.root.check_recursive(engines, handler)
+        self.root_module.check_recursive(engines, handler)
     }
 }
 
@@ -495,8 +497,8 @@ impl CollectTypesMetadata for TyProgram {
             // an entry point. Also dig into all the submodules of a library because nodes in those
             // submodules can also be entry points.
             TyProgramKind::Library { .. } => {
-                for module in std::iter::once(&self.root).chain(
-                    self.root
+                for module in std::iter::once(&self.root_module).chain(
+                    self.root_module
                         .submodules_recursive()
                         .map(|(_, submod)| &*submod.module),
                 ) {
@@ -524,8 +526,8 @@ impl CollectTypesMetadata for TyProgram {
 
         // Now consider unit tests: all unit test are considered entry points regardless of the
         // program type
-        for module in std::iter::once(&self.root).chain(
-            self.root
+        for module in std::iter::once(&self.root_module).chain(
+            self.root_module
                 .submodules_recursive()
                 .map(|(_, submod)| &*submod.module),
         ) {

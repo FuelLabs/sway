@@ -552,7 +552,7 @@ fn compile_core(
     };
 
     match res.0 {
-        Some(typed_program) => typed_program.root.namespace.root().clone(),
+        Some(typed_program) => typed_program.namespace.root_ref().clone(),
         _ => {
             let (errors, _warnings) = res.1.consume();
             for err in errors {

@@ -78,7 +78,8 @@ impl TyProgram {
 
         let program = TyProgram {
             kind,
-            root: (*root).clone(),
+            root_module: (*root).clone(),
+	    namespace: namespace,
             declarations,
             configurables,
             storage_slots: vec![],
@@ -140,7 +141,7 @@ impl TypeCheckAnalysis for TyProgram {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        for node in self.root.all_nodes.iter() {
+        for node in self.root_module.all_nodes.iter() {
             node.type_check_analyze(handler, ctx)?;
         }
         Ok(())
@@ -154,7 +155,7 @@ impl TypeCheckFinalization for TyProgram {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
-            for node in self.root.all_nodes.iter_mut() {
+            for node in self.root_module.all_nodes.iter_mut() {
                 let _ = node.type_check_finalize(handler, ctx);
             }
             Ok(())

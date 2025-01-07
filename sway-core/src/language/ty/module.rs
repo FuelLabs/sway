@@ -6,7 +6,6 @@ use sway_types::Span;
 use crate::{
     decl_engine::{DeclEngine, DeclEngineGet, DeclId, DeclRef, DeclRefFunction},
     language::{ty::*, HasModule, HasSubmodules, ModName},
-    semantic_analysis::namespace,
     transform::{self, AllowDeprecatedState},
     Engines,
 };
@@ -15,7 +14,6 @@ use crate::{
 pub struct TyModule {
     pub span: Span,
     pub submodules: Vec<(ModName, TySubmodule)>,
-    pub namespace: namespace::Namespace,
     pub all_nodes: Vec<TyAstNode>,
     pub attributes: transform::AttributesMap,
 }

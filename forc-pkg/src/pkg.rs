@@ -1771,8 +1771,6 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
-    let namespace = typed_program.root.namespace.clone();
-
     if handler.has_errors() {
         return fail(handler);
     }
@@ -1935,7 +1933,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: namespace.root().clone(),
+        root_module: typed_program.namespace.root_ref().clone(),
         warnings,
         metrics,
     };
@@ -2669,7 +2667,7 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut lib_root = typed_program.root.namespace.clone().root();
+                let mut lib_root = typed_program.namespace.root_ref().clone();
                 lib_root.add_span_to_root_module(
                     Span::new(
                         manifest.entry_string()?,

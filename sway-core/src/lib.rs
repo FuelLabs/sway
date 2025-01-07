@@ -663,7 +663,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        typed_program.root.namespace.root_ref(),
+        &typed_program.namespace.root_ref(),
     ) {
 	let _ = errs.into_iter().map(|e| handler.emit_err(e));
     }
@@ -1078,7 +1078,7 @@ fn dead_code_analysis<'a>(
     module_dead_code_analysis(
         handler,
         engines,
-        &program.root,
+        &program.root_module,
         &tree_type,
         &mut dead_code_graph,
     )?;
@@ -1119,7 +1119,7 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
 
 fn return_path_analysis(engines: &Engines, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    module_return_path_analysis(engines, &program.root, &mut errors);
+    module_return_path_analysis(engines, &program.root_module, &mut errors);
     errors
 }
 

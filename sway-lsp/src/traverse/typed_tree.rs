@@ -36,7 +36,7 @@ impl<'a> TypedTree<'a> {
 
     /// Collects module names from the mod statements
     pub fn collect_module_spans(&self, typed_program: &TyProgram) {
-        self.collect_module(&typed_program.root);
+        self.collect_module(&typed_program.root_module);
     }
 
     fn collect_module(&self, typed_module: &TyModule) {
