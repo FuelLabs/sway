@@ -6,7 +6,12 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{assignable::ElementAccess, expr::ReassignmentOp, Assignable, Expr};
+use sway_ast::{
+    assignable::ElementAccess,
+    expr::ReassignmentOp,
+    keywords::{DotToken, StarToken, Token},
+    Assignable, Expr,
+};
 use sway_types::Spanned;
 
 impl Format for ElementAccess {
@@ -27,26 +32,21 @@ impl Format for ElementAccess {
             }
             ElementAccess::FieldProjection {
                 target,
-                dot_token,
+                dot_token: _,
                 name,
             } => {
                 target.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", dot_token.span().as_str())?;
+                write!(formatted_code, "{}", DotToken::AS_STR)?;
                 name.format(formatted_code, formatter)?;
             }
             ElementAccess::TupleFieldProjection {
                 target,
-                dot_token,
-                field: _,
-                field_span,
+                dot_token: _,
+                field,
+                field_span: _,
             } => {
                 target.format(formatted_code, formatter)?;
-                write!(
-                    formatted_code,
-                    "{}{}",
-                    dot_token.span().as_str(),
-                    field_span.as_str()
-                )?;
+                write!(formatted_code, "{}{}", DotToken::AS_STR, field)?;
             }
         }
         Ok(())
@@ -63,8 +63,11 @@ impl Format for Assignable {
             Assignable::ElementAccess(element_access) => {
                 element_access.format(formatted_code, formatter)?
             }
-            Assignable::Deref { star_token, expr } => {
-                write!(formatted_code, "{}", star_token.span().as_str())?;
+            Assignable::Deref {
+                star_token: _,
+                expr,
+            } => {
+                write!(formatted_code, "{}", StarToken::AS_STR)?;
                 expr.format(formatted_code, formatter)?;
             }
         }
@@ -78,7 +81,7 @@ impl Format for ReassignmentOp {
         formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, " {} ", self.span.as_str())?;
+        write!(formatted_code, " {} ", self.variant.as_str())?;
         Ok(())
     }
 }

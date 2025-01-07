@@ -3,8 +3,11 @@ use crate::{
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{WhereBound, WhereClause};
-use sway_types::{ast::PunctKind, Spanned};
+use sway_ast::{
+    keywords::{ColonToken, Keyword, Token, WhereToken},
+    CommaToken, WhereBound, WhereClause,
+};
+use sway_types::Spanned;
 
 impl Format for WhereClause {
     fn format(
@@ -15,8 +18,8 @@ impl Format for WhereClause {
         writeln!(
             formatted_code,
             "{}{}",
-            &formatter.indent_to_str()?,
-            self.where_token.span().as_str(),
+            formatter.indent_to_str()?,
+            WhereToken::AS_STR,
         )?;
         formatter.indent();
         // We should add a multiline field to `Shape`
@@ -27,18 +30,19 @@ impl Format for WhereClause {
         // ```
         //
         let value_pairs = self.bounds.value_separator_pairs.clone();
-        for (bound, comma_token) in value_pairs.iter() {
+        for (bound, _comma_token) in value_pairs.iter() {
             // `WhereBound`
             bound.format(formatted_code, formatter)?;
             // `CommaToken`
-            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+            writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
         }
         if let Some(final_value) = &self.bounds.final_value_opt {
             final_value.format(formatted_code, formatter)?;
-            writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+            writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
         }
         // reset indent
         formatter.unindent();
+
         Ok(())
     }
 }
@@ -52,11 +56,12 @@ impl Format for WhereBound {
         write!(
             formatted_code,
             "{}{}{} ",
-            &formatter.indent_to_str()?,      // `Indent`
-            self.ty_name.span().as_str(),     // `Ident`
-            self.colon_token.span().as_str(), // `ColonToken`
+            formatter.indent_to_str()?,
+            self.ty_name.as_str(),
+            ColonToken::AS_STR,
         )?;
         self.bounds.format(formatted_code, formatter)?;
+
         Ok(())
     }
 }
