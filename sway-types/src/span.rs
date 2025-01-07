@@ -203,6 +203,10 @@ impl Span {
     pub fn is_dummy(&self) -> bool {
         self.eq(&DUMMY_SPAN)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
 }
 
 impl fmt::Debug for Span {

@@ -1,7 +1,7 @@
 library;
 
 // ANCHOR: to_byte_array_import
-use std::array_conversions::{b256::*, u16::*, u256::*, u32::*, u64::*,};
+use std::array_conversions::{b256::*, u16::*, u256::*, u32::*, u64::*};
 // ANCHOR_END: to_byte_array_import
 
 pub fn to_byte_array() {
