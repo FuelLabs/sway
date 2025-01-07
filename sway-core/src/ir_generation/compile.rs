@@ -38,7 +38,7 @@ pub(super) fn compile_script(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-        let _ = compile_external(engines, context, module, ext_package);
+        let _ = compile_constants_for_external(engines, context, module, ext_package);
     }
 
     compile_constants(
@@ -101,7 +101,7 @@ pub(super) fn compile_predicate(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-        let _ = compile_external(engines, context, module, ext_package);
+        let _ = compile_constants_for_external(engines, context, module, ext_package);
     }
 
     compile_constants(
@@ -166,7 +166,7 @@ pub(super) fn compile_contract(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-        let _ = compile_external(engines, context, module, ext_package);
+        let _ = compile_constants_for_external(engines, context, module, ext_package);
     }
 
     compile_constants(
@@ -251,6 +251,31 @@ pub(super) fn compile_contract(
 }
 
 #[allow(clippy::too_many_arguments)]
+pub(crate) fn compile_constants_for_storage(
+    engines: &Engines,
+    context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+    namespace: &namespace::Root,
+) -> Result<Module, Vec<CompileError>> {
+    // Collect constants and tests for all dependencies
+    for ext_package in namespace.external_packages().values() {
+        let _ = compile_constants_for_external(engines, context, module, ext_package);
+    }
+
+    compile_constants(
+        engines,
+        context,
+        md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
+
+    Ok(module)
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_library(
     engines: &Engines,
     context: &mut Context,
@@ -265,7 +290,7 @@ pub(super) fn compile_library(
 
     // Collect constants and tests for all dependencies
     for ext_package in namespace.external_packages().values() {
-        let _ = compile_external(engines, context, module, ext_package);
+        let _ = compile_constants_for_external(engines, context, module, ext_package);
     }
 
     compile_constants(
@@ -291,7 +316,7 @@ pub(super) fn compile_library(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn compile_external(
+fn compile_constants_for_external(
     engines: &Engines,
     context: &mut Context,
     module: Module,
@@ -301,7 +326,7 @@ pub(super) fn compile_external(
 
     // Collect constant for all dependencies
     for ext_package in namespace.external_packages().values() {
-        let _ = compile_external(engines, context, module, ext_package);
+        let _ = compile_constants_for_external(engines, context, module, ext_package);
     }
 
     compile_constants(
@@ -316,7 +341,7 @@ pub(super) fn compile_external(
     Ok(module)
 }
 
-pub(crate) fn compile_constants(
+fn compile_constants(
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,

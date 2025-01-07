@@ -658,14 +658,14 @@ pub fn parsed_to_ast(
     let mut ctx = Context::new(engines.se(), experimental);
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
-    if let Err(e) = ir_generation::compile::compile_constants(
+    if let Err(errs) = ir_generation::compile::compile_constants_for_storage(
         engines,
         &mut ctx,
         &mut md_mgr,
         module,
-        typed_program.root.namespace.current_module(),
+        typed_program.root.namespace.root_ref(),
     ) {
-        handler.emit_err(e);
+	let _ = errs.into_iter().map(|e| handler.emit_err(e));
     }
 
     // CEI pattern analysis
