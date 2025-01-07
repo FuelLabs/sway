@@ -34,6 +34,19 @@ impl<T, P> Punctuated<T, P> {
             .map(|(t, _)| t)
             .chain(self.final_value_opt.iter_mut().map(|t| &mut **t))
     }
+
+    /// Returns true if the [Punctuated] ends with the punctuation token.
+    /// E.g., `fn fun(x: u64, y: u64,)`.
+    pub fn has_trailing_punctuation(&self) -> bool {
+        !self.value_separator_pairs.is_empty() && self.final_value_opt.is_none()
+    }
+
+    /// Returns true if the [Punctuated] has neither value separator pairs,
+    /// nor the final value.
+    /// E.g., `fn fun()`.
+    pub fn is_empty(&self) -> bool {
+        self.value_separator_pairs.is_empty() && self.final_value_opt.is_none()
+    }
 }
 
 impl<T, P> IntoIterator for Punctuated<T, P> {

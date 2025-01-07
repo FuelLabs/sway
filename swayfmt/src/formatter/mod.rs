@@ -10,7 +10,6 @@ pub use crate::{
 use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
 use sway_ast::attribute::Annotated;
 use sway_ast::Module;
-use sway_core::BuildConfig;
 use sway_types::{SourceEngine, Spanned};
 
 pub(crate) mod shape;
@@ -82,70 +81,15 @@ impl Formatter {
         Ok(self)
     }
 
-    pub fn format(
-        &mut self,
-        src: Arc<str>,
-        build_config: Option<&BuildConfig>,
-    ) -> Result<FormattedCode, FormatterError> {
-        // apply the width heuristics settings from the `Config`
-        self.shape.apply_width_heuristics(
-            self.config
-                .heuristics
-                .heuristics_pref
-                .to_width_heuristics(self.config.whitespace.max_width),
-        );
-        let src = src.trim();
-
-        let path = build_config.map(|build_config| build_config.canonical_root_module());
-        // Formatted code will be pushed here with raw newline style.
-        // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
-        // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
-        // which will reduce the number of reallocations
-        let mut raw_formatted_code = String::with_capacity(src.len());
-
-        self.with_comments_context(src)?;
-
-        let annotated_module = parse_file(&self.source_engine, Arc::from(src), path.clone())?;
-        annotated_module.format(&mut raw_formatted_code, self)?;
-
-        let mut formatted_code = String::from(&raw_formatted_code);
-
-        // Write post-module comments
-        write_comments(
-            &mut formatted_code,
-            annotated_module.value.span().end()..src.len() + 1,
-            self,
-        )?;
-
-        // Add newline sequences
-        handle_newlines(
-            &self.source_engine,
-            Arc::from(src),
-            &annotated_module.value,
-            Arc::from(formatted_code.clone()),
-            path,
-            &mut formatted_code,
-            self,
-        )?;
-        // Replace newlines with specified `NewlineStyle`
-        apply_newline_style(
-            self.config.whitespace.newline_style,
-            &mut formatted_code,
-            &raw_formatted_code,
-        )?;
-        if !formatted_code.ends_with('\n') {
-            writeln!(formatted_code)?;
-        }
-
-        Ok(formatted_code)
+    pub fn format(&mut self, src: Arc<str>) -> Result<FormattedCode, FormatterError> {
+        let annotated_module = parse_file(src)?;
+        self.format_module(&annotated_module)
     }
 
-    // TODO: This is currently a deliberate copy of the `format` method.
-    //       The copy covers the need of the `forc migrate` tool.
-    //       The unification of these two methods and an additional
-    //       refactoring of the `Formatter` will be done as a part of
-    //       https://github.com/FuelLabs/sway/issues/6779
-    pub fn format_module(&mut self, module: &Module) -> Result<FormattedCode, FormatterError> {
+    pub fn format_module(
+        &mut self,
+        annotated_module: &Annotated<Module>,
+    ) -> Result<FormattedCode, FormatterError> {
         // apply the width heuristics settings from the `Config`
         self.shape.apply_width_heuristics(
             self.config
@@ -155,7 +99,7 @@ impl Formatter {
         );
 
         // Get the original trimmed source code.
-        let module_kind_span = module.kind.span();
+        let module_kind_span = annotated_module.value.kind.span();
         let src = module_kind_span.src().trim();
 
         // Formatted code will be pushed here with raw newline style.
@@ -166,13 +110,6 @@ impl Formatter {
 
         self.with_comments_context(src)?;
 
-        let annotated_module = Annotated {
-            // TODO: Handling of annotations on the module level will be done
-            //       in https://github.com/FuelLabs/sway/issues/6802.
-            attribute_list: vec![],
-            value: module.clone(),
-        };
-
         annotated_module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
@@ -186,11 +123,9 @@ impl Formatter {
 
         // Add newline sequences
         handle_newlines(
-            &self.source_engine,
             Arc::from(src),
             &annotated_module.value,
             Arc::from(formatted_code.clone()),
-            None,
             &mut formatted_code,
             self,
         )?;

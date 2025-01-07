@@ -11,8 +11,10 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    keywords::{MutToken, RefToken, SelfToken, Token},
-    FnArg, FnArgs, FnSignature, ItemFn,
+    keywords::{
+        ColonToken, FnToken, Keyword, MutToken, RefToken, RightArrowToken, SelfToken, Token,
+    },
+    CommaToken, FnArg, FnArgs, FnSignature, ItemFn, PubToken,
 };
 use sway_types::{ast::Delimiter, Spanned};
 
@@ -152,13 +154,11 @@ fn format_fn_sig(
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
     // `pub `
-    if let Some(visibility_token) = &fn_sig.visibility {
-        write!(formatted_code, "{} ", visibility_token.span().as_str())?;
+    if fn_sig.visibility.is_some() {
+        write!(formatted_code, "{} ", PubToken::AS_STR)?;
     }
     // `fn ` + name
-    // TODO: This is a temporary solution.
-    //       The proper implementation will come as a part of https://github.com/FuelLabs/sway/issues/6779.
-    write!(formatted_code, "fn ")?;
+    write!(formatted_code, "{} ", FnToken::AS_STR)?;
     fn_sig.name.format(formatted_code, formatter)?;
     // `<T>`
     if let Some(generics) = &fn_sig.generics {
@@ -171,12 +171,8 @@ fn format_fn_sig(
     // `)`
     FnSignature::close_parenthesis(formatted_code, formatter)?;
     // `return_type_opt`
-    if let Some((right_arrow, ty)) = &fn_sig.return_type_opt {
-        write!(
-            formatted_code,
-            " {} ",
-            right_arrow.ident().as_str() // `->`
-        )?;
+    if let Some((_right_arrow, ty)) = &fn_sig.return_type_opt {
+        write!(formatted_code, " {} ", RightArrowToken::AS_STR)?;
         ty.format(formatted_code, formatter)?; // `Ty`
     }
     // `WhereClause`
@@ -198,7 +194,7 @@ fn format_fn_args(
         FnArgs::Static(args) => match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
                 formatter.shape.code_line.update_expr_new_line(true);
-                if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
+                if !args.is_empty() {
                     formatter.indent();
                     args.format(formatted_code, formatter)?;
                     formatter.unindent();
@@ -220,9 +216,9 @@ fn format_fn_args(
                     write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
-                    if let Some((comma, args)) = args_opt {
+                    if let Some((_comma, args)) = args_opt {
                         // `, `
-                        write!(formatted_code, "{}", comma.ident().as_str())?;
+                        write!(formatted_code, "{}", CommaToken::AS_STR)?;
                         // `Punctuated<FnArg, CommaToken>`
                         args.format(formatted_code, formatter)?;
                     }
@@ -230,9 +226,9 @@ fn format_fn_args(
                 _ => {
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;
                     // `args_opt`
-                    if let Some((comma, args)) = args_opt {
+                    if let Some((_comma, args)) = args_opt {
                         // `, `
-                        write!(formatted_code, "{} ", comma.ident().as_str())?;
+                        write!(formatted_code, "{} ", CommaToken::AS_STR)?;
                         // `Punctuated<FnArg, CommaToken>`
                         args.format(formatted_code, formatter)?;
                     }
@@ -245,21 +241,21 @@ fn format_fn_args(
 }
 
 fn format_self(
-    self_token: &SelfToken,
+    _self_token: &SelfToken,
     ref_self: &Option<RefToken>,
     mutable_self: &Option<MutToken>,
     formatted_code: &mut FormattedCode,
 ) -> Result<(), FormatterError> {
     // `ref `
-    if let Some(ref_token) = ref_self {
-        write!(formatted_code, "{} ", ref_token.span().as_str())?;
+    if ref_self.is_some() {
+        write!(formatted_code, "{} ", RefToken::AS_STR)?;
     }
     // `mut `
-    if let Some(mut_token) = mutable_self {
-        write!(formatted_code, "{} ", mut_token.span().as_str())?;
+    if mutable_self.is_some() {
+        write!(formatted_code, "{} ", MutToken::AS_STR)?;
     }
     // `self`
-    write!(formatted_code, "{}", self_token.span().as_str())?;
+    write!(formatted_code, "{}", SelfToken::AS_STR)?;
 
     Ok(())
 }
@@ -291,7 +287,7 @@ impl Format for FnArg {
     ) -> Result<(), FormatterError> {
         self.pattern.format(formatted_code, formatter)?;
         // `: `
-        write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
+        write!(formatted_code, "{} ", ColonToken::AS_STR)?;
 
         write_comments(
             formatted_code,
