@@ -8,7 +8,6 @@ use std::process::Command;
 fn test_cli() {
     let port = portpicker::pick_unused_port().expect("No ports free");
 
-    #[allow(clippy::zombie_processes)]
     let mut fuel_core = Command::new("fuel-core")
         .arg("run")
         .arg("--debug")
