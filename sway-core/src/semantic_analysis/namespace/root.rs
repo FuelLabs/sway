@@ -202,14 +202,7 @@ impl Root {
         };
 
         // Collect all items declared in the source module
-        let mut symbols = src_mod
-            .root_items()
-            .symbols
-            .keys()
-            .clone()
-            .collect::<Vec<_>>();
-        symbols.sort();
-        for symbol in symbols {
+        for symbol in src_mod.root_items().symbols.keys() {
             let decl = &src_mod.root_items().symbols[symbol];
             if is_ancestor(src, dst) || decl.visibility(engines).is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), src.to_vec()));
@@ -217,14 +210,7 @@ impl Root {
         }
         // Collect those item-imported items that the source module reexports
         // These live in the same namespace as local declarations, so no shadowing is possible
-        let mut symbols = src_mod
-            .root_items()
-            .use_item_synonyms
-            .keys()
-            .clone()
-            .collect::<Vec<_>>();
-        symbols.sort();
-        for symbol in symbols {
+        for symbol in src_mod.root_items().use_item_synonyms.keys() {
             let (_, path, decl, src_visibility) = &src_mod.root_items().use_item_synonyms[symbol];
             if src_visibility.is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), get_path(path.clone())))
@@ -235,14 +221,7 @@ impl Root {
         // by local declarations and item imports in the source module, so they are treated
         // separately.
         let mut glob_imports = vec![];
-        let mut symbols = src_mod
-            .root_items()
-            .use_glob_synonyms
-            .keys()
-            .clone()
-            .collect::<Vec<_>>();
-        symbols.sort();
-        for symbol in symbols {
+        for symbol in src_mod.root_items().use_glob_synonyms.keys() {
             let bindings = &src_mod.root_items().use_glob_synonyms[symbol];
             // Ignore if the symbol is shadowed by a local declaration or an item import in the source module
             if !decls_and_item_imports

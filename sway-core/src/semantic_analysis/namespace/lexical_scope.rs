@@ -13,6 +13,7 @@ use crate::{
 
 use super::{root::ResolvedDeclaration, TraitMap};
 
+use im::OrdMap;
 use parking_lot::RwLock;
 use sway_error::{
     error::{CompileError, ShadowingSource},
@@ -20,7 +21,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, IdentUnique, Named, Spanned};
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 pub enum ResolvedFunctionDecl {
     Parsed(ParsedDeclId<FunctionDeclaration>),
@@ -36,14 +37,13 @@ impl ResolvedFunctionDecl {
     }
 }
 
-pub(super) type SymbolMap = HashMap<Ident, ResolvedDeclaration>;
-pub(super) type SymbolUniqueMap = HashMap<IdentUnique, ResolvedDeclaration>;
+pub(super) type SymbolMap = OrdMap<Ident, ResolvedDeclaration>;
+pub(super) type SymbolUniqueMap = OrdMap<IdentUnique, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
-pub(super) type GlobSynonyms =
-    HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
-pub(super) type ItemSynonyms = HashMap<
+pub(super) type GlobSynonyms = OrdMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
+pub(super) type ItemSynonyms = OrdMap<
     Ident,
     (
         Option<SourceIdent>,
