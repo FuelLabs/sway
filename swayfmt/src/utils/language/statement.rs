@@ -3,7 +3,10 @@ use crate::{
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{Expr, Parens, Punctuated, Statement, StatementLet};
+use sway_ast::{
+    keywords::{ColonToken, EqToken, Keyword, LetToken, SemicolonToken, Token},
+    Expr, Parens, Punctuated, Statement, StatementLet,
+};
 use sway_types::{Span, Spanned};
 
 impl Format for Statement {
@@ -20,7 +23,7 @@ impl Format for Statement {
 }
 
 /// Remove arguments from the expression if the expression is a method call if
-/// the method is a simple two path call (foo.bar()). This needed because in
+/// the method is a simple two path call (foo.bar()). This is needed because in
 /// method calls of two parts they are never broke into multiple lines.
 /// Arguments however can be broken into multiple lines, and that is handled
 /// by `write_function_call_arguments`
@@ -117,11 +120,11 @@ fn format_statement(
             } else {
                 expr.format(formatted_code, formatter)?;
             }
-            if let Some(semicolon) = semicolon_token_opt {
+            if semicolon_token_opt.is_some() {
                 if formatter.shape.code_line.line_style == LineStyle::Inline {
-                    write!(formatted_code, "{}", semicolon.span().as_str())?;
+                    write!(formatted_code, "{}", SemicolonToken::AS_STR)?;
                 } else {
-                    writeln!(formatted_code, "{}", semicolon.span().as_str())?;
+                    writeln!(formatted_code, "{}", SemicolonToken::AS_STR)?;
                 }
             }
         }
@@ -140,24 +143,24 @@ impl Format for StatementLet {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // `let `
-        write!(formatted_code, "{} ", self.let_token.span().as_str())?;
+        write!(formatted_code, "{} ", LetToken::AS_STR)?;
         // pattern
         self.pattern.format(formatted_code, formatter)?;
         // `: Ty`
-        if let Some(ty) = &self.ty_opt {
-            write!(formatted_code, "{} ", ty.0.span().as_str())?;
-            ty.1.format(formatted_code, formatter)?;
+        if let Some((_colon_token, ty)) = &self.ty_opt {
+            write!(formatted_code, "{} ", ColonToken::AS_STR)?;
+            ty.format(formatted_code, formatter)?;
         }
         // ` = `
-        write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
+        write!(formatted_code, " {} ", EqToken::AS_STR)?;
         // expr
         self.expr.format(formatted_code, formatter)?;
         if formatter.shape.code_line.line_style == LineStyle::Inline {
             // `;`
-            write!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
+            write!(formatted_code, "{}", SemicolonToken::AS_STR)?;
         } else {
             // `;\n`
-            writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
+            writeln!(formatted_code, "{}", SemicolonToken::AS_STR)?;
         }
 
         Ok(())
