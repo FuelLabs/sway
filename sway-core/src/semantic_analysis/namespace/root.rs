@@ -213,8 +213,12 @@ impl Root {
         &self.external_packages
     }
 
-    pub(crate) fn current_package_root_module(&self) -> &Module {
+    pub fn current_package_root_module(&self) -> &Module {
         &self.current_package
+    }
+
+    pub fn current_package_root_module_mut(&mut self) -> &mut Module {
+        &mut self.current_package
     }
 
     pub(crate) fn current_package_name(&self) -> &Ident {
@@ -231,10 +235,6 @@ impl Root {
 
     pub(super) fn is_contract_package(&self) -> bool {
         self.is_contract_package
-    }
-
-    pub fn add_span_to_root_module(&mut self, span: Span) {
-        self.current_package.set_span(span)
     }
 
     // Find module in the current environment. `mod_path` must be a fully qualified path
