@@ -8,7 +8,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, ItemTrait, ItemTraitItem, Traits};
+use sway_ast::{
+    keywords::{AddToken, ColonToken, Keyword, Token, TraitToken},
+    ItemTrait, ItemTraitItem, PubToken, Traits,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
@@ -23,23 +26,23 @@ impl Format for ItemTrait {
         // Required for comment formatting
         let start_len = formatted_code.len();
         // `pub `
-        if let Some(pub_token) = &self.visibility {
-            write!(formatted_code, "{} ", pub_token.span().as_str())?;
+        if self.visibility.is_some() {
+            write!(formatted_code, "{} ", PubToken::AS_STR)?;
         }
         // `trait name`
         write!(
             formatted_code,
             "{} {}",
-            self.trait_token.span().as_str(),
-            self.name.span().as_str()
+            TraitToken::AS_STR,
+            self.name.as_str(),
         )?;
         // `<T>`
         if let Some(generics) = &self.generics {
             generics.format(formatted_code, formatter)?;
         }
         // `: super_trait + super_trait`
-        if let Some((colon_token, traits)) = &self.super_traits {
-            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
+        if let Some((_colon_token, traits)) = &self.super_traits {
+            write!(formatted_code, "{} ", ColonToken::AS_STR)?;
             traits.format(formatted_code, formatter)?;
         }
         // `where`
@@ -145,8 +148,8 @@ impl Format for Traits {
         // additional `PathType`s
         //
         // ` + PathType`
-        for (add_token, path_type) in self.suffixes.iter() {
-            write!(formatted_code, " {} ", add_token.span().as_str())?;
+        for (_add_token, path_type) in self.suffixes.iter() {
+            write!(formatted_code, " {} ", AddToken::AS_STR)?;
             path_type.format(formatted_code, formatter)?;
         }
 

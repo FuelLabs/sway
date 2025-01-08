@@ -6,7 +6,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{ExprArrayDescriptor, ExprTupleDescriptor};
+use sway_ast::{
+    keywords::{SemicolonToken, Token},
+    CommaToken, ExprArrayDescriptor, ExprTupleDescriptor,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for ExprTupleDescriptor {
@@ -20,18 +23,18 @@ impl Format for ExprTupleDescriptor {
             Self::Nil => {}
             Self::Cons {
                 head,
-                comma_token,
+                comma_token: _,
                 tail,
             } => match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
                     write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                     head.format(formatted_code, formatter)?;
-                    write!(formatted_code, "{}", comma_token.span().as_str())?;
+                    write!(formatted_code, "{}", CommaToken::AS_STR)?;
                     tail.format(formatted_code, formatter)?;
                 }
                 _ => {
                     head.format(formatted_code, formatter)?;
-                    write!(formatted_code, "{} ", comma_token.span().as_str())?;
+                    write!(formatted_code, "{} ", CommaToken::AS_STR)?;
                     tail.format(formatted_code, formatter)?;
                 }
             },
@@ -91,11 +94,11 @@ impl Format for ExprArrayDescriptor {
             }
             Self::Repeat {
                 value,
-                semicolon_token,
+                semicolon_token: _,
                 length,
             } => {
                 value.format(formatted_code, formatter)?;
-                write!(formatted_code, "{} ", semicolon_token.span().as_str())?;
+                write!(formatted_code, "{} ", SemicolonToken::AS_STR)?;
                 length.format(formatted_code, formatter)?;
             }
         }

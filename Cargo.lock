@@ -7869,7 +7869,6 @@ dependencies = [
  "serde_ignored",
  "similar",
  "sway-ast",
- "sway-core",
  "sway-error",
  "sway-parse",
  "sway-types",
