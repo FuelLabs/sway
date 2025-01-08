@@ -1614,7 +1614,7 @@ pub fn dependency_namespace(
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no root module")
+                .expect("no root namespace module")
                 .clone(),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
