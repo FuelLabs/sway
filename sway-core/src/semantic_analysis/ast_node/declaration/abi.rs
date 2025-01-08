@@ -343,14 +343,13 @@ impl ty::TyAbiDecl {
                 match item {
                     ty::TyTraitItem::Fn(decl_ref) => {
                         let method = decl_engine.get_function(decl_ref);
-                        let current_mod_path = ctx.namespace().current_mod_path().clone();
                         // check if we inherit the same impl method from different branches
                         // XXX this piece of code can be abstracted out into a closure
                         // and reused for interface methods if the issue of mutable ctx is solved
                         if let Ok(superabi_impl_method_ref) = ctx.find_method_for_type(
                             &Handler::default(),
                             type_id,
-                            &current_mod_path,
+                            &mod_path,
                             &method.name.clone(),
                             ctx.type_annotation(),
                             &Default::default(),
