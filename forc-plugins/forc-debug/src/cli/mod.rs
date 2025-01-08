@@ -6,7 +6,7 @@ use crate::{
     ContractId, FuelClient, RunResult, Transaction,
 };
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
-use rustyline::{Config, Editor};
+use rustyline::{CompletionType, Config, EditMode, Editor};
 use state::{DebuggerHelper, State};
 
 /// Start the CLI debug interface
@@ -14,8 +14,10 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
     // Initialize editor with config
     let mut editor = Editor::with_config(
         Config::builder()
-            .history_ignore_space(true)
             .auto_add_history(true)
+            .history_ignore_space(true)
+            .completion_type(CompletionType::Circular)
+            .edit_mode(EditMode::Vi)
             .build(),
     )?;
 

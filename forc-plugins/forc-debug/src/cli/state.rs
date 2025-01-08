@@ -97,6 +97,19 @@ impl Highlighter for DebuggerHelper {
     fn highlight_char(&self, line: &str, pos: usize, kind: CmdKind) -> bool {
         true
     }
+
+    fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
+        &'s self,
+        prompt: &'p str,
+        default: bool,
+    ) -> Cow<'b, str> {
+        if default {
+            // Using RGB values: 4, 234, 130 | fuel green :)
+            Cow::Owned("\x1b[38;2;4;234;130m>>\x1b[0m ".to_owned())
+        } else {
+            Cow::Borrowed(prompt)
+        }
+    }
 }
 
 impl Validator for DebuggerHelper {
