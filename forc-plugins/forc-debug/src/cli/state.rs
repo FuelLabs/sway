@@ -34,34 +34,41 @@ impl Completer for DebuggerHelper {
         pos: usize,
         ctx: &Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let commands = vec![
-            "n",
-            "tx",
-            "new_tx",
-            "start_tx",
+        let main_commands = vec![
+            "n", "tx", "new_tx", "start_tx",
             "reset",
-            "c",
-            "continue",
-            "s",
-            "step",
-            "b",
-            "breakpoint",
-            "r",
-            "reg",
-            "register",
-            "registers",
-            "m",
-            "memory",
-            "quit",
-            "exit",
+            "c", "continue",
+            "s", "step",
+            "b", "breakpoint",
+            "r", "reg", "register", "registers",
+            "m", "memory",
+            "quit", "exit",
         ];
 
-        let word_start = line[..pos].rfind(char::is_whitespace).map_or(0, |i| i + 1);
-        let word = &line[word_start..pos];
+        let register_names = vec![
+            "zero", "one", "of", "pc", "ssp", "sp", "fp", "hp", 
+            "err", "ggas", "cgas", "bal", "is", "ret", "retl", "flag"
+        ];
 
-        let matches: Vec<String> = commands
-            .into_iter()
-            .filter(|cmd| cmd.starts_with(word))
+        let words: Vec<&str> = line[..pos].split_whitespace().collect();
+        let word_start = line[..pos].rfind(char::is_whitespace).map_or(0, |i| i + 1);
+        let word_to_complete = &line[word_start..pos];
+
+        // If we're in a register command context AND there's a space after the command
+        if words.get(0).map_or(false, |&cmd| ["r", "reg", "register", "registers"].contains(&cmd)) 
+            && line[..word_start].ends_with(' ') 
+        {
+            let matches: Vec<String> = register_names.into_iter()
+                .filter(|name| name.starts_with(word_to_complete))
+                .map(String::from)
+                .collect();
+
+            return Ok((word_start, matches));
+        }
+        
+        // For all other cases, suggest main commands
+        let matches: Vec<String> = main_commands.into_iter()
+            .filter(|cmd| cmd.starts_with(word_to_complete))
             .map(String::from)
             .collect();
 
