@@ -32,6 +32,7 @@ tokio = { workspace = true, features = [
     "net",
     "rt-multi-thread",
 ] }
+walkdir.workspace = true
 
 [dev-dependencies]
 dap = { version = "0.4.1-alpha1", features = ["client"] }

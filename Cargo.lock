@@ -2800,6 +2800,7 @@ dependencies = [
  "sway-types",
  "thiserror",
  "tokio",
+ "walkdir",
 ]
 
 [[package]]

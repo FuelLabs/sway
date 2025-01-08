@@ -276,7 +276,7 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> {
         .unwrap_or(0);
 
     // Ensure no extra arguments
-    ArgumentError::ensure_arg_count(&args, 0, 0)?;
+    ArgumentError::ensure_arg_count(&args, 0, 2)?;
 
     // Fetch memory from the client
     let mem = state

@@ -6,7 +6,12 @@ use rustyline::{
     validate::{ValidationContext, ValidationResult, Validator},
     Context, Helper,
 };
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    fs,
+    path::Path,
+};
+use serde_json::Value;
 
 pub struct State {
     pub client: FuelClient,
@@ -24,6 +29,7 @@ impl State {
 
 #[derive(Default)]
 pub struct DebuggerHelper;
+
 
 impl Completer for DebuggerHelper {
     type Candidate = String;
@@ -54,8 +60,15 @@ impl Completer for DebuggerHelper {
         let word_start = line[..pos].rfind(char::is_whitespace).map_or(0, |i| i + 1);
         let word_to_complete = &line[word_start..pos];
 
+        // Transaction command context with space after command
+        if words.get(0).map_or(false, |&cmd| ["n", "tx", "new_tx", "start_tx"].contains(&cmd))
+            && line[..word_start].ends_with(' ')
+        {
+            let matches = get_transaction_files(word_to_complete);
+            return Ok((word_start, matches));
+        }
         // If we're in a register command context AND there's a space after the command
-        if words.get(0).map_or(false, |&cmd| ["r", "reg", "register", "registers"].contains(&cmd)) 
+        else if words.get(0).map_or(false, |&cmd| ["r", "reg", "register", "registers"].contains(&cmd)) 
             && line[..word_start].ends_with(' ') 
         {
             let matches: Vec<String> = register_names.into_iter()
@@ -126,3 +139,55 @@ impl Validator for DebuggerHelper {
 }
 
 impl Helper for DebuggerHelper {}
+
+
+
+/// Returns valid transaction JSON files from current directory and subdirectories.
+/// Files must contain one of: Script, Create, Mint, Upgrade, Upload, or Blob keys.
+fn get_transaction_files(current_word: &str) -> Vec<String> {
+    fn is_valid_transaction_json(path: &Path) -> bool {
+        // Read and parse the JSON file
+        let content = match fs::read_to_string(path) {
+            Ok(content) => content,
+            Err(_) => return false,
+        };
+        let json: Value = match serde_json::from_str(&content) {
+            Ok(json) => json,
+            Err(_) => return false,
+        };
+
+        // Check if it's a valid transaction JSON
+        if let Value::Object(obj) = json {
+            // Check for transaction type
+            let has_valid_type = obj.keys().any(|key| {
+                matches!(key.as_str(), 
+                    "Script" | "Create" | "Mint" | "Upgrade" | "Upload" | "Blob")
+            });
+            return has_valid_type;
+        }
+        false
+    }
+
+    let mut matches = Vec::new();
+
+    // Create the walker and iterate through entries
+    let walker = walkdir::WalkDir::new(".").follow_links(true);
+    for entry in walker.into_iter().filter_map(|e| e.ok()) {
+        if entry.file_type().is_file() {
+            let path = entry.path();
+            
+            // Check if it's a .json file and starts with the current word
+            if let Some(filename) = path.to_string_lossy()
+                .strip_prefix("./")
+                .map(|f| f.to_string())
+            {
+                if filename.ends_with(".json") 
+                    && filename.starts_with(current_word)
+                    && is_valid_transaction_json(path) {
+                    matches.push(filename);
+                }
+            }
+        }
+    }
+    matches
+}
