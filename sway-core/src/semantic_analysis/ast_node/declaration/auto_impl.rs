@@ -331,11 +331,13 @@ where
             return Err(handler);
         }
 
-        let r = TyDecl::type_check(
-            &handler,
-            &mut ctx.by_ref(),
-            parsed::Declaration::FunctionDeclaration(decl),
-        );
+        let r = ctx.scoped(&handler, None, |ctx| {
+            TyDecl::type_check(
+                &handler,
+                &mut ctx.by_ref(),
+                parsed::Declaration::FunctionDeclaration(decl),
+            )
+        });
 
         // Uncomment this to understand why an entry function was not generated
         //println!("{:#?}", handler);
