@@ -11,7 +11,10 @@ use crate::{
     },
 };
 use std::{collections::HashMap, fmt::Write};
-use sway_ast::{keywords::Token, ItemStorage, StorageEntry, StorageField};
+use sway_ast::{
+    keywords::{ColonToken, EqToken, Keyword, StorageToken, Token},
+    CommaToken, ItemStorage, StorageEntry, StorageField,
+};
 use sway_types::{ast::Delimiter, IdentUnique, Spanned};
 
 #[cfg(test)]
@@ -32,7 +35,7 @@ impl Format for ItemStorage {
                 let start_len = formatted_code.len();
 
                 // Add storage token
-                write!(formatted_code, "{}", self.storage_token.span().as_str())?;
+                write!(formatted_code, "{}", StorageToken::AS_STR)?;
                 let entries = self.entries.get();
 
                 // Handle opening brace
@@ -47,7 +50,8 @@ impl Format for ItemStorage {
                         let value_pairs = &entries
                             .value_separator_pairs
                             .iter()
-                            // TODO: Handle annotations instead of stripping them
+                            // TODO: Handle annotations instead of stripping them.
+                            //       See: https://github.com/FuelLabs/sway/issues/6802
                             .map(|(storage_field, comma_token)| (&storage_field.value, comma_token))
                             .collect::<Vec<_>>();
                         // In first iteration we are going to be collecting the lengths of the
@@ -114,7 +118,7 @@ impl Format for ItemStorage {
                                 ItemStorage::open_curly_brace(formatted_code, formatter)?;
                                 writeln!(formatted_code)?;
 
-                                for (e, comma_token) in
+                                for (e, _comma_token) in
                                     namespace.clone().into_inner().value_separator_pairs
                                 {
                                     format_entry(
@@ -124,7 +128,7 @@ impl Format for ItemStorage {
                                         field_lengths,
                                         max_valid_field_length,
                                     )?;
-                                    writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
+                                    writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
                                 }
                                 if let Some(final_value) =
                                     &namespace.clone().into_inner().final_value_opt
@@ -159,17 +163,9 @@ impl Format for ItemStorage {
                                     }
                                 }
                                 // Add `:`, `ty` & `CommaToken`
-                                write!(
-                                    formatted_code,
-                                    " {} ",
-                                    storage_field.colon_token.ident().as_str(),
-                                )?;
+                                write!(formatted_code, " {} ", ColonToken::AS_STR)?;
                                 storage_field.ty.format(formatted_code, formatter)?;
-                                write!(
-                                    formatted_code,
-                                    " {} ",
-                                    storage_field.eq_token.ident().as_str()
-                                )?;
+                                write!(formatted_code, " {} ", EqToken::AS_STR)?;
                                 storage_field
                                     .initializer
                                     .format(formatted_code, formatter)?;
@@ -177,7 +173,7 @@ impl Format for ItemStorage {
 
                             Ok(())
                         }
-                        for (storage_entry, comma_token) in value_pairs.iter().clone() {
+                        for (storage_entry, _comma_token) in value_pairs.iter().clone() {
                             format_entry(
                                 formatted_code,
                                 formatter,
@@ -185,7 +181,7 @@ impl Format for ItemStorage {
                                 &field_lengths,
                                 max_valid_field_length,
                             )?;
-                            writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
+                            writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
                         }
                         if let Some(final_value) = &entries.final_value_opt {
                             format_entry(

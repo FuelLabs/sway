@@ -10,7 +10,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, ConfigurableField, ItemConfigurable};
+use sway_ast::{
+    keywords::{ColonToken, ConfigurableToken, EqToken, Keyword, Token},
+    CommaToken, ConfigurableField, ItemConfigurable,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
@@ -28,11 +31,7 @@ impl Format for ItemConfigurable {
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
                 // Add configurable token
-                write!(
-                    formatted_code,
-                    "{}",
-                    self.configurable_token.span().as_str()
-                )?;
+                write!(formatted_code, "{}", ConfigurableToken::AS_STR)?;
                 let fields = self.fields.get();
 
                 // Handle opening brace
@@ -44,19 +43,18 @@ impl Format for ItemConfigurable {
                 match formatter.config.structures.field_alignment {
                     FieldAlignment::AlignFields(configurable_field_align_threshold) => {
                         writeln!(formatted_code)?;
-                        let value_pairs = &fields
+                        let configurable_fields = &fields
                             .value_separator_pairs
                             .iter()
-                            // TODO: Handle annotations instead of stripping them
-                            .map(|(configurable_field, comma_token)| {
-                                (&configurable_field.value, comma_token)
-                            })
+                            // TODO: Handle annotations instead of stripping them.
+                            //       See: https://github.com/FuelLabs/sway/issues/6802
+                            .map(|(configurable_field, _comma_token)| &configurable_field.value)
                             .collect::<Vec<_>>();
                         // In first iteration we are going to be collecting the lengths of the
                         // struct fields.
-                        let field_length: Vec<usize> = value_pairs
+                        let field_length: Vec<usize> = configurable_fields
                             .iter()
-                            .map(|(configurable_field, _)| configurable_field.name.as_str().len())
+                            .map(|configurable_field| configurable_field.name.as_str().len())
                             .collect();
 
                         // Find the maximum length in the `field_length` vector that is still
@@ -72,11 +70,10 @@ impl Format for ItemConfigurable {
                             }
                         });
 
-                        let value_pairs_iter = value_pairs.iter().enumerate();
-                        for (field_index, (configurable_field, comma_token)) in
-                            value_pairs_iter.clone()
+                        for (field_index, configurable_field) in
+                            configurable_fields.iter().enumerate()
                         {
-                            write!(formatted_code, "{}", &formatter.indent_to_str()?)?;
+                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
 
                             // Add name
                             configurable_field.name.format(formatted_code, formatter)?;
@@ -94,24 +91,17 @@ impl Format for ItemConfigurable {
                                 }
                             }
                             // Add `:`, `ty` & `CommaToken`
-                            write!(
-                                formatted_code,
-                                " {} ",
-                                configurable_field.colon_token.ident().as_str(),
-                            )?;
+                            write!(formatted_code, " {} ", ColonToken::AS_STR)?;
                             configurable_field.ty.format(formatted_code, formatter)?;
-                            write!(
-                                formatted_code,
-                                " {} ",
-                                configurable_field.eq_token.ident().as_str()
-                            )?;
+                            write!(formatted_code, " {} ", EqToken::AS_STR)?;
                             configurable_field
                                 .initializer
                                 .format(formatted_code, formatter)?;
-                            writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
+                            writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
                         }
                         if let Some(final_value) = &fields.final_value_opt {
                             final_value.format(formatted_code, formatter)?;
+                            writeln!(formatted_code)?;
                         }
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,

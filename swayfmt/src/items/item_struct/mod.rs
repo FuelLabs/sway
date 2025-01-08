@@ -11,7 +11,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::ItemStruct;
+use sway_ast::{
+    keywords::{ColonToken, Keyword, StructToken, Token},
+    CommaToken, ItemStruct, PubToken,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
@@ -31,11 +34,11 @@ impl Format for ItemStruct {
                 // Required for comment formatting
                 let start_len = formatted_code.len();
                 // If there is a visibility token add it to the formatted_code with a ` ` after it.
-                if let Some(visibility) = &self.visibility {
-                    write!(formatted_code, "{} ", visibility.span().as_str())?;
+                if self.visibility.is_some() {
+                    write!(formatted_code, "{} ", PubToken::AS_STR)?;
                 }
                 // Add struct token and name
-                write!(formatted_code, "{} ", self.struct_token.span().as_str())?;
+                write!(formatted_code, "{} ", StructToken::AS_STR)?;
                 self.name.format(formatted_code, formatter)?;
                 // Format `GenericParams`, if any
                 if let Some(generics) = &self.generics {
@@ -52,7 +55,7 @@ impl Format for ItemStruct {
                 // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
 
-                if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
+                if fields.is_empty() {
                     write_comments(formatted_code, self.span().into(), formatter)?;
                 }
 
@@ -60,74 +63,67 @@ impl Format for ItemStruct {
 
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
-                    FieldAlignment::AlignFields(enum_variant_align_threshold) => {
+                    FieldAlignment::AlignFields(struct_field_align_threshold) => {
                         writeln!(formatted_code)?;
-                        let value_pairs = &fields
+                        let type_fields = &fields
                             .value_separator_pairs
                             .iter()
-                            // TODO: Handle annotations instead of stripping them
-                            .map(|(type_field, comma_token)| (&type_field.value, comma_token))
+                            // TODO: Handle annotations instead of stripping them.
+                            //       See: https://github.com/FuelLabs/sway/issues/6802
+                            .map(|(type_field, _comma_token)| &type_field.value)
                             .collect::<Vec<_>>();
-                        // In first iteration we are going to be collecting the lengths of the struct variants.
+                        // In first iteration we are going to be collecting the lengths of the struct fields.
                         // We need to include the `pub` keyword in the length, if the field is public,
                         // together with one space character between the `pub` and the name.
-                        let variant_length: Vec<usize> = value_pairs
+                        let fields_lengths: Vec<usize> = type_fields
                             .iter()
-                            .map(|(type_field, _)| {
+                            .map(|type_field| {
                                 type_field
                                     .visibility
                                     .as_ref()
-                                    // We don't want to hard code the token here to `pub` or just hardcode 4.
-                                    // This is in case we introduce e.g. `pub(crate)` one day.
-                                    .map_or(0, |token| token.span().as_str().len() + 1)
+                                    .map_or(0, |_pub_token| PubToken::AS_STR.len() + 1)
                                     + type_field.name.as_str().len()
                             })
                             .collect();
 
-                        // Find the maximum length in the variant_length vector that is still smaller than struct_field_align_threshold.
-                        let mut max_valid_variant_length = 0;
-                        variant_length.iter().for_each(|length| {
-                            if *length > max_valid_variant_length
-                                && *length < enum_variant_align_threshold
+                        // Find the maximum length that is still smaller than the align threshold.
+                        let mut max_valid_field_length = 0;
+                        fields_lengths.iter().for_each(|length| {
+                            if *length > max_valid_field_length
+                                && *length < struct_field_align_threshold
                             {
-                                max_valid_variant_length = *length;
+                                max_valid_field_length = *length;
                             }
                         });
 
-                        let value_pairs_iter = value_pairs.iter().enumerate();
-                        for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
+                        for (var_index, type_field) in type_fields.iter().enumerate() {
                             write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                             // If there is a visibility token add it to the formatted_code with a ` ` after it.
-                            if let Some(visibility) = &type_field.visibility {
-                                write!(formatted_code, "{} ", visibility.span().as_str())?;
+                            if type_field.visibility.is_some() {
+                                write!(formatted_code, "{} ", PubToken::AS_STR)?;
                             }
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
-                            let current_variant_length = variant_length[var_index];
-                            if current_variant_length < max_valid_variant_length {
+                            let current_field_length = fields_lengths[var_index];
+                            if current_field_length < max_valid_field_length {
                                 // We need to add alignment between : and ty
                                 // max_valid_variant_length: the length of the variant that we are taking as a reference to align
                                 // current_variant_length: the length of the current variant that we are trying to format
                                 let mut required_alignment =
-                                    max_valid_variant_length - current_variant_length;
+                                    max_valid_field_length - current_field_length;
                                 while required_alignment != 0 {
                                     write!(formatted_code, " ")?;
                                     required_alignment -= 1;
                                 }
                             }
                             // Add `:`, ty & `CommaToken`
-                            write!(
-                                formatted_code,
-                                " {} ",
-                                type_field.colon_token.span().as_str(),
-                            )?;
+                            write!(formatted_code, " {} ", ColonToken::AS_STR)?;
                             type_field.ty.format(formatted_code, formatter)?;
-                            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
+                            writeln!(formatted_code, "{}", CommaToken::AS_STR)?;
                         }
                         if let Some(final_value) = &fields.final_value_opt {
-                            // TODO: Handle annotation
-                            let final_value = &final_value.value;
-                            write!(formatted_code, "{}", final_value.span().as_str())?;
+                            final_value.format(formatted_code, formatter)?;
+                            writeln!(formatted_code)?;
                         }
                     }
                     FieldAlignment::Off => {

@@ -3,7 +3,11 @@ use crate::{
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::submodule::Submodule;
+use sway_ast::{
+    keywords::{Keyword, ModToken, SemicolonToken, Token},
+    submodule::Submodule,
+    PubToken,
+};
 use sway_types::Spanned;
 
 impl Format for Submodule {
@@ -12,12 +16,12 @@ impl Format for Submodule {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if let Some(pub_token) = &self.visibility {
-            write!(formatted_code, "{} ", pub_token.span().as_str())?;
+        if self.visibility.is_some() {
+            write!(formatted_code, "{} ", PubToken::AS_STR)?;
         }
-        write!(formatted_code, "{} ", self.mod_token.span().as_str())?;
+        write!(formatted_code, "{} ", ModToken::AS_STR)?;
         self.name.format(formatted_code, formatter)?;
-        writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
+        writeln!(formatted_code, "{}", SemicolonToken::AS_STR)?;
         Ok(())
     }
 }
