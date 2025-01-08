@@ -656,12 +656,10 @@ pub fn parsed_to_ast(
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se(), experimental);
-    let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
-    if let Err(errs) = ir_generation::compile::compile_constants_for_storage(
+    if let Err(errs) = ir_generation::compile::compile_constants_for_package(
         engines,
         &mut ctx,
-        &mut md_mgr,
         module,
         &typed_program.namespace.root_ref(),
     ) {
@@ -675,6 +673,7 @@ pub fn parsed_to_ast(
         handler.emit_warn(warn);
     }
 
+    let mut md_mgr = MetadataManager::default();
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
         handler,
