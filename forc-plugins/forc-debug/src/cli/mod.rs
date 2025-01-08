@@ -1,103 +1,120 @@
+mod state;
+
 use crate::{
     error::{ArgumentError, Error, Result},
     names::{register_index, register_name},
     ContractId, FuelClient, RunResult, Transaction,
 };
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
-use shellfish::{handler::DefaultAsyncHandler, input_handler::IO, Command as ShCommand, Shell};
-
-pub struct State {
-    client: FuelClient,
-    session_id: String,
-}
+use rustyline::{Config, Editor};
+use state::{DebuggerHelper, State};
 
 /// Start the CLI debug interface
 pub async fn start_cli(api_url: &str) -> Result<()> {
-    let mut shell = Shell::new_async(
-        State {
-            client: FuelClient::new(api_url).map_err(|e| Error::FuelClientError(e.to_string()))?,
-            session_id: String::new(), // Placeholder
-        },
-        ">> ",
-    );
+    // Initialize editor with config
+    let mut editor = Editor::with_config(
+        Config::builder()
+            .history_ignore_space(true)
+            .auto_add_history(true)
+            .build(),
+    )?;
 
-    register_commands(&mut shell);
+    // Set up helper
+    editor.set_helper(Some(DebuggerHelper::default()));
 
-    let session_id = shell
-        .state
+    // Load history
+    let _ = editor.load_history("debug_history.txt");
+
+    // Create state
+    let client = FuelClient::new(api_url).map_err(|e| Error::FuelClientError(e.to_string()))?;
+    let mut state = State::new(client);
+
+    // Start session
+    state.session_id = state
         .client
         .start_session()
         .await
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
-    shell.state.session_id.clone_from(&session_id);
 
-    shell
-        .run_async()
-        .await
-        .map_err(|e| Error::FuelClientError(e.to_string()))?;
+    // Main REPL loop
+    loop {
+        let readline = editor.readline(">> ");
+        match readline {
+            Ok(line) => {
+                let args: Vec<String> = line.split_whitespace().map(String::from).collect();
 
-    shell
-        .state
+                if args.is_empty() {
+                    continue;
+                }
+
+                match args[0].as_str() {
+                    "quit" | "exit" => break,
+                    "n" | "tx" | "new_tx" | "start_tx" => {
+                        if let Err(e) = cmd_start_tx(&mut state, args).await {
+                            println!("Error: {}", e);
+                        }
+                    }
+                    "reset" => {
+                        if let Err(e) = cmd_reset(&mut state, args).await {
+                            println!("Error: {}", e);
+                        }
+                    }
+                    "c" | "continue" => {
+                        if let Err(e) = cmd_continue(&mut state, args).await {
+                            println!("Error: {}", e);
+                        }
+                    }
+                    "s" | "step" => {
+                        if let Err(e) = cmd_step(&mut state, args).await {
+                            println!("Error: {}", e);
+                        }
+                    }
+                    "b" | "breakpoint" => {
+                        if let Err(e) = cmd_breakpoint(&mut state, args).await {
+                            println!("Error: {}", e);
+                        }
+                    }
+                    "r" | "reg" | "register" | "registers" => {
+                        if let Err(e) = cmd_registers(&mut state, args).await {
+                            println!("Error: {}", e);
+                        }
+                    }
+                    "m" | "memory" => {
+                        if let Err(e) = cmd_memory(&mut state, args).await {
+                            println!("Error: {}", e);
+                        }
+                    }
+                    _ => println!("Unknown command: {}", args[0]),
+                }
+            }
+            Err(rustyline::error::ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(rustyline::error::ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {}", err);
+                break;
+            }
+        }
+    }
+
+    // Save history
+    if let Err(e) = editor.save_history("debug_history.txt") {
+        println!("Failed to save history: {}", e);
+    }
+
+    // End session
+    state
         .client
-        .end_session(&session_id)
+        .end_session(&state.session_id)
         .await
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
 
     Ok(())
-}
-
-fn register_commands(shell: &mut Shell<'_, State, &str, DefaultAsyncHandler, IO>) {
-    // Registers an async command by wrapping the handler function `$f`,
-    // converting its error type into `Box<dyn std::error::Error>`, and
-    // associating it with the provided command names.
-    macro_rules! command {
-        ($f:ident, $help:literal, $names:expr) => {
-            for c in $names {
-                shell.commands.insert(
-                    c,
-                    ShCommand::new_async($help.to_string(), |state, args| {
-                        Box::pin(async move {
-                            $f(state, args)
-                                .await
-                                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                        })
-                    }),
-                );
-            }
-        };
-    }
-
-    command!(
-        cmd_start_tx,
-        "path/to/tx.json -- start a new transaction",
-        ["n", "tx", "new_tx", "start_tx"]
-    );
-    command!(
-        cmd_reset,
-        "-- reset, removing breakpoints and other state",
-        ["reset"]
-    );
-    command!(
-        cmd_continue,
-        "-- run until next breakpoint or termination",
-        ["c", "continue"]
-    );
-    command!(
-        cmd_step,
-        "[on|off] -- turn single-stepping on or off",
-        ["s", "step"]
-    );
-    command!(
-        cmd_breakpoint,
-        "[contract_id] offset -- set a breakpoint",
-        ["b", "breakpoint"]
-    );
-    command!(
-        cmd_registers,
-        "[regname ...] -- dump registers",
-        ["r", "reg", "register", "registers"]
-    );
-    command!(cmd_memory, "[offset] limit -- dump memory", ["m", "memory"]);
 }
 
 async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()> {

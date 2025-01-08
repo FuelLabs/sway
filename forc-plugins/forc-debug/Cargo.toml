@@ -19,9 +19,9 @@ fuel-core-client.workspace = true
 fuel-types = { workspace = true, features = ["serde"] }
 fuel-vm = { workspace = true, features = ["serde"] }
 rayon.workspace = true
+rustyline.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-shellfish = { workspace = true, features = ["async", "rustyline", "tokio"] }
 sway-core.workspace = true
 sway-features.workspace = true
 sway-types.workspace = true
