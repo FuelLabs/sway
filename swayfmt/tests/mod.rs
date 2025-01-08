@@ -3449,3 +3449,43 @@ fn tuple_field_access() {
         "#},
     );
 }
+
+#[test]
+fn contract_for_loop() {
+    check(
+        indoc! {r#"
+        contract;
+
+        abi MyContract {
+            fn test_function() -> bool;
+        }
+
+        impl MyContract for Contract {
+            fn test_function() -> bool {
+                let mut my_vec: Vec<u64> = Vec::new();
+                for iter in my_vec.iter() {
+
+                }
+
+                true
+            }
+        }
+        "#},
+        indoc! {r#"
+        contract;
+
+        abi MyContract {
+            fn test_function() -> bool;
+        }
+
+        impl MyContract for Contract {
+            fn test_function() -> bool {
+                let mut my_vec: Vec<u64> = Vec::new();
+                for iter in my_vec.iter() {    }
+
+                true
+            }
+        }
+        "#},
+    );
+}

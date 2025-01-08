@@ -279,7 +279,7 @@ impl Format for Expr {
                     |formatter| -> Result<(), FormatterError> {
                         write!(formatted_code, "{} ", ForToken::AS_STR)?;
                         value_pattern.format(formatted_code, formatter)?;
-                        write!(formatted_code, "{} ", InToken::AS_STR)?;
+                        write!(formatted_code, " {} ", InToken::AS_STR)?;
                         iterator.format(formatted_code, formatter)?;
                         IfExpr::open_curly_brace(formatted_code, formatter)?;
                         block.get().format(formatted_code, formatter)?;
