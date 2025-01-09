@@ -264,3 +264,13 @@ intermediate_whitespace
 "{
 let i = 42;
 }");
+
+fmt_test_expr!(basic_for_loop
+"for iter in [0, 1, 7, 8, 15] {
+    let i = 42;
+}",
+intermediate_whitespace
+"for iter in [0, 1, 7, 8, 15]{
+let i = 42;
+}"
+);
