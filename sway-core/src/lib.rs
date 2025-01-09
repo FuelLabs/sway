@@ -663,7 +663,7 @@ pub fn parsed_to_ast(
         module,
         &typed_program.namespace.root_ref(),
     ) {
-	let _ = errs.into_iter().map(|e| handler.emit_err(e));
+	errs.into_iter().for_each(|err| { handler.emit_err(err.clone()); } );
     }
 
     // CEI pattern analysis
