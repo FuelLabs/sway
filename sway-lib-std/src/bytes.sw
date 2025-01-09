@@ -719,6 +719,78 @@ impl Bytes {
         // set capacity and length
         self.len = both_len;
     }
+
+    /// Removes and returns a range of elements from the `Bytes` (i.e. indices `[start, end)`).
+    ///
+    /// # Arguments
+    ///
+    /// * `start`: [u64] - The starting index for the splice (inclusive).
+    /// * `end`: [u64] - The ending index for the splice (exclusive).
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - A new `Bytes` containing all of the elements from `start` up to (but not including) `end`.
+    ///
+    /// # Reverts
+    ///
+    /// * When `start > end`.
+    /// * When `end > self.len`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5u8);
+    ///     bytes.push(7u8);
+    ///     bytes.push(9u8);
+    ///
+    ///     // Remove (and return) elements at indices 1..3
+    ///     let spliced = bytes.splice(1, 3);
+    ///
+    ///     // `spliced` has the elements 7u8, 9u8
+    ///     assert(spliced.len() == 2);
+    ///     assert(spliced.get(0).unwrap() == 7u8);
+    ///     assert(spliced.get(1).unwrap() == 9u8);
+    ///
+    ///     // `bytes` has only the element 5u8 left
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 5u8);
+    /// }
+    /// ```
+    pub fn splice(ref mut self, start: u64, end: u64) -> Bytes {
+        // Ensure `start <= end` and `end <= self.len`.
+        assert(start <= end);
+        assert(end <= self.len);
+
+        let splice_len = end - start;
+
+        if splice_len == 0 {
+            return Bytes::new();
+        }
+
+        let mut spliced = Bytes::with_capacity(splice_len);
+
+        // Copy the range [start, end) into `spliced`.
+        if splice_len > 0 {
+            let start_ptr = self.buf.ptr().add_uint_offset(start);
+            start_ptr.copy_bytes_to(spliced.buf.ptr(), splice_len);
+            spliced.len = splice_len;
+        }
+
+        // Now shift everything past `end` down to `start` to fill in the spliced-out section.
+        let tail_len = self.len - end;
+        if tail_len > 0 {
+            let tail_ptr = self.buf.ptr().add_uint_offset(end);
+            tail_ptr.copy_bytes_to(self.buf.ptr().add_uint_offset(start), tail_len);
+        }
+
+        self.len -= splice_len;
+
+        spliced
+    }
 }
 
 impl core::ops::Eq for Bytes {
