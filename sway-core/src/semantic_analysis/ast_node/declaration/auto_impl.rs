@@ -325,7 +325,7 @@ where
         let _r = TyDecl::collect(
             &handler,
             engines,
-            ctx.collection_ctx,
+            &mut collection_ctx,
             Declaration::FunctionDeclaration(decl),
         );
         if handler.has_errors() {
@@ -385,7 +385,7 @@ where
         let _r = TyDecl::collect(
             &handler,
             engines,
-            ctx.collection_ctx,
+            &mut collection_ctx,
             Declaration::ImplSelfOrTrait(decl),
         );
         if handler.has_errors() {

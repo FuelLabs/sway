@@ -54,6 +54,7 @@ pub type ProjectDirectory = PathBuf;
 pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
+    pub root: Option<ty::TyModule>,
     pub typed: Option<ty::TyProgram>,
 }
 
@@ -229,10 +230,10 @@ impl Session {
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
-            let program = compiled_program.typed.clone()?;
+            let root = compiled_program.root.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
-                &program.root.namespace,
+                &root.namespace,
                 &engines,
                 ident_to_complete,
                 fn_decl,
@@ -245,8 +246,8 @@ impl Session {
     /// Returns the [Namespace] from the compiled program if it exists.
     pub fn namespace(&self) -> Option<Namespace> {
         let compiled_program = &*self.compiled_program.read();
-        let program = compiled_program.typed.clone()?;
-        Some(program.root.namespace)
+        let root = compiled_program.root.clone()?;
+        Some(root.namespace)
     }
 
     /// Generate hierarchical document symbols for the given file.
@@ -433,6 +434,7 @@ pub fn traverse(
             let compiled_program = &mut *session.compiled_program.write();
             compiled_program.lexed = Some(lexed);
             compiled_program.parsed = Some(parsed);
+            compiled_program.root = Some(root);
             compiled_program.typed = typed;
         } else {
             // Collect tokens from dependencies and the standard library prelude.
@@ -462,12 +464,14 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
 
+    dbg!();
     let results = compile(
         &build_plan,
         engines,
         retrigger_compilation,
         lsp_mode.as_ref(),
     )?;
+    dbg!();
 
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
     // If we don't return an error here, then we will likely crash when trying to access the Engines
@@ -476,8 +480,11 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
+    dbg!();
     let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
+    dbg!();
     if let Some(config) = &lsp_mode {
+        dbg!();
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
             if let Some((errors, warnings)) = &diagnostics {
@@ -487,7 +494,9 @@ pub fn parse_project(
         }
     }
 
+    dbg!();
     if let Some(typed) = &session.compiled_program.read().typed {
+        dbg!();
         session.runnables.clear();
         let path = uri.to_file_path().unwrap();
         let program_id = program_id_from_path(&path, engines)?;
@@ -612,10 +621,12 @@ fn create_runnables(
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
+    dbg!();
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
-
+    dbg!();
     for (decl, _) in typed_program.test_fns(decl_engine) {
+        dbg!();
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
             .attributes
@@ -633,10 +644,10 @@ fn create_runnables(
     }
     // Insert runnable main function if the program is a script.
     if let ty::TyProgramKind::Script {
-        entry_function: ref main_function,
-        ..
+        ref main_function, ..
     } = typed_program.kind
     {
+        dbg!();
         let main_function = decl_engine.get_function(main_function);
         let span = main_function.name.span();
         if let Some(source_id) = span.source_id() {
