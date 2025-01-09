@@ -160,8 +160,10 @@ impl Items {
         Ok(())
     }
 
-    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
-        self.symbols().keys()
+    pub fn get_all_declared_symbols(&self) -> Vec<&Ident> {
+        let mut keys: Vec<_> = self.symbols().keys().collect();
+        keys.sort();
+        keys
     }
 
     pub fn resolve_symbol(
