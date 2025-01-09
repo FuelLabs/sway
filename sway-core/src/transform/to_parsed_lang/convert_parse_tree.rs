@@ -454,6 +454,7 @@ fn item_struct_to_struct_declaration(
         )?,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
+        impls: vec![],
     });
     Ok(struct_declaration_id)
 }
@@ -2887,6 +2888,7 @@ fn path_expr_to_expression(
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
                 call_path_binding,
+                resolved_call_path_binding: None,
                 args: None,
             })),
             span,

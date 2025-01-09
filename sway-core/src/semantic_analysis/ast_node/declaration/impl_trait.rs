@@ -24,9 +24,11 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext, AbiMode, ConstShadowingMode,
-        TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext,
+        symbol_collection_context::SymbolCollectionContext,
+        type_resolve::{resolve_type, VisibilityCheck},
+        AbiMode, ConstShadowingMode, TyNodeDepGraphNodeId, TypeCheckAnalysis,
+        TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -38,15 +40,22 @@ impl TyImplSelfOrTrait {
         ctx: &mut SymbolCollectionContext,
         decl_id: &ParsedDeclId<ImplSelfOrTrait>,
     ) -> Result<(), ErrorEmitted> {
-        let impl_trait = engines.pe().get_impl_self_or_trait(decl_id);
+        let mut impl_trait = engines
+            .pe()
+            .get_impl_self_or_trait(decl_id)
+            .as_ref()
+            .clone();
 
         let decl = Declaration::ImplSelfOrTrait(*decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            impl_trait.trait_name.suffix.clone(),
-            decl.clone(),
-        )?;
+
+        if !impl_trait.is_self {
+            ctx.insert_parsed_symbol(
+                handler,
+                engines,
+                impl_trait.trait_name.suffix.clone(),
+                decl.clone(),
+            )?;
+        }
 
         let _ = ctx.scoped(
             engines,
@@ -67,6 +76,33 @@ impl TyImplSelfOrTrait {
                 Ok(())
             },
         );
+
+        // println!(
+        //     "impl type id {:?}",
+        //     engines.help_out(impl_trait.implementing_for.type_id)
+        // );
+
+        impl_trait.implementing_for.type_id = resolve_type(
+            handler,
+            engines,
+            &ctx.namespace,
+            ctx.namespace.mod_path(),
+            impl_trait.implementing_for.type_id,
+            &impl_trait.implementing_for.span,
+            EnforceTypeArguments::Yes,
+            None,
+            None,
+            &SubstTypesContext::dummy(engines),
+            VisibilityCheck::No,
+        )?;
+
+        // println!(
+        //     "after impl type id resolve {:?}",
+        //     engines.help_out(impl_trait.implementing_for.type_id)
+        // );
+
+        engines.pe().replace(*decl_id, impl_trait);
+
         Ok(())
     }
 
