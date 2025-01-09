@@ -301,7 +301,6 @@ fn local_copy_prop(
                                 available_copies.remove(copy);
                             }
                         }
-                        copies.retain(|copy| available_copies.contains(copy));
                     }
                     if let Some(copies) = dest_to_copies.get_mut(&sym) {
                         for copy in &*copies {
@@ -333,9 +332,17 @@ fn local_copy_prop(
                                 available_copies.remove(copy);
                             }
                         }
-                        copies.retain(|copy| available_copies.contains(copy));
                     }
                 }
+                // Update src_to_copies and dest_to_copies to remove every copy not in available_copies.
+                src_to_copies.retain(|_, copies| {
+                    copies.retain(|copy| available_copies.contains(copy));
+                    !copies.is_empty()
+                });
+                dest_to_copies.retain(|_, copies| {
+                    copies.retain(|copy| available_copies.contains(copy));
+                    !copies.is_empty()
+                });
             }
             ReferredSymbols::Incomplete(_) => {
                 // The only safe thing we can do is to clear all information.
