@@ -19,7 +19,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::{EnumDeclaration, ImplItem, StructDeclaration},
-        ty::{self, TyImplItem, TyTraitItem},
+        ty::{self, TyDecl, TyImplItem, TyTraitItem},
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
@@ -1111,6 +1111,19 @@ impl TraitMap {
         });
 
         spans
+    }
+
+    /// Find the spans of all impls for the given decl.
+    pub fn get_impl_spans_for_decl(
+        module: &Module,
+        engines: &Engines,
+        ty_decl: &TyDecl,
+    ) -> Vec<Span> {
+        let handler = Handler::default();
+        ty_decl
+            .return_type(&handler, engines)
+            .map(|type_id| TraitMap::get_impl_spans_for_type(module, engines, &type_id))
+            .unwrap_or_default()
     }
 
     /// Find the entries in `self` with trait name `trait_name` and return the

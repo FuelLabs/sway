@@ -1,7 +1,7 @@
 use crate::{
     engine_threading::Engines,
     language::{
-        ty::{self, TyDecl},
+        ty::{self},
         Visibility,
     },
     Ident, TypeId,
@@ -415,14 +415,6 @@ impl Module {
                 },
             })
             .collect::<Vec<_>>()
-    }
-
-    pub fn get_impl_spans_for_decl(&self, engines: &Engines, ty_decl: &TyDecl) -> Vec<Span> {
-        let handler = Handler::default();
-        ty_decl
-            .return_type(&handler, engines)
-            .map(|type_id| TraitMap::get_impl_spans_for_type(self, engines, &type_id))
-            .unwrap_or_default()
     }
 }
 

@@ -103,9 +103,11 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds implementations of the given type to the list of implementations using the [`TyDecl`].
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
         if let Some(namespace) = self.session.namespace() {
-            let impl_spans = namespace
-                .module(self.engines)
-                .get_impl_spans_for_decl(self.engines, ty_decl);
+            let impl_spans = TraitMap::get_impl_spans_for_decl(
+                namespace.module(self.engines),
+                self.engines,
+                ty_decl,
+            );
             self.add_implementations(&ty_decl.span(self.engines), impl_spans);
         }
     }
