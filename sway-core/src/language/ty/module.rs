@@ -71,6 +71,16 @@ impl TyModule {
             .flat_map(|node| inside_ast_node(de, node))
             .collect::<Vec<_>>()
     }
+
+    /// Recursively find all test function declarations.
+    pub fn test_fns_recursive<'a: 'b, 'b>(
+        &'b self,
+        decl_engine: &'a DeclEngine,
+    ) -> impl 'b + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
+        self.submodules_recursive()
+            .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
+            .chain(self.test_fns(decl_engine))
+    }
 }
 
 #[derive(Clone, Debug)]

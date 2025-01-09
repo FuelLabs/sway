@@ -325,7 +325,7 @@ where
         let _r = TyDecl::collect(
             &handler,
             engines,
-            &mut collection_ctx,
+            ctx.collection_ctx,
             Declaration::FunctionDeclaration(decl),
         );
         if handler.has_errors() {
@@ -341,7 +341,7 @@ where
         });
 
         // Uncomment this to understand why an entry function was not generated
-        // println!("{:#?}", handler);
+        println!("{}, {:#?}", r.is_ok(), handler);
 
         let decl = r.map_err(|_| handler.clone())?;
 
@@ -385,7 +385,7 @@ where
         let _r = TyDecl::collect(
             &handler,
             engines,
-            &mut collection_ctx,
+            ctx.collection_ctx,
             Declaration::ImplSelfOrTrait(decl),
         );
         if handler.has_errors() {

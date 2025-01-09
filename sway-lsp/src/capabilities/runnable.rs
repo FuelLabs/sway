@@ -15,7 +15,7 @@ pub struct RunnableTestFn {
     /// The location in the file where the runnable button should be displayed
     pub range: Range,
     /// The program kind of the current file.
-    pub tree_type: TreeType,
+    //pub tree_type: TreeType,
     /// Additional arguments to use with the runnable command.
     pub test_name: Option<String>,
 }

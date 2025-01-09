@@ -39,7 +39,8 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty, HasSubmodules,
+        ty::{self, TyModule},
+        HasSubmodules,
     },
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
@@ -482,7 +483,8 @@ pub fn parse_project(
 
     dbg!();
     let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
-    dbg!();
+    dbg!(&session.compiled_program.read().typed.is_some());
+    dbg!(&diagnostics);
     if let Some(config) = &lsp_mode {
         dbg!();
         // Only write the diagnostics results on didSave or didOpen.
@@ -495,21 +497,25 @@ pub fn parse_project(
     }
 
     dbg!();
-    if let Some(typed) = &session.compiled_program.read().typed {
-        dbg!();
-        session.runnables.clear();
-        let path = uri.to_file_path().unwrap();
-        let program_id = program_id_from_path(&path, engines)?;
-        if let Some(metrics) = session.metrics.get(&program_id) {
-            // Check if the cached AST was returned by the compiler for the users workspace.
-            // If it was, then we need to use the original engines.
-            let engines = if metrics.reused_programs > 0 {
-                &*session.engines.read()
-            } else {
-                engines
-            };
-            create_runnables(&session.runnables, typed, engines.de(), engines.se());
-        }
+    session.runnables.clear();
+    let path = uri.to_file_path().unwrap();
+    let program_id = program_id_from_path(&path, engines)?;
+    if let Some(metrics) = session.metrics.get(&program_id) {
+        // Check if the cached AST was returned by the compiler for the users workspace.
+        // If it was, then we need to use the original engines.
+        let engines = if metrics.reused_programs > 0 {
+            &*session.engines.read()
+        } else {
+            engines
+        };
+        let compiled_program = session.compiled_program.read();
+        create_runnables(
+            &session.runnables,
+            compiled_program.typed.as_ref(),
+            compiled_program.root.as_ref(),
+            engines.de(),
+            engines.se(),
+        );
     }
     Ok(())
 }
@@ -617,7 +623,8 @@ fn parse_ast_to_typed_tokens(
 /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
 fn create_runnables(
     runnables: &RunnableMap,
-    typed_program: &ty::TyProgram,
+    typed_program: Option<&ty::TyProgram>,
+    root: Option<&TyModule>,
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
@@ -625,7 +632,7 @@ fn create_runnables(
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
     dbg!();
-    for (decl, _) in typed_program.test_fns(decl_engine) {
+    for (decl, _) in root.into_iter().flat_map(|x| x.test_fns(decl_engine)) {
         dbg!();
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
@@ -636,16 +643,17 @@ fn create_runnables(
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableTestFn {
                 range: token::get_range_from_span(&span.clone()),
-                tree_type: typed_program.kind.tree_type(),
+                //tree_type: typed_program.kind.tree_type(),
                 test_name: Some(decl.name.to_string()),
             });
             runnables.entry(path).or_default().push(runnable);
         }
     }
+
     // Insert runnable main function if the program is a script.
-    if let ty::TyProgramKind::Script {
+    if let Some(ty::TyProgramKind::Script {
         ref main_function, ..
-    } = typed_program.kind
+    }) = typed_program.map(|x| &x.kind)
     {
         dbg!();
         let main_function = decl_engine.get_function(main_function);
@@ -654,7 +662,7 @@ fn create_runnables(
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableMainFn {
                 range: token::get_range_from_span(&span.clone()),
-                tree_type: typed_program.kind.tree_type(),
+                tree_type: sway_core::language::parsed::TreeType::Script,
             });
             runnables.entry(path).or_default().push(runnable);
         }

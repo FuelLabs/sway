@@ -429,10 +429,7 @@ impl TyProgram {
         &'b self,
         decl_engine: &'a DeclEngine,
     ) -> impl 'b + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
-        self.root
-            .submodules_recursive()
-            .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
-            .chain(self.root.test_fns(decl_engine))
+        self.root.test_fns_recursive(decl_engine)
     }
 
     pub fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
