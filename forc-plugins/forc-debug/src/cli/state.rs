@@ -1,4 +1,7 @@
-use crate::FuelClient;
+use crate::{
+    FuelClient,
+    cli::commands::Commands,
+};
 use rustyline::{
     completion::Completer,
     highlight::{CmdKind, Highlighter},
@@ -27,9 +30,17 @@ impl State {
     }
 }
 
-#[derive(Default)]
-pub struct DebuggerHelper;
+pub struct DebuggerHelper {
+    pub commands: Commands,
+}
 
+impl DebuggerHelper {
+    pub fn new() -> Self {
+        Self {
+            commands: Commands::new()
+        }
+    }
+}
 
 impl Completer for DebuggerHelper {
     type Candidate = String;
@@ -40,47 +51,35 @@ impl Completer for DebuggerHelper {
         pos: usize,
         ctx: &Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let main_commands = vec![
-            "n", "tx", "new_tx", "start_tx",
-            "reset",
-            "c", "continue",
-            "s", "step",
-            "b", "breakpoint",
-            "r", "reg", "register", "registers",
-            "m", "memory",
-            "quit", "exit",
-        ];
-
-        let register_names = vec![
-            "zero", "one", "of", "pc", "ssp", "sp", "fp", "hp", 
-            "err", "ggas", "cgas", "bal", "is", "ret", "retl", "flag"
-        ];
-
         let words: Vec<&str> = line[..pos].split_whitespace().collect();
         let word_start = line[..pos].rfind(char::is_whitespace).map_or(0, |i| i + 1);
         let word_to_complete = &line[word_start..pos];
 
-        // Transaction command context with space after command
-        if words.get(0).map_or(false, |&cmd| ["n", "tx", "new_tx", "start_tx"].contains(&cmd))
-            && line[..word_start].ends_with(' ')
-        {
-            let matches = get_transaction_files(word_to_complete);
-            return Ok((word_start, matches));
-        }
-        // If we're in a register command context AND there's a space after the command
-        else if words.get(0).map_or(false, |&cmd| ["r", "reg", "register", "registers"].contains(&cmd)) 
-            && line[..word_start].ends_with(' ') 
-        {
-            let matches: Vec<String> = register_names.into_iter()
-                .filter(|name| name.starts_with(word_to_complete))
-                .map(String::from)
-                .collect();
-
-            return Ok((word_start, matches));
+        // Transaction command context
+        if let Some(first_word) = words.first() {
+            if self.commands.is_tx_command(first_word) && line[..word_start].ends_with(' ') {
+                return Ok((word_start, get_transaction_files(word_to_complete)));
+            }
+            
+            // Register command context
+            if self.commands.is_register_command(first_word) && line[..word_start].ends_with(' ') {
+                let register_names = vec![
+                    "zero", "one", "of", "pc", "ssp", "sp", "fp", "hp", 
+                    "err", "ggas", "cgas", "bal", "is", "ret", "retl", "flag"
+                ];
+                
+                let matches: Vec<String> = register_names.into_iter()
+                    .filter(|name| name.starts_with(word_to_complete))
+                    .map(String::from)
+                    .collect();
+                    
+                return Ok((word_start, matches));
+            }
         }
         
-        // For all other cases, suggest main commands
-        let matches: Vec<String> = main_commands.into_iter()
+        // Main command completion
+        let matches: Vec<String> = self.commands.get_all_command_strings()
+            .into_iter()
             .filter(|cmd| cmd.starts_with(word_to_complete))
             .map(String::from)
             .collect();

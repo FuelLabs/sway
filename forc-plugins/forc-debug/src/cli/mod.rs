@@ -1,3 +1,4 @@
+mod commands;
 mod state;
 
 use crate::{
@@ -5,6 +6,7 @@ use crate::{
     names::{register_index, register_name},
     ContractId, FuelClient, RunResult, Transaction,
 };
+use forc_tracing::println_red_err;
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
 use rustyline::{CompletionType, Config, EditMode, Editor};
 use state::{DebuggerHelper, State};
@@ -22,7 +24,8 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
     )?;
 
     // Set up helper
-    editor.set_helper(Some(DebuggerHelper::default()));
+    let helper = DebuggerHelper::new();
+    editor.set_helper(Some(helper));
 
     // Load history
     let _ = editor.load_history("debug_history.txt");
@@ -49,44 +52,54 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
                     continue;
                 }
 
-                match args[0].as_str() {
-                    "quit" | "exit" => break,
-                    "n" | "tx" | "new_tx" | "start_tx" => {
-                        if let Err(e) = cmd_start_tx(&mut state, args).await {
-                            println!("Error: {}", e);
+                if let Some(helper) = editor.helper() {
+                    match args[0].as_str() {
+                        cmd if helper.commands.is_tx_command(cmd) => {
+                            if let Err(e) = cmd_start_tx(&mut state, args).await {
+                                println_red_err(&format!("Error: {}", e));
+                            }
+                        },
+                        cmd if helper.commands.is_register_command(cmd) => {
+                            if let Err(e) = cmd_registers(&mut state, args).await {
+                                println_red_err(&format!("Error: {}", e));
+                            }
+                        },
+                        cmd if helper.commands.is_breakpoint_command(cmd) => {
+                            if let Err(e) = cmd_breakpoint(&mut state, args).await {
+                                println_red_err(&format!("Error: {}", e));
+                            }
+                        },
+                        cmd if helper.commands.is_memory_command(cmd) => {
+                            if let Err(e) = cmd_memory(&mut state, args).await {
+                                println_red_err(&format!("Error: {}", e));
+                            }
+                        },
+                        cmd if helper.commands.is_quit_command(cmd) => {
+                            break;
+                        },
+                        cmd if helper.commands.is_reset_command(cmd) => {
+                            if let Err(e) = cmd_reset(&mut state, args).await {
+                                println_red_err(&format!("Error: {}", e));
+                            }
+                        },
+                        cmd if helper.commands.is_continue_command(cmd) => {
+                            if let Err(e) = cmd_continue(&mut state, args).await {
+                                println_red_err(&format!("Error: {}", e));
+                            }
+                        },
+                        cmd if helper.commands.is_step_command(cmd) => {
+                            if let Err(e) = cmd_step(&mut state, args).await {
+                                println_red_err(&format!("Error: {}", e));
+                            }
+                        },
+                        unknown_cmd => {
+                            if let Some(suggestion) = helper.commands.find_closest(unknown_cmd) {
+                                println!("Unknown command: '{}'. Did you mean '{}'?", unknown_cmd, suggestion.name);
+                            } else {
+                                println!("Unknown command: '{}'", unknown_cmd);
+                            }
                         }
                     }
-                    "reset" => {
-                        if let Err(e) = cmd_reset(&mut state, args).await {
-                            println!("Error: {}", e);
-                        }
-                    }
-                    "c" | "continue" => {
-                        if let Err(e) = cmd_continue(&mut state, args).await {
-                            println!("Error: {}", e);
-                        }
-                    }
-                    "s" | "step" => {
-                        if let Err(e) = cmd_step(&mut state, args).await {
-                            println!("Error: {}", e);
-                        }
-                    }
-                    "b" | "breakpoint" => {
-                        if let Err(e) = cmd_breakpoint(&mut state, args).await {
-                            println!("Error: {}", e);
-                        }
-                    }
-                    "r" | "reg" | "register" | "registers" => {
-                        if let Err(e) = cmd_registers(&mut state, args).await {
-                            println!("Error: {}", e);
-                        }
-                    }
-                    "m" | "memory" => {
-                        if let Err(e) = cmd_memory(&mut state, args).await {
-                            println!("Error: {}", e);
-                        }
-                    }
-                    _ => println!("Unknown command: {}", args[0]),
                 }
             }
             Err(rustyline::error::ReadlineError::Interrupted) => {
