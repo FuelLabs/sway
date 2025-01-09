@@ -57,7 +57,7 @@ pub fn compile_html(
     get_doc_dir: &dyn Fn(&Command) -> String,
 ) -> Result<(PathBuf, Box<PackageManifestFile>)> {
     // get manifest directory
-    let dir = if let Some(ref path) = build_instructions.manifest_path {
+    let dir = if let Some(ref path) = build_instructions.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
