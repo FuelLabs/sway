@@ -409,6 +409,7 @@ where
                 unreachable!();
             };
 
+            // Insert trait implementation generated in the previous scope into the current scope.
             ctx.insert_trait_implementation(
                 &handler,
                 impl_trait.trait_name.clone(),
