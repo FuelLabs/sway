@@ -941,7 +941,7 @@ impl<V> StorageKey<StorageVec<V>> {
         }
     }
 
-    /// Returns a `StorageVecIter` to iterate over this `StorageVec`.
+    /// Returns an [Iterator] to iterate over this `StorageVec`.
     ///
     /// # Returns
     ///
@@ -962,9 +962,14 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     // Get the iterator
     ///     let iter = storage.vec.iter();
     ///
-    ///     assert(5 == iter.next().unwrap().read());
-    ///     assert(10 == iter.next().unwrap().read());
-    ///     assert(15 == iter.next().unwrap().read());
+    ///     assert_eq(5, iter.next().unwrap().read());
+    ///     assert_eq(10, iter.next().unwrap().read());
+    ///     assert_eq(15, iter.next().unwrap().read());
+    ///
+    ///     for elem in storage.vec.iter() {
+    ///         let elem_value = elem.read();
+    ///         /* ... */
+    ///     }
     /// }
     /// ```
     #[storage(read)]

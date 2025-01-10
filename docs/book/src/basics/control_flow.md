@@ -84,6 +84,18 @@ for element in vector.iter() {
 
 You need the `for` keyword, some pattern that contains variable names such as `element` in this case, the `ìn` keyword followed by an iterator, and a block of code inside the curly braces (`{...}`) to execute each iteration. `vector.iter()` in the example above returns an iterator for the `vector`. In each iteration, the value of `element` is updated with the next value in the iterator until the end of the vector is reached and the `for` loop iteration ends.
 
+Modifying the `vector` during iteration, by e.g. adding or removing elements, is a logical error and results in an [undefined behavior](../reference/undefined_behavior.md):
+
+```sway
+// The behavior of this `for` loop is undefined because
+// the `vector` gets modified within the loop.
+for element in vector.iter() {
+    if element == 3 {
+        vector.push(6); // Modification of the vector!
+    }
+}
+```
+
 ### `break` and `continue`
 
 `break` and `continue` keywords are available to use inside the body of a `while` or `for` loop. The purpose of the `break` statement is to break out of a loop early:

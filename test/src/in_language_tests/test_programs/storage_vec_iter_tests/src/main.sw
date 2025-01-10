@@ -1,6 +1,9 @@
 contract;
 
+// use core::storage::*;
+// use std::storage::storage_key::*;
 use std::storage::storage_vec::*;
+use std::option::*;
 
 abi MyContract {
     #[storage(read, write)]
@@ -11,13 +14,27 @@ abi MyContract {
 
     #[storage(read)]
     fn next_iter(value: Vec<u64>) -> bool;
+
+    #[storage(read, write)]
+    fn assert_empty_vec_next_returns_none();
 }
 
 storage {
     my_vec: StorageVec<u64> = StorageVec {},
 }
 
+fn assert_empty_vec_next_returns_none_impl<T>() where T: AbiEncode + Eq {
+    // let vec = StorageKey::<StorageVec<T>>::new(b256::zero(), 0, b256::zero());
+    let vec: StorageKey<StorageVec<T>> = StorageKey::new(b256::zero(), 0, b256::zero());
+    assert(vec.iter().next().is_none());
+}
+
 impl MyContract for Contract {
+    #[storage(read, write)]
+    fn assert_empty_vec_next_returns_none() {
+        assert_empty_vec_next_returns_none_impl::<u64>();
+    }
+
     #[storage(read, write)]
     fn store(value: Vec<u64>) {
         let mut iter = 0;
@@ -64,7 +81,11 @@ impl MyContract for Contract {
     }
 }
 
-// TODO: Expand tests.
+#[test]
+fn empty_vec_next_returns_none() {
+    let contract_abi = abi(MyContract, CONTRACT_ID);
+    contract_abi.assert_empty_vec_next_returns_none();
+}
 
 #[test]
 fn for_u64() {

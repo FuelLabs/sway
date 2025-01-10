@@ -53,13 +53,13 @@ When the `get` method is passed an index that is outside the vector, it returns 
 
 ## Iterating over the Values in a Vector
 
-To access each element in a vector in turn, we would iterate through all of the valid indices using a `while` loop and the `len` method as shown below:
+Iterating over a storage vector is conceptually the same as [iterating over a `Vec<T>`](./vec.md). The only difference is an additional call to  `read()` to actually read the stored value.
 
 ```sway
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_iterate}}
 ```
 
-Again, this is quite similar to iterating over the elements of a `Vec<T>` where we use the method `len` to return the length of the vector. We also call the method `unwrap` to extract the `Option` returned by `get` followed by a call to `read()` to actually read the stored value. We know that `unwrap` will not fail (i.e. will not cause a revert) because each index `i` passed to `get` is known to be smaller than the length of the vector.
+Note that **modifying a vector during iteration, by e.g. adding or removing elements, is a logical error and results in an [undefined behavior](../reference/undefined_behavior.md)**:
 
 ## Using an Enum to store Multiple Types
 

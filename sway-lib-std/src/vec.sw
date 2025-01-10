@@ -600,7 +600,81 @@ impl<T> Vec<T> {
         index_ptr.write::<T>(value);
     }
 
+    /// Returns an [Iterator] to iterate over this `Vec`.
+    ///
+    /// # Returns
+    ///
+    /// * [VecIter<V>] - The struct which can be iterated over.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let mut vec = Vec::new();
+    ///     vec.push(5);
+    ///     vec.push(10);
+    ///     vec.push(15);
+    ///
+    ///     // Get the iterator
+    ///     let iter = vec.iter();
+    ///
+    ///     assert_eq(5, iter.next().unwrap());
+    ///     assert_eq(10, iter.next().unwrap());
+    ///     assert_eq(15, iter.next().unwrap());
+    ///
+    ///     for elem in vec.iter() {
+    ///         /* ... */
+    ///     }
+    /// }
+    ///
+    /// # Undefined Behavior
+    ///
+    /// Modifying vector during iteration is a logical error and
+    /// results in undefined behavior. E.g.:
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let mut vec = Vec::new();
+    ///     vec.push(5);
+    ///     vec.push(10);
+    ///     vec.push(15);
+    ///
+    ///     for elem in vec.iter() {
+    ///         vec.push(20); // Modification causes undefined behavior.
+    ///         /* ... */
+    ///     }
+    /// }
+    /// ```
     pub fn iter(self) -> VecIter<T> {
+        // WARNING: Be aware of caveats of this implementation
+        //          if you take it as an example for implementing
+        //          `Iterator` for other types.
+        //
+        //          Due to the Sway's copy semantics, the `values` will
+        //          actually contain **a copy of the original vector
+        //          `self`**. This is contrary to the iterator semantics
+        //          which should iterate over the collection itself.
+        //
+        //          Strictly speaking, we should take a reference to
+        //          `self` here, but references as for now an experimental
+        //          feature.
+        //
+        //          However, this issue of copying gets compensated by
+        //          another issue, which is the broken copy semantics
+        //          for heap types like `Vec`. Essentially, the original
+        //          `self` and it's copy `values` will both point to
+        //          the same elements on the heap, which gives us the
+        //          desired behavior for the iterator.
+        //
+        //          This fact makes the implementation of `next` very
+        //          misleading in the part where the vector length is
+        //          checked (see comment in the `next` implementation
+        //          below).
+        //
+        //          Once we fix and formalize the copying of heap types
+        //          this implementation will not work anymore, but for
+        //          the time being, it is the most pragmatic one we can
+        //          have.
         VecIter {
             values: self,
             index: 0,
@@ -696,6 +770,19 @@ pub struct VecIter<T> {
 impl<T> Iterator for VecIter<T> {
     type Item = T;
     fn next(ref mut self) -> Option<Self::Item> {
+        // BEWARE: `self.values` keeps **the copy** of the `Vec`
+        //         we iterate over. The below check checks against
+        //         the length of that copy, taken when the iterator
+        //         was created, and not the actual vector.
+        //
+        //         If the original vector gets modified during the iteration
+        //         (e.g., elements are removed), this modification will not
+        //         be reflected in `self.values.len()`.
+        //
+        //         But since modifying the vector during iteration is
+        //         considered undefined behavior, this implementation,
+        //         that always checks against the original vector is
+        //         perfectly valid.
         if self.index >= self.values.len() {
             return None
         }
