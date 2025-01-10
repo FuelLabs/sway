@@ -320,11 +320,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "storage_vec_iter"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "storage_vec_nested"
 source = "member"
 dependencies = ["std"]
