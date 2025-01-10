@@ -40,7 +40,6 @@ members = [
   "test_projects/storage_map",
   "test_projects/storage_map_nested",
   "test_projects/storage_string",
-  "test_projects/storage_vec_iter",
   "test_projects/storage_vec_nested",
   "test_projects/storage_vec_of_storage_string",
   "test_projects/storage_vec_to_vec",
