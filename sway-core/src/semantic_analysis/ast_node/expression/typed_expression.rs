@@ -1575,23 +1575,23 @@ impl ty::TyExpression {
             .qualified_path_root
             .is_none()
         {
-            // Check if this could be a module
-            // TODO: This is no longer correct - an absolute path to an external module can no
-            // longer be looked up as a submodule of the current module
+            // Check if this could be a submodule of the current module or an external module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
+		let lookup_path = [
+                            call_path_binding.inner.call_path.prefixes.clone(),
+                            vec![call_path_binding.inner.call_path.suffix.clone()],
+                        ].concat();
                 ctx.namespace().current_module().read(ctx.engines(), |m| {
                     m.lookup_submodule(
                         &module_probe_handler,
-                        &[
-                            call_path_binding.inner.call_path.prefixes.clone(),
-                            vec![call_path_binding.inner.call_path.suffix.clone()],
-                        ]
-                        .concat(),
+                        &lookup_path,
                     )
                     .ok()
                     .is_some()
                 })
+		    ||
+		    ctx.namespace().module_from_absolute_path(&lookup_path).is_some()
             };
 
             // Check if this could be a function
