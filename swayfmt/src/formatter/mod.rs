@@ -8,7 +8,8 @@ pub use crate::{
     error::{ConfigError, FormatterError},
 };
 use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
-use sway_core::BuildConfig;
+use sway_ast::attribute::Annotated;
+use sway_ast::Module;
 use sway_types::{SourceEngine, Spanned};
 
 pub(crate) mod shape;
@@ -80,10 +81,14 @@ impl Formatter {
         Ok(self)
     }
 
-    pub fn format(
+    pub fn format(&mut self, src: Arc<str>) -> Result<FormattedCode, FormatterError> {
+        let annotated_module = parse_file(src)?;
+        self.format_module(&annotated_module)
+    }
+
+    pub fn format_module(
         &mut self,
-        src: Arc<str>,
-        build_config: Option<&BuildConfig>,
+        annotated_module: &Annotated<Module>,
     ) -> Result<FormattedCode, FormatterError> {
         // apply the width heuristics settings from the `Config`
         self.shape.apply_width_heuristics(
@@ -92,9 +97,11 @@ impl Formatter {
                 .heuristics_pref
                 .to_width_heuristics(self.config.whitespace.max_width),
         );
-        let src = src.trim();
 
-        let path = build_config.map(|build_config| build_config.canonical_root_module());
+        // Get the original trimmed source code.
+        let module_kind_span = annotated_module.value.kind.span();
+        let src = module_kind_span.src().trim();
+
         // Formatted code will be pushed here with raw newline style.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
         // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
@@ -103,7 +110,6 @@ impl Formatter {
 
         self.with_comments_context(src)?;
 
-        let annotated_module = parse_file(&self.source_engine, Arc::from(src), path.clone())?;
         annotated_module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);
@@ -117,14 +123,13 @@ impl Formatter {
 
         // Add newline sequences
         handle_newlines(
-            &self.source_engine,
             Arc::from(src),
             &annotated_module.value,
             Arc::from(formatted_code.clone()),
-            path,
             &mut formatted_code,
             self,
         )?;
+
         // Replace newlines with specified `NewlineStyle`
         apply_newline_style(
             self.config.whitespace.newline_style,
@@ -137,6 +142,7 @@ impl Formatter {
 
         Ok(formatted_code)
     }
+
     pub(crate) fn with_shape<F, O>(&mut self, new_shape: Shape, f: F) -> O
     where
         F: FnOnce(&mut Self) -> O,

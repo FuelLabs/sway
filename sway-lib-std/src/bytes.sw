@@ -584,10 +584,7 @@ impl Bytes {
     pub fn ptr(self) -> raw_ptr {
         self.buf.ptr()
     }
-}
 
-// Need to use separate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
-impl Bytes {
     /// Divides one Bytes into two at an index.
     ///
     /// # Additional Information

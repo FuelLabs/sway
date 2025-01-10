@@ -4,7 +4,10 @@ use crate::{
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, ItemConst};
+use sway_ast::{
+    keywords::{ColonToken, ConstToken, EqToken, Keyword, SemicolonToken, Token},
+    ItemConst, PubToken,
+};
 use sway_types::Spanned;
 
 impl Format for ItemConst {
@@ -17,26 +20,26 @@ impl Format for ItemConst {
         let start_len = formatted_code.len();
 
         // Check if visibility token exists if so add it.
-        if let Some(visibility_token) = &self.visibility {
-            write!(formatted_code, "{} ", visibility_token.span().as_str())?;
+        if self.visibility.is_some() {
+            write!(formatted_code, "{} ", PubToken::AS_STR)?;
         }
 
         // Add the const token
-        write!(formatted_code, "{} ", self.const_token.span().as_str())?;
+        write!(formatted_code, "{} ", ConstToken::AS_STR)?;
 
         // Add name of the const
         self.name.format(formatted_code, formatter)?;
 
         // Check if ty exists
-        if let Some((colon_token, ty)) = &self.ty_opt {
+        if let Some((_colon_token, ty)) = &self.ty_opt {
             // Add colon
-            write!(formatted_code, "{} ", colon_token.ident().as_str())?;
+            write!(formatted_code, "{} ", ColonToken::AS_STR)?;
             ty.format(formatted_code, formatter)?;
         }
 
         // Check if ` = ` exists
-        if let Some(eq_token) = &self.eq_token_opt {
-            write!(formatted_code, " {} ", eq_token.ident().as_str())?;
+        if self.eq_token_opt.is_some() {
+            write!(formatted_code, " {} ", EqToken::AS_STR)?;
         }
 
         // Check if expression exists
@@ -44,7 +47,7 @@ impl Format for ItemConst {
             expr.format(formatted_code, formatter)?;
         }
 
-        write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
+        write!(formatted_code, "{}", SemicolonToken::AS_STR)?;
 
         rewrite_with_comments::<ItemConst>(
             formatter,

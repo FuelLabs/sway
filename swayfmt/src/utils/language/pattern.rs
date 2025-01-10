@@ -10,6 +10,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
+    keywords::{ColonToken, DoubleDotToken, Keyword, MutToken, RefToken, Token, UnderscoreToken},
     Braces, CommaToken, ExprTupleDescriptor, PathExpr, Pattern, PatternStructField, Punctuated,
 };
 use sway_types::{ast::Delimiter, Spanned};
@@ -30,19 +31,19 @@ impl Format for Pattern {
                 formatted_code.push_str(" | ");
                 rhs.format(formatted_code, formatter)?;
             }
-            Self::Wildcard { underscore_token } => {
-                formatted_code.push_str(underscore_token.span().as_str())
-            }
+            Self::Wildcard {
+                underscore_token: _,
+            } => formatted_code.push_str(UnderscoreToken::AS_STR),
             Self::Var {
                 reference,
                 mutable,
                 name,
             } => {
-                if let Some(ref_token) = reference {
-                    write!(formatted_code, "{} ", ref_token.span().as_str())?;
+                if reference.is_some() {
+                    write!(formatted_code, "{} ", RefToken::AS_STR)?;
                 }
-                if let Some(mut_token) = mutable {
-                    write!(formatted_code, "{} ", mut_token.span().as_str())?;
+                if mutable.is_some() {
+                    write!(formatted_code, "{} ", MutToken::AS_STR)?;
                 }
                 name.format(formatted_code, formatter)?;
             }
@@ -188,16 +189,16 @@ impl Format for PatternStructField {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Self::Rest { token } => {
-                write!(formatted_code, "{}", token.span().as_str())?;
+            Self::Rest { token: _ } => {
+                write!(formatted_code, "{}", DoubleDotToken::AS_STR)?;
             }
             Self::Field {
                 field_name,
                 pattern_opt,
             } => {
-                write!(formatted_code, "{}", field_name.span().as_str())?;
-                if let Some((colon_token, pattern)) = pattern_opt {
-                    write!(formatted_code, "{} ", colon_token.span().as_str())?;
+                write!(formatted_code, "{}", field_name.as_str())?;
+                if let Some((_colon_token, pattern)) = pattern_opt {
+                    write!(formatted_code, "{} ", ColonToken::AS_STR)?;
                     pattern.format(formatted_code, formatter)?;
                 }
             }
@@ -213,12 +214,12 @@ fn get_field_width(
 ) -> Result<(usize, usize), FormatterError> {
     let mut largest_field: usize = 0;
     let mut body_width: usize = 3; // this is taking into account the opening brace, the following space and the ending brace.
-    for (field, comma_token) in &fields.value_separator_pairs {
+    for (field, _comma_token) in &fields.value_separator_pairs {
         let mut field_str = FormattedCode::new();
         field.format(&mut field_str, formatter)?;
         let mut field_length = field_str.chars().count();
 
-        field_length += comma_token.span().as_str().chars().count();
+        field_length += CommaToken::AS_STR.chars().count();
         body_width += &field_length + 1; // accounting for the following space
 
         if field_length > largest_field {
