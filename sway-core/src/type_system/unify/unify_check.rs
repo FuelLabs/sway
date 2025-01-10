@@ -507,7 +507,8 @@ impl<'a> UnifyCheck<'a> {
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {
-                        !OccursCheck::new(self.engines).check(right, left)
+                        matches!(self.mode, ConstraintSubset)
+                            || !OccursCheck::new(self.engines).check(right, left)
                     }
 
                     (Alias { ty: l_ty, .. }, Alias { ty: r_ty, .. }) => {
