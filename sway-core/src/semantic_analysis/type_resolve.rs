@@ -300,27 +300,22 @@ pub fn resolve_call_path(
         namespace.current_mod_path(),
     );
 
-    // TODO: This visibility check is insufficient.
-    //
-    // The modules in the path are checked correctly by the previous line, but the visibility of any
-    // enum names or associated types is not checked.
-    //
-    // Also, the visibility of the original declaration is only relevant if the entity is accessed
-    // through the module path (the canonical path) of the declaration. If the entity is accessed
-    // through another path, e.g., through a reexport, then it is the visibility of the reexport
-    // that is relevant.
+    // If the full path is different from the declaration path, then we are accessing a reexport,
+    // which is by definition public.
+    if decl_mod_path != full_path.prefixes {
+	return Ok(decl);
+    }
 
-    // Private declarations are visible within their own module, so no need to check for visibility
-    // in that case
+    // All declarations in the current module are visible, regardless of their visibility modifier.
     if decl_mod_path == *namespace.current_mod_path() {
         return Ok(decl);
     }
-
-    // check the visibility of the symbol itself
+	
+    // Otherwise, check the visibility modifier
     if !decl.visibility(engines).is_public() {
         handler.emit_err(CompileError::ImportPrivateSymbol {
-            name: call_path.suffix.clone(),
-            span: call_path.suffix.span(),
+	    name: call_path.suffix.clone(),
+	    span: call_path.suffix.span(),
         });
     }
 
