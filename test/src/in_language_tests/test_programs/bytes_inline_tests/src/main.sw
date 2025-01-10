@@ -779,6 +779,7 @@ fn bytes_append_to_empty() {
     };
 }
 
+#[test()]
 fn bytes_append_self() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
@@ -797,6 +798,7 @@ fn bytes_append_self() {
     assert(bytes.get(5).unwrap() == c);
 }
 
+#[test()]
 fn bytes_append_empty_self() {
     let mut empty_bytes = Bytes::new();
 
