@@ -53,7 +53,7 @@ When the `get` method is passed an index that is outside the vector, it returns 
 
 ## Iterating over the Values in a Vector
 
-Iterating over a storage vector is conceptually the same as [iterating over a `Vec<T>`](./vec.md). The only difference is an additional call to  `read()` to actually read the stored value.
+Iterating over a storage vector is conceptually the same as [iterating over a `Vec<T>`](./vec.md). The only difference is an additional call to `read()` to actually read the stored value.
 
 ```sway
 {{#include ../../../../examples/storage_vec/src/main.sw:storage_vec_iterate}}

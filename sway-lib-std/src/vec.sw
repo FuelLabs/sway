@@ -623,7 +623,7 @@ impl<T> Vec<T> {
     ///     assert_eq(15, iter.next().unwrap());
     ///
     ///     for elem in vec.iter() {
-    ///         /* ... */
+    ///         log(elem);
     ///     }
     /// }
     ///
@@ -641,7 +641,6 @@ impl<T> Vec<T> {
     ///
     ///     for elem in vec.iter() {
     ///         vec.push(20); // Modification causes undefined behavior.
-    ///         /* ... */
     ///     }
     /// }
     /// ```
@@ -672,9 +671,9 @@ impl<T> Vec<T> {
         //          below).
         //
         //          Once we fix and formalize the copying of heap types
-        //          this implementation will not work anymore, but for
+        //          this implementation will be changed, but for
         //          the time being, it is the most pragmatic one we can
-        //          have.
+        //          have now.
         VecIter {
             values: self,
             index: 0,
@@ -773,7 +772,7 @@ impl<T> Iterator for VecIter<T> {
         // BEWARE: `self.values` keeps **the copy** of the `Vec`
         //         we iterate over. The below check checks against
         //         the length of that copy, taken when the iterator
-        //         was created, and not the actual vector.
+        //         was created, and not the original vector.
         //
         //         If the original vector gets modified during the iteration
         //         (e.g., elements are removed), this modification will not
@@ -781,8 +780,8 @@ impl<T> Iterator for VecIter<T> {
         //
         //         But since modifying the vector during iteration is
         //         considered undefined behavior, this implementation,
-        //         that always checks against the original vector is
-        //         perfectly valid.
+        //         that always checks against the length at the time
+        //         the iterator got created is perfectly valid.
         if self.index >= self.values.len() {
             return None
         }

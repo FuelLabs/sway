@@ -968,7 +968,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     for elem in storage.vec.iter() {
     ///         let elem_value = elem.read();
-    ///         /* ... */
+    ///         log(elem_value);
     ///     }
     /// }
     /// ```

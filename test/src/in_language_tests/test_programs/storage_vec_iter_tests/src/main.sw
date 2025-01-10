@@ -7,7 +7,7 @@ use impls::*;
 use std::hash::{Hash, sha256};
 use std::storage::storage_vec::*;
 
-abi MyContract {
+abi StorageVecIterTest {
     #[storage(read)]
     fn assert_empty_vec_next_returns_none();
 
@@ -98,7 +98,7 @@ fn assert_vec_with_elements_for_loop_iteration_impl<T>(slot_id_preimage: u64)
     // assert_eq(vec.len(), i);
 }
 
-impl MyContract for Contract {
+impl StorageVecIterTest for Contract {
     #[storage(read)]
     fn assert_empty_vec_next_returns_none() {
         assert_empty_vec_next_returns_none_impl::<()>(1);
@@ -232,30 +232,30 @@ impl MyContract for Contract {
 
 #[test]
 fn empty_vec_next_returns_none() {
-    let contract_abi = abi(MyContract, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
     contract_abi.assert_empty_vec_next_returns_none();
 }
 
 #[test]
 fn vec_with_elements_next_returns_element() {
-    let contract_abi = abi(MyContract, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
     contract_abi.assert_vec_with_elements_next_returns_element();
 }
 
 #[test]
 fn vec_with_elements_for_loop_iteration() {
-    let contract_abi = abi(MyContract, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
     contract_abi.assert_vec_with_elements_for_loop_iteration();
 }
 
 #[test]
 fn storage_vec_field_for_loop_iteration() {
-    let contract_abi = abi(MyContract, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
     contract_abi.storage_vec_field_for_loop_iteration();
 }
 
 #[test]
 fn storage_vec_field_nested_for_loop_iteration() {
-    let contract_abi = abi(MyContract, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
     contract_abi.storage_vec_field_nested_for_loop_iteration();
 }

@@ -38,7 +38,7 @@ When the `get` method is passed an index that is outside the vector, it returns 
 
 ## Iterating over the Values in a Vector
 
-To access elements of a vector, we can iterate through of the valid indices using a `while` loop and the `len` method as shown below:
+To access elements of a vector, we can iterate through the valid indices using a `while` loop and the `len` method as shown below:
 
 ```sway
 {{#include ../../../../examples/vec/src/main.sw:vec_iterate_while}}
@@ -46,7 +46,7 @@ To access elements of a vector, we can iterate through of the valid indices usin
 
 Note two details here. First, we use the method `len` which returns the length of the vector. Second, we call the method `unwrap` to extract the `Option` returned by `get`. We know that `unwrap` will not fail (i.e. will not cause a revert) because each index `i` passed to `get` is known to be smaller than the length of the vector.
 
-The idiomatic and convenient way to access each element in a vector in turn, is to use the `for` loop in the combination with the `Vec::iter()` method. `Vec::iter()` method returns an iterator that iterates over all the elements of the vector sequentially.
+The idiomatic and convenient way to access each element in a vector in turn, is to use the `for` loop in the combination with the `iter` method. The `iter` method returns an iterator that iterates over all the elements of the vector sequentially.
 
 ```sway
 {{#include ../../../../examples/vec/src/main.sw:vec_iterate_for}}
