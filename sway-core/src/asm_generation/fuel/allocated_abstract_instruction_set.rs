@@ -3,7 +3,7 @@ use crate::{
     asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp,
-        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualRegister,
+        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
     },
 };
 
