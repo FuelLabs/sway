@@ -1,6 +1,6 @@
 script;
 
-mod r#trait;
+pub mod r#trait;
 mod utils;
 
 use r#trait::Trait;

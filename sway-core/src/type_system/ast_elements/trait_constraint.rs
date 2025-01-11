@@ -1,15 +1,3 @@
-use std::{
-    cmp::Ordering,
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::Spanned;
-
 use crate::{
     engine_threading::*,
     language::{parsed::Supertrait, ty, CallPath},
@@ -21,8 +9,19 @@ use crate::{
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
     EnforceTypeArguments,
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::Spanned;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitConstraint {
     pub trait_name: CallPath,
     pub type_arguments: Vec<TypeArgument>,
@@ -170,11 +169,7 @@ impl TraitConstraint {
                     EnforceTypeArguments::Yes,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    ctx.engines
-                        .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
         }
 
         Ok(())
@@ -197,9 +192,8 @@ impl TraitConstraint {
         let mut type_arguments = type_arguments.clone();
 
         match ctx
-            .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path(&Handler::default(), trait_name)
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

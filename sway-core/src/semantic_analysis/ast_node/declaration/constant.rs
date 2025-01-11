@@ -61,7 +61,7 @@ impl ty::TyConstantDecl {
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         type_ascription.type_id.subst(&ctx.subst_ctx());
@@ -129,7 +129,7 @@ impl ty::TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),
-            return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
+            return_type: type_engine.new_unknown(),
             type_ascription,
             value: None,
             visibility,

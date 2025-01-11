@@ -59,38 +59,34 @@ pub(crate) fn struct_instantiation(
 
     let type_arguments = type_arguments.to_vec();
 
-    let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
-        ("Self", true) => TypeInfo::new_self_type(suffix.span()),
+    // We first create a custom type and then resolve it to the struct type.
+    let custom_type_id = match (suffix.as_str(), type_arguments.is_empty()) {
+        ("Self", true) => type_engine.new_self_type(engines, suffix.span()),
         ("Self", false) => {
             return Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed {
                 span: suffix.span(),
             }));
         }
-        (_, true) => TypeInfo::Custom {
-            qualified_call_path: suffix.clone().into(),
-            type_arguments: None,
-        },
-        (_, false) => TypeInfo::Custom {
-            qualified_call_path: suffix.clone().into(),
-            type_arguments: Some(type_arguments),
-        },
+        (_, true) => type_engine.new_custom_from_name(engines, suffix.clone()),
+        (_, false) => type_engine.new_custom(engines, suffix.clone().into(), Some(type_arguments)),
     };
 
     // find the module that the struct decl is in
     let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
     ctx.namespace()
-        .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
+        .root_module()
+        .lookup_submodule(handler, engines, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
         .resolve_type(
             handler,
-            type_engine.insert(engines, type_info, suffix.span().source_id()),
+            custom_type_id,
             inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+        .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
@@ -338,8 +334,7 @@ fn collect_struct_constructors(
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
     namespace.program_id(engines).read(engines, |m| {
-        m.current_items()
-            .get_items_for_type(engines, struct_type_id)
+        m.get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
@@ -389,7 +384,6 @@ fn type_check_field_arguments(
 ) -> Result<Vec<ty::TyStructExpressionField>, ErrorEmitted> {
     handler.scope(|handler| {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         let mut typed_fields = vec![];
         let mut missing_fields = vec![];
@@ -403,9 +397,9 @@ fn type_check_field_arguments(
                         .with_type_annotation(struct_field.type_argument.type_id)
                         .with_unify_generic(true);
 
-                    // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
-                    //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
-                    //          not treated as an error in the `type_check()`'s result.
+                    // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+                    //       We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+                    //       not treated as an error in the `type_check()`'s result.
                     let typed_expr = handler
                         .scope(|handler| ty::TyExpression::type_check(handler, ctx, &field.value));
 
@@ -434,11 +428,7 @@ fn type_check_field_arguments(
                         name: struct_field.name.clone(),
                         value: ty::TyExpression {
                             expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                            return_type: type_engine.insert(
-                                engines,
-                                TypeInfo::ErrorRecovery(err),
-                                None,
-                            ),
+                            return_type: type_engine.id_of_error_recovery(err),
                             span: span.clone(),
                         },
                     });

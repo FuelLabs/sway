@@ -3,7 +3,7 @@ use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert},
@@ -26,8 +26,6 @@ impl TyScrutinee {
         let engines = ctx.engines();
         match scrutinee {
             Scrutinee::Or { elems, span } => {
-                let type_id = type_engine.insert(engines, TypeInfo::Unknown, None);
-
                 let mut typed_elems = Vec::with_capacity(elems.len());
                 for scrutinee in elems {
                     typed_elems.push(ty::TyScrutinee::type_check(
@@ -38,28 +36,22 @@ impl TyScrutinee {
                 }
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::Or(typed_elems),
-                    type_id,
+                    type_id: type_engine.new_unknown(),
                     span,
                 };
                 Ok(typed_scrutinee)
             }
             Scrutinee::CatchAll { span } => {
-                let type_id = type_engine.insert(engines, TypeInfo::Unknown, None);
-                let dummy_type_param = TypeParameter {
-                    type_id,
-                    initial_type_id: type_id,
-                    name_ident: BaseIdent::new_with_override("_".into(), span.clone()),
-                    trait_constraints: vec![],
-                    trait_constraints_span: Span::dummy(),
-                    is_from_parent: false,
-                };
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
-                    type_id: type_engine.insert(
-                        engines,
-                        TypeInfo::Placeholder(dummy_type_param),
-                        span.source_id(),
-                    ),
+                    // The `span` will mostly point to a "_" in code. However, match expressions
+                    // are heavily used in code generation, e.g., to generate code for contract
+                    // function selection in the `__entry` and sometimes the span does not point
+                    // to a "_". But it is always in the code in which the match expression is.
+                    type_id: type_engine.new_placeholder(TypeParameter::new_placeholder(
+                        type_engine.new_unknown(),
+                        span.clone(),
+                    )),
                     span,
                 };
                 Ok(typed_scrutinee)
@@ -163,11 +155,7 @@ fn type_check_variable(
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
-    let typed_scrutinee = match ctx
-        .namespace()
-        .resolve_symbol_typed(&Handler::default(), engines, &name, ctx.self_type())
-        .ok()
-    {
+    let typed_scrutinee = match ctx.resolve_symbol(&Handler::default(), &name).ok() {
         // If the name represents a constant, then we turn it into a [ty::TyScrutineeVariant::Constant].
         Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
             let constant_decl = (*decl_engine.get_constant(&decl_id)).clone();
@@ -207,7 +195,7 @@ fn type_check_variable(
         // appropriate helpful errors, depending on the exact usage of that configurable.
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
-            type_id: type_engine.insert(ctx.engines(), TypeInfo::Unknown, None),
+            type_id: type_engine.new_unknown(),
             span,
         },
     };
@@ -227,9 +215,7 @@ fn type_check_struct(
     let decl_engine = engines.de();
 
     // find the struct definition from the name
-    let unknown_decl =
-        ctx.namespace()
-            .resolve_symbol_typed(handler, engines, &struct_name, ctx.self_type())?;
+    let unknown_decl = ctx.resolve_symbol(handler, &struct_name)?;
     let struct_id = unknown_decl.to_struct_decl(handler, ctx.engines())?;
     let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
@@ -425,11 +411,7 @@ fn type_check_struct(
         decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
     );
     let typed_scrutinee = ty::TyScrutinee {
-        type_id: type_engine.insert(
-            ctx.engines(),
-            TypeInfo::Struct(*struct_ref.id()),
-            struct_ref.span().source_id(),
-        ),
+        type_id: type_engine.insert_struct(engines, *struct_ref.id()),
         span,
         variant: ty::TyScrutineeVariant::StructScrutinee {
             struct_ref,
@@ -496,23 +478,13 @@ fn type_check_enum(
                 is_absolute: call_path.is_absolute,
             };
             // find the enum definition from the name
-            let unknown_decl = ctx.namespace().resolve_call_path_typed(
-                handler,
-                engines,
-                &enum_callpath,
-                ctx.self_type(),
-            )?;
+            let unknown_decl = ctx.resolve_call_path(handler, &enum_callpath)?;
             let enum_id = unknown_decl.to_enum_id(handler, ctx.engines())?;
             (enum_callpath.span(), enum_id, unknown_decl)
         }
         None => {
             // we may have an imported variant
-            let decl = ctx.namespace().resolve_call_path_typed(
-                handler,
-                engines,
-                &call_path,
-                ctx.self_type(),
-            )?;
+            let decl = ctx.resolve_call_path(handler, &call_path)?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (call_path.suffix.span(), *enum_ref.id(), decl)
             } else {
@@ -552,11 +524,7 @@ fn type_check_enum(
             value: Box::new(typed_value),
             instantiation_call_path: call_path,
         },
-        type_id: type_engine.insert(
-            engines,
-            TypeInfo::Enum(*enum_ref.id()),
-            enum_ref.span().source_id(),
-        ),
+        type_id: type_engine.insert_enum(engines, *enum_ref.id()),
         span,
     };
 
@@ -581,20 +549,17 @@ fn type_check_tuple(
             },
         );
     }
-    let type_id = type_engine.insert(
+    let type_id = type_engine.insert_tuple(
         engines,
-        TypeInfo::Tuple(
-            typed_elems
-                .iter()
-                .map(|x| TypeArgument {
-                    type_id: x.type_id,
-                    initial_type_id: x.type_id,
-                    span: span.clone(),
-                    call_path_tree: None,
-                })
-                .collect(),
-        ),
-        span.source_id(),
+        typed_elems
+            .iter()
+            .map(|elem| TypeArgument {
+                type_id: elem.type_id,
+                initial_type_id: elem.type_id,
+                span: elem.span.clone(),
+                call_path_tree: None,
+            })
+            .collect(),
     );
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::Tuple(typed_elems),

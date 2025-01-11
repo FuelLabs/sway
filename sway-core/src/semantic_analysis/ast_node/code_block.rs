@@ -11,15 +11,20 @@ impl ty::TyCodeBlock {
         ctx: &mut SymbolCollectionContext,
         code_block: &CodeBlock,
     ) -> Result<(), ErrorEmitted> {
-        let _ = ctx.scoped(engines, code_block.whole_block_span.clone(), |scoped_ctx| {
-            let _ = code_block
-                .contents
-                .iter()
-                .map(|node| ty::TyAstNode::collect(handler, engines, scoped_ctx, node))
-                .filter_map(|res| res.ok())
-                .collect::<Vec<_>>();
-            Ok(())
-        });
+        let _ = ctx.scoped(
+            engines,
+            code_block.whole_block_span.clone(),
+            None,
+            |scoped_ctx| {
+                let _ = code_block
+                    .contents
+                    .iter()
+                    .map(|node| ty::TyAstNode::collect(handler, engines, scoped_ctx, node))
+                    .filter_map(|res| res.ok())
+                    .collect::<Vec<_>>();
+                Ok(())
+            },
+        );
         Ok(())
     }
 
@@ -91,8 +96,6 @@ impl ty::TyCodeBlock {
         ctx: &TypeCheckContext,
         code_block: &TyCodeBlock,
     ) -> (TypeId, Span) {
-        let engines = ctx.engines();
-
         let implicit_return_span = code_block
             .contents
             .iter()
@@ -122,12 +125,8 @@ impl ty::TyCodeBlock {
                                 ..
                             }),
                         ..
-                    } => Some(
-                        ctx.engines
-                            .te()
-                            .insert(engines, TypeInfo::Never, span.source_id()),
-                    ),
-                    // find the implicit return, if any, and use it as the code block's return type.
+                    } => Some(ctx.engines.te().id_of_never()),
+                    // Find the implicit return, if any, and use it as the code block's return type.
                     // The fact that there is at most one implicit return is an invariant held by the parser.
                     ty::TyAstNode {
                         content:
@@ -153,11 +152,7 @@ impl ty::TyCodeBlock {
                     _ => None,
                 }
             })
-            .unwrap_or_else(|| {
-                ctx.engines
-                    .te()
-                    .insert(engines, TypeInfo::Tuple(Vec::new()), span.source_id())
-            });
+            .unwrap_or_else(|| ctx.engines.te().id_of_unit());
 
         (block_type, span)
     }

@@ -19,6 +19,42 @@ env:
   NIGHTLY_RUST_VERSION: nightly-2024-10-21
 
 jobs:
+  verifications-complete:
+    needs:
+      - build-sway-lib-core
+      - build-sway-lib-std
+      - build-sway-examples
+      - build-reference-examples
+      - forc-fmt-check-sway-lib-core
+      - forc-fmt-check-sway-lib-std
+      - forc-fmt-check-sway-examples
+      - forc-fmt-check-panic
+      - check-sdk-harness-test-suite-compatibility
+      - build-mdbook
+      - build-forc-doc-sway-lib-std
+      - build-forc-test-project
+      - cargo-build-workspace
+      - cargo-clippy
+      - cargo-toml-fmt-check
+      - cargo-fmt-check
+      - cargo-run-e2e-test-evm
+      - cargo-test-lib-std
+      - forc-run-benchmarks
+      - forc-unit-tests
+      - forc-pkg-fuels-deps-check
+      - cargo-test-sway-lsp
+      - cargo-test-forc
+      - cargo-test-workspace
+      - cargo-unused-deps-check
+      - pre-publish-check
+      - cargo-run-e2e-test
+      - cargo-run-e2e-test-release
+      - cargo-test-forc-debug
+      - cargo-test-forc-client
+      - notify-slack-on-failure
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "pass"
   get-fuel-core-version:
     runs-on: buildjet-4vcpu-ubuntu-2204
     outputs:
@@ -251,7 +287,7 @@ jobs:
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-doc
       - name: Build sway-lib-std docs
-        run: forc doc --manifest-path ./sway-lib-std
+        run: forc doc --path ./sway-lib-std
 
   build-forc-test-project:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -434,6 +470,10 @@ jobs:
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Tests - Experimental Feature 'storage_domains'
+        run: cargo run --locked --release -p forc -- build --experimental storage_domains --release --locked --path ./test/src/sdk-harness
+      - name: Cargo Test sway-lib-std - Experimental Feature 'storage_domains'
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -489,10 +529,16 @@ jobs:
         run: cargo install --locked --debug --path ./forc
       - name: Run Core Unit Tests
         run: forc build --path sway-lib-core && forc test --path sway-lib-core
+      - name: Run Core Unit Tests - Experimental feature 'storage_domains'
+        run: forc build --experimental storage_domains --path sway-lib-core && forc test --experimental storage_domains --path sway-lib-core
       - name: Run Std Unit Tests
         run: forc build --path sway-lib-std && forc test --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'storage_domains'
+        run: forc build --experimental storage_domains --path sway-lib-std && forc test --experimental storage_domains --path sway-lib-std
       - name: Run In Language Unit Tests
         run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'storage_domains'
+        run: forc build --experimental storage_domains --path test/src/in_language_tests && forc test --experimental storage_domains --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204

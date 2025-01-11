@@ -1,7 +1,4 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Named, Span, Spanned};
-
+use super::{TyDeclParsedType, TyTraitItem};
 use crate::{
     decl_engine::DeclRefMixedInterface,
     engine_threading::*,
@@ -9,13 +6,14 @@ use crate::{
     language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
-
-use super::{TyDeclParsedType, TyTraitItem};
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Named, Span, Spanned};
 
 pub type TyImplItem = TyTraitItem;
 
 // impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyImplSelfOrTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,

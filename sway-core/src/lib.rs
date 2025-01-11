@@ -740,6 +740,7 @@ pub fn compile_to_ast(
 
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
+        package_name,
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
         parse(input, handler, engines, build_config, experimental),
@@ -764,6 +765,7 @@ pub fn compile_to_ast(
 
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
+        package_name,
         "parse the concrete syntax tree (CST) to a typed AST",
         "parse_ast",
         parsed_to_ast(
@@ -980,7 +982,7 @@ pub fn compile_to_bytecode(
     package_name: &str,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let asm_res = compile_to_asm(
+    let mut asm_res = compile_to_asm(
         handler,
         engines,
         input,
@@ -989,13 +991,41 @@ pub fn compile_to_bytecode(
         package_name,
         experimental,
     )?;
-    asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
+    asm_to_bytecode(
+        handler,
+        &mut asm_res,
+        source_map,
+        engines.se(),
+        build_config,
+    )
+}
+
+/// Size of the prelude's CONFIGURABLES_OFFSET section, in bytes.
+pub const PRELUDE_CONFIGURABLES_SIZE_IN_BYTES: usize = 8;
+/// Offset (in bytes) of the CONFIGURABLES_OFFSET section in the prelude.
+pub const PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES: usize = 16;
+/// Total size of the prelude in bytes. Instructions start right after.
+pub const PRELUDE_SIZE_IN_BYTES: usize = 32;
+
+/// Given bytecode, overwrite the existing offset to configurables offset in the prelude with the given one.
+pub fn set_bytecode_configurables_offset(
+    compiled_bytecode: &mut CompiledBytecode,
+    md: &[u8; PRELUDE_CONFIGURABLES_SIZE_IN_BYTES],
+) {
+    assert!(
+        compiled_bytecode.bytecode.len()
+            >= PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES + PRELUDE_CONFIGURABLES_SIZE_IN_BYTES
+    );
+    let code = &mut compiled_bytecode.bytecode;
+    for (index, byte) in md.iter().enumerate() {
+        code[index + PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES] = *byte;
+    }
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,
-    mut asm: CompiledAsm,
+    asm: &mut CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,

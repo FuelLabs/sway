@@ -4,7 +4,10 @@ use crate::{
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, TraitType};
+use sway_ast::{
+    keywords::{EqToken, Keyword, SemicolonToken, Token, TypeToken},
+    TraitType,
+};
 use sway_types::Spanned;
 
 impl Format for TraitType {
@@ -16,15 +19,15 @@ impl Format for TraitType {
         // Required for comment formatting
         let start_len = formatted_code.len();
 
-        // Add the const token
-        write!(formatted_code, "{} ", self.type_token.span().as_str())?;
+        // Add the type token
+        write!(formatted_code, "{} ", TypeToken::AS_STR)?;
 
-        // Add name of the const
+        // Add name of the type
         self.name.format(formatted_code, formatter)?;
 
         // Check if ` = ` exists
-        if let Some(eq_token) = &self.eq_token_opt {
-            write!(formatted_code, " {} ", eq_token.ident().as_str())?;
+        if self.eq_token_opt.is_some() {
+            write!(formatted_code, " {} ", EqToken::AS_STR)?;
         }
 
         // Check if ty exists
@@ -32,7 +35,7 @@ impl Format for TraitType {
             ty.format(formatted_code, formatter)?;
         }
 
-        write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
+        write!(formatted_code, "{}", SemicolonToken::AS_STR)?;
 
         rewrite_with_comments::<TraitType>(
             formatter,

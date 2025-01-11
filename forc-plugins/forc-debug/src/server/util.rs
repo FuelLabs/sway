@@ -27,6 +27,9 @@ impl IdGenerator {
     }
 }
 
+/// Converts a filesystem path into a DAP Source object, which is used by the debug adapter  
+/// to identify source locations. Only sets the path field, leaving other Source fields at
+/// their default values.
 pub(crate) fn path_into_source(path: &Path) -> Source {
     Source {
         path: Some(path.to_string_lossy().into_owned()),

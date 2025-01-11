@@ -27,9 +27,11 @@ use crate::{
     TypeSubstMap, UnifyCheck,
 };
 
+use super::Module;
+
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TryInsertingTraitImplOnFailure {
     Yes,
     No,
@@ -177,7 +179,6 @@ enum TypeRootFilter {
     Struct(ParsedDeclId<StructDeclaration>),
     ContractCaller(String),
     Array(usize),
-    Storage,
     RawUntypedPtr,
     RawUntypedSlice,
     Ptr,
@@ -190,7 +191,7 @@ enum TypeRootFilter {
 /// Note: "impl self" blocks are considered traits and are stored in the
 /// [TraitMap].
 #[derive(Clone, Debug, Default)]
-pub(crate) struct TraitMap {
+pub struct TraitMap {
     trait_impls: TraitImpls,
     satisfied_cache: im::HashSet<u64>,
 }
@@ -882,7 +883,8 @@ impl TraitMap {
                     },
             } in impls.iter()
             {
-                if !type_info.can_change(engines) && *type_id == *map_type_id {
+                if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
+                {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
@@ -1326,8 +1328,8 @@ impl TraitMap {
     /// Checks to see if the trait constraints are satisfied for a given type.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn check_if_trait_constraints_are_satisfied_for_type(
-        &mut self,
         handler: &Handler,
+        module: &mut Module,
         type_id: TypeId,
         constraints: &[TraitConstraint],
         access_span: &Span,
@@ -1352,42 +1354,61 @@ impl TraitMap {
         }
         let hash = hasher.finish();
 
-        if self.satisfied_cache.contains(&hash) {
-            return Ok(());
+        {
+            let trait_map = &mut module.current_lexical_scope_mut().items.implemented_traits;
+            if trait_map.satisfied_cache.contains(&hash) {
+                return Ok(());
+            }
         }
 
+        let all_impld_traits: BTreeSet<(Ident, TypeId)> =
+            Self::get_all_implemented_traits(module, type_id, engines);
+
         // Call the real implementation and cache when true
-        match self.check_if_trait_constraints_are_satisfied_for_type_inner(
+        match Self::check_if_trait_constraints_are_satisfied_for_type_inner(
             handler,
+            module,
             type_id,
             constraints,
             access_span,
             engines,
+            all_impld_traits,
             try_inserting_trait_impl_on_failure,
             code_block_first_pass,
         ) {
             Ok(()) => {
-                self.satisfied_cache.insert(hash);
+                let trait_map = &mut module.current_lexical_scope_mut().items.implemented_traits;
+                trait_map.satisfied_cache.insert(hash);
                 Ok(())
             }
             r => r,
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn check_if_trait_constraints_are_satisfied_for_type_inner(
-        &mut self,
-        handler: &Handler,
+    fn get_all_implemented_traits(
+        module: &Module,
         type_id: TypeId,
-        constraints: &[TraitConstraint],
-        access_span: &Span,
         engines: &Engines,
-        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
-        code_block_first_pass: CodeBlockFirstPass,
-    ) -> Result<(), ErrorEmitted> {
-        let type_engine = engines.te();
+    ) -> BTreeSet<(Ident, TypeId)> {
+        let mut all_impld_traits: BTreeSet<(Ident, TypeId)> = Default::default();
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            all_impld_traits.extend(
+                lexical_scope
+                    .items
+                    .implemented_traits
+                    .get_implemented_traits(type_id, engines),
+            );
+            Ok(Some(()))
+        });
+        all_impld_traits
+    }
 
-        let _decl_engine = engines.de();
+    fn get_implemented_traits(
+        &self,
+        type_id: TypeId,
+        engines: &Engines,
+    ) -> BTreeSet<(Ident, TypeId)> {
+        let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
         let impls = self.get_impls(engines, type_id);
@@ -1397,17 +1418,14 @@ impl TraitMap {
                 let key = &e.key;
                 let suffix = &key.name.suffix;
                 if unify_check.check(type_id, key.type_id) {
-                    let map_trait_type_id = type_engine.insert(
+                    let map_trait_type_id = type_engine.new_custom(
                         engines,
-                        TypeInfo::Custom {
-                            qualified_call_path: suffix.name.clone().into(),
-                            type_arguments: if suffix.args.is_empty() {
-                                None
-                            } else {
-                                Some(suffix.args.to_vec())
-                            },
+                        suffix.name.clone().into(),
+                        if suffix.args.is_empty() {
+                            None
+                        } else {
+                            Some(suffix.args.to_vec())
                         },
-                        suffix.name.span().source_id(),
                     );
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
@@ -1416,6 +1434,24 @@ impl TraitMap {
             })
             .collect();
 
+        all_impld_traits
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn check_if_trait_constraints_are_satisfied_for_type_inner(
+        handler: &Handler,
+        module: &mut Module,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+        access_span: &Span,
+        engines: &Engines,
+        all_impld_traits: BTreeSet<(Ident, TypeId)>,
+        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
+        code_block_first_pass: CodeBlockFirstPass,
+    ) -> Result<(), ErrorEmitted> {
+        let type_engine = engines.te();
+        let unify_check = UnifyCheck::non_dynamic_equality(engines);
+
         let required_traits: BTreeSet<(Ident, TypeId)> = constraints
             .iter()
             .map(|c| {
@@ -1423,17 +1459,14 @@ impl TraitMap {
                     trait_name: constraint_trait_name,
                     type_arguments: constraint_type_arguments,
                 } = c;
-                let constraint_type_id = type_engine.insert(
+                let constraint_type_id = type_engine.new_custom(
                     engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: constraint_trait_name.suffix.clone().into(),
-                        type_arguments: if constraint_type_arguments.is_empty() {
-                            None
-                        } else {
-                            Some(constraint_type_arguments.clone())
-                        },
+                    constraint_trait_name.suffix.clone().into(),
+                    if constraint_type_arguments.is_empty() {
+                        None
+                    } else {
+                        Some(constraint_type_arguments.clone())
                     },
-                    constraint_trait_name.span().source_id(),
                 );
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })
@@ -1457,9 +1490,13 @@ impl TraitMap {
                     try_inserting_trait_impl_on_failure,
                     TryInsertingTraitImplOnFailure::Yes
                 ) {
-                    self.insert_for_type(engines, type_id, code_block_first_pass.clone());
-                    return self.check_if_trait_constraints_are_satisfied_for_type(
+                    let trait_map =
+                        &mut module.current_lexical_scope_mut().items.implemented_traits;
+                    trait_map.insert_for_type(engines, type_id, code_block_first_pass.clone());
+
+                    return Self::check_if_trait_constraints_are_satisfied_for_type(
                         handler,
+                        module,
                         type_id,
                         constraints,
                         access_span,
@@ -1604,7 +1641,6 @@ impl TraitMap {
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
             Array(_, length) => TypeRootFilter::Array(length.val()),
-            Storage { .. } => TypeRootFilter::Storage,
             RawUntypedPtr => TypeRootFilter::RawUntypedPtr,
             RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
             Ptr(_) => TypeRootFilter::Ptr,

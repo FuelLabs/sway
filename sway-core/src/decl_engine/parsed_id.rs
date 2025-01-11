@@ -1,16 +1,20 @@
-use std::hash::{DefaultHasher, Hasher};
-use std::marker::PhantomData;
-use std::{fmt, hash::Hash};
-
-use sway_types::{Named, Spanned};
-
-use crate::engine_threading::{
-    EqWithEngines, HashWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
+use super::{
+    parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet, ParsedDeclEngineIndex},
+    DeclUniqueId,
 };
-use crate::Engines;
-
-use super::parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet, ParsedDeclEngineIndex};
-use super::DeclUniqueId;
+use crate::{
+    engine_threading::{
+        EqWithEngines, HashWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    Engines,
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    hash::{DefaultHasher, Hasher},
+    marker::PhantomData,
+    {fmt, hash::Hash},
+};
+use sway_types::{Named, Spanned};
 
 pub type ParsedDeclIdIndexType = usize;
 
@@ -88,6 +92,25 @@ impl<T> PartialOrd for ParsedDeclId<T> {
 impl<T> Ord for ParsedDeclId<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+impl<T> Serialize for ParsedDeclId<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for ParsedDeclId<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let id = usize::deserialize(deserializer)?;
+        Ok(ParsedDeclId::new(id))
     }
 }
 

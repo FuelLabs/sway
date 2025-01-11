@@ -19,7 +19,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg as pkg;
 use lsp_types::{
-    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
+    CompletionItem, DocumentSymbol, GotoDefinitionResponse, Location, Position, Range, Url,
 };
 use parking_lot::RwLock;
 use pkg::{
@@ -231,7 +231,7 @@ impl Session {
             let program = compiled_program.typed.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
-                program.root.namespace.module(&engines).current_items(),
+                &program.root.namespace,
                 &engines,
                 ident_to_complete,
                 fn_decl,
@@ -248,12 +248,23 @@ impl Session {
         Some(program.root.namespace)
     }
 
-    pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let _p = tracing::trace_span!("symbol_information").entered();
-        let tokens = self.token_map.tokens_for_file(url);
-        self.sync
-            .to_workspace_url(url.clone())
-            .map(|url| capabilities::document_symbol::to_symbol_information(tokens, &url))
+    /// Generate hierarchical document symbols for the given file.
+    pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
+        let _p = tracing::trace_span!("document_symbols").entered();
+        let path = url.to_file_path().ok()?;
+        self.compiled_program
+            .read()
+            .typed
+            .as_ref()
+            .map(|ty_program| {
+                capabilities::document_symbol::to_document_symbols(
+                    url,
+                    &path,
+                    ty_program,
+                    &self.engines.read(),
+                    &self.token_map,
+                )
+            })
     }
 
     /// Populate [Documents] with sway files found in the workspace.

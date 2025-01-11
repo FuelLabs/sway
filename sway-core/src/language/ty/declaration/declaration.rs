@@ -1,3 +1,11 @@
+use crate::{
+    decl_engine::*,
+    engine_threading::*,
+    language::{parsed::Declaration, ty::*, Visibility},
+    type_system::*,
+    types::*,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
@@ -9,15 +17,7 @@ use sway_error::{
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    language::{parsed::Declaration, ty::*, Visibility},
-    type_system::*,
-    types::*,
-};
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyDecl {
     VariableDecl(Box<TyVariableDecl>),
     ConstantDecl(ConstantDecl),
@@ -33,7 +33,7 @@ pub enum TyDecl {
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope(GenericTypeForFunctionScope),
-    ErrorRecovery(Span, ErrorEmitted),
+    ErrorRecovery(Span, #[serde(skip)] ErrorEmitted),
     StorageDecl(StorageDecl),
     TypeAliasDecl(TypeAliasDecl),
 }
@@ -46,70 +46,70 @@ pub trait TyDeclParsedType {
     type ParsedType;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConstantDecl {
     pub decl_id: DeclId<TyConstantDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfigurableDecl {
     pub decl_id: DeclId<TyConfigurableDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TraitTypeDecl {
     pub decl_id: DeclId<TyTraitType>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FunctionDecl {
     pub decl_id: DeclId<TyFunctionDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TraitDecl {
     pub decl_id: DeclId<TyTraitDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StructDecl {
     pub decl_id: DeclId<TyStructDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EnumDecl {
     pub decl_id: DeclId<TyEnumDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EnumVariantDecl {
     pub enum_ref: DeclRefEnum,
     pub variant_name: Ident,
     pub variant_decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImplSelfOrTrait {
     pub decl_id: DeclId<TyImplSelfOrTrait>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AbiDecl {
     pub decl_id: DeclId<TyAbiDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenericTypeForFunctionScope {
     pub name: Ident,
     pub type_id: TypeId,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StorageDecl {
     pub decl_id: DeclId<TyStorageDecl>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TypeAliasDecl {
     pub decl_id: DeclId<TyTypeAliasDecl>,
 }
@@ -740,31 +740,9 @@ impl TyDecl {
                 decl.return_type.type_id
             }
             TyDecl::StructDecl(StructDecl { decl_id }) => {
-                let decl = decl_engine.get_struct(decl_id);
-                type_engine.insert(
-                    engines,
-                    TypeInfo::Struct(*decl_id),
-                    decl.name().span().source_id(),
-                )
+                type_engine.insert_struct(engines, *decl_id)
             }
-            TyDecl::EnumDecl(EnumDecl { decl_id }) => {
-                let decl = decl_engine.get_enum(decl_id);
-                type_engine.insert(
-                    engines,
-                    TypeInfo::Enum(*decl_id),
-                    decl.name().span().source_id(),
-                )
-            }
-            TyDecl::StorageDecl(StorageDecl { decl_id, .. }) => {
-                let storage_decl = decl_engine.get_storage(decl_id);
-                type_engine.insert(
-                    engines,
-                    TypeInfo::Storage {
-                        fields: storage_decl.fields_as_typed_struct_fields(),
-                    },
-                    storage_decl.span().source_id(),
-                )
-            }
+            TyDecl::EnumDecl(EnumDecl { decl_id }) => type_engine.insert_enum(engines, *decl_id),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_type_alias(decl_id);
                 decl.create_type_id(engines)

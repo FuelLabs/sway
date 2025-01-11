@@ -1,7 +1,7 @@
 library;
 
 // ANCHOR: to_bytes_import
-use std::{bytes::Bytes, bytes_conversions::{b256::*, u16::*, u256::*, u32::*, u64::*,}};
+use std::{bytes::Bytes, bytes_conversions::{b256::*, u16::*, u256::*, u32::*, u64::*}};
 // ANCHOR_END: to_bytes_import
 
 pub fn convert_to_bytes() {

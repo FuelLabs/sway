@@ -24,13 +24,11 @@ impl ty::TyTraitFn {
         decl_id: &ParsedDeclId<TraitFn>,
     ) -> Result<(), ErrorEmitted> {
         let trait_fn = engines.pe().get_trait_fn(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            trait_fn.name.clone(),
-            Declaration::TraitFnDeclaration(*decl_id),
-        )?;
-        let _ = ctx.scoped(engines, trait_fn.span.clone(), |_scoped_ctx| Ok(()));
+        let decl = Declaration::TraitFnDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, trait_fn.name.clone(), decl.clone())?;
+        let _ = ctx.scoped(engines, trait_fn.span.clone(), Some(decl), |_scoped_ctx| {
+            Ok(())
+        });
         Ok(())
     }
 
@@ -49,7 +47,6 @@ impl ty::TyTraitFn {
         } = trait_fn;
 
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
         ctx.by_ref().scoped(handler, Some(span.clone()), |mut ctx| {
@@ -80,9 +77,7 @@ impl ty::TyTraitFn {
                     EnforceTypeArguments::Yes,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             let trait_fn = ty::TyTraitFn {
                 name: name.clone(),

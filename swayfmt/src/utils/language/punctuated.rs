@@ -8,8 +8,9 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{
-    keywords::CommaToken, punctuated::Punctuated, ConfigurableField, ItemStorage, StorageEntry,
-    StorageField, TypeField,
+    keywords::{ColonToken, CommaToken, EqToken, InToken, Keyword, Token},
+    punctuated::Punctuated,
+    ConfigurableField, ItemStorage, PubToken, StorageEntry, StorageField, TypeField,
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
 
@@ -27,7 +28,7 @@ where
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
+        if !self.is_empty() {
             match formatter.shape.code_line.line_style {
                 LineStyle::Normal => {
                     write!(
@@ -55,7 +56,7 @@ where
                     if !formatted_code.ends_with('\n') {
                         writeln!(formatted_code)?;
                     }
-                    if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
+                    if !self.is_empty() {
                         formatter.write_indent_into_buffer(formatted_code)?;
                     }
 
@@ -191,8 +192,8 @@ impl Format for Ident {
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self.is_raw_ident() {
-            true => write!(formatted_code, "{}{}", RAW_MODIFIER, self.span().as_str())?,
-            false => write!(formatted_code, "{}", self.span().as_str())?,
+            true => write!(formatted_code, "{}{}", RAW_MODIFIER, self.as_str())?,
+            false => write!(formatted_code, "{}", self.as_str())?,
         }
 
         Ok(())
@@ -206,14 +207,14 @@ impl Format for TypeField {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // If there is a visibility token add it to the formatted_code with a ` ` after it.
-        if let Some(visibility) = &self.visibility {
-            write!(formatted_code, "{} ", visibility.span().as_str())?;
+        if self.visibility.is_some() {
+            write!(formatted_code, "{} ", PubToken::AS_STR)?;
         }
         write!(
             formatted_code,
             "{}{} ",
-            self.name.span().as_str(),
-            self.colon_token.span().as_str(),
+            self.name.as_str(),
+            ColonToken::AS_STR,
         )?;
         self.ty.format(formatted_code, formatter)?;
 
@@ -233,11 +234,11 @@ impl Format for ConfigurableField {
                 write!(
                     formatted_code,
                     "{}{} ",
-                    self.name.span().as_str(),
-                    self.colon_token.span().as_str(),
+                    self.name.as_str(),
+                    ColonToken::AS_STR,
                 )?;
                 self.ty.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
+                write!(formatted_code, " {} ", EqToken::AS_STR)?;
 
                 Ok(())
             },
@@ -258,17 +259,17 @@ impl Format for StorageField {
         formatter.with_shape(
             formatter.shape.with_default_code_line(),
             |formatter| -> Result<(), FormatterError> {
-                write!(formatted_code, "{}", self.name.span().as_str())?;
-                if let Some(in_token) = &self.in_token {
-                    write!(formatted_code, " {}", in_token.span().as_str())?;
+                write!(formatted_code, "{}", self.name.as_str())?;
+                if self.in_token.is_some() {
+                    write!(formatted_code, " {} ", InToken::AS_STR)?;
                 }
                 if let Some(key_expr) = &self.key_expr {
-                    write!(formatted_code, " {}", key_expr.span().as_str())?;
+                    key_expr.format(formatted_code, formatter)?;
                 }
-                write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
+                write!(formatted_code, "{} ", ColonToken::AS_STR)?;
 
                 self.ty.format(formatted_code, formatter)?;
-                write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
+                write!(formatted_code, " {} ", EqToken::AS_STR)?;
 
                 Ok(())
             },
@@ -328,7 +329,7 @@ impl Format for CommaToken {
         formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", self.span().as_str())?;
+        write!(formatted_code, "{}", CommaToken::AS_STR)?;
 
         Ok(())
     }

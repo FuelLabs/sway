@@ -1,7 +1,7 @@
 script;
 
 mod context;
-mod asset;
+pub mod asset;
 mod utils;
 
 use context::Context;

@@ -7,10 +7,9 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructDecl, TyDecl},
-        CallPath, Visibility,
+        Visibility,
     },
     namespace::{ModulePath, ModulePathBuf},
-    semantic_analysis::type_resolve::{resolve_associated_item, resolve_associated_type},
     TypeId,
 };
 use sway_error::{
@@ -683,6 +682,10 @@ impl Root {
         Ok(())
     }
 
+    /// Check that all accessed modules in the src path are visible from the dst path.
+    /// If src and dst have a common ancestor module that is private, this privacy modifier is
+    /// ignored for visibility purposes, since src and dst are both behind that private visibility
+    /// modifier.  Additionally, items in a private module are visible to its immediate parent.
     fn check_module_privacy(
         &self,
         handler: &Handler,
@@ -690,131 +693,34 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        // you are always allowed to access your ancestor's symbols
-        if !is_ancestor(src, dst) {
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(src).skip(1) {
-                let module = self.module.lookup_submodule(handler, engines, prefix)?;
-                if module.visibility().is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    handler.emit_err(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
-            }
-        }
-        Ok(())
-    }
+        // Calculate the number of src prefixes whose privacy is ignored.
+        let mut ignored_prefixes = 0;
 
-    ////// NAME RESOLUTION //////
-
-    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
-    ///
-    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
-        Ok(decl)
-    }
-
-    pub(crate) fn resolve_call_path_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let symbol_path: Vec<_> = mod_path
+        // Ignore visibility of common ancestors
+        ignored_prefixes += src
             .iter()
-            .chain(&call_path.prefixes)
-            .cloned()
-            .collect();
-        self.resolve_symbol_and_mod_path(
-            handler,
-            engines,
-            &symbol_path,
-            &call_path.suffix,
-            self_type,
-        )
-    }
+            .zip(dst)
+            .position(|(src_id, dst_id)| src_id != dst_id)
+            .unwrap_or(dst.len());
 
-    /// Given a path to a module and the identifier of a symbol within that module, resolve its
-    /// declaration.
-    ///
-    /// If the symbol is within the given module's namespace via import, we recursively traverse
-    /// imports until we find the original declaration.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
-        Ok(decl)
-    }
+        // Ignore visibility of direct submodules of the destination module
+        if dst.len() == ignored_prefixes {
+            ignored_prefixes += 1;
+        }
 
-    fn resolve_symbol_and_mod_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        mod_path: &ModulePath,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-        // This block tries to resolve associated types
-        let mut module = &self.module;
-        let mut current_mod_path = vec![];
-        let mut decl_opt = None;
-        for ident in mod_path.iter() {
-            if let Some(decl) = decl_opt {
-                decl_opt = Some(resolve_associated_type(
-                    handler, engines, module, ident, decl, None, self_type,
-                )?);
-            } else {
-                match module.submodules.get(ident.as_str()) {
-                    Some(ns) => {
-                        module = ns;
-                        current_mod_path.push(ident.clone());
-                    }
-                    None => {
-                        decl_opt = Some(
-                            module
-                                .current_lexical_scope()
-                                .items
-                                .resolve_symbol(handler, engines, ident)?,
-                        );
-                    }
-                }
+        // Check visibility of remaining submodules in the source path
+        for prefix in iter_prefixes(src).skip(ignored_prefixes) {
+            let module = self.module.lookup_submodule(handler, engines, prefix)?;
+            if module.visibility().is_private() {
+                let prefix_last = prefix[prefix.len() - 1].clone();
+                handler.emit_err(CompileError::ImportPrivateModule {
+                    span: prefix_last.span(),
+                    name: prefix_last,
+                });
             }
         }
-        if let Some(decl) = decl_opt {
-            let decl =
-                resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
-            return Ok((decl, current_mod_path));
-        }
 
-        self.module
-            .lookup_submodule(handler, engines, mod_path)
-            .and_then(|module| {
-                let decl = module
-                    .current_lexical_scope()
-                    .items
-                    .resolve_symbol(handler, engines, symbol)?;
-                Ok((decl, mod_path.to_vec()))
-            })
+        Ok(())
     }
 }
 

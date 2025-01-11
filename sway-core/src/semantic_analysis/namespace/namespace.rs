@@ -1,16 +1,10 @@
-use crate::{
-    language::{ty, CallPath, Visibility},
-    Engines, Ident, TypeId,
-};
+use crate::{language::Visibility, Engines, Ident};
 
 use super::{
-    module::Module,
-    root::{ResolvedDeclaration, Root},
-    submodule_namespace::SubmoduleNamespace,
-    ModulePath, ModulePathBuf,
+    module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, ModulePathBuf,
 };
 
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::handler::Handler;
 use sway_types::span::Span;
 
 /// The set of items that represent the namespace context passed throughout type checking.
@@ -124,15 +118,6 @@ impl Namespace {
             .unwrap()
     }
 
-    pub fn lookup_submodule_from_absolute_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        path: &ModulePath,
-    ) -> Result<&Module, ErrorEmitted> {
-        self.root.module.lookup_submodule(handler, engines, path)
-    }
-
     /// Returns true if the current module being checked is a direct or indirect submodule of
     /// the module given by the `absolute_module_path`.
     ///
@@ -188,53 +173,6 @@ impl Namespace {
         assert!(!absolute_module_path.is_empty(), "Absolute module path must have at least one element, because it always contains the package name.");
 
         root_name != &absolute_module_path[0]
-    }
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
-    }
-
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol_typed(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_symbol(handler, engines, symbol, self_type)
-            .map(|resolved_decl| resolved_decl.expect_typed())
-    }
-
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_typed(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_call_path(handler, engines, call_path, self_type)
-            .map(|resolved_decl| resolved_decl.expect_typed())
-    }
-
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

@@ -1,8 +1,3 @@
-use std::hash::{Hash, Hasher};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Ident;
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -10,8 +5,12 @@ use crate::{
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Ident;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStructExpressionField {
     pub name: Ident,
     pub value: TyExpression,
