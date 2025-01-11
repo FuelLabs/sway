@@ -35,7 +35,7 @@ pub use {
     },
     extension_trait::extension_trait,
     num_bigint::BigUint,
-    serde::Serialize,
+    serde::{Deserialize, Serialize},
     sway_types::{
         ast::{Delimiter, PunctKind},
         Ident, Span, Spanned,

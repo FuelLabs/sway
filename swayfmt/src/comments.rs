@@ -76,15 +76,18 @@ fn write_trailing_comment(
 }
 
 /// Given a range, writes comments contained within the range. This function
-/// removes comments that are written here from the CommentMap for later use.
+/// removes comments that are written here from the [CommentMap] for later use.
 ///
-/// Most comment formatting should be done using `rewrite_with_comments` in
+/// Most comment formatting should be done using [rewrite_with_comments] in
 /// the context of the AST, but in some cases (eg. at the end of module) we require this function.
 ///
 /// Returns:
 /// `Ok(true)` on successful execution with comments written,
 /// `Ok(false)` on successful execution and if there are no comments within the given range,
 /// `Err` if a FormatterError was encountered.
+///
+/// The `range` can be an empty [Range], or have its start being greater then its end.
+/// This is to support formatting arbitrary lexed trees, that are not necessarily backed by source code.
 pub fn write_comments(
     formatted_code: &mut FormattedCode,
     range: Range<usize>,
@@ -127,7 +130,7 @@ pub fn write_comments(
                     // We do a trim and truncate here to ensure that only a single whitespace separates
                     // the inlined comment from the previous token.
                     formatted_code.truncate(formatted_code.trim_end().len());
-                    write!(formatted_code, " {} ", comment.span().as_str(),)?;
+                    write!(formatted_code, " {} ", comment.span().as_str())?;
                 }
                 CommentKind::Multilined => {
                     write!(
@@ -157,6 +160,9 @@ pub fn write_comments(
 /// This takes a given AST node's unformatted span, its leaf spans and its formatted code (a string) and
 /// parses the equivalent formatted version to get its leaf spans. We traverse the spaces between both
 /// formatted and unformatted leaf spans to find possible comments and inserts them between.
+///
+/// The `unformatted_span` can be an empty [Span]. This is to support formatting arbitrary lexed trees,
+/// that are not necessarily backed by source code.
 pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     formatter: &mut Formatter,
     unformatted_span: Span,

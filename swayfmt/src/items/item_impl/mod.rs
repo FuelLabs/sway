@@ -8,7 +8,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{ItemImpl, ItemImplItem};
+use sway_ast::{
+    keywords::{ForToken, ImplToken, Keyword},
+    ItemImpl, ItemImplItem,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
@@ -23,14 +26,14 @@ impl Format for ItemImpl {
         // Required for comment formatting
         let start_len = formatted_code.len();
 
-        write!(formatted_code, "{}", self.impl_token.span().as_str())?;
+        write!(formatted_code, "{}", ImplToken::AS_STR)?;
         if let Some(generic_params) = &self.generic_params_opt {
             generic_params.format(formatted_code, formatter)?;
         }
         write!(formatted_code, " ")?;
-        if let Some((path_type, for_token)) = &self.trait_opt {
+        if let Some((path_type, _for_token)) = &self.trait_opt {
             path_type.format(formatted_code, formatter)?;
-            write!(formatted_code, " {} ", for_token.span().as_str())?;
+            write!(formatted_code, " {} ", ForToken::AS_STR)?;
         }
         self.ty.format(formatted_code, formatter)?;
         if let Some(where_clause) = &self.where_clause_opt {

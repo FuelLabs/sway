@@ -373,7 +373,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "5a4d19b92e784817f3e4f7d7c9961c5cba3069e53dcee2a93e8cd723e555c5f3",
+            "02a7e78ef0514b80ab56b409f06f895d8939640b6f6d746fcbb15d3e0c6a1a3b",
         )
         .unwrap(),
         proxy: None,
@@ -416,7 +416,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "5a4d19b92e784817f3e4f7d7c9961c5cba3069e53dcee2a93e8cd723e555c5f3",
+            "02a7e78ef0514b80ab56b409f06f895d8939640b6f6d746fcbb15d3e0c6a1a3b",
         )
         .unwrap(),
         proxy: None,
@@ -462,12 +462,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "5a4d19b92e784817f3e4f7d7c9961c5cba3069e53dcee2a93e8cd723e555c5f3",
+            "02a7e78ef0514b80ab56b409f06f895d8939640b6f6d746fcbb15d3e0c6a1a3b",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "f0641246d72044059de56248becf345bd8553c7892df8c12d7df23f461a7f95b",
+                "6eb0db0e120222a4ac3ced8dfbf15ae56753b852aa7989849fa20e5aca47af44",
             )
             .unwrap(),
         ),
@@ -1303,7 +1303,7 @@ async fn offset_shifted_abi_works() {
     let loader_with_configs_from_sdk =
         call_with_sdk_generated_overrides(&node_url, contract_id).await;
 
-    // Genearating the forc-deploy loader bytecode and loader abi.
+    // Generating the forc-deploy loader bytecode and loader abi.
     let loader_with_configs_from_forc =
         call_with_forc_generated_overrides(&node_url, contract_id).await;
     pretty_assertions::assert_eq!(loader_with_configs_from_forc, loader_with_configs_from_sdk);

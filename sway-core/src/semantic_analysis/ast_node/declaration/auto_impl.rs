@@ -8,14 +8,14 @@ use crate::{
         Purity,
     },
     semantic_analysis::TypeCheckContext,
-    Engines, TypeId, TypeInfo, TypeParameter,
+    Engines, TypeArgument, TypeInfo, TypeParameter,
 };
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_parse::Parse;
-use sway_types::{integer_bits::IntegerBits, BaseIdent, Named, ProgramId, Span, Spanned};
+use sway_types::{BaseIdent, Named, ProgramId, Span, Spanned};
 
 /// Contains all information needed to implement AbiEncode
 pub struct EncodingAutoImplContext<'a, 'b>
@@ -38,7 +38,7 @@ where
         T: Parse,
     {
         // Uncomment this to see what is being generated
-        //println!("{}", input);
+        // println!("{}", input);
 
         let handler = <_>::default();
         let source_id =
@@ -195,7 +195,7 @@ where
             code.push_str(&format!(
                 "{field_name}: buffer.decode::<{field_type_name}>(),",
                 field_name = f.name.as_str(),
-                field_type_name = Self::generate_type(engines, f.type_argument.type_id)?,
+                field_type_name = Self::generate_type(engines, &f.type_argument)?,
             ));
         }
 
@@ -217,7 +217,7 @@ where
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
                     },
                     _ => {
-                        let variant_type_name = Self::generate_type(engines, x.type_argument.type_id)?;
+                        let variant_type_name = Self::generate_type(engines, &x.type_argument)?;
                         format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n",
                             tag_value = x.tag,
                             enum_name = enum_name,
@@ -496,92 +496,15 @@ where
         }
     }
 
-    fn generate_type(engines: &Engines, type_id: TypeId) -> Option<String> {
-        let name = match &*engines.te().get(type_id) {
-            TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(type_param) => type_param.name.to_string(),
-            TypeInfo::StringSlice => "str".into(),
-            TypeInfo::StringArray(x) => format!("str[{}]", x.val()),
-            TypeInfo::UnsignedInteger(x) => match x {
-                IntegerBits::Eight => "u8",
-                IntegerBits::Sixteen => "u16",
-                IntegerBits::ThirtyTwo => "u32",
-                IntegerBits::SixtyFour => "u64",
-                IntegerBits::V256 => "u256",
-            }
-            .into(),
-            TypeInfo::Boolean => "bool".into(),
-            TypeInfo::Custom {
-                qualified_call_path: call_path,
-                ..
-            } => call_path.call_path.suffix.to_string(),
-            TypeInfo::Tuple(fields) => {
-                if fields.is_empty() {
-                    return Some("()".into());
-                }
-                let field_strs = fields
-                    .iter()
-                    .map(|field| Self::generate_type(engines, field.type_id))
-                    .collect::<Option<Vec<String>>>()?;
-                format!("({},)", field_strs.join(", "))
-            }
-            TypeInfo::B256 => "b256".into(),
-            TypeInfo::Enum(decl_id) => {
-                let decl = engines.de().get_enum(decl_id);
-
-                let type_parameters = decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| Self::generate_type(engines, x.type_id))
-                    .collect::<Option<Vec<String>>>()?
-                    .join(", ");
-
-                let type_parameters = if !type_parameters.is_empty() {
-                    format!("<{type_parameters}>")
-                } else {
-                    type_parameters
-                };
-
-                format!("{}{type_parameters}", decl.call_path.suffix.as_str())
-            }
-            TypeInfo::Struct(decl_id) => {
-                let decl = engines.de().get(decl_id);
-
-                let type_parameters = decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| Self::generate_type(engines, x.type_id))
-                    .collect::<Option<Vec<String>>>()?
-                    .join(", ");
-
-                let type_parameters = if !type_parameters.is_empty() {
-                    format!("<{type_parameters}>")
-                } else {
-                    type_parameters
-                };
-
-                format!("{}{type_parameters}", decl.call_path.suffix.as_str())
-            }
-            TypeInfo::Array(elem_ty, count) => {
-                format!(
-                    "[{}; {}]",
-                    Self::generate_type(engines, elem_ty.type_id)?,
-                    count.val()
-                )
-            }
-            TypeInfo::Slice(elem_ty) => {
-                format!(
-                    "__slice[{}]",
-                    Self::generate_type(engines, elem_ty.type_id)?
-                )
-            }
-            TypeInfo::RawUntypedPtr => "raw_ptr".into(),
-            TypeInfo::RawUntypedSlice => "raw_slice".into(),
-            TypeInfo::Alias { name, .. } => name.to_string(),
-            _ => return None,
-        };
-
-        Some(name)
+    // The safest way would be to return a canonical fully qualified type path.
+    // We do not have a way to do this at the moment, so the best way is to use
+    // exactly what was typed by the user, to accommodate aliased imports.
+    fn generate_type(engines: &Engines, t: &TypeArgument) -> Option<String> {
+        match &*engines.te().get(t.type_id) {
+            // when a function does not define a return type, the span points to the whole signature.
+            TypeInfo::Tuple(v) if v.is_empty() => Some("()".into()),
+            _ => Some(t.span().as_str().to_string()),
+        }
     }
 
     pub(crate) fn generate_contract_entry(
@@ -613,7 +536,7 @@ where
             let Some(args_types) = decl
                 .parameters
                 .iter()
-                .map(|x| Self::generate_type(engines, x.type_argument.type_id))
+                .map(|x| Self::generate_type(engines, &x.type_argument))
                 .collect::<Option<Vec<String>>>()
             else {
                 let err = handler.emit_err(CompileError::UnknownType {
@@ -638,7 +561,7 @@ where
             )
             .collect::<String>();
 
-            let Some(return_type) = Self::generate_type(engines, decl.return_type.type_id) else {
+            let Some(return_type) = Self::generate_type(engines, &decl.return_type) else {
                 let err = handler.emit_err(CompileError::UnknownType {
                     span: Span::dummy(),
                 });
@@ -674,8 +597,7 @@ where
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);
-            let Some(return_type) = Self::generate_type(engines, fallback_fn.return_type.type_id)
-            else {
+            let Some(return_type) = Self::generate_type(engines, &fallback_fn.return_type) else {
                 let err = handler.emit_err(CompileError::UnknownType {
                     span: Span::dummy(),
                 });
@@ -743,7 +665,7 @@ where
         let Some(args_types) = decl
             .parameters
             .iter()
-            .map(|x| Self::generate_type(engines, x.type_argument.type_id))
+            .map(|x| Self::generate_type(engines, &x.type_argument))
             .collect::<Option<Vec<String>>>()
         else {
             let err = handler.emit_err(CompileError::UnknownType {
@@ -836,7 +758,7 @@ where
         let Some(args_types) = decl
             .parameters
             .iter()
-            .map(|x| Self::generate_type(engines, x.type_argument.type_id))
+            .map(|x| Self::generate_type(engines, &x.type_argument))
             .collect::<Option<Vec<String>>>()
         else {
             let err = handler.emit_err(CompileError::UnknownType {
@@ -860,7 +782,7 @@ where
         )
         .collect::<String>();
 
-        let Some(return_type) = Self::generate_type(engines, decl.return_type.type_id) else {
+        let Some(return_type) = Self::generate_type(engines, &decl.return_type) else {
             let err = handler.emit_err(CompileError::UnknownType {
                 span: Span::dummy(),
             });

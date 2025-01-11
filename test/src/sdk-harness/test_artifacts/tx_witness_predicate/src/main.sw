@@ -1,8 +1,13 @@
 predicate;
 
-use std::tx::{tx_witnesses_count, tx_witness_data_length, tx_witness_data};
+use std::tx::{tx_witness_data, tx_witness_data_length, tx_witnesses_count};
 
-fn main(index: u64, expected_count: u64, expected_length: u64, expected_data: [u8; 64]) -> bool {
+fn main(
+    index: u64,
+    expected_count: u64,
+    expected_length: u64,
+    expected_data: [u8; 64],
+) -> bool {
     let count: u64 = tx_witnesses_count();
     let length: Option<u64> = tx_witness_data_length(index);
     let data: Option<[u8; 64]> = tx_witness_data(index);
@@ -11,7 +16,7 @@ fn main(index: u64, expected_count: u64, expected_length: u64, expected_data: [u
     assert(length.is_some() && length.unwrap() == expected_length);
 
     assert(data.is_some());
-    let data = data.unwrap();    
+    let data = data.unwrap();
     let mut iter = 0;
     while iter < 64 {
         assert(data[iter] == expected_data[iter]);

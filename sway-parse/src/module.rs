@@ -87,17 +87,27 @@ mod tests {
             fn main() {
                 ()
             }
-        "#,), @r###"
+        "#,), @r#"
         Annotated(
           attribute_list: [],
           value: Module(
             kind: Script(
               script_token: ScriptToken(
-                span: (13, 19),
+                span: Span(
+                  src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                  start: 13,
+                  end: 19,
+                  source_id: None,
+                ),
               ),
             ),
             semicolon_token: SemicolonToken(
-              span: (19, 20),
+              span: Span(
+                src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                start: 19,
+                end: 20,
+                source_id: None,
+              ),
             ),
             items: [
               Annotated(
@@ -106,11 +116,22 @@ mod tests {
                   fn_signature: FnSignature(
                     visibility: None,
                     fn_token: FnToken(
-                      span: (42, 44),
+                      span: Span(
+                        src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                        start: 42,
+                        end: 44,
+                        source_id: None,
+                      ),
                     ),
-                    name: Ident(
-                      to_string: "main",
-                      span: (45, 49),
+                    name: BaseIdent(
+                      name_override_opt: None,
+                      span: Span(
+                        src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                        start: 45,
+                        end: 49,
+                        source_id: None,
+                      ),
+                      is_raw_ident: false,
                     ),
                     generics: None,
                     arguments: Parens(
@@ -118,7 +139,12 @@ mod tests {
                         value_separator_pairs: [],
                         final_value_opt: None,
                       )),
-                      span: (49, 51),
+                      span: Span(
+                        src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                        start: 49,
+                        end: 51,
+                        source_id: None,
+                      ),
                     ),
                     return_type_opt: None,
                     where_clause_opt: None,
@@ -128,17 +154,32 @@ mod tests {
                       statements: [],
                       final_expr_opt: Some(Tuple(Parens(
                         inner: Nil,
-                        span: (70, 72),
+                        span: Span(
+                          src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                          start: 70,
+                          end: 72,
+                          source_id: None,
+                        ),
                       ))),
-                      span: (53, 85),
+                      span: Span(
+                        src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                        start: 53,
+                        end: 85,
+                        source_id: None,
+                      ),
                     ),
-                    span: (52, 86),
+                    span: Span(
+                      src: "\n            script;\n        \n            fn main() {\n                ()\n            }\n        ",
+                      start: 52,
+                      end: 86,
+                      source_id: None,
+                    ),
                   ),
                 )),
               ),
             ],
           ),
         )
-        "###);
+        "#);
     }
 }

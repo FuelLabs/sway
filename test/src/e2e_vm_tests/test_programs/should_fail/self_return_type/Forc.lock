@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-722DFCAB6A209427"
+
+[[package]]
+name = "self_return_type"
+source = "member"
+dependencies = ["core"]
