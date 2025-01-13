@@ -2782,6 +2782,7 @@ dependencies = [
  "anyhow",
  "clap",
  "dap",
+ "dirs 5.0.1",
  "escargot",
  "forc-pkg",
  "forc-test",
