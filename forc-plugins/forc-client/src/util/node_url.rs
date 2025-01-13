@@ -33,6 +33,21 @@ pub fn get_node_url(
     Ok(node_url)
 }
 
+/// Returns the URL for explorer
+pub fn get_explorer_url(node_target: &NodeTarget) -> Option<String> {
+    match (
+        node_target.testnet,
+        node_target.mainnet,
+        node_target.target.clone(),
+        node_target.node_url.clone(),
+    ) {
+        (true, false, None, None) => Target::testnet().explorer_url(),
+        (false, true, None, None) => Target::mainnet().explorer_url(),
+        (false, false, Some(target), None) => target.explorer_url(),
+        _ => None,
+    }
+}
+
 #[test]
 fn test_get_node_url_testnet() {
     let input = NodeTarget {
@@ -135,4 +150,40 @@ fn test_get_node_url_same_url() {
         mainnet: false,
     };
     get_node_url(&input, &None).unwrap();
+}
+
+#[test]
+fn test_get_explorer_url_testnet() {
+    let input = NodeTarget {
+        target: Some(Target::Testnet),
+        node_url: None,
+        testnet: false,
+        mainnet: false,
+    };
+    let actual = get_explorer_url(&input).unwrap();
+    assert_eq!("https://app-testnet.fuel.network", actual);
+}
+
+#[test]
+fn test_get_explorer_url_mainnet() {
+    let input = NodeTarget {
+        target: Some(Target::Mainnet),
+        node_url: None,
+        testnet: false,
+        mainnet: false,
+    };
+    let actual = get_explorer_url(&input).unwrap();
+    assert_eq!("https://app.fuel.network", actual);
+}
+
+#[test]
+fn test_get_explorer_url_local() {
+    let input = NodeTarget {
+        target: Some(Target::Local),
+        node_url: None,
+        testnet: false,
+        mainnet: false,
+    };
+    let actual = get_explorer_url(&input);
+    assert_eq!(None, actual);
 }
