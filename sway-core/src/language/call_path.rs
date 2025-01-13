@@ -369,29 +369,34 @@ impl CallPath {
             let mut is_absolute = false;
 
             if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
-                if m.current_items().symbols().contains_key(&self.suffix) {
-                    None
-                } else if let Some((_, path, _, _)) = m
-                    .current_items()
-                    .use_item_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    Some(path)
-                } else if let Some(paths_and_decls) = m
-                    .current_items()
-                    .use_glob_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    if paths_and_decls.len() == 1 {
-                        Some(paths_and_decls[0].0.clone())
+                m.walk_scope_chain(|lexical_scope| {
+                    let res = if lexical_scope.items.symbols().contains_key(&self.suffix) {
+                        None
+                    } else if let Some((_, path, _, _)) = lexical_scope
+                        .items
+                        .use_item_synonyms
+                        .get(&self.suffix)
+                        .cloned()
+                    {
+                        Some(path)
+                    } else if let Some(paths_and_decls) = lexical_scope
+                        .items
+                        .use_glob_synonyms
+                        .get(&self.suffix)
+                        .cloned()
+                    {
+                        if paths_and_decls.len() == 1 {
+                            Some(paths_and_decls[0].0.clone())
+                        } else {
+                            None
+                        }
                     } else {
                         None
-                    }
-                } else {
-                    None
-                }
+                    };
+                    Ok(res)
+                })
+                .ok()
+                .flatten()
             }) {
                 synonym_prefixes.clone_from(&mod_path);
                 is_absolute = true;
