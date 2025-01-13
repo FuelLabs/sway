@@ -37,6 +37,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         args,
         node,
         caller,
+        call_parameters,
         mode,
         gas,
         external_contracts,
@@ -133,12 +134,13 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             contract_id: contract_id.into(),
             encoded_selector: encode_fn_selector(&selector),
             encoded_args: Ok(encoded_data),
+            call_parameters: call_parameters.clone().into(),
             external_contracts: external_contracts
                 .iter()
                 .map(|addr| Bech32ContractId::from(*addr))
                 .collect(),
             output_param: output_param.clone(),
-            is_payable: false,
+            is_payable: call_parameters.amount > 0,
             custom_assets: Default::default(),
         };
 
@@ -209,7 +211,9 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
 
         let result = token_to_string(&token).expect("Failed to convert token to string");
 
-        println!("{}", result);
+        forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
+        forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
+        forc_tracing::println_action_green("result:", &result);
         return Ok(result);
     }
 
@@ -827,6 +831,7 @@ mod tests {
                 signing_key: Some(secret_key),
                 wallet: false,
             },
+            call_parameters: Default::default(),
             mode: cmd::call::ExecutionMode::DryRun,
             gas: None,
             external_contracts: None,
