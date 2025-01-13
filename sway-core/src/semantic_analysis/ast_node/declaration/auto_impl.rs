@@ -341,7 +341,7 @@ where
         });
 
         // Uncomment this to understand why an entry function was not generated
-        println!("{}, {:#?}", r.is_ok(), handler);
+        // println!("{}, {:#?}", r.is_ok(), handler);
 
         let decl = r.map_err(|_| handler.clone())?;
 
