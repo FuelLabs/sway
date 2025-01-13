@@ -323,7 +323,7 @@ pub fn compile(
         engines,
         retrigger_compilation,
         &[],
-        &[],
+        &[sway_features::Feature::NewEncoding],
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -465,14 +465,12 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
 
-    dbg!();
     let results = compile(
         &build_plan,
         engines,
         retrigger_compilation,
         lsp_mode.as_ref(),
     )?;
-    dbg!();
 
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
     // If we don't return an error here, then we will likely crash when trying to access the Engines
@@ -481,12 +479,8 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
-    dbg!();
     let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
-    dbg!(&session.compiled_program.read().typed.is_some());
-    dbg!(&diagnostics);
     if let Some(config) = &lsp_mode {
-        dbg!();
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
             if let Some((errors, warnings)) = &diagnostics {
@@ -496,7 +490,6 @@ pub fn parse_project(
         }
     }
 
-    dbg!();
     session.runnables.clear();
     let path = uri.to_file_path().unwrap();
     let program_id = program_id_from_path(&path, engines)?;
@@ -628,12 +621,9 @@ fn create_runnables(
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
-    dbg!();
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
-    dbg!();
     for (decl, _) in root.into_iter().flat_map(|x| x.test_fns(decl_engine)) {
-        dbg!();
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
             .attributes
@@ -655,7 +645,6 @@ fn create_runnables(
         ref main_function, ..
     }) = typed_program.map(|x| &x.kind)
     {
-        dbg!();
         let main_function = decl_engine.get_function(main_function);
         let span = main_function.name.span();
         if let Some(source_id) = span.source_id() {

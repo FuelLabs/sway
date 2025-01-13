@@ -854,7 +854,6 @@ impl FuelAsmBuilder<'_, '_> {
                                     c,
                                     "Cannot happen, we just checked",
                                 );
-                                dbg!();
                                 init_mut_vars.push(InitMutVars {
                                     stack_base_words,
                                     var_size: var_size.clone(),
