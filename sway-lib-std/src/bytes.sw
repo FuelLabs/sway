@@ -720,12 +720,14 @@ impl Bytes {
         self.len = both_len;
     }
 
-    /// Removes and returns a range of elements from the `Bytes` (i.e. indices `[start, end)`).
+    /// Removes and returns a range of elements from the `Bytes` (i.e. indices `[start, end)`),
+    /// then replaces that range with the contents of `replace_with`.
     ///
     /// # Arguments
     ///
     /// * `start`: [u64] - The starting index for the splice (inclusive).
     /// * `end`: [u64] - The ending index for the splice (exclusive).
+    /// * `replace_with`: [Bytes] - The elements to insert in place of the removed range.
     ///
     /// # Returns
     ///
@@ -743,52 +745,67 @@ impl Bytes {
     ///
     /// fn foo() {
     ///     let mut bytes = Bytes::new();
-    ///     bytes.push(5u8);
-    ///     bytes.push(7u8);
-    ///     bytes.push(9u8);
+    ///     bytes.push(5u8);  // index 0
+    ///     bytes.push(7u8);  // index 1
+    ///     bytes.push(9u8);  // index 2
     ///
-    ///     // Remove (and return) elements at indices 1..3
-    ///     let spliced = bytes.splice(1, 3);
+    ///     // Replace the middle item (index 1) with two new items
+    ///     let mut replacement = Bytes::new();
+    ///     replacement.push(42u8);
+    ///     replacement.push(100u8);
     ///
-    ///     // `spliced` has the elements 7u8, 9u8
-    ///     assert(spliced.len() == 2);
+    ///     // Splice out range [1..2) => removes the single element 7u8,
+    ///     // then inserts [42, 100] there
+    ///     let spliced = bytes.splice(1, 2, replacement);
+    ///
+    ///     // `spliced` has the element [7u8]
+    ///     assert(spliced.len() == 1);
     ///     assert(spliced.get(0).unwrap() == 7u8);
-    ///     assert(spliced.get(1).unwrap() == 9u8);
     ///
-    ///     // `bytes` has only the element 5u8 left
-    ///     assert(bytes.len() == 1);
+    ///     // `bytes` is now [5u8, 42u8, 100u8, 9u8]
+    ///     assert(bytes.len() == 4);
     ///     assert(bytes.get(0).unwrap() == 5u8);
+    ///     assert(bytes.get(1).unwrap() == 42u8);
+    ///     assert(bytes.get(2).unwrap() == 100u8);
+    ///     assert(bytes.get(3).unwrap() == 9u8);
     /// }
     /// ```
-    pub fn splice(ref mut self, start: u64, end: u64) -> Bytes {
-        // Ensure `start <= end` and `end <= self.len`.
+    pub fn splice(ref mut self, start: u64, end: u64, replace_with: Bytes) -> Bytes {
         assert(start <= end);
         assert(end <= self.len);
 
         let splice_len = end - start;
-
-        if splice_len == 0 {
-            return Bytes::new();
-        }
-
         let mut spliced = Bytes::with_capacity(splice_len);
-
-        // Copy the range [start, end) into `spliced`.
         if splice_len > 0 {
             let start_ptr = self.buf.ptr().add_uint_offset(start);
             start_ptr.copy_bytes_to(spliced.buf.ptr(), splice_len);
             spliced.len = splice_len;
         }
 
-        // Now shift everything past `end` down to `start` to fill in the spliced-out section.
-        let tail_len = self.len - end;
-        if tail_len > 0 {
-            let tail_ptr = self.buf.ptr().add_uint_offset(end);
-            tail_ptr.copy_bytes_to(self.buf.ptr().add_uint_offset(start), tail_len);
+        let new_len = self.len - splice_len + replace_with.len();
+        if new_len > self.buf.capacity() {
+            let new_ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), new_len);
+            self.buf = RawBytes { ptr: new_ptr, cap: new_len };
         }
 
-        self.len -= splice_len;
+        let tail_len = self.len - end;
+        if splice_len != replace_with.len() && tail_len > 0 {
+            let src = self.buf.ptr().add_uint_offset(end);
+            let dst = self.buf.ptr().add_uint_offset(start + replace_with.len());
+            // Use temporary buffer to safely handle overlapping memory
+            let mut temp = Bytes::with_capacity(tail_len);
+            src.copy_bytes_to(temp.buf.ptr(), tail_len);
+            temp.buf.ptr().copy_bytes_to(dst, tail_len);
+        }
 
+        if replace_with.len() > 0 {
+            replace_with.buf.ptr().copy_bytes_to(
+                self.buf.ptr().add_uint_offset(start),
+                replace_with.len()
+            );
+        }
+
+        self.len = new_len;
         spliced
     }
 }
