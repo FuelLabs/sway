@@ -56,7 +56,7 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
                             if let Err(e) = commands::cmd_help(&helper, &args).await {
                                 println!("Error: {}", e);
                             }
-                        },
+                        }
                         cmd if helper.commands.is_tx_command(cmd) => {
                             if let Err(e) = commands::cmd_start_tx(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));

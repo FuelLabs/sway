@@ -13,7 +13,6 @@ pub struct Command {
     pub name: &'static str,
     pub aliases: &'static [&'static str],
     pub help: &'static str,
-    
 }
 
 pub struct Commands {
@@ -367,7 +366,7 @@ pub async fn cmd_help(helper: &DebuggerHelper, args: &[String]) -> Result<()> {
 /// If the execution terminated without hitting a breakpoint, it prints "Terminated".
 fn pretty_print_run_result(rr: &RunResult) {
     for receipt in rr.receipts() {
-        println!("Receipt: {receipt:?}");
+        println!("Receipt: {receipt:#?}");
     }
     if let Some(bp) = &rr.breakpoint {
         println!(

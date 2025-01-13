@@ -90,13 +90,13 @@ impl Hinter for DebuggerHelper {
     fn hint(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> Option<Self::Hint> {
         let cmd = line[..pos].split_whitespace().next()?;
         let command = self.commands.find_command(cmd)?;
-    
+
         if line[..pos].split_whitespace().count() == 1 {
             return Some(format!(" - {}", command.help));
         }
-    
+
         if self.commands.is_help_command(cmd) {
-            Some(" [command] - show help for a command".into()) 
+            Some(" [command] - show help for a command".into())
         } else {
             None
         }
