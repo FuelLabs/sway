@@ -9,9 +9,14 @@ use crate::{
 use anyhow::{anyhow, bail, Result};
 use either::Either;
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
+use fuel_tx::{PanicReason, Receipt};
 use fuels::{
     crypto::SecretKey,
-    programs::calls::{receipt_parser::ReceiptParser, traits::TransactionTuner, ContractCall},
+    programs::calls::{
+        receipt_parser::ReceiptParser,
+        traits::{ContractDependencyConfigurator, TransactionTuner},
+        ContractCall,
+    },
 };
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
 use fuels_core::{
@@ -19,13 +24,13 @@ use fuels_core::{
     types::{
         bech32::Bech32ContractId,
         param_types::ParamType,
-        transaction::TxPolicies,
+        transaction::{Transaction, TxPolicies},
         transaction_builders::{BuildableTransaction, ScriptBuildStrategy, VariableOutputPolicy},
         ContractId, EnumSelector, StaticStringToken, Token, U256,
     },
 };
 use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
-use sway_ast::{FnArgs, Item, ItemKind, Ty};
+use sway_ast::Item;
 use swayfmt::parse::with_handler;
 
 /// A command for calling a contract function.
@@ -111,34 +116,13 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         let abi_encoder = ABIEncoder::new(EncoderConfig::default());
         let encoded_data = abi_encoder.encode(&tokens)?;
 
-        let external_contracts = match external_contracts {
-            Some(external_contracts) => external_contracts,
-            None => {
-                // Automatically extract contract addresses from args; provide these as inputs to the call
-                // This makes the CLI more ergonomic
-                let extracted_external_contracts = extract_contract_addresses(&args);
-                if !extracted_external_contracts.is_empty() {
-                    forc_tracing::println_warning(
-                        "Automatically provided external contract addresses with call:",
-                    );
-                    extracted_external_contracts.iter().for_each(|addr| {
-                        forc_tracing::println_warning(&format!("- 0x{}", addr.to_string()));
-                    });
-                }
-                extracted_external_contracts
-            }
-        };
-
         // Create and execute call
         let call = ContractCall {
             contract_id: contract_id.into(),
             encoded_selector: encode_fn_selector(&selector),
             encoded_args: Ok(encoded_data),
             call_parameters: call_parameters.clone().into(),
-            external_contracts: external_contracts
-                .iter()
-                .map(|addr| Bech32ContractId::from(*addr))
-                .collect(),
+            external_contracts: vec![], // set below
             output_param: output_param.clone(),
             is_payable: call_parameters.amount > 0,
             custom_assets: Default::default(),
@@ -150,51 +134,96 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             fuels::core::codec::log_formatters_lookup(vec![], contract_id.into()),
         );
 
-        let tx_status = match mode {
+        let tx_policies = gas
+            .as_ref()
+            .map(Into::into)
+            .unwrap_or(TxPolicies::default());
+        let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
+        let external_contracts = match external_contracts {
+            Some(external_contracts) => external_contracts
+                .iter()
+                .map(|addr| Bech32ContractId::from(*addr))
+                .collect(),
+            None => {
+                // Automatically retrieve missing contract addresses from the call - by simulating the call
+                // and checking for missing contracts in the receipts
+                // This makes the CLI more ergonomic
+                let external_contracts = get_missing_contracts(
+                    call.clone(),
+                    &provider,
+                    &tx_policies,
+                    &variable_output_policy,
+                    &log_decoder,
+                    &wallet,
+                    None,
+                )
+                .await?;
+                if !external_contracts.is_empty() {
+                    forc_tracing::println_warning(
+                        "Automatically provided external contract addresses with call (max 10):",
+                    );
+                    external_contracts.iter().for_each(|addr| {
+                        forc_tracing::println_warning(&format!(
+                            "- 0x{}",
+                            ContractId::from(addr).to_string()
+                        ));
+                    });
+                }
+                external_contracts
+            }
+        };
+
+        let (tx_status, tx_hash) = match mode {
             cmd::call::ExecutionMode::DryRun => {
-                let tx_policies = gas.map(Into::into).unwrap_or(TxPolicies::default());
                 let tx = call
-                    .build_tx(tx_policies, VariableOutputPolicy::default(), &wallet)
+                    .with_external_contracts(external_contracts)
+                    .build_tx(tx_policies, variable_output_policy, &wallet)
                     .await
                     .expect("Failed to build transaction");
-                provider
+                let tx_hash = tx.id(provider.chain_id());
+                let tx_status = provider
                     .dry_run(tx)
                     .await
-                    .expect("Failed to dry run transaction")
+                    .expect("Failed to dry run transaction");
+                (tx_status, tx_hash)
             }
             cmd::call::ExecutionMode::Simulate => {
                 forc_tracing::println_warning(&format!(
                     "Simulating transaction with wallet... {}",
                     wallet.address().hash()
                 ));
-                let tx_policies = gas.clone().map(Into::into).unwrap_or(TxPolicies::default());
                 let tx = call
-                    .transaction_builder(tx_policies, VariableOutputPolicy::default(), &wallet)
+                    .with_external_contracts(external_contracts)
+                    .transaction_builder(tx_policies, variable_output_policy, &wallet)
                     .await
                     .expect("Failed to build transaction")
                     .with_build_strategy(ScriptBuildStrategy::StateReadOnly)
                     .build(provider)
                     .await?;
+                let tx_hash = tx.id(provider.chain_id());
                 let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
-                provider
+                let tx_status = provider
                     .dry_run_opt(tx, false, gas_price)
                     .await
-                    .expect("Failed to simulate transaction")
+                    .expect("Failed to simulate transaction");
+                (tx_status, tx_hash)
             }
             cmd::call::ExecutionMode::Live => {
-                forc_tracing::println_warning(&format!(
-                    "Sending transaction with wallet... {}",
-                    wallet.address().hash()
-                ));
-                let tx_policies = gas.map(Into::into).unwrap_or(TxPolicies::default());
+                forc_tracing::println_action_green(
+                    "Sending transaction with wallet",
+                    &format!("0x{}", wallet.address().hash()),
+                );
                 let tx = call
-                    .build_tx(tx_policies, VariableOutputPolicy::default(), &wallet)
+                    .with_external_contracts(external_contracts)
+                    .build_tx(tx_policies, variable_output_policy, &wallet)
                     .await
                     .expect("Failed to build transaction");
-                provider
+                let tx_hash = tx.id(provider.chain_id());
+                let tx_status = provider
                     .send_transaction_and_await_commit(tx)
                     .await
-                    .expect("Failed to send transaction")
+                    .expect("Failed to send transaction");
+                (tx_status, tx_hash)
             }
         };
 
@@ -255,13 +284,67 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     // r.unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
 }
 
+async fn get_missing_contracts(
+    mut call: ContractCall,
+    provider: &Provider,
+    tx_policies: &TxPolicies,
+    variable_output_policy: &VariableOutputPolicy,
+    log_decoder: &fuels_core::codec::LogDecoder,
+    account: &WalletUnlocked,
+    max_attempts: Option<u64>,
+) -> Result<Vec<Bech32ContractId>> {
+    let max_attempts = max_attempts.unwrap_or(10);
+
+    for attempt in 1..=max_attempts {
+        forc_tracing::println_warning(&format!(
+            "Executing dry-run attempt {} to find missing contracts",
+            attempt
+        ));
+
+        let tx = call
+            .build_tx(*tx_policies, *variable_output_policy, account)
+            .await?;
+
+        match provider
+            .dry_run(tx)
+            .await?
+            .take_receipts_checked(Some(log_decoder))
+        {
+            Ok(_) => return Ok(call.external_contracts),
+            Err(fuels_core::types::errors::Error::Transaction(
+                fuels::types::errors::transaction::Reason::Reverted { receipts, .. },
+            )) => match find_id_of_missing_contract(&receipts) {
+                Some(contract_id) => call.external_contracts.push(contract_id),
+                None => bail!("Failed to find missing contract"),
+            },
+            Err(err) => bail!(err),
+        }
+    }
+    bail!("Max attempts reached while finding missing contracts")
+}
+
+pub fn find_id_of_missing_contract(receipts: &[Receipt]) -> Option<Bech32ContractId> {
+    receipts.iter().find_map(|receipt| match receipt {
+        Receipt::Panic {
+            reason,
+            contract_id,
+            ..
+        } if *reason.reason() == PanicReason::ContractNotInInputs => {
+            let contract_id = contract_id
+                .expect("panic caused by a contract not in inputs must have a contract id");
+            Some(Bech32ContractId::from(contract_id))
+        }
+        _ => None,
+    })
+}
+
 async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<WalletUnlocked> {
     match (caller.signing_key, caller.wallet) {
         (None, false) => {
             let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap();
             let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
             forc_tracing::println_warning(&format!(
-                "No signing key or wallet flag provided. Using default signer: {}",
+                "No signing key or wallet flag provided. Using default signer: 0x{}",
                 wallet.address().hash()
             ));
             Ok(wallet)
@@ -728,29 +811,6 @@ fn parse_delimited_string(param_type: &ParamType, input: &str) -> Result<Vec<Str
     println!("parts: {:?}", parts);
 
     Ok(parts)
-}
-
-/// Best-effort to extract contract addresses from args
-/// These must start with 0x and be 42 characters long
-/// Returns a vector of unique contract addresses
-fn extract_contract_addresses(args: &[String]) -> Vec<ContractId> {
-    let contract_regex =
-        regex::Regex::new(r"(?:^|[^a-fA-F0-9])(0x[a-fA-F0-9]{64})(?:$|[^a-fA-F0-9])").unwrap();
-    let mut addresses: Vec<ContractId> = args
-        .iter()
-        .filter_map(|arg| {
-            contract_regex.captures_iter(arg).next().and_then(|cap| {
-                let addr = cap[1].to_string();
-                ContractId::from_str(&addr).ok()
-            })
-        })
-        .collect();
-
-    // Sort and remove duplicates
-    addresses.sort_unstable();
-    addresses.dedup();
-
-    addresses
 }
 
 // pub (crate) fn ty_to_token(ty: &Ty) -> Result<Token> {
@@ -1958,36 +2018,6 @@ mod tests {
         );
         let output = token_to_string(&token).unwrap();
         assert_eq!(output, "(container:{{42, fuel}, fuel})");
-    }
-
-    #[test]
-    fn test_extract_contract_addresses() {
-        let test_cases = vec![
-            "{0xb7024a8d5d167dc3664622e456431a62cbbe698c722f7bf0833b9e71723ccdee}",
-            "[0xb7024a8d5d167dc3664622e456431a62cbbe698c722f7bf0833b9e71723ccdee]",
-            "(X:0xb7024a8d5d167dc3664622e456431a62cbbe698c722f7bf0833b9e71723ccdee",
-            "0xb7024a8d5d167dc3664622e456431a62cbbe698c722f7bf0833b9e71723ccdee",
-            "Multiple{0xb7024a8d5d167dc3664622e456431a62cbbe698c722f7bf0833b9e71723ccdee}addresses",
-            "abc{0xb7024a8d5d167dc3664620x2e456431a62cbbe698c722f7bf0833b9e71723ccdee}addresses", // sneaky `0x` in the middle
-            "s21{0xb7024a8d5d167dc3664620x2e456431a62cbbe698c722f7bf0833b9e71723ccdee0x}",
-            "0x0000000000000000000000000000000000000000000000000000000000000042", // valid address
-        ];
-
-        let args: Vec<String> = test_cases.into_iter().map(String::from).collect();
-        let results = extract_contract_addresses(&args);
-        assert_eq!(results.len(), 2);
-        assert_eq!(
-            results[0],
-            "0x0000000000000000000000000000000000000000000000000000000000000042"
-                .parse()
-                .unwrap()
-        );
-        assert_eq!(
-            results[1],
-            "0xb7024a8d5d167dc3664622e456431a62cbbe698c722f7bf0833b9e71723ccdee"
-                .parse()
-                .unwrap()
-        );
     }
 
     #[tokio::test]

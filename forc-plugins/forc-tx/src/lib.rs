@@ -917,8 +917,8 @@ impl From<Output> for fuel_tx::Output {
     }
 }
 
-impl From<Gas> for TxPolicies {
-    fn from(gas: Gas) -> Self {
+impl From<&Gas> for TxPolicies {
+    fn from(gas: &Gas) -> Self {
         let mut policies = TxPolicies::default();
         if let Some(max_fee) = gas.max_fee {
             policies = policies.with_max_fee(max_fee);
