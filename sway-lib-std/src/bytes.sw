@@ -785,7 +785,10 @@ impl Bytes {
         let new_len = self.len - splice_len + replace_with.len();
         if new_len > self.buf.capacity() {
             let new_ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), new_len);
-            self.buf = RawBytes { ptr: new_ptr, cap: new_len };
+            self.buf = RawBytes {
+                ptr: new_ptr,
+                cap: new_len,
+            };
         }
 
         let tail_len = self.len - end;
@@ -799,10 +802,10 @@ impl Bytes {
         }
 
         if replace_with.len() > 0 {
-            replace_with.buf.ptr().copy_bytes_to(
-                self.buf.ptr().add_uint_offset(start),
-                replace_with.len()
-            );
+            replace_with
+                .buf
+                .ptr()
+                .copy_bytes_to(self.buf.ptr().add_uint_offset(start), replace_with.len());
         }
 
         self.len = new_len;

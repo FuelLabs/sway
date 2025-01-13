@@ -97,14 +97,12 @@ fn revert_bytes_splice_end_out_of_bounds() {
 }
 
 /// Additional tests for replacing a spliced range with different Byte lengths.
-
 #[test()]
 fn bytes_splice_replace_smaller() {
     let (mut bytes, a, b, c) = setup();
     bytes.push(11u8);
     bytes.push(13u8);
     // bytes = [5, 7, 9, 11, 13]
-
     let mut replacement = Bytes::new();
     replacement.push(42u8);
     // Remove [1..4) => [7, 9, 11], replace with [42]
