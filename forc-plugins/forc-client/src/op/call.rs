@@ -163,10 +163,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                         "Automatically provided external contract addresses with call (max 10):",
                     );
                     external_contracts.iter().for_each(|addr| {
-                        forc_tracing::println_warning(&format!(
-                            "- 0x{}",
-                            ContractId::from(addr)
-                        ));
+                        forc_tracing::println_warning(&format!("- 0x{}", ContractId::from(addr)));
                     });
                 }
                 external_contracts
