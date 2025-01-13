@@ -29,7 +29,7 @@ use fuels_core::{
         ContractId, EnumSelector, StaticStringToken, Token, U256,
     },
 };
-use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
+use std::{collections::HashMap, fmt::Write, fs::File, io::Write as _, str::FromStr};
 use sway_ast::Item;
 use swayfmt::parse::with_handler;
 
@@ -70,7 +70,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             }
         };
 
-        let abi_str = std::fs::read_to_string(file_path.clone()).expect("Failed to read ABI file");
+        let abi_str = std::fs::read_to_string(&file_path).expect("Failed to read ABI file");
         if is_temp_file {
             std::fs::remove_file(file_path).expect("Failed to remove ABI file");
         }
@@ -87,7 +87,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             .functions
             .iter()
             .find(|abi_func| abi_func.name == selector)
-            .expect(&format!("Function not found in ABI: {}", selector));
+            .unwrap_or_else(|| panic!("Function not found in ABI: {}", selector));
 
         // println!("function: {:?}", abi_func); // TODO: remove
 
@@ -106,9 +106,9 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                     ParamType::try_from_type_application(type_application, &type_lookup)
                         .expect("Failed to convert input type application");
                 println!("param_type: {:?}", param_type);
-                Ok(param_type_val_to_token(&param_type, arg)?)
+                param_type_val_to_token(&param_type, arg).expect("Failed to convert input value")
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Vec<_>>();
 
         let output_param = ParamType::try_from_type_application(&abi_func.output, &type_lookup)
             .expect("Failed to convert output type");
@@ -131,7 +131,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         let provider = wallet.provider().unwrap();
         // TODO: log decoding would be required for verbose debugging mode
         let log_decoder = fuels::core::codec::LogDecoder::new(
-            fuels::core::codec::log_formatters_lookup(vec![], contract_id.into()),
+            fuels::core::codec::log_formatters_lookup(vec![], contract_id),
         );
 
         let tx_policies = gas
@@ -150,7 +150,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                 // This makes the CLI more ergonomic
                 let external_contracts = get_missing_contracts(
                     call.clone(),
-                    &provider,
+                    provider,
                     &tx_policies,
                     &variable_output_policy,
                     &log_decoder,
@@ -165,7 +165,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                     external_contracts.iter().for_each(|addr| {
                         forc_tracing::println_warning(&format!(
                             "- 0x{}",
-                            ContractId::from(addr).to_string()
+                            ContractId::from(addr)
                         ));
                     });
                 }
@@ -232,7 +232,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             .expect("Failed to take receipts");
 
         let data = ReceiptParser::new(&receipts, DecoderConfig::default())
-            .extract_contract_call_data(contract_id.into())
+            .extract_contract_call_data(contract_id)
             .expect("Failed to extract contract call data");
         let token = ABIDecoder::default()
             .decode(&output_param, &data)
@@ -246,7 +246,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         if let Some(explorer_url) = get_explorer_url(&node) {
             forc_tracing::println_action_green(
                 "\nView transaction:",
-                &format!("{}/tx/0x{}", explorer_url, tx_hash.to_string()),
+                &format!("{}/tx/0x{}", explorer_url, tx_hash),
             );
         }
         return Ok(result);
@@ -435,7 +435,7 @@ pub fn param_type_val_to_token(param_type: &ParamType, input: &str) -> Result<To
             if input.len() % 2 != 0 {
                 return Err(anyhow!("bytes value must be even length: {}", input));
             }
-            hex::decode(&input)
+            hex::decode(input)
                 .map(Token::Bytes)
                 .map_err(|_| anyhow!("failed to parse bytes value: {}", input))
         }
@@ -445,7 +445,7 @@ pub fn param_type_val_to_token(param_type: &ParamType, input: &str) -> Result<To
             if input.len() % 2 != 0 {
                 return Err(anyhow!("raw slice value must be even length: {}", input));
             }
-            hex::decode(&input)
+            hex::decode(input)
                 .map(Token::RawSlice)
                 .map_err(|_| anyhow!("failed to parse raw slice value: {}", input))
         }
@@ -578,7 +578,7 @@ pub fn token_to_param_type(token: &Token) -> Result<ParamType> {
         Token::Tuple(tokens) => Ok(ParamType::Tuple(
             tokens
                 .iter()
-                .map(|t| token_to_param_type(t))
+                .map(token_to_param_type)
                 .collect::<Result<Vec<_>>>()?,
         )),
         Token::Array(tokens) => Ok(ParamType::Array(
@@ -629,25 +629,25 @@ pub fn token_to_string(token: &Token) -> Result<String> {
         Token::U128(n) => Ok(n.to_string()),
         Token::U256(n) => Ok(n.to_string()),
         Token::B256(bytes) => {
-            let hex = bytes
-                .iter()
-                .map(|b| format!("{:02x}", b))
-                .collect::<String>();
+            let mut hex = String::with_capacity(bytes.len() * 2);
+            for byte in bytes {
+                write!(hex, "{:02x}", byte).unwrap();
+            }
             Ok(format!("0x{}", hex))
         }
         Token::Bytes(bytes) => {
-            let hex = bytes
-                .iter()
-                .map(|b| format!("{:02x}", b))
-                .collect::<String>();
+            let mut hex = String::with_capacity(bytes.len() * 2);
+            for byte in bytes {
+                write!(hex, "{:02x}", byte).unwrap();
+            }
             Ok(format!("0x{}", hex))
         }
         Token::String(s) => Ok(s.clone()),
         Token::RawSlice(bytes) => {
-            let hex = bytes
-                .iter()
-                .map(|b| format!("{:02x}", b))
-                .collect::<String>();
+            let mut hex = String::with_capacity(bytes.len() * 2);
+            for byte in bytes {
+                write!(hex, "{:02x}", byte).unwrap();
+            }
             Ok(format!("0x{}", hex))
         }
         Token::StringArray(token) => Ok(token.get_encodable_str().map(|s| s.to_string())?),
@@ -876,7 +876,7 @@ mod tests {
         // get secret key from wallet - use unsafe because secret_key is private
         // 0000000000000000000000000000000000000000000000000000000000000001
         let secret_key =
-            unsafe { std::mem::transmute::<&WalletUnlocked, &(Wallet, SecretKey)>(&wallet).1 };
+            unsafe { std::mem::transmute::<&WalletUnlocked, &(Wallet, SecretKey)>(wallet).1 };
         let vec_args = if args.to_string().is_empty() {
             vec![]
         } else {
@@ -1041,11 +1041,11 @@ mod tests {
 
         // bytes
         let token = param_type_val_to_token(&ParamType::Bytes, "0x42").unwrap();
-        assert_eq!(token, Token::Bytes(vec![66].try_into().unwrap()));
+        assert_eq!(token, Token::Bytes(vec![66]));
 
         // bytes - no 0x prefix
         let token = param_type_val_to_token(&ParamType::Bytes, "42").unwrap();
-        assert_eq!(token, Token::Bytes(vec![66].try_into().unwrap()));
+        assert_eq!(token, Token::Bytes(vec![66]));
 
         // string
         let token = param_type_val_to_token(&ParamType::String, "fuel").unwrap();
@@ -1053,11 +1053,11 @@ mod tests {
 
         // raw slice
         let token = param_type_val_to_token(&ParamType::RawSlice, "0x42").unwrap();
-        assert_eq!(token, Token::RawSlice(vec![66].try_into().unwrap()));
+        assert_eq!(token, Token::RawSlice(vec![66]));
 
         // raw slice - no 0x prefix
         let token = param_type_val_to_token(&ParamType::RawSlice, "42").unwrap();
-        assert_eq!(token, Token::RawSlice(vec![66].try_into().unwrap()));
+        assert_eq!(token, Token::RawSlice(vec![66]));
 
         // string array - single val
         let token = param_type_val_to_token(&ParamType::StringArray(4), "fuel").unwrap();
@@ -1483,7 +1483,7 @@ mod tests {
         assert_eq!(param_type, ParamType::B256);
 
         // bytes
-        let token = Token::Bytes(vec![66].try_into().unwrap());
+        let token = Token::Bytes(vec![66]);
         let param_type = token_to_param_type(&token).unwrap();
         assert_eq!(param_type, ParamType::Bytes);
 
@@ -1493,7 +1493,7 @@ mod tests {
         assert_eq!(param_type, ParamType::String);
 
         // raw slice
-        let token = Token::RawSlice(vec![66].try_into().unwrap());
+        let token = Token::RawSlice(vec![66]);
         let param_type = token_to_param_type(&token).unwrap();
         assert_eq!(param_type, ParamType::RawSlice);
 
@@ -1782,7 +1782,7 @@ mod tests {
         );
 
         // bytes
-        let token = Token::Bytes(vec![66].try_into().unwrap());
+        let token = Token::Bytes(vec![66]);
         let output = token_to_string(&token).unwrap();
         assert_eq!(output, "0x42");
 
@@ -1792,7 +1792,7 @@ mod tests {
         assert_eq!(output, "fuel");
 
         // raw slice
-        let token = Token::RawSlice(vec![66].try_into().unwrap());
+        let token = Token::RawSlice(vec![66]);
         let output = token_to_string(&token).unwrap();
         assert_eq!(output, "0x42");
 
