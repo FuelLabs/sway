@@ -2,7 +2,8 @@ use crate::NodeTarget;
 use clap::Parser;
 use either::Either;
 use fuel_crypto::SecretKey;
-use fuels_core::types::ContractId;
+use fuels::programs::calls::CallParameters;
+use fuels_core::types::{AssetId, ContractId};
 use std::{path::PathBuf, str::FromStr};
 use url::Url;
 
@@ -17,6 +18,8 @@ forc_util::cli_examples! {
         [ Call a contract that makes external contract calls => "forc call <CONTRACT_ID> --abi <ABI_FILE> <FUNCTION_SELECTOR> <ARGS> --contracts <CONTRACT_ADDRESS_1> <CONTRACT_ADDRESS_2>..." ]
         [ Call a contract in simulation mode => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --simulate" ]
         [ Call a contract in live mode which performs state changes => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live" ]
+        [ Call a contract payable function which transfers value of native asset => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live --amount <VALUE>" ]
+        [ Call a contract payable function which transfers value of custom asset => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live --amount <VALUE> --asset-id <ASSET_ID>" ]
     }
 }
 
@@ -58,6 +61,37 @@ pub struct Caller {
     /// Use forc-wallet to make the call
     #[clap(long, default_value = "false")]
     pub wallet: bool,
+}
+
+#[derive(Debug, Default, Clone, Parser)]
+pub struct CallParametersOpts {
+    /// Amount of native assets to forward with the call
+    #[clap(long, default_value = "0", alias = "value")]
+    pub amount: u64,
+
+    /// Asset ID to forward with the call
+    #[clap(long)]
+    asset_id: Option<AssetId>,
+
+    /// Amount of gas to forward with the call
+    #[clap(long)]
+    gas_forwarded: Option<u64>,
+}
+
+impl From<CallParametersOpts> for CallParameters {
+    fn from(opts: CallParametersOpts) -> Self {
+        let mut params = CallParameters::default();
+        if opts.amount != 0 {
+            params = params.with_amount(opts.amount);
+        }
+        if let Some(asset_id) = opts.asset_id {
+            params = params.with_asset_id(asset_id);
+        }
+        if let Some(gas) = opts.gas_forwarded {
+            params = params.with_gas_forwarded(gas);
+        }
+        params
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -105,14 +139,15 @@ pub struct Command {
     pub args: Vec<String>,
 
     #[clap(flatten)]
-    pub gas: Option<Gas>,
-
-    #[clap(flatten)]
     pub node: NodeTarget,
 
     /// Select the caller to use for the call
     #[clap(flatten)]
     pub caller: Caller,
+
+    /// Call parameters to use for the call
+    #[clap(flatten)]
+    pub call_parameters: CallParametersOpts,
 
     /// The execution mode to use for the call; defaults to dry-run; possible values: dry-run, simulate, live
     #[clap(long, default_value = "dry-run")]
