@@ -42,11 +42,16 @@ impl From<LocalCmd> for RunOpts {
         let path = value
             .chain_config
             .unwrap_or_else(|| ChainConfig::Local.into());
+        let db_type = value
+            .db_path
+            .as_ref()
+            .map_or(DbType::InMemory, |_| DbType::RocksDb);
         Self {
-            db_type: DbType::InMemory,
+            db_type,
             debug: true,
             snapshot: path,
             poa_instant: true,
+            db_path: value.db_path,
             ..Default::default()
         }
     }
