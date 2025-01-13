@@ -1,4 +1,11 @@
-use crate::{ignition::cmd::IgnitionCmd, local::cmd::LocalCmd, testnet::cmd::TestnetCmd};
+use std::net::IpAddr;
+
+use crate::{
+    consts::{DEFAULT_PEERING_PORT, DEFAULT_PORT},
+    ignition::cmd::IgnitionCmd,
+    local::cmd::LocalCmd,
+    testnet::cmd::TestnetCmd,
+};
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -21,4 +28,21 @@ pub enum Mode {
     Testnet(TestnetCmd),
     /// Starts a node that will connect to ignition network.
     Ignition(IgnitionCmd),
+}
+
+/// Set of shared node settings, specifcally related to connections.
+#[derive(Parser, Debug, Clone)]
+pub struct ConnectionSettings {
+    #[clap(long)]
+    pub peer_id: Option<String>,
+    #[clap(long)]
+    pub secret: Option<String>,
+    #[clap(long)]
+    pub relayer: Option<String>,
+    #[clap(long, default_value = "0.0.0.0")]
+    pub ip: IpAddr,
+    #[clap(long, default_value_t = DEFAULT_PORT)]
+    pub port: u16,
+    #[clap(long, default_value_t = DEFAULT_PEERING_PORT)]
+    pub peering_port: u16,
 }

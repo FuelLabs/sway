@@ -21,7 +21,10 @@ use std::{
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
 pub(crate) async fn run(cmd: TestnetCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
     check_and_update_chain_config(ChainConfig::Testnet).await?;
-    let keypair = if let (Some(peer_id), Some(secret)) = (&cmd.peer_id, &cmd.secret) {
+    let keypair = if let (Some(peer_id), Some(secret)) = (
+        &cmd.connection_settings.peer_id,
+        &cmd.connection_settings.secret,
+    ) {
         KeyPair {
             peer_id: peer_id.clone(),
             secret: secret.clone(),
@@ -30,16 +33,16 @@ pub(crate) async fn run(cmd: TestnetCmd, dry_run: bool) -> anyhow::Result<Option
         ask_user_keypair()?
     };
 
-    let relayer = cmd.relayer.unwrap_or_else(|| {
+    let relayer = cmd.connection_settings.relayer.unwrap_or_else(|| {
         ask_user_string("Ethereum RPC (Sepolia) Endpoint:").expect("Failed to get RPC endpoint")
     });
 
     let opts = TestnetOpts {
         keypair,
         relayer,
-        ip: cmd.ip,
-        port: cmd.port,
-        peering_port: cmd.peering_port,
+        ip: cmd.connection_settings.ip,
+        port: cmd.connection_settings.port,
+        peering_port: cmd.connection_settings.peering_port,
         db_path: cmd.db_path,
         bootstrap_node: cmd.bootstrap_node,
     };
@@ -53,14 +56,13 @@ pub(crate) async fn run(cmd: TestnetCmd, dry_run: bool) -> anyhow::Result<Option
             "{}",
             HumanReadableCommand::from(fuel_core_command)
         ));
-        Ok(None)
-    } else {
-        // Spawn the process with proper error handling
-        let handle = fuel_core_command
-            .spawn()
-            .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
-        Ok(Some(handle))
+        return Ok(None);
     }
+    // Spawn the process with proper error handling
+    let handle = fuel_core_command
+        .spawn()
+        .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
+    Ok(Some(handle))
 }
 
 #[derive(Debug)]
