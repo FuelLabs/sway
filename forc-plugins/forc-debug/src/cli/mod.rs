@@ -5,28 +5,30 @@ use crate::{
     error::{Error, Result},
     FuelClient,
 };
-use forc_tracing::println_red_err;
 use rustyline::{CompletionType, Config, EditMode, Editor};
 use state::{DebuggerHelper, State};
+use std::path::PathBuf;
 
 /// Start the CLI debug interface
 pub async fn start_cli(api_url: &str) -> Result<()> {
     // Initialize editor with config
-    let mut editor = Editor::with_config(
-        Config::builder()
-            .auto_add_history(true)
-            .history_ignore_space(true)
-            .completion_type(CompletionType::Circular)
-            .edit_mode(EditMode::Vi)
-            .build(),
-    )?;
+    let config = Config::builder()
+        .auto_add_history(true)
+        .history_ignore_space(true)
+        .completion_type(CompletionType::Circular)
+        .edit_mode(EditMode::Vi)
+        .max_history_size(100)?
+        .build();
+
+    let mut editor = Editor::with_config(config)?;
 
     // Set up helper
     let helper = DebuggerHelper::new();
     editor.set_helper(Some(helper));
 
-    // Load history
-    let _ = editor.load_history("debug_history.txt");
+    // Load history from .forc/.debug/history
+    let history_path = get_history_file_path()?;
+    let _ = editor.load_history(&history_path);
 
     // Create state
     let client = FuelClient::new(api_url).map_err(|e| Error::FuelClientError(e.to_string()))?;
@@ -38,6 +40,8 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
         .start_session()
         .await
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
+
+    println!("Welcome to the Sway Debugger! Type \"help\" for a list of commands.");
 
     // Main REPL loop
     loop {
@@ -59,22 +63,22 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
                         }
                         cmd if helper.commands.is_tx_command(cmd) => {
                             if let Err(e) = commands::cmd_start_tx(&mut state, args).await {
-                                println_red_err(&format!("Error: {}", e));
+                                println!("Error: {}", e);
                             }
                         }
                         cmd if helper.commands.is_register_command(cmd) => {
                             if let Err(e) = commands::cmd_registers(&mut state, args).await {
-                                println_red_err(&format!("Error: {}", e));
+                                println!("Error: {}", e);
                             }
                         }
                         cmd if helper.commands.is_breakpoint_command(cmd) => {
                             if let Err(e) = commands::cmd_breakpoint(&mut state, args).await {
-                                println_red_err(&format!("Error: {}", e));
+                                println!("Error: {}", e);
                             }
                         }
                         cmd if helper.commands.is_memory_command(cmd) => {
                             if let Err(e) = commands::cmd_memory(&mut state, args).await {
-                                println_red_err(&format!("Error: {}", e));
+                                println!("Error: {}", e);
                             }
                         }
                         cmd if helper.commands.is_quit_command(cmd) => {
@@ -82,17 +86,17 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
                         }
                         cmd if helper.commands.is_reset_command(cmd) => {
                             if let Err(e) = commands::cmd_reset(&mut state, args).await {
-                                println_red_err(&format!("Error: {}", e));
+                                println!("Error: {}", e);
                             }
                         }
                         cmd if helper.commands.is_continue_command(cmd) => {
                             if let Err(e) = commands::cmd_continue(&mut state, args).await {
-                                println_red_err(&format!("Error: {}", e));
+                                println!("Error: {}", e);
                             }
                         }
                         cmd if helper.commands.is_step_command(cmd) => {
                             if let Err(e) = commands::cmd_step(&mut state, args).await {
-                                println_red_err(&format!("Error: {}", e));
+                                println!("Error: {}", e);
                             }
                         }
                         unknown_cmd => {
@@ -124,9 +128,7 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
     }
 
     // Save history
-    if let Err(e) = editor.save_history("debug_history.txt") {
-        println!("Failed to save history: {}", e);
-    }
+    let _ = editor.save_history(&history_path);
 
     // End session
     state
@@ -136,4 +138,16 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
 
     Ok(())
+}
+
+fn get_history_file_path() -> Result<PathBuf> {
+    let home = dirs::home_dir().ok_or_else(|| {
+        Error::IoError(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Could not find home directory",
+        ))
+    })?;
+    let debug_dir = home.join(".forc").join(".debug");
+    std::fs::create_dir_all(&debug_dir).map_err(Error::IoError)?;
+    Ok(debug_dir.join("history"))
 }
