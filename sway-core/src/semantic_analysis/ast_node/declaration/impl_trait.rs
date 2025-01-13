@@ -104,7 +104,7 @@ impl TyImplSelfOrTrait {
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .with_self_type(Some(self_type_id))
             .allow_functions()
-            .scoped(handler, Some(block_span.clone()), |mut ctx| {
+            .scoped(handler, Some(block_span.clone()), |ctx| {
                 // Type check the type parameters
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -168,6 +168,7 @@ impl TyImplSelfOrTrait {
 
                 // Update the context
                 let mut ctx = ctx
+                    .by_ref()
                     .with_help_text("")
                     .with_type_annotation(type_engine.new_unknown())
                     .with_self_type(Some(implementing_for.type_id));
@@ -347,7 +348,7 @@ impl TyImplSelfOrTrait {
         // create the namespace for the impl
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
-            .scoped(handler, Some(block_span.clone()), |mut ctx| {
+            .scoped(handler, Some(block_span.clone()), |ctx| {
                 // Create a new type parameter for the self type.
                 let self_type_param =
                     // Same as with impl trait or ABI, we take the `block_span` as the `use_site_span`
@@ -422,6 +423,7 @@ impl TyImplSelfOrTrait {
                 })?;
 
                 let mut ctx = ctx
+                    .by_ref()
                     .with_help_text("")
                     .with_type_annotation(type_engine.new_unknown());
 
