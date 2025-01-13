@@ -2,7 +2,7 @@ use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
     util::{
-        node_url::get_node_url,
+        node_url::{get_explorer_url, get_node_url},
         tx::{prompt_forc_wallet_password, select_local_wallet_account},
     },
 };
@@ -214,6 +214,12 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
         forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
         forc_tracing::println_action_green("result:", &result);
+        if let Some(explorer_url) = get_explorer_url(&node) {
+            forc_tracing::println_action_green(
+                "\nView transaction:",
+                &format!("{}/tx/0x{}", explorer_url, tx_hash.to_string()),
+            );
+        }
         return Ok(result);
     }
 
