@@ -1218,20 +1218,20 @@ impl ty::TyExpression {
         if !ctx
             .namespace()
             .program_id(engines)
-            .read(engines, |m| m.current_items().has_storage_declared())
+            .read(engines, |m| m.root_items().has_storage_declared())
         {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
         let storage_fields = ctx.namespace().program_id(engines).read(engines, |m| {
-            m.current_items()
+            m.root_items()
                 .get_storage_field_descriptors(handler, decl_engine)
         })?;
 
         // Do all namespace checking here!
         let (storage_access, mut access_type) =
             ctx.namespace().program_id(engines).read(engines, |m| {
-                m.current_items().apply_storage_load(
+                m.root_items().apply_storage_load(
                     handler,
                     ctx.engines,
                     ctx.namespace(),
@@ -2536,12 +2536,27 @@ impl ty::TyExpression {
                     full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (
-                    TypeInfo::Array(elem_ty, _),
-                    ty::ProjectionKind::ArrayIndex { index_span, .. },
+                    TypeInfo::Array(elem_ty, array_length),
+                    ty::ProjectionKind::ArrayIndex { index, index_span },
                 ) => {
                     parent_rover = symbol;
                     symbol = elem_ty.type_id;
                     symbol_span = index_span.clone();
+
+                    if let Some(index_literal) = index
+                        .expression
+                        .as_literal()
+                        .and_then(|x| x.cast_value_to_u64())
+                    {
+                        if index_literal >= array_length.val() as u64 {
+                            return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                                index: index_literal,
+                                count: array_length.val() as u64,
+                                span: index.span.clone(),
+                            }));
+                        }
+                    }
+
                     // `index_span` does not contain the enclosing square brackets.
                     // Which means, if this array index access is the last one before the
                     // erroneous expression, the `full_span_for_error` will be missing the

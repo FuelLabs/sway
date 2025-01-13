@@ -4,7 +4,7 @@ use crate::{
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, TyDecl, TyStorageDecl},
-        CallPath, Visibility,
+        Visibility,
     },
     namespace::*,
     semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
@@ -20,7 +20,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, IdentUnique, Named, Spanned};
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 pub enum ResolvedFunctionDecl {
     Parsed(ParsedDeclId<FunctionDeclaration>),
@@ -36,14 +36,16 @@ impl ResolvedFunctionDecl {
     }
 }
 
-pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
-pub(super) type SymbolUniqueMap = im::OrdMap<IdentUnique, ResolvedDeclaration>;
+// The following types were using im::OrdMap but it revealed to be
+// much slower than using HashMap and sorting on iterationn.
+pub(super) type SymbolMap = HashMap<Ident, ResolvedDeclaration>;
+pub(super) type SymbolUniqueMap = HashMap<IdentUnique, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
 pub(super) type GlobSynonyms =
-    im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
-pub(super) type ItemSynonyms = im::HashMap<
+    HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
+pub(super) type ItemSynonyms = HashMap<
     Ident,
     (
         Option<SourceIdent>,
@@ -71,6 +73,9 @@ pub struct LexicalScope {
     pub children: Vec<LexicalScopeId>,
     /// The parent scope associated with this scope. Will be None for a root scope.
     pub parent: Option<LexicalScopeId>,
+    /// The parent while visiting scopes and push popping scopes from a stack.
+    /// This may differ from parent as we may revisit the scope in a different order during type check.
+    pub visitor_parent: Option<LexicalScopeId>,
     /// The declaration associated with this scope. This will initially be a [ParsedDeclId],
     /// but can be replaced to be a [DeclId] once the declaration is type checked.
     pub declaration: Option<ResolvedDeclaration>,
@@ -79,10 +84,10 @@ pub struct LexicalScope {
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Items {
-    /// An ordered map from `Ident`s to their associated declarations.
+    /// An map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
 
-    /// An ordered map from `IdentUnique`s to their associated declarations.
+    /// An map from `IdentUnique`s to their associated declarations.
     /// This uses an Arc<RwLock<SymbolUniqueMap>> so it is shared between all
     /// Items clones. This is intended so we can keep the symbols of previous
     /// lexical scopes while collecting_unifications scopes.
@@ -155,8 +160,10 @@ impl Items {
         Ok(())
     }
 
-    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
-        self.symbols().keys()
+    pub fn get_all_declared_symbols(&self) -> Vec<&Ident> {
+        let mut keys: Vec<_> = self.symbols().keys().collect();
+        keys.sort();
+        keys
     }
 
     pub fn resolve_symbol(
@@ -200,17 +207,18 @@ impl Items {
     }
 
     pub(crate) fn insert_parsed_symbol(
-        &mut self,
         handler: &Handler,
         engines: &Engines,
+        module: &mut Module,
         name: Ident,
         item: Declaration,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
-        self.insert_symbol(
+        Self::insert_symbol(
             handler,
             engines,
+            module,
             name,
             ResolvedDeclaration::Parsed(item),
             const_shadowing_mode,
@@ -221,18 +229,19 @@ impl Items {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_typed_symbol(
-        &mut self,
         handler: &Handler,
         engines: &Engines,
+        module: &mut Module,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
         collecting_unifications: bool,
     ) -> Result<(), ErrorEmitted> {
-        self.insert_symbol(
+        Self::insert_symbol(
             handler,
             engines,
+            module,
             name,
             ResolvedDeclaration::Typed(item),
             const_shadowing_mode,
@@ -243,9 +252,9 @@ impl Items {
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert_symbol(
-        &mut self,
         handler: &Handler,
         engines: &Engines,
+        module: &mut Module,
         name: Ident,
         item: ResolvedDeclaration,
         const_shadowing_mode: ConstShadowingMode,
@@ -666,36 +675,42 @@ impl Items {
                 }
             };
 
-        if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
-            append_shadowing_error(
-                ident,
-                decl,
-                false,
-                false,
-                &item.clone(),
-                const_shadowing_mode,
-            );
-        }
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            if let Some((ident, decl)) = lexical_scope.items.symbols.get_key_value(&name) {
+                append_shadowing_error(
+                    ident,
+                    decl,
+                    false,
+                    false,
+                    &item.clone(),
+                    const_shadowing_mode,
+                );
+            }
 
-        if let Some((ident, (imported_ident, _, decl, _))) =
-            self.use_item_synonyms.get_key_value(&name)
-        {
-            append_shadowing_error(
-                ident,
-                decl,
-                true,
-                imported_ident.is_some(),
-                &item,
-                const_shadowing_mode,
-            );
-        }
+            if let Some((ident, (imported_ident, _, decl, _))) =
+                lexical_scope.items.use_item_synonyms.get_key_value(&name)
+            {
+                append_shadowing_error(
+                    ident,
+                    decl,
+                    true,
+                    imported_ident.is_some(),
+                    &item,
+                    const_shadowing_mode,
+                );
+            }
+            Ok(None::<()>)
+        });
 
         if collecting_unifications {
-            self.symbols_unique_while_collecting_unifications
+            module
+                .current_items_mut()
+                .symbols_unique_while_collecting_unifications
                 .write()
                 .insert(name.clone().into(), item.clone());
         }
-        self.symbols.insert(name, item);
+
+        module.current_items_mut().symbols.insert(name, item);
 
         Ok(())
     }
@@ -768,27 +783,6 @@ impl Items {
         self.symbols_unique_while_collecting_unifications
             .write()
             .clear();
-    }
-
-    pub fn get_impl_spans_for_decl(&self, engines: &Engines, ty_decl: &TyDecl) -> Vec<Span> {
-        let handler = Handler::default();
-        ty_decl
-            .return_type(&handler, engines)
-            .map(|type_id| {
-                self.implemented_traits
-                    .get_impl_spans_for_type(engines, &type_id)
-            })
-            .unwrap_or_default()
-    }
-
-    pub fn get_impl_spans_for_type(&self, engines: &Engines, type_id: &TypeId) -> Vec<Span> {
-        self.implemented_traits
-            .get_impl_spans_for_type(engines, type_id)
-    }
-
-    pub fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
-        self.implemented_traits
-            .get_impl_spans_for_trait_name(trait_name)
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {

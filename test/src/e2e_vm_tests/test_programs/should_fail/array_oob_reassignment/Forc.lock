@@ -1,0 +1,8 @@
+[[package]]
+name = "array_oob_reassignment"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-CC73096846C1E083"
