@@ -20,7 +20,10 @@ use std::{
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
 pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
     check_and_update_chain_config(ChainConfig::Testnet).await?;
-    let keypair = if let (Some(peer_id), Some(secret)) = (&cmd.peer_id, &cmd.secret) {
+    let keypair = if let (Some(peer_id), Some(secret)) = (
+        &cmd.connection_settings.peer_id,
+        &cmd.connection_settings.secret,
+    ) {
         KeyPair {
             peer_id: peer_id.to_string(),
             secret: secret.to_string(),
@@ -29,7 +32,7 @@ pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Optio
         ask_user_keypair()?
     };
 
-    let relayer = if let Some(relayer) = cmd.relayer {
+    let relayer = if let Some(relayer) = cmd.connection_settings.relayer {
         relayer
     } else {
         ask_user_string("Ethereum RPC (mainnet) Endpoint:")?
@@ -38,9 +41,9 @@ pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Optio
     let opts = IgnitionOpts {
         keypair,
         relayer,
-        ip: cmd.ip,
-        port: cmd.port,
-        peering_port: cmd.peering_port,
+        ip: cmd.connection_settings.ip,
+        port: cmd.connection_settings.port,
+        peering_port: cmd.connection_settings.peering_port,
         db_path: cmd.db_path,
     };
     let run_opts = RunOpts::from(opts);
@@ -53,14 +56,13 @@ pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Optio
             "{}",
             HumanReadableCommand::from(fuel_core_command)
         ));
-        Ok(None)
-    } else {
-        // Spawn the process with proper error handling
-        let handle = fuel_core_command
-            .spawn()
-            .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
-        Ok(Some(handle))
+        return Ok(None);
     }
+    // Spawn the process with proper error handling
+    let handle = fuel_core_command
+        .spawn()
+        .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
+    Ok(Some(handle))
 }
 
 #[derive(Debug)]
