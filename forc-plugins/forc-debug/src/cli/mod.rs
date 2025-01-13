@@ -52,47 +52,55 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
 
                 if let Some(helper) = editor.helper() {
                     match args[0].as_str() {
+                        cmd if helper.commands.is_help_command(cmd) => {
+                            if let Err(e) = commands::cmd_help(&helper, &args).await {
+                                println!("Error: {}", e);
+                            }
+                        },
                         cmd if helper.commands.is_tx_command(cmd) => {
                             if let Err(e) = commands::cmd_start_tx(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));
                             }
-                        },
+                        }
                         cmd if helper.commands.is_register_command(cmd) => {
                             if let Err(e) = commands::cmd_registers(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));
                             }
-                        },
+                        }
                         cmd if helper.commands.is_breakpoint_command(cmd) => {
                             if let Err(e) = commands::cmd_breakpoint(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));
                             }
-                        },
+                        }
                         cmd if helper.commands.is_memory_command(cmd) => {
                             if let Err(e) = commands::cmd_memory(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));
                             }
-                        },
+                        }
                         cmd if helper.commands.is_quit_command(cmd) => {
                             break;
-                        },
+                        }
                         cmd if helper.commands.is_reset_command(cmd) => {
                             if let Err(e) = commands::cmd_reset(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));
                             }
-                        },
+                        }
                         cmd if helper.commands.is_continue_command(cmd) => {
                             if let Err(e) = commands::cmd_continue(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));
                             }
-                        },
+                        }
                         cmd if helper.commands.is_step_command(cmd) => {
                             if let Err(e) = commands::cmd_step(&mut state, args).await {
                                 println_red_err(&format!("Error: {}", e));
                             }
-                        },
+                        }
                         unknown_cmd => {
                             if let Some(suggestion) = helper.commands.find_closest(unknown_cmd) {
-                                println!("Unknown command: '{}'. Did you mean '{}'?", unknown_cmd, suggestion.name);
+                                println!(
+                                    "Unknown command: '{}'. Did you mean '{}'?",
+                                    unknown_cmd, suggestion.name
+                                );
                             } else {
                                 println!("Unknown command: '{}'", unknown_cmd);
                             }

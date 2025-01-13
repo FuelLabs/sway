@@ -1,7 +1,7 @@
 use crate::{
+    cli::state::{DebuggerHelper, State},
     error::{ArgumentError, Error, Result},
     names::{register_index, register_name},
-    cli::state::State,
     ContractId, RunResult, Transaction,
 };
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
@@ -13,6 +13,7 @@ pub struct Command {
     pub name: &'static str,
     pub aliases: &'static [&'static str],
     pub help: &'static str,
+    
 }
 
 pub struct Commands {
@@ -24,6 +25,7 @@ pub struct Commands {
     pub registers: Command,
     pub memory: Command,
     pub quit: Command,
+    pub help: Command,
 }
 
 impl Commands {
@@ -69,6 +71,11 @@ impl Commands {
                 aliases: &["exit"],
                 help: "Exit debugger",
             },
+            help: Command {
+                name: "help",
+                aliases: &["h", "?"],
+                help: "Show help for commands",
+            },
         }
     }
 
@@ -82,6 +89,7 @@ impl Commands {
             &self.registers,
             &self.memory,
             &self.quit,
+            &self.help,
         ]
     }
 
@@ -117,6 +125,17 @@ impl Commands {
         self.step.name == cmd || self.step.aliases.contains(&cmd)
     }
 
+    pub fn is_help_command(&self, cmd: &str) -> bool {
+        self.help.name == cmd || self.help.aliases.contains(&cmd)
+    }
+
+    pub fn find_command(&self, name: &str) -> Option<&Command> {
+        self.all_commands()
+            .into_iter()
+            .find(|cmd| cmd.name == name || cmd.aliases.contains(&name))
+    }
+
+    /// Returns a set of all valid command strings including aliases
     pub fn get_all_command_strings(&self) -> HashSet<&'static str> {
         let mut commands = HashSet::new();
         for cmd in self.all_commands() {
@@ -126,6 +145,7 @@ impl Commands {
         commands
     }
 
+    /// Suggests a similar command
     pub fn find_closest(&self, unknown_cmd: &str) -> Option<&Command> {
         self.all_commands()
             .into_iter()
@@ -139,7 +159,6 @@ impl Commands {
             .map(|(cmd, _)| cmd)
     }
 }
-
 
 pub async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
@@ -314,6 +333,30 @@ pub async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> 
             print!(" {byte:02x}");
         }
         println!();
+    }
+    Ok(())
+}
+
+// Add help command implementation:
+pub async fn cmd_help(helper: &DebuggerHelper, args: &[String]) -> Result<()> {
+    if args.len() > 1 {
+        // Help for specific command
+        if let Some(cmd) = helper.commands.find_command(&args[1]) {
+            println!("{} - {}", cmd.name, cmd.help);
+            if !cmd.aliases.is_empty() {
+                println!("Aliases: {}", cmd.aliases.join(", "));
+            }
+            return Ok(());
+        }
+        println!("Unknown command: '{}'", args[1]);
+    }
+
+    println!("Available commands:");
+    for cmd in helper.commands.all_commands() {
+        println!("  {:<12} - {}", cmd.name, cmd.help);
+        if !cmd.aliases.is_empty() {
+            println!("    aliases: {}", cmd.aliases.join(", "));
+        }
     }
     Ok(())
 }

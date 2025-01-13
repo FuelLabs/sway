@@ -1,7 +1,4 @@
-use crate::{
-    FuelClient,
-    cli::commands::Commands,
-};
+use crate::{cli::commands::Commands, FuelClient};
 use rustyline::{
     completion::Completer,
     highlight::{CmdKind, Highlighter},
@@ -9,12 +6,8 @@ use rustyline::{
     validate::{ValidationContext, ValidationResult, Validator},
     Context, Helper,
 };
-use std::{
-    borrow::Cow,
-    fs,
-    path::Path,
-};
 use serde_json::Value;
+use std::{borrow::Cow, fs, path::Path};
 
 pub struct State {
     pub client: FuelClient,
@@ -37,7 +30,7 @@ pub struct DebuggerHelper {
 impl DebuggerHelper {
     pub fn new() -> Self {
         Self {
-            commands: Commands::new()
+            commands: Commands::new(),
         }
     }
 }
@@ -49,7 +42,7 @@ impl Completer for DebuggerHelper {
         &self,
         line: &str,
         pos: usize,
-        ctx: &Context<'_>,
+        _ctx: &Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
         let words: Vec<&str> = line[..pos].split_whitespace().collect();
         let word_start = line[..pos].rfind(char::is_whitespace).map_or(0, |i| i + 1);
@@ -60,25 +53,28 @@ impl Completer for DebuggerHelper {
             if self.commands.is_tx_command(first_word) && line[..word_start].ends_with(' ') {
                 return Ok((word_start, get_transaction_files(word_to_complete)));
             }
-            
+
             // Register command context
             if self.commands.is_register_command(first_word) && line[..word_start].ends_with(' ') {
                 let register_names = vec![
-                    "zero", "one", "of", "pc", "ssp", "sp", "fp", "hp", 
-                    "err", "ggas", "cgas", "bal", "is", "ret", "retl", "flag"
+                    "zero", "one", "of", "pc", "ssp", "sp", "fp", "hp", "err", "ggas", "cgas",
+                    "bal", "is", "ret", "retl", "flag",
                 ];
-                
-                let matches: Vec<String> = register_names.into_iter()
+
+                let matches: Vec<String> = register_names
+                    .into_iter()
                     .filter(|name| name.starts_with(word_to_complete))
                     .map(String::from)
                     .collect();
-                    
+
                 return Ok((word_start, matches));
             }
         }
-        
+
         // Main command completion
-        let matches: Vec<String> = self.commands.get_all_command_strings()
+        let matches: Vec<String> = self
+            .commands
+            .get_all_command_strings()
             .into_iter()
             .filter(|cmd| cmd.starts_with(word_to_complete))
             .map(String::from)
@@ -91,8 +87,19 @@ impl Completer for DebuggerHelper {
 impl Hinter for DebuggerHelper {
     type Hint = String;
 
-    fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<Self::Hint> {
-        None
+    fn hint(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> Option<Self::Hint> {
+        let cmd = line[..pos].split_whitespace().next()?;
+        let command = self.commands.find_command(cmd)?;
+    
+        if line[..pos].split_whitespace().count() == 1 {
+            return Some(format!(" - {}", command.help));
+        }
+    
+        if self.commands.is_help_command(cmd) {
+            Some(" [command] - show help for a command".into()) 
+        } else {
+            None
+        }
     }
 }
 
@@ -139,8 +146,6 @@ impl Validator for DebuggerHelper {
 
 impl Helper for DebuggerHelper {}
 
-
-
 /// Returns valid transaction JSON files from current directory and subdirectories.
 /// Files must contain one of: Script, Create, Mint, Upgrade, Upload, or Blob keys.
 fn get_transaction_files(current_word: &str) -> Vec<String> {
@@ -159,8 +164,10 @@ fn get_transaction_files(current_word: &str) -> Vec<String> {
         if let Value::Object(obj) = json {
             // Check for transaction type
             let has_valid_type = obj.keys().any(|key| {
-                matches!(key.as_str(), 
-                    "Script" | "Create" | "Mint" | "Upgrade" | "Upload" | "Blob")
+                matches!(
+                    key.as_str(),
+                    "Script" | "Create" | "Mint" | "Upgrade" | "Upload" | "Blob"
+                )
             });
             return has_valid_type;
         }
@@ -174,15 +181,17 @@ fn get_transaction_files(current_word: &str) -> Vec<String> {
     for entry in walker.into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() {
             let path = entry.path();
-            
+
             // Check if it's a .json file and starts with the current word
-            if let Some(filename) = path.to_string_lossy()
+            if let Some(filename) = path
+                .to_string_lossy()
                 .strip_prefix("./")
                 .map(|f| f.to_string())
             {
-                if filename.ends_with(".json") 
+                if filename.ends_with(".json")
                     && filename.starts_with(current_word)
-                    && is_valid_transaction_json(path) {
+                    && is_valid_transaction_json(path)
+                {
                     matches.push(filename);
                 }
             }
