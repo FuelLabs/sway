@@ -23,7 +23,7 @@ pub struct RunOpts {
     pub(crate) port: Option<u16>,
     /// p2p network's TCP port.
     pub(crate) peering_port: Option<u16>,
-    /// The path to the database, only releavant if the db type is not
+    /// The path to the database, only relevant if the db type is not
     /// "in-memory".
     pub(crate) db_path: Option<PathBuf>,
     /// Enable full utxo stateful validation.
