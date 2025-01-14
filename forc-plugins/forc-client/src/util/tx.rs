@@ -313,7 +313,7 @@ pub(crate) async fn select_local_wallet_account(
         ));
     }
 
-    let secret_key = secret_key_from_forc_wallet(&wallet_path, account_index, &password)?;
+    let secret_key = secret_key_from_forc_wallet(&wallet_path, account_index, password)?;
     let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
     Ok(wallet)
 }

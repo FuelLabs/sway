@@ -92,7 +92,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         // println!("function: {:?}", abi_func); // TODO: remove
 
         if abi_func.inputs.len() != args.len() {
-            bail!("Number of arguments does not match number of parameters in function signature");
+            bail!("Number of arguments does not match number of parameters in function signature; expected {}, got {}", abi_func.inputs.len(), args.len());
         }
 
         let tokens = abi_func
@@ -106,9 +106,9 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                     ParamType::try_from_type_application(type_application, &type_lookup)
                         .expect("Failed to convert input type application");
                 println!("param_type: {:?}", param_type);
-                param_type_val_to_token(&param_type, arg).expect("Failed to convert input value")
+                param_type_val_to_token(&param_type, arg)
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         let output_param = ParamType::try_from_type_application(&abi_func.output, &type_lookup)
             .expect("Failed to convert output type");
@@ -240,12 +240,17 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
         forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
         forc_tracing::println_action_green("result:", &result);
-        if let Some(explorer_url) = get_explorer_url(&node) {
-            forc_tracing::println_action_green(
-                "\nView transaction:",
-                &format!("{}/tx/0x{}", explorer_url, tx_hash),
-            );
+
+        // display transaction url if live mode
+        if cmd::call::ExecutionMode::Live == mode {
+            if let Some(explorer_url) = get_explorer_url(&node) {
+                forc_tracing::println_action_green(
+                    "\nView transaction:",
+                    &format!("{}/tx/0x{}", explorer_url, tx_hash),
+                );
+            }
         }
+
         return Ok(result);
     }
 
@@ -310,9 +315,9 @@ async fn get_missing_contracts(
             Ok(_) => return Ok(call.external_contracts),
             Err(fuels_core::types::errors::Error::Transaction(
                 fuels::types::errors::transaction::Reason::Reverted { receipts, .. },
-            )) => match find_id_of_missing_contract(&receipts) {
-                Some(contract_id) => call.external_contracts.push(contract_id),
-                None => bail!("Failed to find missing contract"),
+            )) => {
+                let contract_id = find_id_of_missing_contract(&receipts)?;
+                call.external_contracts.push(contract_id);
             },
             Err(err) => bail!(err),
         }
@@ -320,19 +325,26 @@ async fn get_missing_contracts(
     bail!("Max attempts reached while finding missing contracts")
 }
 
-pub fn find_id_of_missing_contract(receipts: &[Receipt]) -> Option<Bech32ContractId> {
-    receipts.iter().find_map(|receipt| match receipt {
-        Receipt::Panic {
-            reason,
-            contract_id,
-            ..
-        } if *reason.reason() == PanicReason::ContractNotInInputs => {
-            let contract_id = contract_id
-                .expect("panic caused by a contract not in inputs must have a contract id");
-            Some(Bech32ContractId::from(contract_id))
+pub fn find_id_of_missing_contract(receipts: &[Receipt]) -> Result<Bech32ContractId> {
+    for receipt in receipts {
+        match receipt {
+            Receipt::Panic {
+                reason,
+                contract_id,
+                ..
+            } if *reason.reason() == PanicReason::ContractNotInInputs => {
+                let contract_id = contract_id
+                    .expect("panic caused by a contract not in inputs must have a contract id");
+                return Ok(Bech32ContractId::from(contract_id));
+            }
+            Receipt::Panic { reason, .. } => {
+                // If it's a panic but not ContractNotInInputs, include the reason
+                bail!("Contract execution panicked with reason: {:?}", reason);
+            }
+            _ => continue,
         }
-        _ => None,
-    })
+    }
+    bail!("No contract panic found in receipts: {:?}", receipts)
 }
 
 async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<WalletUnlocked> {
