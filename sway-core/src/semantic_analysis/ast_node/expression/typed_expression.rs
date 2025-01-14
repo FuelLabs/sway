@@ -646,8 +646,6 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        dbg!(&name);
-        ctx.namespace().module(engines).dump_until_parent();
         let exp = match ctx.resolve_symbol(&Handler::default(), &name).ok() {
             Some(ty::TyDecl::VariableDecl(decl)) => {
                 let ty::TyVariableDecl {
@@ -727,7 +725,6 @@ impl ty::TyExpression {
                 }
             }
             Some(a) => {
-                dbg!();
                 let err = handler.emit_err(CompileError::NotAVariable {
                     name: name.clone(),
                     what_it_is: a.friendly_type_name_with_acronym(),
@@ -736,7 +733,6 @@ impl ty::TyExpression {
                 ty::TyExpression::error(err, name.span(), engines)
             }
             None => {
-                dbg!();
                 let err = handler.emit_err(CompileError::UnknownVariable {
                     var_name: name.clone(),
                     span,

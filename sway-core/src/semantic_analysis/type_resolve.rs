@@ -288,13 +288,6 @@ pub fn resolve_call_path(
         .cloned()
         .collect();
 
-    if debug {
-        dbg!(root.module.name().as_str());
-        dbg!(root.module.current_lexical_scope_id());
-        root.module.dump_until_parent();
-        dbg!(&symbol_path);
-    }
-
     let (decl, mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
@@ -303,10 +296,6 @@ pub fn resolve_call_path(
         &call_path.suffix,
         self_type,
     )?;
-
-    if debug {
-        dbg!(&decl, &mod_path);
-    }
 
     if check_visibility == VisibilityCheck::No {
         return Ok(decl);
@@ -358,9 +347,8 @@ fn resolve_symbol_and_mod_path(
     // This block tries to resolve associated types
     let mut current_mod_path = vec![];
     let mut decl_opt = None;
-    dbg!();
+
     for ident in mod_path.iter() {
-        dbg!();
         if let Some(decl) = decl_opt {
             decl_opt = Some(resolve_associated_type_or_item(
                 handler,
@@ -384,7 +372,6 @@ fn resolve_symbol_and_mod_path(
         }
     }
     if let Some(decl) = decl_opt {
-        dbg!();
         let decl = resolve_associated_type_or_item(
             handler,
             engines,
@@ -397,7 +384,6 @@ fn resolve_symbol_and_mod_path(
         return Ok((decl, current_mod_path));
     }
 
-    dbg!(mod_path);
     module
         .lookup_submodule(handler, engines, mod_path)
         .and_then(|module| {

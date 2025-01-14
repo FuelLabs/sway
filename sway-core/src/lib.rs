@@ -564,6 +564,9 @@ pub fn parsed_to_ast(
     let mut collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
 
+    let s = collection_ctx.dump();
+    std::fs::write("target/collection_ctx.txt", s);
+
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,

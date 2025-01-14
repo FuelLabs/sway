@@ -48,11 +48,9 @@ impl TyImplSelfOrTrait {
             Declaration::ImplSelfOrTrait(*decl_id),
         )?;
 
-        dbg!(&impl_trait.block_span);
         let _ = ctx.scoped(engines, impl_trait.block_span.clone(), |scoped_ctx| {
             for const_generic_parameter in &impl_trait.impl_const_generics_parameters {
                 let const_generic_decl = engines.pe().get(const_generic_parameter);
-                dbg!(&const_generic_decl.name);
                 scoped_ctx.insert_parsed_symbol(
                     handler,
                     engines,
@@ -72,12 +70,9 @@ impl TyImplSelfOrTrait {
                     let _ = TyTraitType::collect(handler, engines, scoped_ctx, decl_id);
                 }
             });
-            dbg!();
             scoped_ctx.namespace().module(engines).dump_until_parent();
             Ok(())
         });
-
-        dbg!();
         ctx.namespace().module(engines).dump_until_parent();
         Ok(())
     }
@@ -112,15 +107,12 @@ impl TyImplSelfOrTrait {
         let self_type_id = self_type_param.type_id;
 
         // create a namespace for the impl
-        dbg!(&block_span);
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |mut ctx| {
                 // Type check the type parameters
-                dbg!();
-                ctx.namespace.module(engines).dump_until_parent();
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
@@ -397,7 +389,6 @@ impl TyImplSelfOrTrait {
                         Some(pe_decl_id),
                     );
 
-                    dbg!();
                     ctx.insert_symbol(
                         handler,
                         pe_decl.name.clone(),

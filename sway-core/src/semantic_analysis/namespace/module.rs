@@ -363,6 +363,14 @@ impl Module {
         symbol: &Ident,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let ret = self.walk_scope_chain(|lexical_scope| {
+            if symbol.as_str() == "N" {
+                dbg!(&lexical_scope
+                    .items
+                    .symbols()
+                    .iter()
+                    .map(|x| x.0.as_str())
+                    .collect::<Vec<_>>());
+            }
             lexical_scope.items.resolve_symbol(handler, engines, symbol)
         })?;
 
