@@ -20,7 +20,6 @@ async fn main() -> ForcResult<()> {
     init_tracing_subscriber(Default::default());
 
     let command = cmd::ForcNodeCmd::parse();
-
     let mut handle = op::run(command).await?;
 
     // if this is not a dry run we should wait for the kill signal and kill
