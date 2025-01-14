@@ -283,8 +283,8 @@ fn compile_constants(
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.current_items().get_all_declared_symbols() {
-        if let Some(resolved_decl) = module_ns.current_items().symbols.get(decl_name) {
+    for decl_name in module_ns.root_items().get_all_declared_symbols() {
+        if let Some(resolved_decl) = module_ns.root_items().symbols.get(decl_name) {
             if let ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) =
                 &resolved_decl.expect_typed_ref()
             {
@@ -325,10 +325,10 @@ pub(crate) fn compile_configurables(
     messages_types_map: &HashMap<TypeId, MessageId>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.current_items().get_all_declared_symbols() {
+    for decl_name in module_ns.root_items().get_all_declared_symbols() {
         if let Some(ResolvedDeclaration::Typed(ty::TyDecl::ConfigurableDecl(
             ty::ConfigurableDecl { decl_id, .. },
-        ))) = module_ns.current_items().symbols.get(decl_name)
+        ))) = module_ns.root_items().symbols.get(decl_name)
         {
             let decl = engines.de().get(decl_id);
 

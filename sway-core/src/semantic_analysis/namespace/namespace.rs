@@ -197,16 +197,16 @@ impl Namespace {
         symbol: &Ident,
     ) -> bool {
         let dummy_handler = Handler::default();
-        self.root
-            .item_lookup(
-                &dummy_handler,
-                engines,
-                symbol,
-                mod_path,
-                &self.current_mod_path,
-                true,
-            )
-            .is_ok()
+        if let Some(module) = self.module_from_absolute_path(mod_path) {
+            module.resolve_symbol(
+		&dummy_handler,
+		engines,
+		symbol,
+	    )
+		.is_ok()
+	} else {
+	    false
+	}
     }
 
     // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module

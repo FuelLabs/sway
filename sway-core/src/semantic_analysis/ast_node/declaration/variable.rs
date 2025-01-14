@@ -4,11 +4,11 @@ use crate::{
         parsed::*,
         ty::{self, TyExpression, TyVariableDecl},
     },
-    namespace::ResolvedDeclaration,
     semantic_analysis::*,
     type_system::*,
     Engines,
 };
+use namespace::ResolvedDeclaration;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Spanned;
 use symbol_collection_context::SymbolCollectionContext;

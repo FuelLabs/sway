@@ -357,16 +357,30 @@ impl Root {
         let mut decls_and_item_imports = vec![];
 
         // Collect all items declared in the source module
-        for (symbol, decl) in src_mod.current_items().symbols.iter() {
+        let mut symbols = src_mod
+            .root_items()
+            .symbols
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let decl = &src_mod.root_items().symbols[symbol];
             if is_ancestor(src, dst) || decl.visibility(engines).is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), src.to_vec()));
             }
         }
         // Collect those item-imported items that the source module reexports
         // These live in the same namespace as local declarations, so no shadowing is possible
-        for (symbol, (_, path, decl, src_visibility)) in
-            src_mod.current_items().use_item_synonyms.iter()
-        {
+        let mut symbols = src_mod
+            .root_items()
+            .use_item_synonyms
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let (_, path, decl, src_visibility) = &src_mod.root_items().use_item_synonyms[symbol];
             if src_visibility.is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), path.clone()))
             }
@@ -376,7 +390,15 @@ impl Root {
         // by local declarations and item imports in the source module, so they are treated
         // separately.
         let mut glob_imports = vec![];
-        for (symbol, bindings) in src_mod.current_items().use_glob_synonyms.iter() {
+        let mut symbols = src_mod
+            .root_items()
+            .use_glob_synonyms
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let bindings = &src_mod.root_items().use_glob_synonyms[symbol];
             // Ignore if the symbol is shadowed by a local declaration or an item import in the source module
             if !decls_and_item_imports
                 .iter()
@@ -390,8 +412,9 @@ impl Root {
             }
         }
 
-        let implemented_traits = src_mod.current_items().implemented_traits.clone();
+        let implemented_traits = src_mod.root_items().implemented_traits.clone();
         let dst_mod = self.require_module_mut_in_current_package(handler, &dst.to_vec())?;
+
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -440,7 +463,7 @@ impl Root {
         ignore_visibility: bool,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let src_mod = self.require_module(handler, &src.to_vec())?;
-        let src_items = src_mod.current_items();
+        let src_items = src_mod.root_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
             let visibility = if is_ancestor(src, dst) {
@@ -532,7 +555,7 @@ impl Root {
             if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
                 impls_to_insert.extend(
                     src_mod
-                        .current_items()
+                        .root_items()
                         .implemented_traits
                         .filter_by_type_item_import(
                             type_id,
@@ -549,7 +572,7 @@ impl Root {
                 // this is okay for now but we'll need to device some mechanism to collect all available trait impls
                 impls_to_insert.extend(
                     src_mod
-                        .current_items()
+                        .root_items()
                         .implemented_traits
                         .filter_by_trait_decl_span(decl_span),
                     engines,

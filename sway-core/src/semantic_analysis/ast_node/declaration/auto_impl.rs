@@ -320,7 +320,7 @@ where
         }
         assert!(!handler.has_warnings(), "{:?}", handler);
 
-        let ctx = self.ctx.by_ref();
+        let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
             &handler,
             engines,
@@ -331,11 +331,10 @@ where
             return Err(handler);
         }
 
-        let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
+        let r = ctx.scoped(&handler, None, |ctx| {
             TyDecl::type_check(
                 &handler,
-                ctx,
+                &mut ctx.by_ref(),
                 parsed::Declaration::FunctionDeclaration(decl),
             )
         });
@@ -343,12 +342,11 @@ where
         // Uncomment this to understand why an entry function was not generated
         //println!("{:#?}", handler);
 
-        let (decl, namespace) = r.map_err(|_| handler.clone())?;
+        let decl = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            *self.ctx.namespace = namespace;
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
@@ -382,7 +380,7 @@ where
 
         assert!(!handler.has_errors(), "{:?}", handler);
 
-        let ctx = self.ctx.by_ref();
+        let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
             &handler,
             engines,
@@ -393,19 +391,41 @@ where
             return Err(handler);
         }
 
-        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
+        let r = ctx.scoped(&handler, None, |ctx| {
             TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 
         // Uncomment this to understand why auto impl failed for a type.
         //println!("{:#?}", handler);
 
-        let (decl, namespace) = r.map_err(|_| handler.clone())?;
+        let decl = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            *self.ctx.namespace = namespace;
+            let impl_trait = if let TyDecl::ImplSelfOrTrait(impl_trait_id) = &decl {
+                engines.de().get_impl_self_or_trait(&impl_trait_id.decl_id)
+            } else {
+                unreachable!();
+            };
+
+            // Insert trait implementation generated in the previous scope into the current scope.
+            ctx.insert_trait_implementation(
+                &handler,
+                impl_trait.trait_name.clone(),
+                impl_trait.trait_type_arguments.clone(),
+                impl_trait.implementing_for.type_id,
+                &impl_trait.items,
+                &impl_trait.span,
+                impl_trait
+                    .trait_decl_ref
+                    .as_ref()
+                    .map(|decl_ref| decl_ref.decl_span().clone()),
+                crate::namespace::IsImplSelf::No,
+                crate::namespace::IsExtendingExistingImpl::No,
+            )
+            .ok();
+
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),

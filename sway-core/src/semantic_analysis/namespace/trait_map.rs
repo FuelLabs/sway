@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt,
     hash::{DefaultHasher, Hash, Hasher},
     sync::Arc,
@@ -19,7 +19,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::{EnumDeclaration, ImplItem, StructDeclaration},
-        ty::{self, TyImplItem, TyTraitItem},
+        ty::{self, TyDecl, TyImplItem, TyTraitItem},
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
@@ -136,7 +136,7 @@ impl ResolvedTraitImplItem {
 }
 
 /// Map of name to [ResolvedTraitImplItem](ResolvedTraitImplItem)
-type TraitItems = im::HashMap<String, ResolvedTraitImplItem>;
+type TraitItems = HashMap<String, ResolvedTraitImplItem>;
 
 #[derive(Clone, Debug)]
 struct TraitValue {
@@ -154,9 +154,9 @@ struct TraitEntry {
 /// Map of string of type entry id and vec of [TraitEntry].
 /// We are using the HashMap as a wrapper to the vec so the TraitMap algorithms
 /// don't need to traverse every TraitEntry.
-type TraitImpls = im::HashMap<TypeRootFilter, im::Vector<TraitEntry>>;
+type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
 
-#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialOrd, Ord, PartialEq, Debug)]
 enum TypeRootFilter {
     Unknown,
     Never,
@@ -193,7 +193,7 @@ enum TypeRootFilter {
 #[derive(Clone, Debug, Default)]
 pub struct TraitMap {
     trait_impls: TraitImpls,
-    satisfied_cache: im::HashSet<u64>,
+    satisfied_cache: HashSet<u64>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -229,7 +229,7 @@ impl TraitMap {
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
-            let mut trait_items: TraitItems = im::HashMap::new();
+            let mut trait_items: TraitItems = HashMap::new();
             for item in items.iter() {
                 match item {
                     ResolvedTraitImplItem::Parsed(_) => todo!(),
@@ -379,7 +379,10 @@ impl TraitMap {
                 } else if types_are_subset
                     && (traits_are_subset || matches!(is_impl_self, IsImplSelf::Yes))
                 {
-                    for (name, item) in trait_items.iter() {
+                    let mut names = trait_items.keys().clone().collect::<Vec<_>>();
+                    names.sort();
+                    for name in names {
+                        let item = &trait_items[name];
                         match item {
                             ResolvedTraitImplItem::Parsed(_item) => todo!(),
                             ResolvedTraitImplItem::Typed(item) => match item {
@@ -472,16 +475,14 @@ impl TraitMap {
             impl_span,
         };
         let entry = TraitEntry { key, value };
-        let mut trait_impls: TraitImpls =
-            im::HashMap::<TypeRootFilter, im::Vector<TraitEntry>>::new();
+        let mut trait_impls: TraitImpls = HashMap::<TypeRootFilter, Vec<TraitEntry>>::new();
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
-        let mut impls_vector = im::Vector::<TraitEntry>::new();
-        impls_vector.push_back(entry);
+        let impls_vector = vec![entry];
         trait_impls.insert(type_root_filter, impls_vector);
 
         let trait_map = TraitMap {
             trait_impls,
-            satisfied_cache: im::HashSet::default(),
+            satisfied_cache: HashSet::default(),
         };
 
         self.extend(trait_map, engines);
@@ -574,26 +575,43 @@ impl TraitMap {
     /// `Data<T, T>` needs to be able to call methods that are defined in the
     /// impl block of `Data<T, F>`
     pub(crate) fn insert_for_type(
-        &mut self,
         engines: &Engines,
+        module: &mut Module,
         type_id: TypeId,
         code_block_first_pass: CodeBlockFirstPass,
     ) {
-        self.extend(
-            self.filter_by_type(type_id, engines, code_block_first_pass),
-            engines,
-        );
+        let type_id = engines.te().get_unaliased_type_id(type_id);
+
+        let mut base_trait_map = TraitMap::default();
+        let _ = module.walk_scope_chain_mut(|lexical_scope| {
+            let trait_map = &mut lexical_scope.items.implemented_traits;
+
+            base_trait_map.extend(
+                trait_map.filter_by_type(type_id, engines, code_block_first_pass.clone()),
+                engines,
+            );
+            Ok(None::<()>)
+        });
+
+        module
+            .current_lexical_scope_mut()
+            .items
+            .implemented_traits
+            .extend(base_trait_map, engines);
     }
 
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap, engines: &Engines) {
-        for (impls_key, oe_vec) in other.trait_impls.iter() {
+        let mut impls_keys = other.trait_impls.keys().clone().collect::<Vec<_>>();
+        impls_keys.sort();
+        for impls_key in impls_keys {
+            let oe_vec = &other.trait_impls[impls_key];
             let self_vec = if let Some(self_vec) = self.trait_impls.get_mut(impls_key) {
                 self_vec
             } else {
                 self.trait_impls
-                    .insert(impls_key.clone(), im::Vector::<TraitEntry>::new());
+                    .insert(impls_key.clone(), Vec::<TraitEntry>::new());
                 self.trait_impls.get_mut(impls_key).unwrap()
             };
 
@@ -617,7 +635,10 @@ impl TraitMap {
     /// the entries from `self` that implement a trait from the declaration with that span.
     pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {
         let mut trait_map = TraitMap::default();
-        for (key, vec) in self.trait_impls.iter() {
+        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
+        keys.sort();
+        for key in keys {
+            let vec = &self.trait_impls[key];
             for entry in vec {
                 if entry
                     .key
@@ -631,11 +652,11 @@ impl TraitMap {
                         } else {
                             trait_map
                                 .trait_impls
-                                .insert(key.clone(), im::Vector::<TraitEntry>::new());
+                                .insert(key.clone(), Vec::<TraitEntry>::new());
                             trait_map.trait_impls.get_mut(key).unwrap()
                         };
 
-                    trait_map_vec.push_back(entry.clone());
+                    trait_map_vec.push(entry.clone());
                 }
             }
         }
@@ -868,7 +889,7 @@ impl TraitMap {
         let mut trait_map = TraitMap::default();
         for type_id in all_types.iter_mut() {
             let type_info = type_engine.get(*type_id);
-            let impls = self.get_impls(engines, *type_id);
+            let impls = self.get_impls(engines, *type_id, true);
             for TraitEntry {
                 key:
                     TraitKey {
@@ -982,6 +1003,7 @@ impl TraitMap {
                             },
                         })
                         .collect();
+
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
@@ -1006,18 +1028,18 @@ impl TraitMap {
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type(
-        &self,
+        module: &Module,
         engines: &Engines,
         type_id: TypeId,
     ) -> Vec<ResolvedTraitImplItem> {
-        self.get_items_and_trait_key_for_type(engines, type_id)
+        TraitMap::get_items_and_trait_key_for_type(module, engines, type_id)
             .iter()
             .map(|i| i.0.clone())
             .collect::<Vec<_>>()
     }
 
     fn get_items_and_trait_key_for_type(
-        &self,
+        module: &Module,
         engines: &Engines,
         type_id: TypeId,
     ) -> Vec<(ResolvedTraitImplItem, TraitKey)> {
@@ -1029,19 +1051,27 @@ impl TraitMap {
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
-        let impls = self.get_impls(engines, type_id);
-        for entry in impls.iter() {
-            if unify_check.check(type_id, entry.key.type_id) {
-                let mut trait_items = entry
-                    .value
-                    .trait_items
-                    .values()
-                    .cloned()
-                    .map(|i| (i, entry.key.clone()))
-                    .collect::<Vec<_>>();
-                items.append(&mut trait_items);
+
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            let impls = lexical_scope
+                .items
+                .implemented_traits
+                .get_impls(engines, type_id, false);
+            for entry in impls {
+                if unify_check.check(type_id, entry.key.type_id) {
+                    let mut trait_items = entry
+                        .value
+                        .trait_items
+                        .values()
+                        .cloned()
+                        .map(|i| (i, entry.key.clone()))
+                        .collect::<Vec<_>>();
+
+                    items.append(&mut trait_items);
+                }
             }
-        }
+            Ok(None::<()>)
+        });
         items
     }
 
@@ -1054,7 +1084,11 @@ impl TraitMap {
     /// - this method does not translate types from the found entries to the
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
-    pub(crate) fn get_impl_spans_for_type(&self, engines: &Engines, type_id: &TypeId) -> Vec<Span> {
+    pub fn get_impl_spans_for_type(
+        module: &Module,
+        engines: &Engines,
+        type_id: &TypeId,
+    ) -> Vec<Span> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
@@ -1063,40 +1097,70 @@ impl TraitMap {
         if matches!(&*type_engine.get(*type_id), TypeInfo::ErrorRecovery(_)) {
             return spans;
         }
-        let impls = self.get_impls(engines, *type_id);
-        for entry in impls.iter() {
-            if unify_check.check(*type_id, entry.key.type_id) {
-                spans.push(entry.value.impl_span.clone());
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            let impls = lexical_scope
+                .items
+                .implemented_traits
+                .get_impls(engines, *type_id, false);
+            for entry in impls {
+                if unify_check.check(*type_id, entry.key.type_id) {
+                    spans.push(entry.value.impl_span.clone());
+                }
             }
-        }
+            Ok(None::<()>)
+        });
 
         spans
     }
 
+    /// Find the spans of all impls for the given decl.
+    pub fn get_impl_spans_for_decl(
+        module: &Module,
+        engines: &Engines,
+        ty_decl: &TyDecl,
+    ) -> Vec<Span> {
+        let handler = Handler::default();
+        ty_decl
+            .return_type(&handler, engines)
+            .map(|type_id| TraitMap::get_impl_spans_for_type(module, engines, &type_id))
+            .unwrap_or_default()
+    }
+
     /// Find the entries in `self` with trait name `trait_name` and return the
     /// spans of the impls.
-    pub(crate) fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
-        self.trait_impls
-            .iter()
-            .map(|(_, impls)| {
-                impls
-                    .iter()
-                    .filter_map(|entry| {
-                        let map_trait_name = CallPath {
-                            prefixes: entry.key.name.prefixes.clone(),
-                            suffix: entry.key.name.suffix.name.clone(),
-                            callpath_type: entry.key.name.callpath_type,
-                        };
-                        if &map_trait_name == trait_name {
-                            Some(entry.value.impl_span.clone())
-                        } else {
-                            None
-                        }
+    pub fn get_impl_spans_for_trait_name(module: &Module, trait_name: &CallPath) -> Vec<Span> {
+        let mut spans = vec![];
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            spans.push(
+                lexical_scope
+                    .items
+                    .implemented_traits
+                    .trait_impls
+                    .values()
+                    .map(|impls| {
+                        impls
+                            .iter()
+                            .filter_map(|entry| {
+                                let map_trait_name = CallPath {
+                                    prefixes: entry.key.name.prefixes.clone(),
+                                    suffix: entry.key.name.suffix.name.clone(),
+				    callpath_type: entry.key.name.callpath_type,
+                                };
+                                if &map_trait_name == trait_name {
+                                    Some(entry.value.impl_span.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<Span>>()
                     })
-                    .collect::<Vec<Span>>()
-            })
-            .collect::<Vec<Vec<Span>>>()
-            .concat()
+                    .collect::<Vec<Vec<Span>>>()
+                    .concat(),
+            );
+            Ok(None::<()>)
+        });
+
+        spans.concat()
     }
 
     /// Find the entries in `self` that are equivalent to `type_id` with trait
@@ -1110,7 +1174,7 @@ impl TraitMap {
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
-        &self,
+        module: &Module,
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
@@ -1123,25 +1187,31 @@ impl TraitMap {
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
-        let impls = self.get_impls(engines, type_id);
-        for e in impls.iter() {
-            let map_trait_name = CallPath {
-                prefixes: e.key.name.prefixes.clone(),
-                suffix: e.key.name.suffix.name.clone(),
-                callpath_type: e.key.name.callpath_type,
-            };
-            if &map_trait_name == trait_name
-                && unify_check.check(type_id, e.key.type_id)
-                && trait_type_args.len() == e.key.name.suffix.args.len()
-                && trait_type_args
-                    .iter()
-                    .zip(e.key.name.suffix.args.iter())
-                    .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
-            {
-                let mut trait_items = e.value.trait_items.values().cloned().collect::<Vec<_>>();
-                items.append(&mut trait_items);
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            let impls = lexical_scope
+                .items
+                .implemented_traits
+                .get_impls(engines, type_id, false);
+            for e in impls {
+                let map_trait_name = CallPath {
+                    prefixes: e.key.name.prefixes.clone(),
+                    suffix: e.key.name.suffix.name.clone(),
+                    callpath_type: e.key.name.callpath_type,
+                };
+                if &map_trait_name == trait_name
+                    && unify_check.check(type_id, e.key.type_id)
+                    && trait_type_args.len() == e.key.name.suffix.args.len()
+                    && trait_type_args
+                        .iter()
+                        .zip(e.key.name.suffix.args.iter())
+                        .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
+                {
+                    let mut trait_items = e.value.trait_items.values().cloned().collect::<Vec<_>>();
+                    items.append(&mut trait_items);
+                }
             }
-        }
+            Ok(None::<()>)
+        });
         items
     }
 
@@ -1156,13 +1226,14 @@ impl TraitMap {
     ///     `type_id` (like in `filter_by_type()`). This is because the only
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
-        &self,
+        module: &Module,
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
         trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
-        self.get_items_for_type_and_trait_name_and_trait_type_arguments(
+        TraitMap::get_items_for_type_and_trait_name_and_trait_type_arguments(
+            module,
             engines,
             type_id,
             trait_name,
@@ -1174,7 +1245,7 @@ impl TraitMap {
     }
 
     pub(crate) fn get_trait_names_and_type_arguments_for_type(
-        &self,
+        module: &Module,
         engines: &Engines,
         type_id: TypeId,
     ) -> Vec<(CallPath, Vec<TypeArgument>)> {
@@ -1185,22 +1256,28 @@ impl TraitMap {
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return trait_names;
         }
-        let impls = self.get_impls(engines, type_id);
-        for entry in impls.iter() {
-            if unify_check.check(type_id, entry.key.type_id) {
-                let trait_call_path = CallPath {
-                    prefixes: entry.key.name.prefixes.clone(),
-                    suffix: entry.key.name.suffix.name.clone(),
-                    callpath_type: entry.key.name.callpath_type,
-                };
-                trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            let impls = lexical_scope
+                .items
+                .implemented_traits
+                .get_impls(engines, type_id, false);
+            for entry in impls {
+                if unify_check.check(type_id, entry.key.type_id) {
+                    let trait_call_path = CallPath {
+                        prefixes: entry.key.name.prefixes.clone(),
+                        suffix: entry.key.name.suffix.name.clone(),
+			callpath_type: entry.key.name.callpath_type,
+                    };
+                    trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
+                }
             }
-        }
+            Ok(None::<()>)
+        });
         trait_names
     }
 
     pub(crate) fn get_trait_item_for_type(
-        &self,
+        module: &Module,
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
@@ -1208,7 +1285,9 @@ impl TraitMap {
         as_trait: Option<CallPath>,
     ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
         let mut candidates = HashMap::<String, ResolvedTraitImplItem>::new();
-        for (trait_item, trait_key) in self.get_items_and_trait_key_for_type(engines, type_id) {
+        for (trait_item, trait_key) in
+            TraitMap::get_items_and_trait_key_for_type(module, engines, type_id)
+        {
             match trait_item {
                 ResolvedTraitImplItem::Parsed(impl_item) => match impl_item {
                     ImplItem::Fn(fn_ref) => {
@@ -1398,7 +1477,7 @@ impl TraitMap {
                     .implemented_traits
                     .get_implemented_traits(type_id, engines),
             );
-            Ok(Some(()))
+            Ok(None::<()>)
         });
         all_impld_traits
     }
@@ -1411,7 +1490,7 @@ impl TraitMap {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
-        let impls = self.get_impls(engines, type_id);
+        let impls = self.get_impls(engines, type_id, false);
         let all_impld_traits: BTreeSet<(Ident, TypeId)> = impls
             .iter()
             .filter_map(|e| {
@@ -1490,9 +1569,12 @@ impl TraitMap {
                     try_inserting_trait_impl_on_failure,
                     TryInsertingTraitImplOnFailure::Yes
                 ) {
-                    let trait_map =
-                        &mut module.current_lexical_scope_mut().items.implemented_traits;
-                    trait_map.insert_for_type(engines, type_id, code_block_first_pass.clone());
+                    TraitMap::insert_for_type(
+                        engines,
+                        module,
+                        type_id,
+                        code_block_first_pass.clone(),
+                    );
 
                     return Self::check_if_trait_constraints_are_satisfied_for_type(
                         handler,
@@ -1529,7 +1611,7 @@ impl TraitMap {
     }
 
     pub fn get_trait_constraints_are_satisfied_for_types(
-        &self,
+        module: &Module,
         _handler: &Handler,
         type_id: TypeId,
         constraints: &[TraitConstraint],
@@ -1539,58 +1621,75 @@ impl TraitMap {
         let unify_check = UnifyCheck::coercion(engines);
         let unify_check_equality = UnifyCheck::non_dynamic_equality(engines);
 
-        let impls = self.get_impls(engines, type_id);
-        let impld_traits_type_ids: Vec<(TypeId, String)> = impls
-            .iter()
-            .filter_map(|e| {
-                let key = &e.key;
-                let mut res = None;
-                for constraint in constraints {
-                    if key.name.suffix.name == constraint.trait_name.suffix
-                        && key
-                            .name
-                            .suffix
-                            .args
-                            .iter()
-                            .zip(constraint.type_arguments.iter())
-                            .all(|(a1, a2)| unify_check_equality.check(a1.type_id, a2.type_id))
-                        && unify_check.check(type_id, key.type_id)
-                    {
-                        let name_type_args = if !key.name.suffix.args.is_empty() {
-                            format!("<{}>", engines.help_out(key.name.suffix.args.clone()))
-                        } else {
-                            "".to_string()
-                        };
-                        let name = format!("{}{}", key.name.suffix.name.as_str(), name_type_args);
-                        res = Some((key.type_id, name));
-                        break;
-                    }
-                }
-                res
-            })
-            .collect();
+        let mut impld_traits_type_ids: Vec<Vec<(TypeId, String)>> = vec![];
+        let _ = module.walk_scope_chain(|lexical_scope| {
+            let impls = lexical_scope
+                .items
+                .implemented_traits
+                .get_impls(engines, type_id, true);
+            impld_traits_type_ids.push(
+                impls
+                    .iter()
+                    .filter_map(|e| {
+                        let key = &e.key;
+                        let mut res = None;
+                        for constraint in constraints {
+                            if key.name.suffix.name == constraint.trait_name.suffix
+                                && key
+                                    .name
+                                    .suffix
+                                    .args
+                                    .iter()
+                                    .zip(constraint.type_arguments.iter())
+                                    .all(|(a1, a2)| {
+                                        unify_check_equality.check(a1.type_id, a2.type_id)
+                                    })
+                                && unify_check.check(type_id, key.type_id)
+                            {
+                                let name_type_args = if !key.name.suffix.args.is_empty() {
+                                    format!("<{}>", engines.help_out(key.name.suffix.args.clone()))
+                                } else {
+                                    "".to_string()
+                                };
+                                let name =
+                                    format!("{}{}", key.name.suffix.name.as_str(), name_type_args);
+                                res = Some((key.type_id, name));
+                                break;
+                            }
+                        }
+                        res
+                    })
+                    .collect(),
+            );
 
-        Ok(impld_traits_type_ids)
+            Ok(None::<()>)
+        });
+        Ok(impld_traits_type_ids.concat())
     }
 
-    fn get_impls_mut(&mut self, engines: &Engines, type_id: TypeId) -> &mut im::Vector<TraitEntry> {
+    fn get_impls_mut(&mut self, engines: &Engines, type_id: TypeId) -> &mut Vec<TraitEntry> {
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
         if !self.trait_impls.contains_key(&type_root_filter) {
             self.trait_impls
-                .insert(type_root_filter.clone(), im::Vector::new());
+                .insert(type_root_filter.clone(), Vec::new());
         }
 
         self.trait_impls.get_mut(&type_root_filter).unwrap()
     }
 
-    fn get_impls(&self, engines: &Engines, type_id: TypeId) -> im::Vector<TraitEntry> {
+    fn get_impls(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+        extend_with_placeholder: bool,
+    ) -> Vec<TraitEntry> {
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
         let mut vec = self
             .trait_impls
             .get(&type_root_filter)
             .cloned()
             .unwrap_or_default();
-        if type_root_filter != TypeRootFilter::Placeholder {
+        if extend_with_placeholder && type_root_filter != TypeRootFilter::Placeholder {
             vec.extend(
                 self.trait_impls
                     .get(&TypeRootFilter::Placeholder)

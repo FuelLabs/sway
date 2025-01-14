@@ -29,6 +29,7 @@ use sway_features::ExperimentalFeatures;
 use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
+    namespace::{Items, LexicalScopeId},
     symbol_collection_context::SymbolCollectionContext,
     type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
     GenericShadowingMode,
@@ -217,131 +218,78 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
-    /// Scope the `TypeCheckContext` with a new namespace, and set up the collection context
+    /// Scope the `TypeCheckContext` with a new lexical scope, and set up the collection context
     /// so it enters the lexical scope corresponding to the given span.
     pub fn scoped<T>(
-        self,
+        &mut self,
         handler: &Handler,
         span: Option<Span>,
-        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
+        with_scoped_ctx: impl FnOnce(&mut TypeCheckContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
-        let mut namespace = self.namespace.clone();
+        self.scoped_and_lexical_scope_id(handler, span, with_scoped_ctx)
+            .0
+    }
+
+    /// Scope the `TypeCheckContext` with a new lexical scope, and set up the collection context
+    /// so it enters the lexical scope corresponding to the given span.
+    pub fn scoped_and_lexical_scope_id<T>(
+        &mut self,
+        handler: &Handler,
+        span: Option<Span>,
+        with_scoped_ctx: impl FnOnce(&mut TypeCheckContext) -> Result<T, ErrorEmitted>,
+    ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
+        let engines = self.engines;
         if let Some(span) = span {
-            self.collection_ctx.enter_lexical_scope(
-                handler,
-                self.engines,
-                span,
-                |scoped_collection_ctx| {
-                    let ctx = TypeCheckContext {
-                        namespace: &mut namespace,
-                        collection_ctx: scoped_collection_ctx,
-                        type_annotation: self.type_annotation,
-                        function_type_annotation: self.function_type_annotation,
-                        unify_generic: self.unify_generic,
-                        self_type: self.self_type,
-                        type_subst: self.type_subst,
-                        abi_mode: self.abi_mode,
-                        const_shadowing_mode: self.const_shadowing_mode,
-                        generic_shadowing_mode: self.generic_shadowing_mode,
-                        help_text: self.help_text,
-                        kind: self.kind,
-                        engines: self.engines,
-                        disallow_functions: self.disallow_functions,
-                        storage_declaration: self.storage_declaration,
-                        experimental: self.experimental,
-                        collecting_unifications: self.collecting_unifications,
-                        code_block_first_pass: self.code_block_first_pass,
-                    };
-                    with_scoped_ctx(ctx)
-                },
-            )
+            self.namespace_scoped(engines, |ctx| {
+                ctx.collection_ctx.enter_lexical_scope(
+                    handler,
+                    ctx.engines,
+                    span,
+                    |scoped_collection_ctx| {
+                        let mut ctx = TypeCheckContext {
+                            collection_ctx: scoped_collection_ctx,
+                            namespace: ctx.namespace,
+                            type_annotation: ctx.type_annotation,
+                            function_type_annotation: ctx.function_type_annotation,
+                            unify_generic: ctx.unify_generic,
+                            self_type: ctx.self_type,
+                            type_subst: ctx.type_subst.clone(),
+                            abi_mode: ctx.abi_mode.clone(),
+                            const_shadowing_mode: ctx.const_shadowing_mode,
+                            generic_shadowing_mode: ctx.generic_shadowing_mode,
+                            help_text: ctx.help_text,
+                            kind: ctx.kind,
+                            engines: ctx.engines,
+                            disallow_functions: ctx.disallow_functions,
+                            storage_declaration: ctx.storage_declaration,
+                            experimental: ctx.experimental,
+                            collecting_unifications: ctx.collecting_unifications,
+                            code_block_first_pass: ctx.code_block_first_pass,
+                        };
+                        with_scoped_ctx(&mut ctx)
+                    },
+                )
+            })
         } else {
-            let ctx = TypeCheckContext {
-                collection_ctx: self.collection_ctx,
-                namespace: &mut namespace,
-                type_annotation: self.type_annotation,
-                function_type_annotation: self.function_type_annotation,
-                unify_generic: self.unify_generic,
-                self_type: self.self_type,
-                type_subst: self.type_subst,
-                abi_mode: self.abi_mode,
-                const_shadowing_mode: self.const_shadowing_mode,
-                generic_shadowing_mode: self.generic_shadowing_mode,
-                help_text: self.help_text,
-                kind: self.kind,
-                engines: self.engines,
-                disallow_functions: self.disallow_functions,
-                storage_declaration: self.storage_declaration,
-                experimental: self.experimental,
-                collecting_unifications: self.collecting_unifications,
-                code_block_first_pass: self.code_block_first_pass,
-            };
-            with_scoped_ctx(ctx)
+            self.namespace_scoped(engines, |ctx| with_scoped_ctx(ctx))
         }
     }
 
-    /// Scope the `TypeCheckContext` with a new namespace and returns it in case of success.
-    /// Also sets up the collection context so it enters the lexical scope corresponding to
-    /// the given span.
-    pub fn scoped_and_namespace<T>(
-        self,
-        handler: &Handler,
-        span: Option<Span>,
-        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
-    ) -> Result<(T, Namespace), ErrorEmitted> {
-        let mut namespace = self.namespace.clone();
-        if let Some(span) = span {
-            self.collection_ctx.enter_lexical_scope(
-                handler,
-                self.engines,
-                span,
-                |scoped_collection_ctx| {
-                    let ctx = TypeCheckContext {
-                        collection_ctx: scoped_collection_ctx,
-                        namespace: &mut namespace,
-                        type_annotation: self.type_annotation,
-                        function_type_annotation: self.function_type_annotation,
-                        unify_generic: self.unify_generic,
-                        self_type: self.self_type,
-                        type_subst: self.type_subst,
-                        abi_mode: self.abi_mode,
-                        const_shadowing_mode: self.const_shadowing_mode,
-                        generic_shadowing_mode: self.generic_shadowing_mode,
-                        help_text: self.help_text,
-                        kind: self.kind,
-                        engines: self.engines,
-                        disallow_functions: self.disallow_functions,
-                        storage_declaration: self.storage_declaration,
-                        experimental: self.experimental,
-                        collecting_unifications: self.collecting_unifications,
-                        code_block_first_pass: self.code_block_first_pass,
-                    };
-                    Ok((with_scoped_ctx(ctx)?, namespace))
-                },
-            )
-        } else {
-            let ctx = TypeCheckContext {
-                collection_ctx: self.collection_ctx,
-                namespace: &mut namespace,
-                type_annotation: self.type_annotation,
-                function_type_annotation: self.function_type_annotation,
-                unify_generic: self.unify_generic,
-                self_type: self.self_type,
-                type_subst: self.type_subst,
-                abi_mode: self.abi_mode,
-                const_shadowing_mode: self.const_shadowing_mode,
-                generic_shadowing_mode: self.generic_shadowing_mode,
-                help_text: self.help_text,
-                kind: self.kind,
-                engines: self.engines,
-                disallow_functions: self.disallow_functions,
-                storage_declaration: self.storage_declaration,
-                experimental: self.experimental,
-                collecting_unifications: self.collecting_unifications,
-                code_block_first_pass: self.code_block_first_pass,
-            };
-            Ok((with_scoped_ctx(ctx)?, namespace))
-        }
+    /// Scope the `CollectionContext` with a new lexical scope.
+    pub fn namespace_scoped<T>(
+        &mut self,
+        engines: &Engines,
+        with_scoped_ctx: impl FnOnce(&mut TypeCheckContext) -> Result<T, ErrorEmitted>,
+    ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
+        let lexical_scope_id: LexicalScopeId = self
+            .namespace
+            .current_module_mut()
+            .write(engines, |m| m.push_new_lexical_scope(Span::dummy(), None));
+        let ret = with_scoped_ctx(self);
+        self.namespace
+            .current_module_mut()
+            .write(engines, |m| m.pop_lexical_scope());
+        (ret, lexical_scope_id)
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
@@ -642,18 +590,17 @@ impl<'a> TypeCheckContext<'a> {
         let generic_shadowing_mode = self.generic_shadowing_mode;
         let collecting_unifications = self.collecting_unifications;
         let engines = self.engines();
-        self.namespace_mut()
-            .current_module_mut()
-            .current_items_mut()
-            .insert_symbol(
-                handler,
-                engines,
-                name,
-                ResolvedDeclaration::Typed(item),
-                const_shadowing_mode,
-                generic_shadowing_mode,
-                collecting_unifications,
-            )
+
+	Items::insert_symbol(
+            handler,
+            engines,
+            self.namespace_mut().current_module_mut(),
+            name,
+            ResolvedDeclaration::Typed(item),
+            const_shadowing_mode,
+            generic_shadowing_mode,
+            collecting_unifications,
+        )
     }
 
     /// Short-hand for calling [resolve_type] on `root` with the `mod_path`.
@@ -1279,13 +1226,20 @@ impl<'a> TypeCheckContext<'a> {
             return;
         };
 
-        impls_to_insert.extend(
-            src_mod
-                .current_items()
-                .implemented_traits
-                .filter_by_type_item_import(type_id, engines, self.code_block_first_pass().into()),
-            engines,
-        );
+        let _ = src_mod.walk_scope_chain(|lexical_scope| {
+            impls_to_insert.extend(
+                lexical_scope
+                    .items
+                    .implemented_traits
+                    .filter_by_type_item_import(
+                        type_id,
+                        engines,
+                        self.code_block_first_pass().into(),
+                    ),
+                engines,
+            );
+            Ok(None::<()>)
+        });
 
         let dst_mod = self.namespace_mut().current_module_mut();
         dst_mod
@@ -1391,26 +1345,24 @@ impl<'a> TypeCheckContext<'a> {
         // in the trait map, we need to find the actual declaration path.
         let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
 
-        self.namespace()
-            .current_module()
-            .current_items()
-            .implemented_traits
-            .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
-                self.engines,
-                type_id,
-                &canonical_trait_path,
-                trait_type_args,
-            )
+        TraitMap::get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
+            self.namespace().current_module(),
+            self.engines,
+            type_id,
+            &canonical_trait_path,
+            trait_type_args,
+        )
     }
 
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
         let code_block_first_pass = self.code_block_first_pass();
-        self.namespace_mut()
-            .current_module_mut()
-            .current_items_mut()
-            .implemented_traits
-            .insert_for_type(engines, type_id, code_block_first_pass.into());
+        TraitMap::insert_for_type(
+            engines,
+            self.namespace_mut().current_module_mut(),
+            type_id,
+            code_block_first_pass.into(),
+        );
     }
 
     pub fn check_type_impls_traits(

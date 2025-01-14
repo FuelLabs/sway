@@ -104,7 +104,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(span.clone()), |mut ctx| {
+            .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -199,7 +199,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(fn_decl.span.clone()), |mut ctx| {
+            .scoped(handler, Some(fn_decl.span.clone()), |ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {

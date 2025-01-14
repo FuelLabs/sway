@@ -800,6 +800,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 FunctionApplication {
                     ref mut fn_ref,
                     ref mut arguments,
+                    call_path,
                     ..
                 } => {
                     let mut has_changes = false;
@@ -825,7 +826,7 @@ impl ReplaceDecls for TyExpressionVariant {
                                 handler,
                                 implementing_for_typeid,
                                 &[ctx.namespace().current_package_name().clone()],
-                                method.name(),
+                                &call_path.suffix,
                                 method.return_type.type_id,
                                 &arguments
                                     .iter()

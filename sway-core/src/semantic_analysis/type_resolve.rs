@@ -15,6 +15,8 @@ use crate::{
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
 
+use super::namespace::TraitMap;
+
 /// Specifies if visibility checks should be performed as part of name resolution.
 #[derive(Clone, Copy, PartialEq)]
 pub enum VisibilityCheck {
@@ -131,11 +133,14 @@ pub fn resolve_type(
             name,
             trait_type_id,
         } => {
-            let trait_item_ref = namespace
-                .current_package_root_module()
-                .current_items()
-                .implemented_traits
-                .get_trait_item_for_type(handler, engines, &name, trait_type_id, None)?;
+            let trait_item_ref = TraitMap::get_trait_item_for_type(
+                &namespace.current_package_root_module(),
+                handler,
+                engines,
+                &name,
+                trait_type_id,
+                None,
+            )?;
 
             if let ResolvedTraitImplItem::Typed(TyTraitItem::Type(type_ref)) = trait_item_ref {
                 let type_decl = engines.de().get_type(type_ref.id());
@@ -477,10 +482,8 @@ fn resolve_associated_item_from_type_id(
     } else {
         type_id
     };
-    let item_ref = module
-        .current_items()
-        .implemented_traits
-        .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
+    let item_ref =
+        TraitMap::get_trait_item_for_type(module, handler, engines, symbol, type_id, as_trait)?;
     match item_ref {
         ResolvedTraitImplItem::Parsed(_item) => todo!(),
         ResolvedTraitImplItem::Typed(item) => match item {

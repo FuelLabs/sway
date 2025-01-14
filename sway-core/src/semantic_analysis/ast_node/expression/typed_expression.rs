@@ -1218,20 +1218,20 @@ impl ty::TyExpression {
         if !ctx
             .namespace()
             .current_module()
-            .read(engines, |m| m.current_items().has_storage_declared())
+            .read(engines, |m| m.root_items().has_storage_declared())
         {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
         let storage_fields = ctx.namespace().current_module().read(engines, |m| {
-            m.current_items()
+            m.root_items()
                 .get_storage_field_descriptors(handler, decl_engine)
         })?;
 
         // Do all namespace checking here!
         let (storage_access, mut access_type) =
             ctx.namespace().current_module().read(engines, |m| {
-                m.current_items().apply_storage_load(
+                m.root_items().apply_storage_load(
                     handler,
                     ctx.engines,
                     ctx.namespace(),

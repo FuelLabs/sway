@@ -18,6 +18,7 @@ use sway_core::{
     type_system::TypeArgument,
     TraitConstraint, TypeId, TypeInfo,
 };
+use sway_error::handler::Handler;
 use sway_types::{Ident, Named, Span, Spanned};
 use sway_utils::iter_prefixes;
 
@@ -134,8 +135,12 @@ impl Parse for ty::TySideEffect {
                             if let Some(decl_ident) = ctx
                                 .namespace
                                 .submodule(call_path)
-                                .and_then(|module| module.current_items().symbols().get(item))
-                                .and_then(|decl| {
+                                .and_then(|module| {
+                                    module
+                                        .resolve_symbol(&Handler::default(), ctx.engines, item)
+                                        .ok()
+                                })
+                                .and_then(|(decl, _)| {
                                     decl.expect_typed_ref().get_decl_ident(ctx.engines)
                                 })
                             {
@@ -477,8 +482,12 @@ impl Parse for ty::TyExpression {
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .submodule(&abi_name.prefixes)
-                        .and_then(|module| module.current_items().symbols().get(&abi_name.suffix))
-                        .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
+                        .and_then(|module| {
+                            module
+                                .resolve_symbol(&Handler::default(), ctx.engines, &abi_name.suffix)
+                                .ok()
+                        })
+                        .and_then(|(decl, _)| decl.expect_typed_ref().get_decl_ident(ctx.engines))
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -495,7 +504,7 @@ impl Parse for ty::TyExpression {
                     ));
                     if let Some(storage) = ctx
                         .namespace
-                        .current_items()
+                        .root_items()
                         .get_declared_storage(ctx.engines.de())
                     {
                         token.type_def =
@@ -513,7 +522,7 @@ impl Parse for ty::TyExpression {
                         );
                         if let Some(storage_field) = ctx
                             .namespace
-                            .current_items()
+                            .root_items()
                             .get_declared_storage(ctx.engines.de())
                             .and_then(|storage| {
                                 storage
@@ -1215,11 +1224,14 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
                         .submodule(&abi_call_path.call_path.prefixes)
                         .and_then(|module| {
                             module
-                                .current_items()
-                                .symbols()
-                                .get(&abi_call_path.call_path.suffix)
+                                .resolve_symbol(
+                                    &Handler::default(),
+                                    ctx.engines,
+                                    &abi_call_path.call_path.suffix,
+                                )
+                                .ok()
                         })
-                        .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
+                        .and_then(|(decl, _)| decl.expect_typed_ref().get_decl_ident(ctx.engines))
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -1415,8 +1427,12 @@ fn collect_trait_constraint(
         if let Some(trait_def_ident) = ctx
             .namespace
             .submodule(&trait_name.prefixes)
-            .and_then(|module| module.current_items().symbols().get(&trait_name.suffix))
-            .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
+            .and_then(|module| {
+                module
+                    .resolve_symbol(&Handler::default(), ctx.engines, &trait_name.suffix)
+                    .ok()
+            })
+            .and_then(|(decl, _)| decl.expect_typed_ref().get_decl_ident(ctx.engines))
         {
             token.type_def = Some(TypeDefinition::Ident(trait_def_ident));
         }
