@@ -2904,7 +2904,6 @@ dependencies = [
  "forc-tracing 0.66.5",
  "forc-util",
  "fuel-crypto",
- "include_dir",
  "libp2p-identity",
  "portpicker",
  "reqwest 0.12.5",
