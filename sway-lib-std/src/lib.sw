@@ -19,6 +19,7 @@ pub mod math;
 pub mod u128;
 pub mod b512;
 pub mod primitive_conversions;
+pub mod crypto;
 pub mod alias;
 pub mod hash;
 pub mod asset_id;
