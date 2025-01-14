@@ -2263,4 +2263,101 @@ mod tests {
         );
         assert_eq!(call(cmd).await.unwrap(), "(container:{{42, fuel}, fuel})");
     }
+
+    #[tokio::test]
+    async fn test_contract_value_forwarding() {
+        let (_, id, wallet) = get_contract_instance().await;
+
+        let provider = wallet.provider().unwrap();
+        let base_asset_id = provider.base_asset_id();
+        let get_balance = |addr: String| async move {
+            provider
+                .get_asset_balance(
+                    &Bech32Address::from(Address::from_str(addr.as_str()).unwrap()),
+                    *base_asset_id,
+                )
+                .await
+                .unwrap()
+        };
+
+        // contract call transfer funds to another contract
+        let (_, id_2, _) = get_contract_instance().await;
+        let (amount, asset_id, recipient) = (
+            "1",
+            &format!("{{0x{}}}", base_asset_id),
+            &format!("0x{}", id_2),
+        );
+        let mut cmd =
+            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        cmd.call_parameters = cmd::call::CallParametersOpts {
+            amount: amount.parse::<u64>().unwrap(),
+            asset_id: Some(*base_asset_id),
+            gas_forwarded: None,
+        };
+        // validate balance is unchanged (dry-run)
+        assert_eq!(call(cmd.clone()).await.unwrap(), "()");
+        assert_eq!(get_balance(recipient.to_string()).await, 0);
+        cmd.mode = cmd::call::ExecutionMode::Live;
+        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(get_balance(recipient.to_string()).await, 1);
+        assert_eq!(get_balance(format!("0x{}", id)).await, 1); // WHY!?
+
+        // contract call transfer funds to another address
+        let random_wallet = WalletUnlocked::new_random(None);
+        let (amount, asset_id, recipient) = (
+            "2",
+            &format!("{{0x{}}}", base_asset_id),
+            &format!("0x{}", random_wallet.address().hash()),
+        );
+        let mut cmd =
+            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        cmd.call_parameters = cmd::call::CallParametersOpts {
+            amount: amount.parse::<u64>().unwrap(),
+            asset_id: Some(*base_asset_id),
+            gas_forwarded: None,
+        };
+        cmd.mode = cmd::call::ExecutionMode::Live;
+        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(get_balance(recipient.to_string()).await, 2);
+        assert_eq!(get_balance(format!("0x{}", id)).await, 1); // WHY!?
+
+        // contract call transfer funds to another address
+        // specify amount x, provide amount x - 1
+        // fails with panic reason 'NotEnoughBalance'
+        let random_wallet = WalletUnlocked::new_random(None);
+        let (amount, asset_id, recipient) = (
+            "2",
+            &format!("{{0x{}}}", base_asset_id),
+            &format!("0x{}", random_wallet.address().hash()),
+        );
+        let mut cmd =
+            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        cmd.call_parameters = cmd::call::CallParametersOpts {
+            amount: amount.parse::<u64>().unwrap() - 1,
+            asset_id: Some(*base_asset_id),
+            gas_forwarded: None,
+        };
+        cmd.mode = cmd::call::ExecutionMode::Live;
+        assert_eq!(call(cmd).await.unwrap_err().to_string(), "Contract execution panicked with reason: PanicInstruction { reason: NotEnoughBalance, instruction: TRO { contract_id_addr: 0x12, output_index: 0x11, amount: 0x15, asset_id_addr: 0x10 } (bytes: 3d 49 15 50) }");
+
+        // contract call transfer funds to another address
+        // specify amount x, provide amount x + 5; should succeed
+        let random_wallet = WalletUnlocked::new_random(None);
+        let (amount, asset_id, recipient) = (
+            "3",
+            &format!("{{0x{}}}", base_asset_id),
+            &format!("0x{}", random_wallet.address().hash()),
+        );
+        let mut cmd =
+            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        cmd.call_parameters = cmd::call::CallParametersOpts {
+            amount: amount.parse::<u64>().unwrap() + 5,
+            asset_id: Some(*base_asset_id),
+            gas_forwarded: None,
+        };
+        cmd.mode = cmd::call::ExecutionMode::Live;
+        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(get_balance(recipient.to_string()).await, 3);
+        assert_eq!(get_balance(format!("0x{}", id)).await, 1); // WHY!?
+    }
 }
