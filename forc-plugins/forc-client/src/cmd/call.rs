@@ -52,7 +52,7 @@ impl FromStr for FuncType {
 }
 
 /// Flags for specifying the caller.
-#[derive(Debug, Default, Parser, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, Clone, Parser, serde::Deserialize, serde::Serialize)]
 pub struct Caller {
     /// Derive an account from a secret key to make the call
     #[clap(long, env = "SIGNING_KEY")]
@@ -71,11 +71,11 @@ pub struct CallParametersOpts {
 
     /// Asset ID to forward with the call
     #[clap(long)]
-    asset_id: Option<AssetId>,
+    pub asset_id: Option<AssetId>,
 
     /// Amount of gas to forward with the call
     #[clap(long)]
-    gas_forwarded: Option<u64>,
+    pub gas_forwarded: Option<u64>,
 }
 
 impl From<CallParametersOpts> for CallParameters {
@@ -120,7 +120,7 @@ impl FromStr for ExecutionMode {
 }
 
 /// Call a contract function.
-#[derive(Debug, Default, Parser)]
+#[derive(Debug, Default, Parser, Clone)]
 #[clap(bin_name = "forc call", version)]
 pub struct Command {
     /// The contract ID to call.
