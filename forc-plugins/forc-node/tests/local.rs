@@ -9,7 +9,7 @@ use serde_json::json;
 use tokio::time::sleep;
 
 #[tokio::test]
-async fn start_local_node() {
+async fn start_local_node_check_health() {
     let port = portpicker::pick_unused_port().expect("No ports free");
     let local_cmd = LocalCmd {
         chain_config: None,
@@ -21,6 +21,7 @@ async fn start_local_node() {
         dry_run: false,
         mode: Mode::Local(local_cmd),
     };
+
     let mut handle = op::run(cmd).await.unwrap().unwrap();
     // Wait for node to start grapqhl service
     sleep(Duration::from_secs(2)).await;
