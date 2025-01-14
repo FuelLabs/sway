@@ -2265,7 +2265,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_contract_value_forwarding() {
+    async fn contract_value_forwarding() {
         let (_, id, wallet) = get_contract_instance().await;
 
         let provider = wallet.provider().unwrap();
