@@ -1,6 +1,6 @@
 contract;
 
-use std::{bytes::Bytes, u128::U128};
+use std::{asset::transfer, bytes::Bytes, context::balance_of, u128::U128};
 
 struct GenericStruct<T> {
     value: T,
@@ -13,7 +13,7 @@ enum GenericEnum<T> {
 }
 
 struct ComplexStruct<T> {
-    info: (Identity, u64),
+    info: (User, u64),
     status: Status,
     data: []u64,
     generic: GenericStruct<T>,
@@ -25,7 +25,7 @@ enum Status {
     Inactive: (),
 }
 
-struct Identity {
+struct User {
     name: str[2],
     id: u64,
 }
@@ -48,7 +48,7 @@ abi MyContract {
     fn test_tuple(a: (u64, bool)) -> (u64, bool);
     fn test_array(a: [u64; 10]) -> [u64; 10];
     fn test_vector(a: Vec<u64>) -> Vec<u64>;
-    fn test_struct(a: Identity) -> Identity;
+    fn test_struct(a: User) -> User;
     fn test_enum(a: Status) -> Status;
     fn test_option(a: Option<u64>) -> Option<u64>;
 
@@ -57,6 +57,11 @@ abi MyContract {
     fn test_enum_with_generic(a: GenericEnum<u32>) -> GenericEnum<u32>;
     fn test_enum_with_complex_generic(a: GenericEnum<GenericStruct<u32>>) -> GenericEnum<GenericStruct<u32>>;
     fn test_complex_struct(a: ComplexStruct<GenericStruct<u32>>) -> ComplexStruct<GenericStruct<u32>>;
+
+    fn get_balance(target: ContractId, asset_id: AssetId) -> u64;
+    // payable functions
+    #[payable]
+    fn transfer(amount_to_transfer: u64, asset_id: AssetId, recipient: b256);
 }
 
 impl MyContract for Contract {
@@ -77,7 +82,7 @@ impl MyContract for Contract {
     fn test_tuple(a: (u64, bool)) -> (u64, bool) { a }
     fn test_array(a: [u64; 10]) -> [u64; 10] { a }
     fn test_vector(a: Vec<u64>) -> Vec<u64> { a }
-    fn test_struct(a: Identity) -> Identity { a }
+    fn test_struct(a: User) -> User { a }
     fn test_enum(a: Status) -> Status { a }
     fn test_option(a: Option<u64>) -> Option<u64> { a }
 
@@ -86,4 +91,19 @@ impl MyContract for Contract {
     fn test_enum_with_generic(a: GenericEnum<u32>) -> GenericEnum<u32> { a }
     fn test_enum_with_complex_generic(a: GenericEnum<GenericStruct<u32>>) -> GenericEnum<GenericStruct<u32>> { a }
     fn test_complex_struct(a: ComplexStruct<GenericStruct<u32>>) -> ComplexStruct<GenericStruct<u32>> { a }
+
+    fn get_balance(target: ContractId, asset_id: AssetId) -> u64 {
+        balance_of(target, asset_id)
+    }
+
+    // payable functions
+    #[payable]
+    fn transfer(amount_to_transfer: u64, asset_id: AssetId, recipient: b256) {
+        let recipient_address = Address::from(recipient);
+        transfer(
+            Identity::Address(recipient_address),
+            asset_id,
+            amount_to_transfer,
+        );
+    }
 }
