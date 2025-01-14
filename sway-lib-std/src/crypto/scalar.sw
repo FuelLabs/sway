@@ -3,15 +3,16 @@ library;
 use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
-use ::primitive_conversions::u256::*;
 
+// NOTE: Bytes are use to support numbers greater than 32 bytes for future curves.
+/// The Scalar type used in cryptographic operations.
 pub struct Scalar {
     bytes: Bytes
 }
 
 impl Eq for Scalar {
     fn eq(self, other: Self) -> bool {
-        // All points must be of length 32
+        // All scalars must be of length 32
         if self.bytes.len() != 32 || other.bytes.len() != 32 {
             return false;
         }
@@ -29,34 +30,107 @@ impl Eq for Scalar {
 }
 
 impl Scalar {
+    /// Returns a new, uninitialized Scalar.
+    ///
+    /// # Returns
+    ///
+    /// * [Scalar] - The new Scalar.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::scalar::Scalar;
+    ///
+    /// fn foo() {
+    ///     let new_scalar = Scalar::new();
+    /// }
+    /// ```
     pub fn new() -> Self {
         Self {
             bytes: Bytes::new(),
         }
     }
 
+    /// Returns a zeroed Scalar.
+    ///
+    /// # Returns
+    ///
+    /// * [Scalar] - The new zeroed Scalar.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::scalar::Scalar;
+    ///
+    /// fn foo() {
+    ///     let zero_scalar = Scalar::zero();
+    ///     assert(b256::try_from(new_scalar.bytes()).unwrap() == b256::zero());
+    /// }
+    /// ```
     pub fn zero() -> Self {
         Self {
             bytes: Bytes::from(b256::zero()),
         }
     }
 
+    /// Returns the minimum scalar.
+    ///
+    /// # Returns
+    ///
+    /// * [Scalar] - The new minimum Scalar.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::scalar::Scalar;
+    ///
+    /// fn foo() {
+    ///     let zero_scalar = Scalar::zero();
+    ///     assert(b256::try_from(new_scalar.bytes()).unwrap() == b256::zero());
+    /// }
+    /// ```
     pub fn min() -> Self {
         Self {
             bytes: Bytes::from(b256::zero()),
         }
     }
 
-    pub fn max() -> Self {
-        Self {
-            bytes: Bytes::from(b256::max()),
-        }
-    }
-
+    /// Returns true if the scalae is zero, otherwise false.
+    ///
+    /// # Returns
+    ///
+    // * [bool] - The boolean representing whether the scalar is zero.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::scalar::Scalar;
+    ///
+    /// fn foo() {
+    ///     let zero_scalar = Scalar::zero();
+    ///     assert(zero_scalar.is_zero());
+    /// }
+    /// ```
     pub fn is_zero(self) -> bool {
         self == Self::zero()
     }
 
+    /// Returns the underlying bytes of the scalar.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The scalar represented as bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::scalar::Scalar;
+    ///
+    /// fn foo(scalar: Scalar) {
+    ///     let bytes = scalar.bytes();
+    ///     assert(bytes.len() != 0);
+    /// }
+    /// ```
     pub fn bytes(self) -> Bytes {
         self.bytes
     }

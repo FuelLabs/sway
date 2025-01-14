@@ -3,10 +3,17 @@ library;
 use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
-use ::primitive_conversions::u256::*;
 
+// NOTE: Bytes are use to support numbers greater than 32 bytes for future curves.
+/// A 2D point on a field.
+///
+/// # Additional Information
+///
+/// The Point2D type only supports positive integer points.
 pub struct Point2D {
+    /// The x point on the field.
     x: Bytes,
+    /// The y point on the field.
     y: Bytes,
 }
 
@@ -32,6 +39,21 @@ impl Eq for Point2D {
 }
 
 impl Point2D {
+    /// Returns a new, uninitialized Point2D.
+    ///
+    /// # Returns
+    ///
+    /// * [Point2D] - The new Point2D.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::point2d::Point2D;
+    ///
+    /// fn foo() {
+    ///     let new_point = Point2D::new();
+    /// }
+    /// ```
     pub fn new() -> Self {
         Self {
             x: Bytes::new(),
@@ -39,6 +61,23 @@ impl Point2D {
         }
     }
 
+    /// Returns a zeroed Point2D.
+    ///
+    /// # Returns
+    ///
+    /// * [Point2D] - The new zeroed Point2D.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::point2d::Point2D;
+    ///
+    /// fn foo() {
+    ///     let zero_point = Point2D::zero();
+    ///     assert(b256::try_from(new_point.x()).unwrap() == b256::zero());
+    ///     assert(b256::try_from(new_point.y()).unwrap() == b256::zero());
+    /// }
+    /// ```
     pub fn zero() -> Self {
         Self {
             x: Bytes::from(b256::zero()),
@@ -46,10 +85,43 @@ impl Point2D {
         }
     }
 
+    /// Returns true if the point is (0, 0), otherwise false.
+    ///
+    /// # Returns
+    ///
+    // * [bool] - The boolean representing whether the point is zero.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::point2d::Point2D;
+    ///
+    /// fn foo() {
+    ///     let zero_point = Point2D::zero();
+    ///     assert(zero_point.is_zero());
+    /// }
+    /// ```
     pub fn is_zero(self) -> bool {
         self == Self::zero()
     }
 
+    /// Returns the minimum point.
+    ///
+    /// # Returns
+    ///
+    /// * [Point2D] - The new minimum Point2D.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::point2d::Point2D;
+    ///
+    /// fn foo() {
+    ///     let zero_point = Point2D::zero();
+    ///     assert(b256::try_from(new_point.x()).unwrap() == b256::zero());
+    ///     assert(b256::try_from(new_point.y()).unwrap() == b256::zero());
+    /// }
+    /// ```
     pub fn min() -> Self {
         Self {
             x: Bytes::from(b256::zero()),
@@ -57,17 +129,42 @@ impl Point2D {
         }
     }
 
-    pub fn max() -> Self {
-        Self {
-            x: Bytes::from(b256::max()),
-            y: Bytes::from(b256::max()),
-        }
-    }
-
+    /// Returns the underlying x point as bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The x point represented as bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::point2d::Point2D;
+    ///
+    /// fn foo(point: Point2D) {
+    ///     let x = point.x();
+    ///     assert(x.len() != 0);
+    /// }
+    /// ```
     pub fn x(self) -> Bytes {
         self.x
     }
 
+    /// Returns the underlying y point as bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The y point represented as bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::point2d::Point2D;
+    ///
+    /// fn foo(point: Point2D) {
+    ///     let y = point.y();
+    ///     assert(y.len() != 0);
+    /// }
+    /// ```
     pub fn y(self) -> Bytes {
         self.y
     }
