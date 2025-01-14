@@ -79,5 +79,9 @@ path = "src/bin/run.rs"
 name = "forc-submit"
 path = "src/bin/submit.rs"
 
+[[bin]]
+name = "forc-call"
+path = "src/bin/call.rs"
+
 [lib]
 path = "src/lib.rs"
