@@ -20,7 +20,7 @@ use fuels::{
 };
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
 use fuels_core::{
-    codec::{encode_fn_selector, ABIDecoder, ABIEncoder, DecoderConfig, EncoderConfig},
+    codec::{encode_fn_selector, ABIEncoder, DecoderConfig, EncoderConfig},
     types::{
         bech32::Bech32ContractId,
         param_types::ParamType,
