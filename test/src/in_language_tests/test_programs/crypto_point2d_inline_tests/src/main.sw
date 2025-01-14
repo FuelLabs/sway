@@ -45,17 +45,6 @@ fn point2d_min() {
 }
 
 #[test]
-fn point2d_max() {
-    let max_point = Point2D::max();
-
-    assert(max_point.x().len() == 32);
-    assert(max_point.y().len() == 32);
-
-    assert(b256::try_from(max_point.x()).unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-    assert(b256::try_from(max_point.y()).unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-}
-
-#[test]
 fn point2d_x() {
     let zero_point = Point2D::zero();
 

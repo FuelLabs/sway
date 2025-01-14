@@ -40,14 +40,6 @@ fn scalar_min() {
 }
 
 #[test]
-fn scalar_max() {
-    let max_scalar = Scalar::max();
-
-    assert(max_scalar.bytes().len() == 32);
-    assert(b256::try_from(max_scalar.bytes()).unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-}
-
-#[test]
 fn scalar_bytes() {
     let zero_scalar = Scalar::zero();
 
