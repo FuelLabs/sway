@@ -20,7 +20,7 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey::new(b256::zero(), 2, b256::zero());s
+    ///     let r: StorageKey<u64> = StorageKey::new(b256::zero(), 2, b256::zero());
     ///     // Reads the third word from storage slot with key 0x000...0
     ///     let x: u64 = r.read();
     /// }
