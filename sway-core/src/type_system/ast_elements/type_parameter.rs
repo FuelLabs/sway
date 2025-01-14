@@ -528,13 +528,11 @@ impl TypeParameter {
                     // If more than one implementation exists we throw an error.
                     // We only try to do the type inference from trait with a single trait constraint.
                     if !type_id.is_concrete(engines, TreatNumericAs::Concrete) && trait_constraints.len() == 1 {
-                        let concrete_trait_type_ids : Vec<(TypeId, String)>= ctx
-                            .namespace_mut()
-                            .module(engines)
-                            .current_items()
-                            .implemented_traits
-                            .get_trait_constraints_are_satisfied_for_types(
-                                handler, *type_id, trait_constraints, engines,
+                        let concrete_trait_type_ids : Vec<(TypeId, String)>=
+                            TraitMap::get_trait_constraints_are_satisfied_for_types(
+                                ctx
+                            .namespace()
+                            .module(engines), handler, *type_id, trait_constraints, engines,
                             )?
                             .into_iter()
                             .filter_map(|t| {
