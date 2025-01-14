@@ -75,24 +75,34 @@
       ]
     },
     {
-      "type": "struct Identity",
-      "concreteTypeId": "deb787a3406ff0f4ed2fe4a68902e92df7cb1f2daff5a7529e0244a5c12f5358",
+      "type": "struct User",
+      "concreteTypeId": "8771e33a50e92b7b9a2b3c66fd99f3c417e4c2d3aef1152b4d64e8df6169f831",
       "metadataTypeId": 13
+    },
+    {
+      "type": "struct std::asset_id::AssetId",
+      "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
+      "metadataTypeId": 14
     },
     {
       "type": "struct std::bytes::Bytes",
       "concreteTypeId": "cdd87b7d12fe505416570c294c884bca819364863efe3bf539245fa18515fbbb",
-      "metadataTypeId": 14
+      "metadataTypeId": 15
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
+      "metadataTypeId": 17
     },
     {
       "type": "struct std::u128::U128",
       "concreteTypeId": "c4a4edf5dbd3026f55a64842d4610751fd4996e511a21367af515102dfb99a1b",
-      "metadataTypeId": 16
+      "metadataTypeId": 18
     },
     {
       "type": "struct std::vec::Vec<u64>",
       "concreteTypeId": "d5bfe1d4e1ace20166c9b50cadd47e862020561bde24f5189cfc2723f5ed76f4",
-      "metadataTypeId": 18,
+      "metadataTypeId": 20,
       "typeArguments": [
         "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
       ]
@@ -284,7 +294,7 @@
       ]
     },
     {
-      "type": "struct Identity",
+      "type": "struct User",
       "metadataTypeId": 13,
       "components": [
         {
@@ -298,12 +308,22 @@
       ]
     },
     {
-      "type": "struct std::bytes::Bytes",
+      "type": "struct std::asset_id::AssetId",
       "metadataTypeId": 14,
       "components": [
         {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
+      "type": "struct std::bytes::Bytes",
+      "metadataTypeId": 15,
+      "components": [
+        {
           "name": "buf",
-          "typeId": 15
+          "typeId": 16
         },
         {
           "name": "len",
@@ -313,7 +333,7 @@
     },
     {
       "type": "struct std::bytes::RawBytes",
-      "metadataTypeId": 15,
+      "metadataTypeId": 16,
       "components": [
         {
           "name": "ptr",
@@ -326,8 +346,18 @@
       ]
     },
     {
+      "type": "struct std::contract_id::ContractId",
+      "metadataTypeId": 17,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
       "type": "struct std::u128::U128",
-      "metadataTypeId": 16,
+      "metadataTypeId": 18,
       "components": [
         {
           "name": "upper",
@@ -341,7 +371,7 @@
     },
     {
       "type": "struct std::vec::RawVec",
-      "metadataTypeId": 17,
+      "metadataTypeId": 19,
       "components": [
         {
           "name": "ptr",
@@ -358,11 +388,11 @@
     },
     {
       "type": "struct std::vec::Vec",
-      "metadataTypeId": 18,
+      "metadataTypeId": 20,
       "components": [
         {
           "name": "buf",
-          "typeId": 17,
+          "typeId": 19,
           "typeArguments": [
             {
               "name": "",
@@ -381,6 +411,21 @@
     }
   ],
   "functions": [
+    {
+      "inputs": [
+        {
+          "name": "target",
+          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
+        },
+        {
+          "name": "asset_id",
+          "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974"
+        }
+      ],
+      "name": "get_balance",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "attributes": null
+    },
     {
       "inputs": [
         {
@@ -518,11 +563,11 @@
       "inputs": [
         {
           "name": "a",
-          "concreteTypeId": "deb787a3406ff0f4ed2fe4a68902e92df7cb1f2daff5a7529e0244a5c12f5358"
+          "concreteTypeId": "8771e33a50e92b7b9a2b3c66fd99f3c417e4c2d3aef1152b4d64e8df6169f831"
         }
       ],
       "name": "test_struct",
-      "output": "deb787a3406ff0f4ed2fe4a68902e92df7cb1f2daff5a7529e0244a5c12f5358",
+      "output": "8771e33a50e92b7b9a2b3c66fd99f3c417e4c2d3aef1152b4d64e8df6169f831",
       "attributes": null
     },
     {
@@ -634,6 +679,30 @@
       "name": "test_vector",
       "output": "d5bfe1d4e1ace20166c9b50cadd47e862020561bde24f5189cfc2723f5ed76f4",
       "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "amount_to_transfer",
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "asset_id",
+          "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974"
+        },
+        {
+          "name": "recipient",
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "name": "transfer",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": [
+        {
+          "name": "payable",
+          "arguments": []
+        }
+      ]
     }
   ],
   "loggedTypes": [],
