@@ -3,13 +3,15 @@ library;
 use ::vec::*;
 use ::bytes::{Bytes, *};
 use ::revert::require;
-use ::crypto::{point2d::*, scalar::*, errors::ZKError};
+use ::crypto::{point2d::*, scalar::*};
 use ::alloc::alloc;
 
-/// The curve types supported by the Fuel VM.
-pub enum CurveType {
-    /// The Alt BN128 curve.
-    AltBN128: (),
+/// The error type used when performing elliptic curve operations for the Alt BN128 curve.
+pub enum AltBn128Error {
+    /// The elliptic curve point used was invalid.
+    InvalidEllipticCurvePoint: (),
+    /// The elliptice curve scalar used was invalid.
+    InvalidEllipticCurveScalar: (),
 }
 
 /// Performs an elliptic curve multiplication with a given curve, point, and scalar.
@@ -20,7 +22,6 @@ pub enum CurveType {
 ///
 /// # Arguments
 ///
-/// * `curve_type`: [CurveType] - The type of curve which the multiplication should be performed.
 /// * `point`: [Point2D] - The point used to perform the multiplication.
 /// * `scalar`: [Scalar] - The scalar used perform the multiplication.
 ///
@@ -31,22 +32,16 @@ pub enum CurveType {
 /// # Examples
 ///
 /// ```sway
-/// use std::{point2d::Point2D, scalar::Scalar, zk::ec_mul};
+/// use std::{point2d::Point2D, scalar::Scalar, alt_bn128::alt_bn128_mul};
 ///
-/// fn foo(curve_type: CurveType, point: Point2D, scalar: Scalar) {
-///     let result = ec_mul(curve_type, point, scalar);
+/// fn foo(point: Point2D, scalar: Scalar) {
+///     let result = alt_bn128_mul(point, scalar);
 ///     assert(!result.is_zero());
 /// }
 /// ```
-pub fn ec_mul(curve_type: CurveType, point: Point2D, scalar: Scalar) -> Point2D {
-    let curve = match curve_type {
-        CurveType::AltBN128 => {
-            require(valid_alt_bn128_point(point), ZKError::InvalidEllipticCurvePoint);
-            require(valid_alt_bn128_scalar(scalar), ZKError::InvalidEllipticCurveScalar);
-
-            0
-        }
-    };
+pub fn alt_bn128_mul(point: Point2D, scalar: Scalar) -> Point2D {
+    require(valid_alt_bn128_point(point), AltBn128Error::InvalidEllipticCurvePoint);
+    require(valid_alt_bn128_scalar(scalar), AltBn128Error::InvalidEllipticCurveScalar);
 
     // 1P = ([32 bytes], [32 bytes]) 
     let mut result = [b256::zero(), b256::zero()];
@@ -56,7 +51,7 @@ pub fn ec_mul(curve_type: CurveType, point: Point2D, scalar: Scalar) -> Point2D 
     point.y().ptr().copy_to::<b256>(ptr.add::<b256>(1), 1);
     scalar.bytes().ptr().copy_to::<b256>(ptr.add::<b256>(2), 1);
 
-    asm(buffer: result, curve: curve, operation: 1, scalar: ptr) {
+    asm(buffer: result, curve: 0, operation: 1, scalar: ptr) {
         ecop buffer curve operation scalar;
     };
 
@@ -71,7 +66,6 @@ pub fn ec_mul(curve_type: CurveType, point: Point2D, scalar: Scalar) -> Point2D 
 ///
 /// # Arguments
 ///
-/// * `curve_type`: [CurveType] - The type of curve which the addition should be performed.
 /// * `point_1`: [Point2D] - The first point used to perform the addition.
 /// * `point_2`: [Point2D] - The second point used to perform the addition.
 ///
@@ -82,22 +76,16 @@ pub fn ec_mul(curve_type: CurveType, point: Point2D, scalar: Scalar) -> Point2D 
 /// # Examples
 ///
 /// ```sway
-/// use std::{point2d::Point2D, scalar::Scalar, zk::ec_mul};
+/// use std::{point2d::Point2D, scalar::Scalar, alt_bn128::alt_bn128_add};
 ///
-/// fn foo(curve_type: CurveType, point_1: Point2D, point_2: Point2D) {
-///     let result = ec_add(curve_type, point_1, point_2);
+/// fn foo(point_1: Point2D, point_2: Point2D) {
+///     let result = alt_bn128_add(point_1, point_2);
 ///     assert(!result.is_zero());
 /// }
 /// ```
-pub fn ec_add(curve_type: CurveType, point_1: Point2D, point_2: Point2D) -> Point2D {
-    let curve = match curve_type {
-        CurveType::AltBN128 => {
-            require(valid_alt_bn128_point(point_1), ZKError::InvalidEllipticCurvePoint);
-            require(valid_alt_bn128_point(point_2), ZKError::InvalidEllipticCurvePoint);
-
-            0
-        }
-    };
+pub fn alt_bn128_add(point_1: Point2D, point_2: Point2D) -> Point2D {
+    require(valid_alt_bn128_point(point_1), AltBn128Error::InvalidEllipticCurvePoint);
+    require(valid_alt_bn128_point(point_2), AltBn128Error::InvalidEllipticCurvePoint);
 
     // 1P = ([32 bytes], [32 bytes]) 
     let mut result = [b256::zero(), b256::zero()];
@@ -108,7 +96,7 @@ pub fn ec_add(curve_type: CurveType, point_1: Point2D, point_2: Point2D) -> Poin
     point_2.x().ptr().copy_to::<b256>(points_ptr.add::<b256>(2), 1);
     point_2.y().ptr().copy_to::<b256>(points_ptr.add::<b256>(3), 1);
 
-    asm(buffer: result, curve: curve, operation: 0, points: points_ptr) {
+    asm(buffer: result, curve: 0, operation: 0, points: points_ptr) {
         ecop buffer curve operation points;
     };
 
@@ -123,7 +111,6 @@ pub fn ec_add(curve_type: CurveType, point_1: Point2D, point_2: Point2D) -> Poin
 ///
 /// # Arguments
 ///
-/// * `curve_type`: [CurveType] - The type of curve which the addition should be performed.
 /// * `points`: [Vec<(Point2D, [Point2D; 2])>] - The points used to perform the pairing check.
 ///
 /// # Returns
@@ -133,46 +120,39 @@ pub fn ec_add(curve_type: CurveType, point_1: Point2D, point_2: Point2D) -> Poin
 /// # Examples
 ///
 /// ```sway
-/// use std::{point2d::Point2D, scalar::Scalar, zk::ec_mul};
+/// use std::{point2d::Point2D, scalar::Scalar, alt_bn128::alt_bn128_pairing_check};
 ///
-/// fn foo(curve_type: CurveType, points: Vec<(Point2D, [Point2D; 2])>) {
-///     let result = ec_pairing_check(curve_type, points);
+/// fn foo(points: Vec<(Point2D, [Point2D; 2])>) {
+///     let result = alt_bn128_pairing_check(points);
 ///     assert(result);
 /// }
 /// ```
-pub fn ec_pairing_check(curve_type: CurveType, points: Vec<(Point2D, [Point2D; 2])>) -> bool {
+pub fn alt_bn128_pairing_check(points: Vec<(Point2D, [Point2D; 2])>) -> bool {
     // Total bytes is (P1, (G1, G2)) = ([32 bytes, 32 bytes], ([32 bytes, 32 bytes], [32 bytes, 32 bytes])) = 6 * 32 bytes * length
     let mut points_ptr = alloc::<b256>(points.len() * 6);
+    let mut iter = 0;
+    while iter < points.len() {
+        let p1 = points.get(iter).unwrap().0;
+        let p2 = points.get(iter).unwrap().1[0];
+        let p3 = points.get(iter).unwrap().1[1];
 
-    let curve = match curve_type {
-        CurveType::AltBN128 => {
-            let mut iter = 0;
-            while iter < points.len() {
-                let p1 = points.get(iter).unwrap().0;
-                let p2 = points.get(iter).unwrap().1[0];
-                let p3 = points.get(iter).unwrap().1[1];
+        require(valid_alt_bn128_point(p1), AltBn128Error::InvalidEllipticCurvePoint);
+        require(valid_alt_bn128_point(p2), AltBn128Error::InvalidEllipticCurvePoint);
+        require(valid_alt_bn128_point(p3), AltBn128Error::InvalidEllipticCurvePoint);
 
-                require(valid_alt_bn128_point(p1), ZKError::InvalidEllipticCurvePoint);
-                require(valid_alt_bn128_point(p2), ZKError::InvalidEllipticCurvePoint);
-                require(valid_alt_bn128_point(p3), ZKError::InvalidEllipticCurvePoint);
+        // Copy all 6 32 byte length points to the single slice
+        p1.x().ptr().copy_to::<b256>(points_ptr.add::<b256>(iter * 6), 1);
+        p1.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 1), 1);
+        p2.x().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 2), 1);
+        p2.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 3), 1);
+        p3.x().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 4), 1);
+        p3.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 5), 1);
 
-                // Copy all 6 32 byte length points to the single slice
-                p1.x().ptr().copy_to::<b256>(points_ptr.add::<b256>(iter * 6), 1);
-                p1.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 1), 1);
-                p2.x().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 2), 1);
-                p2.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 3), 1);
-                p3.x().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 4), 1);
-                p3.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 5), 1);
-
-                iter += 1;
-            }
-
-            0
-        }
-    };
+        iter += 1;
+    }
 
     // Result is bool
-    asm(buffer, curve: curve, length: points.len(), points: points_ptr) {
+    asm(buffer, curve: 0, length: points.len(), points: points_ptr) {
         epar buffer curve length points;
         buffer: bool
     }
