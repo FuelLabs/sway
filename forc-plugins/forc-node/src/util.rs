@@ -58,8 +58,12 @@ pub(crate) fn get_fuel_core_version() -> anyhow::Result<Version> {
 /// create this command.
 /// Example:
 /// ```rust
-/// let command = Command::new("fuel-core").arg("run");
-/// let command = HumanReadableCommand(command);
+/// use std::process::Command;
+/// use forc_node::util::HumanReadableCommand;
+///
+/// let mut command = Command::new("fuel-core");
+/// command.arg("run");
+/// let command = HumanReadableCommand::from(&command);
 /// let formatted = format!("{command}");
 /// assert_eq!(&formatted, "fuel-core run");
 /// ```

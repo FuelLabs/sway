@@ -2904,6 +2904,7 @@ dependencies = [
  "forc-tracing 0.66.5",
  "forc-util",
  "include_dir",
+ "portpicker",
  "reqwest 0.12.5",
  "semver 1.0.23",
  "serde",
