@@ -21,11 +21,12 @@ pub(crate) async fn run(cmd: LocalCmd, dry_run: bool) -> anyhow::Result<Option<C
     fuel_core_command.arg("run");
     fuel_core_command.args(params.as_slice());
 
+    println_green(&format!(
+        "{}",
+        HumanReadableCommand::from(&fuel_core_command)
+    ));
+
     if dry_run {
-        println_green(&format!(
-            "{}",
-            HumanReadableCommand::from(fuel_core_command)
-        ));
         Ok(None)
     } else {
         // Spawn the process with proper error handling

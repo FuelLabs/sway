@@ -63,9 +63,9 @@ pub(crate) fn get_fuel_core_version() -> anyhow::Result<Version> {
 /// let formatted = format!("{command}");
 /// assert_eq!(&formatted, "fuel-core run");
 /// ```
-pub struct HumanReadableCommand(Command);
+pub struct HumanReadableCommand<'a>(&'a Command);
 
-impl Display for HumanReadableCommand {
+impl Display for HumanReadableCommand<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let dbg_out = format!("{:?}", self.0);
         // This is in the ""command-name" "param-name" "param-val"" format.
@@ -73,6 +73,12 @@ impl Display for HumanReadableCommand {
             .replace("\" \"", " ") // replace " " between items with space
             .replace("\"", ""); // remove remaining quotes at start/end
         write!(f, "{parsed}")
+    }
+}
+
+impl<'a> From<&'a Command> for HumanReadableCommand<'a> {
+    fn from(value: &'a Command) -> Self {
+        Self(value)
     }
 }
 
@@ -99,12 +105,6 @@ pub(crate) fn ask_user_string(question: &str) -> anyhow::Result<String> {
     Ok(response)
 }
 
-impl From<Command> for HumanReadableCommand {
-    fn from(value: Command) -> Self {
-        Self(value)
-    }
-}
-
 /// Ask if the user has a keypair generated and if so, collect the details.
 /// If not, bails out with a help message about how to generate a keypair.
 pub(crate) fn ask_user_keypair() -> Result<KeyPair> {
@@ -128,7 +128,7 @@ mod tests {
     fn test_basic_command() {
         let mut command = Command::new("fuel-core");
         command.arg("run");
-        let human_readable = HumanReadableCommand(command);
+        let human_readable = HumanReadableCommand(&command);
         assert_eq!(format!("{human_readable}"), "fuel-core run");
     }
 
@@ -138,7 +138,7 @@ mod tests {
         command.arg("run");
         command.arg("--config");
         command.arg("config.toml");
-        let human_readable = HumanReadableCommand(command);
+        let human_readable = HumanReadableCommand(&command);
         assert_eq!(
             format!("{human_readable}"),
             "fuel-core run --config config.toml"
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn test_command_no_args() {
         let command = Command::new("fuel-core");
-        let human_readable = HumanReadableCommand(command);
+        let human_readable = HumanReadableCommand(&command);
         assert_eq!(format!("{human_readable}"), "fuel-core");
     }
 
@@ -157,7 +157,7 @@ mod tests {
         let mut command = Command::new("fuel-core");
         command.arg("--config");
         command.arg("/path/to/config.toml");
-        let human_readable = HumanReadableCommand(command);
+        let human_readable = HumanReadableCommand(&command);
         assert_eq!(
             format!("{human_readable}"),
             "fuel-core --config /path/to/config.toml"

@@ -51,18 +51,21 @@ pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Optio
     let mut fuel_core_command = Command::new("fuel-core");
     fuel_core_command.arg("run");
     fuel_core_command.args(params.as_slice());
+
+    println_green(&format!(
+        "{}",
+        HumanReadableCommand::from(&fuel_core_command)
+    ));
+
     if dry_run {
-        println_green(&format!(
-            "{}",
-            HumanReadableCommand::from(fuel_core_command)
-        ));
-        return Ok(None);
+        Ok(None)
+    } else {
+        // Spawn the process with proper error handling
+        let handle = fuel_core_command
+            .spawn()
+            .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
+        Ok(Some(handle))
     }
-    // Spawn the process with proper error handling
-    let handle = fuel_core_command
-        .spawn()
-        .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
-    Ok(Some(handle))
 }
 
 #[derive(Debug)]
