@@ -3,16 +3,15 @@
 
 use anyhow::anyhow;
 use clap::Parser;
-use forc_node::{cmd, op};
+use forc_node::{
+    cmd::{self, ForcNodeCmd},
+    op,
+};
 use forc_tracing::init_tracing_subscriber;
-use forc_util::ForcResult;
+use forc_util::{ForcCliResult, ForcResult};
 
-#[tokio::main]
-async fn main() -> ForcResult<()> {
-    init_tracing_subscriber(Default::default());
-
-    let command = cmd::ForcNodeCmd::parse();
-    let mut handle = op::run(command).await?;
+async fn run(cmd: ForcNodeCmd) -> ForcResult<()> {
+    let mut handle = op::run(cmd).await?;
 
     // if this is not a dry run we should wait for the kill signal and kill
     // fuel-core upon receiving it.
@@ -26,4 +25,12 @@ async fn main() -> ForcResult<()> {
         handle.kill()?;
     }
     ForcResult::Ok(())
+}
+
+#[tokio::main]
+async fn main() -> ForcCliResult<()> {
+    init_tracing_subscriber(Default::default());
+
+    let command = cmd::ForcNodeCmd::parse();
+    run(command).await.into()
 }
