@@ -836,7 +836,6 @@ fn parse_delimited_string(param_type: &ParamType, input: &str) -> Result<Vec<Str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cmd::call::FuncType;
     use fuel_crypto::SecretKey;
     use fuels::prelude::*;
     use fuels_accounts::wallet::{Wallet, WalletUnlocked};
@@ -880,24 +879,19 @@ mod tests {
         id: ContractId,
         wallet: &WalletUnlocked,
         selector: &str,
-        args: &str,
+        args: Vec<&str>,
     ) -> cmd::Call {
         // get secret key from wallet - use unsafe because secret_key is private
         // 0000000000000000000000000000000000000000000000000000000000000001
         let secret_key =
             unsafe { std::mem::transmute::<&WalletUnlocked, &(Wallet, SecretKey)>(wallet).1 };
-        let vec_args = if args.to_string().is_empty() {
-            vec![]
-        } else {
-            vec![args.to_string()]
-        };
         cmd::Call {
             contract_id: id,
             abi: Some(Either::Left(std::path::PathBuf::from(
                 "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json",
             ))),
-            function: FuncType::Selector(selector.into()),
-            args: vec_args,
+            function: cmd::call::FuncType::Selector(selector.into()),
+            args: args.into_iter().map(String::from).collect(),
             node: crate::NodeTarget {
                 node_url: Some(wallet.provider().unwrap().url().to_owned()),
                 ..Default::default()
@@ -2034,31 +2028,31 @@ mod tests {
         let (_, id, wallet) = get_contract_instance().await;
 
         // test_empty_no_return
-        let cmd = get_contract_call_cmd(id, &wallet, "test_empty_no_return", "");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_empty_no_return", vec![]);
         assert_eq!(call(cmd).await.unwrap(), "()");
 
         // test_empty
-        let cmd = get_contract_call_cmd(id, &wallet, "test_empty", "");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_empty", vec![]);
         assert_eq!(call(cmd).await.unwrap(), "()");
 
         // test_unit
-        let cmd = get_contract_call_cmd(id, &wallet, "test_unit", "()");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_unit", vec!["()"]);
         assert_eq!(call(cmd).await.unwrap(), "()");
 
         // test_u8
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u8", "255");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_u8", vec!["255"]);
         assert_eq!(call(cmd).await.unwrap(), "255");
 
         // test_u16
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u16", "65535");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_u16", vec!["65535"]);
         assert_eq!(call(cmd).await.unwrap(), "65535");
 
         // test_u32
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u32", "4294967295");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_u32", vec!["4294967295"]);
         assert_eq!(call(cmd).await.unwrap(), "4294967295");
 
         // test_u64
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u64", "18446744073709551615");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_u64", vec!["18446744073709551615"]);
         assert_eq!(call(cmd).await.unwrap(), "18446744073709551615");
 
         // test_u128
@@ -2066,7 +2060,7 @@ mod tests {
             id,
             &wallet,
             "test_u128",
-            "340282366920938463463374607431768211455",
+            vec!["340282366920938463463374607431768211455"],
         );
         assert_eq!(
             call(cmd).await.unwrap(),
@@ -2078,7 +2072,7 @@ mod tests {
             id,
             &wallet,
             "test_u256",
-            "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+            vec!["115792089237316195423570985008687907853269984665640564039457584007913129639935"],
         );
         assert_eq!(
             call(cmd).await.unwrap(),
@@ -2090,7 +2084,7 @@ mod tests {
             id,
             &wallet,
             "test_b256",
-            "0000000000000000000000000000000000000000000000000000000000000042",
+            vec!["0000000000000000000000000000000000000000000000000000000000000042"],
         );
         assert_eq!(
             call(cmd).await.unwrap(),
@@ -2102,7 +2096,7 @@ mod tests {
             id,
             &wallet,
             "test_b256",
-            "0x0000000000000000000000000000000000000000000000000000000000000042",
+            vec!["0x0000000000000000000000000000000000000000000000000000000000000042"],
         );
         cmd.external_contracts = Some(vec![]);
         assert_eq!(
@@ -2111,34 +2105,34 @@ mod tests {
         );
 
         // test_bytes
-        let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", "0x42");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", vec!["0x42"]);
         assert_eq!(call(cmd).await.unwrap(), "0x42");
 
         // test bytes without 0x prefix
-        let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", "42");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", vec!["42"]);
         assert_eq!(call(cmd).await.unwrap(), "0x42");
 
         // test_str
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str", "fuel");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_str", vec!["fuel"]);
         assert_eq!(call(cmd).await.unwrap(), "fuel");
 
         // test str array
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", "fuel rocks");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", vec!["fuel rocks"]);
         assert_eq!(call(cmd).await.unwrap(), "fuel rocks");
 
         // test str array - fails if length mismatch
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", "fuel");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", vec!["fuel"]);
         assert_eq!(
             call(cmd).await.unwrap_err().to_string(),
             "string array length mismatch: expected 10, got 4"
         );
 
         // test str slice
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str_slice", "fuel rocks 42");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_str_slice", vec!["fuel rocks 42"]);
         assert_eq!(call(cmd).await.unwrap(), "fuel rocks 42");
 
         // test tuple
-        let cmd = get_contract_call_cmd(id, &wallet, "test_tuple", "(42, true)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_tuple", vec!["(42, true)"]);
         assert_eq!(call(cmd).await.unwrap(), "(42, true)");
 
         // test array
@@ -2146,7 +2140,7 @@ mod tests {
             id,
             &wallet,
             "test_array",
-            "[42, 42, 42, 42, 42, 42, 42, 42, 42, 42]",
+            vec!["[42, 42, 42, 42, 42, 42, 42, 42, 42, 42]"],
         );
         assert_eq!(
             call(cmd).await.unwrap(),
@@ -2154,88 +2148,88 @@ mod tests {
         );
 
         // test_array - fails if different types
-        let cmd = get_contract_call_cmd(id, &wallet, "test_array", "[42, true]");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_array", vec!["[42, true]"]);
         assert_eq!(
             call(cmd).await.unwrap_err().to_string(),
             "failed to parse u64 value: true"
         );
 
         // test_array - succeeds if length not matched!?
-        let cmd = get_contract_call_cmd(id, &wallet, "test_array", "[42, 42]");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_array", vec!["[42, 42]"]);
         assert_eq!(
             call(cmd).await.unwrap(),
             "[42, 42, 0, 4718592, 65536, 65536, 0, 0, 0, 0]"
         );
 
         // test_vector
-        let cmd = get_contract_call_cmd(id, &wallet, "test_vector", "[42, 42]");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_vector", vec!["[42, 42]"]);
         assert_eq!(call(cmd).await.unwrap(), "[42, 42]");
 
         // test_vector - fails if different types
-        let cmd = get_contract_call_cmd(id, &wallet, "test_vector", "[42, true]");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_vector", vec!["[42, true]"]);
         assert_eq!(
             call(cmd).await.unwrap_err().to_string(),
             "failed to parse u64 value: true"
         );
 
         // test_struct - Identity { name: str[2], id: u64 }
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", "{fu, 42}");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fu, 42}"]);
         assert_eq!(call(cmd).await.unwrap(), "{fu, 42}");
 
         // test_struct - fails if incorrect inner attribute length
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", "{fuel, 42}");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fuel, 42}"]);
         assert_eq!(
             call(cmd).await.unwrap_err().to_string(),
             "string array length mismatch: expected 2, got 4"
         );
 
         // test_struct - succeeds if missing inner final attribute; default value is used
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", "{fu}");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fu}"]);
         assert_eq!(call(cmd).await.unwrap(), "{fu, 0}");
 
         // test_struct - succeeds to use default values for all attributes if missing
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", "{}");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{}"]);
         assert_eq!(call(cmd).await.unwrap(), "{\0\0, 0}");
 
         // test_enum
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", "(Active:true)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(Active:true)"]);
         assert_eq!(call(cmd).await.unwrap(), "(Active:true)");
 
         // test_enum - succeeds if using index
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", "(1:56)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(1:56)"]);
         assert_eq!(call(cmd).await.unwrap(), "(Pending:56)");
 
         // test_enum - fails if variant not found
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", "(A:true)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(A:true)"]);
         assert_eq!(
             call(cmd).await.unwrap_err().to_string(),
             "failed to find index of variant: A"
         );
 
         // test_enum - fails if variant value incorrect
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", "(Active:3)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(Active:3)"]);
         assert_eq!(
             call(cmd).await.unwrap_err().to_string(),
             "failed to parse `Active` variant enum value: 3"
         );
 
         // test_enum - fails if variant value is missing
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", "(Active:)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(Active:)"]);
         assert_eq!(
             call(cmd).await.unwrap_err().to_string(),
             "enum must have exactly two parts `(variant:value)`: (Active:)"
         );
 
         // test_option - encoded like an enum
-        let cmd = get_contract_call_cmd(id, &wallet, "test_option", "(0:())");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(0:())"]);
         assert_eq!(call(cmd).await.unwrap(), "(None:())");
 
         // test_option - encoded like an enum; none value ignored
-        let cmd = get_contract_call_cmd(id, &wallet, "test_option", "(0:42)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(0:42)"]);
         assert_eq!(call(cmd).await.unwrap(), "(None:())");
 
         // test_option - encoded like an enum; some value
-        let cmd = get_contract_call_cmd(id, &wallet, "test_option", "(1:42)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(1:42)"]);
         assert_eq!(call(cmd).await.unwrap(), "(Some:42)");
     }
 
@@ -2244,11 +2238,12 @@ mod tests {
         let (_, id, wallet) = get_contract_instance().await;
 
         // test_complex_struct
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct_with_generic", "{42, fuel}");
+        let cmd =
+            get_contract_call_cmd(id, &wallet, "test_struct_with_generic", vec!["{42, fuel}"]);
         assert_eq!(call(cmd).await.unwrap(), "{42, fuel}");
 
         // test_enum_with_generic
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum_with_generic", "(value:32)");
+        let cmd = get_contract_call_cmd(id, &wallet, "test_enum_with_generic", vec!["(value:32)"]);
         assert_eq!(call(cmd).await.unwrap(), "(value:32)");
 
         // test_enum_with_complex_generic
@@ -2256,7 +2251,7 @@ mod tests {
             id,
             &wallet,
             "test_enum_with_complex_generic",
-            "(value:{42, fuel})",
+            vec!["(value:{42, fuel})"],
         );
         assert_eq!(call(cmd).await.unwrap(), "(value:{42, fuel})");
 
@@ -2264,7 +2259,7 @@ mod tests {
             id,
             &wallet,
             "test_enum_with_complex_generic",
-            "(container:{{42, fuel}, fuel})",
+            vec!["(container:{{42, fuel}, fuel})"],
         );
         assert_eq!(call(cmd).await.unwrap(), "(container:{{42, fuel}, fuel})");
     }
