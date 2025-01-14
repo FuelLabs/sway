@@ -158,8 +158,8 @@ pub struct Command {
     pub gas: Option<Gas>,
 
     /// The external contract addresses to use for the call
-    /// If none are provided, the call will automatically extract contract addresses from the function arguments
-    /// and use them for the call as external contracts
+    /// If none are provided, the call will automatically populate external contracts by making a dry-run calls
+    /// to the node, and extract the contract addresses based on the revert reason
     #[clap(long, alias = "contracts")]
     pub external_contracts: Option<Vec<ContractId>>,
 }
