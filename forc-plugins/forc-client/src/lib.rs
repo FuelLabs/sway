@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use util::target::Target;
 
 /// Flags for specifying the node to target.
-#[derive(Debug, Default, Parser, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Parser, Deserialize, Serialize)]
 pub struct NodeTarget {
     /// The URL of the Fuel node to which we're submitting the transaction.
     /// If unspecified, checks the manifest's `network` table, then falls back
