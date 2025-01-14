@@ -72,17 +72,19 @@ pub struct ConfigFetcher {
     config_vault: PathBuf,
 }
 
-impl ConfigFetcher {
+impl Default for ConfigFetcher {
     /// Creates a new fetcher to interact with github.
     /// By default user's chain configuration vault is at: `~/.forc/chainspecs`
-    pub fn new() -> Self {
+    fn default() -> Self {
         Self {
             client: reqwest::Client::new(),
             base_url: "https://api.github.com".to_string(),
             config_vault: user_forc_directory().join(CONFIG_FOLDER),
         }
     }
+}
 
+impl ConfigFetcher {
     #[cfg(test)]
     /// Override the base url, to be used in tests.
     pub fn with_base_url(base_url: String) -> Self {
@@ -103,7 +105,7 @@ impl ConfigFetcher {
     }
 
     fn get_base_url(&self) -> &str {
-        return &self.base_url;
+        &self.base_url
     }
 
     fn build_api_endpoint(&self, folder_name: &str) -> String {
@@ -319,7 +321,7 @@ async fn validate_remote_chainconfig(
     // For testnet and mainnet configs, we need to check online.
     println_action_green("Checking", "for network configuration updates.");
 
-    if fetcher.check_fetch_required(&conf).await? {
+    if fetcher.check_fetch_required(conf).await? {
         println_warning(&format!(
             "A network configuration update detected for {}, this might create problems while syncing with rest of the network",
             conf
@@ -328,7 +330,7 @@ async fn validate_remote_chainconfig(
         let update = ask_user_yes_no_question("Would you like to update network configuration?")?;
         if update {
             println_action_green("Updating", &format!("configuration files for {conf}",));
-            fetcher.download_config(&conf).await?;
+            fetcher.download_config(conf).await?;
             println_action_green(
                 "Finished",
                 &format!("updating configuration files for {conf}",),
@@ -344,7 +346,7 @@ async fn validate_remote_chainconfig(
 /// and compare them to the remote one in github. If a change is detected asks
 /// user if they want to update, and does the update for them.
 pub async fn check_and_update_chain_config(conf: ChainConfig) -> anyhow::Result<()> {
-    let fetcher = ConfigFetcher::new();
+    let fetcher = ConfigFetcher::default();
     match conf {
         ChainConfig::Local => validate_local_chainconfig(&fetcher).await?,
         remote_config => validate_remote_chainconfig(&fetcher, &remote_config).await?,
@@ -517,7 +519,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_local_configuration_never_needs_fetch() {
-        let fetcher = ConfigFetcher::new();
+        let fetcher = ConfigFetcher::default();
         let needs_fetch = fetcher
             .check_fetch_required(&ChainConfig::Local)
             .await

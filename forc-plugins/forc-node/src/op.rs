@@ -10,7 +10,7 @@ use std::process::Child;
 /// First checks locally installed `forc-node` version and compares it with
 /// `consts::MIN_FUEL_CORE_VERSION`. If local version is acceptable, proceeding
 /// with the correct mode of operation.
-pub(crate) async fn run(cmd: ForcNodeCmd) -> anyhow::Result<Option<Child>> {
+pub async fn run(cmd: ForcNodeCmd) -> anyhow::Result<Option<Child>> {
     let current_version = get_fuel_core_version()?;
     let supported_min_version = Version::parse(MIN_FUEL_CORE_VERSION)?;
     if current_version < supported_min_version {

@@ -53,6 +53,7 @@ impl From<LocalCmd> for RunOpts {
             snapshot: path,
             poa_instant: true,
             db_path: value.db_path,
+            port: value.port,
             ..Default::default()
         }
     }
