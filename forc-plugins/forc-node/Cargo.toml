@@ -11,10 +11,9 @@ repository.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "string"] }
 dialoguer.workspace = true
-fuel-crypto = { workspace = true, features = ["random"] }
 forc-tracing.workspace = true
 forc-util.workspace = true
-include_dir.workspace = true
+fuel-crypto = { workspace = true, features = ["random"] }
 reqwest = { workspace = true, features = ["json"] }
 semver.workspace = true
 serde.workspace = true
