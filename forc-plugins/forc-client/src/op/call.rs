@@ -318,7 +318,7 @@ async fn get_missing_contracts(
             )) => {
                 let contract_id = find_id_of_missing_contract(&receipts)?;
                 call.external_contracts.push(contract_id);
-            },
+            }
             Err(err) => bail!(err),
         }
     }
