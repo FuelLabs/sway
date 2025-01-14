@@ -5,5 +5,4 @@ license = "Apache-2.0"
 name = "script_multi_test"
 
 [dependencies]
-core = { path = "../../../../sway-lib-core" }
-std = { path = "../../../../sway-lib-std" }
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.66.5" }

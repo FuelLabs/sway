@@ -633,7 +633,6 @@ fn create_runnables(
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableTestFn {
                 range: token::get_range_from_span(&span.clone()),
-                //tree_type: typed_program.kind.tree_type(),
                 test_name: Some(decl.name.to_string()),
             });
             runnables.entry(path).or_default().push(runnable);
