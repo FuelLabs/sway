@@ -452,6 +452,7 @@ impl Parse for ty::TyExpression {
                 adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
                     collect_type_argument(ctx, type_arg);
                 });
+                eprintln!("ty::TyExpressionVariant::EnumInstantiation | prefixes: {:?}", &call_path_binding.inner.prefixes);
                 collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes);
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(
                     &ctx.ident(&Ident::new(variant_instantiation_span.clone())),
@@ -1231,14 +1232,20 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
 }
 
 fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
+    eprintln!("\n --- collect_call_path_prefixes ---");
     for (mod_path, ident) in iter_prefixes(prefixes).zip(prefixes) {
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
+            let path = ctx.engines.se().get_path(ident.span().source_id().unwrap());
+            eprintln!("ident: {:?} \npath: {:?}", ident, path);
             token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(ident.clone()));
             if let Some(span) = ctx
                 .namespace
                 .submodule(ctx.engines, mod_path)
                 .and_then(|tgt_submod| tgt_submod.span().clone())
             {
+                let path = ctx.engines.se().get_path(span.source_id().unwrap());
+                eprintln!("decl_span: {:?} \npath: {:?}\n", span, path);
+
                 token.kind = SymbolKind::Module;
                 token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
             }

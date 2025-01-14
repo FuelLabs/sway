@@ -429,6 +429,8 @@ impl Parse for AbiCastExpression {
 
 impl Parse for DelineatedPathExpression {
     fn parse(&self, ctx: &ParseContext) {
+        //eprintln!("parsing DelineatedPathExpression: {:?}", self);
+
         let DelineatedPathExpression {
             call_path_binding,
             args,
