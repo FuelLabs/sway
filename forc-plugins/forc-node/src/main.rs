@@ -1,6 +1,5 @@
 //! A forc plugin to start a fuel core instance, preconfigured for generic
 //! usecases.
-
 use anyhow::anyhow;
 use clap::Parser;
 use forc_node::{

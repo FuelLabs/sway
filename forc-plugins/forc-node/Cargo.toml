@@ -11,6 +11,7 @@ repository.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "string"] }
 dialoguer.workspace = true
+fuel-crypto = { workspace = true, features = ["random"] }
 forc-tracing.workspace = true
 forc-util.workspace = true
 include_dir.workspace = true
@@ -20,6 +21,8 @@ serde.workspace = true
 serde_json.workspace = true
 sha1.workspace = true
 tokio = { workspace = true, features = ["macros", "signal", "rt-multi-thread"] }
+libp2p-identity = { workspace = true, features = ["secp256k1", "peerid"] }
+termion.workspace = true
 
 [dev-dependencies]
 portpicker = "0.1.1"

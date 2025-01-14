@@ -2903,7 +2903,9 @@ dependencies = [
  "dialoguer",
  "forc-tracing 0.66.5",
  "forc-util",
+ "fuel-crypto",
  "include_dir",
+ "libp2p-identity",
  "portpicker",
  "reqwest 0.12.5",
  "semver 1.0.23",
@@ -2911,6 +2913,7 @@ dependencies = [
  "serde_json",
  "sha1",
  "tempfile",
+ "termion 4.0.3",
  "tokio",
  "wiremock",
 ]
