@@ -1507,7 +1507,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok(vec![node])
         }
         ConstGenericExpression { decl, .. } => {
-            todo!()
+            // todo!()
+            Ok(vec![])
         }
         ConfigurableExpression { decl, .. } => {
             let Some(node) = graph.namespace.get_configurable(decl).cloned() else {

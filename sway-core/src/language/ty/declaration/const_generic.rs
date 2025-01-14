@@ -1,8 +1,10 @@
 use crate::{
     language::{parsed::ConstGenericDeclaration, CallPath},
+    semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
     TypeId,
 };
 use serde::{Deserialize, Serialize};
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Named, Span, Spanned};
 
 use super::TyDeclParsedType;
@@ -12,6 +14,16 @@ pub struct TyConstGenericDecl {
     pub call_path: CallPath,
     pub return_type: TypeId,
     pub span: Span,
+}
+
+impl TypeCheckAnalysis for TyConstGenericDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
 }
 
 impl TyConstGenericDecl {

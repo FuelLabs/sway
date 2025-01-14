@@ -1,5 +1,5 @@
-use crate::TypeId;
-use sway_types::{Ident, Span};
+use crate::{language::ty::TyDeclParsedType, TypeId};
+use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct ConstGenericDeclaration {

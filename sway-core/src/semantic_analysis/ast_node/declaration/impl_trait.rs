@@ -70,10 +70,8 @@ impl TyImplSelfOrTrait {
                     let _ = TyTraitType::collect(handler, engines, scoped_ctx, decl_id);
                 }
             });
-            scoped_ctx.namespace().module(engines).dump_until_parent();
             Ok(())
         });
-        ctx.namespace().module(engines).dump_until_parent();
         Ok(())
     }
 
@@ -90,6 +88,7 @@ impl TyImplSelfOrTrait {
             mut implementing_for,
             items,
             block_span,
+            impl_const_generics_parameters,
             ..
         } = impl_trait;
 
@@ -112,6 +111,29 @@ impl TyImplSelfOrTrait {
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |mut ctx| {
+                for parsed_decl_id in impl_const_generics_parameters {
+                    let const_generic = engines.pe().get(&parsed_decl_id);
+                    let decl_ref = engines.de().insert(
+                        TyConstGenericDecl {
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: const_generic.name.clone(),
+                                is_absolute: false,
+                            },
+                            span: const_generic.span.clone(),
+                            return_type: const_generic.ty,
+                        },
+                        Some(&parsed_decl_id),
+                    );
+                    ctx.insert_symbol(
+                        handler,
+                        const_generic.name.clone(),
+                        TyDecl::ConstGenericDecl(ConstGenericDecl {
+                            decl_id: *decl_ref.id(),
+                        }),
+                    )?;
+                }
+
                 // Type check the type parameters
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,

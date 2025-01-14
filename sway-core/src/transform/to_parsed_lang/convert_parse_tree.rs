@@ -1292,7 +1292,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                 })
             }
             GenericParam::Const { ident, ty } => {
-                let ty = type_engine.new_custom_from_name(engines, ident.clone());
+                let ty = type_engine.id_of_u64();
                 let span = ident.span();
                 Either::Right(ConstGenericParameter {
                     name: ident,

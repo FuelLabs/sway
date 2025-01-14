@@ -5,6 +5,7 @@ use crate::{
     semantic_analysis::Namespace,
     Engines,
 };
+use petgraph::{algo::toposort, Directed};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
@@ -27,6 +28,61 @@ pub struct SymbolCollectionContext {
 }
 
 impl SymbolCollectionContext {
+    pub fn dump(&self) {
+        println!("SymbolCollectionContext::dump");
+        println!("-----------------------");
+        let mut g: petgraph::Graph<i32, i32> = petgraph::Graph::default();
+        let root = g.add_node(1);
+        let mut nodes: std::collections::HashMap<usize, petgraph::prelude::NodeIndex> =
+            std::collections::HashMap::default();
+        let mut lss: std::collections::HashMap<petgraph::prelude::NodeIndex, usize> =
+            std::collections::HashMap::default();
+
+        let module = &self.namespace.root.module;
+        for (idx, ls) in module.lexical_scopes.iter().enumerate() {
+            let node = g.add_node(1);
+            nodes.insert(idx, node);
+            lss.insert(node, idx);
+
+            if let Some(parent) = ls.parent.as_ref() {
+                let parent_node = nodes[parent];
+                g.add_edge(parent_node, node, 1);
+            } else {
+                g.add_edge(root, node, 1);
+            }
+        }
+
+        let depth_to = petgraph::algo::dijkstra(&g, root, None, |_| 1);
+
+        let mut dfs = petgraph::visit::Dfs::new(&g, root);
+        while let Some(nx) = dfs.next(&g) {
+            if nx == root {
+                continue;
+            }
+            let ls_id = lss[&nx];
+            let ls = &module.lexical_scopes[ls_id];
+            println!(
+                "{}id: {} [{:?}]",
+                "    ".repeat(depth_to[&nx] as usize),
+                ls_id,
+                self.namespace
+                    .root
+                    .module
+                    .lexical_scopes_spans
+                    .iter()
+                    .find(|x| *x.1 == ls_id)
+                    .map(|x| x.0.as_str())
+            );
+            for item in ls.items.symbols().iter() {
+                println!(
+                    "{}{}",
+                    "    ".repeat(depth_to[&nx] as usize),
+                    item.0.as_str()
+                )
+            }
+        }
+    }
+
     /// Initialize a context at the top-level of a module with its namespace.
     pub fn new(namespace: Namespace) -> Self {
         Self {

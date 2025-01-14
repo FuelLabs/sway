@@ -280,8 +280,6 @@ pub fn resolve_call_path(
     self_type: Option<TypeId>,
     check_visibility: VisibilityCheck,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-    let debug = call_path.suffix.as_str() == "N";
-
     let symbol_path: Vec<_> = mod_path
         .iter()
         .chain(&call_path.prefixes)

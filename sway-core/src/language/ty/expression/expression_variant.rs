@@ -1060,8 +1060,8 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::ConstantExpression { decl, .. } => {
                 decl.type_check_analyze(handler, ctx)?
             }
-            TyExpressionVariant::ConstGenericExpression { .. } => {
-                todo!()
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                decl.type_check_analyze(handler, ctx)?
             }
             TyExpressionVariant::ConfigurableExpression { decl, .. } => {
                 decl.type_check_analyze(handler, ctx)?

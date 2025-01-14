@@ -685,15 +685,17 @@ impl ty::TyExpression {
             }
             Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
                 let decl = (*decl_engine.get(&decl_id)).clone();
-                let decl_name = decl.name().clone();
+                dbg!(ctx.engines.te().get(decl.return_type));
                 ty::TyExpression {
                     return_type: decl.return_type,
                     expression: ty::TyExpressionVariant::ConstGenericExpression {
                         decl: Box::new(decl),
                         span: name.span(),
-                        call_path: Some(
-                            CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
-                        ),
+                        call_path: dbg!(Some(CallPath {
+                            prefixes: vec![],
+                            suffix: name.clone(),
+                            is_absolute: false
+                        },)),
                     },
                     span,
                 }

@@ -252,7 +252,6 @@ impl Module {
                 break;
             }
         }
-        dbg!();
     }
 
     /// Returns the mutable current lexical scope associated with this module.
@@ -363,27 +362,12 @@ impl Module {
         symbol: &Ident,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let ret = self.walk_scope_chain(|lexical_scope| {
-            if symbol.as_str() == "N" {
-                dbg!(&lexical_scope
-                    .items
-                    .symbols()
-                    .iter()
-                    .map(|x| x.0.as_str())
-                    .collect::<Vec<_>>());
-            }
             lexical_scope.items.resolve_symbol(handler, engines, symbol)
         })?;
 
         if let Some(ret) = ret {
             Ok(ret)
         } else {
-            println!(
-                "resolve_symbol {:?} {:?} {:?}",
-                &self.name,
-                self.span.as_ref().map(|x| x.as_str()),
-                &symbol
-            );
-            println!("{}", std::backtrace::Backtrace::force_capture());
             // Symbol not found
             Err(handler.emit_err(CompileError::SymbolNotFound {
                 name: symbol.clone(),
