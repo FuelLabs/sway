@@ -2273,19 +2273,13 @@ mod tests {
         let base_asset_id = provider.base_asset_id();
         let get_recipient_balance = |addr: Bech32Address| async move {
             provider
-                .get_asset_balance(
-                    &addr,
-                    *base_asset_id,
-                )
+                .get_asset_balance(&addr, *base_asset_id)
                 .await
                 .unwrap()
         };
         let get_contract_balance = |id: ContractId| async move {
             provider
-                .get_contract_asset_balance(
-                    &Bech32ContractId::from(id),
-                    *base_asset_id,
-                )
+                .get_contract_asset_balance(&Bech32ContractId::from(id), *base_asset_id)
                 .await
                 .unwrap()
         };
@@ -2328,7 +2322,10 @@ mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(cmd).await.unwrap(), "()");
-        assert_eq!(get_recipient_balance(random_wallet.address().clone()).await, 2);
+        assert_eq!(
+            get_recipient_balance(random_wallet.address().clone()).await,
+            2
+        );
         assert_eq!(get_contract_balance(id).await, 1);
 
         // contract call transfer funds to another address
@@ -2368,7 +2365,10 @@ mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(cmd).await.unwrap(), "()");
-        assert_eq!(get_recipient_balance(random_wallet.address().clone()).await, 3);
+        assert_eq!(
+            get_recipient_balance(random_wallet.address().clone()).await,
+            3
+        );
         assert_eq!(get_contract_balance(id).await, 6); // extra amount (5) is forwarded to the contract
     }
 }
