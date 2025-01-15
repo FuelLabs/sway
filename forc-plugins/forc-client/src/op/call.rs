@@ -2271,10 +2271,19 @@ mod tests {
 
         let provider = wallet.provider().unwrap();
         let base_asset_id = provider.base_asset_id();
-        let get_balance = |addr: String| async move {
+        let get_recipient_balance = |addr: Bech32Address| async move {
             provider
                 .get_asset_balance(
-                    &Bech32Address::from(Address::from_str(addr.as_str()).unwrap()),
+                    &addr,
+                    *base_asset_id,
+                )
+                .await
+                .unwrap()
+        };
+        let get_contract_balance = |id: ContractId| async move {
+            provider
+                .get_contract_asset_balance(
+                    &Bech32ContractId::from(id),
                     *base_asset_id,
                 )
                 .await
@@ -2286,7 +2295,7 @@ mod tests {
         let (amount, asset_id, recipient) = (
             "1",
             &format!("{{0x{}}}", base_asset_id),
-            &format!("0x{}", id_2),
+            &format!("(ContractId:{{0x{}}})", id_2),
         );
         let mut cmd =
             get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
@@ -2297,18 +2306,18 @@ mod tests {
         };
         // validate balance is unchanged (dry-run)
         assert_eq!(call(cmd.clone()).await.unwrap(), "()");
-        assert_eq!(get_balance(recipient.to_string()).await, 0);
+        assert_eq!(get_contract_balance(id_2).await, 0);
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(cmd).await.unwrap(), "()");
-        assert_eq!(get_balance(recipient.to_string()).await, 1);
-        assert_eq!(get_balance(format!("0x{}", id)).await, 1); // WHY!?
+        assert_eq!(get_contract_balance(id_2).await, 1);
+        assert_eq!(get_contract_balance(id).await, 1);
 
         // contract call transfer funds to another address
         let random_wallet = WalletUnlocked::new_random(None);
         let (amount, asset_id, recipient) = (
             "2",
             &format!("{{0x{}}}", base_asset_id),
-            &format!("0x{}", random_wallet.address().hash()),
+            &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
         );
         let mut cmd =
             get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
@@ -2319,27 +2328,28 @@ mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(cmd).await.unwrap(), "()");
-        assert_eq!(get_balance(recipient.to_string()).await, 2);
-        assert_eq!(get_balance(format!("0x{}", id)).await, 1); // WHY!?
+        assert_eq!(get_recipient_balance(random_wallet.address().clone()).await, 2);
+        assert_eq!(get_contract_balance(id).await, 1);
 
         // contract call transfer funds to another address
         // specify amount x, provide amount x - 1
         // fails with panic reason 'NotEnoughBalance'
         let random_wallet = WalletUnlocked::new_random(None);
         let (amount, asset_id, recipient) = (
-            "2",
+            "5",
             &format!("{{0x{}}}", base_asset_id),
-            &format!("0x{}", random_wallet.address().hash()),
+            &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
         );
         let mut cmd =
             get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
         cmd.call_parameters = cmd::call::CallParametersOpts {
-            amount: amount.parse::<u64>().unwrap() - 1,
+            amount: amount.parse::<u64>().unwrap() - 3,
             asset_id: Some(*base_asset_id),
             gas_forwarded: None,
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(cmd).await.unwrap_err().to_string(), "Contract execution panicked with reason: PanicInstruction { reason: NotEnoughBalance, instruction: TRO { contract_id_addr: 0x12, output_index: 0x11, amount: 0x15, asset_id_addr: 0x10 } (bytes: 3d 49 15 50) }");
+        assert_eq!(get_contract_balance(id).await, 1);
 
         // contract call transfer funds to another address
         // specify amount x, provide amount x + 5; should succeed
@@ -2347,7 +2357,7 @@ mod tests {
         let (amount, asset_id, recipient) = (
             "3",
             &format!("{{0x{}}}", base_asset_id),
-            &format!("0x{}", random_wallet.address().hash()),
+            &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
         );
         let mut cmd =
             get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
@@ -2358,7 +2368,7 @@ mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(cmd).await.unwrap(), "()");
-        assert_eq!(get_balance(recipient.to_string()).await, 3);
-        assert_eq!(get_balance(format!("0x{}", id)).await, 1); // WHY!?
+        assert_eq!(get_recipient_balance(random_wallet.address().clone()).await, 3);
+        assert_eq!(get_contract_balance(id).await, 6); // extra amount (5) is forwarded to the contract
     }
 }
