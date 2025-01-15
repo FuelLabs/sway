@@ -38,3 +38,61 @@ pub struct NodeTarget {
     #[clap(long)]
     pub mainnet: bool,
 }
+
+impl NodeTarget {
+    /// Returns the URL for explorer
+    pub fn get_explorer_url(&self) -> Option<String> {
+        match (
+            self.testnet,
+            self.mainnet,
+            self.target.clone(),
+            self.node_url.clone(),
+        ) {
+            (true, false, None, None) => Target::testnet().explorer_url(),
+            (false, true, None, None) => Target::mainnet().explorer_url(),
+            (false, false, Some(target), None) => target.explorer_url(),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_explorer_url_testnet() {
+        let node = NodeTarget {
+            target: Some(Target::Testnet),
+            node_url: None,
+            testnet: false,
+            mainnet: false,
+        };
+        let actual = node.get_explorer_url().unwrap();
+        assert_eq!("https://app-testnet.fuel.network", actual);
+    }
+
+    #[test]
+    fn test_get_explorer_url_mainnet() {
+        let node = NodeTarget {
+            target: Some(Target::Mainnet),
+            node_url: None,
+            testnet: false,
+            mainnet: false,
+        };
+        let actual = node.get_explorer_url().unwrap();
+        assert_eq!("https://app.fuel.network", actual);
+    }
+
+    #[test]
+    fn test_get_explorer_url_local() {
+        let node = NodeTarget {
+            target: Some(Target::Local),
+            node_url: None,
+            testnet: false,
+            mainnet: false,
+        };
+        let actual = node.get_explorer_url();
+        assert_eq!(None, actual);
+    }
+}

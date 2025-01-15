@@ -2,7 +2,7 @@ use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
     util::{
-        node_url::{get_explorer_url, get_node_url},
+        node_url::get_node_url,
         tx::{prompt_forc_wallet_password, select_local_wallet_account},
     },
 };
@@ -244,7 +244,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
 
         // display transaction url if live mode
         if cmd::call::ExecutionMode::Live == mode {
-            if let Some(explorer_url) = get_explorer_url(&node) {
+            if let Some(explorer_url) = node.get_explorer_url() {
                 forc_tracing::println_action_green(
                     "\nView transaction:",
                     &format!("{}/tx/0x{}", explorer_url, tx_hash),
@@ -345,7 +345,7 @@ pub fn find_id_of_missing_contract(receipts: &[Receipt]) -> Result<Bech32Contrac
             _ => continue,
         }
     }
-    bail!("No contract panic found in receipts: {:?}", receipts)
+    bail!("No contract found in receipts: {:?}", receipts)
 }
 
 async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<WalletUnlocked> {
