@@ -62,10 +62,33 @@ impl StorageVecContract for Contract {
     // ANCHOR: storage_vec_iterate
     #[storage(read)]
     fn iterate_over_a_storage_vec() {
+        // Iterate over all the elements
+        // in turn using the `while` loop.
+        // **This approach is not recommended.**
+        // For iterating over all the elements
+        // in turn use the `for` loop instead.
         let mut i = 0;
         while i < storage.v.len() {
             log(storage.v.get(i).unwrap().read());
             i += 1;
+        }
+
+        // The preferred and most performant way
+        // to iterate over all the elements in turn is
+        // to use the `for` loop.
+        for elem in storage.v.iter() {
+            log(elem.read());
+        }
+
+        // Use the `while` loop only when more
+        // control over traversal is needed.
+        // E.g., in the below example we iterate
+        // the vector backwards, accessing only
+        // every second element.
+        let mut i = storage.v.len() - 1;
+        while 0 <= i {
+            log(storage.v.get(i).unwrap().read());
+            i -= 2;
         }
     }
     // ANCHOR_END: storage_vec_iterate
