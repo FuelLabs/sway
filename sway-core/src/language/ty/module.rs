@@ -71,6 +71,16 @@ impl TyModule {
             .flat_map(|node| inside_ast_node(de, node))
             .collect::<Vec<_>>()
     }
+
+    /// Recursively find all test function declarations.
+    pub fn test_fns_recursive<'a: 'b, 'b>(
+        &'b self,
+        decl_engine: &'a DeclEngine,
+    ) -> impl 'b + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
+        self.submodules_recursive()
+            .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
+            .chain(self.test_fns(decl_engine))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -103,7 +113,7 @@ impl TyModule {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
+    ) -> impl 'b + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })) =
                 &node.content
@@ -123,7 +133,7 @@ impl TyModule {
     pub fn contract_fns<'a: 'b, 'b>(
         &'b self,
         engines: &'a Engines,
-    ) -> impl '_ + Iterator<Item = DeclId<TyFunctionDecl>> {
+    ) -> impl 'b + Iterator<Item = DeclId<TyFunctionDecl>> {
         self.all_nodes
             .iter()
             .flat_map(move |node| node.contract_fns(engines))
@@ -133,7 +143,7 @@ impl TyModule {
     pub fn contract_supertrait_fns<'a: 'b, 'b>(
         &'b self,
         engines: &'a Engines,
-    ) -> impl '_ + Iterator<Item = DeclId<TyFunctionDecl>> {
+    ) -> impl 'b + Iterator<Item = DeclId<TyFunctionDecl>> {
         self.all_nodes
             .iter()
             .flat_map(move |node| node.contract_supertrait_fns(engines))
