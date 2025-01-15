@@ -11,5 +11,5 @@ impl<T, const N: u64> A for [T; N] {
 }
 
 fn main() -> u64 {
-    1
+    [1].len()
 }

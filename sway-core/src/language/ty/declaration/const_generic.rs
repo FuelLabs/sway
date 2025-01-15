@@ -19,8 +19,8 @@ pub struct TyConstGenericDecl {
 impl TypeCheckAnalysis for TyConstGenericDecl {
     fn type_check_analyze(
         &self,
-        handler: &Handler,
-        ctx: &mut TypeCheckAnalysisContext,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         Ok(())
     }

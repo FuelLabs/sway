@@ -559,7 +559,7 @@ impl TypeCheckAnalysis for TyDecl {
                 let const_decl = ctx.engines.de().get_constant(&node.decl_id);
                 const_decl.type_check_analyze(handler, ctx)?;
             }
-            TyDecl::ConstGenericDecl(node) => {
+            TyDecl::ConstGenericDecl(_) => {
                 todo!()
             }
             TyDecl::ConfigurableDecl(node) => {
@@ -619,7 +619,7 @@ impl TypeCheckFinalization for TyDecl {
                 let mut const_decl = (*ctx.engines.de().get_constant(&node.decl_id)).clone();
                 const_decl.type_check_finalize(handler, ctx)?;
             }
-            TyDecl::ConstGenericDecl(node) => {
+            TyDecl::ConstGenericDecl(_) => {
                 todo!()
             }
             TyDecl::ConfigurableDecl(node) => {

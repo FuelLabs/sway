@@ -5,7 +5,6 @@ use crate::{
     semantic_analysis::Namespace,
     Engines,
 };
-use petgraph::{algo::toposort, Directed};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 

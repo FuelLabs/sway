@@ -444,7 +444,7 @@ fn item_struct_to_struct_declaration(
         return Err(emitted);
     }
 
-    let (type_parameters, const_generic_parameters) = generic_params_opt_to_type_parameters(
+    let (type_parameters, _const_generic_parameters) = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -514,7 +514,7 @@ fn item_enum_to_enum_declaration(
         return Err(emitted);
     }
 
-    let (type_parameters, const_generic_parameters) = generic_params_opt_to_type_parameters(
+    let (type_parameters, _const_generic_parameters) = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -566,7 +566,7 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let (type_parameters, const_generic_parameters) =
+    let (type_parameters, _const_generic_parameters) =
         generic_params_opt_to_type_parameters_with_parent(
             context,
             handler,
@@ -666,7 +666,7 @@ fn item_trait_to_trait_declaration(
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
-    let (type_parameters, const_generic_parameters) = generic_params_opt_to_type_parameters(
+    let (type_parameters, _const_generic_parameters) = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -1291,7 +1291,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                     is_from_parent,
                 })
             }
-            GenericParam::Const { ident, ty } => {
+            GenericParam::Const { ident, .. } => {
                 let ty = type_engine.id_of_u64();
                 let span = ident.span();
                 Either::Right(ConstGenericParameter {

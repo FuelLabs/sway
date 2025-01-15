@@ -2,7 +2,6 @@ use super::{
     ConstGenericDeclaration, ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration,
 };
 use crate::{
-    ast_elements::type_parameter::ConstGenericParameter,
     decl_engine::{parsed_id::ParsedDeclId, ParsedInterfaceDeclId},
     engine_threading::{
         DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,

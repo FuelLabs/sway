@@ -1,11 +1,7 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{
-        parsed::{ConstGenericDeclaration, Declaration},
-        ty::*,
-        Visibility,
-    },
+    language::{parsed::Declaration, ty::*, Visibility},
     type_system::*,
     types::*,
 };
@@ -523,7 +519,7 @@ impl TyDecl {
         match self {
             TyDecl::VariableDecl(_decl) => None,
             TyDecl::ConstantDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
-            TyDecl::ConstGenericDecl(decl) => todo!(),
+            TyDecl::ConstGenericDecl(_decl) => todo!(),
             TyDecl::ConfigurableDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::TraitTypeDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::FunctionDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),

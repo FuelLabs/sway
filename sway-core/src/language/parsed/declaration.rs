@@ -101,7 +101,7 @@ impl Declaration {
             AbiDeclaration(_) => "abi",
             StorageDeclaration(_) => "contract storage",
             TypeAliasDeclaration(_) => "type alias",
-            ConstGenericDeclaration(parsed_decl_id) => todo!(),
+            ConstGenericDeclaration(_parsed_decl_id) => todo!(),
         }
     }
 
@@ -123,7 +123,7 @@ impl Declaration {
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
             TraitFnDeclaration(decl_id) => pe.get_trait_fn(decl_id).span(),
-            ConstGenericDeclaration(parsed_decl_id) => todo!(),
+            ConstGenericDeclaration(_parsed_decl_id) => todo!(),
         }
     }
 

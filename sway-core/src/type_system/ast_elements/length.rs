@@ -24,10 +24,10 @@ impl std::hash::Hash for Length {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         core::mem::discriminant(self).hash(state);
         match self {
-            Length::Literal { val, span } => {
+            Length::Literal { val, .. } => {
                 val.hash(state);
             }
-            Length::Expression { expr } => {
+            Length::Expression { .. } => {
                 // TODO making Expression hasheable is a lot of work (some variants are not hasheable),
                 // and more than we need.
                 // but using span here is dangerous

@@ -19,7 +19,7 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
             Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
             None => false,
         },
-        ConstGenericExpression { decl, .. } => {
+        ConstGenericExpression { .. } => {
             todo!()
         }
         ConfigurableExpression { decl, .. } => match &decl.value {

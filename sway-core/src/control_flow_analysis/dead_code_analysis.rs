@@ -1506,7 +1506,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![node])
         }
-        ConstGenericExpression { decl, .. } => {
+        ConstGenericExpression { .. } => {
             // todo!()
             Ok(vec![])
         }
