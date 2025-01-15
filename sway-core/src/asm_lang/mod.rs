@@ -120,7 +120,10 @@ impl Op {
         size_to_allocate_in_bytes: VirtualImmediate24,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_bytes)),
+            opcode: Either::Left(VirtualOp::CFEI(
+                VirtualRegister::Constant(ConstantRegister::StackPointer),
+                size_to_allocate_in_bytes,
+            )),
             comment: String::new(),
             owning_span: None,
         }
@@ -481,23 +484,35 @@ impl Op {
             /* Memory Instructions */
             "aloc" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::ALOC(r1)
+                VirtualOp::ALOC(VirtualRegister::Constant(ConstantRegister::HeapPointer), r1)
             }
             "cfei" => {
                 let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFEI(imm)
+                VirtualOp::CFEI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    imm,
+                )
             }
             "cfsi" => {
                 let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFSI(imm)
+                VirtualOp::CFSI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    imm,
+                )
             }
             "cfe" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFE(r1)
+                VirtualOp::CFE(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    r1,
+                )
             }
             "cfs" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFS(r1)
+                VirtualOp::CFS(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    r1,
+                )
             }
             "lb" => {
                 let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
@@ -1190,11 +1205,11 @@ impl fmt::Display for VirtualOp {
             RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */
-            ALOC(a) => write!(fmtr, "aloc {a}"),
-            CFEI(a) => write!(fmtr, "cfei {a}"),
-            CFSI(a) => write!(fmtr, "cfsi {a}"),
-            CFE(a) => write!(fmtr, "cfe {a}"),
-            CFS(a) => write!(fmtr, "cfs {a}"),
+            ALOC(_hp, a) => write!(fmtr, "aloc {a}"),
+            CFEI(_sp, a) => write!(fmtr, "cfei {a}"),
+            CFSI(_sp, a) => write!(fmtr, "cfsi {a}"),
+            CFE(_sp, a) => write!(fmtr, "cfe {a}"),
+            CFS(_sp, a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl {a} {b}"),

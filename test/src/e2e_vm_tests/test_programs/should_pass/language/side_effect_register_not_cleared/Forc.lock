@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-2E33935626FEE552"
+
+[[package]]
+name = "side_effect_register_not_cleared"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-2E33935626FEE552"
+dependencies = ["core"]
