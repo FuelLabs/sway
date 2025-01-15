@@ -1,4 +1,4 @@
-use crate::{cli::commands::Commands, FuelClient};
+use crate::{cli::commands::Commands, names, FuelClient};
 use rustyline::{
     completion::Completer,
     highlight::{CmdKind, Highlighter},
@@ -56,12 +56,7 @@ impl Completer for DebuggerHelper {
 
             // Register command context
             if self.commands.is_register_command(first_word) && line[..word_start].ends_with(' ') {
-                let register_names = vec![
-                    "zero", "one", "of", "pc", "ssp", "sp", "fp", "hp", "err", "ggas", "cgas",
-                    "bal", "is", "ret", "retl", "flag",
-                ];
-
-                let matches: Vec<String> = register_names
+                let matches: Vec<String> = names::REGISTERS
                     .into_iter()
                     .filter(|name| name.starts_with(word_to_complete))
                     .map(String::from)
