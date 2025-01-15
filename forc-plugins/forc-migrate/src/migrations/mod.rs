@@ -35,8 +35,7 @@ pub(crate) struct ProgramInfo<'a> {
 /// Wrapper over [ProgramInfo] that provides write access
 /// to the [LexedProgram], but only read access to the
 /// [TyProgram] and the [Engines]. It is used in migrations
-/// that transform the source code by altering the lexed
-/// program.
+/// that modify the source code by altering the lexed program.
 pub(crate) struct MutProgramInfo<'a> {
     pub lexed_program: &'a mut LexedProgram,
     #[allow(dead_code)]
@@ -80,7 +79,7 @@ pub(crate) struct MigrationStep {
     pub kind: MigrationStepKind,
     /// A short help for the migration step.
     ///
-    /// If the `kind` is a [MigrationStepKind::CodeTransformation], start the help
+    /// If the `kind` is a [MigrationStepKind::CodeModification], start the help
     /// with "Migration will", to point out that the migration is a (semi)automatic one
     /// and causes changes in the source file.
     ///
@@ -104,20 +103,23 @@ impl MigrationStep {
         use MigrationStepExecution::*;
         match self.kind {
             MigrationStepKind::Instruction(_) => Manual,
-            MigrationStepKind::CodeTransformation(_, manual_migration_actions)
+            MigrationStepKind::CodeModification(_, manual_migration_actions)
                 if !manual_migration_actions.is_empty() =>
             {
                 Semiautomatic
             }
-            MigrationStepKind::CodeTransformation(_, _) => Automatic,
+            MigrationStepKind::CodeModification(_, _) => Automatic,
+            MigrationStepKind::Interaction(_, _, _) => Semiautomatic,
         }
     }
 
     pub(crate) fn has_manual_actions(&self) -> bool {
         match self.kind {
             MigrationStepKind::Instruction(_) => true,
-            MigrationStepKind::CodeTransformation(_, []) => false,
-            MigrationStepKind::CodeTransformation(_, _) => true,
+            MigrationStepKind::CodeModification(_, []) => false,
+            MigrationStepKind::CodeModification(_, _) => true,
+            MigrationStepKind::Interaction(_, _, []) => false,
+            MigrationStepKind::Interaction(_, _, _) => true,
         }
     }
 }
@@ -146,7 +148,15 @@ type InstructionFn = for<'a> fn(&'a ProgramInfo<'a>) -> Result<Vec<Span>>;
 ///
 /// The function modifies the [LexedProgram] to perform the required code change,
 /// unless the [DryRun] parameter is set to [DryRun::Yes].
-type CodeTransformationFn = for<'a> fn(&'a mut MutProgramInfo<'a>, DryRun) -> Result<Vec<Span>>;
+type CodeModificationFn = for<'a> fn(&'a mut MutProgramInfo<'a>, DryRun) -> Result<Vec<Span>>;
+
+/// A function that interacts with the developer, eventually modifying the original
+/// program given by [MutProgramInfo]. The developer's input decides if the modification
+/// will happen or not.
+///
+/// Returns the [Span]s of all the places in the **original** program code that are
+/// changed during the interaction.
+type InteractionFn = for<'a> fn(&'a mut MutProgramInfo<'a>) -> Result<Vec<Span>>;
 
 /// A function that visits the [Module], potentially alters it, and returns a
 /// [Result] containing related information about the [Module].
@@ -158,11 +168,11 @@ pub(crate) enum MigrationStepKind {
     /// A migration step that provides instructions to developers,
     /// and explains a manual action they should take.
     Instruction(InstructionFn),
-    /// A migration step that automatically transforms the original source code,
+    /// A migration step that automatically modifies the original source code,
     /// and eventually gives additional instructions to developers,
     /// for manual post-migration actions.
     ///
-    /// The [CodeTransformationFn] transforms and overwrites the original source code.
+    /// The [CodeModificationFn] modifies and overwrites the original source code.
     /// The second parameter are the _manual migration actions_.
     /// Those actions need to be done by developers after the automatic part
     /// of the migration is executed.
@@ -171,10 +181,35 @@ pub(crate) enum MigrationStepKind {
     ///
     /// E.g.: change function callers, by adding `&mut` to passed parameters.
     ///
-    /// **If a [MigrationStepKind::CodeTransformation] does not have
+    /// **If a [MigrationStepKind::CodeModification] does not have
     /// _manual migration actions_ it is considered to be a fully automated migration,
     /// after witch the migration process can safely continue.**
-    CodeTransformation(CodeTransformationFn, &'static [&'static str]),
+    CodeModification(CodeModificationFn, &'static [&'static str]),
+    /// A migration step that first provides instructions to developers,
+    /// and afterwards interacts with them, giving additional instructions
+    /// and asking for additional input.
+    ///
+    /// Based on the input gotten during the interaction, the [InteractionFn]
+    /// can modify the original source code.
+    ///
+    /// The second parameter are the _manual migration actions_.
+    /// Those actions still need to be done by developers after the automatic part
+    /// of the migration is executed during the interaction.
+    ///
+    /// Manual migration actions start with a small letter and end with a dot.
+    ///
+    /// E.g.: change function callers, by adding `&mut` to passed parameters.
+    ///
+    /// **If a [MigrationStepKind::Interaction] does not have
+    /// _manual migration actions_ it is considered to be finished after the interaction,
+    /// after witch the migration process can safely continue.**
+    ///
+    /// Note that in a general case, the [InstructionFn] and the [InteractionFn]
+    /// can return different [Span]s. E.g., during the instruction a single
+    /// span can be returned pointing to a module in which the change needs
+    /// to be done, while the interaction will return the actual places in the
+    /// module that were modified.
+    Interaction(InstructionFn, InteractionFn, &'static [&'static str]),
 }
 
 /// A convenient method for visiting all the [LexedModule]s within a [LexedProgram].
@@ -314,10 +349,9 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 const MIGRATION_STEPS: MigrationSteps = &[
     (
         Feature::StorageDomains,
-        &[self::storage_domains::REVIEW_STORAGE_SLOT_KEYS_STEP],
-    ),
-    (
-        Feature::References,
-        &[self::references::REPLACE_REF_MUT_FN_PARAMETERS_STEP],
+        &[
+            self::storage_domains::REVIEW_STORAGE_SLOT_KEYS_STEP,
+            self::storage_domains::DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP,
+        ],
     ),
 ];

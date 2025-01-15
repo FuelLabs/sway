@@ -12,10 +12,11 @@ use sway_types::{Span, Spanned};
 
 use super::{DryRun, MigrationStep, MigrationStepKind};
 
+#[allow(dead_code)]
 pub(super) const REPLACE_REF_MUT_FN_PARAMETERS_STEP: MigrationStep = MigrationStep {
     title: "Replace `ref mut` function parameters with `&mut`",
     duration: 5,
-    kind: MigrationStepKind::CodeTransformation(
+    kind: MigrationStepKind::CodeModification(
         replace_ref_mut_fn_parameters_step,
         &[
             "change function callers, by adding `&mut` to passed parameters.",
@@ -38,6 +39,8 @@ pub(super) const REPLACE_REF_MUT_FN_PARAMETERS_STEP: MigrationStep = MigrationSt
 //       Also, this migration step will be disabled for the next
 //       breaking change version of Sway. It is currently enabled for
 //       the sake of testing and trying out the `forc migrate` tool.
+
+// TODO: Simplify this migration by using matchers and modifiers.
 fn replace_ref_mut_fn_parameters_step(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,

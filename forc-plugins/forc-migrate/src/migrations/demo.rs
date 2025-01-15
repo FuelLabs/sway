@@ -18,7 +18,7 @@ use super::{DryRun, MigrationStep, MigrationStepKind};
 pub(super) const INSERT_EMPTY_FUNCTION_STEP: MigrationStep = MigrationStep {
     title: "Insert `empty_function` at the end of every module",
     duration: 0,
-    kind: MigrationStepKind::CodeTransformation(insert_empty_function_step, &[]),
+    kind: MigrationStepKind::CodeModification(insert_empty_function_step, &[]),
     help: &[
         "Migration will insert an empty function named `empty_function`",
         "at the end of every module, unless the function with the same",
@@ -36,6 +36,7 @@ fn insert_empty_function_step(
         module: &mut Module,
         dry_run: DryRun,
     ) -> Result<Vec<Span>> {
+        // TODO: Simplify this demo migration by using matchers and modifiers.
         let mut result = vec![];
 
         // Code transformations must be idempotent. In this demo, if the function

@@ -248,22 +248,34 @@ pub(crate) fn create_migration_diagnostic(
             })
             .chain(match migration_step.kind {
                 MigrationStepKind::Instruction(_) => vec![],
-                MigrationStepKind::CodeTransformation(_, []) => vec![],
-                MigrationStepKind::CodeTransformation(_, manual_migration_actions) => {
-                    ["After the migration, you will still need to:".to_string()]
-                        .into_iter()
-                        .chain(
-                            manual_migration_actions
-                                .iter()
-                                .map(|help| format!("- {help}"))
-                                .chain(vec![Diagnostic::help_empty_line()]),
-                        )
-                        .collect()
-                }
+                MigrationStepKind::CodeModification(_, []) => vec![],
+                MigrationStepKind::CodeModification(_, manual_migration_actions) => {
+                    get_manual_migration_actions_help(manual_migration_actions)
+                },
+                MigrationStepKind::Interaction(_, _, []) => vec![
+                    "This migration step will interactively modify the code, based on your input.".to_string(),
+                    Diagnostic::help_empty_line(),
+                ],
+                MigrationStepKind::Interaction(_, _, manual_migration_actions) => vec![
+                    "This migration step will interactively modify the code, based on your input.".to_string(),
+                    Diagnostic::help_empty_line(),
+                ].into_iter().chain(get_manual_migration_actions_help(manual_migration_actions)).collect(),
             })
             .chain(vec![detailed_migration_guide_msg(feature)])
             .collect(),
     })
+}
+
+fn get_manual_migration_actions_help(manual_migration_actions: &[&str]) -> Vec<String> {
+    ["After the migration, you will still need to:".to_string()]
+        .into_iter()
+        .chain(
+            manual_migration_actions
+                .iter()
+                .map(|help| format!("- {help}"))
+                .chain(vec![Diagnostic::help_empty_line()]),
+        )
+        .collect()
 }
 
 pub(crate) fn detailed_migration_guide_msg(feature: &Feature) -> String {

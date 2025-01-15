@@ -8,7 +8,7 @@ forc_util::cli_examples! {
         [ Build the docs for a project in the current path and open it in the browser => "forc doc --open" ]
         [ Build the docs for a project located in another path => "forc doc --manifest-path {path}" ]
         [ Build the docs for the current project exporting private types => "forc doc --document-private-items" ]
-        [ Build the docs offline without downloading any dependency => "forc doc --offline" ]
+        [ Build the docs offline without downloading any dependencies => "forc doc --offline" ]
     }
 }
 

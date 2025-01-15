@@ -6,7 +6,7 @@
 
 `forc-migrate` migrates the code to the _next_ breaking change version of Sway. That means, if you want to migrate to, e.g., Sway v0.**67**.0, you will need to use the _latest v0.**66**.x_ version of the `forc-migrate`.
 
-For example, let's say that your Sway project is on the version _v0.66.1_, and that the latest v0.66 version is _v0.66.42_. You should first update your Fuel toolchain to the version _v0.66.42_ of `forc`, and compile your project with that version:
+For example, let's say that your Sway project is on version _v0.66.1_, and that the latest v0.66 version is _v0.66.42_. You should first update your Fuel toolchain to version _v0.66.42_ of `forc`, and compile your project with that version:
 
 ```text
 fuelup component add forc@0.66.42

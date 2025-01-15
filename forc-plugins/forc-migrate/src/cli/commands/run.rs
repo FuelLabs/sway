@@ -27,14 +27,14 @@ use crate::{
         },
     },
     get_migration_steps_or_return, instructive_error,
-    migrations::{DryRun, MigrationStep, MigrationStepKind, MigrationSteps},
+    migrations::{DryRun, MigrationStep, MigrationStepKind, MigrationSteps, ProgramInfo},
 };
 
 forc_util::cli_examples! {
     crate::cli::Opt {
         [ Migrate the project in the current path => "forc migrate run"]
         [ Migrate the project located in another path => "forc migrate run --path {path}" ]
-        [ Migrate the project offline without downloading any dependency => "forc migrate run --offline" ]
+        [ Migrate the project offline without downloading any dependencies => "forc migrate run --offline" ]
     }
 }
 
@@ -130,67 +130,38 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     for (feature, migration_steps) in migration_steps.iter() {
         for migration_step in migration_steps.iter() {
             match migration_step.kind {
-                MigrationStepKind::Instruction(migration) => {
-                    let occurrences_spans = migration(&program_info)?;
-                    if occurrences_spans.is_empty() {
-                        print_checked_action(max_len, feature, migration_step);
-                    } else {
-                        print_review_action(max_len, feature, migration_step);
+                MigrationStepKind::Instruction(instruction) => {
+                    let occurrences_spans = instruction(&program_info)?;
 
-                        if let Some(diagnostic) = create_migration_diagnostic(
-                            engines.se(),
-                            feature,
-                            migration_step,
-                            &occurrences_spans,
-                        ) {
-                            format_diagnostic(&diagnostic);
-                        }
+                    print_instruction_result(&engines, max_len, feature, migration_step, &occurrences_spans);
 
+                    if !occurrences_spans.is_empty() {
                         println_yellow_bold("If you've already reviewed the above points, you can ignore this info.");
                     }
                 }
-                MigrationStepKind::CodeTransformation(migration, manual_migration_actions) => {
-                    let occurrences_spans = migration(&mut program_info.as_mut(), DryRun::No)?;
+                MigrationStepKind::CodeModification(modification, manual_migration_actions) => {
+                    let occurrences_spans = modification(&mut program_info.as_mut(), DryRun::No)?;
 
-                    if occurrences_spans.is_empty() {
-                        print_checked_action(max_len, feature, migration_step);
-                    } else {
-                        print_changing_code_action(max_len, feature, migration_step);
+                    output_modified_modules(&build_instructions.manifest_dir()?, &program_info, &occurrences_spans)?;
 
-                        let modified_modules =
-                            ModifiedModules::new(engines.se(), &occurrences_spans);
+                    let stop_migration_process = print_modification_result(max_len, feature, migration_step, manual_migration_actions, &occurrences_spans, &mut current_feature_migration_has_code_changes);
+                    if stop_migration_process == StopMigrationProcess::Yes {
+                        return Ok(());
+                    }
+                }
+                MigrationStepKind::Interaction(instruction, interaction, manual_migration_actions) => {
+                    let instruction_occurrences_spans = instruction(&program_info)?;
 
-                        check_that_modified_modules_are_not_dirty(&modified_modules)?;
+                    print_instruction_result(&engines, max_len, feature, migration_step, &instruction_occurrences_spans);
 
-                        output_changed_lexed_program(
-                            &build_instructions.manifest_dir()?,
-                            &modified_modules,
-                            &program_info.lexed_program,
-                        )?;
+                    // We have occurrences, let's continue with the interaction.
+                    if !instruction_occurrences_spans.is_empty() {
+                        let interaction_occurrences_spans = interaction(&mut program_info.as_mut())?;
 
-                        // Print the confirmation.
-                        println!(
-                            "Source code successfully changed ({} change{}).",
-                            occurrences_spans.len(),
-                            plural_s(occurrences_spans.len())
-                        );
+                        output_modified_modules(&build_instructions.manifest_dir()?, &program_info, &interaction_occurrences_spans)?;
 
-                        // Check if we can proceed with the next migration step or break for manual action.
-                        if !migration_step.has_manual_actions() {
-                            // Mark the feature as having made code changes in the migration, and proceed with the
-                            // next migration step *within the same feature*, if any.
-                            current_feature_migration_has_code_changes = true;
-                        } else {
-                            // Display the manual migration actions and stop the further execution of the migration steps.
-                            println!();
-                            println!("You still need to manually:");
-                            manual_migration_actions
-                                .iter()
-                                .for_each(|help| println!("- {help}"));
-                            println!();
-                            println!("{}", detailed_migration_guide_msg(feature));
-                            print_continue_migration_action("Do the above manual changes");
-
+                        let stop_migration_process = print_modification_result(max_len, feature, migration_step, manual_migration_actions, &interaction_occurrences_spans, &mut current_feature_migration_has_code_changes);
+                        if stop_migration_process == StopMigrationProcess::Yes {
                             return Ok(());
                         }
                     }
@@ -215,6 +186,89 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     // Print the confirmation message, even if there were maybe infos
     // displayed for manual reviews.
     print_migration_finished_action();
+
+    Ok(())
+}
+
+#[derive(PartialEq, Eq)]
+enum StopMigrationProcess {
+    Yes,
+    No,
+}
+
+fn print_modification_result(max_len: usize, feature: &Feature, migration_step: &MigrationStep, manual_migration_actions: &[&str], occurrences_spans: &[Span], current_feature_migration_has_code_changes: &mut bool) -> StopMigrationProcess {
+    if occurrences_spans.is_empty() {
+        print_checked_action(max_len, feature, migration_step);
+        StopMigrationProcess::No
+    } else {
+        print_changing_code_action(max_len, feature, migration_step);
+
+        // Print the confirmation.
+        println!(
+            "Source code successfully changed ({} change{}).",
+            occurrences_spans.len(),
+            plural_s(occurrences_spans.len())
+        );
+
+        // Check if we can proceed with the next migration step or break for manual action.
+        if !migration_step.has_manual_actions() {
+            // Mark the feature as having made code changes in the migration, and proceed with the
+            // next migration step *within the same feature*, if any.
+            *current_feature_migration_has_code_changes = true;
+
+            StopMigrationProcess::No
+        } else {
+            // Display the manual migration actions and stop the further execution of the migration steps.
+            println!();
+            println!("You still need to manually:");
+            manual_migration_actions
+                .iter()
+                .for_each(|help| println!("- {help}"));
+            println!();
+            println!("{}", detailed_migration_guide_msg(feature));
+            print_continue_migration_action("Do the above manual changes");
+
+            StopMigrationProcess::Yes
+        }
+    }
+}
+
+fn print_instruction_result(engines: &Engines, max_len: usize, feature: &Feature, migration_step: &MigrationStep, occurrences_spans: &[Span]) {
+    if occurrences_spans.is_empty() {
+        print_checked_action(max_len, feature, migration_step);
+    } else {
+        print_review_action(max_len, feature, migration_step);
+
+        if let Some(diagnostic) = create_migration_diagnostic(
+            engines.se(),
+            feature,
+            migration_step,
+            &occurrences_spans,
+        ) {
+            format_diagnostic(&diagnostic);
+        }
+    }
+}
+
+/// Outputs modified modules, if any, to their original files.
+///
+/// A module is considered modified, if any of the [Span]s in `occurrences_spans`
+/// has that module as its source.
+fn output_modified_modules(manifest_dir: &Path, program_info: &ProgramInfo, occurrences_spans: &[Span]) -> Result<()> {
+    if occurrences_spans.is_empty() {
+        return Ok(());
+    }
+
+    let modified_modules =
+        ModifiedModules::new(program_info.engines.se(), occurrences_spans);
+
+    check_that_modified_modules_are_not_dirty(&modified_modules)?;
+
+    output_changed_lexed_program(
+        manifest_dir,
+        &modified_modules,
+        &program_info.lexed_program,
+    )?;
 
     Ok(())
 }

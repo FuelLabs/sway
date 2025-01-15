@@ -43,10 +43,11 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     for (feature, migration_steps) in migration_steps.iter() {
         for migration_step in migration_steps.iter() {
             let migration_point_spans = match migration_step.kind {
-                MigrationStepKind::Instruction(migration) => migration(&program_info)?,
-                MigrationStepKind::CodeTransformation(migration, _) => {
-                    migration(&mut program_info.as_mut(), DryRun::Yes)?
+                MigrationStepKind::Instruction(instruction) => instruction(&program_info)?,
+                MigrationStepKind::CodeModification(modification, _) => {
+                    modification(&mut program_info.as_mut(), DryRun::Yes)?
                 }
+                MigrationStepKind::Interaction(instruction, _, _) => instruction(&program_info)?,
             };
 
             check_result.push((feature, migration_step, migration_point_spans));

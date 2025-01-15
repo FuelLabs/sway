@@ -2866,6 +2866,8 @@ dependencies = [
  "forc-tracing 0.66.5",
  "forc-util",
  "itertools 0.13.0",
+ "num-bigint",
+ "sha2 0.10.8",
  "sway-ast",
  "sway-core",
  "sway-error",

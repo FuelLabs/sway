@@ -3379,6 +3379,7 @@ fn literal_to_literal(
                 parsed,
                 ty_opt,
                 span,
+                is_generated_b256: _,
             } = lit_int;
             match ty_opt {
                 None => {
