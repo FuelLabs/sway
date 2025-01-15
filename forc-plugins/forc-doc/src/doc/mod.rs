@@ -107,7 +107,7 @@ impl Documentation {
                             } else {
                                 impl_trait.trait_name = impl_trait
                                     .trait_name
-                                    .to_fullpath(engines, &typed_program.namespace);
+                                    .to_canonical_path(engines, &typed_program.namespace);
                                 None
                             };
 
