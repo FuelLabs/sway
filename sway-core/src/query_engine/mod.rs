@@ -302,7 +302,7 @@ enum ReadGuard<'a, T: Clone> {
     Shared(RwLockReadGuard<'a, T>),
 }
 
-impl<'a, T: Clone> Deref for ReadGuard<'a, T> {
+impl<T: Clone> Deref for ReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -316,7 +316,7 @@ impl<'a, T: Clone> Deref for ReadGuard<'a, T> {
 /// A guard type that provides write access to the local state.
 struct WriteGuard<'a, T: Clone>(RwLockWriteGuard<'a, Option<T>>);
 
-impl<'a, T: Clone> Deref for WriteGuard<'a, T> {
+impl<T: Clone> Deref for WriteGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -324,7 +324,7 @@ impl<'a, T: Clone> Deref for WriteGuard<'a, T> {
     }
 }
 
-impl<'a, T: Clone> DerefMut for WriteGuard<'a, T> {
+impl<T: Clone> DerefMut for WriteGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.as_mut().unwrap()
     }
