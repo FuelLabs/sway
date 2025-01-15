@@ -1,6 +1,8 @@
 mod commands;
 mod state;
 
+pub use commands::parse_int;
+
 use crate::{
     error::{Error, Result},
     FuelClient,
