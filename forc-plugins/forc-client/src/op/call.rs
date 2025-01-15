@@ -20,7 +20,7 @@ use fuels::{
 };
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
 use fuels_core::{
-    codec::{encode_fn_selector, ABIDecoder, ABIEncoder, DecoderConfig, EncoderConfig},
+    codec::{encode_fn_selector, ABIEncoder, DecoderConfig, EncoderConfig},
     types::{
         bech32::Bech32ContractId,
         param_types::ParamType,
@@ -228,12 +228,13 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             .take_receipts_checked(Some(&log_decoder))
             .expect("Failed to take receipts");
 
-        let data = ReceiptParser::new(&receipts, DecoderConfig::default())
-            .extract_contract_call_data(contract_id)
+        let token = ReceiptParser::new(&receipts, DecoderConfig::default())
+            .parse_call(&Bech32ContractId::from(contract_id), &output_param)
             .expect("Failed to extract contract call data");
-        let token = ABIDecoder::default()
-            .decode(&output_param, &data)
-            .expect("Failed to decode output");
+
+        // let token = ABIDecoder::default()
+        //     .decode(&output_param, &data)
+        //     .expect("Failed to decode output");
 
         let result = token_to_string(&token).expect("Failed to convert token to string");
 

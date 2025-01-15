@@ -3,7 +3,7 @@ use std::sync::Arc;
 use sway_ast::{attribute::Annotated, token::CommentedTokenStream, Module};
 use sway_error::handler::{ErrorEmitted, Handler};
 
-fn with_handler<T>(
+pub fn with_handler<T>(
     run: impl FnOnce(&Handler) -> Result<T, ErrorEmitted>,
 ) -> Result<T, ParseFileError> {
     let handler = <_>::default();
