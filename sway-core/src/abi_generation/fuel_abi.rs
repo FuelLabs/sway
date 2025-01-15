@@ -20,7 +20,7 @@ pub struct AbiContext<'a> {
     pub type_ids_to_full_type_str: HashMap<String, String>,
 }
 
-impl<'a> AbiContext<'a> {
+impl AbiContext<'_> {
     fn to_str_context(&self) -> AbiStrContext {
         AbiStrContext {
             program_name: self

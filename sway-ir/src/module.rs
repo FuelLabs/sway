@@ -122,7 +122,7 @@ impl Module {
     pub fn iter_configs<'a>(
         &'a self,
         context: &'a Context,
-    ) -> impl Iterator<Item = &ConfigContent> + 'a {
+    ) -> impl Iterator<Item = &'a ConfigContent> + 'a {
         context.modules[self.0].configs.values()
     }
 }

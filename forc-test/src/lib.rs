@@ -547,7 +547,7 @@ pub struct TestCount {
     pub ignored: usize,
 }
 
-impl<'a> TestFilter<'a> {
+impl TestFilter<'_> {
     fn filter(&self, fn_name: &str) -> bool {
         if self.exact_match {
             fn_name == self.filter_phrase

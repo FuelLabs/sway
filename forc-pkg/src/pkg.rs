@@ -551,7 +551,7 @@ impl Built {
     /// Returns an iterator yielding all member built packages.
     pub fn into_members<'a>(
         &'a self,
-    ) -> Box<dyn Iterator<Item = (&Pinned, Arc<BuiltPackage>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a Pinned, Arc<BuiltPackage>)> + 'a> {
         // NOTE: Since pkg is a `Arc<_>`, pkg clones in this function are only reference
         // increments. `BuiltPackage` struct does not get copied.`
         match self {

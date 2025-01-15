@@ -5,7 +5,7 @@ pub(crate) mod coins_analysis;
 mod module;
 pub mod namespace;
 mod node_dependencies;
-mod program;
+pub mod program;
 pub mod symbol_collection_context;
 pub mod symbol_resolve;
 pub mod symbol_resolve_context;

@@ -12,7 +12,7 @@ use sway_core::{
     decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
         parsed::{ImportType, QualifiedPathType, Supertrait},
-        ty::{self, GetDeclIdent, TyModule, TyProgram, TyReassignmentTarget, TySubmodule},
+        ty::{self, GetDeclIdent, TyModule, TyReassignmentTarget, TySubmodule},
         CallPathTree, CallPathType,
     },
     type_system::TypeArgument,
@@ -36,8 +36,8 @@ impl<'a> TypedTree<'a> {
     }
 
     /// Collects module names from the mod statements
-    pub fn collect_module_spans(&self, typed_program: &TyProgram) {
-        self.collect_module(&typed_program.root_module);
+    pub fn collect_module_spans(&self, root: &TyModule) {
+        self.collect_module(root);
     }
 
     fn collect_module(&self, typed_module: &TyModule) {
