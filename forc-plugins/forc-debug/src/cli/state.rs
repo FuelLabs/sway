@@ -120,7 +120,7 @@ impl Highlighter for DebuggerHelper {
         Cow::Borrowed(line)
     }
 
-    fn highlight_char(&self, line: &str, pos: usize, kind: CmdKind) -> bool {
+    fn highlight_char(&self, _line: &str, _pos: usize, _kind: CmdKind) -> bool {
         true
     }
 

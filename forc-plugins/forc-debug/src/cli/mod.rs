@@ -57,7 +57,7 @@ pub async fn start_cli(api_url: &str) -> Result<()> {
                 if let Some(helper) = editor.helper() {
                     match args[0].as_str() {
                         cmd if helper.commands.is_help_command(cmd) => {
-                            if let Err(e) = commands::cmd_help(&helper, &args).await {
+                            if let Err(e) = commands::cmd_help(helper, &args).await {
                                 println!("Error: {}", e);
                             }
                         }
