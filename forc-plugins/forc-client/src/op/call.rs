@@ -232,10 +232,6 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             .parse_call(&Bech32ContractId::from(contract_id), &output_param)
             .expect("Failed to extract contract call data");
 
-        // let token = ABIDecoder::default()
-        //     .decode(&output_param, &data)
-        //     .expect("Failed to decode output");
-
         let result = token_to_string(&token).expect("Failed to convert token to string");
 
         forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
