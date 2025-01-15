@@ -43,9 +43,14 @@
       "metadataTypeId": 5
     },
     {
+      "type": "enum std::identity::Identity",
+      "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335",
+      "metadataTypeId": 6
+    },
+    {
       "type": "enum std::option::Option<u64>",
       "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
-      "metadataTypeId": 6,
+      "metadataTypeId": 7,
       "typeArguments": [
         "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
       ]
@@ -61,7 +66,7 @@
     {
       "type": "struct ComplexStruct<struct GenericStruct<u32>>",
       "concreteTypeId": "4ce860126ad9d85fbf993112427156c992765879a44eddbe11eb508498897266",
-      "metadataTypeId": 11,
+      "metadataTypeId": 12,
       "typeArguments": [
         "7e5af3efc0fd41ec44b9367746ca17af79224954690bed680461173162a62926"
       ]
@@ -69,7 +74,7 @@
     {
       "type": "struct GenericStruct<u32>",
       "concreteTypeId": "7e5af3efc0fd41ec44b9367746ca17af79224954690bed680461173162a62926",
-      "metadataTypeId": 12,
+      "metadataTypeId": 13,
       "typeArguments": [
         "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
       ]
@@ -77,32 +82,27 @@
     {
       "type": "struct User",
       "concreteTypeId": "8771e33a50e92b7b9a2b3c66fd99f3c417e4c2d3aef1152b4d64e8df6169f831",
-      "metadataTypeId": 13
+      "metadataTypeId": 14
     },
     {
       "type": "struct std::asset_id::AssetId",
       "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
-      "metadataTypeId": 14
+      "metadataTypeId": 16
     },
     {
       "type": "struct std::bytes::Bytes",
       "concreteTypeId": "cdd87b7d12fe505416570c294c884bca819364863efe3bf539245fa18515fbbb",
-      "metadataTypeId": 15
-    },
-    {
-      "type": "struct std::contract_id::ContractId",
-      "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
       "metadataTypeId": 17
     },
     {
       "type": "struct std::u128::U128",
       "concreteTypeId": "c4a4edf5dbd3026f55a64842d4610751fd4996e511a21367af515102dfb99a1b",
-      "metadataTypeId": 18
+      "metadataTypeId": 20
     },
     {
       "type": "struct std::vec::Vec<u64>",
       "concreteTypeId": "d5bfe1d4e1ace20166c9b50cadd47e862020561bde24f5189cfc2723f5ed76f4",
-      "metadataTypeId": 20,
+      "metadataTypeId": 22,
       "typeArguments": [
         "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
       ]
@@ -135,7 +135,7 @@
       "components": [
         {
           "name": "__tuple_element",
-          "typeId": 13
+          "typeId": 14
         },
         {
           "name": "__tuple_element",
@@ -177,21 +177,21 @@
       "components": [
         {
           "name": "container",
-          "typeId": 12,
+          "typeId": 13,
           "typeArguments": [
             {
               "name": "",
-              "typeId": 7
+              "typeId": 8
             }
           ]
         },
         {
           "name": "value",
-          "typeId": 7
+          "typeId": 8
         }
       ],
       "typeParameters": [
-        7
+        8
       ]
     },
     {
@@ -213,8 +213,22 @@
       ]
     },
     {
-      "type": "enum std::option::Option",
+      "type": "enum std::identity::Identity",
       "metadataTypeId": 6,
+      "components": [
+        {
+          "name": "Address",
+          "typeId": 15
+        },
+        {
+          "name": "ContractId",
+          "typeId": 19
+        }
+      ]
+    },
+    {
+      "type": "enum std::option::Option",
+      "metadataTypeId": 7,
       "components": [
         {
           "name": "None",
@@ -222,32 +236,32 @@
         },
         {
           "name": "Some",
-          "typeId": 7
+          "typeId": 8
         }
       ],
       "typeParameters": [
-        7
+        8
       ]
     },
     {
       "type": "generic T",
-      "metadataTypeId": 7
-    },
-    {
-      "type": "raw untyped ptr",
       "metadataTypeId": 8
     },
     {
-      "type": "str[2]",
+      "type": "raw untyped ptr",
       "metadataTypeId": 9
     },
     {
-      "type": "str[4]",
+      "type": "str[2]",
       "metadataTypeId": 10
     },
     {
+      "type": "str[4]",
+      "metadataTypeId": 11
+    },
+    {
       "type": "struct ComplexStruct",
-      "metadataTypeId": 11,
+      "metadataTypeId": 12,
       "components": [
         {
           "name": "info",
@@ -263,43 +277,43 @@
         },
         {
           "name": "generic",
-          "typeId": 12,
+          "typeId": 13,
           "typeArguments": [
             {
               "name": "",
-              "typeId": 7
+              "typeId": 8
             }
           ]
         }
       ],
       "typeParameters": [
-        7
+        8
       ]
     },
     {
       "type": "struct GenericStruct",
-      "metadataTypeId": 12,
+      "metadataTypeId": 13,
       "components": [
         {
           "name": "value",
-          "typeId": 7
+          "typeId": 8
         },
         {
           "name": "description",
-          "typeId": 10
+          "typeId": 11
         }
       ],
       "typeParameters": [
-        7
+        8
       ]
     },
     {
       "type": "struct User",
-      "metadataTypeId": 13,
+      "metadataTypeId": 14,
       "components": [
         {
           "name": "name",
-          "typeId": 9
+          "typeId": 10
         },
         {
           "name": "id",
@@ -308,8 +322,18 @@
       ]
     },
     {
+      "type": "struct std::address::Address",
+      "metadataTypeId": 15,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
       "type": "struct std::asset_id::AssetId",
-      "metadataTypeId": 14,
+      "metadataTypeId": 16,
       "components": [
         {
           "name": "bits",
@@ -319,11 +343,11 @@
     },
     {
       "type": "struct std::bytes::Bytes",
-      "metadataTypeId": 15,
+      "metadataTypeId": 17,
       "components": [
         {
           "name": "buf",
-          "typeId": 16
+          "typeId": 18
         },
         {
           "name": "len",
@@ -333,11 +357,11 @@
     },
     {
       "type": "struct std::bytes::RawBytes",
-      "metadataTypeId": 16,
+      "metadataTypeId": 18,
       "components": [
         {
           "name": "ptr",
-          "typeId": 8
+          "typeId": 9
         },
         {
           "name": "cap",
@@ -347,7 +371,7 @@
     },
     {
       "type": "struct std::contract_id::ContractId",
-      "metadataTypeId": 17,
+      "metadataTypeId": 19,
       "components": [
         {
           "name": "bits",
@@ -357,7 +381,7 @@
     },
     {
       "type": "struct std::u128::U128",
-      "metadataTypeId": 18,
+      "metadataTypeId": 20,
       "components": [
         {
           "name": "upper",
@@ -371,11 +395,11 @@
     },
     {
       "type": "struct std::vec::RawVec",
-      "metadataTypeId": 19,
+      "metadataTypeId": 21,
       "components": [
         {
           "name": "ptr",
-          "typeId": 8
+          "typeId": 9
         },
         {
           "name": "cap",
@@ -383,20 +407,20 @@
         }
       ],
       "typeParameters": [
-        7
+        8
       ]
     },
     {
       "type": "struct std::vec::Vec",
-      "metadataTypeId": 20,
+      "metadataTypeId": 22,
       "components": [
         {
           "name": "buf",
-          "typeId": 19,
+          "typeId": 21,
           "typeArguments": [
             {
               "name": "",
-              "typeId": 7
+              "typeId": 8
             }
           ]
         },
@@ -406,26 +430,11 @@
         }
       ],
       "typeParameters": [
-        7
+        8
       ]
     }
   ],
   "functions": [
-    {
-      "inputs": [
-        {
-          "name": "target",
-          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
-        },
-        {
-          "name": "asset_id",
-          "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974"
-        }
-      ],
-      "name": "get_balance",
-      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
-      "attributes": null
-    },
     {
       "inputs": [
         {
@@ -692,7 +701,7 @@
         },
         {
           "name": "recipient",
-          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+          "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335"
         }
       ],
       "name": "transfer",
