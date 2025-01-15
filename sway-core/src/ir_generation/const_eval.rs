@@ -1530,7 +1530,7 @@ mod tests {
         let core_lib = namespace::Root::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
             None,
-	    false,
+            false,
         );
 
         let r = crate::compile_to_ast(

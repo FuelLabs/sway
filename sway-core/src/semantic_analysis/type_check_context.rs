@@ -591,7 +591,7 @@ impl<'a> TypeCheckContext<'a> {
         let collecting_unifications = self.collecting_unifications;
         let engines = self.engines();
 
-	Items::insert_symbol(
+        Items::insert_symbol(
             handler,
             engines,
             self.namespace_mut().current_module_mut(),

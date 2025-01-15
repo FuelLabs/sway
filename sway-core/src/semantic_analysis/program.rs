@@ -75,7 +75,11 @@ impl TyProgram {
             root,
             build_config,
         )
-        .map_err(|error| TypeCheckFailed { error, root_module: None, namespace: ctx.namespace.root_ref().clone(), })?;
+        .map_err(|error| TypeCheckFailed {
+            error,
+            root_module: None,
+            namespace: ctx.namespace.root_ref().clone(),
+        })?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
@@ -88,13 +92,13 @@ impl TyProgram {
         .map_err(|error| TypeCheckFailed {
             error,
             root_module: Some(root.clone()),
-	    namespace: ctx.namespace.root_ref().clone(),
+            namespace: ctx.namespace.root_ref().clone(),
         })?;
 
         let program = TyProgram {
             kind,
             root_module: (*root).clone(),
-	    namespace: namespace,
+            namespace,
             declarations,
             configurables,
             storage_slots: vec![],

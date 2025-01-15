@@ -1578,20 +1578,19 @@ impl ty::TyExpression {
             // Check if this could be a submodule of the current module or an external module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
-		let lookup_path = [
-                            call_path_binding.inner.call_path.prefixes.clone(),
-                            vec![call_path_binding.inner.call_path.suffix.clone()],
-                        ].concat();
+                let lookup_path = [
+                    call_path_binding.inner.call_path.prefixes.clone(),
+                    vec![call_path_binding.inner.call_path.suffix.clone()],
+                ]
+                .concat();
                 ctx.namespace().current_module().read(ctx.engines(), |m| {
-                    m.lookup_submodule(
-                        &module_probe_handler,
-                        &lookup_path,
-                    )
-                    .ok()
+                    m.lookup_submodule(&module_probe_handler, &lookup_path)
+                        .ok()
+                        .is_some()
+                }) || ctx
+                    .namespace()
+                    .module_from_absolute_path(&lookup_path)
                     .is_some()
-                })
-		    ||
-		    ctx.namespace().module_from_absolute_path(&lookup_path).is_some()
             };
 
             // Check if this could be a function
@@ -3124,22 +3123,14 @@ mod tests {
         experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
-        let root_module = namespace::Root::new(
-            root_module_name,
-            None,
-	    false,
-        );
+        let root_module = namespace::Root::new(root_module_name, None, false);
         let collection_ctx_ns = Namespace::new(handler, engines, root_module.clone(), true)?;
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
 
         let mut namespace = Namespace::new(handler, engines, root_module, true)?;
-        let ctx = TypeCheckContext::from_root(
-            &mut namespace,
-            &mut collection_ctx,
-            engines,
-            experimental,
-        )
-        .with_type_annotation(type_annotation);
+        let ctx =
+            TypeCheckContext::from_root(&mut namespace, &mut collection_ctx, engines, experimental)
+                .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }
 

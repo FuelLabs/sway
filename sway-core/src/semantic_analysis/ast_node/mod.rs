@@ -175,7 +175,7 @@ fn collect_use_statement(
             } else {
                 handler.append(star_import_handler);
                 import
-	    }
+            }
         }
         ImportType::SelfImport(_) => {
             ctx.self_import(handler, engines, &path, stmt.alias.clone(), stmt.reexport)
@@ -265,10 +265,10 @@ fn handle_use_statement(ctx: &mut TypeCheckContext<'_>, stmt: &UseStatement, han
                     handler.append(star_import_handler);
                     import
                 }
-	    } else {
+            } else {
                 handler.append(star_import_handler);
                 import
-	    }
+            }
         }
         ImportType::SelfImport(_) => {
             ctx.self_import(handler, &path, stmt.alias.clone(), stmt.reexport)

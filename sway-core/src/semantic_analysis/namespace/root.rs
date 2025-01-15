@@ -193,7 +193,7 @@ impl Root {
     // may be referred to by a different name in the forc.toml file than the actual name of the
     // package.
     pub fn add_external(&mut self, package_name: String, external_package: Root) {
-	// This should be ensured by the package manager
+        // This should be ensured by the package manager
         assert!(!self.external_packages.contains_key(&package_name));
         self.external_packages
             .insert(package_name, external_package);
@@ -260,9 +260,12 @@ impl Root {
         handler: &Handler,
         mod_path: &ModulePathBuf,
     ) -> Result<&Module, ErrorEmitted> {
-	if mod_path.is_empty() {
-	    return Err(handler.emit_err(CompileError::Internal("Found empty absolute mod path", Span::dummy())));
-	}
+        if mod_path.is_empty() {
+            return Err(handler.emit_err(CompileError::Internal(
+                "Found empty absolute mod path",
+                Span::dummy(),
+            )));
+        }
         let is_in_current_package = self.check_path_is_in_current_package(mod_path);
         match self.module_from_absolute_path(mod_path) {
             Some(module) => Ok(module),

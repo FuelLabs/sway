@@ -230,27 +230,27 @@ impl Session {
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
-	    if let Some(program) = &compiled_program.typed {
-		let engines = self.engines.read();
-		return Some(capabilities::completion::to_completion_items(
+            if let Some(program) = &compiled_program.typed {
+                let engines = self.engines.read();
+                return Some(capabilities::completion::to_completion_items(
                     &program.namespace,
                     &engines,
                     ident_to_complete,
                     fn_decl,
                     position,
-		));
+                ));
             }
-	}
+        }
         None
     }
 
     /// Returns the [Namespace] from the compiled program if it exists.
     pub fn namespace(&self) -> Option<Namespace> {
         let compiled_program = &*self.compiled_program.read();
-	if let Some(program) = &compiled_program.typed {
+        if let Some(program) = &compiled_program.typed {
             return Some(program.namespace.clone());
-	}
-	None
+        }
+        None
     }
 
     /// Generate hierarchical document symbols for the given file.
@@ -400,8 +400,8 @@ pub fn traverse(
             Ok(p) => (p.root_module.clone(), p.namespace.root_ref().clone()),
             Err(e) => {
                 if let Some(root) = &e.root_module {
-		    (root.deref().clone(), e.namespace.clone())
-		} else {
+                    (root.deref().clone(), e.namespace.clone())
+                } else {
                     return Err(LanguageServerError::FailedToParse);
                 }
             }
@@ -621,15 +621,14 @@ fn create_runnables(
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
-    let root_module = if let Some(program) = typed_program {
-	Some(&program.root_module)
-    } else {
-	None
-    };
-    
+    let root_module = typed_program.map(|program| &program.root_module);
+
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
-    for (decl, _) in root_module.into_iter().flat_map(|x| x.test_fns(decl_engine)) {
+    for (decl, _) in root_module
+        .into_iter()
+        .flat_map(|x| x.test_fns(decl_engine))
+    {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
             .attributes

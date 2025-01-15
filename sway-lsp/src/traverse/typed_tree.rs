@@ -108,9 +108,10 @@ impl Parse for ty::TySideEffect {
                     is_relative_to_package_root,
                 },
             ) => {
-		let full_path = mod_path_to_full_path(call_path, *is_relative_to_package_root, ctx.namespace);
+                let full_path =
+                    mod_path_to_full_path(call_path, *is_relative_to_package_root, ctx.namespace);
                 for (mod_path, ident) in iter_prefixes(&full_path).zip(&full_path) {
-                    if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&ident)) {
+                    if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
                         token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
                             use_statement.clone(),
                         ));
@@ -202,7 +203,7 @@ impl Parse for ty::TySideEffect {
                     ));
                     if let Some(span) = ctx
                         .namespace
-			.current_package_root_module()
+                        .current_package_root_module()
                         .submodule(&[mod_name.clone()])
                         .and_then(|tgt_submod| tgt_submod.span().clone())
                     {
@@ -356,7 +357,11 @@ impl Parse for ty::TyExpression {
                 adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
                     collect_type_argument(ctx, type_arg);
                 });
-                collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes, call_path_binding.inner.callpath_type);
+                collect_call_path_prefixes(
+                    ctx,
+                    &call_path_binding.inner.prefixes,
+                    call_path_binding.inner.callpath_type,
+                );
                 adaptive_iter(fields, |field| {
                     if let Some(mut token) =
                         ctx.tokens.try_get_mut_with_retry(&ctx.ident(&field.name))
@@ -459,7 +464,11 @@ impl Parse for ty::TyExpression {
                 adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
                     collect_type_argument(ctx, type_arg);
                 });
-                collect_call_path_prefixes(ctx, &call_path_binding.inner.prefixes, call_path_binding.inner.callpath_type);
+                collect_call_path_prefixes(
+                    ctx,
+                    &call_path_binding.inner.prefixes,
+                    call_path_binding.inner.callpath_type,
+                );
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(
                     &ctx.ident(&Ident::new(variant_instantiation_span.clone())),
                 ) {
@@ -481,7 +490,7 @@ impl Parse for ty::TyExpression {
                 {
                     token.ast_node =
                         TokenAstNode::Typed(TypedAstToken::TypedExpression(self.clone()));
-		    let full_path = mod_path_to_full_path(&abi_name.prefixes, false, ctx.namespace);
+                    let full_path = mod_path_to_full_path(&abi_name.prefixes, false, ctx.namespace);
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .module_from_absolute_path(&full_path)
@@ -507,7 +516,7 @@ impl Parse for ty::TyExpression {
                     ));
                     if let Some(storage) = ctx
                         .namespace
-			.current_package_root_module()
+                        .current_package_root_module()
                         .root_items()
                         .get_declared_storage(ctx.engines.de())
                     {
@@ -526,7 +535,7 @@ impl Parse for ty::TyExpression {
                         );
                         if let Some(storage_field) = ctx
                             .namespace
-			    .current_package_root_module()
+                            .current_package_root_module()
                             .root_items()
                             .get_declared_storage(ctx.engines.de())
                             .and_then(|storage| {
@@ -1165,7 +1174,11 @@ fn assign_type_to_token(
 fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &TypeArgument) {
     let type_info = ctx.engines.te().get(type_arg.type_id);
     collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
-    collect_call_path_prefixes(ctx, &tree.qualified_call_path.call_path.prefixes, tree.qualified_call_path.call_path.callpath_type);
+    collect_call_path_prefixes(
+        ctx,
+        &tree.qualified_call_path.call_path.prefixes,
+        tree.qualified_call_path.call_path.callpath_type,
+    );
     collect_type_id(
         ctx,
         type_arg.type_id,
@@ -1217,14 +1230,22 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
             if let Some(child_tree) = tree.children.first() {
                 let abi_call_path = &child_tree.qualified_call_path;
                 collect_qualified_path_root(ctx, abi_call_path.qualified_path_root.clone());
-                collect_call_path_prefixes(ctx, &abi_call_path.call_path.prefixes, abi_call_path.call_path.callpath_type);
+                collect_call_path_prefixes(
+                    ctx,
+                    &abi_call_path.call_path.prefixes,
+                    abi_call_path.call_path.callpath_type,
+                );
                 if let Some(mut token) = ctx
                     .tokens
                     .try_get_mut_with_retry(&ctx.ident(&abi_call_path.call_path.suffix))
                 {
                     token.ast_node =
                         TokenAstNode::Typed(TypedAstToken::TypedArgument(type_arg.clone()));
-		    let full_path = mod_path_to_full_path(&abi_call_path.call_path.prefixes, false, ctx.namespace);
+                    let full_path = mod_path_to_full_path(
+                        &abi_call_path.call_path.prefixes,
+                        false,
+                        ctx.namespace,
+                    );
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .module_from_absolute_path(&full_path)
@@ -1249,9 +1270,13 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
 }
 
 fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident], callpath_type: CallPathType) {
-    let full_path = mod_path_to_full_path(&prefixes.to_vec(), matches!(callpath_type, CallPathType::RelativeToPackageRoot), ctx.namespace);
+    let full_path = mod_path_to_full_path(
+        prefixes,
+        matches!(callpath_type, CallPathType::RelativeToPackageRoot),
+        ctx.namespace,
+    );
     for (mod_path, ident) in iter_prefixes(&full_path).zip(&full_path) {
-        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&ident)) {
+        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
             token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(ident.clone()));
             if let Some(span) = ctx
                 .namespace
@@ -1431,7 +1456,7 @@ fn collect_trait_constraint(
         token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedTraitConstraint(
             trait_constraint.clone(),
         ));
-	let full_path = mod_path_to_full_path(&trait_name.prefixes, false, ctx.namespace);
+        let full_path = mod_path_to_full_path(&trait_name.prefixes, false, ctx.namespace);
         if let Some(trait_def_ident) = ctx
             .namespace
             .module_from_absolute_path(&full_path)
@@ -1504,17 +1529,17 @@ fn collect_qualified_path_root(
 }
 
 fn mod_path_to_full_path(
-    mod_path: &Vec<Ident>,
+    mod_path: &[Ident],
     is_relative_to_package_root: bool,
     namespace: &sway_core::namespace::Root,
 ) -> Vec<Ident> {
-    let mut path = mod_path.clone();
+    let mut path = mod_path.to_owned();
 
     // Determine whether to add the package name in front of the mod path
     //
     // Relative to package root:
     // ::X::Y => <package_name>::X::Y - add the package name
-    // 
+    //
     // or
     //
     // Submodule of current module:
@@ -1522,11 +1547,13 @@ fn mod_path_to_full_path(
     //
     // If neither of these options are true, then the path refers to an external module:
     // <external>::Y => <external>::Y - do nothing
-    if is_relative_to_package_root ||
-	mod_path.is_empty() ||
-	namespace.current_package_root_module().has_submodule(&mod_path[0])
+    if is_relative_to_package_root
+        || mod_path.is_empty()
+        || namespace
+            .current_package_root_module()
+            .has_submodule(&mod_path[0])
     {
-	path.insert(0, namespace.current_package_name().clone());
+        path.insert(0, namespace.current_package_name().clone());
     }
 
     path

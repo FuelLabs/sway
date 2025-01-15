@@ -23,11 +23,7 @@ pub struct AbiContext<'a> {
 impl AbiContext<'_> {
     fn to_str_context(&self) -> AbiStrContext {
         AbiStrContext {
-            program_name: self
-                .program
-                .namespace
-                .current_package_name()
-                .to_string(),
+            program_name: self.program.namespace.current_package_name().to_string(),
             abi_with_callpaths: self.abi_with_callpaths,
             abi_with_fully_specified_types: false,
             abi_root_type_without_generic_type_parameters: true,
@@ -45,11 +41,7 @@ impl TypeId {
     ) -> Result<(String, ConcreteTypeId), ErrorEmitted> {
         let type_str = self.get_abi_type_str(
             &AbiStrContext {
-                program_name: ctx
-                    .program
-                    .namespace
-                    .current_package_name()
-                    .to_string(),
+                program_name: ctx.program.namespace.current_package_name().to_string(),
                 abi_with_callpaths: true,
                 abi_with_fully_specified_types: true,
                 abi_root_type_without_generic_type_parameters: false,

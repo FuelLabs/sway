@@ -558,17 +558,37 @@ pub fn parsed_to_ast(
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.
-    build_module_dep_graph(handler, &mut parse_program.root)
-        .map_err(|error| TypeCheckFailed { root_module: None, namespace: initial_namespace.clone(), error, })?;
+    build_module_dep_graph(handler, &mut parse_program.root).map_err(|error| TypeCheckFailed {
+        root_module: None,
+        namespace: initial_namespace.clone(),
+        error,
+    })?;
 
-    let collection_namespace = Namespace::new(handler, engines, initial_namespace.clone(), true).map_err(|error| TypeCheckFailed { root_module: None, namespace: initial_namespace.clone(), error, })?;
+    let collection_namespace = Namespace::new(handler, engines, initial_namespace.clone(), true)
+        .map_err(|error| TypeCheckFailed {
+            root_module: None,
+            namespace: initial_namespace.clone(),
+            error,
+        })?;
     // Collect the program symbols.
 
     let mut collection_ctx =
-        ty::TyProgram::collect(handler, engines, parse_program, collection_namespace).map_err(|error| TypeCheckFailed { root_module: None, namespace: initial_namespace.clone(), error })?;
+        ty::TyProgram::collect(handler, engines, parse_program, collection_namespace).map_err(
+            |error| TypeCheckFailed {
+                root_module: None,
+                namespace: initial_namespace.clone(),
+                error,
+            },
+        )?;
 
-    let typecheck_namespace = Namespace::new(handler, engines, initial_namespace, true).map_err(|error|
-												  TypeCheckFailed { root_module: None, namespace: collection_ctx.namespace().root_ref().clone(), error })?;
+    let typecheck_namespace =
+        Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
+            TypeCheckFailed {
+                root_module: None,
+                namespace: collection_ctx.namespace().root_ref().clone(),
+                error,
+            }
+        })?;
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -589,7 +609,7 @@ pub fn parsed_to_ast(
     check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
         TypeCheckFailed {
             root_module: Some(Arc::new(typed_program.root_module.clone())),
-	    namespace: typed_program.namespace.root_ref().clone(),
+            namespace: typed_program.namespace.root_ref().clone(),
             error,
         }
     })?;
@@ -608,7 +628,7 @@ pub fn parsed_to_ast(
             handler.dedup();
             return Err(TypeCheckFailed {
                 root_module: Some(Arc::new(typed_program.root_module.clone())),
-		namespace: typed_program.namespace.root().clone(),
+                namespace: typed_program.namespace.root().clone(),
                 error,
             });
         }
@@ -627,7 +647,7 @@ pub fn parsed_to_ast(
                 handler.dedup();
                 return Err(TypeCheckFailed {
                     root_module: Some(Arc::new(typed_program.root_module.clone())),
-		    namespace: typed_program.namespace.root().clone(),
+                    namespace: typed_program.namespace.root().clone(),
                     error,
                 });
             }
@@ -658,7 +678,7 @@ pub fn parsed_to_ast(
         check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
             TypeCheckFailed {
                 root_module: Some(Arc::new(typed_program.root_module.clone())),
-		namespace: typed_program.namespace.root_ref().clone(),
+                namespace: typed_program.namespace.root_ref().clone(),
                 error,
             }
         })?;
@@ -684,9 +704,11 @@ pub fn parsed_to_ast(
         engines,
         &mut ctx,
         module,
-        &typed_program.namespace.root_ref(),
+        typed_program.namespace.root_ref(),
     ) {
-	errs.into_iter().for_each(|err| { handler.emit_err(err.clone()); } );
+        errs.into_iter().for_each(|err| {
+            handler.emit_err(err.clone());
+        });
     }
 
     // CEI pattern analysis
@@ -710,7 +732,7 @@ pub fn parsed_to_ast(
             handler.dedup();
             TypeCheckFailed {
                 root_module: Some(Arc::new(typed_program.root_module.clone())),
-		namespace: typed_program.namespace.root_ref().clone(),
+                namespace: typed_program.namespace.root_ref().clone(),
                 error,
             }
         })?;

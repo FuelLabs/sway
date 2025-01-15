@@ -1144,7 +1144,7 @@ impl TraitMap {
                                 let map_trait_name = CallPath {
                                     prefixes: entry.key.name.prefixes.clone(),
                                     suffix: entry.key.name.suffix.name.clone(),
-				    callpath_type: entry.key.name.callpath_type,
+                                    callpath_type: entry.key.name.callpath_type,
                                 };
                                 if &map_trait_name == trait_name {
                                     Some(entry.value.impl_span.clone())
@@ -1266,7 +1266,7 @@ impl TraitMap {
                     let trait_call_path = CallPath {
                         prefixes: entry.key.name.prefixes.clone(),
                         suffix: entry.key.name.suffix.name.clone(),
-			callpath_type: entry.key.name.callpath_type,
+                        callpath_type: entry.key.name.callpath_type,
                     };
                     trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
                 }

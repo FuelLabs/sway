@@ -134,7 +134,7 @@ pub fn resolve_type(
             trait_type_id,
         } => {
             let trait_item_ref = TraitMap::get_trait_item_for_type(
-                &namespace.current_package_root_module(),
+                namespace.current_package_root_module(),
                 handler,
                 engines,
                 &name,
@@ -308,19 +308,19 @@ pub fn resolve_call_path(
     // If the full path is different from the declaration path, then we are accessing a reexport,
     // which is by definition public.
     if decl_mod_path != full_path.prefixes {
-	return Ok(decl);
+        return Ok(decl);
     }
 
     // All declarations in the current module are visible, regardless of their visibility modifier.
     if decl_mod_path == *namespace.current_mod_path() {
         return Ok(decl);
     }
-	
+
     // Otherwise, check the visibility modifier
     if !decl.visibility(engines).is_public() {
         handler.emit_err(CompileError::ImportPrivateSymbol {
-	    name: call_path.suffix.clone(),
-	    span: call_path.suffix.span(),
+            name: call_path.suffix.clone(),
+            span: call_path.suffix.span(),
         });
     }
 
