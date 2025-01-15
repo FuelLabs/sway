@@ -32,23 +32,29 @@ fn test_cli() {
 
     let mut cmd = spawn_command(run_cmd, Some(2000)).unwrap();
 
-    cmd.exp_regex(r"^>> ").unwrap();
+    // Green >> prompt
+    let prompt = "\u{1b}[38;2;4;234;130m>>\u{1b}[0m ";
+    cmd.exp_string(prompt).unwrap();
+
     cmd.send_line("reg 0").unwrap();
     cmd.exp_regex(r"reg\[0x0\] = 0\s+# zero").unwrap();
     cmd.send_line("reg 1").unwrap();
     cmd.exp_regex(r"reg\[0x1\] = 1\s+# one").unwrap();
     cmd.send_line("breakpoint 0").unwrap();
-    cmd.exp_regex(r">> ").unwrap();
+    cmd.exp_string(prompt).unwrap();
+
     cmd.send_line("start_tx examples/example_tx.json").unwrap();
     cmd.exp_regex(r"Stopped on breakpoint at address 0 of contract 0x0{64}")
         .unwrap();
     cmd.send_line("step on").unwrap();
-    cmd.exp_regex(r">> ").unwrap();
+    cmd.exp_string(prompt).unwrap();
+
     cmd.send_line("continue").unwrap();
     cmd.exp_regex(r"Stopped on breakpoint at address 16 of contract 0x0{64}")
         .unwrap();
     cmd.send_line("step off").unwrap();
-    cmd.exp_regex(r">> ").unwrap();
+    cmd.exp_string(prompt).unwrap();
+
     cmd.send_line("continue").unwrap();
     cmd.exp_regex(r"Receipt: Return").unwrap();
     cmd.send_line("reset").unwrap();
