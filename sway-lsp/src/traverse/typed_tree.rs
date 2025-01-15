@@ -1523,7 +1523,8 @@ fn mod_path_to_full_path(
     // If neither of these options are true, then the path refers to an external module:
     // <external>::Y => <external>::Y - do nothing
     if is_relative_to_package_root ||
-	(!mod_path.is_empty() && namespace.current_package_root_module().has_submodule(&mod_path[0]))
+	mod_path.is_empty() ||
+	namespace.current_package_root_module().has_submodule(&mod_path[0])
     {
 	path.insert(0, namespace.current_package_name().clone());
     }
