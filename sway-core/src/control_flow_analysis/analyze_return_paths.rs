@@ -287,7 +287,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
 ///
 /// The trait node itself has already been added (as `entry_node`), so we just need to insert that
 /// node index into the namespace for the trait.
-
+///
 /// When connecting a function declaration, we are inserting a new root node into the graph that
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.

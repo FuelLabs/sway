@@ -92,7 +92,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     pub(super) before_entries: Vec<Op>,
 }
 
-impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
+impl AsmBuilder for FuelAsmBuilder<'_, '_> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }

@@ -100,7 +100,7 @@ pub enum ControlFlowGraphNode<'cfg> {
     },
 }
 
-impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
+impl GetDeclIdent for ControlFlowGraphNode<'_> {
     fn get_decl_ident(&self, engines: &Engines) -> Option<Ident> {
         match self {
             ControlFlowGraphNode::OrganizationalDominator(_) => None,
@@ -118,7 +118,7 @@ impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
     }
 }
 
-impl<'cfg> std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode<'cfg> {
+impl std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode<'_> {
     fn from(other: &ty::TyStorageField) -> Self {
         ControlFlowGraphNode::StorageField {
             field_name: other.name.clone(),
@@ -126,19 +126,19 @@ impl<'cfg> std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode<'cfg
     }
 }
 
-impl<'cfg> std::convert::From<String> for ControlFlowGraphNode<'cfg> {
+impl std::convert::From<String> for ControlFlowGraphNode<'_> {
     fn from(other: String) -> Self {
         ControlFlowGraphNode::OrganizationalDominator(other)
     }
 }
 
-impl<'cfg> std::convert::From<&str> for ControlFlowGraphNode<'cfg> {
+impl std::convert::From<&str> for ControlFlowGraphNode<'_> {
     fn from(other: &str) -> Self {
         other.to_string().into()
     }
 }
 
-impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
+impl DebugWithEngines for ControlFlowGraphNode<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
