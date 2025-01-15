@@ -221,7 +221,7 @@ impl Root {
         &mut self.current_package
     }
 
-    pub(crate) fn current_package_name(&self) -> &Ident {
+    pub fn current_package_name(&self) -> &Ident {
         self.current_package.name()
     }
 
@@ -238,7 +238,7 @@ impl Root {
     }
 
     // Find module in the current environment. `mod_path` must be a fully qualified path
-    pub(super) fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
+    pub fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
         assert!(!mod_path.is_empty());
         let package_relative_path = Self::package_relative_path(mod_path);
         if mod_path[0] == *self.current_package.name() {
