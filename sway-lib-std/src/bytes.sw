@@ -775,6 +775,8 @@ impl Bytes {
         assert(end <= self.len);
 
         let splice_len = end - start;
+        let replace_len = replace_with.len();
+
         let mut spliced = Bytes::with_capacity(splice_len);
         if splice_len > 0 {
             let start_ptr = self.buf.ptr().add_uint_offset(start);
@@ -782,7 +784,7 @@ impl Bytes {
             spliced.len = splice_len;
         }
 
-        let new_len = self.len - splice_len + replace_with.len();
+        let new_len = self.len - splice_len + replace_len;
         if new_len > self.buf.capacity() {
             let new_ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), new_len);
             self.buf = RawBytes {

@@ -184,3 +184,25 @@ fn bytes_splice_replace_empty_bytes() {
     assert(spliced.len() == 1);
     assert(spliced.get(0).unwrap() == a);
 }
+
+#[test()]
+fn bytes_splice_replace_overlap() {
+    let (mut bytes, a, b, c) = setup();
+    // bytes = [5, 7, 9]
+    let mut replacement = Bytes::new();
+    replacement.push(10u8);
+    replacement.push(12u8);
+    // Remove [0..1) => [5], replace with [10, 12]
+    let spliced = bytes.splice(0, 1, replacement);
+
+    // Expect spliced to contain the removed element [5]
+    assert(spliced.len() == 1);
+    assert(spliced.get(0).unwrap() == a);
+
+    // After replacement, bytes should now be [10, 12, 7, 9]
+    assert(bytes.len() == 4);
+    assert(bytes.get(0).unwrap() == 10u8);
+    assert(bytes.get(1).unwrap() == 12u8);
+    assert(bytes.get(2).unwrap() == b);
+    assert(bytes.get(3).unwrap() == c);
+}
