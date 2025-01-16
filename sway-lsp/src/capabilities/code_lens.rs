@@ -10,6 +10,7 @@ pub fn code_lens(session: &Arc<Session>, url: &Url) -> Vec<CodeLens> {
 
     // Construct code lenses for runnable functions
     let runnables_for_path = session.runnables.get(&url_path);
+
     let mut result: Vec<CodeLens> = runnables_for_path
         .map(|runnables| {
             runnables
