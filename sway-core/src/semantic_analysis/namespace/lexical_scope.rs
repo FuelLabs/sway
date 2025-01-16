@@ -193,7 +193,6 @@ impl Items {
                     symbol.span(),
                 )));
             } else {
-                //panic!();
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
                     name: symbol.clone(),
                     paths: decls
