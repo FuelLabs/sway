@@ -2,7 +2,10 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    decl_engine::{
+        DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
+        DeclRefFunction,
+    },
     engine_threading::*,
     language::{
         parsed::TreeType,
@@ -957,21 +960,17 @@ impl<'a> TypeCheckContext<'a> {
                             .zip(method_type_id_type_parameters.iter())
                     {
                         let handler = Handler::default();
-                        if self
-                            .namespace_mut()
-                            .module_mut(engines)
-                            .current_items_mut()
-                            .implemented_traits
-                            .check_if_trait_constraints_are_satisfied_for_type(
-                                &handler,
-                                type_id_type_parameter.type_id,
-                                &method_type_id_type_parameter.trait_constraints,
-                                &method.span(),
-                                engines,
-                                TryInsertingTraitImplOnFailure::Yes,
-                                CodeBlockFirstPass::No,
-                            )
-                            .is_err()
+                        if TraitMap::check_if_trait_constraints_are_satisfied_for_type(
+                            &handler,
+                            self.namespace_mut().module_mut(engines),
+                            type_id_type_parameter.type_id,
+                            &method_type_id_type_parameter.trait_constraints,
+                            &method.span(),
+                            engines,
+                            TryInsertingTraitImplOnFailure::Yes,
+                            CodeBlockFirstPass::No,
+                        )
+                        .is_err()
                         {
                             let (errors, _) = handler.consume();
                             let mut errors_strings = vec![];
@@ -1288,7 +1287,7 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         if let Some(method_decl_ref) = matching_method_decl_ref {
-            return Ok(method_decl_ref);
+            return Ok(self.get_method_safe_to_unify(method_decl_ref));
         }
 
         if let Some(TypeInfo::ErrorRecovery(err)) = arguments_types
@@ -1333,6 +1332,70 @@ impl<'a> TypeCheckContext<'a> {
                 span: method_name.span(),
             }))
         }
+    }
+
+    /// Makes method with a copy of type_id.
+    /// This avoids altering the type_id already in the type map.
+    /// Without this it is possible to retrieve a method from the type map unify its types and
+    /// the second time it won't be possible to retrieve the same method.
+    fn get_method_safe_to_unify(
+        &self,
+        method_decl_ref: DeclRef<DeclId<TyFunctionDecl>>,
+    ) -> DeclRef<DeclId<TyFunctionDecl>> {
+        let engines = self.engines;
+        let decl_engine = engines.de();
+
+        let mut method = (*decl_engine.get_function(&method_decl_ref)).clone();
+        if let Some(type_id) = method.implementing_for_typeid {
+            let type_id_type_info = (*engines.te().get(type_id)).clone();
+            let mut new_type_id =
+                engines
+                    .te()
+                    .insert(engines, type_id_type_info, method.span().source_id());
+
+            let mut type_id_type_subst_map = TypeSubstMap::new();
+            for type_parameter in new_type_id.get_type_parameters(engines).unwrap_or_default() {
+                let type_parameter_type_info = (*engines.te().get(type_parameter.type_id)).clone();
+
+                type_id_type_subst_map.insert(
+                    type_parameter.type_id,
+                    engines.te().insert(
+                        engines,
+                        type_parameter_type_info,
+                        method.span().source_id(),
+                    ),
+                );
+            }
+            new_type_id.subst(&SubstTypesContext::new(
+                engines,
+                &type_id_type_subst_map,
+                true,
+            ));
+
+            let mut method_type_subst_map = TypeSubstMap::new();
+            method_type_subst_map.insert(type_id, new_type_id);
+            method_type_subst_map.extend(&type_id_type_subst_map);
+
+            method.subst(&SubstTypesContext::new(
+                engines,
+                &method_type_subst_map,
+                true,
+            ));
+
+            return self
+                .engines
+                .de()
+                .insert(
+                    method.clone(),
+                    self.engines
+                        .de()
+                        .get_parsed_decl_id(method_decl_ref.id())
+                        .as_ref(),
+                )
+                .with_parent(decl_engine, method_decl_ref.id().into());
+        }
+
+        method_decl_ref
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
@@ -1488,23 +1551,21 @@ impl<'a> TypeCheckContext<'a> {
             .iter()
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
             .collect::<Vec<_>>();
-        self.namespace_mut()
-            .module_mut(engines)
-            .current_items_mut()
-            .implemented_traits
-            .insert(
-                handler,
-                full_trait_name,
-                trait_type_args,
-                trait_type_parameters,
-                type_id,
-                &items,
-                impl_span,
-                trait_decl_span,
-                is_impl_self,
-                is_extending_existing_impl,
-                engines,
-            )
+
+        TraitMap::insert(
+            handler,
+            self.namespace_mut().module_mut(engines),
+            full_trait_name,
+            trait_type_args,
+            trait_type_parameters,
+            type_id,
+            &items,
+            impl_span,
+            trait_decl_span,
+            is_impl_self,
+            is_extending_existing_impl,
+            engines,
+        )
     }
 
     pub(crate) fn get_items_for_type_and_trait_name(
