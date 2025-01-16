@@ -481,6 +481,25 @@ impl TyFunctionDecl {
             _ => Some(false),
         }
     }
+
+    pub fn is_from_blanket_impl(&self, engines: &Engines) -> bool {
+        if let Some(TyDecl::ImplSelfOrTrait(existing_impl_trait)) = self.implementing_type.clone() {
+            let existing_trait_decl = engines
+                .de()
+                .get_impl_self_or_trait(&existing_impl_trait.decl_id);
+            if !existing_trait_decl.impl_type_parameters.is_empty()
+                && matches!(
+                    *engines
+                        .te()
+                        .get(existing_trait_decl.implementing_for.type_id),
+                    TypeInfo::UnknownGeneric { .. }
+                )
+            {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
