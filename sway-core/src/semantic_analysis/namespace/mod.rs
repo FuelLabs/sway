@@ -14,10 +14,10 @@ pub use namespace::Namespace;
 pub use root::ResolvedDeclaration;
 pub use root::Root;
 pub(super) use trait_map::CodeBlockFirstPass;
-pub(super) use trait_map::IsExtendingExistingImpl;
-pub(super) use trait_map::IsImplSelf;
+pub(crate) use trait_map::IsExtendingExistingImpl;
+pub(crate) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
-pub(super) use trait_map::TraitMap;
+pub use trait_map::TraitMap;
 pub use trait_map::TryInsertingTraitImplOnFailure;
 
 use sway_types::Ident;

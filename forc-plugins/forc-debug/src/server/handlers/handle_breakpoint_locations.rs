@@ -1,13 +1,28 @@
-use crate::server::AdapterError;
-use crate::server::DapServer;
-use dap::requests::BreakpointLocationsArguments;
-use dap::types::BreakpointLocation;
+use crate::server::{AdapterError, DapServer, HandlerResult};
+use dap::{
+    requests::BreakpointLocationsArguments, responses::ResponseBody, types::BreakpointLocation,
+};
 use std::path::PathBuf;
 
 impl DapServer {
     /// Handles a `breakpoint_locations` request. Returns the list of [BreakpointLocation]s.
-    pub(crate) fn handle_breakpoint_locations(
-        &mut self,
+    pub(crate) fn handle_breakpoint_locations_command(
+        &self,
+        args: &BreakpointLocationsArguments,
+    ) -> HandlerResult {
+        let result = self.breakpoint_locations(args).map(|breakpoints| {
+            ResponseBody::BreakpointLocations(dap::responses::BreakpointLocationsResponse {
+                breakpoints,
+            })
+        });
+        match result {
+            Ok(result) => HandlerResult::ok(result),
+            Err(e) => HandlerResult::err_with_exit(e, 1),
+        }
+    }
+
+    fn breakpoint_locations(
+        &self,
         args: &BreakpointLocationsArguments,
     ) -> Result<Vec<BreakpointLocation>, AdapterError> {
         let source_path = args
@@ -62,7 +77,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let result = server.handle_breakpoint_locations(&args).expect("success");
+        let result = server.breakpoint_locations(&args).expect("success");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].line, MOCK_LINE);
     }
@@ -70,15 +85,15 @@ mod tests {
     #[test]
     #[should_panic(expected = "MissingSourcePathArgument")]
     fn test_handle_breakpoint_locations_missing_argument() {
-        let mut server = DapServer::default();
+        let server = DapServer::default();
         let args = BreakpointLocationsArguments::default();
-        server.handle_breakpoint_locations(&args).unwrap();
+        server.breakpoint_locations(&args).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "MissingBreakpointLocation")]
     fn test_handle_breakpoint_locations_missing_breakpoint() {
-        let mut server = DapServer::default();
+        let server = DapServer::default();
         let args = BreakpointLocationsArguments {
             source: dap::types::Source {
                 path: Some(MOCK_SOURCE_PATH.into()),
@@ -86,6 +101,6 @@ mod tests {
             },
             ..Default::default()
         };
-        server.handle_breakpoint_locations(&args).unwrap();
+        server.breakpoint_locations(&args).unwrap();
     }
 }

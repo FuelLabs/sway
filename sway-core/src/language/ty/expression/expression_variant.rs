@@ -1,13 +1,3 @@
-use std::{
-    collections::VecDeque,
-    fmt::{self, Write},
-    hash::{Hash, Hasher},
-};
-
-use indexmap::IndexMap;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -20,8 +10,17 @@ use crate::{
     },
     type_system::*,
 };
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::VecDeque,
+    fmt::{self, Write},
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
@@ -801,6 +800,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 FunctionApplication {
                     ref mut fn_ref,
                     ref mut arguments,
+                    call_path,
                     ..
                 } => {
                     let mut has_changes = false;
@@ -826,7 +826,7 @@ impl ReplaceDecls for TyExpressionVariant {
                                 handler,
                                 implementing_for_typeid,
                                 &[],
-                                method.name(),
+                                &call_path.suffix,
                                 method.return_type.type_id,
                                 &arguments
                                     .iter()

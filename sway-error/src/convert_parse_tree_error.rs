@@ -121,6 +121,8 @@ pub enum ConvertParseTreeError {
     UnexpectedValueForCfgExperimental { span: Span },
     #[error("Unexpected attribute value: \"{value}\" for attribute: \"cfg\"")]
     InvalidCfgArg { span: Span, value: String },
+    #[error("Unknown type name \"self\". A self type with a similar name exists (notice the capitalization): `Self`")]
+    UnknownTypeNameSelf { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -185,6 +187,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
             ConvertParseTreeError::UnexpectedValueForCfgExperimental { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgArg { span, .. } => span.clone(),
+            ConvertParseTreeError::UnknownTypeNameSelf { span } => span.clone(),
         }
     }
 }

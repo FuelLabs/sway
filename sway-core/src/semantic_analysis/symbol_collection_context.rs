@@ -1,14 +1,13 @@
 use crate::{
     language::{parsed::Declaration, Visibility},
-    namespace::LexicalScopeId,
-    namespace::ModulePath,
+    namespace::{LexicalScopeId, ModulePath, ResolvedDeclaration},
     semantic_analysis::Namespace,
     Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
-use super::{ConstShadowingMode, GenericShadowingMode};
+use super::{namespace::Items, ConstShadowingMode, GenericShadowingMode};
 
 #[derive(Clone)]
 /// Contextual state tracked and accumulated throughout symbol collecting.
@@ -41,12 +40,14 @@ impl SymbolCollectionContext {
         &mut self,
         engines: &Engines,
         span: Span,
+        decl: Option<Declaration>,
         with_scoped_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
-        let lexical_scope_id: LexicalScopeId = self
-            .namespace
-            .module_mut(engines)
-            .write(engines, |m| m.push_new_lexical_scope(span.clone()));
+        let decl = decl.map(ResolvedDeclaration::Parsed);
+        let lexical_scope_id: LexicalScopeId =
+            self.namespace.module_mut(engines).write(engines, |m| {
+                m.push_new_lexical_scope(span.clone(), decl.clone())
+            });
         let ret = with_scoped_ctx(self);
         self.namespace
             .module_mut(engines)
@@ -105,9 +106,10 @@ impl SymbolCollectionContext {
         item: Declaration,
     ) -> Result<(), ErrorEmitted> {
         self.namespace.module_mut(engines).write(engines, |m| {
-            m.current_items_mut().insert_parsed_symbol(
+            Items::insert_parsed_symbol(
                 handler,
                 engines,
+                m,
                 name.clone(),
                 item.clone(),
                 self.const_shadowing_mode,

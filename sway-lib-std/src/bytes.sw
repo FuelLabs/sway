@@ -584,10 +584,7 @@ impl Bytes {
     pub fn ptr(self) -> raw_ptr {
         self.buf.ptr()
     }
-}
 
-// Need to use separate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
-impl Bytes {
     /// Divides one Bytes into two at an index.
     ///
     /// # Additional Information
@@ -692,7 +689,7 @@ impl Bytes {
     ///     assert(bytes.capacity() == first_cap + second_cap);
     /// }
     /// ```
-    pub fn append(ref mut self, ref mut other: self) {
+    pub fn append(ref mut self, ref mut other: Self) {
         let other_len = other.len();
         if other_len == 0 {
             return
@@ -927,27 +924,56 @@ impl AbiDecode for Bytes {
     }
 }
 
-// TODO: Uncomment when fixed. https://github.com/FuelLabs/sway/issues/6567
-// #[test]
-// fn ok_bytes_buffer_ownership() {
-//     let mut original_array = [1u8, 2u8, 3u8, 4u8];
-//     let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+#[test]
+fn ok_bytes_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
 
-//     // Check Bytes duplicates the original slice
-//     let mut bytes = Bytes::from(slice);
-//     bytes.set(0, 5);
-//     assert(original_array[0] == 1);
+    // Check Bytes duplicates the original slice
+    let mut bytes = Bytes::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
 
-//     // At this point, slice equals [5, 2, 3, 4]
-//     let encoded_slice = encode(bytes);
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
 
-//     // `Bytes` should duplicate the underlying buffer,
-//     // so when we write to it, it should not change
-//     // `encoded_slice` 
-//     let mut bytes = abi_decode::<Bytes>(encoded_slice);
-//     bytes.set(0, 6);
-//     assert(bytes.get(0) == Some(6));
+    // `Bytes` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
 
-//     let mut bytes = abi_decode::<Bytes>(encoded_slice);
-//     assert(bytes.get(0) == Some(5));
-// }
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
+}
+
+#[test]
+fn ok_bytes_bigger_than_3064() {
+    let mut v: Bytes = Bytes::new();
+
+    // We allocate 1024 bytes initially, this is throw away because 
+    // it is not big enough for the buffer.
+    // Then we used to double the buffer to 2048.
+    // Then we write an `u64` with the length of the buffer.
+    // Then we write the buffer itself.
+    // (1024 + 2048) - 8 = 3064
+    // Thus, we need a buffer with 3065 bytes to write into the red zone
+    let mut a = 3065;
+    while a > 0 {
+        v.push(1u8);
+        a -= 1;
+    }
+
+    // This red zone should not be overwritten
+    let red_zone = asm(size: 1024) {
+        aloc size;
+        hp: raw_ptr
+    };
+    red_zone.write(0xFFFFFFFFFFFFFFFF);
+    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
+
+    let _ = encode(v);
+
+    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
+}

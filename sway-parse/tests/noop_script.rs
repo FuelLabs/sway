@@ -12,17 +12,27 @@ fn noop_script_file() {
       fn main() {
         ()
       }
-    "#,), @r###"
+    "#,), @r#"
     Some(Annotated(
       attribute_list: [],
       value: Module(
         kind: Script(
           script_token: ScriptToken(
-            span: (7, 13),
+            span: Span(
+              src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+              start: 7,
+              end: 13,
+              source_id: None,
+            ),
           ),
         ),
         semicolon_token: SemicolonToken(
-          span: (13, 14),
+          span: Span(
+            src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+            start: 13,
+            end: 14,
+            source_id: None,
+          ),
         ),
         items: [
           Annotated(
@@ -31,11 +41,22 @@ fn noop_script_file() {
               fn_signature: FnSignature(
                 visibility: None,
                 fn_token: FnToken(
-                  span: (28, 30),
+                  span: Span(
+                    src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+                    start: 28,
+                    end: 30,
+                    source_id: None,
+                  ),
                 ),
-                name: Ident(
-                  to_string: "main",
-                  span: (31, 35),
+                name: BaseIdent(
+                  name_override_opt: None,
+                  span: Span(
+                    src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+                    start: 31,
+                    end: 35,
+                    source_id: None,
+                  ),
+                  is_raw_ident: false,
                 ),
                 generics: None,
                 arguments: Parens(
@@ -43,7 +64,12 @@ fn noop_script_file() {
                     value_separator_pairs: [],
                     final_value_opt: None,
                   )),
-                  span: (35, 37),
+                  span: Span(
+                    src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+                    start: 35,
+                    end: 37,
+                    source_id: None,
+                  ),
                 ),
                 return_type_opt: None,
                 where_clause_opt: None,
@@ -53,16 +79,31 @@ fn noop_script_file() {
                   statements: [],
                   final_expr_opt: Some(Tuple(Parens(
                     inner: Nil,
-                    span: (48, 50),
+                    span: Span(
+                      src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+                      start: 48,
+                      end: 50,
+                      source_id: None,
+                    ),
                   ))),
-                  span: (39, 57),
+                  span: Span(
+                    src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+                    start: 39,
+                    end: 57,
+                    source_id: None,
+                  ),
                 ),
-                span: (38, 58),
+                span: Span(
+                  src: "\n      script;\n      \n      fn main() {\n        ()\n      }\n    ",
+                  start: 38,
+                  end: 58,
+                  source_id: None,
+                ),
               ),
             )),
           ),
         ],
       ),
     ))
-    "###);
+    "#);
 }

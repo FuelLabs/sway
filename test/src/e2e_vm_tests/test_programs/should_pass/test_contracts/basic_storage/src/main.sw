@@ -296,8 +296,6 @@ fn test_storage() {
     assert_eq(storage::ns1::ns2.c1.read(), NS1_NS2_C1);
 
     assert_eq(storage.c1.slot(), C1KEY);
-    assert_eq(storage.const_b256.slot(), sha256("storage.const_b256"));
-    assert_eq(storage::ns1::ns2.c1.slot(), sha256("storage::ns1::ns2.c1"));
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to

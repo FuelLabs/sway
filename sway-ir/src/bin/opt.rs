@@ -103,7 +103,7 @@ struct ConfigBuilder<'a, I: Iterator<Item = String>> {
     pass_mgr: &'a PassManager,
 }
 
-impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
+impl<I: Iterator<Item = String>> ConfigBuilder<'_, I> {
     fn build(pass_mgr: &PassManager, mut rest: I) -> Result<Config, anyhow::Error> {
         rest.next(); // Skip the first arg which is the binary name.
         let next = rest.next();

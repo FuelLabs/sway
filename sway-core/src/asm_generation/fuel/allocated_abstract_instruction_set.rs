@@ -1,7 +1,10 @@
-use crate::asm_lang::{
-    allocated_ops::{AllocatedOpcode, AllocatedRegister},
-    AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp, VirtualImmediate12,
-    VirtualImmediate18, VirtualImmediate24,
+use crate::{
+    asm_generation::fuel::data_section::EntryName,
+    asm_lang::{
+        allocated_ops::{AllocatedOpcode, AllocatedRegister},
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp,
+        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+    },
 };
 
 use super::{
@@ -10,6 +13,7 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
+use fuel_vm::fuel_asm::Imm12;
 use indexmap::{IndexMap, IndexSet};
 use sway_types::span::Span;
 
@@ -348,6 +352,13 @@ impl AllocatedAbstractInstructionSet {
                             comment: String::new(),
                         });
                     }
+                    ControlFlowOp::ConfigurablesOffsetPlaceholder => {
+                        realized_ops.push(RealizedOp {
+                            opcode: AllocatedOpcode::ConfigurablesOffsetPlaceholder,
+                            owning_span: None,
+                            comment: String::new(),
+                        });
+                    }
                     ControlFlowOp::LoadLabel(r1, ref lab) => {
                         // LoadLabel ops are inserted by `rewrite_far_jumps`.
                         // So the next instruction must be a relative jump.
@@ -363,8 +374,11 @@ impl AllocatedAbstractInstructionSet {
                         // We compute the relative offset w.r.t the actual jump.
                         // Sub 1 because the relative jumps add a 1.
                         let offset = rel_offset(curr_offset + 1, lab) - 1;
-                        let data_id =
-                            data_section.insert_data_value(Entry::new_word(offset, None, None));
+                        let data_id = data_section.insert_data_value(Entry::new_word(
+                            offset,
+                            EntryName::NonConfigurable,
+                            None,
+                        ));
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::LoadDataId(r1, data_id),
                             owning_span,
@@ -444,6 +458,14 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
+            Either::Left(AllocatedOpcode::AddrDataId(_, ref id)) => {
+                if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) {
+                    2
+                } else {
+                    1
+                }
+            }
+
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedOpcode::CFEI(ref op))
             | Either::Left(AllocatedOpcode::CFSI(ref op))
@@ -472,6 +494,8 @@ impl AllocatedAbstractInstructionSet {
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
+
+            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
 
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
                 "fix me, pushall and popall don't really belong in control flow ops \

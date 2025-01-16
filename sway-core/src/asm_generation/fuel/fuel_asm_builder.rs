@@ -1,4 +1,5 @@
 use super::{
+    data_section::EntryName,
     globals_section::GlobalsSection,
     programs::{AbstractEntry, AbstractProgram},
 };
@@ -23,6 +24,7 @@ use crate::{
     BuildConfig,
 };
 
+use fuel_vm::fuel_asm::Imm12;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -90,7 +92,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     pub(super) before_entries: Vec<Op>,
 }
 
-impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
+impl AsmBuilder for FuelAsmBuilder<'_, '_> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
@@ -98,7 +100,12 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     fn compile_configurable(&mut self, config: &ConfigContent) {
         match config {
             ConfigContent::V0 { name, constant, .. } => {
-                let entry = Entry::from_constant(self.context, constant, Some(name.clone()), None);
+                let entry = Entry::from_constant(
+                    self.context,
+                    constant,
+                    EntryName::Configurable(name.clone()),
+                    None,
+                );
                 let dataid = self.data_section.insert_data_value(entry);
                 self.configurable_v0_data_id.insert(name.clone(), dataid);
             }
@@ -117,7 +124,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                 let (decode_fn_label, _) = self.func_label_map.get(&decode_fn.get()).unwrap();
                 let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
                     encoded_bytes.clone(),
-                    Some(name.clone()),
+                    EntryName::Configurable(name.clone()),
                     None,
                 ));
 
@@ -1455,23 +1462,37 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let dst_reg = self.value_to_register(dst_val_ptr)?;
         let src_reg = self.value_to_register(src_val_ptr)?;
 
-        let len_reg = self.reg_seqr.next();
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVI(
-                len_reg.clone(),
-                VirtualImmediate18 {
-                    value: byte_len as u32,
-                },
-            )),
-            comment: "get data length for memory copy".into(),
-            owning_span: owning_span.clone(),
-        });
+        if byte_len <= u64::from(Imm12::MAX.to_u16()) {
+            // Can be done using a single MCPI instruction.
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MCPI(
+                    dst_reg,
+                    src_reg,
+                    VirtualImmediate12::new_unchecked(byte_len, "argument size checked above"),
+                )),
+                comment: "copy memory".into(),
+                owning_span,
+            });
+        } else {
+            // Too many bytes for MCPI, so we need to use a separate register to hold the length.
+            let len_reg = self.reg_seqr.next();
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MOVI(
+                    len_reg.clone(),
+                    VirtualImmediate18 {
+                        value: byte_len as u32,
+                    },
+                )),
+                comment: "get data length for memory copy".into(),
+                owning_span: owning_span.clone(),
+            });
 
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
-            comment: "copy memory".into(),
-            owning_span,
-        });
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
+                comment: "copy memory".into(),
+                owning_span,
+            });
+        }
 
         Ok(())
     }
@@ -2057,6 +2078,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
             _otherwise => {
                 // Get the constant into the namespace.
+                let config_name = if let Some(name) = config_name {
+                    EntryName::Configurable(name)
+                } else {
+                    EntryName::NonConfigurable
+                };
                 let entry = Entry::from_constant(self.context, constant, config_name, None);
                 let data_id = self.data_section.insert_data_value(entry);
 
@@ -2177,9 +2203,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             let comment = comment.into();
-            let data_id = self
-                .data_section
-                .insert_data_value(Entry::new_word(imm, None, None));
+            let data_id = self.data_section.insert_data_value(Entry::new_word(
+                imm,
+                EntryName::NonConfigurable,
+                None,
+            ));
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(reg.clone(), data_id)),
                 owning_span: span.clone(),

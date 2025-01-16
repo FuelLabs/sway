@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Eq, PartialEq, Debug, Clone, Hash)]
+#[derive(Eq, PartialEq, Debug, Clone, Hash, Serialize, Deserialize)]
 pub enum Intrinsic {
     IsReferenceType,
     SizeOfType,
@@ -43,6 +44,7 @@ pub enum Intrinsic {
     EncodeBufferAsRawSlice, // let slice: raw_slice = __encode_buffer_as_raw_slice(buffer)
     Slice, // let ref_to_slice = __slice::<T: array or ref_to_slice>(item: T, inclusive_start_index, exclusive_end_index)
     ElemAt, // let elem: &T = __elem_at::<T: array or ref_to_slice>(item: T, index)
+    Transmute, // let dst: B = __transmute::<A, B>(src)
 }
 
 impl fmt::Display for Intrinsic {
@@ -89,6 +91,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::EncodeBufferAsRawSlice => "encode_buffer_as_raw_slice",
             Intrinsic::Slice => "slice",
             Intrinsic::ElemAt => "elem_at",
+            Intrinsic::Transmute => "transmute",
         };
         write!(f, "{s}")
     }
@@ -139,6 +142,7 @@ impl Intrinsic {
             "__encode_buffer_as_raw_slice" => EncodeBufferAsRawSlice,
             "__slice" => Slice,
             "__elem_at" => ElemAt,
+            "__transmute" => Transmute,
             _ => return None,
         })
     }

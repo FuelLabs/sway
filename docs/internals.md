@@ -316,9 +316,9 @@ pub struct LexicalScope {
 
 /// The set of items that exist within some lexical scope via declaration or importing.
 pub struct Items {
-    /// An ordered map from `Ident`s to their associated parsed declarations.
+    /// A map from `Ident`s to their associated parsed declarations.
     pub(crate) parsed_symbols: ParsedSymbolMap,
-    /// An ordered map from `Ident`s to their associated typed declarations.
+    /// A map from `Ident`s to their associated typed declarations.
     pub(crate) symbols: SymbolMap,
     ...
 }

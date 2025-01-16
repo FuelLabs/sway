@@ -28,15 +28,11 @@ impl ty::TyFunctionDecl {
         decl_id: &ParsedDeclId<FunctionDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let fn_decl = engines.pe().get_function(decl_id);
-        let _ = ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            fn_decl.name.clone(),
-            Declaration::FunctionDeclaration(*decl_id),
-        );
+        let decl = Declaration::FunctionDeclaration(*decl_id);
+        let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl.clone());
 
         // create a namespace for the function
-        let _ = ctx.scoped(engines, fn_decl.span.clone(), |scoped_ctx| {
+        let _ = ctx.scoped(engines, fn_decl.span.clone(), Some(decl), |scoped_ctx| {
             TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
         });
         Ok(())
@@ -107,7 +103,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(span.clone()), |mut ctx| {
+            .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -202,7 +198,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(fn_decl.span.clone()), |mut ctx| {
+            .scoped(handler, Some(fn_decl.span.clone()), |ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {

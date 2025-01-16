@@ -19,7 +19,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg as pkg;
 use lsp_types::{
-    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
+    CompletionItem, DocumentSymbol, GotoDefinitionResponse, Location, Position, Range, Url,
 };
 use parking_lot::RwLock;
 use pkg::{
@@ -28,6 +28,7 @@ use pkg::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
+    ops::Deref,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
     time::SystemTime,
@@ -38,7 +39,8 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty, HasSubmodules,
+        ty::{self, TyModule},
+        HasSubmodules,
     },
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
@@ -53,6 +55,7 @@ pub type ProjectDirectory = PathBuf;
 pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
+    pub root: Option<ty::TyModule>,
     pub typed: Option<ty::TyProgram>,
 }
 
@@ -228,10 +231,10 @@ impl Session {
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
-            let program = compiled_program.typed.clone()?;
+            let root = compiled_program.root.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
-                program.root.namespace.module(&engines).current_items(),
+                &root.namespace,
                 &engines,
                 ident_to_complete,
                 fn_decl,
@@ -244,16 +247,27 @@ impl Session {
     /// Returns the [Namespace] from the compiled program if it exists.
     pub fn namespace(&self) -> Option<Namespace> {
         let compiled_program = &*self.compiled_program.read();
-        let program = compiled_program.typed.clone()?;
-        Some(program.root.namespace)
+        let root = compiled_program.root.clone()?;
+        Some(root.namespace)
     }
 
-    pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let _p = tracing::trace_span!("symbol_information").entered();
-        let tokens = self.token_map.tokens_for_file(url);
-        self.sync
-            .to_workspace_url(url.clone())
-            .map(|url| capabilities::document_symbol::to_symbol_information(tokens, &url))
+    /// Generate hierarchical document symbols for the given file.
+    pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
+        let _p = tracing::trace_span!("document_symbols").entered();
+        let path = url.to_file_path().ok()?;
+        self.compiled_program
+            .read()
+            .typed
+            .as_ref()
+            .map(|ty_program| {
+                capabilities::document_symbol::to_document_symbols(
+                    url,
+                    &path,
+                    ty_program,
+                    &self.engines.read(),
+                    &self.token_map,
+                )
+            })
     }
 
     /// Populate [Documents] with sway files found in the workspace.
@@ -380,19 +394,20 @@ pub fn traverse(
             }
         }
 
-        // Get a reference to the typed program AST.
-        let typed_program = typed
-            .as_ref()
-            .ok()
-            .ok_or_else(|| LanguageServerError::FailedToParse)?;
+        let root = match &typed {
+            Ok(p) => p.root.clone(),
+            Err(e) => {
+                let Some(root) = &e.root else {
+                    return Err(LanguageServerError::FailedToParse);
+                };
+                root.deref().clone()
+            }
+        };
+        let typed = typed.ok();
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(
-            &session.token_map,
-            engines,
-            typed_program.root.namespace.module(engines),
-        );
+        let ctx = ParseContext::new(&session.token_map, engines, root.namespace.module(engines));
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -412,26 +427,28 @@ pub fn traverse(
 
             // Finally, populate our token_map with typed ast nodes.
             let typed_tree = TypedTree::new(&ctx);
-            typed_tree.collect_module_spans(typed_program);
-            parse_ast_to_typed_tokens(typed_program, &ctx, &modified_file, |node, _ctx| {
+            typed_tree.collect_module_spans(&root);
+            parse_ast_to_typed_tokens(&root, &ctx, &modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
 
             let compiled_program = &mut *session.compiled_program.write();
             compiled_program.lexed = Some(lexed);
             compiled_program.parsed = Some(parsed);
-            compiled_program.typed = Some(typed_program.clone());
+            compiled_program.root = Some(root);
+            compiled_program.typed = typed;
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, ctx| {
                 dependency::collect_parsed_declaration(an, ctx);
             });
 
-            parse_ast_to_typed_tokens(typed_program, &ctx, &modified_file, |node, ctx| {
+            parse_ast_to_typed_tokens(&root, &ctx, &modified_file, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx);
             });
         }
     }
+
     Ok(Some(diagnostics))
 }
 
@@ -473,20 +490,25 @@ pub fn parse_project(
         }
     }
 
-    if let Some(typed) = &session.compiled_program.read().typed {
-        session.runnables.clear();
-        let path = uri.to_file_path().unwrap();
-        let program_id = program_id_from_path(&path, engines)?;
-        if let Some(metrics) = session.metrics.get(&program_id) {
-            // Check if the cached AST was returned by the compiler for the users workspace.
-            // If it was, then we need to use the original engines.
-            let engines = if metrics.reused_programs > 0 {
-                &*session.engines.read()
-            } else {
-                engines
-            };
-            create_runnables(&session.runnables, typed, engines.de(), engines.se());
-        }
+    session.runnables.clear();
+    let path = uri.to_file_path().unwrap();
+    let program_id = program_id_from_path(&path, engines)?;
+    if let Some(metrics) = session.metrics.get(&program_id) {
+        // Check if the cached AST was returned by the compiler for the users workspace.
+        // If it was, then we need to use the original engines.
+        let engines = if metrics.reused_programs > 0 {
+            &*session.engines.read()
+        } else {
+            engines
+        };
+        let compiled_program = session.compiled_program.read();
+        create_runnables(
+            &session.runnables,
+            compiled_program.typed.as_ref(),
+            compiled_program.root.as_ref(),
+            engines.de(),
+            engines.se(),
+        );
     }
     Ok(())
 }
@@ -563,7 +585,7 @@ fn parse_ast_to_tokens(
 
 /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
 fn parse_ast_to_typed_tokens(
-    typed_program: &ty::TyProgram,
+    root: &ty::TyModule,
     ctx: &ParseContext,
     modified_file: &Option<PathBuf>,
     f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
@@ -579,14 +601,10 @@ fn parse_ast_to_typed_tokens(
             .unwrap_or(true)
     };
 
-    typed_program
-        .root
-        .all_nodes
+    root.all_nodes
         .iter()
         .chain(
-            typed_program
-                .root
-                .submodules_recursive()
+            root.submodules_recursive()
                 .flat_map(|(_, submodule)| &submodule.module.all_nodes),
         )
         .filter(should_process)
@@ -598,14 +616,14 @@ fn parse_ast_to_typed_tokens(
 /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
 fn create_runnables(
     runnables: &RunnableMap,
-    typed_program: &ty::TyProgram,
+    typed_program: Option<&ty::TyProgram>,
+    root: Option<&TyModule>,
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
-
-    for (decl, _) in typed_program.test_fns(decl_engine) {
+    for (decl, _) in root.into_iter().flat_map(|x| x.test_fns(decl_engine)) {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
             .attributes
@@ -615,17 +633,16 @@ fn create_runnables(
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableTestFn {
                 range: token::get_range_from_span(&span.clone()),
-                tree_type: typed_program.kind.tree_type(),
                 test_name: Some(decl.name.to_string()),
             });
             runnables.entry(path).or_default().push(runnable);
         }
     }
+
     // Insert runnable main function if the program is a script.
-    if let ty::TyProgramKind::Script {
-        entry_function: ref main_function,
-        ..
-    } = typed_program.kind
+    if let Some(ty::TyProgramKind::Script {
+        ref main_function, ..
+    }) = typed_program.map(|x| &x.kind)
     {
         let main_function = decl_engine.get_function(main_function);
         let span = main_function.name.span();
@@ -633,7 +650,7 @@ fn create_runnables(
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableMainFn {
                 range: token::get_range_from_span(&span.clone()),
-                tree_type: typed_program.kind.tree_type(),
+                tree_type: sway_core::language::parsed::TreeType::Script,
             });
             runnables.entry(path).or_default().push(runnable);
         }

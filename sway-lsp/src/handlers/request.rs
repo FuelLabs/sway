@@ -67,8 +67,8 @@ pub async fn handle_document_symbol(
         .await
     {
         Ok((uri, session)) => Ok(session
-            .symbol_information(&uri)
-            .map(DocumentSymbolResponse::Flat)),
+            .document_symbols(&uri)
+            .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)

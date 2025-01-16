@@ -74,7 +74,8 @@ pub(crate) fn struct_instantiation(
     // find the module that the struct decl is in
     let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
     ctx.namespace()
-        .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
+        .root_module()
+        .lookup_submodule(handler, engines, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
@@ -296,14 +297,14 @@ pub(crate) fn struct_instantiation(
 
     let instantiation_span = inner_span.clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(handler, None, |mut scoped_ctx| {
+        .scoped(handler, None, |scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
             for type_parameter in struct_decl.type_parameters.iter() {
                 type_parameter.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
             }
 
-            type_id.check_type_parameter_bounds(handler, scoped_ctx, &span, None)?;
+            type_id.check_type_parameter_bounds(handler, scoped_ctx.by_ref(), &span, None)?;
 
             let exp = ty::TyExpression {
                 expression: ty::TyExpressionVariant::StructExpression {
@@ -333,8 +334,7 @@ fn collect_struct_constructors(
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
     namespace.program_id(engines).read(engines, |m| {
-        m.current_items()
-            .get_items_for_type(engines, struct_type_id)
+        m.get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
@@ -397,9 +397,9 @@ fn type_check_field_arguments(
                         .with_type_annotation(struct_field.type_argument.type_id)
                         .with_unify_generic(true);
 
-                    // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
-                    //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
-                    //          not treated as an error in the `type_check()`'s result.
+                    // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+                    //       We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+                    //       not treated as an error in the `type_check()`'s result.
                     let typed_expr = handler
                         .scope(|handler| ty::TyExpression::type_check(handler, ctx, &field.value));
 

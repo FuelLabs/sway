@@ -1,27 +1,25 @@
+use crate::{
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    parsed::QualifiedPathType,
+    Engines, Ident, Namespace,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
     sync::Arc,
 };
-
-use crate::{
-    engine_threading::{
-        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
-    },
-    Engines, Ident, Namespace,
-};
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, Spanned};
 
-use super::parsed::QualifiedPathType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CallPathTree {
     pub qualified_call_path: QualifiedCallPath,
     pub children: Vec<CallPathTree>,
@@ -75,7 +73,7 @@ impl OrdWithEngines for CallPathTree {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 
 pub struct QualifiedCallPath {
     pub call_path: CallPath,
@@ -179,7 +177,7 @@ impl DebugWithEngines for QualifiedCallPath {
 
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,
@@ -371,29 +369,34 @@ impl CallPath {
             let mut is_absolute = false;
 
             if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
-                if m.current_items().symbols().contains_key(&self.suffix) {
-                    None
-                } else if let Some((_, path, _, _)) = m
-                    .current_items()
-                    .use_item_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    Some(path)
-                } else if let Some(paths_and_decls) = m
-                    .current_items()
-                    .use_glob_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    if paths_and_decls.len() == 1 {
-                        Some(paths_and_decls[0].0.clone())
+                m.walk_scope_chain(|lexical_scope| {
+                    let res = if lexical_scope.items.symbols().contains_key(&self.suffix) {
+                        None
+                    } else if let Some((_, path, _, _)) = lexical_scope
+                        .items
+                        .use_item_synonyms
+                        .get(&self.suffix)
+                        .cloned()
+                    {
+                        Some(path)
+                    } else if let Some(paths_and_decls) = lexical_scope
+                        .items
+                        .use_glob_synonyms
+                        .get(&self.suffix)
+                        .cloned()
+                    {
+                        if paths_and_decls.len() == 1 {
+                            Some(paths_and_decls[0].0.clone())
+                        } else {
+                            None
+                        }
                     } else {
                         None
-                    }
-                } else {
-                    None
-                }
+                    };
+                    Ok(res)
+                })
+                .ok()
+                .flatten()
             }) {
                 synonym_prefixes.clone_from(&mod_path);
                 is_absolute = true;

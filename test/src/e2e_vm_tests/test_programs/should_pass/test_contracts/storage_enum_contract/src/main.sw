@@ -117,10 +117,6 @@ fn check_s_u8_a(expected: u8) -> u8 {
             assert(i == expected);
             return i;
         },
-        _ => {
-            assert(false);
-            return 99;
-        }
     }
 }
 
@@ -132,10 +128,6 @@ fn check_s_u64_a(expected: u64) -> u64 {
             assert(i == expected);
             return i;
         },
-        _ => {
-            assert(false);
-            return 9999;
-        }
     }
 }
 
@@ -147,10 +139,6 @@ fn check_s_bool_a(expected: bool) -> u64 {
             assert(i == expected);
             return 171;
         },
-        _ => {
-            assert(false);
-            return 9999;
-        }
     }
 }
 

@@ -4,9 +4,9 @@ script;
 // but until then, multiple methods with the same name is undefined behavior.
 // https://doc.rust-lang.org/rust-by-example/trait/disambiguating.html
 
-mod my_double;
+pub mod my_double;
 mod my_point;
-mod my_triple;
+pub mod my_triple;
 
 use my_point::MyPoint;
 use my_triple::MyTriple;

@@ -306,6 +306,18 @@ impl ReassignmentOpVariant {
             ReassignmentOpVariant::ShrEquals => "rsh",
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ReassignmentOpVariant::Equals => EqToken::AS_STR,
+            ReassignmentOpVariant::AddEquals => AddEqToken::AS_STR,
+            ReassignmentOpVariant::SubEquals => SubEqToken::AS_STR,
+            ReassignmentOpVariant::MulEquals => StarEqToken::AS_STR,
+            ReassignmentOpVariant::DivEquals => DivEqToken::AS_STR,
+            ReassignmentOpVariant::ShlEquals => ShlEqToken::AS_STR,
+            ReassignmentOpVariant::ShrEquals => ShrEqToken::AS_STR,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]

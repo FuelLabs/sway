@@ -14,8 +14,8 @@ const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 const TX_CONTRACT_BYTECODE_PATH: &str = "test_artifacts/tx_contract/out/release/tx_contract.bin";
 const TX_OUTPUT_PREDICATE_BYTECODE_PATH: &str =
     "test_artifacts/tx_output_predicate/out/release/tx_output_predicate.bin";
-const TX_OUTPUT_CHANGE_CONTRACT_BYTECODE_PATH: &str =
-    "test_artifacts/tx_output_change_contract/out/release/tx_output_change_contract.bin";
+const TX_OUTPUT_CONTRACT_BYTECODE_PATH: &str =
+    "test_artifacts/tx_output_contract/out/release/tx_output_contract.bin";
 const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str = "test_projects/tx_fields/out/release/tx_fields.bin";
 const TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH: &str =
     "test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin";
@@ -37,8 +37,8 @@ abigen!(
         abi = "test_artifacts/tx_contract/out/release/tx_contract-abi.json",
     ),
     Contract(
-        name = "TxOutputChangeContract",
-        abi = "test_artifacts/tx_output_change_contract/out/release/tx_output_change_contract-abi.json",
+        name = "TxOutputContract",
+        abi = "test_artifacts/tx_output_contract/out/release/tx_output_contract-abi.json",
     ),
     Predicate(
         name = "TestPredicate",
@@ -2109,7 +2109,7 @@ mod outputs {
 
             // Deploy contract
             let contract_id = Contract::load_from(
-                TX_OUTPUT_CHANGE_CONTRACT_BYTECODE_PATH,
+                TX_OUTPUT_CONTRACT_BYTECODE_PATH,
                 LoadConfiguration::default(),
             )
             .unwrap()
@@ -2117,8 +2117,7 @@ mod outputs {
             .await
             .unwrap();
 
-            let instance = TxOutputChangeContract::new(contract_id.clone(), wallet.clone());
-
+            let instance = TxOutputContract::new(contract_id.clone(), wallet.clone());
             // Send tokens to the contract
             let _ = wallet
                 .force_transfer_to_contract(&contract_id, 10, asset_id, TxPolicies::default())
@@ -2129,7 +2128,7 @@ mod outputs {
             let call_handler =
                 instance
                     .methods()
-                    .send_assets(wallet.clone().address(), asset_id, 10);
+                    .send_assets_change(wallet.clone().address(), asset_id, 10);
             let mut tb = call_handler.transaction_builder().await.unwrap();
 
             // Inputs for predicate
@@ -2161,6 +2160,44 @@ mod outputs {
             // Assert the predicate balance has changed
             let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
             assert!(balance - transfer_amount == new_balance);
+        }
+
+        #[tokio::test]
+        async fn can_get_tx_output_variable_details() {
+            // Prepare wallet
+            let (wallet, _, _, asset_id, _) = setup_output_predicate(1, SwayOutput::Variable).await;
+
+            // Deploy contract
+            let contract_id = Contract::load_from(
+                TX_OUTPUT_CONTRACT_BYTECODE_PATH,
+                LoadConfiguration::default(),
+            )
+            .unwrap()
+            .deploy(&wallet, TxPolicies::default())
+            .await
+            .unwrap();
+
+            let instance = TxOutputContract::new(contract_id.clone(), wallet.clone());
+
+            // Send tokens to the contract
+            let _ = wallet
+                .force_transfer_to_contract(&contract_id, 10, asset_id, TxPolicies::default())
+                .await
+                .unwrap();
+
+            // Run transaction with variable output
+            let (tx_to, tx_asset_id, tx_amount) = instance
+                .methods()
+                .send_assets_variable(wallet.clone().address(), asset_id, 2)
+                .with_variable_output_policy(VariableOutputPolicy::Exactly(1))
+                .call()
+                .await
+                .unwrap()
+                .value;
+
+            assert_eq!(tx_to, wallet.clone().address().into());
+            assert_eq!(tx_asset_id, asset_id);
+            assert_eq!(tx_amount, 1);
         }
     }
 

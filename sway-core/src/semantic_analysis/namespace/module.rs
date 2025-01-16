@@ -1,9 +1,17 @@
-use crate::{engine_threading::Engines, language::Visibility, Ident};
+use crate::{
+    engine_threading::Engines,
+    language::{
+        ty::{self},
+        Visibility,
+    },
+    Ident, TypeId,
+};
 
 use super::{
-    lexical_scope::{Items, LexicalScope},
+    lexical_scope::{Items, LexicalScope, ResolvedFunctionDecl},
     root::Root,
-    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf,
+    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration,
+    ResolvedTraitImplItem, TraitMap,
 };
 
 use rustc_hash::FxHasher;
@@ -215,6 +223,14 @@ impl Module {
             .unwrap()
     }
 
+    pub fn get_lexical_scope(&self, id: LexicalScopeId) -> Option<&LexicalScope> {
+        self.lexical_scopes.get(id)
+    }
+
+    pub fn get_lexical_scope_mut(&mut self, id: LexicalScopeId) -> Option<&mut LexicalScope> {
+        self.lexical_scopes.get_mut(id)
+    }
+
     /// Returns the current lexical scope associated with this module.
     pub fn current_lexical_scope(&self) -> &LexicalScope {
         self.lexical_scopes
@@ -232,6 +248,11 @@ impl Module {
     /// The collection of items declared by this module's current lexical scope.
     pub fn current_items(&self) -> &Items {
         &self.current_lexical_scope().items
+    }
+
+    /// The collection of items declared by this module's root lexical scope.
+    pub fn root_items(&self) -> &Items {
+        &self.root_lexical_scope().items
     }
 
     /// The mutable collection of items declared by this module's current lexical scope.
@@ -253,8 +274,11 @@ impl Module {
         let id_opt = self.lexical_scopes_spans.get(&span);
         match id_opt {
             Some(id) => {
+                let visitor_parent = self.current_lexical_scope_id;
                 self.current_lexical_scope_id = *id;
-                Ok(*id)
+                self.current_lexical_scope_mut().visitor_parent = Some(visitor_parent);
+
+                Ok(self.current_lexical_scope_id)
             }
             None => Err(handler.emit_err(CompileError::Internal(
                 "Could not find a valid lexical scope for this source location.",
@@ -264,11 +288,25 @@ impl Module {
     }
 
     /// Pushes a new scope to the module's lexical scope hierarchy.
-    pub fn push_new_lexical_scope(&mut self, span: Span) -> LexicalScopeId {
+    pub fn push_new_lexical_scope(
+        &mut self,
+        span: Span,
+        declaration: Option<ResolvedDeclaration>,
+    ) -> LexicalScopeId {
         let previous_scope_id = self.current_lexical_scope_id();
+        let previous_scope = self.lexical_scopes.get(previous_scope_id).unwrap();
         let new_scoped_id = {
             self.lexical_scopes.push(LexicalScope {
                 parent: Some(previous_scope_id),
+                visitor_parent: Some(previous_scope_id),
+                items: Items {
+                    symbols_unique_while_collecting_unifications: previous_scope
+                        .items
+                        .symbols_unique_while_collecting_unifications
+                        .clone(),
+                    ..Default::default()
+                },
+                declaration,
                 ..Default::default()
             });
             self.lexical_scopes.len() - 1
@@ -282,8 +320,101 @@ impl Module {
 
     /// Pops the current scope from the module's lexical scope hierarchy.
     pub fn pop_lexical_scope(&mut self) {
-        let parent_scope_id = self.current_lexical_scope().parent;
-        self.current_lexical_scope_id = parent_scope_id.unwrap_or(0);
+        let parent_scope_id = self.current_lexical_scope().visitor_parent;
+        self.current_lexical_scope_id = parent_scope_id.unwrap(); // panics if pops do not match pushes
+    }
+
+    pub fn walk_scope_chain<T>(
+        &self,
+        mut f: impl FnMut(&LexicalScope) -> Result<Option<T>, ErrorEmitted>,
+    ) -> Result<Option<T>, ErrorEmitted> {
+        let mut lexical_scope_opt = Some(self.current_lexical_scope());
+        while let Some(lexical_scope) = lexical_scope_opt {
+            let result = f(lexical_scope)?;
+            if let Some(result) = result {
+                return Ok(Some(result));
+            }
+            if let Some(parent_scope_id) = lexical_scope.parent {
+                lexical_scope_opt = self.get_lexical_scope(parent_scope_id);
+            } else {
+                lexical_scope_opt = None;
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn walk_scope_chain_mut<T>(
+        &mut self,
+        mut f: impl FnMut(&mut LexicalScope) -> Result<Option<T>, ErrorEmitted>,
+    ) -> Result<Option<T>, ErrorEmitted> {
+        let mut lexical_scope_opt = Some(self.current_lexical_scope_mut());
+        while let Some(lexical_scope) = lexical_scope_opt {
+            let result = f(lexical_scope)?;
+            if let Some(result) = result {
+                return Ok(Some(result));
+            }
+            if let Some(parent_scope_id) = lexical_scope.parent {
+                lexical_scope_opt = self.get_lexical_scope_mut(parent_scope_id);
+            } else {
+                lexical_scope_opt = None;
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn get_items_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedTraitImplItem> {
+        TraitMap::get_items_for_type(self, engines, type_id)
+    }
+
+    pub fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let mut last_handler = Handler::default();
+        let ret = self.walk_scope_chain(|lexical_scope| {
+            last_handler = Handler::default();
+            Ok(lexical_scope
+                .items
+                .resolve_symbol(&last_handler, engines, symbol)
+                .ok()
+                .flatten())
+        })?;
+
+        handler.append(last_handler);
+
+        if let Some(ret) = ret {
+            Ok(ret)
+        } else {
+            // Symbol not found
+            Err(handler.emit_err(CompileError::SymbolNotFound {
+                name: symbol.clone(),
+                span: symbol.span(),
+            }))
+        }
+    }
+
+    pub fn get_methods_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedFunctionDecl> {
+        self.get_items_for_type(engines, type_id)
+            .into_iter()
+            .filter_map(|item| match item {
+                ResolvedTraitImplItem::Parsed(_) => unreachable!(),
+                ResolvedTraitImplItem::Typed(item) => match item {
+                    ty::TyTraitItem::Fn(decl_ref) => Some(ResolvedFunctionDecl::Typed(decl_ref)),
+                    ty::TyTraitItem::Constant(_decl_ref) => None,
+                    ty::TyTraitItem::Type(_decl_ref) => None,
+                },
+            })
+            .collect::<Vec<_>>()
     }
 }
 
