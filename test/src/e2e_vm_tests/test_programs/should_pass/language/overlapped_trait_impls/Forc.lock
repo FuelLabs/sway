@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-BB2447E2F19FD755"
+
+[[package]]
+name = "overlapped_trait_impls"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-BB2447E2F19FD755"
+dependencies = ["core"]

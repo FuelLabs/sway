@@ -17,10 +17,10 @@ use crate::{
         VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
-    ExperimentalFlags,
 };
 use either::Either;
 use sway_error::error::CompileError;
+use sway_features::ExperimentalFeatures;
 
 /// The entry point of an abstract program.
 pub(crate) struct AbstractEntry {
@@ -44,7 +44,7 @@ pub(crate) struct AbstractProgram {
     entries: Vec<AbstractEntry>,
     non_entries: Vec<AbstractInstructionSet>,
     reg_seqr: RegisterSequencer,
-    experimental: ExperimentalFlags,
+    experimental: ExperimentalFeatures,
 }
 
 impl AbstractProgram {
@@ -57,7 +57,7 @@ impl AbstractProgram {
         entries: Vec<AbstractEntry>,
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
-        experimental: ExperimentalFlags,
+        experimental: ExperimentalFeatures,
     ) -> Self {
         AbstractProgram {
             kind,
@@ -164,13 +164,13 @@ impl AbstractProgram {
     /// Right now, it looks like this:
     ///
     /// WORD OP
-    /// 1    MOV $scratch $pc
-    /// -    JMPF $zero i2
-    /// 2    DATA_START (0-32) (in bytes, offset from $is)
-    /// -    DATA_START (32-64)
-    /// 3    LW $ds $scratch 1
-    /// -    ADD $ds $ds $scratch
-    /// 4    .program_start:
+    /// [1]    MOV $scratch $pc
+    /// [-]    JMPF $zero i2
+    /// [2]    DATA_START (0-32) (in bytes, offset from $is)
+    /// [-]    DATA_START (32-64)
+    /// [3]    LW $ds $scratch 1
+    /// [-]    ADD $ds $ds $scratch
+    /// [4]    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {

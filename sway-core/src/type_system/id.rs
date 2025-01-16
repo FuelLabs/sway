@@ -1,3 +1,4 @@
+#![allow(clippy::mutable_key_type)]
 use indexmap::IndexMap;
 use sway_error::{
     error::CompileError,
@@ -79,7 +80,7 @@ impl CollectTypesMetadata for TypeId {
                 }
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
-                        type_param.name_ident.clone(),
+                        type_param.name.clone(),
                         ctx.call_site_get(self),
                     ));
                 }
@@ -107,7 +108,7 @@ impl SubstTypes for TypeId {
 }
 
 impl TypeId {
-    pub(super) fn new(index: usize) -> TypeId {
+    pub(super) const fn new(index: usize) -> TypeId {
         TypeId(index)
     }
 
@@ -228,6 +229,56 @@ impl TypeId {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. } => {}
+            TypeInfo::UntypedEnum(decl_id) => {
+                let enum_decl = engines.pe().get_enum(decl_id);
+                for type_param in &enum_decl.type_parameters {
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                            depth + 1,
+                        ),
+                    );
+                }
+                for variant in &enum_decl.variants {
+                    extend(
+                        &mut found,
+                        variant.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
+                    );
+                }
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                let struct_decl = engines.pe().get_struct(decl_id);
+                for type_param in &struct_decl.type_parameters {
+                    extend(
+                        &mut found,
+                        type_param.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            type_param.trait_constraints.clone(),
+                            depth + 1,
+                        ),
+                    );
+                }
+                for field in &struct_decl.fields {
+                    extend(
+                        &mut found,
+                        field.type_argument.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
+                    );
+                }
+            }
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in &enum_decl.type_parameters {
@@ -310,7 +361,6 @@ impl TypeId {
             TypeInfo::Custom {
                 qualified_call_path: _,
                 type_arguments,
-                root_type_id: _,
             } => {
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
@@ -332,19 +382,6 @@ impl TypeId {
                     ty.type_id
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
-            }
-            TypeInfo::Storage { fields } => {
-                for field in fields {
-                    extend(
-                        &mut found,
-                        field.type_argument.type_id.extract_any_including_self(
-                            engines,
-                            filter_fn,
-                            vec![],
-                            depth + 1,
-                        ),
-                    );
-                }
             }
             TypeInfo::Alias { name: _, ty } => {
                 extend(
@@ -613,7 +650,7 @@ impl TypeId {
     fn check_trait_constraints_errors(
         self,
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         structure_type_id: &TypeId,
         structure_trait_constraints: &Vec<TraitConstraint>,
         f: impl Fn(&TraitConstraint),
@@ -647,13 +684,7 @@ impl TypeId {
                                         EnforceTypeArguments::No,
                                         None,
                                     )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
+                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
                                     ctx.resolve_type(
                                         handler,
                                         t2.type_id,
@@ -661,13 +692,7 @@ impl TypeId {
                                         EnforceTypeArguments::No,
                                         None,
                                     )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
+                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
                                 )
                             })
                 },

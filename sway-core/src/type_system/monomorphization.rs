@@ -7,14 +7,14 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert},
     language::{
-        ty::{self, TyDecl},
+        ty::{self},
         CallPath,
     },
-    namespace::ModulePath,
+    namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::type_resolve::resolve_type,
     type_system::ast_elements::create_type_id::CreateTypeId,
     EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
-    TypeInfo, TypeParameter, TypeSubstMap,
+    TypeParameter, TypeSubstMap,
 };
 
 pub(crate) trait MonomorphizeHelper {
@@ -130,11 +130,7 @@ where
                     self_type,
                     subst_ctx,
                 )
-                .unwrap_or_else(|err| {
-                    engines
-                        .te()
-                        .insert(engines, TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
             let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                 value
@@ -219,7 +215,7 @@ pub(crate) fn type_decl_opt_to_type_id(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
-    type_decl_opt: Option<TyDecl>,
+    type_decl_opt: Option<ResolvedDeclaration>,
     call_path: &CallPath,
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
@@ -231,10 +227,10 @@ pub(crate) fn type_decl_opt_to_type_id(
     let decl_engine = engines.de();
     let type_engine = engines.te();
     Ok(match type_decl_opt {
-        Some(ty::TyDecl::StructDecl(ty::StructDecl {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::StructDecl(ty::StructDecl {
             decl_id: original_id,
             ..
-        })) => {
+        }))) => {
             // get the copy from the declaration engine
             let mut new_copy = (*decl_engine.get_struct(&original_id)).clone();
 
@@ -259,16 +255,12 @@ pub(crate) fn type_decl_opt_to_type_id(
             );
 
             // create the type id from the copy
-            type_engine.insert(
-                engines,
-                TypeInfo::Struct(*new_decl_ref.id()),
-                new_decl_ref.span().source_id(),
-            )
+            type_engine.insert_struct(engines, *new_decl_ref.id())
         }
-        Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::EnumDecl(ty::EnumDecl {
             decl_id: original_id,
             ..
-        })) => {
+        }))) => {
             // get the copy from the declaration engine
             let mut new_copy = (*decl_engine.get_enum(&original_id)).clone();
 
@@ -293,41 +285,31 @@ pub(crate) fn type_decl_opt_to_type_id(
             );
 
             // create the type id from the copy
-            type_engine.insert(
-                engines,
-                TypeInfo::Enum(*new_decl_ref.id()),
-                new_decl_ref.span().source_id(),
-            )
+            type_engine.insert_enum(engines, *new_decl_ref.id())
         }
-        Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
             decl_id: original_id,
             ..
-        })) => {
+        }))) => {
             let new_copy = decl_engine.get_type_alias(&original_id);
 
-            // TODO: monomorphize the copy, in place, when generic type aliases are
-            // supported
+            // TODO: (GENERIC-TYPE-ALIASES) Monomorphize the copy, in place, once generic type aliases are
+            //       supported.
 
             new_copy.create_type_id(engines)
         }
-        Some(ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-            type_id,
-            ..
-        })) => type_id,
-        Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id })) => {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::GenericTypeForFunctionScope(
+            ty::GenericTypeForFunctionScope { type_id, .. },
+        ))) => type_id,
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
+            decl_id,
+        }))) => {
             let decl_type = decl_engine.get_type(&decl_id);
 
             if let Some(ty) = &decl_type.ty {
                 ty.type_id
             } else if let Some(implementing_type) = self_type {
-                type_engine.insert(
-                    engines,
-                    TypeInfo::TraitType {
-                        name: decl_type.name.clone(),
-                        trait_type_id: implementing_type,
-                    },
-                    decl_type.name.span().source_id(),
-                )
+                type_engine.insert_trait_type(engines, decl_type.name.clone(), implementing_type)
             } else {
                 return Err(handler.emit_err(CompileError::Internal(
                     "Self type not provided.",
@@ -340,7 +322,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 name: call_path.to_string(),
                 span: call_path.span(),
             });
-            type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+            type_engine.id_of_error_recovery(err)
         }
     })
 }

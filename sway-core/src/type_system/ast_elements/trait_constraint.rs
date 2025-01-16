@@ -137,7 +137,7 @@ impl TraitConstraint {
     pub(crate) fn type_check(
         &mut self,
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         // Right now we don't have the ability to support defining a type for a
         // trait constraint using a callpath directly, so we check to see if the
@@ -170,11 +170,7 @@ impl TraitConstraint {
                     EnforceTypeArguments::Yes,
                     None,
                 )
-                .unwrap_or_else(|err| {
-                    ctx.engines
-                        .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
-                });
+                .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
         }
 
         Ok(())

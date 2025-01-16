@@ -1,47 +1,103 @@
 #![allow(dead_code)]
-use crate::core::token::{AstToken, Token};
-use sway_core::{language::parsed::Declaration, transform, Engines};
+use crate::core::token::{ParsedAstToken, Token, TokenAstNode, TypedAstToken};
+use sway_core::{
+    language::{parsed::Declaration, ty},
+    transform, Engines,
+};
 
+/// Gets attributes map from typed token, falling back to parsed AST node if needed.
+/// Callback can be used to retrieve doc comment attributes or storage attributes.
 pub fn attributes_map<F>(engines: &Engines, token: &Token, mut callback: F)
 where
     F: FnMut(&transform::AttributesMap),
 {
-    match &token.parsed {
-        AstToken::Declaration(declaration) => match declaration {
-            Declaration::EnumDeclaration(decl_id) => {
-                let decl = engines.pe().get_enum(decl_id);
-                callback(&decl.attributes);
+    match &token.ast_node {
+        TokenAstNode::Typed(typed_token) => match typed_token {
+            TypedAstToken::TypedDeclaration(decl) => match decl {
+                ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
+                    let enum_decl = engines.de().get_enum(decl_id);
+                    callback(&enum_decl.attributes);
+                }
+                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                    let struct_decl = engines.de().get_struct(decl_id);
+                    callback(&struct_decl.attributes);
+                }
+                ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. }) => {
+                    let storage_decl = engines.de().get_storage(decl_id);
+                    callback(&storage_decl.attributes);
+                }
+                ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
+                    let abi_decl = engines.de().get_abi(decl_id);
+                    callback(&abi_decl.attributes);
+                }
+                _ => {}
+            },
+            TypedAstToken::TypedFunctionDeclaration(fn_decl) => {
+                callback(&fn_decl.attributes);
             }
-            Declaration::FunctionDeclaration(decl_id) => {
-                let decl = engines.pe().get_function(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedConstantDeclaration(constant) => {
+                callback(&constant.attributes);
             }
-            Declaration::StructDeclaration(decl_id) => {
-                let decl = engines.pe().get_struct(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedStorageField(field) => {
+                callback(&field.attributes);
             }
-            Declaration::ConstantDeclaration(decl_id) => {
-                let decl = engines.pe().get_constant(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedStructField(field) => {
+                callback(&field.attributes);
             }
-            Declaration::StorageDeclaration(decl_id) => {
-                let decl = engines.pe().get_storage(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedTraitFn(trait_fn) => {
+                callback(&trait_fn.attributes);
             }
-            Declaration::AbiDeclaration(decl_id) => {
-                let decl = engines.pe().get_abi(decl_id);
-                callback(&decl.attributes);
+            TypedAstToken::TypedEnumVariant(variant) => {
+                callback(&variant.attributes);
+            }
+            TypedAstToken::TypedConfigurableDeclaration(configurable) => {
+                callback(&configurable.attributes);
+            }
+            TypedAstToken::TypedTraitTypeDeclaration(trait_type) => {
+                callback(&trait_type.attributes);
+            }
+            TypedAstToken::TypedTypeAliasDeclaration(type_alias) => {
+                callback(&type_alias.attributes);
             }
             _ => {}
         },
-        AstToken::StorageField(field) => callback(&field.attributes),
-        AstToken::StructField(field) => callback(&field.attributes),
-        AstToken::TraitFn(decl_id) => {
-            let decl = engines.pe().get_trait_fn(decl_id);
-            callback(&decl.attributes);
-        }
-        AstToken::EnumVariant(variant) => callback(&variant.attributes),
-        _ => {}
+        TokenAstNode::Parsed(parsed_token) => match &parsed_token {
+            ParsedAstToken::Declaration(declaration) => match declaration {
+                Declaration::EnumDeclaration(decl_id) => {
+                    let decl = engines.pe().get_enum(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::FunctionDeclaration(decl_id) => {
+                    let decl = engines.pe().get_function(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::StructDeclaration(decl_id) => {
+                    let decl = engines.pe().get_struct(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::ConstantDeclaration(decl_id) => {
+                    let decl = engines.pe().get_constant(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::StorageDeclaration(decl_id) => {
+                    let decl = engines.pe().get_storage(decl_id);
+                    callback(&decl.attributes);
+                }
+                Declaration::AbiDeclaration(decl_id) => {
+                    let decl = engines.pe().get_abi(decl_id);
+                    callback(&decl.attributes);
+                }
+                _ => {}
+            },
+            ParsedAstToken::StorageField(field) => callback(&field.attributes),
+            ParsedAstToken::StructField(field) => callback(&field.attributes),
+            ParsedAstToken::TraitFn(decl_id) => {
+                let decl = engines.pe().get_trait_fn(decl_id);
+                callback(&decl.attributes);
+            }
+            ParsedAstToken::EnumVariant(variant) => callback(&variant.attributes),
+            _ => {}
+        },
     }
 }
 

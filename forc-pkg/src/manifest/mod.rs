@@ -200,6 +200,8 @@ pub struct Project {
     pub entry: String,
     pub implicit_std: Option<bool>,
     pub forc_version: Option<semver::Version>,
+    #[serde(default)]
+    pub experimental: HashMap<String, bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -771,7 +773,7 @@ impl std::ops::Deref for PackageManifestFile {
 /// This can be configured using environment variables:
 /// - use `FORC_IMPLICIT_STD_PATH` for the path for the std-lib;
 /// - use `FORC_IMPLICIT_STD_GIT`, `FORC_IMPLICIT_STD_GIT_TAG` and/or `FORC_IMPLICIT_STD_GIT_BRANCH` to configure
-/// the git repo of the std-lib.
+///   the git repo of the std-lib.
 fn implicit_std_dep() -> Dependency {
     if let Ok(path) = std::env::var("FORC_IMPLICIT_STD_PATH") {
         return Dependency::Detailed(DependencyDetails {

@@ -29,7 +29,7 @@ pub mod restricted;
 #[macro_use]
 pub mod cli;
 
-pub use ansi_term;
+pub use ansiterm;
 pub use paste;
 pub use regex::Regex;
 pub use serial_test;
@@ -347,7 +347,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
     };
     println_action_green(
         "Compiling",
-        &format!("{ty}{} ({src})", ansi_term::Style::new().bold().paint(name)),
+        &format!("{ty}{} ({src})", ansiterm::Style::new().bold().paint(name)),
     );
 }
 
@@ -510,7 +510,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             label: if issue.is_in_source() {
                 None
             } else {
-                Some(issue.friendly_text())
+                Some(issue.text())
             },
             id: None,
             annotation_type,
@@ -532,7 +532,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
                 origin: Some(issue.source_path().unwrap().as_str()),
                 fold: false,
                 annotations: vec![SourceAnnotation {
-                    label: issue.friendly_text(),
+                    label: issue.text(),
                     annotation_type,
                     range: (start_pos, end_pos),
                 }],
@@ -594,7 +594,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
 
     for message in labels {
         annotations.push(SourceAnnotation {
-            label: message.friendly_text(),
+            label: message.text(),
             annotation_type: label_type_to_annotation_type(message.label_type()),
             range: get_annotation_range(message.span(), source_code, shift_in_bytes),
         });

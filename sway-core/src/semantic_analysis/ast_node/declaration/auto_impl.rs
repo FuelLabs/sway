@@ -75,11 +75,8 @@ where
         } else {
             format!(
                 "<{}>",
-                itertools::intersperse(
-                    type_parameters.iter().map(|x| { x.name_ident.as_str() }),
-                    ", "
-                )
-                .collect::<String>()
+                itertools::intersperse(type_parameters.iter().map(|x| { x.name.as_str() }), ", ")
+                    .collect::<String>()
             )
         }
     }
@@ -94,7 +91,7 @@ where
         for t in type_parameters.iter() {
             code.push_str(&format!(
                 "{}: {},\n",
-                t.name_ident.as_str(),
+                t.name.as_str(),
                 itertools::intersperse(
                     [extra_constraint].into_iter().chain(
                         t.trait_constraints
@@ -502,7 +499,7 @@ where
     fn generate_type(engines: &Engines, type_id: TypeId) -> Option<String> {
         let name = match &*engines.te().get(type_id) {
             TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(type_param) => type_param.name_ident.to_string(),
+            TypeInfo::Placeholder(type_param) => type_param.name.to_string(),
             TypeInfo::StringSlice => "str".into(),
             TypeInfo::StringArray(x) => format!("str[{}]", x.val()),
             TypeInfo::UnsignedInteger(x) => match x {

@@ -79,7 +79,7 @@ impl ty::TyStructDecl {
 impl ty::TyStructField {
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         field: StructField,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -93,9 +93,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| {
-                type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
-            });
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         let field = ty::TyStructField {
             visibility: field.visibility,
             name: field.name,

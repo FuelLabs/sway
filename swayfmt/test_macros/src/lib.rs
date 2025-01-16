@@ -119,18 +119,23 @@ macro_rules! fmt_test_inner {
 #[macro_export]
 macro_rules! assert_eq_pretty {
     ($got:expr, $expected:expr) => {
-        let got = &$got;
-        let expected = &$expected;
+        let got = &$got[..];
+        let expected = &$expected[..];
+
         if got != expected {
-            use difference::{Changeset, Difference};
-            let changeset = Changeset::new(expected, got, "\n");
-            for diff in changeset.diffs {
-                match diff {
-                    Difference::Same(s) => println!("{}", s),
-                    Difference::Add(s) => println!("\x1b[32m+{}\x1b[0m", s), // Green color for additions
-                    Difference::Rem(s) => println!("\x1b[31m-{}\x1b[0m", s), // Red color for removals
+            use similar::TextDiff;
+
+            let diff = TextDiff::from_lines(expected, got);
+            for op in diff.ops() {
+                for change in diff.iter_changes(op) {
+                    match change.tag() {
+                        similar::ChangeTag::Equal => print!("{}", change),
+                        similar::ChangeTag::Insert => print!("\x1b[32m+{}\x1b[0m", change), // Green for additions
+                        similar::ChangeTag::Delete => print!("\x1b[31m-{}\x1b[0m", change), // Red for deletions
+                    }
                 }
             }
+            println!();
             panic!("printed outputs differ!");
         }
     };
