@@ -844,7 +844,7 @@ mod tx {
             max_depth: 10,
             max_tokens: 100_000,
         })
-        .encode_data(
+        .encode_data( // Blob and witnesses are just wrappers for Vec<u8>, and function the same in case of Transaction::Blob, so using blobs here instead of witnesses
             0,
             blobs.len() as u64 + 1,
             blob.len() as u64,
