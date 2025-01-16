@@ -37,8 +37,7 @@ fn main() -> D {
 // regex: ID=[_[:alpha:]][_0-9[:alpha:]]*
 
 // B is 48 bytes.
-// check: movi $(len_reg=$REG) i48
-// check: mcp  $REG $REG $len_reg
+// check: mcpi $REG $REG i48
 
 // D is 72 bytes.
 // check: movi $(len_reg=$REG) i72
