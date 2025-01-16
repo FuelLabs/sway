@@ -35,6 +35,7 @@ use ::vm::evm::evm_address::EvmAddress;
 ///     assert(result_address == evm_address);
 /// }
 /// ```
+#[deprecated(note = "Please use new crypto module")]
 pub fn ec_recover_evm_address(
     signature: B512,
     msg_hash: b256,
