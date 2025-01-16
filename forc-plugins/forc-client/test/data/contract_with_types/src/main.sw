@@ -15,7 +15,7 @@ enum GenericEnum<T> {
 struct ComplexStruct<T> {
     info: (User, u64),
     status: Status,
-    data: []u64,
+    data: u64,
     generic: GenericStruct<T>,
 }
 
@@ -44,7 +44,8 @@ abi MyContract {
     fn test_bytes(a: Bytes) -> Bytes;
     fn test_str(a: str) -> str;
     fn test_str_array(a: str[10]) -> str[10];
-    fn test_str_slice(a: []str) -> []str;
+    // str and str[] are the same type
+    fn test_str_slice(a: str) -> str;
     fn test_tuple(a: (u64, bool)) -> (u64, bool);
     fn test_array(a: [u64; 10]) -> [u64; 10];
     fn test_vector(a: Vec<u64>) -> Vec<u64>;
@@ -105,7 +106,7 @@ impl MyContract for Contract {
     fn test_str_array(a: str[10]) -> str[10] {
         a
     }
-    fn test_str_slice(a: []str) -> []str {
+    fn test_str_slice(a: str) -> str {
         a
     }
     fn test_tuple(a: (u64, bool)) -> (u64, bool) {

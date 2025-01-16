@@ -328,6 +328,39 @@ mod tests {
     use super::*;
     use fuels::accounts::wallet::Wallet;
     use fuels::prelude::*;
+    use std::{path::Path, process::Command, sync::Once};
+
+    static INIT: Once = Once::new();
+
+    /// Setup function that ensures forc build is run once before any tests
+    fn setup() {
+        INIT.call_once(|| {
+            let project_dir = env!("CARGO_MANIFEST_DIR");
+            let test_contract_dir = Path::new(project_dir)
+                .join("test")
+                .join("data")
+                .join("contract_with_types");
+            
+            // Run forc fmt --check
+            let fmt_status = Command::new("forc")
+                .current_dir(&test_contract_dir)
+                .arg("fmt")
+                .arg("--check")
+                .status()
+                .expect("Failed to execute forc fmt");
+            assert!(fmt_status.success(), "\"forc fmt --check\" failed for file: {}/src/main.sw", test_contract_dir.to_str().unwrap());
+
+            // Run forc build
+            let status = Command::new("forc")
+                .current_dir(&test_contract_dir)
+                .arg("build")
+                .arg("--output-directory")
+                .arg(".")
+                .status()
+                .expect("Failed to execute forc build");
+            assert!(status.success(), "forc build failed");
+        });
+    }
 
     abigen!(Contract(
         name = "TestContract",
@@ -335,6 +368,9 @@ mod tests {
     ));
 
     async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
+        // Ensure forc build is run once
+        setup();
+
         // Launch a local network and deploy the contract
         let mut wallets = launch_custom_provider_and_get_wallets(
             WalletsConfig::new(
