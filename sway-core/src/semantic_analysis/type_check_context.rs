@@ -2,7 +2,10 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    decl_engine::{
+        DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
+        DeclRefFunction,
+    },
     engine_threading::*,
     language::{
         parsed::TreeType,
@@ -31,7 +34,6 @@ use sway_features::ExperimentalFeatures;
 use sway_types::{span::Span, Ident, IdentUnique, Spanned};
 
 use super::{
-    namespace::CodeBlockFirstPass,
     namespace::{Items, LexicalScopeId},
     symbol_collection_context::SymbolCollectionContext,
     type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
@@ -828,9 +830,6 @@ impl<'a> TypeCheckContext<'a> {
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
         }
 
-        // Retrieve the implemented traits for the type and insert them in the namespace.
-        self.insert_trait_implementation_for_type(type_id);
-
         let mut matching_item_decl_refs =
             self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
 
@@ -962,21 +961,15 @@ impl<'a> TypeCheckContext<'a> {
                             .zip(method_type_id_type_parameters.iter())
                     {
                         let handler = Handler::default();
-                        if self
-                            .namespace_mut()
-                            .module_mut(engines)
-                            .current_items_mut()
-                            .implemented_traits
-                            .check_if_trait_constraints_are_satisfied_for_type(
-                                &handler,
-                                type_id_type_parameter.type_id,
-                                &method_type_id_type_parameter.trait_constraints,
-                                &method.span(),
-                                engines,
-                                TryInsertingTraitImplOnFailure::Yes,
-                                CodeBlockFirstPass::No,
-                            )
-                            .is_err()
+                        if TraitMap::check_if_trait_constraints_are_satisfied_for_type(
+                            &handler,
+                            self.namespace_mut().current_module_mut(),
+                            type_id_type_parameter.type_id,
+                            &method_type_id_type_parameter.trait_constraints,
+                            &method.span(),
+                            engines,
+                        )
+                        .is_err()
                         {
                             let (errors, _) = handler.consume();
                             let mut errors_strings = vec![];
@@ -1117,6 +1110,8 @@ impl<'a> TypeCheckContext<'a> {
                             method.implementing_for_typeid.map(|t| {
                                 self.engines.help_out((*self.engines.te().get(t)).clone())
                             }),
+                            method.name.clone().into(),
+                            trait_decl.trait_decl_ref.is_none(),
                         );
 
                         if !skip_insert {
@@ -1128,25 +1123,6 @@ impl<'a> TypeCheckContext<'a> {
                             }
                         }
                     }
-                }
-
-                // If we have: impl<T> FromBytes for T
-                // and: impl FromBytes for DataPoint
-                // We pick the second implementation.
-                let mut non_blanket_impl_exists = false;
-                let mut impls_with_type_params = vec![];
-                let trait_method_clone = trait_methods.clone();
-                let existing_values = trait_method_clone.values().collect::<Vec<_>>();
-                for existing_value in existing_values.iter() {
-                    let existing_method = decl_engine.get_function(*existing_value);
-                    if !existing_method.is_from_blanket_impl(engines) {
-                        non_blanket_impl_exists = true;
-                    } else {
-                        impls_with_type_params.push(existing_value.id());
-                    }
-                }
-                if non_blanket_impl_exists {
-                    trait_methods.retain(|_, v| !impls_with_type_params.contains(&v.id()));
                 }
 
                 // If we have: impl<T> FromBytes for T
@@ -1189,7 +1165,7 @@ impl<'a> TypeCheckContext<'a> {
                             if let Some(implementing_for_type) = method.implementing_for_typeid {
                                 if eq_check
                                     .with_unify_ref_mut(false)
-                                    .check(implementing_for_type, type_id)
+                                    .check(type_id, implementing_for_type)
                                 {
                                     exact_matching_methods.push(*trait_method_ref);
                                 }
@@ -1514,23 +1490,21 @@ impl<'a> TypeCheckContext<'a> {
             .iter()
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
             .collect::<Vec<_>>();
-        self.namespace_mut()
-            .current_module_mut()
-            .current_items_mut()
-            .implemented_traits
-            .insert(
-                handler,
-                canonical_trait_path,
-                trait_type_args,
-                trait_type_parameters,
-                type_id,
-                &items,
-                impl_span,
-                trait_decl_span,
-                is_impl_self,
-                is_extending_existing_impl,
-                engines,
-            )
+
+        TraitMap::insert(
+            handler,
+            self.namespace_mut().current_module_mut(),
+            canonical_trait_path,
+            trait_type_args,
+            trait_type_parameters,
+            type_id,
+            &items,
+            impl_span,
+            trait_decl_span,
+            is_impl_self,
+            is_extending_existing_impl,
+            engines,
+        )
     }
 
     pub(crate) fn get_items_for_type_and_trait_name(

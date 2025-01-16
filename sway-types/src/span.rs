@@ -1,12 +1,13 @@
-use crate::SourceId;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
 use crate::{SourceEngine, SourceId};
 
-use {
-    lazy_static::lazy_static,
-    std::{cmp, fmt, hash::Hash, sync::Arc},
+use std::{
+    cmp,
+    fmt::{self, Display},
+    hash::Hash,
+    sync::Arc,
 };
 
 lazy_static! {
