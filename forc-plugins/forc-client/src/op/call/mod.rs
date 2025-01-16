@@ -17,6 +17,7 @@ use anyhow::{bail, Result};
 use either::Either;
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
 use fuels::{
+    accounts::{provider::Provider, wallet::WalletUnlocked},
     crypto::SecretKey,
     programs::calls::{
         receipt_parser::ReceiptParser,
@@ -24,7 +25,6 @@ use fuels::{
         ContractCall,
     },
 };
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
 use fuels_core::{
     codec::{encode_fn_selector, ABIEncoder, DecoderConfig, EncoderConfig},
     types::{
@@ -35,7 +35,7 @@ use fuels_core::{
         ContractId,
     },
 };
-use std::{collections::HashMap, fs::File, io::Write as _, str::FromStr};
+use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
 use sway_ast::Item;
 use swayfmt::parse::with_handler;
 
@@ -326,9 +326,8 @@ async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<Wal
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuel_crypto::SecretKey;
+    use fuels::accounts::wallet::Wallet;
     use fuels::prelude::*;
-    use fuels_accounts::wallet::{Wallet, WalletUnlocked};
 
     abigen!(Contract(
         name = "TestContract",
