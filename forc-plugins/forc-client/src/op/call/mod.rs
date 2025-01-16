@@ -1,9 +1,13 @@
+mod missing_contracts;
 mod parser;
 
 use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
-    op::call::parser::{param_type_val_to_token, token_to_string},
+    op::call::{
+        missing_contracts::get_missing_contracts,
+        parser::{param_type_val_to_token, token_to_string},
+    },
     util::{
         node_url::get_node_url,
         tx::{prompt_forc_wallet_password, select_local_wallet_account},
@@ -12,7 +16,6 @@ use crate::{
 use anyhow::{bail, Result};
 use either::Either;
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
-use fuel_tx::{PanicReason, Receipt};
 use fuels::{
     crypto::SecretKey,
     programs::calls::{
@@ -284,67 +287,6 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     // }
 
     // r.unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
-}
-
-async fn get_missing_contracts(
-    mut call: ContractCall,
-    provider: &Provider,
-    tx_policies: &TxPolicies,
-    variable_output_policy: &VariableOutputPolicy,
-    log_decoder: &fuels_core::codec::LogDecoder,
-    account: &WalletUnlocked,
-    max_attempts: Option<u64>,
-) -> Result<Vec<Bech32ContractId>> {
-    let max_attempts = max_attempts.unwrap_or(10);
-
-    for attempt in 1..=max_attempts {
-        forc_tracing::println_warning(&format!(
-            "Executing dry-run attempt {} to find missing contracts",
-            attempt
-        ));
-
-        let tx = call
-            .build_tx(*tx_policies, *variable_output_policy, account)
-            .await?;
-
-        match provider
-            .dry_run(tx)
-            .await?
-            .take_receipts_checked(Some(log_decoder))
-        {
-            Ok(_) => return Ok(call.external_contracts),
-            Err(fuels_core::types::errors::Error::Transaction(
-                fuels::types::errors::transaction::Reason::Reverted { receipts, .. },
-            )) => {
-                let contract_id = find_id_of_missing_contract(&receipts)?;
-                call.external_contracts.push(contract_id);
-            }
-            Err(err) => bail!(err),
-        }
-    }
-    bail!("Max attempts reached while finding missing contracts")
-}
-
-pub fn find_id_of_missing_contract(receipts: &[Receipt]) -> Result<Bech32ContractId> {
-    for receipt in receipts {
-        match receipt {
-            Receipt::Panic {
-                reason,
-                contract_id,
-                ..
-            } if *reason.reason() == PanicReason::ContractNotInInputs => {
-                let contract_id = contract_id
-                    .expect("panic caused by a contract not in inputs must have a contract id");
-                return Ok(Bech32ContractId::from(contract_id));
-            }
-            Receipt::Panic { reason, .. } => {
-                // If it's a panic but not ContractNotInInputs, include the reason
-                bail!("Contract execution panicked with reason: {:?}", reason);
-            }
-            _ => continue,
-        }
-    }
-    bail!("No contract found in receipts: {:?}", receipts)
 }
 
 async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<WalletUnlocked> {
