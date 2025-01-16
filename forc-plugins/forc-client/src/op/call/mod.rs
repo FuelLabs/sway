@@ -61,7 +61,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     if let Some(abi) = abi {
         // If ABI is provided, ensure function signature is just the selector
         let cmd::call::FuncType::Selector(selector) = function else {
-            bail!("Function must be a selector");
+            bail!("Function must be a selector; e.g. \"transfer\"; got {:?}", function);
         };
 
         let (file_path, is_temp_file) = match abi {
