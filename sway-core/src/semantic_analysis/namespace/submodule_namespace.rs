@@ -12,20 +12,20 @@ pub struct SubmoduleNamespace<'a> {
     pub(crate) parent_mod_path: ModulePathBuf,
 }
 
-impl<'a> std::ops::Deref for SubmoduleNamespace<'a> {
+impl std::ops::Deref for SubmoduleNamespace<'_> {
     type Target = Namespace;
     fn deref(&self) -> &Self::Target {
         self.namespace
     }
 }
 
-impl<'a> std::ops::DerefMut for SubmoduleNamespace<'a> {
+impl std::ops::DerefMut for SubmoduleNamespace<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.namespace
     }
 }
 
-impl<'a> Drop for SubmoduleNamespace<'a> {
+impl Drop for SubmoduleNamespace<'_> {
     fn drop(&mut self) {
         // Replace the submodule path with the original module path.
         // This ensures that the namespace's module path is reset when ownership over it is

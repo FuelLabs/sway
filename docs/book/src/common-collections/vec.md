@@ -38,13 +38,31 @@ When the `get` method is passed an index that is outside the vector, it returns 
 
 ## Iterating over the Values in a Vector
 
-To access each element in a vector in turn, we would iterate through all of the valid indices using a `while` loop and the `len` method as shown below:
+To access elements of a vector, we can iterate through the valid indices using a `while` loop and the `len` method as shown below:
 
 ```sway
-{{#include ../../../../examples/vec/src/main.sw:vec_iterate}}
+{{#include ../../../../examples/vec/src/main.sw:vec_iterate_while}}
 ```
 
 Note two details here. First, we use the method `len` which returns the length of the vector. Second, we call the method `unwrap` to extract the `Option` returned by `get`. We know that `unwrap` will not fail (i.e. will not cause a revert) because each index `i` passed to `get` is known to be smaller than the length of the vector.
+
+The idiomatic and convenient way to access each element in a vector in turn, is to use the `for` loop in the combination with the `iter` method. The `iter` method returns an iterator that iterates over all the elements of the vector sequentially.
+
+```sway
+{{#include ../../../../examples/vec/src/main.sw:vec_iterate_for}}
+```
+
+Note that **modifying a vector during iteration, by e.g. adding or removing elements, is a logical error and results in an [undefined behavior](../reference/undefined_behavior.md)**:
+
+```sway
+{{#include ../../../../examples/vec/src/main.sw:vec_iterate_for_undefined}}
+```
+
+Accessing vector elements via `while` loop should be used only when more control over traversal is needed. E.g., in the below example we iterate the vector backwards, accessing only every second element.
+
+```sway
+{{#include ../../../../examples/vec/src/main.sw:vec_iterate_custom}}
+```
 
 ## Using an Enum to store Multiple Types
 

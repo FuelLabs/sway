@@ -33,7 +33,7 @@ impl<'a> TokenMap {
     pub fn try_get_mut_with_retry(
         &'a self,
         ident: &TokenIdent,
-    ) -> Option<RefMut<TokenIdent, Token>> {
+    ) -> Option<RefMut<'a, TokenIdent, Token>> {
         const MAX_RETRIES: usize = 14;
         let backoff_times = [
             1,

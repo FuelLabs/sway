@@ -207,64 +207,56 @@ async fn caller_addresses_from_messages() {
     .deploy(&wallet4, TxPolicies::default())
     .await
     .unwrap();
-    
+
     let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
-    
+
     let result = auth_instance
         .methods()
         .returns_caller_addresses()
         .call()
         .await
         .unwrap();
-    
+
     assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
 
     // Start building transactions
-    let call_handler = auth_instance
-        .methods()
-        .returns_caller_addresses();
+    let call_handler = auth_instance.methods().returns_caller_addresses();
     let mut tb = call_handler.transaction_builder().await.unwrap();
 
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Message(
-            setup_single_message(
-                &wallet1.address().clone(),
-                &wallet1.address().clone(),
-                message_amount,
-                0.into(),
-                vec![],
-            )
-        ),
+        resource: CoinType::Message(setup_single_message(
+            &wallet1.address().clone(),
+            &wallet1.address().clone(),
+            message_amount,
+            0.into(),
+            vec![],
+        )),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Message(
-            setup_single_message(
-                &wallet2.address().clone(),
-                &wallet2.address().clone(),
-                message_amount,
-                1.into(),
-                vec![],
-            )
-        ),
+        resource: CoinType::Message(setup_single_message(
+            &wallet2.address().clone(),
+            &wallet2.address().clone(),
+            message_amount,
+            1.into(),
+            vec![],
+        )),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Message(
-            setup_single_message(
-                &wallet3.address().clone(),
-                &wallet3.address().clone(),
-                message_amount,
-                2.into(),
-                vec![],
-            )
-        ),
+        resource: CoinType::Message(setup_single_message(
+            &wallet3.address().clone(),
+            &wallet3.address().clone(),
+            message_amount,
+            2.into(),
+            vec![],
+        )),
     });
 
     // Build transaction
     tb.add_signer(wallet1.clone()).unwrap();
     tb.add_signer(wallet2.clone()).unwrap();
     tb.add_signer(wallet3.clone()).unwrap();
-    
+
     let provider = wallet1.provider().unwrap();
     let tx = tb.build(provider.clone()).await.unwrap();
 
@@ -273,9 +265,15 @@ async fn caller_addresses_from_messages() {
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
 
-    assert!(result.value.contains(&Address::from(wallet1.address().clone())));
-    assert!(result.value.contains(&Address::from(wallet2.address().clone())));
-    assert!(result.value.contains(&Address::from(wallet3.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet1.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet2.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet3.address().clone())));
 }
 
 #[tokio::test]
@@ -346,67 +344,59 @@ async fn caller_addresses_from_coins() {
     .deploy(&wallet4, TxPolicies::default())
     .await
     .unwrap();
-    
+
     let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
-    
+
     let result = auth_instance
         .methods()
         .returns_caller_addresses()
         .call()
         .await
         .unwrap();
-    
+
     assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
 
     // Start building transactions
-    let call_handler = auth_instance
-        .methods()
-        .returns_caller_addresses();
+    let call_handler = auth_instance.methods().returns_caller_addresses();
     let mut tb = call_handler.transaction_builder().await.unwrap();
 
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Coin(
-            Coin {
-                owner: wallet1.address().clone(),
-                utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
-                amount: coin_amount,
-                asset_id: AssetId::default(),
-                status: CoinStatus::Unspent,
-                block_created: Default::default(),
-            }
-        ),
+        resource: CoinType::Coin(Coin {
+            owner: wallet1.address().clone(),
+            utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
+            amount: coin_amount,
+            asset_id: AssetId::default(),
+            status: CoinStatus::Unspent,
+            block_created: Default::default(),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Coin(
-            Coin {
-                owner: wallet2.address().clone(),
-                utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
-                amount: coin_amount,
-                asset_id: AssetId::default(),
-                status: CoinStatus::Unspent,
-                block_created: Default::default(),
-            }
-        ),
+        resource: CoinType::Coin(Coin {
+            owner: wallet2.address().clone(),
+            utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
+            amount: coin_amount,
+            asset_id: AssetId::default(),
+            status: CoinStatus::Unspent,
+            block_created: Default::default(),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Coin(
-            Coin {
-                owner: wallet3.address().clone(),
-                utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
-                amount: coin_amount,
-                asset_id: AssetId::default(),
-                status: CoinStatus::Unspent,
-                block_created: Default::default(),
-            }
-        ),
+        resource: CoinType::Coin(Coin {
+            owner: wallet3.address().clone(),
+            utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
+            amount: coin_amount,
+            asset_id: AssetId::default(),
+            status: CoinStatus::Unspent,
+            block_created: Default::default(),
+        }),
     });
 
     // Build transaction
     tb.add_signer(wallet1.clone()).unwrap();
     tb.add_signer(wallet2.clone()).unwrap();
     tb.add_signer(wallet3.clone()).unwrap();
-    
+
     let provider = wallet1.provider().unwrap();
     let tx = tb.build(provider.clone()).await.unwrap();
 
@@ -415,9 +405,15 @@ async fn caller_addresses_from_coins() {
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
 
-    assert!(result.value.contains(&Address::from(wallet1.address().clone())));
-    assert!(result.value.contains(&Address::from(wallet2.address().clone())));
-    assert!(result.value.contains(&Address::from(wallet3.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet1.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet2.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet3.address().clone())));
 }
 
 #[tokio::test]
@@ -490,66 +486,58 @@ async fn caller_addresses_from_coins_and_messages() {
     .deploy(&wallet4, TxPolicies::default())
     .await
     .unwrap();
-    
+
     let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
-    
+
     let result = auth_instance
         .methods()
         .returns_caller_addresses()
         .call()
         .await
         .unwrap();
-    
+
     assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
 
     // Start building transactions
-    let call_handler = auth_instance
-        .methods()
-        .returns_caller_addresses();
+    let call_handler = auth_instance.methods().returns_caller_addresses();
     let mut tb = call_handler.transaction_builder().await.unwrap();
 
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Message(
-            setup_single_message(
-                &wallet1.address().clone(),
-                &wallet1.address().clone(),
-                message_amount,
-                0.into(),
-                vec![],
-            )
-        ),
+        resource: CoinType::Message(setup_single_message(
+            &wallet1.address().clone(),
+            &wallet1.address().clone(),
+            message_amount,
+            0.into(),
+            vec![],
+        )),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Coin(
-            Coin {
-                owner: wallet2.address().clone(),
-                utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
-                amount: coin_amount,
-                asset_id: AssetId::default(),
-                status: CoinStatus::Unspent,
-                block_created: Default::default(),
-            }
-        ),
+        resource: CoinType::Coin(Coin {
+            owner: wallet2.address().clone(),
+            utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
+            amount: coin_amount,
+            asset_id: AssetId::default(),
+            status: CoinStatus::Unspent,
+            block_created: Default::default(),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Coin(
-            Coin {
-                owner: wallet3.address().clone(),
-                utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
-                amount: coin_amount,
-                asset_id: AssetId::default(),
-                status: CoinStatus::Unspent,
-                block_created: Default::default(),
-            }
-        ),
+        resource: CoinType::Coin(Coin {
+            owner: wallet3.address().clone(),
+            utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
+            amount: coin_amount,
+            asset_id: AssetId::default(),
+            status: CoinStatus::Unspent,
+            block_created: Default::default(),
+        }),
     });
 
     // Build transaction
     tb.add_signer(wallet1.clone()).unwrap();
     tb.add_signer(wallet2.clone()).unwrap();
     tb.add_signer(wallet3.clone()).unwrap();
-    
+
     let provider = wallet1.provider().unwrap();
     let tx = tb.build(provider.clone()).await.unwrap();
 
@@ -558,9 +546,15 @@ async fn caller_addresses_from_coins_and_messages() {
     let tx_status = provider.tx_status(&tx_id).await.unwrap();
     let result = call_handler.get_response_from(tx_status).unwrap();
 
-    assert!(result.value.contains(&Address::from(wallet1.address().clone())));
-    assert!(result.value.contains(&Address::from(wallet2.address().clone())));
-    assert!(result.value.contains(&Address::from(wallet3.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet1.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet2.address().clone())));
+    assert!(result
+        .value
+        .contains(&Address::from(wallet3.address().clone())));
 }
 
 async fn get_contracts() -> (
@@ -624,7 +618,7 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0x8b300a68337368654e71c65ae93c3d9eb3b9837d0c11d770cbf8740a6a5a8631";
+        "0x599331f8a4696d67739a28360222f1a671e349ad51ccd0682be19a683b058d84";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -750,7 +744,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0x8b300a68337368654e71c65ae93c3d9eb3b9837d0c11d770cbf8740a6a5a8631";
+        "0x599331f8a4696d67739a28360222f1a671e349ad51ccd0682be19a683b058d84";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);

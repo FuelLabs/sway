@@ -65,7 +65,7 @@ use super::{compiler_constants::NUM_ARG_REGISTERS, data_section::EntryName};
 /// is used to point to the stack location of the remaining arguments.
 /// Stack space for the extra arguments is allocated in the caller when
 /// locals of the caller are allocated.
-impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
+impl FuelAsmBuilder<'_, '_> {
     pub(super) fn compile_call(
         &mut self,
         instr_val: &Value,
@@ -854,7 +854,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     c,
                                     "Cannot happen, we just checked",
                                 );
-                                dbg!();
                                 init_mut_vars.push(InitMutVars {
                                     stack_base_words,
                                     var_size: var_size.clone(),
