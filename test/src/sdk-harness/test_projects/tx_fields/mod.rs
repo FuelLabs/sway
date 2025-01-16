@@ -759,20 +759,16 @@ mod tx {
             .get_asset_balance(&provider.base_asset_id())
             .await
             .unwrap();
-        assert_eq!(
-            predicate_balance as usize,
-            predicate_coin_amount as usize
-        );
+        assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
         // Prepare blobs
         let max_words_per_blob = 10_000;
-        let blobs = Contract::load_from(
-            TX_CONTRACT_BYTECODE_PATH,
-            LoadConfiguration::default(),
-        ).unwrap()
-        .convert_to_loader(max_words_per_blob).unwrap()
-        .blobs()
-        .to_vec();
+        let blobs = Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
+            .unwrap()
+            .convert_to_loader(max_words_per_blob)
+            .unwrap()
+            .blobs()
+            .to_vec();
 
         let blob = blobs[0].clone();
         // Inputs for predicate
@@ -799,8 +795,10 @@ mod tx {
         let tx = builder.build(&provider).await.unwrap();
         provider
             .send_transaction_and_await_commit(tx)
-            .await.unwrap()
-            .check(None).unwrap();
+            .await
+            .unwrap()
+            .check(None)
+            .unwrap();
 
         // The predicate has spent it's funds
         let predicate_balance = predicate
@@ -829,13 +827,12 @@ mod tx {
 
         // Prepare blobs
         let max_words_per_blob = 10_000;
-        let blobs = Contract::load_from(
-            TX_CONTRACT_BYTECODE_PATH,
-            LoadConfiguration::default(),
-        ).unwrap()
-        .convert_to_loader(max_words_per_blob).unwrap()
-        .blobs()
-        .to_vec();
+        let blobs = Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
+            .unwrap()
+            .convert_to_loader(max_words_per_blob)
+            .unwrap()
+            .blobs()
+            .to_vec();
 
         let blob = blobs[0].clone();
 
@@ -881,10 +878,7 @@ mod tx {
             .get_asset_balance(&provider.base_asset_id())
             .await
             .unwrap();
-        assert_eq!(
-            predicate_balance as usize,
-            predicate_coin_amount as usize
-        );
+        assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
         // Inputs for predicate
         let predicate_input = predicate
@@ -904,7 +898,7 @@ mod tx {
 
         wallet.add_witnesses(&mut builder).unwrap();
         wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
-    
+
         let tx = builder.build(provider.clone()).await.unwrap();
 
         provider.send_transaction(tx).await.unwrap();
@@ -1161,13 +1155,13 @@ mod inputs {
 
             // Prepare blobs
             let max_words_per_blob = 10_000;
-            let blobs = Contract::load_from(
-                TX_CONTRACT_BYTECODE_PATH,
-                LoadConfiguration::default(),
-            ).unwrap()
-            .convert_to_loader(max_words_per_blob).unwrap()
-            .blobs()
-            .to_vec();
+            let blobs =
+                Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
+                    .unwrap()
+                    .convert_to_loader(max_words_per_blob)
+                    .unwrap()
+                    .blobs()
+                    .to_vec();
 
             let blob = blobs[0].clone();
 
@@ -1177,11 +1171,10 @@ mod inputs {
             let predicate_data = TestTxInputCountPredicateEncoder::default()
                 .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
                 .unwrap();
-            let predicate: Predicate =
-                Predicate::load_from(TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH)
-                    .unwrap()
-                    .with_provider(provider.clone())
-                    .with_data(predicate_data);
+            let predicate: Predicate = Predicate::load_from(TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH)
+                .unwrap()
+                .with_provider(provider.clone())
+                .with_data(predicate_data);
             let predicate_coin_amount = 100;
 
             // Predicate has no funds
@@ -1205,10 +1198,7 @@ mod inputs {
                 .get_asset_balance(&provider.base_asset_id())
                 .await
                 .unwrap();
-            assert_eq!(
-                predicate_balance as usize,
-                predicate_coin_amount as usize
-            );
+            assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
             // Inputs for predicate
             let predicate_input = predicate
@@ -2015,13 +2005,13 @@ mod outputs {
 
             // Prepare blobs
             let max_words_per_blob = 10_000;
-            let blobs = Contract::load_from(
-                TX_CONTRACT_BYTECODE_PATH,
-                LoadConfiguration::default(),
-            ).unwrap()
-            .convert_to_loader(max_words_per_blob).unwrap()
-            .blobs()
-            .to_vec();
+            let blobs =
+                Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
+                    .unwrap()
+                    .convert_to_loader(max_words_per_blob)
+                    .unwrap()
+                    .blobs()
+                    .to_vec();
 
             let blob = blobs[0].clone();
 
@@ -2059,10 +2049,7 @@ mod outputs {
                 .get_asset_balance(&provider.base_asset_id())
                 .await
                 .unwrap();
-            assert_eq!(
-                predicate_balance as usize,
-                predicate_coin_amount as usize
-            );
+            assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
             // Inputs for predicate
             let predicate_input = predicate
