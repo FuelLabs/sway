@@ -95,7 +95,7 @@ impl<'a> HoverLinkContents<'a> {
             let call_path =
                 CallPath::from(trait_decl.name.clone()).to_fullpath(self.engines, &namespace);
             let impl_spans =
-                TraitMap::get_impl_spans_for_trait_name(namespace.module(self.engines), &call_path);
+                TraitMap::get_impl_spans_for_trait_name(namespace.current_module(), &call_path);
             self.add_implementations(&trait_decl.span(), impl_spans);
         }
     }
@@ -104,7 +104,7 @@ impl<'a> HoverLinkContents<'a> {
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = TraitMap::get_impl_spans_for_decl(
-                namespace.module(self.engines),
+                namespace.current_module(),
                 self.engines,
                 ty_decl,
             );
@@ -116,7 +116,7 @@ impl<'a> HoverLinkContents<'a> {
     pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: TypeId) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = TraitMap::get_impl_spans_for_type(
-                namespace.module(self.engines),
+                namespace.current_module(),
                 self.engines,
                 &type_id,
             );

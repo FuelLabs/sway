@@ -1027,6 +1027,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
+
                 let tx_field_id_constant = compile_constant_expression_to_constant(
                     engines,
                     context,

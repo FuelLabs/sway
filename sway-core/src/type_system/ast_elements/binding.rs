@@ -218,10 +218,9 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let type_info_span = type_ident.span();
 
         // find the module that the symbol is in
-        let type_info_prefix = ctx.namespace().prepend_module_path(&self.inner.prefixes);
+        let full_path = self.inner.to_fullpath(engines, ctx.namespace());
         ctx.namespace()
-            .root_module()
-            .lookup_submodule(handler, engines, &type_info_prefix)?;
+            .require_module_from_absolute_path(handler, &full_path.prefixes)?;
 
         // create the type info object
         let type_info = type_info.apply_type_arguments(
@@ -237,7 +236,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
                 type_engine.insert(engines, type_info, type_info_span.source_id()),
                 &type_info_span,
                 EnforceTypeArguments::No,
-                Some(&type_info_prefix),
+                Some(&full_path.prefixes),
             )
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
