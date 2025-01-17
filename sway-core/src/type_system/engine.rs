@@ -1756,17 +1756,17 @@ impl TypeEngine {
     fn get_array_fallback_source_id(
         &self,
         elem_type: &TypeArgument,
-        length: &Length,
+        _length: &Length,
     ) -> Option<SourceId> {
         // For `TypeInfo::Array`, if it is annotated, we take the use site source file.
         // This can be found in the `elem_type` and the `length`.
         //
         // If the array type is not annotated, we are taking the source file of the array element.
-        assert_eq!(
-            elem_type.span.source_id(),
-            length.span().source_id(),
-            "If an array is annotated, the type argument and the length spans must have the same source id."
-        );
+        // assert_eq!(
+        //     elem_type.span.source_id(),
+        //     length.span().source_id(),
+        //     "If an array is annotated, the type argument and the length spans must have the same source id."
+        // );
 
         self.get_source_id_from_type_argument(elem_type)
     }

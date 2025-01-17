@@ -12,6 +12,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
+    collections::HashMap,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -216,6 +217,7 @@ impl TraitConstraint {
                     handler,
                     &mut trait_decl,
                     &mut type_arguments,
+                    HashMap::new(),
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;

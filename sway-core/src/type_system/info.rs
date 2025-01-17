@@ -347,7 +347,7 @@ impl PartialEqWithEngines for TypeInfo {
                     || type_engine
                         .get(l0.type_id)
                         .eq(&type_engine.get(r0.type_id), ctx))
-                    && l1.val() == r1.val()
+                    && l1.eq(r1, ctx)
             }
             (
                 Self::Alias {
@@ -594,8 +594,12 @@ impl DisplayWithEngines for TypeInfo {
                 )
             }
             ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
-            Array(elem_ty, count) => {
-                format!("[{}; {}]", engines.help_out(elem_ty), count.val())
+            Array(elem_ty, length) => {
+                format!(
+                    "[{}; {}]",
+                    engines.help_out(elem_ty),
+                    length.get_length_str()
+                )
             }
             RawUntypedPtr => "pointer".into(),
             RawUntypedSlice => "slice".into(),
@@ -733,8 +737,12 @@ impl DebugWithEngines for TypeInfo {
                     )
                 )
             }
-            Array(elem_ty, count) => {
-                format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
+            Array(elem_ty, length) => {
+                format!(
+                    "[{:?}; {}]",
+                    engines.help_out(elem_ty),
+                    length.get_length_str()
+                )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),

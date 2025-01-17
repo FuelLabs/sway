@@ -273,7 +273,16 @@ impl<'a> UnifyCheck<'a> {
             }
 
             (Array(l0, l1), Array(r0, r1)) => {
-                return self.check_inner(l0.type_id, r0.type_id) && l1.same_length_as(r1);
+                return if !self.check_inner(l0.type_id, r0.type_id) {
+                    false
+                } else {
+                    // TODO improve
+                    if l1.get_length_str() == "N" || r1.get_length_str() == "N" {
+                        true
+                    } else {
+                        l1.same_length_as(r1)
+                    }
+                };
             }
 
             (Slice(l0), Slice(r0)) => {

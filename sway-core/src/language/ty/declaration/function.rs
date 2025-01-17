@@ -12,6 +12,7 @@ use crate::{
     type_system::*,
     types::*,
 };
+use ast_elements::type_parameter::ConstGenericParameter;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -44,6 +45,7 @@ pub struct TyFunctionDecl {
     pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
+    pub const_generic_parameters: Vec<ConstGenericParameter>,
     pub return_type: TypeArgument,
     pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
@@ -187,6 +189,7 @@ impl HashWithEngines for TyFunctionDecl {
             parameters,
             return_type,
             type_parameters,
+            const_generic_parameters,
             visibility,
             is_contract_call,
             purity,
@@ -207,6 +210,7 @@ impl HashWithEngines for TyFunctionDecl {
         parameters.hash(state, engines);
         return_type.hash(state, engines);
         type_parameters.hash(state, engines);
+        const_generic_parameters.hash(state, engines);
         visibility.hash(state);
         is_contract_call.hash(state);
         purity.hash(state);
@@ -264,6 +268,19 @@ impl MonomorphizeHelper for TyFunctionDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
+    }
+}
+
+impl MaterializeConstGenerics for TyFunctionDecl {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        for param in self.parameters.iter_mut() {
+            param
+                .type_argument
+                .type_id
+                .materialize_const_generics(engines, name, value);
+        }
+
+        self.body.materialize_const_generics(engines, name, value);
     }
 }
 
@@ -330,6 +347,7 @@ impl TyFunctionDecl {
             visibility: *visibility,
             return_type: return_type.clone(),
             type_parameters: Default::default(),
+            const_generic_parameters: Default::default(),
             where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
             is_type_check_finalized: true,

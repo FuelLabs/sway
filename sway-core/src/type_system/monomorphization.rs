@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -5,9 +7,9 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert},
+    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
     language::{
-        ty::{self},
+        ty::{self, TyExpression},
         CallPath,
     },
     namespace::{ModulePath, ResolvedDeclaration},
@@ -186,6 +188,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     namespace: &Namespace,
     value: &mut T,
     type_arguments: &mut [TypeArgument],
+    const_generics: HashMap<String, TyExpression>,
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
@@ -193,7 +196,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     subst_ctx: &SubstTypesContext,
 ) -> Result<(), ErrorEmitted>
 where
-    T: MonomorphizeHelper + SubstTypes,
+    T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
     let type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,
@@ -208,6 +211,11 @@ where
         subst_ctx,
     )?;
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
+
+    for (name, expr) in const_generics.iter() {
+        value.materialize_const_generics(engines, name, expr);
+    }
+
     Ok(())
 }
 
@@ -242,6 +250,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 namespace,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
+                HashMap::new(),
                 enforce_type_arguments,
                 span,
                 mod_path,
@@ -272,6 +281,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 namespace,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
+                HashMap::new(),
                 enforce_type_arguments,
                 span,
                 mod_path,

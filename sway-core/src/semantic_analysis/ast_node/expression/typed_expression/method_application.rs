@@ -97,11 +97,47 @@ pub(crate) fn type_check_method_application(
             .collect(),
     )?;
 
+    // Prepare const generics materialization
+
+    let mut const_generics = HashMap::new();
+
+    let original_decl = engines.de().get(original_decl_ref.id());
+    if !original_decl.const_generic_parameters.is_empty() {
+        let a = engines.te().get(
+            engines.de().get(original_decl_ref.id()).parameters[0]
+                .type_argument
+                .type_id,
+        );
+        let b = engines
+            .te()
+            .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
+        match (&*a, &*b) {
+            (
+                TypeInfo::Array(_, Length::Expression { expr }),
+                TypeInfo::Array(_, Length::Literal { val, .. }),
+            ) => match &expr.kind {
+                ExpressionKind::AmbiguousVariableExpression(base_ident) => {
+                    const_generics.insert(
+                        base_ident.as_str().to_string(),
+                        TyExpression {
+                            expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                            return_type: engines.te().id_of_u64(),
+                            span: Span::dummy(),
+                        },
+                    );
+                }
+                _ => todo!(),
+            },
+            _ => todo!(),
+        }
+    }
+
     let mut fn_ref = monomorphize_method(
         handler,
         ctx.by_ref(),
         original_decl_ref.clone(),
         method_name_binding.type_arguments.to_vec_mut(),
+        const_generics,
     )?;
 
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
@@ -922,6 +958,7 @@ pub(crate) fn monomorphize_method(
     mut ctx: TypeCheckContext,
     decl_ref: DeclRefFunction,
     type_arguments: &mut [TypeArgument],
+    const_generics: HashMap<String, TyExpression>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
@@ -932,6 +969,7 @@ pub(crate) fn monomorphize_method(
         handler,
         &mut func_decl,
         type_arguments,
+        const_generics,
         EnforceTypeArguments::No,
         &decl_ref.span(),
     )?;

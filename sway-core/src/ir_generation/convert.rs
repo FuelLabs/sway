@@ -2,7 +2,7 @@ use crate::{
     decl_engine::DeclEngine,
     language::Literal,
     type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    Length, TypeEngine,
 };
 
 use super::types::{create_tagged_union_type, create_tuple_aggregate};
@@ -122,6 +122,8 @@ fn convert_resolved_type_info(
             &decl_engine.get_enum(decl_ref).variants,
         )?,
         TypeInfo::Array(elem_type, length) => {
+            assert!(matches!(length, Length::Literal { .. }));
+
             let elem_type = convert_resolved_type_id(
                 type_engine,
                 decl_engine,

@@ -1,6 +1,9 @@
 use sway_types::{span::Span, Spanned};
 
-use crate::language::parsed::Expression;
+use crate::{
+    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::parsed::{Expression, ExpressionKind},
+};
 
 /// Describes a fixed length for types that need it, e.g., [crate::TypeInfo::Array].
 ///
@@ -27,13 +30,32 @@ impl std::hash::Hash for Length {
             Length::Literal { val, .. } => {
                 val.hash(state);
             }
-            Length::Expression { .. } => {
+            Length::Expression { expr } => {
                 // TODO making Expression hasheable is a lot of work (some variants are not hasheable),
                 // and more than we need.
                 // but using span here is dangerous
                 // expr.span.hash(state);
-                todo!()
+                match &expr.kind {
+                    ExpressionKind::AmbiguousVariableExpression(ident) => {
+                        ident.hash(state);
+                    }
+                    x => todo!("{x:?}"),
+                }
             }
+        }
+    }
+}
+
+impl PartialEqWithEngines for Length {
+    fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (Length::Literal { val: val_l, .. }, Length::Literal { val: val_r, .. }) => {
+                val_l == val_r
+            }
+            (Length::Expression { expr: expr_l }, Length::Expression { expr: expr_r }) => {
+                expr_l.span == expr_r.span
+            }
+            _ => false,
         }
     }
 }

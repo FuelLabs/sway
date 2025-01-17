@@ -479,8 +479,8 @@ impl HashWithEngines for TyExpressionVariant {
             } => {
                 const_decl.hash(state, engines);
             }
-            Self::ConstGenericExpression { .. } => {
-                todo!()
+            Self::ConstGenericExpression { decl, .. } => {
+                decl.name().hash(state);
             }
             Self::ConfigurableExpression {
                 decl: const_decl,
@@ -683,9 +683,7 @@ impl SubstTypes for TyExpressionVariant {
                 rhs.subst(ctx);
             },
             ConstantExpression { decl, .. } => decl.subst(ctx),
-            ConstGenericExpression { .. } => {
-                todo!()
-            }
+            ConstGenericExpression { decl, .. } => decl.subst(ctx),
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
@@ -1012,6 +1010,25 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
+impl MaterializeConstGenerics for TyExpressionVariant {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        match self {
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                decl.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::ImplicitReturn(expr) => {
+                expr.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::FunctionApplication { arguments, .. } => {
+                for (_, expr) in arguments {
+                    expr.materialize_const_generics(engines, name, value);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 impl TypeCheckAnalysis for TyExpressionVariant {
     fn type_check_analyze(
         &self,
@@ -1298,9 +1315,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
                     *decl = Box::new(impl_const);
                 }
             }
-            ConstGenericExpression { .. } => {
-                todo!()
-            }
+            ConstGenericExpression { .. } => {}
             ConfigurableExpression { .. } => {
                 unreachable!()
             }

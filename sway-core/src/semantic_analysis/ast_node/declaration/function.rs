@@ -116,6 +116,8 @@ impl ty::TyFunctionDecl {
                     None,
                 )?;
 
+                let const_generic_parameters = fn_decl.const_generic_parameters.clone();
+
                 // type check the function parameters, which will also insert them into the namespace
                 let mut new_parameters = vec![];
                 handler.scope(|handler| {
@@ -174,6 +176,7 @@ impl ty::TyFunctionDecl {
                     attributes: attributes.clone(),
                     return_type,
                     type_parameters: new_type_parameters,
+                    const_generic_parameters,
                     visibility,
                     is_contract_call,
                     purity: *purity,

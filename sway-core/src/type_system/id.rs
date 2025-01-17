@@ -8,7 +8,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Span};
 
 use crate::{
-    decl_engine::DeclEngineGet,
+    decl_engine::{DeclEngineGet, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
     semantic_analysis::TypeCheckContext,
@@ -107,6 +107,36 @@ impl SubstTypes for TypeId {
             }
         } else {
             HasChanges::No
+        }
+    }
+}
+
+impl MaterializeConstGenerics for TypeId {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) {
+        match &*engines.te().get(*self) {
+            TypeInfo::Array(type_argument, length) if length.get_length_str() == name => {
+                let val = match &value.expression {
+                    crate::language::ty::TyExpressionVariant::Literal(literal) => {
+                        literal.cast_value_to_u64().unwrap()
+                    }
+                    _ => todo!(),
+                };
+
+                *self = engines.te().insert_array(
+                    engines,
+                    type_argument.clone(),
+                    Length::Literal {
+                        val: val as usize,
+                        span: Span::dummy(),
+                    },
+                );
+            }
+            _ => {}
         }
     }
 }

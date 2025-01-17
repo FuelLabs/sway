@@ -4,6 +4,7 @@ use crate::{
     transform::{self, AttributeKind},
     type_system::*,
 };
+use ast_elements::type_parameter::ConstGenericParameter;
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
@@ -25,6 +26,7 @@ pub struct FunctionDeclaration {
     pub span: Span,
     pub return_type: TypeArgument,
     pub type_parameters: Vec<TypeParameter>,
+    pub const_generic_parameters: Vec<ConstGenericParameter>,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub kind: FunctionDeclarationKind,
     pub implementing_type: Option<Declaration>,

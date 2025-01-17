@@ -124,6 +124,7 @@ impl ty::TyExpression {
             ctx,
             decl_ref.clone(),
             method_name_binding.type_arguments.to_vec_mut(),
+            HashMap::new(),
         )?;
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
@@ -685,17 +686,16 @@ impl ty::TyExpression {
             }
             Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
                 let decl = (*decl_engine.get(&decl_id)).clone();
-                dbg!(ctx.engines.te().get(decl.return_type));
                 ty::TyExpression {
                     return_type: decl.return_type,
                     expression: ty::TyExpressionVariant::ConstGenericExpression {
                         decl: Box::new(decl),
                         span: name.span(),
-                        call_path: dbg!(Some(CallPath {
+                        call_path: Some(CallPath {
                             prefixes: vec![],
                             suffix: name.clone(),
-                            is_absolute: false
-                        },)),
+                            is_absolute: false,
+                        }),
                     },
                     span,
                 }
@@ -1299,6 +1299,7 @@ impl ty::TyExpression {
             handler,
             &mut storage_key_struct_decl,
             &mut type_arguments,
+            HashMap::new(),
             EnforceTypeArguments::Yes,
             span,
         )?;

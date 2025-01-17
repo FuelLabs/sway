@@ -566,7 +566,7 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let (type_parameters, _const_generic_parameters) =
+    let (type_parameters, const_generic_parameters) =
         generic_params_opt_to_type_parameters_with_parent(
             context,
             handler,
@@ -591,6 +591,7 @@ pub fn item_fn_to_function_declaration(
         span,
         return_type,
         type_parameters,
+        const_generic_parameters,
         where_clause: item_fn
             .fn_signature
             .where_clause_opt

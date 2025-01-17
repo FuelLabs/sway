@@ -186,6 +186,20 @@ enum TypeRootFilter {
     TraitType(String),
 }
 
+impl TypeRootFilter {
+    // Returns all filters which are "one step" more general
+    // than self.
+    pub fn generalize(&self, filters: &mut Vec<TypeRootFilter>) {
+        match self {
+            TypeRootFilter::Placeholder => {}
+            TypeRootFilter::Array(x) if x != "N" => {
+                filters.push(TypeRootFilter::Array("N".into()));
+            }
+            _ => filters.push(TypeRootFilter::Placeholder),
+        }
+    }
+}
+
 /// Map holding trait implementations for types.
 ///
 /// Note: "impl self" blocks are considered traits and are stored in the
@@ -1584,21 +1598,21 @@ impl TraitMap {
     }
 
     fn get_impls(&self, engines: &Engines, type_id: TypeId) -> im::Vector<TraitEntry> {
-        let type_root_filter = Self::get_type_root_filter(engines, type_id);
-        let mut vec = self
-            .trait_impls
-            .get(&type_root_filter)
-            .cloned()
-            .unwrap_or_default();
-        if type_root_filter != TypeRootFilter::Placeholder {
+        let mut vec = vec![];
+        let mut filters = vec![Self::get_type_root_filter(engines, type_id)];
+
+        while let Some(type_root_filter) = filters.pop() {
             vec.extend(
                 self.trait_impls
-                    .get(&TypeRootFilter::Placeholder)
+                    .get(&type_root_filter)
                     .cloned()
                     .unwrap_or_default(),
             );
+
+            type_root_filter.generalize(&mut filters);
         }
-        vec
+
+        vec.into()
     }
 
     // Return a string representing only the base type.
@@ -1640,7 +1654,7 @@ impl TraitMap {
                 TypeRootFilter::Struct(engines.de().get_parsed_decl_id(decl_id).unwrap())
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
-            Array(_, length) => TypeRootFilter::Array(length.get_length_str()),
+            Array(_a, length) => TypeRootFilter::Array(length.get_length_str()),
             RawUntypedPtr => TypeRootFilter::RawUntypedPtr,
             RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
             Ptr(_) => TypeRootFilter::Ptr,

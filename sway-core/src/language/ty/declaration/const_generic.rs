@@ -1,7 +1,8 @@
 use crate::{
-    language::{parsed::ConstGenericDeclaration, CallPath},
+    decl_engine::MaterializeConstGenerics,
+    language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
     semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
-    TypeId,
+    SubstTypes, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -14,6 +15,26 @@ pub struct TyConstGenericDecl {
     pub call_path: CallPath,
     pub return_type: TypeId,
     pub span: Span,
+    pub value: Option<TyExpression>,
+}
+
+impl SubstTypes for TyConstGenericDecl {
+    fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
+        self.return_type.subst(ctx)
+    }
+}
+
+impl MaterializeConstGenerics for TyConstGenericDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &crate::Engines,
+        name: &str,
+        value: &TyExpression,
+    ) {
+        if self.call_path.suffix.as_str() == name {
+            self.value = Some(value.clone());
+        }
+    }
 }
 
 impl TypeCheckAnalysis for TyConstGenericDecl {

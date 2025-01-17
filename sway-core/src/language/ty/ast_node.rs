@@ -103,6 +103,19 @@ impl UpdateConstantExpression for TyAstNode {
     }
 }
 
+impl MaterializeConstGenerics for TyAstNode {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        match self.content {
+            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.materialize_const_generics(engines, name, value)
+            }
+            TyAstNodeContent::SideEffect(_) => (),
+            TyAstNodeContent::Error(_, _) => (),
+        }
+    }
+}
+
 impl TypeCheckAnalysis for TyAstNode {
     fn type_check_analyze(
         &self,

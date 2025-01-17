@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{
         DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        ReplaceFunctionImplementingType,
+        MaterializeConstGenerics, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     has_changes,
@@ -388,5 +388,15 @@ impl MonomorphizeHelper for TyTraitDecl {
 
     fn has_self_type_param(&self) -> bool {
         true
+    }
+}
+
+impl MaterializeConstGenerics for TyTraitDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) {
     }
 }

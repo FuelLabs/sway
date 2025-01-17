@@ -1,15 +1,20 @@
 script;
 
 trait A {
-    fn len(self) -> u64;
+    fn lenxxx(self) -> u64;
 }
 
 impl<T, const N: u64> A for [T; N] {
-    fn len(self) -> u64 {
+    fn lenxxx(self) -> u64 {
         N
     }
 }
 
-fn main() -> u64 {
-    [1].len()
+fn main() {
+    let a = [9].lenxxx();
+    let b = [9, 10].lenxxx();
+
+    if (a + b) != 0 {
+        revert(0)
+    }
 }

@@ -126,6 +126,7 @@ impl ty::TyTraitFn {
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
+            const_generic_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
             is_trait_method_dummy: true,

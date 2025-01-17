@@ -81,6 +81,13 @@ impl UpdateConstantExpression for TyExpression {
     }
 }
 
+impl MaterializeConstGenerics for TyExpression {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        self.expression
+            .materialize_const_generics(engines, name, value)
+    }
+}
+
 impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(

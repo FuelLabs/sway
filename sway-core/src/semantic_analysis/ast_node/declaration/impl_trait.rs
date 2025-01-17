@@ -122,6 +122,7 @@ impl TyImplSelfOrTrait {
                             },
                             span: const_generic.span.clone(),
                             return_type: const_generic.ty,
+                            value: None,
                         },
                         Some(&parsed_decl_id),
                     );
@@ -217,6 +218,7 @@ impl TyImplSelfOrTrait {
                             handler,
                             &mut trait_decl,
                             &mut trait_type_arguments,
+                            HashMap::new(),
                             EnforceTypeArguments::Yes,
                             &trait_name.span(),
                         )?;
@@ -407,6 +409,7 @@ impl TyImplSelfOrTrait {
                             },
                             return_type: pe_decl.ty.clone(),
                             span: pe_decl.span.clone(),
+                            value: None,
                         },
                         Some(pe_decl_id),
                     );

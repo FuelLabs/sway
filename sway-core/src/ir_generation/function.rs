@@ -542,8 +542,9 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::ConstantExpression {
                 decl: const_decl, ..
             } => self.compile_const_expr(context, md_mgr, const_decl, span_md_idx),
-            ty::TyExpressionVariant::ConstGenericExpression { .. } => {
-                todo!()
+            ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                let value = decl.value.as_ref().unwrap();
+                self.compile_expression(context, md_mgr, value)
             }
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..

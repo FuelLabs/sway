@@ -134,8 +134,12 @@ impl<'a> Unifier<'a> {
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
             }
-            (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
+            (Array(re, rc), e @ Array(ee, _ec)) => {
                 self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
+
+                if !handler.has_errors() && rc.get_length_str() == "N" {
+                    self.replace_received_with_expected(received, e, span);
+                }
             }
             (Slice(re), Slice(ee)) => {
                 self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
