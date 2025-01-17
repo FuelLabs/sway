@@ -11,6 +11,7 @@ use crate::{
     decl_engine::DeclEngineGet,
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
+    namespace::TraitMap,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
@@ -632,6 +633,7 @@ impl TypeId {
                                         )
                                     );
                                 }
+
                                 handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                                     type_id: structure_type_id.index(),
                                     ty: structure_type_info_with_engines.to_string(),
@@ -660,18 +662,20 @@ impl TypeId {
         f: impl Fn(&TraitConstraint),
     ) -> bool {
         let engines = ctx.engines();
+
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut found_error = false;
-        let generic_trait_constraints_trait_names_and_args = ctx
-            .namespace()
-            .module(ctx.engines())
-            .current_items()
-            .implemented_traits
-            .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
+        let generic_trait_constraints_trait_names_and_args =
+            TraitMap::get_trait_names_and_type_arguments_for_type(
+                ctx.namespace().current_module(),
+                engines,
+                *structure_type_id,
+            );
         for structure_trait_constraint in structure_trait_constraints {
             let structure_trait_constraint_trait_name = &structure_trait_constraint
                 .trait_name
-                .to_fullpath(ctx.engines(), ctx.namespace());
+                .to_canonical_path(ctx.engines(), ctx.namespace());
+
             if !generic_trait_constraints_trait_names_and_args.iter().any(
                 |(trait_name, trait_args)| {
                     trait_name == structure_trait_constraint_trait_name

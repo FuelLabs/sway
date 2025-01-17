@@ -24,6 +24,7 @@ use crate::{
     BuildConfig,
 };
 
+use fuel_vm::fuel_asm::Imm12;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -91,7 +92,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     pub(super) before_entries: Vec<Op>,
 }
 
-impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
+impl AsmBuilder for FuelAsmBuilder<'_, '_> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
@@ -1461,23 +1462,37 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let dst_reg = self.value_to_register(dst_val_ptr)?;
         let src_reg = self.value_to_register(src_val_ptr)?;
 
-        let len_reg = self.reg_seqr.next();
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVI(
-                len_reg.clone(),
-                VirtualImmediate18 {
-                    value: byte_len as u32,
-                },
-            )),
-            comment: "get data length for memory copy".into(),
-            owning_span: owning_span.clone(),
-        });
+        if byte_len <= u64::from(Imm12::MAX.to_u16()) {
+            // Can be done using a single MCPI instruction.
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MCPI(
+                    dst_reg,
+                    src_reg,
+                    VirtualImmediate12::new_unchecked(byte_len, "argument size checked above"),
+                )),
+                comment: "copy memory".into(),
+                owning_span,
+            });
+        } else {
+            // Too many bytes for MCPI, so we need to use a separate register to hold the length.
+            let len_reg = self.reg_seqr.next();
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MOVI(
+                    len_reg.clone(),
+                    VirtualImmediate18 {
+                        value: byte_len as u32,
+                    },
+                )),
+                comment: "get data length for memory copy".into(),
+                owning_span: owning_span.clone(),
+            });
 
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
-            comment: "copy memory".into(),
-            owning_span,
-        });
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
+                comment: "copy memory".into(),
+                owning_span,
+            });
+        }
 
         Ok(())
     }

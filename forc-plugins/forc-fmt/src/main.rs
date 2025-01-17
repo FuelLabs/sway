@@ -45,7 +45,9 @@ pub struct App {
     /// - Exits with `1` and prints a diff if formatting is required.
     #[clap(short, long)]
     pub check: bool,
-    /// Path to the project, if not specified, current working directory will be used.
+    /// Path to the project.
+    ///
+    /// If not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
     #[clap(short, long)]
