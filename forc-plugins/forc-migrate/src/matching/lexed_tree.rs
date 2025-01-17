@@ -1,14 +1,14 @@
 //! This module contains helper functions for matching elements within a lexed program.
 
+use super::{any_mut, LexedElementsMatcher, LexedElementsMatcherDeep};
 use sway_ast::{ItemKind, ItemStorage, StorageEntry, StorageField};
 use sway_core::language::lexed::{LexedModule, LexedProgram};
-use super::{any_mut, LexedElementsMatcher, LexedElementsMatcherDeep};
 
 impl LexedElementsMatcher<ItemStorage> for LexedProgram {
-    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item=&'a mut ItemStorage>
+    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item = &'a mut ItemStorage>
     where
         F: Fn(&&'a mut ItemStorage) -> bool + Clone + 'a,
-        ItemStorage: 'a
+        ItemStorage: 'a,
     {
         // Storage can be declared only in the root of a contract.
         self.root.match_elems(predicate)
@@ -16,21 +16,22 @@ impl LexedElementsMatcher<ItemStorage> for LexedProgram {
 }
 
 impl LexedElementsMatcher<ItemStorage> for LexedModule {
-    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item=&'a mut ItemStorage>
+    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item = &'a mut ItemStorage>
     where
         F: Fn(&&'a mut ItemStorage) -> bool + Clone + 'a,
-        ItemStorage: 'a
+        ItemStorage: 'a,
     {
-        self
-            .tree
+        self.tree
             .items
             .iter_mut()
             .map(|annotated_item| &mut annotated_item.value)
             .filter_map(move |decl| match decl {
-                ItemKind::Storage(ref mut item_storage) => if predicate(&item_storage) {
-                    Some(item_storage)
-                } else {
-                    None
+                ItemKind::Storage(ref mut item_storage) => {
+                    if predicate(&item_storage) {
+                        Some(item_storage)
+                    } else {
+                        None
+                    }
                 }
                 _ => None,
             })
@@ -38,22 +39,23 @@ impl LexedElementsMatcher<ItemStorage> for LexedModule {
 }
 
 impl LexedElementsMatcher<StorageField> for ItemStorage {
-    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item=&'a mut StorageField>
+    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item = &'a mut StorageField>
     where
         F: Fn(&&'a mut StorageField) -> bool + Clone + 'a,
-        StorageField: 'a
+        StorageField: 'a,
     {
-        self
-            .entries
+        self.entries
             .inner
             .iter_mut()
             .map(|annotated_item| &mut annotated_item.value)
             .filter_map(move |storage_entry| match storage_entry.field {
-                Some(ref mut sf) => if predicate(&sf) {
-                    Some(sf)
-                } else {
-                    None
-                },
+                Some(ref mut sf) => {
+                    if predicate(&sf) {
+                        Some(sf)
+                    } else {
+                        None
+                    }
+                }
                 None => None,
             })
     }
@@ -63,10 +65,13 @@ impl LexedElementsMatcherDeep<StorageField> for ItemStorage {
     fn match_elems_deep<'a, F>(&'a mut self, predicate: F) -> Vec<&'a mut StorageField>
     where
         F: Fn(&&'a mut StorageField) -> bool + Clone + 'a,
-        StorageField: 'a
+        StorageField: 'a,
     {
-        fn recursively_collect_storage_fields_in_storage_entry<'a, P>(result: &mut Vec<&'a mut StorageField>, predicate: P, storage_entry: &'a mut StorageEntry)
-        where
+        fn recursively_collect_storage_fields_in_storage_entry<'a, P>(
+            result: &mut Vec<&'a mut StorageField>,
+            predicate: P,
+            storage_entry: &'a mut StorageEntry,
+        ) where
             P: Fn(&&'a mut StorageField) -> bool + Clone + 'a,
         {
             if let Some(ref mut sf) = storage_entry.field {
@@ -80,17 +85,28 @@ impl LexedElementsMatcherDeep<StorageField> for ItemStorage {
                     .inner
                     .iter_mut()
                     .map(|annotated_item| &mut annotated_item.value)
-                    .for_each(|storage_entry| recursively_collect_storage_fields_in_storage_entry(result, predicate.clone(), storage_entry.as_mut()));
+                    .for_each(|storage_entry| {
+                        recursively_collect_storage_fields_in_storage_entry(
+                            result,
+                            predicate.clone(),
+                            storage_entry.as_mut(),
+                        )
+                    });
             }
         }
 
         let mut result = vec![];
-        self
-            .entries
+        self.entries
             .inner
             .iter_mut()
             .map(|annotated_item| &mut annotated_item.value)
-            .for_each(|storage_entry| recursively_collect_storage_fields_in_storage_entry(&mut result, predicate.clone(), storage_entry));
+            .for_each(|storage_entry| {
+                recursively_collect_storage_fields_in_storage_entry(
+                    &mut result,
+                    predicate.clone(),
+                    storage_entry,
+                )
+            });
 
         result
     }
@@ -107,7 +123,10 @@ pub mod matchers {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn storage_fields<'a, P, F>(parent: &'a mut P, predicate: F) -> impl Iterator<Item=&'a mut StorageField>
+    pub(crate) fn storage_fields<'a, P, F>(
+        parent: &'a mut P,
+        predicate: F,
+    ) -> impl Iterator<Item = &'a mut StorageField>
     where
         F: Fn(&&'a mut StorageField) -> bool + Clone + 'a,
         P: LexedElementsMatcher<StorageField>,
@@ -115,7 +134,10 @@ pub mod matchers {
         parent.match_elems(predicate)
     }
 
-    pub(crate) fn storage_fields_deep<'a, S, F>(scope: &'a mut S, predicate: F) -> Vec<&'a mut StorageField>
+    pub(crate) fn storage_fields_deep<'a, S, F>(
+        scope: &'a mut S,
+        predicate: F,
+    ) -> Vec<&'a mut StorageField>
     where
         F: Fn(&&'a mut StorageField) -> bool + Clone + 'a,
         S: LexedElementsMatcherDeep<StorageField>,

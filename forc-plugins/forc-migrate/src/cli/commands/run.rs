@@ -133,7 +133,13 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                 MigrationStepKind::Instruction(instruction) => {
                     let occurrences_spans = instruction(&program_info)?;
 
-                    print_instruction_result(&engines, max_len, feature, migration_step, &occurrences_spans);
+                    print_instruction_result(
+                        &engines,
+                        max_len,
+                        feature,
+                        migration_step,
+                        &occurrences_spans,
+                    );
 
                     if !occurrences_spans.is_empty() {
                         println_yellow_bold("If you've already reviewed the above points, you can ignore this info.");
@@ -142,25 +148,58 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                 MigrationStepKind::CodeModification(modification, manual_migration_actions) => {
                     let occurrences_spans = modification(&mut program_info.as_mut(), DryRun::No)?;
 
-                    output_modified_modules(&build_instructions.manifest_dir()?, &program_info, &occurrences_spans)?;
+                    output_modified_modules(
+                        &build_instructions.manifest_dir()?,
+                        &program_info,
+                        &occurrences_spans,
+                    )?;
 
-                    let stop_migration_process = print_modification_result(max_len, feature, migration_step, manual_migration_actions, &occurrences_spans, &mut current_feature_migration_has_code_changes);
+                    let stop_migration_process = print_modification_result(
+                        max_len,
+                        feature,
+                        migration_step,
+                        manual_migration_actions,
+                        &occurrences_spans,
+                        &mut current_feature_migration_has_code_changes,
+                    );
                     if stop_migration_process == StopMigrationProcess::Yes {
                         return Ok(());
                     }
                 }
-                MigrationStepKind::Interaction(instruction, interaction, manual_migration_actions) => {
+                MigrationStepKind::Interaction(
+                    instruction,
+                    interaction,
+                    manual_migration_actions,
+                ) => {
                     let instruction_occurrences_spans = instruction(&program_info)?;
 
-                    print_instruction_result(&engines, max_len, feature, migration_step, &instruction_occurrences_spans);
+                    print_instruction_result(
+                        &engines,
+                        max_len,
+                        feature,
+                        migration_step,
+                        &instruction_occurrences_spans,
+                    );
 
                     // We have occurrences, let's continue with the interaction.
                     if !instruction_occurrences_spans.is_empty() {
-                        let interaction_occurrences_spans = interaction(&mut program_info.as_mut())?;
+                        let interaction_occurrences_spans =
+                            interaction(&mut program_info.as_mut())?;
 
-                        output_modified_modules(&build_instructions.manifest_dir()?, &program_info, &interaction_occurrences_spans)?;
+                        output_modified_modules(
+                            &build_instructions.manifest_dir()?,
+                            &program_info,
+                            &interaction_occurrences_spans,
+                        )?;
 
-                        let stop_migration_process = print_modification_result(max_len, feature, migration_step, manual_migration_actions, &interaction_occurrences_spans, &mut current_feature_migration_has_code_changes);
+                        let stop_migration_process = print_modification_result(
+                            max_len,
+                            feature,
+                            migration_step,
+                            manual_migration_actions,
+                            &interaction_occurrences_spans,
+                            &mut current_feature_migration_has_code_changes,
+                        );
                         if stop_migration_process == StopMigrationProcess::Yes {
                             return Ok(());
                         }
@@ -196,7 +235,14 @@ enum StopMigrationProcess {
     No,
 }
 
-fn print_modification_result(max_len: usize, feature: &Feature, migration_step: &MigrationStep, manual_migration_actions: &[&str], occurrences_spans: &[Span], current_feature_migration_has_code_changes: &mut bool) -> StopMigrationProcess {
+fn print_modification_result(
+    max_len: usize,
+    feature: &Feature,
+    migration_step: &MigrationStep,
+    manual_migration_actions: &[&str],
+    occurrences_spans: &[Span],
+    current_feature_migration_has_code_changes: &mut bool,
+) -> StopMigrationProcess {
     if occurrences_spans.is_empty() {
         print_checked_action(max_len, feature, migration_step);
         StopMigrationProcess::No
@@ -233,18 +279,21 @@ fn print_modification_result(max_len: usize, feature: &Feature, migration_step: 
     }
 }
 
-fn print_instruction_result(engines: &Engines, max_len: usize, feature: &Feature, migration_step: &MigrationStep, occurrences_spans: &[Span]) {
+fn print_instruction_result(
+    engines: &Engines,
+    max_len: usize,
+    feature: &Feature,
+    migration_step: &MigrationStep,
+    occurrences_spans: &[Span],
+) {
     if occurrences_spans.is_empty() {
         print_checked_action(max_len, feature, migration_step);
     } else {
         print_review_action(max_len, feature, migration_step);
 
-        if let Some(diagnostic) = create_migration_diagnostic(
-            engines.se(),
-            feature,
-            migration_step,
-            &occurrences_spans,
-        ) {
+        if let Some(diagnostic) =
+            create_migration_diagnostic(engines.se(), feature, migration_step, occurrences_spans)
+        {
             format_diagnostic(&diagnostic);
         }
     }
@@ -254,21 +303,20 @@ fn print_instruction_result(engines: &Engines, max_len: usize, feature: &Feature
 ///
 /// A module is considered modified, if any of the [Span]s in `occurrences_spans`
 /// has that module as its source.
-fn output_modified_modules(manifest_dir: &Path, program_info: &ProgramInfo, occurrences_spans: &[Span]) -> Result<()> {
+fn output_modified_modules(
+    manifest_dir: &Path,
+    program_info: &ProgramInfo,
+    occurrences_spans: &[Span],
+) -> Result<()> {
     if occurrences_spans.is_empty() {
         return Ok(());
     }
 
-    let modified_modules =
-        ModifiedModules::new(program_info.engines.se(), occurrences_spans);
+    let modified_modules = ModifiedModules::new(program_info.engines.se(), occurrences_spans);
 
     check_that_modified_modules_are_not_dirty(&modified_modules)?;
 
-    output_changed_lexed_program(
-        manifest_dir,
-        &modified_modules,
-        &program_info.lexed_program,
-    )?;
+    output_changed_lexed_program(manifest_dir, &modified_modules, &program_info.lexed_program)?;
 
     Ok(())
 }

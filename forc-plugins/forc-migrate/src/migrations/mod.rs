@@ -346,12 +346,10 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 
 /// The list of the migration steps, grouped by the Sway features that cause
 /// the breaking changes behind the migration steps.
-const MIGRATION_STEPS: MigrationSteps = &[
-    (
-        Feature::StorageDomains,
-        &[
-            self::storage_domains::REVIEW_STORAGE_SLOT_KEYS_STEP,
-            self::storage_domains::DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP,
-        ],
-    ),
-];
+const MIGRATION_STEPS: MigrationSteps = &[(
+    Feature::StorageDomains,
+    &[
+        self::storage_domains::REVIEW_STORAGE_SLOT_KEYS_STEP,
+        self::storage_domains::DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP,
+    ],
+)];

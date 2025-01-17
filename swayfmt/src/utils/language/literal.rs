@@ -33,7 +33,9 @@ impl Format for Literal {
 
                 if lit_int.span.is_empty() {
                     // Format `u256` and `b256` as hex literals.
-                    if lit_int.is_generated_b256 || matches!(&lit_int.ty_opt, Some((LitIntType::U256, _))) {
+                    if lit_int.is_generated_b256
+                        || matches!(&lit_int.ty_opt, Some((LitIntType::U256, _)))
+                    {
                         write!(formatted_code, "0x{:064x}", lit_int.parsed)?;
                     } else {
                         write!(formatted_code, "{}", lit_int.parsed)?;
@@ -44,10 +46,12 @@ impl Format for Literal {
                             LitIntType::U16 => "_u16",
                             LitIntType::U32 => "_u32",
                             LitIntType::U64 => "_u64",
-                            LitIntType::U256 => if lit_int.is_generated_b256 {
-                                ""
-                            } else {
-                                "_u256"
+                            LitIntType::U256 => {
+                                if lit_int.is_generated_b256 {
+                                    ""
+                                } else {
+                                    "_u256"
+                                }
                             }
                             LitIntType::I8 => "_i8",
                             LitIntType::I16 => "_i16",

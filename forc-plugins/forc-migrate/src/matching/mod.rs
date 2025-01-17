@@ -56,27 +56,27 @@
 //! order to change it, but will need additional information from its typed tree
 //! counterpart, `TyStorageField`, or vice versa. The [TyLocate] trait offers
 //! the [TyLocate::locate] method for finding a typed equivalent of a lexed
-//! element. The [LexedLocate] does the opposite. 
+//! element. The [LexedLocate] does the opposite.
 //!
 //! Locating an equivalent will in most of the cases be implemented via equality
 //! of spans. Locating can also cause multiple traversals of the same part of
 //! a tree. For migrations, this will not cause a performance problem.
 
-mod typed_tree;
 mod lexed_tree;
+mod typed_tree;
 
-pub(crate) use typed_tree::matchers as ty_match; 
-pub(crate) use typed_tree::predicates::ty_storage_field as ty_storage_field; 
+pub(crate) use typed_tree::matchers as ty_match;
+pub(crate) use typed_tree::predicates::ty_storage_field;
 
-pub(crate) use lexed_tree::matchers as lexed_match; 
-pub(crate) use lexed_tree::predicates::lexed_storage_field as lexed_storage_field; 
+pub(crate) use lexed_tree::matchers as lexed_match;
+pub(crate) use lexed_tree::predicates::lexed_storage_field;
 
 /// Matches for typed tree elements of type `T` located **directly** within
 /// the typed tree element `self`.
 ///
 /// The matched elements must satisfy the `predicate`.
 pub(crate) trait TyElementsMatcher<T> {
-    fn match_elems<'a, P>(&'a self, predicate: P) -> impl Iterator<Item=&'a T>
+    fn match_elems<'a, P>(&'a self, predicate: P) -> impl Iterator<Item = &'a T>
     where
         P: Fn(&&'a T) -> bool + Clone + 'a,
         T: 'a;
@@ -105,7 +105,7 @@ pub(crate) trait TyLocate<Lexed, Ty> {
 ///
 /// The matched elements must satisfy the `predicate`.
 pub(crate) trait LexedElementsMatcher<T> {
-    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item=&'a mut T>
+    fn match_elems<'a, F>(&'a mut self, predicate: F) -> impl Iterator<Item = &'a mut T>
     where
         F: Fn(&&'a mut T) -> bool + Clone + 'a,
         T: 'a;
@@ -157,7 +157,8 @@ macro_rules! all_of {
 /// Not intended to be used directly. Use [all_of!] macro instead.
 #[allow(dead_code)]
 pub(crate) fn all_of<T, P>(predicates: &[P]) -> impl Fn(&&T) -> bool + Clone + '_
-where P: Fn(&&T) -> bool + Clone,
+where
+    P: Fn(&&T) -> bool + Clone,
 {
     move |t: &&T| {
         let mut res = true;
@@ -183,7 +184,8 @@ macro_rules! all_of_mut {
 /// Not intended to be used directly. Use [all_of_mut!] macro instead.
 #[allow(dead_code)]
 pub(crate) fn all_of_mut<T, P>(predicates: &[P]) -> impl Fn(&&mut T) -> bool + Clone + '_
-where P: Fn(&&mut T) -> bool + Clone,
+where
+    P: Fn(&&mut T) -> bool + Clone,
 {
     move |t: &&mut T| {
         let mut res = true;
@@ -209,7 +211,8 @@ macro_rules! any_of {
 /// Not intended to be used directly. Use [any_of!] macro instead.
 #[allow(dead_code)]
 pub(crate) fn any_of<T, P>(predicates: &[P]) -> impl Fn(&&T) -> bool + Clone + '_
-where P: Fn(&&T) -> bool + Clone,
+where
+    P: Fn(&&T) -> bool + Clone,
 {
     move |t: &&T| {
         let mut res = false;
@@ -235,7 +238,8 @@ macro_rules! any_of_mut {
 /// Not intended to be used directly. Use [any_of_mut!] macro instead.
 #[allow(dead_code)]
 pub(crate) fn any_of_mut<T, P>(predicates: &[P]) -> impl Fn(&&mut T) -> bool + Clone + '_
-where P: Fn(&&mut T) -> bool + Clone,
+where
+    P: Fn(&&mut T) -> bool + Clone,
 {
     move |t: &&mut T| {
         let mut res = false;

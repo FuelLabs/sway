@@ -5,8 +5,7 @@ mod matching;
 mod modifying;
 
 use std::fmt::Display;
-use std::io::Write;
-use std::{io, usize, vec};
+use std::io::{self, Write};
 
 /// Returns a single error string formed of the `error` and `instructions`.
 /// The returned string is formatted to be used as an error message in the [anyhow::bail] macro.
@@ -31,10 +30,13 @@ fn internal_error<E: Display>(error: E) -> String {
 /// Prints a menu containing numbered `options` and asks to choose one of them.
 /// Returns zero-indexed index of the chosen option.
 fn print_single_choice_menu<S: AsRef<str> + Display>(options: &[S]) -> usize {
-    assert!(options.len() > 1, "There must be at least two options to choose from.");
+    assert!(
+        options.len() > 1,
+        "There must be at least two options to choose from."
+    );
 
     for (i, option) in options.iter().enumerate() {
-        println!("{}. {option}", i+1);
+        println!("{}. {option}", i + 1);
     }
 
     let mut choice = usize::MAX;

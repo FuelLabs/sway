@@ -1,5 +1,8 @@
 use num_bigint::BigUint;
-use sway_ast::{keywords::{InToken, Keyword}, Expr, LitInt, StorageField};
+use sway_ast::{
+    keywords::{InToken, Keyword},
+    Expr, LitInt, StorageField,
+};
 use sway_types::{Span, Spanned};
 
 use super::Modifier;

@@ -1,14 +1,27 @@
 use std::collections::HashSet;
 
 use super::{MigrationStep, MigrationStepKind, MutProgramInfo};
-use crate::{internal_error, matching::{lexed_match, lexed_storage_field, ty_match, ty_storage_field::{with_in_keyword, without_in_keyword}, TyLocate}, migrations::ProgramInfo, modifying::Modifier, print_single_choice_menu};
+use crate::{
+    internal_error,
+    matching::{
+        lexed_match, lexed_storage_field, ty_match,
+        ty_storage_field::{with_in_keyword, without_in_keyword},
+        TyLocate,
+    },
+    migrations::ProgramInfo,
+    modifying::Modifier,
+    print_single_choice_menu,
+};
 use anyhow::{bail, Ok, Result};
 use itertools::Itertools;
-use sway_core::language::{ty::{TyExpressionVariant, TyStorageField}, CallPath, Literal};
+use num_bigint::BigUint;
+use sha2::{Digest, Sha256};
+use sway_core::language::{
+    ty::{TyExpressionVariant, TyStorageField},
+    CallPath, CallPathType, Literal,
+};
 use sway_error::formatting::{self, sequence_to_list};
 use sway_types::{Ident, Span, Spanned};
-use num_bigint::BigUint;
-use sha2::{Sha256, Digest};
 
 pub(super) const REVIEW_STORAGE_SLOT_KEYS_STEP: MigrationStep = MigrationStep {
     title: "Review explicitly defined slot keys in storage declarations (`in` keywords)",
@@ -61,9 +74,17 @@ fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>
     let well_known_slot_keys = get_well_known_slot_keys();
     let well_known_slot_keys_constants = get_well_known_slot_keys_constants();
 
-    for (storage_field, key_expression) in ty_match::storage_fields_deep(storage_decl, with_in_keyword)
-        .iter()
-        .map(|sf| (sf, sf.key_expression.as_ref().expect("storage key has in keyword")))
+    for (storage_field, key_expression) in
+        ty_match::storage_fields_deep(storage_decl, with_in_keyword)
+            .iter()
+            .map(|sf| {
+                (
+                    sf,
+                    sf.key_expression
+                        .as_ref()
+                        .expect("storage key has in keyword"),
+                )
+            })
     {
         // If the key expression represents a well known slot defined in
         // Sway Standards or Sway Libraries do not suggest to check it.
@@ -71,9 +92,10 @@ fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>
             TyExpressionVariant::Literal(Literal::B256(slot_key)) => {
                 well_known_slot_keys.contains(&BigUint::from_bytes_be(slot_key.as_slice()))
             }
-            TyExpressionVariant::ConstantExpression { call_path: Some(call_path), .. } => {
-                well_known_slot_keys_constants.contains(call_path)
-            }
+            TyExpressionVariant::ConstantExpression {
+                call_path: Some(call_path),
+                ..
+            } => well_known_slot_keys_constants.contains(call_path),
             _ => false,
         };
         if is_well_known_slot_key {
@@ -95,7 +117,6 @@ fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>
         if is_backward_compatibility_slot_key {
             continue;
         }
-        
 
         res.push(key_expression.span.clone());
     }
@@ -103,7 +124,9 @@ fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>
     Ok(res)
 }
 
-fn define_backward_compatible_storage_slot_keys_step_instruction(program_info: &ProgramInfo) -> Result<Vec<Span>> {
+fn define_backward_compatible_storage_slot_keys_step_instruction(
+    program_info: &ProgramInfo,
+) -> Result<Vec<Span>> {
     let mut res = vec![];
 
     let Some(storage_decl_id) = ty_match::storage_decl(&program_info.ty_program) else {
@@ -118,15 +141,16 @@ fn define_backward_compatible_storage_slot_keys_step_instruction(program_info: &
     // The suggestion is shown only once on the entire `storage` declaration,
     // to avoid cluttering. The interaction part of the step will then provide
     // more detailed information and guide the developers.
-    if !ty_match::storage_fields_deep(storage_decl, without_in_keyword).is_empty()
-    {
+    if !ty_match::storage_fields_deep(storage_decl, without_in_keyword).is_empty() {
         res.push(storage_decl.span.clone());
     }
 
     Ok(res)
 }
 
-fn define_backward_compatible_storage_slot_keys_step_interaction(program_info: &mut MutProgramInfo) -> Result<Vec<Span>> {
+fn define_backward_compatible_storage_slot_keys_step_interaction(
+    program_info: &mut MutProgramInfo,
+) -> Result<Vec<Span>> {
     let mut res = vec![];
     let Some(storage_decl_id) = ty_match::storage_decl(program_info.ty_program) else {
         return Ok(res);
@@ -134,14 +158,22 @@ fn define_backward_compatible_storage_slot_keys_step_interaction(program_info: &
 
     let storage_decl = &*program_info.engines.de().get_storage(&storage_decl_id);
 
-    let storage_fields_without_in_keyword = ty_match::storage_fields_deep(storage_decl, without_in_keyword);
+    let storage_fields_without_in_keyword =
+        ty_match::storage_fields_deep(storage_decl, without_in_keyword);
 
-    println!("The following storage fields will have slot keys calculated by using the new formula:");
+    println!(
+        "The following storage fields will have slot keys calculated by using the new formula:"
+    );
     sequence_to_list(
-        &storage_fields_without_in_keyword.iter().map(|field| field.full_name()).collect_vec(),
+        &storage_fields_without_in_keyword
+            .iter()
+            .map(|field| field.full_name())
+            .collect_vec(),
         formatting::Indent::Single,
-        10
-    ).iter().for_each(|field_full_name| println!("{field_full_name}"));
+        10,
+    )
+    .iter()
+    .for_each(|field_full_name| println!("{field_full_name}"));
     println!();
     println!("Do you want these fields to have backward compatible storage slot keys, calculated");
     println!("by using the previous formula?");
@@ -153,22 +185,32 @@ fn define_backward_compatible_storage_slot_keys_step_interaction(program_info: &
     if print_single_choice_menu(&[
         "Yes, assign the backward compatible storage slot keys.",
         "No, this contract does not require backwards compatibility.",
-    ]) == 0 {
-        let Some(storage_declaration) = lexed_match::storage_decl(program_info.lexed_program) else {
-            bail!(internal_error("Lexical storage declaration cannot be found."));
+    ]) == 0
+    {
+        let Some(storage_declaration) = lexed_match::storage_decl(program_info.lexed_program)
+        else {
+            bail!(internal_error(
+                "Lexical storage declaration cannot be found."
+            ));
         };
 
-        for lexed_storage_field in lexed_match::storage_fields_deep(storage_declaration, lexed_storage_field::without_in_keyword)
-        {
-            let Some(ty_storage_field) = storage_decl.locate(&lexed_storage_field) else {
-                bail!(internal_error(format!("Typed storage field \"{}\" cannot be found.", lexed_storage_field.name)));
+        for lexed_storage_field in lexed_match::storage_fields_deep(
+            storage_declaration,
+            lexed_storage_field::without_in_keyword,
+        ) {
+            let Some(ty_storage_field) = storage_decl.locate(lexed_storage_field) else {
+                bail!(internal_error(format!(
+                    "Typed storage field \"{}\" cannot be found.",
+                    lexed_storage_field.name
+                )));
             };
 
             res.push(ty_storage_field.name.span());
 
             let mut storage_key_modifier = Modifier::new(lexed_storage_field);
-            storage_key_modifier
-                .with_in_key(BigUint::from_bytes_be(get_previous_slot_key(&ty_storage_field).as_slice()));
+            storage_key_modifier.with_in_key(BigUint::from_bytes_be(
+                get_previous_slot_key(ty_storage_field).as_slice(),
+            ));
         }
     }
 
@@ -179,8 +221,16 @@ fn define_backward_compatible_storage_slot_keys_step_interaction(program_info: &
 /// as [BigUint]s that represents `b256` storage addresses.
 fn get_well_known_slot_keys() -> HashSet<BigUint> {
     // For SRC14 well-known slot keys see: https://docs.fuel.network/docs/sway-libs/upgradability/#upgradability-library
-    let src14_target = BigUint::parse_bytes(b"7bb458adc1d118713319a5baa00a2d049dd64d2916477d2688d76970c898cd55", 16).unwrap();
-    let src14_proxy_owner = BigUint::parse_bytes(b"bb79927b15d9259ea316f2ecb2297d6cc8851888a98278c0a2e03e1a091ea754", 16).unwrap();
+    let src14_target = BigUint::parse_bytes(
+        b"7bb458adc1d118713319a5baa00a2d049dd64d2916477d2688d76970c898cd55",
+        16,
+    )
+    .unwrap();
+    let src14_proxy_owner = BigUint::parse_bytes(
+        b"bb79927b15d9259ea316f2ecb2297d6cc8851888a98278c0a2e03e1a091ea754",
+        16,
+    )
+    .unwrap();
 
     HashSet::from_iter(vec![src14_target, src14_proxy_owner])
 }
@@ -192,17 +242,16 @@ fn get_well_known_slot_keys_constants() -> HashSet<CallPath> {
         // For SRC14 well-known slot keys see: https://docs.fuel.network/docs/sway-libs/upgradability/#upgradability-library
         ("sway_libs", "upgradability", "PROXY_OWNER_STORAGE"),
         ("standards", "src14", "SRC14_TARGET_STORAGE"),
-    ].into_iter()
-    .map(|path_parts|
-        CallPath {
-            prefixes: vec![
-                Ident::new_no_span(path_parts.0.into()),
-                Ident::new_no_span(path_parts.1.into()),
-            ],
-            suffix: Ident::new_no_span(path_parts.2.into()),
-            is_absolute: true,
-        }
-    );
+    ]
+    .into_iter()
+    .map(|path_parts| CallPath {
+        prefixes: vec![
+            Ident::new_no_span(path_parts.0.into()),
+            Ident::new_no_span(path_parts.1.into()),
+        ],
+        suffix: Ident::new_no_span(path_parts.2.into()),
+        callpath_type: CallPathType::Full,
+    });
 
     HashSet::from_iter(slot_keys_constants)
 }
