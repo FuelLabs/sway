@@ -48,15 +48,8 @@ impl LexedElementsMatcher<StorageField> for ItemStorage {
             .inner
             .iter_mut()
             .map(|annotated_item| &mut annotated_item.value)
-            .filter_map(move |storage_entry| match storage_entry.field {
-                Some(ref mut sf) => {
-                    if predicate(&sf) {
-                        Some(sf)
-                    } else {
-                        None
-                    }
-                }
-                None => None,
+            .filter_map(move |storage_entry| {
+                storage_entry.field.as_mut().filter(|sf| predicate(sf))
             })
     }
 }
