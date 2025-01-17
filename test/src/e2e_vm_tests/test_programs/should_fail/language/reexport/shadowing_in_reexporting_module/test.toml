@@ -107,6 +107,12 @@ category = "fail"
 #nextln: $()found:    bool.
 
 #check: $()error
+#check: $()items_1_function()
+#check: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    bool.
+
+#check: $()error
 #check: $()fn items_1_trait_function(self, x: TestStruct2) -> u64 {
 #nextln: $()expected: bool
 #nextln: $()found:    u64
@@ -132,6 +138,12 @@ category = "fail"
 #check: $()error
 #check: $()Items2_Enum::D(val) => val + 1000,
 #nextln: $()No method "add(bool, numeric) -> u64" found for type "bool".
+
+#check: $()error
+#check: $()items_2_function()
+#check: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    bool.
 
 #check: $()error
 #check: $()items_2_function()
@@ -193,3 +205,4 @@ category = "fail"
 #check: $()This path must return a value of type "u64" from function "items_2_trait_function", but it does not.
 
 #check: $()Aborting due to 44 errors.
+

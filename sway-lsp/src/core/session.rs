@@ -39,7 +39,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty::{self, TyModule},
+        ty::{self},
         HasSubmodules,
     },
     BuildTarget, Engines, LspConfig, Namespace, Programs,
@@ -55,7 +55,6 @@ pub type ProjectDirectory = PathBuf;
 pub struct CompiledProgram {
     pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
-    pub root: Option<ty::TyModule>,
     pub typed: Option<ty::TyProgram>,
 }
 
@@ -231,15 +230,16 @@ impl Session {
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
-            let root = compiled_program.root.clone()?;
-            let engines = self.engines.read();
-            return Some(capabilities::completion::to_completion_items(
-                &root.namespace,
-                &engines,
-                ident_to_complete,
-                fn_decl,
-                position,
-            ));
+            if let Some(program) = &compiled_program.typed {
+                let engines = self.engines.read();
+                return Some(capabilities::completion::to_completion_items(
+                    &program.namespace,
+                    &engines,
+                    ident_to_complete,
+                    fn_decl,
+                    position,
+                ));
+            }
         }
         None
     }
@@ -247,8 +247,10 @@ impl Session {
     /// Returns the [Namespace] from the compiled program if it exists.
     pub fn namespace(&self) -> Option<Namespace> {
         let compiled_program = &*self.compiled_program.read();
-        let root = compiled_program.root.clone()?;
-        Some(root.namespace)
+        if let Some(program) = &compiled_program.typed {
+            return Some(program.namespace.clone());
+        }
+        None
     }
 
     /// Generate hierarchical document symbols for the given file.
@@ -394,20 +396,21 @@ pub fn traverse(
             }
         }
 
-        let root = match &typed {
-            Ok(p) => p.root.clone(),
+        let (root_module, root) = match &typed {
+            Ok(p) => (p.root_module.clone(), p.namespace.root_ref().clone()),
             Err(e) => {
-                let Some(root) = &e.root else {
+                if let Some(root) = &e.root_module {
+                    (root.deref().clone(), e.namespace.clone())
+                } else {
                     return Err(LanguageServerError::FailedToParse);
-                };
-                root.deref().clone()
+                }
             }
         };
         let typed = typed.ok();
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&session.token_map, engines, root.namespace.module(engines));
+        let ctx = ParseContext::new(&session.token_map, engines, &root);
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -427,15 +430,14 @@ pub fn traverse(
 
             // Finally, populate our token_map with typed ast nodes.
             let typed_tree = TypedTree::new(&ctx);
-            typed_tree.collect_module_spans(&root);
-            parse_ast_to_typed_tokens(&root, &ctx, &modified_file, |node, _ctx| {
+            typed_tree.collect_module_spans(&root_module);
+            parse_ast_to_typed_tokens(&root_module, &ctx, &modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
 
             let compiled_program = &mut *session.compiled_program.write();
             compiled_program.lexed = Some(lexed);
             compiled_program.parsed = Some(parsed);
-            compiled_program.root = Some(root);
             compiled_program.typed = typed;
         } else {
             // Collect tokens from dependencies and the standard library prelude.
@@ -443,7 +445,7 @@ pub fn traverse(
                 dependency::collect_parsed_declaration(an, ctx);
             });
 
-            parse_ast_to_typed_tokens(&root, &ctx, &modified_file, |node, ctx| {
+            parse_ast_to_typed_tokens(&root_module, &ctx, &modified_file, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx);
             });
         }
@@ -505,7 +507,6 @@ pub fn parse_project(
         create_runnables(
             &session.runnables,
             compiled_program.typed.as_ref(),
-            compiled_program.root.as_ref(),
             engines.de(),
             engines.se(),
         );
@@ -617,13 +618,17 @@ fn parse_ast_to_typed_tokens(
 fn create_runnables(
     runnables: &RunnableMap,
     typed_program: Option<&ty::TyProgram>,
-    root: Option<&TyModule>,
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
+    let root_module = typed_program.map(|program| &program.root_module);
+
     let _p = tracing::trace_span!("create_runnables").entered();
     // Insert runnable test functions.
-    for (decl, _) in root.into_iter().flat_map(|x| x.test_fns(decl_engine)) {
+    for (decl, _) in root_module
+        .into_iter()
+        .flat_map(|x| x.test_fns(decl_engine))
+    {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
             .attributes

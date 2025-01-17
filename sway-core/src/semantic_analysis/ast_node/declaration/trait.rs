@@ -396,6 +396,7 @@ impl TyTraitDecl {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
+
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,
