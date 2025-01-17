@@ -86,7 +86,7 @@ impl std::convert::From<Ident> for QualifiedCallPath {
             call_path: CallPath {
                 prefixes: vec![],
                 suffix: other,
-                is_absolute: false,
+                callpath_type: CallPathType::Ambiguous,
             },
             qualified_path_root: None,
         }
@@ -175,15 +175,35 @@ impl DebugWithEngines for QualifiedCallPath {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+pub enum CallPathType {
+    /// An unresolved path on the form `::X::Y::Z`. The path must be resolved relative to the
+    /// current package root module.
+    /// The path can be converted to a full path by prepending the package name, so if the path
+    /// `::X::Y::Z` occurs in package `A`, then the corresponding full path will be `A::X::Y::Z`.
+    RelativeToPackageRoot,
+    /// An unresolved path on the form `X::Y::Z`. The path must either be resolved relative to the
+    /// current module, in which case `X` is either a submodule or a name bound in the current
+    /// module, or as a full path, in which case `X` is the name of an external package.
+    /// If the path is resolved relative to the current module, and the current module has a module
+    /// path `A::B::C`, then the corresponding full path is `A::B::C::X::Y::Z`.
+    /// If the path is resolved as a full path, then the full path is `X::Y::Z`.
+    Ambiguous,
+    /// A full path on the form `X::Y::Z`. The first identifier `X` is the name of either the
+    /// current package or an external package.
+    /// After that comes a (possibly empty) series of names of submodules. Then comes the name of an
+    /// item (a type, a trait, a function, or something else declared in that module). Additionally,
+    /// there may be additional names such as the name of an enum variant or associated types.
+    Full,
+}
+
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,
-    // If `is_absolute` is true, then this call path is an absolute path from
-    // the project root namespace. If not, then it is relative to the current namespace.
-    pub is_absolute: bool,
+    pub callpath_type: CallPathType,
 }
 
 impl EqWithEngines for CallPath {}
@@ -191,7 +211,7 @@ impl PartialEqWithEngines for CallPath {
     fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
         self.prefixes == other.prefixes
             && self.suffix == other.suffix
-            && self.is_absolute == other.is_absolute
+            && self.callpath_type == other.callpath_type
     }
 }
 
@@ -200,7 +220,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.prefixes == other.prefixes
             && self.suffix.eq(&other.suffix, ctx)
-            && self.is_absolute == other.is_absolute
+            && self.callpath_type == other.callpath_type
     }
 }
 
@@ -209,7 +229,7 @@ impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
         self.prefixes
             .cmp(&other.prefixes)
             .then_with(|| self.suffix.cmp(&other.suffix, ctx))
-            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
+            .then_with(|| self.callpath_type.cmp(&other.callpath_type))
     }
 }
 
@@ -224,7 +244,7 @@ impl std::convert::From<Ident> for CallPath {
         CallPath {
             prefixes: vec![],
             suffix: other,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         }
     }
 }
@@ -284,7 +304,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
 }
 
 impl CallPath {
-    pub fn absolute(path: &[&str]) -> Self {
+    pub fn fullpath(path: &[&str]) -> Self {
         assert!(!path.is_empty());
 
         CallPath {
@@ -294,20 +314,22 @@ impl CallPath {
                 .map(|&x| Ident::new_no_span(x.into()))
                 .collect(),
             suffix: path.last().map(|&x| Ident::new_no_span(x.into())).unwrap(),
-            is_absolute: true,
+            callpath_type: CallPathType::Full,
         }
     }
 
     /// Shifts the last prefix into the suffix, and removes the old suffix.
-    /// Does nothing if prefixes are empty.
+    /// Does nothing if prefixes are empty, or if the path is a full path and there is only a single prefix (which must be the package name, which is obligatory for full paths)
     pub fn rshift(&self) -> CallPath {
-        if self.prefixes.is_empty() {
+        if self.prefixes.is_empty()
+            || (matches!(self.callpath_type, CallPathType::Full) && self.prefixes.len() == 1)
+        {
             self.clone()
         } else {
             CallPath {
                 prefixes: self.prefixes[0..self.prefixes.len() - 1].to_vec(),
                 suffix: self.prefixes.last().unwrap().clone(),
-                is_absolute: self.is_absolute,
+                callpath_type: self.callpath_type,
             }
         }
     }
@@ -317,10 +339,16 @@ impl CallPath {
         if self.prefixes.is_empty() {
             self.clone()
         } else {
+            let new_callpath_type = match self.callpath_type {
+                CallPathType::RelativeToPackageRoot | CallPathType::Ambiguous => {
+                    CallPathType::Ambiguous
+                }
+                CallPathType::Full => CallPathType::RelativeToPackageRoot,
+            };
             CallPath {
                 prefixes: self.prefixes[1..self.prefixes.len()].to_vec(),
                 suffix: self.suffix.clone(),
-                is_absolute: self.is_absolute,
+                callpath_type: new_callpath_type,
             }
         }
     }
@@ -340,131 +368,11 @@ impl CallPath {
     /// before the identifier is added to the environment.
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
         let mut res: Self = suffix.clone().into();
-        res.prefixes.push(namespace.root_module().name().clone());
-        for mod_path in namespace.mod_path() {
+        for mod_path in namespace.current_mod_path() {
             res.prefixes.push(mod_path.clone())
         }
-        res.is_absolute = true;
+        res.callpath_type = CallPathType::Full;
         res
-    }
-
-    /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
-    /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
-    /// is an _internal_ library of a package named `my_project`, the corresponding call path is
-    /// `my_project::pkga::SOME_CONST`.
-    ///
-    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
-    /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
-        if self.is_absolute {
-            return self.clone();
-        }
-
-        if self.prefixes.is_empty() {
-            // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
-            // combination of the package name in which the symbol is defined and the path to the
-            // current submodule.
-            let mut synonym_prefixes = vec![];
-            let mut is_external = false;
-            let mut is_absolute = false;
-
-            if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
-                m.walk_scope_chain(|lexical_scope| {
-                    let res = if lexical_scope.items.symbols().contains_key(&self.suffix) {
-                        None
-                    } else if let Some((_, path, _, _)) = lexical_scope
-                        .items
-                        .use_item_synonyms
-                        .get(&self.suffix)
-                        .cloned()
-                    {
-                        Some(path)
-                    } else if let Some(paths_and_decls) = lexical_scope
-                        .items
-                        .use_glob_synonyms
-                        .get(&self.suffix)
-                        .cloned()
-                    {
-                        if paths_and_decls.len() == 1 {
-                            Some(paths_and_decls[0].0.clone())
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
-                    Ok(res)
-                })
-                .ok()
-                .flatten()
-            }) {
-                synonym_prefixes.clone_from(&mod_path);
-                is_absolute = true;
-                let submodule = namespace
-                    .module(engines)
-                    .submodule(engines, &[mod_path[0].clone()]);
-                if let Some(submodule) = submodule {
-                    is_external = submodule.read(engines, |m| m.is_external);
-                }
-            }
-
-            let mut prefixes: Vec<Ident> = vec![];
-
-            if !is_external {
-                prefixes.push(namespace.root_module().name().clone());
-
-                if !is_absolute {
-                    for mod_path in namespace.mod_path() {
-                        prefixes.push(mod_path.clone());
-                    }
-                }
-            }
-
-            prefixes.extend(synonym_prefixes);
-
-            CallPath {
-                prefixes,
-                suffix: self.suffix.clone(),
-                is_absolute: true,
-            }
-        } else if let Some(m) = namespace
-            .module(engines)
-            .submodule(engines, &[self.prefixes[0].clone()])
-        {
-            // If some prefixes are already present, attempt to complete the path by adding the
-            // package name and the path to the current submodule.
-            //
-            // If the path starts with an external module (i.e. a module that is imported in
-            // `Forc.toml`), then do not change it since it's a complete path already.
-            if m.read(engines, |m| m.is_external) {
-                CallPath {
-                    prefixes: self.prefixes.clone(),
-                    suffix: self.suffix.clone(),
-                    is_absolute: true,
-                }
-            } else {
-                let mut prefixes: Vec<Ident> = vec![];
-                prefixes.push(namespace.root_module().name().clone());
-
-                for mod_path in namespace.mod_path() {
-                    prefixes.push(mod_path.clone());
-                }
-
-                prefixes.extend(self.prefixes.clone());
-
-                CallPath {
-                    prefixes,
-                    suffix: self.suffix.clone(),
-                    is_absolute: true,
-                }
-            }
-        } else {
-            CallPath {
-                prefixes: self.prefixes.clone(),
-                suffix: self.suffix.clone(),
-                is_absolute: true,
-            }
-        }
     }
 
     /// Convert a given [CallPath] into a call path suitable for a `use` statement.
@@ -477,10 +385,161 @@ impl CallPath {
         let converted = self.to_fullpath(engines, namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root_module().name() == first {
+            if namespace.current_package_name() == first {
                 return converted.lshift();
             }
         }
         converted
+    }
+}
+
+impl<T: Clone> CallPath<T> {
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] to a program point in which the
+    /// symbol can be resolved (assuming the given [CallPath] is a legal Sway path).
+    ///
+    /// The resulting [CallPath] is not guaranteed to be located in the package where the symbol is
+    /// declared. To obtain the path to the declaration, use [to_canonical_path].
+    ///
+    /// The [CallPath] is converted within the current module of the supplied namespace.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ module of a
+    /// package named `my_project`, the corresponding call path is
+    /// `my_project::pkga::SOME_CONST`. This does not imply that `SOME_CONST` is declared in the
+    /// `my_project::pkga`, but only that the name `SOME_CONST` is bound in `my_project::pkga`.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
+    /// and are left unchanged since `std` is a root of the package `std`.
+    pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath<T> {
+        self.to_fullpath_from_mod_path(engines, namespace, namespace.current_mod_path())
+    }
+
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] to a program point in which the
+    /// symbol can be resolved (assuming the given [CallPath] is a legal Sway path).
+    ///
+    /// The resulting [CallPath] is not guaranteed to be located in the package where the symbol is
+    /// declared. To obtain the path to the declaration, use [to_canonical_path].
+    ///
+    /// The [CallPath] is converted within the module given by `mod_path`, which must be a legal
+    /// path to a module.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ module of a
+    /// package named `my_project`, the corresponding call path is
+    /// `my_project::pkga::SOME_CONST`. This does not imply that `SOME_CONST` is declared in the
+    /// `my_project::pkga`, but only that the name `SOME_CONST` is bound in `my_project::pkga`.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
+    /// and are left unchanged since `std` is a root of the package `std`.
+    pub fn to_fullpath_from_mod_path(
+        &self,
+        engines: &Engines,
+        namespace: &Namespace,
+        mod_path: &Vec<Ident>,
+    ) -> CallPath<T> {
+        let mod_path_module = namespace.module_from_absolute_path(mod_path);
+
+        match self.callpath_type {
+            CallPathType::Full => self.clone(),
+            CallPathType::RelativeToPackageRoot => {
+                let mut prefixes = vec![mod_path[0].clone()];
+                for ident in self.prefixes.iter() {
+                    prefixes.push(ident.clone());
+                }
+                Self {
+                    prefixes,
+                    suffix: self.suffix.clone(),
+                    callpath_type: CallPathType::Full,
+                }
+            }
+            CallPathType::Ambiguous => {
+                if self.prefixes.is_empty() {
+                    // 		    // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
+                    // 		    // combination of the package name in which the symbol is defined and the path to the
+                    // 		    // current submodule.
+                    CallPath {
+                        prefixes: mod_path.clone(),
+                        suffix: self.suffix.clone(),
+                        callpath_type: CallPathType::Full,
+                    }
+                } else if mod_path_module.is_some()
+                    && (mod_path_module.unwrap().has_submodule(&self.prefixes[0])
+                        || namespace.module_has_binding(engines, mod_path, &self.prefixes[0]))
+                {
+                    // The first identifier in the prefix is a submodule of the current
+                    // module.
+                    //
+                    // The path is a qualified path relative to the current module
+                    //
+                    // Complete the path by prepending the package name and the path to the current module.
+                    CallPath {
+                        prefixes: mod_path.iter().chain(&self.prefixes).cloned().collect(),
+                        suffix: self.suffix.clone(),
+                        callpath_type: CallPathType::Full,
+                    }
+                } else if namespace.package_exists(&self.prefixes[0])
+                    && namespace.module_is_external(&self.prefixes)
+                {
+                    // The first identifier refers to an external package. The path is already fully qualified.
+                    CallPath {
+                        prefixes: self.prefixes.clone(),
+                        suffix: self.suffix.clone(),
+                        callpath_type: CallPathType::Full,
+                    }
+                } else {
+                    // The first identifier in the prefix is neither a submodule of the current module nor the name of an external package.
+                    // This is probably an illegal path, so let it fail by assuming it is bound in the current module.
+                    CallPath {
+                        prefixes: mod_path.iter().chain(&self.prefixes).cloned().collect(),
+                        suffix: self.suffix.clone(),
+                        callpath_type: CallPathType::Full,
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl CallPath {
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] to where the symbol is declared
+    /// (assuming the given [CallPath] is a legal Sway path).
+    ///
+    /// The [CallPath] is converted within the current module of the supplied namespace.
+    ///
+    /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ module of a
+    /// package named `my_project`, and `SOME_CONST` is bound in the module `my_project::pkga`, then
+    /// the corresponding call path is the full callpath to the declaration that `SOME_CONST` is
+    /// bound to. This does not imply that `SOME_CONST` is declared in the `my_project::pkga`, since
+    /// the binding may be the result of an import.
+    ///
+    /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
+    /// and are left unchanged since `std` is a root of the package `std`.
+    pub fn to_canonical_path(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
+        // Generate a full path to a module where the suffix can be resolved
+        let full_path = self.to_fullpath(engines, namespace);
+
+        match namespace.module_from_absolute_path(&full_path.prefixes) {
+            Some(module) => {
+                // Resolve the path suffix in the found module
+                match module.resolve_symbol(&Handler::default(), engines, &full_path.suffix) {
+                    Ok((_, decl_path)) => {
+                        // Replace the resolvable path with the declaration's path
+                        CallPath {
+                            prefixes: decl_path,
+                            suffix: full_path.suffix.clone(),
+                            callpath_type: full_path.callpath_type,
+                        }
+                    }
+                    Err(_) => {
+                        // The symbol does not resolve. The symbol isn't bound, so the best bet is
+                        // the full path.
+                        full_path
+                    }
+                }
+            }
+            None => {
+                // The resolvable module doesn't exist. The symbol probably doesn't exist, so
+                // the best bet is the full path.
+                full_path
+            }
+        }
     }
 }

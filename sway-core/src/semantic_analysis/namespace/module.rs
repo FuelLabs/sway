@@ -9,7 +9,6 @@ use crate::{
 
 use super::{
     lexical_scope::{Items, LexicalScope, ResolvedFunctionDecl},
-    root::Root,
     LexicalScopeId, ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration,
     ResolvedTraitImplItem, TraitMap,
 };
@@ -37,7 +36,7 @@ pub struct Module {
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to produce deterministic codegen results which is why [`FxHasher`] is used.
-    pub(crate) submodules: im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>>,
+    submodules: im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>>,
     /// Keeps all lexical scopes associated with this module.
     pub lexical_scopes: Vec<LexicalScope>,
     /// Current lexical scope id in the lexical scope hierarchy stack.
@@ -51,24 +50,23 @@ pub struct Module {
     visibility: Visibility,
     /// Empty span at the beginning of the file implementing the module
     span: Option<Span>,
-    /// Indicates whether the module is external to the current package. External modules are
-    /// imported in the `Forc.toml` file.
-    pub is_external: bool,
     /// An absolute path from the `root` that represents the module location.
     ///
-    /// When this is the root module, this is equal to `[]`. When this is a
-    /// submodule of the root called "foo", this would be equal to `[foo]`.
-    pub(crate) mod_path: ModulePathBuf,
-}
-
-impl Default for Module {
-    fn default() -> Self {
-        Self::new(Ident::dummy(), Visibility::Public, None)
-    }
+    /// The path of the root module in a package is `[package_name]`. If a module `X` is a submodule
+    /// of module `Y` which is a submodule of the root module in the package `P`, then the path is
+    /// `[P, Y, X]`.
+    mod_path: ModulePathBuf,
 }
 
 impl Module {
-    pub fn new(name: Ident, visibility: Visibility, span: Option<Span>) -> Self {
+    pub(super) fn new(
+        name: Ident,
+        visibility: Visibility,
+        span: Option<Span>,
+        parent_mod_path: &ModulePathBuf,
+    ) -> Self {
+        let mut mod_path = parent_mod_path.clone();
+        mod_path.push(name.clone());
         Self {
             visibility,
             submodules: Default::default(),
@@ -77,29 +75,6 @@ impl Module {
             current_lexical_scope_id: 0,
             name,
             span,
-            is_external: Default::default(),
-            mod_path: Default::default(),
-        }
-    }
-
-    // Specialized constructor for cloning Namespace::init. Should not be used for anything else
-    pub(super) fn new_submodule_from_init(
-        &self,
-        name: Ident,
-        visibility: Visibility,
-        span: Option<Span>,
-        is_external: bool,
-        mod_path: ModulePathBuf,
-    ) -> Self {
-        Self {
-            visibility,
-            submodules: self.submodules.clone(),
-            lexical_scopes: self.lexical_scopes.clone(),
-            lexical_scopes_spans: self.lexical_scopes_spans.clone(),
-            current_lexical_scope_id: self.current_lexical_scope_id,
-            name,
-            span,
-            is_external,
             mod_path,
         }
     }
@@ -118,6 +93,16 @@ impl Module {
 
     pub fn set_span(&mut self, span: Span) {
         self.span = Some(span);
+    }
+
+    pub(super) fn add_new_submodule(
+        &mut self,
+        name: &Ident,
+        visibility: Visibility,
+        span: Option<Span>,
+    ) {
+        let module = Self::new(name.clone(), visibility, span, &self.mod_path);
+        self.submodules.insert(name.to_string(), module);
     }
 
     pub fn read<R>(&self, _engines: &crate::Engines, mut f: impl FnMut(&Module) -> R) -> R {
@@ -145,6 +130,10 @@ impl Module {
         &self.submodules
     }
 
+    pub fn has_submodule(&self, name: &Ident) -> bool {
+        self.submodule(&[name.clone()]).is_some()
+    }
+
     /// Mutable access to this module's submodules.
     pub fn submodules_mut(
         &mut self,
@@ -152,13 +141,8 @@ impl Module {
         &mut self.submodules
     }
 
-    /// Insert a submodule into this `Module`.
-    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
-        self.submodules.insert(name, submodule);
-    }
-
     /// Lookup the submodule at the given path.
-    pub fn submodule(&self, _engines: &Engines, path: &ModulePath) -> Option<&Module> {
+    pub fn submodule(&self, path: &ModulePath) -> Option<&Module> {
         let mut module = self;
         for ident in path.iter() {
             match module.submodules.get(ident.as_str()) {
@@ -170,7 +154,7 @@ impl Module {
     }
 
     /// Unique access to the submodule at the given path.
-    pub fn submodule_mut(&mut self, _engines: &Engines, path: &ModulePath) -> Option<&mut Module> {
+    pub fn submodule_mut(&mut self, path: &ModulePath) -> Option<&mut Module> {
         let mut module = self;
         for ident in path.iter() {
             match module.submodules.get_mut(ident.as_str()) {
@@ -187,26 +171,10 @@ impl Module {
     pub(crate) fn lookup_submodule(
         &self,
         handler: &Handler,
-        engines: &Engines,
         path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
-        match self.submodule(engines, path) {
-            None => Err(handler.emit_err(module_not_found(path))),
-            Some(module) => Ok(module),
-        }
-    }
-
-    /// Lookup the submodule at the given path.
-    ///
-    /// This should be used rather than `Index` when we don't yet know whether the module exists.
-    pub(crate) fn lookup_submodule_mut(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        path: &[Ident],
-    ) -> Result<&mut Module, ErrorEmitted> {
-        match self.submodule_mut(engines, path) {
-            None => Err(handler.emit_err(module_not_found(path))),
+        match self.submodule(path) {
+            None => Err(handler.emit_err(module_not_found(path, true))),
             Some(module) => Ok(module),
         }
     }
@@ -268,7 +236,6 @@ impl Module {
     pub fn enter_lexical_scope(
         &mut self,
         handler: &Handler,
-        _engines: &Engines,
         span: Span,
     ) -> Result<LexicalScopeId, ErrorEmitted> {
         let id_opt = self.lexical_scopes_spans.get(&span);
@@ -375,13 +342,13 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+    ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let mut last_handler = Handler::default();
         let ret = self.walk_scope_chain(|lexical_scope| {
             last_handler = Handler::default();
             Ok(lexical_scope
                 .items
-                .resolve_symbol(&last_handler, engines, symbol)
+                .resolve_symbol(&last_handler, engines, symbol, &self.mod_path)
                 .ok()
                 .flatten())
         })?;
@@ -418,23 +385,25 @@ impl Module {
     }
 }
 
-impl From<Root> for Module {
-    fn from(root: Root) -> Self {
-        root.module
-    }
-}
-
-fn module_not_found(path: &[Ident]) -> CompileError {
+/// Create a ModuleNotFound error.
+/// If skip_package_name is true, then the package name is not emitted as part of the error
+/// message. This is used when the module was supposed to be found in the current package rather
+/// than in an external one.
+pub fn module_not_found(path: &[Ident], skip_package_name: bool) -> CompileError {
     CompileError::ModuleNotFound {
-        span: path.iter().fold(path[0].span(), |acc, this_one| {
-            if acc.source_id() == this_one.span().source_id() {
-                Span::join(acc, &this_one.span())
-            } else {
-                acc
-            }
-        }),
+        span: path
+            .iter()
+            .skip(if skip_package_name { 1 } else { 0 })
+            .fold(path.last().unwrap().span(), |acc, this_one| {
+                if acc.source_id() == this_one.span().source_id() {
+                    Span::join(acc, &this_one.span())
+                } else {
+                    acc
+                }
+            }),
         name: path
             .iter()
+            .skip(if skip_package_name { 1 } else { 0 })
             .map(|x| x.as_str())
             .collect::<Vec<_>>()
             .join("::"),
