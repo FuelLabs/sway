@@ -4,11 +4,11 @@ mod module;
 #[allow(clippy::module_inception)]
 mod namespace;
 mod root;
-mod submodule_namespace;
 mod trait_map;
 
 pub use contract_helpers::*;
 pub use lexical_scope::{Items, LexicalScope, LexicalScopeId, LexicalScopePath};
+pub use module::module_not_found;
 pub use module::Module;
 pub use namespace::Namespace;
 pub use root::ResolvedDeclaration;

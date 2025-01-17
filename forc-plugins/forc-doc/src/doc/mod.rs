@@ -41,14 +41,14 @@ impl Documentation {
         Documentation::from_ty_module(
             engines.de(),
             &module_info,
-            &typed_program.root,
+            &typed_program.root_module,
             &mut docs,
             &mut impl_traits,
             document_private_items,
         )?;
 
         // this is the same process as before but for submodules
-        for (_, ref typed_submodule) in &typed_program.root.submodules {
+        for (_, ref typed_submodule) in &typed_program.root_module.submodules {
             let attributes = (!typed_submodule.module.attributes.is_empty())
                 .then(|| typed_submodule.module.attributes.to_html_string());
             let module_prefix =
@@ -107,7 +107,7 @@ impl Documentation {
                             } else {
                                 impl_trait.trait_name = impl_trait
                                     .trait_name
-                                    .to_fullpath(engines, &typed_program.root.namespace);
+                                    .to_canonical_path(engines, &typed_program.namespace);
                                 None
                             };
 
