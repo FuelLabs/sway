@@ -7,7 +7,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::{
-        namespace::{self},
+        namespace::{self, Root},
         TypeCheckContext,
     },
     BuildConfig, Engines,
@@ -23,7 +23,8 @@ use super::{
 
 #[derive(Clone, Debug)]
 pub struct TypeCheckFailed {
-    pub root: Option<Arc<TyModule>>,
+    pub root_module: Option<Arc<TyModule>>,
+    pub namespace: Root,
     pub error: ErrorEmitted,
 }
 
@@ -74,7 +75,11 @@ impl TyProgram {
             root,
             build_config,
         )
-        .map_err(|error| TypeCheckFailed { error, root: None })?;
+        .map_err(|error| TypeCheckFailed {
+            error,
+            root_module: None,
+            namespace: ctx.namespace.root_ref().clone(),
+        })?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
@@ -86,12 +91,14 @@ impl TyProgram {
         )
         .map_err(|error| TypeCheckFailed {
             error,
-            root: Some(root.clone()),
+            root_module: Some(root.clone()),
+            namespace: ctx.namespace.root_ref().clone(),
         })?;
 
         let program = TyProgram {
             kind,
-            root: (*root).clone(),
+            root_module: (*root).clone(),
+            namespace,
             declarations,
             configurables,
             storage_slots: vec![],
@@ -151,7 +158,7 @@ impl TypeCheckAnalysis for TyProgram {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        for node in self.root.all_nodes.iter() {
+        for node in self.root_module.all_nodes.iter() {
             node.type_check_analyze(handler, ctx)?;
         }
         Ok(())
@@ -165,7 +172,7 @@ impl TypeCheckFinalization for TyProgram {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
-            for node in self.root.all_nodes.iter_mut() {
+            for node in self.root_module.all_nodes.iter_mut() {
                 let _ = node.type_check_finalize(handler, ctx);
             }
             Ok(())

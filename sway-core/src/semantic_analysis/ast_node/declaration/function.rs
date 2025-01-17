@@ -78,6 +78,7 @@ impl ty::TyFunctionDecl {
             kind,
             ..
         } = fn_decl;
+
         let mut return_type = fn_decl.return_type.clone();
 
         let type_engine = ctx.engines.te();

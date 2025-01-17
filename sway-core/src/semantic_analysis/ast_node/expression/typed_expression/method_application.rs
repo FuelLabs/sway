@@ -347,19 +347,19 @@ pub(crate) fn type_check_method_application(
             CallPath {
                 prefixes,
                 suffix: method_name,
-                is_absolute: call_path_binding.inner.is_absolute,
+                callpath_type: call_path_binding.inner.callpath_type,
             }
         }
         MethodName::FromModule { method_name } => CallPath {
             prefixes: vec![],
             suffix: method_name,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         MethodName::FromTrait { call_path } => call_path,
         MethodName::FromQualifiedPathRoot { method_name, .. } => CallPath {
             prefixes: vec![],
             suffix: method_name,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
     };
 
@@ -452,7 +452,7 @@ pub(crate) fn type_check_method_application(
                             inner: CallPath {
                                 prefixes: vec![],
                                 suffix: Ident::new_no_span("contract_call".into()),
-                                is_absolute: false,
+                                callpath_type: CallPathType::Ambiguous,
                             },
                             type_arguments: TypeArgs::Regular(vec![
                                 TypeArgument {
@@ -528,8 +528,7 @@ pub(crate) fn type_check_method_application(
             .type_id
             .extract_inner_types(engines, IncludeSelf::Yes)
         {
-            let handler = Handler::default();
-            ctx.impls_import(&handler, engines, type_id);
+            ctx.impls_import(engines, type_id);
         }
 
         let args = old_arguments.iter().skip(1).cloned().collect();
@@ -805,12 +804,13 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             // find the module that the symbol is in
-            let type_info_prefix = ctx
-                .namespace()
-                .prepend_module_path(&call_path_binding.inner.prefixes);
+            let type_info_prefix = call_path_binding
+                .inner
+                .to_fullpath(engines, ctx.namespace())
+                .prefixes
+                .clone();
             ctx.namespace()
-                .root_module()
-                .lookup_submodule(handler, engines, &type_info_prefix)?;
+                .require_module_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -828,19 +828,27 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
-            let module_path = if !call_path.is_absolute {
-                ctx.namespace().prepend_module_path(&call_path.prefixes)
-            } else {
-                let mut module_path = call_path.prefixes.clone();
-                if let (Some(root_mod), root_name) = (
-                    module_path.first().cloned(),
-                    ctx.namespace().root_module().name().clone(),
-                ) {
-                    if root_mod.as_str() == root_name.as_str() {
-                        module_path.remove(0);
+            let module_path = match call_path.callpath_type {
+                CallPathType::RelativeToPackageRoot => {
+                    let mut path = vec![ctx.namespace().current_package_name().clone()];
+                    for ident in call_path.prefixes.iter() {
+                        path.push(ident.clone())
+                    }
+                    path
+                }
+                CallPathType::Full => call_path.prefixes.clone(),
+                CallPathType::Ambiguous => {
+                    if ctx
+                        .namespace()
+                        .current_module()
+                        .submodules()
+                        .contains_key(call_path.prefixes.first().unwrap().as_str())
+                    {
+                        ctx.namespace().prepend_module_path(&call_path.prefixes)
+                    } else {
+                        call_path.prefixes.clone()
                     }
                 }
-                module_path
             };
 
             // find the type of the first argument
@@ -865,7 +873,7 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace().prepend_module_path(vec![]);
+            let module_path = ctx.namespace().current_mod_path().clone();
 
             // find the type of the first argument
             let type_id = arguments_types
@@ -896,7 +904,7 @@ pub(crate) fn resolve_method_name(
             let type_id = ty.type_id;
 
             // find the module that the symbol is in
-            let module_path = ctx.namespace().prepend_module_path(vec![]);
+            let module_path = ctx.namespace().current_mod_path().clone();
 
             // find the method
             let decl_ref = ctx.find_method_for_type(

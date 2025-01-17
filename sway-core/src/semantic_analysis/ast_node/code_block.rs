@@ -56,7 +56,7 @@ impl ty::TyCodeBlock {
 
         ctx.engines.te().clear_unifications();
         ctx.namespace()
-            .module(ctx.engines)
+            .current_module()
             .current_lexical_scope()
             .items
             .clear_symbols_unique_while_collecting_unifications();

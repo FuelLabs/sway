@@ -322,7 +322,7 @@ mod tests {
         CallPath {
             prefixes: get_mock_prefixes(prefixes),
             suffix: Ident::new_no_span(suffix.to_string()),
-            is_absolute: false,
+            callpath_type: sway_core::language::CallPathType::Full,
         }
     }
 
@@ -361,7 +361,7 @@ mod tests {
             call_path: get_prefixes_from_src(src, prefixes),
             span: get_span_from_src(src, text).unwrap(),
             import_type,
-            is_absolute: false,
+            is_relative_to_package_root: false,
             alias: None,
         }
     }

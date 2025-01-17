@@ -40,11 +40,11 @@ pub fn to_document_symbols(
         });
 
     // Only include nodes that originate from the file.
-    let mut nodes: Vec<_> = (if ty_program.root.span.source_id() == Some(&source_id) {
-        Some(ty_program.root.all_nodes.iter())
+    let mut nodes: Vec<_> = (if ty_program.root_module.span.source_id() == Some(&source_id) {
+        Some(ty_program.root_module.all_nodes.iter())
     } else {
         ty_program
-            .root
+            .root_module
             .submodules_recursive()
             .find(|(_, submodule)| submodule.module.span.source_id() == Some(&source_id))
             .map(|(_, submodule)| submodule.module.all_nodes.iter())
