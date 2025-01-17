@@ -315,7 +315,7 @@ pub async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> 
         .transpose()?
         .unwrap_or(0);
 
-    // Ensure no extra arguments
+    // Ensure the argument count is at most 2
     ArgumentError::ensure_arg_count(&args, 0, 2)?;
 
     // Fetch memory from the client
