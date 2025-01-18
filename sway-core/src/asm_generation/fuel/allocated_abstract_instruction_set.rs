@@ -78,21 +78,21 @@ impl AllocatedAbstractInstructionSet {
             .fold(
                 (IndexMap::new(), IndexSet::new()),
                 |(mut reg_sets, mut active_sets), op| {
-                    let reg = match &op.opcode {
+                    let regs: Box<dyn Iterator<Item = &AllocatedRegister>> = match &op.opcode {
                         Either::Right(ControlFlowOp::PushAll(label)) => {
                             active_sets.insert(*label);
-                            None
+                            Box::new(std::iter::empty())
                         }
                         Either::Right(ControlFlowOp::PopAll(label)) => {
                             active_sets.swap_remove(label);
-                            None
+                            Box::new(std::iter::empty())
                         }
 
-                        Either::Left(alloc_op) => alloc_op.def_registers().into_iter().next(),
-                        Either::Right(ctrl_op) => ctrl_op.def_registers().into_iter().next(),
+                        Either::Left(alloc_op) => Box::new(alloc_op.def_registers().into_iter()),
+                        Either::Right(ctrl_op) => Box::new(ctrl_op.def_registers().into_iter()),
                     };
 
-                    if let Some(reg) = reg {
+                    for reg in regs {
                         for active_label in active_sets.clone() {
                             reg_sets
                                 .entry(active_label)
