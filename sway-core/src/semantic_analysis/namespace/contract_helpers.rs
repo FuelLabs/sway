@@ -105,9 +105,10 @@ fn bind_contract_id_in_root_module(
     {
         TyAstNodeContent::Declaration(_) => Ok(namespace.root()),
         _ => Err(
-            handler.emit_err(CompileError::ContractIdConstantNotAConstDecl {
-                span: const_item_span,
-            }),
+            handler.emit_err(CompileError::Internal(
+                "Contract ID declaration did not typecheck to a declaration, which should be impossible",
+                const_item_span,
+            )),
         ),
     }
 }

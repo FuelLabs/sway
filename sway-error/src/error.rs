@@ -917,10 +917,6 @@ pub enum CompileError {
     ContinueOutsideLoop { span: Span },
     /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
     /// https://github.com/FuelLabs/sway/issues/3077
-    #[error("Contract ID is not a constant item.")]
-    ContractIdConstantNotAConstDecl { span: Span },
-    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
-    /// https://github.com/FuelLabs/sway/issues/3077
     #[error("Contract ID value is not a literal.")]
     ContractIdValueNotALiteral { span: Span },
 
@@ -1222,7 +1218,6 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            ContractIdConstantNotAConstDecl { span } => span.clone(),
             ContractIdValueNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
