@@ -70,7 +70,7 @@ impl Ed25519 {
     ///
     /// # Additional Information
     ///
-    /// NOTE: This uses a 32-byte public key. Only the upper 32 bytes of `PublicKey` are used.
+    /// NOTE: This uses a 32-byte public key.
     ///
     /// # Arguments
     ///
@@ -87,14 +87,13 @@ impl Ed25519 {
     /// use std::{crypto::{Ed25519, Signature, Message, PublicKey}, constants::ZERO_B256};
     ///
     /// fn foo() {
-    ///     let pub_key = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
-    ///     let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
-    ///     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
-    ///     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    ///     let signature: Ed25519Signature = Ed25519Signature::from((hi, lo));
-    ///     let message: Message = Message::from(msg_hash);
-    ///     // Only the upper 32 bytes are valid for 32-byte curve25519 public keys
-    ///     let public_key: PublicKey = PublicKey::from((pub_key, ZERO_B256));
+    ///     let signature: Ed25519Signature = Ed25519Signature::from((
+    ///         0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545, 
+    ///         0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00
+    ///     ));
+    ///     let message: Message = Message::from(0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323);
+    ///     // Only 32 bytes are valid for 32-byte curve25519 public keys
+    ///     let public_key: PublicKey = PublicKey::from(0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10);
     ///
     ///     // A verified public key with signature
     ///     let verified = signature.verify(pub_key, msg_hash);

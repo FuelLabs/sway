@@ -89,14 +89,15 @@ impl Secp256r1 {
     /// use std::crypto::{Message, PublicKey, Secp256r1};
     ///
     /// fn foo() {
-    ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-    ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-    ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-    ///     let pub_hi = 0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E;
-    ///     let pub_lo = 0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75;
-    ///     let signature: Secp256r1 = Secp256r1::from((hi, lo));
-    ///     let message: Message = Message::from(msg_hash);
-    ///     let public_key: PublicKey = PublicKey::from((pub_hi, pub_lo));
+    ///     let signature: Secp256r1 = Secp256r1::from((
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
+    ///     ));
+    ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
+    ///     let public_key: PublicKey = PublicKey::from((
+    ///         0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E, 
+    ///         0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75
+    ///      ));
     ///
     ///     // A recovered public key pair.
     ///     let result_public_key = signature.recover(message);
@@ -145,12 +146,12 @@ impl Secp256r1 {
     /// use std::crypto::{Message, Secp256r1};
     ///
     /// fn foo() {
-    ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-    ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-    ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
     ///     let address = Address::from(0x7AAE2D980BE4C3275C72CE5B527FA23FFB97B766966559DD062E2B78FD9D3766);
-    ///     let signature: Secp256r1 = Secp256r1::from((hi, lo));
-    ///     let message: Message = Message::from(msg_hash);
+    ///     let signature: Secp256r1 = Secp256r1::from((
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
+    ///     ));
+    ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
     ///
     ///     // A recovered Fuel address.
     ///     let result_address = signature.address(message);
@@ -193,12 +194,13 @@ impl Secp256r1 {
     /// use std::{vm::evm::evm_address::EvmAddress, crypto::{Secp256r1, Message}};
     ///
     /// fn foo() {
-    ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-    ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-    ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
     ///     let evm_address = EvmAddress::from(0x7AAE2D980BE4C3275C72CE5B527FA23FFB97B766966559DD062E2B78FD9D3766);
-    ///     let signature: Secp256r1 = Secp256r1::from((hi, lo));
-    ///     let message: Message = Message::from(msg_hash);
+    ///     let signature: Secp256r1 = Secp256r1::from((
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
+    ///     ));
+    ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
+    ///
     ///     // A recovered evm address.
     ///     let result_address = signature.evm_address(message).unwrap();
     ///     assert(result_address.is_ok());
@@ -236,14 +238,15 @@ impl Secp256r1 {
     /// use std::crypto::{Message, PublicKey, Secp256r1};
     ///
     /// fn foo() {
-    ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-    ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-    ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-    ///     let pub_hi = 0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E;
-    ///     let pub_lo = 0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75;
-    ///     let signature: Secp256r1 = Secp256r1::from((hi, lo));
-    ///     let message: Message = Message::from(msg_hash);
-    ///     let public_key: PublicKey = PublicKey::from((pub_hi, pub_lo));
+    ///     let signature: Secp256r1 = Secp256r1::from((
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
+    ///     ));
+    ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
+    ///     let public_key: PublicKey = PublicKey::from((
+    ///         0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E, 
+    ///         0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75
+    ///     ));
     ///
     ///     // A valid result
     ///     let result = signature.verify(public_key, message);
@@ -284,11 +287,11 @@ impl Secp256r1 {
     /// use std::crypto::{Message, Secp256r1};
     ///
     /// fn foo() {
-    ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-    ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-    ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-    ///     let signature: Secp256r1 = Secp256r1::from((hi, lo));
-    ///     let message: Message = Message::from(msg_hash);
+    ///     let signature: Secp256r1 = Secp256r1::from((
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
+    ///     ));
+    ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
     ///     let address = Address::from(0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E);
     ///
     ///     // A valid result
@@ -326,11 +329,11 @@ impl Secp256r1 {
     /// use std::{crypto::{Message, Secp256r1}, vm::evm::evm_address::EvmAddress};
     ///
     /// fn foo() {
-    ///     let hi = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-    ///     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-    ///     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-    ///     let signature: Secp256r1 = Secp256r1::from((hi, lo));
-    ///     let message: Message = Message::from(msg_hash);
+    ///     let signature: Secp256r1 = Secp256r1::from((
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
+    ///     ));
+    ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
     ///     let evm_address = EvmAddress::from(0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E);
     ///
     ///     // A valid result
