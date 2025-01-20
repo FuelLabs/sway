@@ -8,7 +8,10 @@ use std::{
         public_key::*,
         secp256k1::*,
     },
-    hash::{Hash, sha256},
+    hash::{
+        Hash,
+        sha256,
+    },
     vm::evm::evm_address::EvmAddress,
 };
 
