@@ -87,7 +87,7 @@ impl Ed25519 {
     /// use std::{crypto::{Ed25519, Signature, Message, PublicKey}, constants::ZERO_B256};
     ///
     /// fn foo() {
-    ///     let signature: Ed25519Signature = Ed25519Signature::from((
+    ///     let signature: Ed25519 = Ed25519::from((
     ///         0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545, 
     ///         0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00
     ///     ));
