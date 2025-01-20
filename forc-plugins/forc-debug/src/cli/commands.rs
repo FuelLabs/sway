@@ -4,6 +4,7 @@ use crate::{
     names::{register_index, register_name},
     ContractId, RunResult, Transaction,
 };
+use fuel_tx::Receipt;
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
 use std::collections::HashSet;
 use strsim::levenshtein;
@@ -367,6 +368,24 @@ pub async fn cmd_help(helper: &DebuggerHelper, args: &[String]) -> Result<()> {
 fn pretty_print_run_result(rr: &RunResult) {
     for receipt in rr.receipts() {
         println!("Receipt: {receipt:#?}");
+
+        if let Receipt::LogData {
+            rb,
+            data: Some(data),
+            ..
+        } = receipt
+        {
+            let decoded_log_data = forc_test::decode_log_data(
+                &rb.to_string(),
+                &data,
+                &rr.contract_abi.unwrap(),
+            )
+            .unwrap();
+            println!(
+                "Decoded log value: {}, log rb: {}",
+                decoded_log_data.value, rb
+            );
+        }
     }
     if let Some(bp) = &rr.breakpoint {
         println!(

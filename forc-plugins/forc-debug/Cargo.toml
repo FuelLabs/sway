@@ -18,6 +18,7 @@ forc-test.workspace = true
 forc-tracing.workspace = true
 fuel-core-client.workspace = true
 fuel-types = { workspace = true, features = ["serde"] }
+fuel-tx.workspace = true
 fuel-vm = { workspace = true, features = ["serde"] }
 rayon.workspace = true
 rustyline.workspace = true
