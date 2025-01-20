@@ -423,6 +423,31 @@ impl TyProgram {
             }
         }
 
+        // check trait overlap
+        let mut unified_trait_map = root
+            .namespace
+            .root_module()
+            .root_lexical_scope()
+            .items
+            .implemented_traits
+            .clone();
+        unified_trait_map.check_overlap_and_extend(handler, unified_trait_map.clone(), engines)?;
+
+        for (_, submodule) in root.submodules.iter() {
+            unified_trait_map.check_overlap_and_extend(
+                handler,
+                submodule
+                    .module
+                    .namespace
+                    .module(engines)
+                    .root_lexical_scope()
+                    .items
+                    .implemented_traits
+                    .clone(),
+                engines,
+            )?;
+        }
+
         Ok((typed_program_kind, declarations, configurables))
     }
 

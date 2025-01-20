@@ -631,6 +631,49 @@ impl TraitMap {
         }
     }
 
+    /// Given [TraitMap]s `self` and `other`, checks for overlaps between `self` and `other`.
+    /// If no overlaps are found extends `self` with `other`.
+    pub(crate) fn check_overlap_and_extend(
+        &mut self,
+        handler: &Handler,
+        other: TraitMap,
+        engines: &Engines,
+    ) -> Result<(), ErrorEmitted> {
+        let mut overlap_err = None;
+        let unify_check = UnifyCheck::coercion(engines);
+        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
+        keys.sort();
+        for key in keys {
+            for self_entry in self.trait_impls[key].iter() {
+                for other_entry in other.get_impls(engines, self_entry.key.type_id, true) {
+                    if self_entry.key.name.eq(
+                        &*other_entry.key.name,
+                        &PartialEqWithEnginesContext::new(engines),
+                    ) && self_entry.value.impl_span != other_entry.value.impl_span
+                        && unify_check.check(self_entry.key.type_id, other_entry.key.type_id)
+                    {
+                        handler.emit_err(CompileError::InternalOwned(
+                            format!("Overlapped types"),
+                            self_entry.value.impl_span.clone(),
+                        ));
+                        overlap_err = Some(handler.emit_err(CompileError::InternalOwned(
+                            format!("Overlapped types"),
+                            other_entry.value.impl_span.clone(),
+                        )));
+                    }
+                }
+            }
+        }
+
+        if let Some(overlap_err) = overlap_err {
+            return Err(overlap_err);
+        }
+
+        self.extend(other, engines);
+
+        Ok(())
+    }
+
     /// Filters the entries in `self` and return a new [TraitMap] with all of
     /// the entries from `self` that implement a trait from the declaration with that span.
     pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {

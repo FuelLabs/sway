@@ -1,0 +1,3 @@
+category = "fail"
+
+#check: $()Internal compiler error: Overlapped types
