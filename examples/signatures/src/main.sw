@@ -173,7 +173,7 @@ fn address_verification() {
         0x2555de81cd3a40382d3d64eb1c77e463eea5a76d65ec85f283e0b3d568352678,
     ));
     let signed_message = Message::from(0xa13f4ab54057ce064d3dd97ac3ff30ed704e73956896c03650fe59b1a561fe15);
-    // A verifed address
+    // A verified address
     let secp256k1_verified = secp256k1_signature.verify_address(secp256k1_address, signed_message);
     assert(secp256k1_verified.is_ok());
 

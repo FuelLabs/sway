@@ -10,7 +10,7 @@ The Sway standard library provides easy access to a selection of cryptographic h
 
 ## Cryptographic Signature Recovery and Verification
 
-Fuel supports 3 asymmetric cryptographic signature schemes; Secp256k1, Secp256r1, and Ed25519.
+Fuel supports 3 asymmetric cryptographic signature schemes; `Secp256k1`, `Secp256r1`, and `Ed25519`.
 
 ### Public Key Recovery
 
@@ -28,7 +28,7 @@ Given a `Signature` and signed `Message`, you can recover a Fuel `Address`.
 {{#include ../../../../examples/signatures/src/main.sw:address_recovery}}
 ```
 
-#### EVM Address
+#### Signed Message EVM Address Recovery
 
 Recovery of EVM addresses is also supported.
 
@@ -44,15 +44,15 @@ Given a `Signature`, `PublicKey`, and `Message`, you can verify that the message
 {{#include ../../../../examples/signatures/src/main.sw:signature_verification}}
 ```
 
-### Address Signature Verification Verification
+### Address Signature Verification
 
-Given a `Signature`, `Address`, and `Message`, you can verify that the message was signed by thr address.
+Given a `Signature`, `Address`, and `Message`, you can verify that the message was signed by the address.
 
 ```sway
 {{#include ../../../../examples/signatures/src/main.sw:address_verification}}
 ```
 
-#### EVM Address
+#### EVM Address Signature Verification
 
 Recovery of EVM addresses verification is also supported.
 
