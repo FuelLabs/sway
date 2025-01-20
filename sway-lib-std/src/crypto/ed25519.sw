@@ -88,7 +88,7 @@ impl Ed25519 {
     ///
     /// fn foo() {
     ///     let signature: Ed25519 = Ed25519::from((
-    ///         0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545, 
+    ///         0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545,
     ///         0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00
     ///     ));
     ///     let message: Message = Message::from(0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323);

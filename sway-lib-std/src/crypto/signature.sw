@@ -43,12 +43,12 @@ impl Signature {
     ///
     /// fn foo() {
     ///     let signature: Signature = Signature::Secp256r1(Secp256r1::from((
-    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c,
     ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
     ///     )));
     ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
     ///     let public_key: PublicKey = PublicKey::from((
-    ///         0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E, 
+    ///         0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E,
     ///         0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75
     ///     ));
     ///
@@ -96,7 +96,7 @@ impl Signature {
     /// fn foo() {
     ///     let address = Address::from(0x7AAE2D980BE4C3275C72CE5B527FA23FFB97B766966559DD062E2B78FD9D3766);
     ///     let signature: Signature = Signature::Secp256r1(Secp256r1::from((
-    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c,
     ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
     ///     )));
     ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
@@ -145,7 +145,7 @@ impl Signature {
     /// fn foo() {
     ///     let evm_address = EvmAddress::from(0x7AAE2D980BE4C3275C72CE5B527FA23FFB97B766966559DD062E2B78FD9D3766);
     ///     let signature: Signature = Signature::Secp256k1(Secp256k1::from((
-    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c,
     ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
     ///     )));
     ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
@@ -187,12 +187,12 @@ impl Signature {
     ///
     /// fn foo() {
     ///     let signature: Signature = Signature::Secp256r1(Secp256r1::from((
-    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c,
     ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
     ///     )));
     ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
     ///     let public_key: PublicKey = PublicKey::from((
-    ///         0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E, 
+    ///         0xD73A188181464CC84AE267E45041AEF6AB938F278E636AA1D02D3014C1BEF74E,
     ///         0xC44415635160ACFC87A84300EED97928C949A2D958FC0947C535F7539C59AE75
     ///     ));
     ///
@@ -237,7 +237,7 @@ impl Signature {
     ///
     /// fn foo() {
     ///     let signature: Signature = Signature::Secp256r1(Secp256r1::from((
-    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c,
     ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
     ///     )));
     ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
@@ -284,7 +284,7 @@ impl Signature {
     ///
     /// fn foo() {
     ///     let signature: Signature = Signature::Secp256r1(Secp256r1::from((
-    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c, 
+    ///         0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c,
     ///         0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d
     ///     )));
     ///     let message: Message = Message::from(0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323);
