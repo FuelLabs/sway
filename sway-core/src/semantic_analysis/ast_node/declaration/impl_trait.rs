@@ -365,7 +365,6 @@ impl TyImplSelfOrTrait {
                     _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
                 };
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
-
                 // Type check the type parameters.
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -698,7 +697,7 @@ fn type_check_trait_implementation(
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
     ctx.namespace_mut()
-        .module_mut(engines)
+        .current_module_mut()
         .write(engines, |m| {
             TraitMap::check_if_trait_constraints_are_satisfied_for_type(
                 handler,

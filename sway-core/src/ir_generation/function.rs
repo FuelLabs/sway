@@ -60,8 +60,8 @@ use std::collections::HashMap;
 /// So in general the methods in [FnCompiler] will return a pointer if they can and will get it, be
 /// forced, into a value if that is desired. All the temporary values are manipulated with simple
 /// loads and stores, rather than anything more complicated like `mem_copy`s.
-
-// Wrapper around Value to enforce distinction between terminating and non-terminating values.
+///
+/// Wrapper around Value to enforce distinction between terminating and non-terminating values.
 struct TerminatorValue {
     value: Value,
     is_terminator: bool,
@@ -1027,6 +1027,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
+
                 let tx_field_id_constant = compile_constant_expression_to_constant(
                     engines,
                     context,
@@ -4178,12 +4179,10 @@ impl<'eng> FnCompiler<'eng> {
                     .get_elem_ptr_with_idx(tuple_value, field_type, idx as u64)
                     .add_metadatum(context, span_md_idx)
             })
-            .ok_or_else(|| {
-                CompileError::Internal(
-                    "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
-                    span,
-                )
-            })?;
+            .ok_or(CompileError::Internal(
+                "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
+                span,
+            ))?;
         Ok(TerminatorValue::new(val, context))
     }
 

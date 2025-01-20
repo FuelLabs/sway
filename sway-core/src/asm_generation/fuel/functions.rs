@@ -65,7 +65,7 @@ use super::{compiler_constants::NUM_ARG_REGISTERS, data_section::EntryName};
 /// is used to point to the stack location of the remaining arguments.
 /// Stack space for the extra arguments is allocated in the caller when
 /// locals of the caller are allocated.
-impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
+impl FuelAsmBuilder<'_, '_> {
     pub(super) fn compile_call(
         &mut self,
         instr_val: &Value,
@@ -854,7 +854,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     c,
                                     "Cannot happen, we just checked",
                                 );
-                                dbg!();
                                 init_mut_vars.push(InitMutVars {
                                     stack_base_words,
                                     var_size: var_size.clone(),
@@ -903,7 +902,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             todo!("Enormous stack usage for locals.");
         }
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+            opcode: Either::Left(VirtualOp::CFEI(
+                VirtualRegister::Constant(ConstantRegister::StackPointer),
+                VirtualImmediate24 {
                 value: locals_size_bytes as u32 + (max_num_extra_args * 8) as u32,
             })),
             comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments"),
@@ -1054,7 +1055,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             todo!("Enormous stack usage for locals.");
         }
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
+            opcode: Either::Left(
+                VirtualOp::CFSI(VirtualRegister::Constant(ConstantRegister::StackPointer),
+                VirtualImmediate24 {
                 value: u32::try_from(locals_size_bytes + (max_num_extra_args * 8)).unwrap(),
             })),
             comment: format!("free {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for extra call arguments"),

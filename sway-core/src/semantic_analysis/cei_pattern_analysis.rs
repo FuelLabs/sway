@@ -82,7 +82,9 @@ pub(crate) fn analyze_program(engines: &Engines, prog: &ty::TyProgram) -> Vec<Co
         ty::TyProgramKind::Library { .. }
         | ty::TyProgramKind::Script { .. }
         | ty::TyProgramKind::Predicate { .. } => vec![],
-        ty::TyProgramKind::Contract { .. } => analyze_contract(engines, &prog.root.all_nodes),
+        ty::TyProgramKind::Contract { .. } => {
+            analyze_contract(engines, &prog.root_module.all_nodes)
+        }
     }
 }
 

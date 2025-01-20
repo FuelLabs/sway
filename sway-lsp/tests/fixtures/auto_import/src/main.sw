@@ -37,3 +37,11 @@ impl TryFrom<u32> for LocalStruct {
         None
     }
 }
+
+abi A {
+    fn f();
+}
+
+impl A for Contract {
+    fn f() {}
+}

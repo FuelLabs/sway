@@ -132,7 +132,7 @@ impl<'a> std::ops::Rem<&'a U256> for &'a U256 {
     }
 }
 
-impl<'a> std::ops::Not for &'a U256 {
+impl std::ops::Not for &U256 {
     type Output = U256;
 
     fn not(self) -> Self::Output {
