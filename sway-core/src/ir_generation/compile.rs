@@ -27,22 +27,24 @@ pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
         cache,
@@ -78,22 +80,24 @@ pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types,
         messages_types,
         cache,
@@ -129,7 +133,7 @@ pub(super) fn compile_contract(
     context: &mut Context,
     entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -138,15 +142,17 @@ pub(super) fn compile_contract(
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Contract);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
         cache,
@@ -218,16 +224,18 @@ pub(super) fn compile_contract(
 pub(super) fn compile_library(
     engines: &Engines,
     context: &mut Context,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Library);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_tests(
         engines,
         context,
@@ -242,7 +250,33 @@ pub(super) fn compile_library(
     Ok(module)
 }
 
-pub(crate) fn compile_constants(
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn compile_constants_for_package(
+    engines: &Engines,
+    context: &mut Context,
+    module: Module,
+    namespace: &namespace::Root,
+) -> Result<Module, Vec<CompileError>> {
+    let mut md_mgr = MetadataManager::default();
+
+    // Collect constant for all dependencies
+    for ext_package in namespace.external_packages().values() {
+        compile_constants_for_package(engines, context, module, ext_package)?;
+    }
+
+    compile_constants(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
+
+    Ok(module)
+}
+
+fn compile_constants(
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,

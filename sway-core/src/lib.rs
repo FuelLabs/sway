@@ -549,7 +549,7 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &mut parsed::ParseProgram,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -558,22 +558,44 @@ pub fn parsed_to_ast(
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.
-    build_module_dep_graph(handler, &mut parse_program.root)
-        .map_err(|error| TypeCheckFailed { root: None, error })?;
+    build_module_dep_graph(handler, &mut parse_program.root).map_err(|error| TypeCheckFailed {
+        root_module: None,
+        namespace: initial_namespace.clone(),
+        error,
+    })?;
 
-    let namespace = Namespace::init_root(initial_namespace);
+    let collection_namespace = Namespace::new(handler, engines, initial_namespace.clone(), true)
+        .map_err(|error| TypeCheckFailed {
+            root_module: None,
+            namespace: initial_namespace.clone(),
+            error,
+        })?;
     // Collect the program symbols.
-    let mut collection_ctx =
-        ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())
-            .map_err(|error| TypeCheckFailed { root: None, error })?;
 
+    let mut collection_ctx =
+        ty::TyProgram::collect(handler, engines, parse_program, collection_namespace).map_err(
+            |error| TypeCheckFailed {
+                root_module: None,
+                namespace: initial_namespace.clone(),
+                error,
+            },
+        )?;
+
+    let typecheck_namespace =
+        Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
+            TypeCheckFailed {
+                root_module: None,
+                namespace: collection_ctx.namespace().root_ref().clone(),
+                error,
+            }
+        })?;
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
         &mut collection_ctx,
-        namespace,
+        typecheck_namespace,
         package_name,
         build_config,
         experimental,
@@ -586,7 +608,8 @@ pub fn parsed_to_ast(
 
     check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
         TypeCheckFailed {
-            root: Some(Arc::new(typed_program.root.clone())),
+            root_module: Some(Arc::new(typed_program.root_module.clone())),
+            namespace: typed_program.namespace.root_ref().clone(),
             error,
         }
     })?;
@@ -604,7 +627,8 @@ pub fn parsed_to_ast(
         Err(error) => {
             handler.dedup();
             return Err(TypeCheckFailed {
-                root: Some(Arc::new(typed_program.root.clone())),
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.root().clone(),
                 error,
             });
         }
@@ -622,7 +646,8 @@ pub fn parsed_to_ast(
             Err(error) => {
                 handler.dedup();
                 return Err(TypeCheckFailed {
-                    root: Some(Arc::new(typed_program.root.clone())),
+                    root_module: Some(Arc::new(typed_program.root_module.clone())),
+                    namespace: typed_program.namespace.root().clone(),
                     error,
                 });
             }
@@ -652,7 +677,8 @@ pub fn parsed_to_ast(
 
         check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
             TypeCheckFailed {
-                root: Some(Arc::new(typed_program.root.clone())),
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.root_ref().clone(),
                 error,
             }
         })?;
@@ -673,16 +699,16 @@ pub fn parsed_to_ast(
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se(), experimental);
-    let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
-    if let Err(e) = ir_generation::compile::compile_constants(
+    if let Err(errs) = ir_generation::compile::compile_constants_for_package(
         engines,
         &mut ctx,
-        &mut md_mgr,
         module,
-        typed_program.root.namespace.module(engines),
+        typed_program.namespace.root_ref(),
     ) {
-        handler.emit_err(e);
+        errs.into_iter().for_each(|err| {
+            handler.emit_err(err.clone());
+        });
     }
 
     // CEI pattern analysis
@@ -692,6 +718,7 @@ pub fn parsed_to_ast(
         handler.emit_warn(warn);
     }
 
+    let mut md_mgr = MetadataManager::default();
     // Check that all storage initializers can be evaluated at compile time.
     typed_program
         .get_typed_program_with_initialized_storage_slots(
@@ -704,7 +731,8 @@ pub fn parsed_to_ast(
         .map_err(|error: ErrorEmitted| {
             handler.dedup();
             TypeCheckFailed {
-                root: Some(Arc::new(typed_program.root.clone())),
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.root_ref().clone(),
                 error,
             }
         })?;
@@ -730,7 +758,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -826,7 +854,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: &BuildConfig,
     package_name: &str,
     experimental: ExperimentalFeatures,
@@ -993,7 +1021,7 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
@@ -1093,7 +1121,7 @@ fn dead_code_analysis<'a>(
     module_dead_code_analysis(
         handler,
         engines,
-        &program.root,
+        &program.root_module,
         &tree_type,
         &mut dead_code_graph,
     )?;
@@ -1134,7 +1162,7 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
 
 fn return_path_analysis(engines: &Engines, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    module_return_path_analysis(engines, &program.root, &mut errors);
+    module_return_path_analysis(engines, &program.root_module, &mut errors);
     errors
 }
 

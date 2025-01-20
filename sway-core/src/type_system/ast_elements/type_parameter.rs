@@ -444,11 +444,10 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx.namespace().module(ctx.engines()).resolve_symbol(
-                handler,
-                ctx.engines(),
-                name,
-            )?;
+            let (sy, _) =
+                ctx.namespace()
+                    .current_module()
+                    .resolve_symbol(handler, ctx.engines(), name)?;
 
             match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -532,7 +531,7 @@ impl TypeParameter {
                             TraitMap::get_trait_constraints_are_satisfied_for_types(
                                 ctx
                             .namespace()
-                            .module(engines), handler, *type_id, trait_constraints, engines,
+                            .current_module(), handler, *type_id, trait_constraints, engines,
                             )?
                             .into_iter()
                             .filter_map(|t| {
@@ -569,7 +568,7 @@ impl TypeParameter {
                     // Check to see if the trait constraints are satisfied.
                     match TraitMap::check_if_trait_constraints_are_satisfied_for_type(
                             handler,
-                            ctx.namespace_mut().module_mut(engines),
+                            ctx.namespace_mut().current_module_mut(),
                             *type_id,
                             trait_constraints,
                             access_span,
@@ -649,6 +648,7 @@ fn handle_trait(
                         trait_name,
                         type_arguments,
                     );
+
                 interface_item_refs.extend(trait_interface_item_refs);
                 item_refs.extend(trait_item_refs);
                 impld_item_refs.extend(trait_impld_item_refs);
@@ -681,13 +681,15 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl
+                        let full_path = trait_decl
                             .call_path
-                            .to_import_path(ctx.engines(), ctx.namespace());
-                        if import_path == trait_decl.call_path {
-                            // If external library.
-                            import_path.to_string()
+                            .to_fullpath(ctx.engines(), ctx.namespace());
+                        if ctx.namespace().module_is_external(&full_path.prefixes) {
+                            full_path.to_string()
                         } else {
+                            let import_path = trait_decl
+                                .call_path
+                                .to_import_path(ctx.engines(), ctx.namespace());
                             format!("::{import_path}")
                         }
                     })

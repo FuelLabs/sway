@@ -145,25 +145,23 @@ impl AbstractInstructionSet {
                         }
                         VirtualOp::LW(dest, addr_reg, imm) => match reg_contents.get(addr_reg) {
                             Some(RegContents::BaseOffset(base_reg, offset))
-                                if get_def_version(&latest_version, &base_reg.reg)
-                                    == base_reg.ver
+                                if offset % 8 == 0
+                                    && get_def_version(&latest_version, &base_reg.reg)
+                                        == base_reg.ver
                                     && ((offset / 8) + imm.value as u64)
                                         < compiler_constants::TWELVE_BITS =>
                             {
-                                // bail if LW cannot read where this memory is
-                                if offset % 8 == 0 {
-                                    let new_imm = VirtualImmediate12::new_unchecked(
-                                        (offset / 8) + imm.value as u64,
-                                        "Immediate offset too big for LW",
-                                    );
-                                    let new_lw =
-                                        VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
-                                    // The register defined is no more useful for us. Forget anything from its past.
-                                    reg_contents.remove(dest);
-                                    record_new_def(&mut latest_version, dest);
-                                    // Replace the LW with a new one in-place.
-                                    *op = new_lw;
-                                }
+                                let new_imm = VirtualImmediate12::new_unchecked(
+                                    (offset / 8) + imm.value as u64,
+                                    "Immediate offset too big for LW",
+                                );
+                                let new_lw =
+                                    VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
+                                // The register defined is no more useful for us. Forget anything from its past.
+                                reg_contents.remove(dest);
+                                record_new_def(&mut latest_version, dest);
+                                // Replace the LW with a new one in-place.
+                                *op = new_lw;
                             }
                             _ => {
                                 reg_contents.remove(dest);
@@ -172,8 +170,9 @@ impl AbstractInstructionSet {
                         },
                         VirtualOp::SW(addr_reg, src, imm) => match reg_contents.get(addr_reg) {
                             Some(RegContents::BaseOffset(base_reg, offset))
-                                if get_def_version(&latest_version, &base_reg.reg)
-                                    == base_reg.ver
+                                if offset % 8 == 0
+                                    && get_def_version(&latest_version, &base_reg.reg)
+                                        == base_reg.ver
                                     && ((offset / 8) + imm.value as u64)
                                         < compiler_constants::TWELVE_BITS =>
                             {

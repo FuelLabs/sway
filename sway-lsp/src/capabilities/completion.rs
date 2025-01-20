@@ -46,7 +46,7 @@ fn completion_items_for_type_id(
     }
 
     for method in namespace
-        .module(engines)
+        .current_module()
         .get_methods_for_type(engines, type_id)
     {
         let method = method.expect_typed();
@@ -154,7 +154,7 @@ fn type_id_of_raw_ident(
         if parts[i].ends_with(')') {
             let method_name = parts[i].split_at(parts[i].find('(').unwrap_or(0)).0;
             curr_type_id = namespace
-                .module(engines)
+                .current_module()
                 .get_methods_for_type(engines, curr_type_id?)
                 .into_iter()
                 .find_map(|method| {
