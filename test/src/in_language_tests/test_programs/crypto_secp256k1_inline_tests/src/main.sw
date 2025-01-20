@@ -8,6 +8,7 @@ use std::{
         public_key::*,
         secp256k1::*,
     },
+    hash::{Hash, sha256},
     vm::evm::evm_address::EvmAddress,
 };
 
@@ -443,4 +444,8 @@ fn secp256k1_eq() {
 }
 
 #[test]
-fn secp256k1_hash() {}
+fn secp256k1_hash() {
+    let secp256k1 = Secp256k1::from((b256::zero(), b256::zero()));
+    let hash = sha256(secp256k1);
+    assert(hash == 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
+}

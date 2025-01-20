@@ -1,6 +1,6 @@
 library;
 
-use std::{b512::B512, bytes::Bytes, crypto::{secp256r1::*, public_key::*, message::*}, vm::evm::evm_address::EvmAddress};
+use std::{b512::B512, bytes::Bytes, crypto::{secp256r1::*, public_key::*, message::*}, hash::{Hash, sha256}, vm::evm::evm_address::EvmAddress};
 
 #[test]
 fn secp256r1_new() {
@@ -73,29 +73,28 @@ fn secp256r1_address() {
     assert(result_2.is_err());
 }
 
-// TODO: Need values
-// #[test]
-// fn secp256r1_evm_address() {
-//     let hi_1 = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
-//     let lo_1 = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-//     let msg_hash_1 = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-//     let expected_evm_address = EvmAddress::from(0x0000000000000000000000000ec44cf95ce5051ef590e6d420f8e722dd160ecb);
-//     let signature_1 = Secp256r1::from((hi_1, lo_1));
-//     let message_1 = Message::from(msg_hash_1);
+#[test]
+fn secp256r1_evm_address() {
+    let hi_1 = 0x62CDC20C0AB6AA7B91E63DA9917792473F55A6F15006BC99DD4E29420084A3CC;
+    let lo_1 = 0xF4D99AF28F9D6BD96BDAAB83BFED99212AC3C7D06810E33FBB14C4F29B635414;
+    let msg_hash_1 = 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563;
+    let expected_evm_address = EvmAddress::from(0x000000000000000000000000408eb2d97ef0beda0a33848d9e052066667cb00a);
+    let signature_1 = Secp256r1::from((hi_1, lo_1));
+    let message_1 = Message::from(msg_hash_1);
 
-//     let result_1 = signature_1.evm_address(message_1);
-//     assert(result_1.is_ok());
-//     assert(result_1.unwrap() == expected_evm_address);
+    let result_1 = signature_1.evm_address(message_1);
+    assert(result_1.is_ok());
+    assert(result_1.unwrap() == expected_evm_address);
 
-//     let hi_2 = 0xbd0c9b8792876713afa8bf1383eebf31c43437823ed761cc3600d0016de5110c;
-//     let lo_2 = 0xee45573606c96c98ba170ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-//     let msg_hash_2 = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52cad30b89df1e4a9c4323;
-//     let signature_2 = Secp256r1::from((hi_2, lo_2));
-//     let message_2 = Message::from(msg_hash_2);
+    let hi_2 = b256::zero();
+    let lo_2 = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
+    let msg_hash_2 = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
+    let signature_2 = Secp256r1::from((hi_2, lo_2));
+    let message_2 = Message::from(msg_hash_2);
 
-//     let result_2 = signature_2.evm_address(message_2);
-//     assert(result_2.is_err());
-// }
+    let result_2 = signature_2.evm_address(message_2);
+    assert(result_2.is_err());
+}
 
 #[test]
 fn secp256r1_verify() {
@@ -161,31 +160,30 @@ fn secp256r1_verify_address() {
     assert(result_2.is_err());
 }
 
-// TODO: Need values
-// #[test]
-// fn secp256r1_verify_evm_address() {
-//     let hi = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
-//     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-//     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-//     let address = EvmAddress::from(0xb4a5fabee8cc852084b71f17107e9c18d682033a58967027af0ab01edf2f9a6a);
-//     let signature = Secp256r1::from((hi, lo));
-//     let message = Message::from(msg_hash);
+#[test]
+fn secp256r1_verify_evm_address() {
+    let hi = 0x62CDC20C0AB6AA7B91E63DA9917792473F55A6F15006BC99DD4E29420084A3CC;
+    let lo = 0xF4D99AF28F9D6BD96BDAAB83BFED99212AC3C7D06810E33FBB14C4F29B635414;
+    let msg_hash = 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563;
+    let address = EvmAddress::from(0x000000000000000000000000408eb2d97ef0beda0a33848d9e052066667cb00a);
+    let signature = Secp256r1::from((hi, lo));
+    let message = Message::from(msg_hash);
 
-//     // A recovered Fuel address.
-//     let result = signature.verify_address(address, message);
-//     assert(result.is_ok());
+    // A recovered Fuel address.
+    let result = signature.verify_evm_address(address, message);
+    assert(result.is_ok());
 
-//     let hi_2 = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
-//     let lo_2 = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
-//     let msg_hash_2 = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
-//     let address_2 = EvmAddress::zero();
-//     let signature_2 = Secp256r1::from((hi_2, lo_2));
-//     let message_2 = Message::from(msg_hash_2);
+    let hi_2 = 0x62CDC20C0AB6AA7B91E63DA9917792473F55A6F15006BC99DD4E29420084A3CC;
+    let lo_2 = 0xF4D99AF28F9D6BD96BDAAB83BFED99212AC3C7D06810E33FBB14C4F29B635414;
+    let msg_hash_2 = 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563;
+    let address_2 = EvmAddress::zero();
+    let signature_2 = Secp256r1::from((hi_2, lo_2));
+    let message_2 = Message::from(msg_hash_2);
 
-//     // A recovered Fuel address.
-//     let result_2 = signature.verify_address(address_2, message_2);
-//     assert(result_2.is_err());
-// }
+    // A recovered Fuel address.
+    let result_2 = signature_2.verify_evm_address(address_2, message_2);
+    assert(result_2.is_err());
+}
 
 #[test]
 fn secp256r1_from_b512() {
@@ -410,5 +408,7 @@ fn secp256r1_eq() {
 
 #[test]
 fn secp256r1_hash() {
-    
+    let secp256r1 = Secp256r1::from((b256::zero(), b256::zero()));
+    let hash = sha256(secp256r1);
+    assert(hash == 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
 }

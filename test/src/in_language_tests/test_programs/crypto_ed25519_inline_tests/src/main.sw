@@ -287,5 +287,7 @@ fn ed25519_eq() {
 
 #[test]
 fn ed25519_hash() {
-
+    let ed25519 = Ed25519::from((b256::zero(), b256::zero()));
+    let hash = sha256(ed25519);
+    assert(hash == 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
 }

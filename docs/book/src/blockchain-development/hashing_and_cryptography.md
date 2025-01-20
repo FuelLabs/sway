@@ -8,9 +8,9 @@ The Sway standard library provides easy access to a selection of cryptographic h
 {{#include ../../../../examples/hashing/src/main.sw}}
 ```
 
-## Cryptographic Signature Recovery and Verfication
+## Cryptographic Signature Recovery and Verification
 
-Fuel supports 3 asymmetric cryptographic signature schemes; Secp256r1, Secp256k1, and Ed25519.
+Fuel supports 3 asymmetric cryptographic signature schemes; Secp256k1, Secp256r1, and Ed25519.
 
 ### Public Key Recovery
 

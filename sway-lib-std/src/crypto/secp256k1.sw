@@ -444,32 +444,6 @@ impl core::ops::Eq for Secp256k1 {
 
 impl Hash for Secp256k1 {
     fn hash(self, ref mut state: Hasher) {
-        let ptr = alloc_bytes(64); // eight word capacity
-        let (word_1, word_2, word_3, word_4, word_5, word_6, word_7, word_8) = asm(r1: self) {
-            r1: (u64, u64, u64, u64, u64, u64, u64, u64)
-        };
-
-        asm(
-            ptr: ptr,
-            val_1: word_1,
-            val_2: word_2,
-            val_3: word_3,
-            val_4: word_4,
-            val_5: word_5,
-            val_6: word_6,
-            val_7: word_7,
-            val_8: word_8,
-        ) {
-            sw ptr val_1 i0;
-            sw ptr val_2 i1;
-            sw ptr val_3 i2;
-            sw ptr val_4 i3;
-            sw ptr val_5 i4;
-            sw ptr val_6 i5;
-            sw ptr val_7 i6;
-            sw ptr val_8 i7;
-        };
-
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 64)));
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64)));
     }
 }
