@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-64A1AF0004AA7B4A"
+
+[[package]]
+name = "import_star_submodules"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-64A1AF0004AA7B4A"
+dependencies = ["core"]

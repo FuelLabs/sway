@@ -181,7 +181,7 @@ impl Root {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src, dst)?;
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?.clone();
 
         let mut decls_and_item_imports = vec![];
 
@@ -258,6 +258,7 @@ impl Root {
         }
 
         let implemented_traits = src_mod.root_items().implemented_traits.clone();
+
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
         dst_mod
             .current_items_mut()
@@ -276,6 +277,22 @@ impl Root {
                     visibility,
                 )
             });
+
+        // Ignore invisible submodules
+        let sub_mods = src_mod
+            .submodules()
+            .iter()
+            .filter_map(|(name, sub_mod)| {
+                let prefix = [src, &[sub_mod.name().clone()]].concat();
+                self.collect_module_privacy_errors(handler, engines, &prefix, dst)
+                    .ok()
+                    .filter(|e| e.is_empty())
+                    .map(|_| (name.clone(), sub_mod.clone()))
+            })
+            .collect::<std::collections::HashMap<_, _>>();
+
+        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
+        dst_mod.submodules_mut().extend(sub_mods);
 
         Ok(())
     }
@@ -378,74 +395,85 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src, dst)?;
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?.clone();
 
-        let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
+        match src_mod.submodules.get(item.as_str()) {
+            Some(sub_mod) => {
+                let prefix = &[src, &[item.clone()]].concat();
+                self.check_module_privacy(handler, engines, prefix, dst)?;
 
-        let mut impls_to_insert = TraitMap::default();
-        if decl.is_typed() {
-            // We only handle trait imports when handling typed declarations,
-            // that is, when performing type-checking, and not when collecting.
-            // Update this once the type system is updated to refer to parsed
-            // declarations.
-            //  if this is an enum or struct or function, import its implementations
-            if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
-                impls_to_insert.extend(
-                    src_mod
-                        .root_items()
-                        .implemented_traits
-                        .filter_by_type_item_import(
-                            type_id,
-                            engines,
-                            super::CodeBlockFirstPass::No,
-                        ),
-                    engines,
-                );
-            }
-            // if this is a trait, import its implementations
-            let decl_span = decl.span(engines);
-            if decl.is_trait() {
-                // TODO: we only import local impls from the source namespace
-                // this is okay for now but we'll need to device some mechanism to collect all available trait impls
-                impls_to_insert.extend(
-                    src_mod
-                        .root_items()
-                        .implemented_traits
-                        .filter_by_trait_decl_span(decl_span),
-                    engines,
-                );
-            }
-        }
-
-        // no matter what, import it this way though.
-        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-        let check_name_clash = |name| {
-            if dst_mod.current_items().use_item_synonyms.contains_key(name) {
-                handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
-            }
-        };
-        match alias {
-            Some(alias) => {
-                check_name_clash(&alias);
-                dst_mod
-                    .current_items_mut()
-                    .use_item_synonyms
-                    .insert(alias.clone(), (Some(item.clone()), path, decl, visibility))
+                let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
+                dst_mod.insert_submodule(item.to_string(), sub_mod.clone());
             }
             None => {
-                check_name_clash(item);
+                self.check_module_privacy(handler, engines, src, dst)?;
+                let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
+
+                let mut impls_to_insert = TraitMap::default();
+                if decl.is_typed() {
+                    // We only handle trait imports when handling typed declarations,
+                    // that is, when performing type-checking, and not when collecting.
+                    // Update this once the type system is updated to refer to parsed
+                    // declarations.
+                    //  if this is an enum or struct or function, import its implementations
+                    if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
+                        impls_to_insert.extend(
+                            src_mod
+                                .root_items()
+                                .implemented_traits
+                                .filter_by_type_item_import(
+                                    type_id,
+                                    engines,
+                                    super::CodeBlockFirstPass::No,
+                                ),
+                            engines,
+                        );
+                    }
+                    // if this is a trait, import its implementations
+                    let decl_span = decl.span(engines);
+                    if decl.is_trait() {
+                        // TODO: we only import local impls from the source namespace
+                        // this is okay for now but we'll need to device some mechanism to collect all available trait impls
+                        impls_to_insert.extend(
+                            src_mod
+                                .root_items()
+                                .implemented_traits
+                                .filter_by_trait_decl_span(decl_span),
+                            engines,
+                        );
+                    }
+                }
+
+                // no matter what, import it this way though.
+                let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
+                let check_name_clash = |name| {
+                    if dst_mod.current_items().use_item_synonyms.contains_key(name) {
+                        handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
+                    }
+                };
+                match alias {
+                    Some(alias) => {
+                        check_name_clash(&alias);
+                        dst_mod
+                            .current_items_mut()
+                            .use_item_synonyms
+                            .insert(alias.clone(), (Some(item.clone()), path, decl, visibility))
+                    }
+                    None => {
+                        check_name_clash(item);
+                        dst_mod
+                            .current_items_mut()
+                            .use_item_synonyms
+                            .insert(item.clone(), (None, path, decl, visibility))
+                    }
+                };
+
                 dst_mod
                     .current_items_mut()
-                    .use_item_synonyms
-                    .insert(item.clone(), (None, path, decl, visibility))
+                    .implemented_traits
+                    .extend(impls_to_insert, engines);
             }
-        };
-
-        dst_mod
-            .current_items_mut()
-            .implemented_traits
-            .extend(impls_to_insert, engines);
+        }
 
         Ok(())
     }
@@ -715,6 +743,21 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
+        self.collect_module_privacy_errors(handler, engines, src, dst)?
+            .iter()
+            .for_each(|e| {
+                handler.emit_err(e.to_owned());
+            });
+        Ok(())
+    }
+
+    fn collect_module_privacy_errors(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        dst: &ModulePath,
+    ) -> Result<Vec<CompileError>, ErrorEmitted> {
         // Calculate the number of src prefixes whose privacy is ignored.
         let mut ignored_prefixes = 0;
 
@@ -731,18 +774,19 @@ impl Root {
         }
 
         // Check visibility of remaining submodules in the source path
+        let mut errors = vec![];
         for prefix in iter_prefixes(src).skip(ignored_prefixes) {
             let module = self.module.lookup_submodule(handler, engines, prefix)?;
             if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
-                handler.emit_err(CompileError::ImportPrivateModule {
+                errors.push(CompileError::ImportPrivateModule {
                     span: prefix_last.span(),
                     name: prefix_last,
                 });
             }
         }
 
-        Ok(())
+        Ok(errors)
     }
 }
 
