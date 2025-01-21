@@ -283,7 +283,7 @@ impl ConfigFetcher {
     }
 }
 
-/// Local configuration is validated based on its existance. Meaning that if
+/// Local configuration is validated based on its existence. Meaning that if
 /// the configuration exists in user's local it is validated. If it is missing
 /// the configuration files are fetched from remote.
 async fn validate_local_chainconfig(fetcher: &ConfigFetcher) -> anyhow::Result<()> {
