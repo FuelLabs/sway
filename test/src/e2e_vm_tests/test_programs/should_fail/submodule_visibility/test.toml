@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: $()error
+# check: $()Module "lib" is private.
+
+# check: $()Aborting due to 1 error.
