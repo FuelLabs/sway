@@ -777,40 +777,43 @@ impl Bytes {
         let splice_len = end - start;
         let replace_len = replace_with.len();
 
+        // Build the Bytes to return
         let mut spliced = Bytes::with_capacity(splice_len);
         if splice_len > 0 {
-            let start_ptr = self.buf.ptr().add_uint_offset(start);
-            start_ptr.copy_bytes_to(spliced.buf.ptr(), splice_len);
+            let old_ptr = self.buf.ptr().add_uint_offset(start);
+            old_ptr.copy_bytes_to(spliced.buf.ptr(), splice_len);
             spliced.len = splice_len;
         }
 
+        // New self
         let new_len = self.len - splice_len + replace_len;
-        if new_len > self.buf.capacity() {
-            let new_ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), new_len);
-            self.buf = RawBytes {
-                ptr: new_ptr,
-                cap: new_len,
-            };
+        let mut new_buf = Bytes::with_capacity(new_len);
+
+        // Move head
+        if start > 0 {
+            let old_ptr = self.buf.ptr();
+            old_ptr.copy_bytes_to(new_buf.buf.ptr(), start);
         }
 
-        let tail_len = self.len - end;
-        if splice_len != replace_with.len() && tail_len > 0 {
-            let src = self.buf.ptr().add_uint_offset(end);
-            let dst = self.buf.ptr().add_uint_offset(start + replace_with.len());
-            // Use temporary buffer to safely handle overlapping memory
-            let mut temp = Bytes::with_capacity(tail_len);
-            src.copy_bytes_to(temp.buf.ptr(), tail_len);
-            temp.buf.ptr().copy_bytes_to(dst, tail_len);
-        }
-
-        if replace_with.len() > 0 {
+        // Move middle
+        if replace_len > 0 {
             replace_with
                 .buf
                 .ptr()
-                .copy_bytes_to(self.buf.ptr().add_uint_offset(start), replace_with.len());
+                .copy_bytes_to(new_buf.buf.ptr().add_uint_offset(start), replace_len);
         }
 
+        // Move tail
+        let tail_len = self.len - end;
+        if tail_len > 0 {
+            let old_tail = self.buf.ptr().add_uint_offset(end);
+            let new_tail = new_buf.buf.ptr().add_uint_offset(start + replace_len);
+            old_tail.copy_bytes_to(new_tail, tail_len);
+        }
+
+        self.buf = new_buf.buf;
         self.len = new_len;
+
         spliced
     }
 }
