@@ -178,7 +178,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d9b665789884a7e8fb06c84b295e923b03ca51edbb7d08f91a6a50322ecbfe6"
 dependencies = [
  "anstyle",
- "unicode-width 0.1.14",
+ "unicode-width 0.1.13",
 ]
 
 [[package]]
@@ -1472,7 +1472,7 @@ dependencies = [
  "encode_unicode 0.3.6",
  "lazy_static",
  "libc",
- "unicode-width 0.1.14",
+ "unicode-width 0.1.13",
  "windows-sys 0.52.0",
 ]
 
@@ -2898,6 +2898,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-migrate"
+version = "0.66.5"
+dependencies = [
+ "anyhow",
+ "clap",
+ "forc-pkg",
+ "forc-tracing 0.66.5",
+ "forc-util",
+ "itertools 0.13.0",
+ "num-bigint",
+ "sha2 0.10.8",
+ "sway-ast",
+ "sway-core",
+ "sway-error",
+ "sway-features",
+ "sway-types",
+ "swayfmt",
+]
+
+[[package]]
 name = "forc-node"
 version = "0.66.5"
 dependencies = [
@@ -2918,25 +2938,6 @@ dependencies = [
  "termion 4.0.3",
  "tokio",
  "wiremock",
-
-[[package]]
-name = "forc-migrate"
-version = "0.66.5"
-dependencies = [
- "anyhow",
- "clap",
- "forc-pkg",
- "forc-tracing 0.66.5",
- "forc-util",
- "itertools 0.13.0",
- "num-bigint",
- "sha2 0.10.8",
- "sway-ast",
- "sway-core",
- "sway-error",
- "sway-features",
- "sway-types",
- "swayfmt",
 ]
 
 [[package]]
@@ -5628,7 +5629,7 @@ version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2ad9b889f1b12e0b9ee24db044b5129150d5eada288edc800f789928dc8c0e3"
 dependencies = [
- "unicode-width 0.1.14",
+ "unicode-width 0.1.13",
 ]
 
 [[package]]
@@ -6000,7 +6001,7 @@ dependencies = [
  "is-terminal",
  "lazy_static",
  "term",
- "unicode-width 0.1.14",
+ "unicode-width 0.1.13",
 ]
 
 [[package]]
@@ -8128,7 +8129,7 @@ checksum = "210f90191b719267bc8b6307659faf54a77400d06b8033ece26692696fc002be"
 dependencies = [
  "lazy_static",
  "regex",
- "unicode-width 0.1.14",
+ "unicode-width 0.1.13",
 ]
 
 [[package]]
@@ -8237,7 +8238,7 @@ checksum = "23d434d3f8967a09480fb04132ebe0a3e088c173e6d0ee7897abbdf4eab0f8b9"
 dependencies = [
  "smawk",
  "unicode-linebreak",
- "unicode-width 0.1.14",
+ "unicode-width 0.1.13",
 ]
 
 [[package]]
@@ -8959,7 +8960,7 @@ checksum = "84cd863bf0db7e392ba3bd04994be3473491b31e66340672af5d11943c6274de"
 dependencies = [
  "itoa",
  "log",
- "unicode-width 0.1.14",
+ "unicode-width 0.1.13",
  "vte 0.11.1",
 ]
 
