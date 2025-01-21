@@ -10,4 +10,7 @@ use other::lib::S;
 
 pub fn foo() {
     let my_struct = S { val: 0 };
+
+    // lib is private, and not a direct submodule of the current module, so this should fail
+    let my_other_struct = lib::T { val: 1 };
 }
