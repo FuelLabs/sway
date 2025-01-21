@@ -32,18 +32,31 @@ impl Format for Literal {
                 // and use the actual spans to obtain the strings.
 
                 if lit_int.span.is_empty() {
-                    write!(formatted_code, "{}", lit_int.parsed)?;
+                    // Format `u256` and `b256` as hex literals.
+                    if lit_int.is_generated_b256
+                        || matches!(&lit_int.ty_opt, Some((LitIntType::U256, _)))
+                    {
+                        write!(formatted_code, "0x{:064x}", lit_int.parsed)?;
+                    } else {
+                        write!(formatted_code, "{}", lit_int.parsed)?;
+                    }
                     if let Some((int_type, _)) = &lit_int.ty_opt {
                         let int_type = match int_type {
-                            LitIntType::U8 => "u8",
-                            LitIntType::U16 => "u16",
-                            LitIntType::U32 => "u32",
-                            LitIntType::U64 => "u64",
-                            LitIntType::U256 => "u256",
-                            LitIntType::I8 => "i8",
-                            LitIntType::I16 => "i16",
-                            LitIntType::I32 => "i32",
-                            LitIntType::I64 => "i64",
+                            LitIntType::U8 => "_u8",
+                            LitIntType::U16 => "_u16",
+                            LitIntType::U32 => "_u32",
+                            LitIntType::U64 => "_u64",
+                            LitIntType::U256 => {
+                                if lit_int.is_generated_b256 {
+                                    ""
+                                } else {
+                                    "_u256"
+                                }
+                            }
+                            LitIntType::I8 => "_i8",
+                            LitIntType::I16 => "_i16",
+                            LitIntType::I32 => "_i32",
+                            LitIntType::I64 => "_i64",
                         };
                         write!(formatted_code, "{}", int_type)?;
                     }

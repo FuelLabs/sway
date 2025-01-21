@@ -10,6 +10,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     Engines, TypeArgument, TypeInfo, TypeParameter,
 };
+use std::collections::BTreeMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -340,7 +341,7 @@ where
         });
 
         // Uncomment this to understand why an entry function was not generated
-        //println!("{:#?}", handler);
+        // println!("{}, {:#?}", r.is_ok(), handler);
 
         let decl = r.map_err(|_| handler.clone())?;
 
@@ -396,7 +397,7 @@ where
         });
 
         // Uncomment this to understand why auto impl failed for a type.
-        //println!("{:#?}", handler);
+        // println!("{:#?}", handler);
 
         let decl = r.map_err(|_| handler.clone())?;
 
@@ -439,7 +440,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.root().module.name().as_str() == "core" {
+        if self.ctx.namespace.current_package_name().as_str() == "core" {
             return Some((None, None));
         }
 
@@ -474,7 +475,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.root().module.name().as_str() == "core" {
+        if self.ctx.namespace.current_package_name().as_str() == "core" {
             return Some((None, None));
         }
 
@@ -540,8 +541,21 @@ where
         let mut reads = false;
         let mut writes = false;
 
+        // used to check for name collisions
+        let mut contract_methods: BTreeMap<String, Vec<Span>> = <_>::default();
+
+        // generate code
         for r in contract_fns {
             let decl = engines.de().get(r);
+
+            let name = decl.name.as_str();
+            if !contract_methods.contains_key(name) {
+                contract_methods.insert(name.to_string(), vec![]);
+            }
+            contract_methods
+                .get_mut(name)
+                .unwrap()
+                .push(decl.name.span());
 
             match decl.purity {
                 Purity::Pure => {}
@@ -614,6 +628,21 @@ where
 
             code.push_str("\n}\n");
         }
+
+        // check contract methods are unique
+        // we need to allow manual_try_fold to avoid short-circuit and show
+        // all errors.
+        #[allow(clippy::manual_try_fold)]
+        contract_methods
+            .into_iter()
+            .fold(Ok(()), |error, (_, spans)| {
+                if spans.len() > 1 {
+                    Err(handler
+                        .emit_err(CompileError::MultipleContractsMethodsWithTheSameName { spans }))
+                } else {
+                    error
+                }
+            })?;
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);

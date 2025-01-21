@@ -17,6 +17,18 @@ pub struct LitInt {
     pub span: Span,
     pub parsed: BigUint,
     pub ty_opt: Option<(LitIntType, Span)>,
+    /// True if this [LitInt] represents a `b256` hex literal
+    /// in a manually generated lexed tree.
+    ///
+    /// `b256` hex literals are not explicitly modeled in the
+    /// [Literal]. During parsing, they are parsed as [LitInt]
+    /// with [LitInt::ty_opt] set to `None`.
+    ///
+    /// To properly render `b256` manually created hex literals,
+    /// that are not backed by a [Span] in the source code,
+    /// we need this additional information, to distinguish
+    /// them from `u256` hex literals.
+    pub is_generated_b256: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]

@@ -1,106 +1,165 @@
 use crate::{
+    cli::state::{DebuggerHelper, State},
     error::{ArgumentError, Error, Result},
     names::{register_index, register_name},
-    ContractId, FuelClient, RunResult, Transaction,
+    ContractId, RunResult, Transaction,
 };
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
-use shellfish::{handler::DefaultAsyncHandler, input_handler::IO, Command as ShCommand, Shell};
+use std::collections::HashSet;
+use strsim::levenshtein;
 
-pub struct State {
-    client: FuelClient,
-    session_id: String,
+#[derive(Debug, Clone)]
+pub struct Command {
+    pub name: &'static str,
+    pub aliases: &'static [&'static str],
+    pub help: &'static str,
 }
 
-/// Start the CLI debug interface
-pub async fn start_cli(api_url: &str) -> Result<()> {
-    let mut shell = Shell::new_async(
-        State {
-            client: FuelClient::new(api_url).map_err(|e| Error::FuelClientError(e.to_string()))?,
-            session_id: String::new(), // Placeholder
-        },
-        ">> ",
-    );
-
-    register_commands(&mut shell);
-
-    let session_id = shell
-        .state
-        .client
-        .start_session()
-        .await
-        .map_err(|e| Error::FuelClientError(e.to_string()))?;
-    shell.state.session_id.clone_from(&session_id);
-
-    shell
-        .run_async()
-        .await
-        .map_err(|e| Error::FuelClientError(e.to_string()))?;
-
-    shell
-        .state
-        .client
-        .end_session(&session_id)
-        .await
-        .map_err(|e| Error::FuelClientError(e.to_string()))?;
-
-    Ok(())
+pub struct Commands {
+    pub tx: Command,
+    pub reset: Command,
+    pub continue_: Command,
+    pub step: Command,
+    pub breakpoint: Command,
+    pub registers: Command,
+    pub memory: Command,
+    pub quit: Command,
+    pub help: Command,
 }
 
-fn register_commands(shell: &mut Shell<'_, State, &str, DefaultAsyncHandler, IO>) {
-    // Registers an async command by wrapping the handler function `$f`,
-    // converting its error type into `Box<dyn std::error::Error>`, and
-    // associating it with the provided command names.
-    macro_rules! command {
-        ($f:ident, $help:literal, $names:expr) => {
-            for c in $names {
-                shell.commands.insert(
-                    c,
-                    ShCommand::new_async($help.to_string(), |state, args| {
-                        Box::pin(async move {
-                            $f(state, args)
-                                .await
-                                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-                        })
-                    }),
-                );
-            }
-        };
+impl Commands {
+    pub const fn new() -> Self {
+        Self {
+            tx: Command {
+                name: "start_tx",
+                aliases: &["n", "tx", "new_tx"],
+                help: "Start a new transaction",
+            },
+            reset: Command {
+                name: "reset",
+                aliases: &[],
+                help: "Reset debugger state",
+            },
+            continue_: Command {
+                name: "continue",
+                aliases: &["c"],
+                help: "Continue execution",
+            },
+            step: Command {
+                name: "step",
+                aliases: &["s"],
+                help: "Step execution",
+            },
+            breakpoint: Command {
+                name: "breakpoint",
+                aliases: &["b"],
+                help: "Set breakpoint",
+            },
+            registers: Command {
+                name: "register",
+                aliases: &["r", "reg", "registers"],
+                help: "View registers",
+            },
+            memory: Command {
+                name: "memory",
+                aliases: &["m", "mem"],
+                help: "View memory",
+            },
+            quit: Command {
+                name: "quit",
+                aliases: &["exit"],
+                help: "Exit debugger",
+            },
+            help: Command {
+                name: "help",
+                aliases: &["h", "?"],
+                help: "Show help for commands",
+            },
+        }
     }
 
-    command!(
-        cmd_start_tx,
-        "path/to/tx.json -- start a new transaction",
-        ["n", "tx", "new_tx", "start_tx"]
-    );
-    command!(
-        cmd_reset,
-        "-- reset, removing breakpoints and other state",
-        ["reset"]
-    );
-    command!(
-        cmd_continue,
-        "-- run until next breakpoint or termination",
-        ["c", "continue"]
-    );
-    command!(
-        cmd_step,
-        "[on|off] -- turn single-stepping on or off",
-        ["s", "step"]
-    );
-    command!(
-        cmd_breakpoint,
-        "[contract_id] offset -- set a breakpoint",
-        ["b", "breakpoint"]
-    );
-    command!(
-        cmd_registers,
-        "[regname ...] -- dump registers",
-        ["r", "reg", "register", "registers"]
-    );
-    command!(cmd_memory, "[offset] limit -- dump memory", ["m", "memory"]);
+    pub fn all_commands(&self) -> Vec<&Command> {
+        vec![
+            &self.tx,
+            &self.reset,
+            &self.continue_,
+            &self.step,
+            &self.breakpoint,
+            &self.registers,
+            &self.memory,
+            &self.quit,
+            &self.help,
+        ]
+    }
+
+    pub fn is_tx_command(&self, cmd: &str) -> bool {
+        self.tx.name == cmd || self.tx.aliases.contains(&cmd)
+    }
+
+    pub fn is_register_command(&self, cmd: &str) -> bool {
+        self.registers.name == cmd || self.registers.aliases.contains(&cmd)
+    }
+
+    pub fn is_memory_command(&self, cmd: &str) -> bool {
+        self.memory.name == cmd || self.memory.aliases.contains(&cmd)
+    }
+
+    pub fn is_breakpoint_command(&self, cmd: &str) -> bool {
+        self.breakpoint.name == cmd || self.breakpoint.aliases.contains(&cmd)
+    }
+
+    pub fn is_quit_command(&self, cmd: &str) -> bool {
+        self.quit.name == cmd || self.quit.aliases.contains(&cmd)
+    }
+
+    pub fn is_reset_command(&self, cmd: &str) -> bool {
+        self.reset.name == cmd || self.reset.aliases.contains(&cmd)
+    }
+
+    pub fn is_continue_command(&self, cmd: &str) -> bool {
+        self.continue_.name == cmd || self.continue_.aliases.contains(&cmd)
+    }
+
+    pub fn is_step_command(&self, cmd: &str) -> bool {
+        self.step.name == cmd || self.step.aliases.contains(&cmd)
+    }
+
+    pub fn is_help_command(&self, cmd: &str) -> bool {
+        self.help.name == cmd || self.help.aliases.contains(&cmd)
+    }
+
+    pub fn find_command(&self, name: &str) -> Option<&Command> {
+        self.all_commands()
+            .into_iter()
+            .find(|cmd| cmd.name == name || cmd.aliases.contains(&name))
+    }
+
+    /// Returns a set of all valid command strings including aliases
+    pub fn get_all_command_strings(&self) -> HashSet<&'static str> {
+        let mut commands = HashSet::new();
+        for cmd in self.all_commands() {
+            commands.insert(cmd.name);
+            commands.extend(cmd.aliases);
+        }
+        commands
+    }
+
+    /// Suggests a similar command
+    pub fn find_closest(&self, unknown_cmd: &str) -> Option<&Command> {
+        self.all_commands()
+            .into_iter()
+            .flat_map(|cmd| {
+                std::iter::once((cmd, cmd.name))
+                    .chain(cmd.aliases.iter().map(move |&alias| (cmd, alias)))
+            })
+            .map(|(cmd, name)| (cmd, levenshtein(unknown_cmd, name)))
+            .filter(|&(_, distance)| distance <= 2)
+            .min_by_key(|&(_, distance)| distance)
+            .map(|(cmd, _)| cmd)
+    }
 }
 
-async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()> {
+pub async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
     ArgumentError::ensure_arg_count(&args, 1, 1)?; // Ensure exactly one argument
 
@@ -121,7 +180,7 @@ async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_reset(state: &mut State, mut args: Vec<String>) -> Result<()> {
+pub async fn cmd_reset(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
     ArgumentError::ensure_arg_count(&args, 0, 0)?; // Ensure no extra arguments
 
@@ -135,7 +194,7 @@ async fn cmd_reset(state: &mut State, mut args: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_continue(state: &mut State, mut args: Vec<String>) -> Result<()> {
+pub async fn cmd_continue(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
     ArgumentError::ensure_arg_count(&args, 0, 0)?; // Ensure no extra arguments
 
@@ -150,7 +209,7 @@ async fn cmd_continue(state: &mut State, mut args: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<()> {
+pub async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
     ArgumentError::ensure_arg_count(&args, 0, 1)?; // Ensure the argument count is at most 1
 
@@ -169,7 +228,7 @@ async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_breakpoint(state: &mut State, mut args: Vec<String>) -> Result<()> {
+pub async fn cmd_breakpoint(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove command name
     ArgumentError::ensure_arg_count(&args, 1, 2)?;
 
@@ -194,7 +253,7 @@ async fn cmd_breakpoint(state: &mut State, mut args: Vec<String>) -> Result<()> 
     Ok(())
 }
 
-async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<()> {
+pub async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
 
     if args.is_empty() {
@@ -239,7 +298,7 @@ async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> {
+pub async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
 
     // Parse limit argument or use the default
@@ -256,8 +315,8 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> {
         .transpose()?
         .unwrap_or(0);
 
-    // Ensure no extra arguments
-    ArgumentError::ensure_arg_count(&args, 0, 0)?;
+    // Ensure the argument count is at most 2
+    ArgumentError::ensure_arg_count(&args, 0, 2)?;
 
     // Fetch memory from the client
     let mem = state
@@ -277,13 +336,37 @@ async fn cmd_memory(state: &mut State, mut args: Vec<String>) -> Result<()> {
     Ok(())
 }
 
+// Add help command implementation:
+pub async fn cmd_help(helper: &DebuggerHelper, args: &[String]) -> Result<()> {
+    if args.len() > 1 {
+        // Help for specific command
+        if let Some(cmd) = helper.commands.find_command(&args[1]) {
+            println!("{} - {}", cmd.name, cmd.help);
+            if !cmd.aliases.is_empty() {
+                println!("Aliases: {}", cmd.aliases.join(", "));
+            }
+            return Ok(());
+        }
+        println!("Unknown command: '{}'", args[1]);
+    }
+
+    println!("Available commands:");
+    for cmd in helper.commands.all_commands() {
+        println!("  {:<12} - {}", cmd.name, cmd.help);
+        if !cmd.aliases.is_empty() {
+            println!("    aliases: {}", cmd.aliases.join(", "));
+        }
+    }
+    Ok(())
+}
+
 /// Pretty-prints the result of a run, including receipts and breakpoint information.
 ///
 /// Outputs each receipt in the `RunResult` and details about the breakpoint if present.
 /// If the execution terminated without hitting a breakpoint, it prints "Terminated".
 fn pretty_print_run_result(rr: &RunResult) {
     for receipt in rr.receipts() {
-        println!("Receipt: {receipt:?}");
+        println!("Receipt: {receipt:#?}");
     }
     if let Some(bp) = &rr.breakpoint {
         println!(

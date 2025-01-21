@@ -7,7 +7,7 @@ use crate::{
             self, ConfigurableDecl, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl,
             TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
-        CallPath, Visibility,
+        CallPath, CallPathType, Visibility,
     },
     transform::{self, AttributesMap},
     type_system::TypeInfo,
@@ -857,7 +857,7 @@ fn connect_trait_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
@@ -881,7 +881,7 @@ fn connect_abi_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,

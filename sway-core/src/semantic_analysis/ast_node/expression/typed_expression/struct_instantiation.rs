@@ -41,9 +41,7 @@ pub(crate) fn struct_instantiation(
         TypeBinding::type_check(&mut call_path_binding, &Handler::default(), ctx.by_ref());
 
     let TypeBinding {
-        inner: CallPath {
-            prefixes, suffix, ..
-        },
+        inner: CallPath { suffix, .. },
         type_arguments,
         span: inner_span,
     } = &call_path_binding;
@@ -72,10 +70,12 @@ pub(crate) fn struct_instantiation(
     };
 
     // find the module that the struct decl is in
-    let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
+    let type_info_prefix = call_path_binding
+        .inner
+        .to_fullpath(engines, ctx.namespace())
+        .prefixes;
     ctx.namespace()
-        .root_module()
-        .lookup_submodule(handler, engines, &type_info_prefix)?;
+        .require_module_from_absolute_path(handler, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
@@ -333,7 +333,7 @@ fn collect_struct_constructors(
     // Also, strictly speaking, we could also have public module functions that create structs,
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
-    namespace.program_id(engines).read(engines, |m| {
+    namespace.current_module().read(engines, |m| {
         m.get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {

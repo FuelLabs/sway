@@ -9,6 +9,7 @@ members = [
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
+    "forc-plugins/forc-migrate",
     "forc-plugins/forc-tx",
     "forc-test",
     "forc-tracing",
@@ -193,6 +194,7 @@ revm = "14.0"
 ropey = "1.5"
 rpassword = "7.2"
 rustc-hash = "1.1"
+rustyline = "15.0"
 semver = "1.0"
 serde = "1.0"
 serde_ignored = "0.1"
@@ -202,7 +204,6 @@ serde_yaml = "0.9"
 serial_test = "3.0"
 sha2 = "0.10"
 sha3 = "0.10"
-shellfish = "0.9"
 slotmap = "1.0"
 smallvec = "1.7"
 strsim = "0.11"

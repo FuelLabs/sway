@@ -40,7 +40,6 @@ use etk_asm::{asm::Assembler, ops::*};
 /// The code that is compiled but not stored on the blockchain is thus the code needed
 /// to store the correct code on the blockchain but also any logic that is contained in
 /// a (potential) constructor of the contract.
-
 pub struct EvmAsmBuilder<'ir, 'eng> {
     #[allow(dead_code)]
     program_kind: ProgramKind,
@@ -94,7 +93,7 @@ pub struct EvmAsmBuilderResult {
 
 pub type EvmAbiResult = Vec<ethabi::operation::Operation>;
 
-impl<'ir, 'eng> AsmBuilder for EvmAsmBuilder<'ir, 'eng> {
+impl AsmBuilder for EvmAsmBuilder<'_, '_> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
