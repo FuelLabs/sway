@@ -555,7 +555,6 @@ pub(crate) fn color_interference_graph(
 /// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
 /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
 /// the algorithm are thoroughly explained in register_allocator.rs.
-
 pub(crate) fn allocate_registers(
     ops: &[Op],
 ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
@@ -715,11 +714,11 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
     let mut cfs_idx_opt = None;
     for (op_idx, op) in ops.iter().enumerate() {
         match &op.opcode {
-            Either::Left(VirtualOp::CFEI(_)) => {
+            Either::Left(VirtualOp::CFEI(..)) => {
                 assert!(cfe_idx_opt.is_none(), "Found more than one stack extension");
                 cfe_idx_opt = Some(op_idx);
             }
-            Either::Left(VirtualOp::CFSI(_)) => {
+            Either::Left(VirtualOp::CFSI(..)) => {
                 assert!(cfs_idx_opt.is_none(), "Found more than one stack shrink");
                 cfs_idx_opt = Some(op_idx);
             }
@@ -729,9 +728,12 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
 
     let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
 
-    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-        value: locals_size_bytes,
-    })) = ops[cfe_idx].opcode
+    let Either::Left(VirtualOp::CFEI(
+        VirtualRegister::Constant(ConstantRegister::StackPointer),
+        VirtualImmediate24 {
+            value: locals_size_bytes,
+        },
+    )) = ops[cfe_idx].opcode
     else {
         panic!("Unexpected opcode");
     };
@@ -756,18 +758,24 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
         if op_idx == cfe_idx {
             // This is the CFE instruction, use the new stack size.
             spilled.push(Op {
-                opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                    value: new_locals_byte_size,
-                })),
+                opcode: Either::Left(VirtualOp::CFEI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    VirtualImmediate24 {
+                        value: new_locals_byte_size,
+                    },
+                )),
                 comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
         } else if matches!(cfs_idx_opt, Some(cfs_idx) if cfs_idx == op_idx) {
             // This is the CFS instruction, use the new stack size.
             spilled.push(Op {
-                opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
-                    value: new_locals_byte_size,
-                })),
+                opcode: Either::Left(VirtualOp::CFSI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    VirtualImmediate24 {
+                        value: new_locals_byte_size,
+                    },
+                )),
                 comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });

@@ -20,7 +20,7 @@ pub trait DebugWithContext {
     }
 }
 
-impl<'t, T> DebugWithContext for &'t T
+impl<T> DebugWithContext for &T
 where
     T: fmt::Debug,
 {
@@ -29,7 +29,7 @@ where
     }
 }
 
-impl<'a, 'c, 'eng, T> fmt::Debug for WithContext<'a, 'c, 'eng, T>
+impl<T> fmt::Debug for WithContext<'_, '_, '_, T>
 where
     T: DebugWithContext,
 {

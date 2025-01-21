@@ -13,6 +13,7 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
+use fuel_vm::fuel_asm::Imm12;
 use indexmap::{IndexMap, IndexSet};
 use sway_types::span::Span;
 
@@ -77,21 +78,21 @@ impl AllocatedAbstractInstructionSet {
             .fold(
                 (IndexMap::new(), IndexSet::new()),
                 |(mut reg_sets, mut active_sets), op| {
-                    let reg = match &op.opcode {
+                    let regs: Box<dyn Iterator<Item = &AllocatedRegister>> = match &op.opcode {
                         Either::Right(ControlFlowOp::PushAll(label)) => {
                             active_sets.insert(*label);
-                            None
+                            Box::new(std::iter::empty())
                         }
                         Either::Right(ControlFlowOp::PopAll(label)) => {
                             active_sets.swap_remove(label);
-                            None
+                            Box::new(std::iter::empty())
                         }
 
-                        Either::Left(alloc_op) => alloc_op.def_registers().into_iter().next(),
-                        Either::Right(ctrl_op) => ctrl_op.def_registers().into_iter().next(),
+                        Either::Left(alloc_op) => Box::new(alloc_op.def_registers().into_iter()),
+                        Either::Right(ctrl_op) => Box::new(ctrl_op.def_registers().into_iter()),
                     };
 
-                    if let Some(reg) = reg {
+                    for reg in regs {
                         for active_label in active_sets.clone() {
                             reg_sets
                                 .entry(active_label)
@@ -457,7 +458,13 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            Either::Left(AllocatedOpcode::AddrDataId(_, ref _data_id)) => 2,
+            Either::Left(AllocatedOpcode::AddrDataId(_, ref id)) => {
+                if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) {
+                    2
+                } else {
+                    1
+                }
+            }
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedOpcode::CFEI(ref op))

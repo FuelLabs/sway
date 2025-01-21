@@ -28,6 +28,9 @@ pub enum Error {
 
     #[error("Server error: {0}")]
     DapServerError(#[from] dap::errors::ServerError),
+
+    #[error("Readline error: {0}")]
+    Readline(#[from] rustyline::error::ReadlineError),
 }
 
 #[derive(Debug, thiserror::Error)]

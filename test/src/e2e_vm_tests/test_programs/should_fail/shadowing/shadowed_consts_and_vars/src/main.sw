@@ -33,7 +33,7 @@ fn main() {
     // local const shadowing a module const
     const M_Y = 5;
     {
-        const M_Y = 55; // no error message here
+        const M_Y = 55;
     }
 
     // local const shadowing a const imported in module
@@ -43,7 +43,7 @@ fn main() {
     const F_X = 7;
     const F_X = 8;
     {
-        const F_X = 81; // no error message here
+        const F_X = 81;
     }
 
     {
