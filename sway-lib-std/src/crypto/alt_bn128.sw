@@ -42,11 +42,11 @@ pub enum AltBn128Error {
 pub fn alt_bn128_mul(point: Point2D, scalar: Scalar) -> Point2D {
     require(
         valid_alt_bn128_point(point),
-        AltBn128Error::InvalidEllipticCurvePoint
+        AltBn128Error::InvalidEllipticCurvePoint,
     );
     require(
         valid_alt_bn128_scalar(scalar),
-        AltBn128Error::InvalidEllipticCurveScalar
+        AltBn128Error::InvalidEllipticCurveScalar,
     );
 
     // 1P = ([32 bytes], [32 bytes]) 
@@ -92,11 +92,11 @@ pub fn alt_bn128_mul(point: Point2D, scalar: Scalar) -> Point2D {
 pub fn alt_bn128_add(point_1: Point2D, point_2: Point2D) -> Point2D {
     require(
         valid_alt_bn128_point(point_1),
-        AltBn128Error::InvalidEllipticCurvePoint
+        AltBn128Error::InvalidEllipticCurvePoint,
     );
     require(
         valid_alt_bn128_point(point_2),
-        AltBn128Error::InvalidEllipticCurvePoint
+        AltBn128Error::InvalidEllipticCurvePoint,
     );
 
     // 1P = ([32 bytes], [32 bytes]) 
@@ -162,15 +162,15 @@ pub fn alt_bn128_pairing_check(points: Vec<(Point2D, [Point2D; 2])>) -> bool {
 
         require(
             valid_alt_bn128_point(p1),
-            AltBn128Error::InvalidEllipticCurvePoint
+            AltBn128Error::InvalidEllipticCurvePoint,
         );
         require(
             valid_alt_bn128_point(p2),
-            AltBn128Error::InvalidEllipticCurvePoint
+            AltBn128Error::InvalidEllipticCurvePoint,
         );
         require(
             valid_alt_bn128_point(p3),
-            AltBn128Error::InvalidEllipticCurvePoint
+            AltBn128Error::InvalidEllipticCurvePoint,
         );
 
         // Copy all 6 32 byte length points to the single slice
