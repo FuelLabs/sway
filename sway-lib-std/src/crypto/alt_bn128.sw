@@ -40,8 +40,14 @@ pub enum AltBn128Error {
 /// }
 /// ```
 pub fn alt_bn128_mul(point: Point2D, scalar: Scalar) -> Point2D {
-    require(valid_alt_bn128_point(point), AltBn128Error::InvalidEllipticCurvePoint);
-    require(valid_alt_bn128_scalar(scalar), AltBn128Error::InvalidEllipticCurveScalar);
+    require(
+        valid_alt_bn128_point(point),
+        AltBn128Error::InvalidEllipticCurvePoint
+    );
+    require(
+        valid_alt_bn128_scalar(scalar),
+        AltBn128Error::InvalidEllipticCurveScalar
+    );
 
     // 1P = ([32 bytes], [32 bytes]) 
     let mut result = [b256::zero(), b256::zero()];
@@ -84,17 +90,35 @@ pub fn alt_bn128_mul(point: Point2D, scalar: Scalar) -> Point2D {
 /// }
 /// ```
 pub fn alt_bn128_add(point_1: Point2D, point_2: Point2D) -> Point2D {
-    require(valid_alt_bn128_point(point_1), AltBn128Error::InvalidEllipticCurvePoint);
-    require(valid_alt_bn128_point(point_2), AltBn128Error::InvalidEllipticCurvePoint);
+    require(
+        valid_alt_bn128_point(point_1),
+        AltBn128Error::InvalidEllipticCurvePoint
+    );
+    require(
+        valid_alt_bn128_point(point_2),
+        AltBn128Error::InvalidEllipticCurvePoint
+    );
 
     // 1P = ([32 bytes], [32 bytes]) 
     let mut result = [b256::zero(), b256::zero()];
     // 1P1P = (X, Y), (X, Y) = ([32 bytes], [32 bytes]), ([32 bytes], [32 bytes]) = 4 * 32 bytes
     let mut points_ptr = alloc::<b256>(4);
-    point_1.x().ptr().copy_to::<b256>(points_ptr.add::<b256>(0), 1);
-    point_1.y().ptr().copy_to::<b256>(points_ptr.add::<b256>(1), 1);
-    point_2.x().ptr().copy_to::<b256>(points_ptr.add::<b256>(2), 1);
-    point_2.y().ptr().copy_to::<b256>(points_ptr.add::<b256>(3), 1);
+    point_1
+        .x()
+        .ptr()
+        .copy_to::<b256>(points_ptr.add::<b256>(0), 1);
+    point_1
+        .y()
+        .ptr()
+        .copy_to::<b256>(points_ptr.add::<b256>(1), 1);
+    point_2
+        .x()
+        .ptr()
+        .copy_to::<b256>(points_ptr.add::<b256>(2), 1);
+    point_2
+        .y()
+        .ptr()
+        .copy_to::<b256>(points_ptr.add::<b256>(3), 1);
 
     asm(buffer: result, curve: 0, operation: 0, points: points_ptr) {
         ecop buffer curve operation points;
@@ -136,17 +160,44 @@ pub fn alt_bn128_pairing_check(points: Vec<(Point2D, [Point2D; 2])>) -> bool {
         let p2 = points.get(iter).unwrap().1[0];
         let p3 = points.get(iter).unwrap().1[1];
 
-        require(valid_alt_bn128_point(p1), AltBn128Error::InvalidEllipticCurvePoint);
-        require(valid_alt_bn128_point(p2), AltBn128Error::InvalidEllipticCurvePoint);
-        require(valid_alt_bn128_point(p3), AltBn128Error::InvalidEllipticCurvePoint);
+        require(
+            valid_alt_bn128_point(p1),
+            AltBn128Error::InvalidEllipticCurvePoint
+        );
+        require(
+            valid_alt_bn128_point(p2),
+            AltBn128Error::InvalidEllipticCurvePoint
+        );
+        require(
+            valid_alt_bn128_point(p3),
+            AltBn128Error::InvalidEllipticCurvePoint
+        );
 
         // Copy all 6 32 byte length points to the single slice
-        p1.x().ptr().copy_to::<b256>(points_ptr.add::<b256>(iter * 6), 1);
-        p1.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 1), 1);
-        p2.x().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 2), 1);
-        p2.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 3), 1);
-        p3.x().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 4), 1);
-        p3.y().ptr().copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 5), 1);
+        p1
+            .x()
+            .ptr()
+            .copy_to::<b256>(points_ptr.add::<b256>(iter * 6), 1);
+        p1
+            .y()
+            .ptr()
+            .copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 1), 1);
+        p2
+            .x()
+            .ptr()
+            .copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 2), 1);
+        p2
+            .y()
+            .ptr()
+            .copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 3), 1);
+        p3
+            .x()
+            .ptr()
+            .copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 4), 1);
+        p3
+            .y()
+            .ptr()
+            .copy_to::<b256>(points_ptr.add::<b256>((iter * 6) + 5), 1);
 
         iter += 1;
     }
@@ -162,28 +213,6 @@ pub fn alt_bn128_pairing_check(points: Vec<(Point2D, [Point2D; 2])>) -> bool {
 fn valid_alt_bn128_point(point: Point2D) -> bool {
     // 1P = ([32 bytes], [32 bytes])
     point.x().len() == 32 && point.y().len() == 32
-
-    // y**2 = x**3 + 3
-    // p = 21888242871839275222246405745257275088696311157297823662689037894645226208583 = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
-
-    // let p = u256::from(0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47);
-    // let res = <(u256, u256) as TryFrom<Point2D>>::try_from(point);
-    // let (x, y) = match res {
-    //     Some((x, y)) => (x, y),
-    //     None => return false,
-    // };
-
-    // // Ensure x and y are within the field range
-    // if x > p || y > p {
-    //     return false;
-    // }
-
-    // // Compute y^2 mod p    
-    // let y_squared = (y * y);
-    // // // Compute x^3 + 3
-    // let x_cubed = (x * x * x);
-
-    // y_squared == (x_cubed + 3) % p 
 }
 
 // Returns true if the scalar is in valid alt bn128 format.

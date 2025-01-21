@@ -7,7 +7,7 @@ use ::option::Option::{self, *};
 // NOTE: Bytes are use to support numbers greater than 32 bytes for future curves.
 /// The Scalar type used in cryptographic operations.
 pub struct Scalar {
-    bytes: Bytes
+    bytes: Bytes,
 }
 
 impl Eq for Scalar {
@@ -19,7 +19,8 @@ impl Eq for Scalar {
 
         let mut iter = 0;
         while iter < 32 {
-            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap() {
+            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
+            {
                 return false;
             }
 
@@ -162,9 +163,7 @@ impl From<[u8; 32]> for Scalar {
             iter += 1;
         }
 
-        Self {
-            bytes: bytes,
-        }
+        Self { bytes: bytes }
     }
 }
 

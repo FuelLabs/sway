@@ -20,7 +20,11 @@ pub struct Point2D {
 impl Eq for Point2D {
     fn eq(self, other: Self) -> bool {
         // All points must be of length 32
-        if self.x.len() != 32 || self.y.len() != 32 || other.x.len() != 32 || other.y.len() != 32 {
+        if self.x.len() != 32
+            || self.y.len() != 32
+            || other.x.len() != 32
+            || other.y.len() != 32
+        {
             return false;
         }
 
@@ -218,10 +222,7 @@ impl From<[u8; 64]> for Point2D {
             iter += 1;
         }
 
-        Self {
-            x: x,
-            y: y,
-        }
+        Self { x: x, y: y }
     }
 }
 
