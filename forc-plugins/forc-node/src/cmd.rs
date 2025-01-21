@@ -30,7 +30,7 @@ pub enum Mode {
     Ignition(IgnitionCmd),
 }
 
-/// Set of shared node settings, specifcally related to connections.
+/// Set of shared node settings, specifically related to connections.
 #[derive(Parser, Debug, Clone)]
 pub struct ConnectionSettings {
     #[clap(long)]
@@ -41,8 +41,8 @@ pub struct ConnectionSettings {
     pub relayer: Option<String>,
     #[clap(long, default_value = "0.0.0.0")]
     pub ip: IpAddr,
-    #[clap(long, default_value_t = DEFAULT_PORT)]
+    #[clap(long, default_value_t = DEFAULT_PORT, value_parser = clap::value_parser!(u16).range(1..=65535))]
     pub port: u16,
-    #[clap(long, default_value_t = DEFAULT_PEERING_PORT)]
+    #[clap(long, default_value_t = DEFAULT_PEERING_PORT, value_parser = clap::value_parser!(u16).range(1..=65535))]
     pub peering_port: u16,
 }
