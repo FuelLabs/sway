@@ -4,7 +4,10 @@ use crate::{
     render::{
         item::{components::*, context::DocImplTrait, documentable_type::DocumentableType},
         link::DocLink,
-        util::format::docstring::{create_preview, DocStrings},
+        util::{
+            format::docstring::{create_preview, DocStrings},
+            strip_generic_suffix,
+        },
     },
 };
 use anyhow::Result;
@@ -96,10 +99,24 @@ impl Documentation {
                 DocumentableType::Declared(TyDecl::StructDecl(_))
                 | DocumentableType::Declared(TyDecl::EnumDecl(_))
                 | DocumentableType::Primitive(_) => {
-                    let item_name = doc.item_header.item_name.as_str().to_string();
+                    let item_name = doc.item_header.item_name.clone();
                     for (impl_trait, _) in impl_traits.iter_mut() {
                         // Check if this implementation is for this struct/enum.
-                        if item_name.as_str() == impl_trait.implementing_for.span.as_str() {
+
+                        if item_name.as_str() == "Vec"
+                            && impl_trait.implementing_for.span.as_str().contains("Vec")
+                        {
+                            eprintln!("Got impl trait for Vec");
+                            eprintln!("item_name: {:?}", item_name);
+                            eprintln!(
+                                "impl_trait.implementing_for.span: {:?}",
+                                impl_trait.implementing_for.span.as_str()
+                            );
+                        }
+
+                        if item_name.as_str()
+                            == strip_generic_suffix(impl_trait.implementing_for.span.as_str())
+                        {
                             let module_info_override = if let Some(decl_module_info) =
                                 trait_decls.get(&impl_trait.trait_name.suffix)
                             {
