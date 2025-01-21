@@ -102,18 +102,6 @@ impl Documentation {
                     let item_name = doc.item_header.item_name.clone();
                     for (impl_trait, _) in impl_traits.iter_mut() {
                         // Check if this implementation is for this struct/enum.
-
-                        if item_name.as_str() == "Vec"
-                            && impl_trait.implementing_for.span.as_str().contains("Vec")
-                        {
-                            eprintln!("Got impl trait for Vec");
-                            eprintln!("item_name: {:?}", item_name);
-                            eprintln!(
-                                "impl_trait.implementing_for.span: {:?}",
-                                impl_trait.implementing_for.span.as_str()
-                            );
-                        }
-
                         if item_name.as_str()
                             == strip_generic_suffix(impl_trait.implementing_for.span.as_str())
                         {
