@@ -5,7 +5,7 @@ library;
 // It is visible inside other, though.
 pub mod other;
 
-// ohter reexports other::lib::U, so we can access it as other::U
+// other reexports other::lib::U, so we can access it as other::U
 use other::U;
 
 // Public function
