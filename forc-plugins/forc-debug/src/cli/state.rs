@@ -1,4 +1,9 @@
-use crate::{cli::commands::Commands, names, FuelClient};
+use crate::{
+    cli::commands::Commands,
+    error::{Error, Result},
+    names, FuelClient,
+};
+use fuel_types::ContractId;
 use rustyline::{
     completion::Completer,
     highlight::{CmdKind, Highlighter},
@@ -7,11 +12,17 @@ use rustyline::{
     Context, Helper,
 };
 use serde_json::Value;
-use std::{borrow::Cow, collections::HashSet, fs};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    fs,
+};
+use sway_core::asm_generation::ProgramABI;
 
 pub struct State {
     pub client: FuelClient,
     pub session_id: String,
+    pub contract_abis: HashMap<ContractId, ProgramABI>,
 }
 
 impl State {
@@ -19,8 +30,37 @@ impl State {
         Self {
             client,
             session_id: String::new(),
+            contract_abis: HashMap::new(),
         }
     }
+
+    /// Registers the given ABI for the given contract ID.
+    pub fn register_abi(&mut self, contract_id: ContractId, abi: ProgramABI) {
+        self.contract_abis.insert(contract_id, abi);
+    }
+
+    /// Either fetches the ABI from the Sway ABI Registry or returns it from the cache if it's already known.
+    pub fn get_or_fetch_abi(&mut self, contract_id: &ContractId) -> Option<&ProgramABI> {
+        // If we already have it, return it
+        if self.contract_abis.contains_key(contract_id) {
+            return self.contract_abis.get(contract_id);
+        }
+
+        // Try to fetch from ABI Registry
+        match fetch_abi_from_api(contract_id) {
+            Ok(abi) => {
+                self.register_abi(*contract_id, abi);
+                self.contract_abis.get(contract_id)
+            }
+            Err(_) => None,
+        }
+    }
+}
+
+/// Fetches the ABI for the given contract ID from the Sway ABI Registry.
+fn fetch_abi_from_api(_contract_id: &ContractId) -> Result<ProgramABI> {
+    // TODO: Implement this once the Sway ABI Registry is available
+    Err(Error::AbiError("Not implemented yet".to_string()))
 }
 
 pub struct DebuggerHelper {
@@ -50,13 +90,36 @@ impl Completer for DebuggerHelper {
 
         // Transaction command context
         if let Some(first_word) = words.first() {
-            if self.commands.is_tx_command(first_word) && line[..word_start].ends_with(' ') {
-                // If we already have a transaction file argument, look for ABI files
-                if words.len() > 1 {
-                    return Ok((word_start, get_abi_files(word_to_complete)));
+            if self.commands.is_tx_command(first_word) {
+                match words.len() {
+                    1 => {
+                        // First argument is transaction file
+                        return Ok((word_start, get_transaction_files(word_to_complete)));
+                    }
+                    2 => {
+                        // Second argument could be either:
+                        // 1. a local ABI file (ends in .json)
+                        // 2. the --abi flag
+                        if word_to_complete.is_empty() || word_to_complete.starts_with('-') {
+                            return Ok((word_start, vec!["--abi".to_string()]));
+                        } else {
+                            return Ok((word_start, get_abi_files(word_to_complete)));
+                        }
+                    }
+                    _ => {
+                        // If previous word was --abi, we expect contract_id:abi.json
+                        if words[words.len() - 2] == "--abi" {
+                            // Here we could potentially provide completion for known contract IDs
+                            // followed by a colon and the ABI file
+                            let abi_files = get_abi_files("");
+                            let completions: Vec<String> = abi_files
+                                .into_iter()
+                                .map(|abi| format!("contract_id:{}", abi))
+                                .collect();
+                            return Ok((word_start, completions));
+                        }
+                    }
                 }
-                // Otherwise look for transaction files
-                return Ok((word_start, get_transaction_files(word_to_complete)));
             }
 
             // Register command context

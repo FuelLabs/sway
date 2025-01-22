@@ -161,38 +161,100 @@ impl Commands {
     }
 }
 
+/// Start a debugging session for a transaction with optional ABI support.
+///
+/// Handles two distinct modes of operation:
+/// 1. Local Development: `tx transaction.json abi.json`
+/// 2. Contract-specific: `tx transaction.json --abi <contract_id>:<abi_file.json>`
+///
+/// In both modes, the function will automatically attempt to fetch ABIs for any
+/// contract IDs encountered during execution if they haven't been explicitly provided.
+///
+/// # Arguments format
+/// - First argument: Path to transaction JSON file (required)
+/// - Local dev mode: Optional path to ABI JSON file
+/// - Contract mode: Multiple `--abi contract_id:abi_file.json` pairs
+///
+/// # Example usage
+/// ```text
+/// tx transaction.json                                     // No ABI
+/// tx transaction.json abi.json                           // Local development
+/// tx transaction.json --abi 0x123...:contract.json       // Single contract
+/// tx transaction.json --abi 0x123...:a.json --abi 0x456...:b.json  // Multiple
+/// ```
 pub async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()> {
-    args.remove(0); // Remove the command name
-    ArgumentError::ensure_arg_count(&args, 1, 2)?; // Allow 1 or 2 arguments
+    // Remove command name from arguments
+    args.remove(0);
+    ArgumentError::ensure_arg_count(&args, 1, 2)?;
 
-    // Get ABI path first if it exists (last argument)
-    let abi = if args.len() > 1 {
-        let abi_path = args.pop().unwrap();
-        let abi_content = std::fs::read_to_string(&abi_path).map_err(Error::IoError)?;
-        // First deserialize into the fuel ABI type
-        let fuel_abi =
-            serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(&abi_content)
-                .map_err(Error::JsonError)?;
-        // Then wrap it in our ProgramABI enum
-        Some(ProgramABI::Fuel(fuel_abi))
-    } else {
-        None
-    };
+    let mut abi_args = Vec::new();
+    let mut tx_path = None;
 
-    let path_to_tx_json = args.pop().unwrap(); // Safe due to arg count check
+    // Parse arguments iteratively, handling both --abi flags and local dev mode
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--abi" => {
+                if i + 1 < args.len() {
+                    abi_args.push(args[i + 1].clone());
+                    i += 2;
+                } else {
+                    return Err(ArgumentError::Invalid("Missing argument for --abi".into()).into());
+                }
+            }
+            arg => {
+                if tx_path.is_none() {
+                    // First non-flag argument is the transaction path
+                    tx_path = Some(arg.to_string());
+                } else if arg.ends_with(".json") {
+                    // Second .json file is treated as local development ABI
+                    let abi_content = std::fs::read_to_string(arg).map_err(Error::IoError)?;
+                    let fuel_abi =
+                        serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(
+                            &abi_content,
+                        )
+                        .map_err(Error::JsonError)?;
+                    state.register_abi(ContractId::zeroed(), ProgramABI::Fuel(fuel_abi));
+                }
+                i += 1;
+            }
+        }
+    }
 
-    // Read and parse the transaction JSON
-    let tx_json = std::fs::read(&path_to_tx_json).map_err(Error::IoError)?;
+    let tx_path =
+        tx_path.ok_or_else(|| ArgumentError::Invalid("Transaction file required".into()))?;
+
+    // Process contract-specific ABI mappings from --abi arguments
+    for abi_arg in abi_args {
+        if let Some((contract_id, abi_path)) = abi_arg.split_once(':') {
+            let contract_id = contract_id.parse::<ContractId>().map_err(|_| {
+                ArgumentError::Invalid(format!("Invalid contract ID: {}", contract_id))
+            })?;
+
+            let abi_content = std::fs::read_to_string(abi_path).map_err(Error::IoError)?;
+            let fuel_abi =
+                serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(&abi_content)
+                    .map_err(Error::JsonError)?;
+
+            state.register_abi(contract_id, ProgramABI::Fuel(fuel_abi));
+        } else {
+            return Err(
+                ArgumentError::Invalid(format!("Invalid --abi argument: {}", abi_arg)).into(),
+            );
+        }
+    }
+
+    // Start transaction execution
+    let tx_json = std::fs::read(&tx_path).map_err(Error::IoError)?;
     let tx: Transaction = serde_json::from_slice(&tx_json).map_err(Error::JsonError)?;
 
-    // Start the transaction
     let status = state
         .client
         .start_tx(&state.session_id, &tx)
         .await
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
 
-    pretty_print_run_result(&status, abi.as_ref());
+    pretty_print_run_result(&status, state);
     Ok(())
 }
 
@@ -221,7 +283,7 @@ pub async fn cmd_continue(state: &mut State, mut args: Vec<String>) -> Result<()
         .await
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
 
-    pretty_print_run_result(&status, None);
+    pretty_print_run_result(&status, state);
     Ok(())
 }
 
@@ -380,21 +442,27 @@ pub async fn cmd_help(helper: &DebuggerHelper, args: &[String]) -> Result<()> {
 ///
 /// Outputs each receipt in the `RunResult` and details about the breakpoint if present.
 /// If the execution terminated without hitting a breakpoint, it prints "Terminated".
-fn pretty_print_run_result(rr: &RunResult, abi: Option<&ProgramABI>) {
+fn pretty_print_run_result(rr: &RunResult, state: &mut State) {
     for receipt in rr.receipts() {
         println!("Receipt: {receipt:#?}");
 
-        // If the ABI is available, decode the log data
-        if let Some(program_abi) = abi {
-            if let Receipt::LogData {
-                rb,
-                data: Some(data),
-                ..
-            } = receipt
-            {
-                let decoded_log_data =
-                    forc_test::decode_log_data(&rb.to_string(), &data, program_abi).unwrap();
-                println!("Decoded log value: {}", decoded_log_data.value,);
+        if let Receipt::LogData {
+            id,
+            rb,
+            data: Some(data),
+            ..
+        } = receipt
+        {
+            // If the ABI is available, decode the log data
+            if let Some(abi) = state.get_or_fetch_abi(&id) {
+                if let Ok(decoded_log_data) =
+                    forc_test::decode_log_data(&rb.to_string(), &data, abi)
+                {
+                    println!(
+                        "Decoded log value: {}, from contract: {}",
+                        decoded_log_data.value, id
+                    );
+                }
             }
         }
     }
