@@ -8,6 +8,7 @@ use fuel_tx::Receipt;
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
 use std::collections::HashSet;
 use strsim::levenshtein;
+use sway_core::asm_generation::ProgramABI;
 
 #[derive(Debug, Clone)]
 pub struct Command {
@@ -162,7 +163,21 @@ impl Commands {
 
 pub async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()> {
     args.remove(0); // Remove the command name
-    ArgumentError::ensure_arg_count(&args, 1, 1)?; // Ensure exactly one argument
+    ArgumentError::ensure_arg_count(&args, 1, 2)?; // Allow 1 or 2 arguments
+
+    // Get ABI path first if it exists (last argument)
+    let abi = if args.len() > 1 {
+        let abi_path = args.pop().unwrap();
+        let abi_content = std::fs::read_to_string(&abi_path).map_err(Error::IoError)?;
+        // First deserialize into the fuel ABI type
+        let fuel_abi =
+            serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(&abi_content)
+                .map_err(Error::JsonError)?;
+        // Then wrap it in our ProgramABI enum
+        Some(ProgramABI::Fuel(fuel_abi))
+    } else {
+        None
+    };
 
     let path_to_tx_json = args.pop().unwrap(); // Safe due to arg count check
 
@@ -177,7 +192,7 @@ pub async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()
         .await
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
 
-    pretty_print_run_result(&status);
+    pretty_print_run_result(&status, abi.as_ref());
     Ok(())
 }
 
@@ -206,7 +221,7 @@ pub async fn cmd_continue(state: &mut State, mut args: Vec<String>) -> Result<()
         .await
         .map_err(|e| Error::FuelClientError(e.to_string()))?;
 
-    pretty_print_run_result(&status);
+    pretty_print_run_result(&status, None);
     Ok(())
 }
 
@@ -365,26 +380,22 @@ pub async fn cmd_help(helper: &DebuggerHelper, args: &[String]) -> Result<()> {
 ///
 /// Outputs each receipt in the `RunResult` and details about the breakpoint if present.
 /// If the execution terminated without hitting a breakpoint, it prints "Terminated".
-fn pretty_print_run_result(rr: &RunResult) {
+fn pretty_print_run_result(rr: &RunResult, abi: Option<&ProgramABI>) {
     for receipt in rr.receipts() {
         println!("Receipt: {receipt:#?}");
 
-        if let Receipt::LogData {
-            rb,
-            data: Some(data),
-            ..
-        } = receipt
-        {
-            let decoded_log_data = forc_test::decode_log_data(
-                &rb.to_string(),
-                &data,
-                &rr.contract_abi.unwrap(),
-            )
-            .unwrap();
-            println!(
-                "Decoded log value: {}, log rb: {}",
-                decoded_log_data.value, rb
-            );
+        // If the ABI is available, decode the log data
+        if let Some(program_abi) = abi {
+            if let Receipt::LogData {
+                rb,
+                data: Some(data),
+                ..
+            } = receipt
+            {
+                let decoded_log_data =
+                    forc_test::decode_log_data(&rb.to_string(), &data, program_abi).unwrap();
+                println!("Decoded log value: {}", decoded_log_data.value,);
+            }
         }
     }
     if let Some(bp) = &rr.breakpoint {
