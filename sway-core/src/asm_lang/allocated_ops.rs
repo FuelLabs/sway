@@ -587,51 +587,67 @@ impl AllocatedOp {
         FuelAsmData::Instructions(vec![match &self.opcode {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => op::ADD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             AND(a, b, c) => op::AND::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ANDI(a, b, c) => op::ANDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            ANDI(a, b, c) => op::ANDI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             DIV(a, b, c) => op::DIV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            DIVI(a, b, c) => op::DIVI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            DIVI(a, b, c) => op::DIVI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             EQ(a, b, c) => op::EQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             EXP(a, b, c) => op::EXP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            EXPI(a, b, c) => op::EXPI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            EXPI(a, b, c) => op::EXPI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             GT(a, b, c) => op::GT::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             LT(a, b, c) => op::LT::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MLOG(a, b, c) => op::MLOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MOD(a, b, c) => op::MOD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            MODI(a, b, c) => op::MODI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MODI(a, b, c) => op::MODI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MOVE(a, b) => op::MOVE::new(a.to_reg_id(), b.to_reg_id()).into(),
-            MOVI(a, b) => op::MOVI::new(a.to_reg_id(), b.value.into()).into(),
+            MOVI(a, b) => op::MOVI::new(a.to_reg_id(), b.value().into()).into(),
             MROO(a, b, c) => op::MROO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MUL(a, b, c) => op::MUL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            MULI(a, b, c) => op::MULI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MULI(a, b, c) => op::MULI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             NOOP => op::NOOP::new().into(),
             NOT(a, b) => op::NOT::new(a.to_reg_id(), b.to_reg_id()).into(),
             OR(a, b, c) => op::OR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ORI(a, b, c) => op::ORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            ORI(a, b, c) => op::ORI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             SLL(a, b, c) => op::SLL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SLLI(a, b, c) => op::SLLI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SLLI(a, b, c) => op::SLLI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             SRL(a, b, c) => op::SRL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SRLI(a, b, c) => op::SRLI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SRLI(a, b, c) => op::SRLI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             SUB(a, b, c) => op::SUB::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SUBI(a, b, c) => op::SUBI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SUBI(a, b, c) => op::SUBI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             XOR(a, b, c) => op::XOR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            WQOP(a, b, c, d) => {
-                op::WQOP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
-            WQML(a, b, c, d) => {
-                op::WQML::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
-            WQDV(a, b, c, d) => {
-                op::WQDV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
+            XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            WQOP(a, b, c, d) => op::WQOP::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
+            WQML(a, b, c, d) => op::WQML::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
+            WQDV(a, b, c, d) => op::WQDV::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             WQMD(a, b, c, d) => {
                 op::WQMD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
-            WQCM(a, b, c, d) => {
-                op::WQCM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
+            WQCM(a, b, c, d) => op::WQCM::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             WQAM(a, b, c, d) => {
                 op::WQAM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -641,39 +657,39 @@ impl AllocatedOp {
 
             /* Control Flow Instructions */
             JMP(a) => op::JMP::new(a.to_reg_id()).into(),
-            JI(a) => op::JI::new(a.value.into()).into(),
+            JI(a) => op::JI::new(a.value().into()).into(),
             JNE(a, b, c) => op::JNE::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            JNEI(a, b, c) => op::JNEI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.value.into()).into(),
-            JMPB(a, b) => op::JMPB::new(a.to_reg_id(), b.value.into()).into(),
-            JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value.into()).into(),
-            JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            JNEI(a, b, c) => op::JNEI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.value().into()).into(),
+            JMPB(a, b) => op::JMPB::new(a.to_reg_id(), b.value().into()).into(),
+            JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value().into()).into(),
+            JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             RET(a) => op::RET::new(a.to_reg_id()).into(),
 
             /* Memory Instructions */
             ALOC(a) => op::ALOC::new(a.to_reg_id()).into(),
-            CFEI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
-            CFEI(a) => op::CFEI::new(a.value.into()).into(),
-            CFSI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
-            CFSI(a) => op::CFSI::new(a.value.into()).into(),
+            CFEI(a) if a.value() == 0 => return FuelAsmData::Instructions(vec![]),
+            CFEI(a) => op::CFEI::new(a.value().into()).into(),
+            CFSI(a) if a.value() == 0 => return FuelAsmData::Instructions(vec![]),
+            CFSI(a) => op::CFSI::new(a.value().into()).into(),
             CFE(a) => op::CFE::new(a.to_reg_id()).into(),
             CFS(a) => op::CFS::new(a.to_reg_id()).into(),
-            LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MCL(a, b) => op::MCL::new(a.to_reg_id(), b.to_reg_id()).into(),
-            MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.value.into()).into(),
+            MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.value().into()).into(),
             MCP(a, b, c) => op::MCP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            MCPI(a, b, c) => op::MCPI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MCPI(a, b, c) => op::MCPI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MEQ(a, b, c, d) => {
                 op::MEQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
-            PSHH(mask) => op::PSHH::new(mask.value.into()).into(),
-            PSHL(mask) => op::PSHL::new(mask.value.into()).into(),
-            POPH(mask) => op::POPH::new(mask.value.into()).into(),
-            POPL(mask) => op::POPL::new(mask.value.into()).into(),
-            SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            PSHH(mask) => op::PSHH::new(mask.value().into()).into(),
+            PSHL(mask) => op::PSHL::new(mask.value().into()).into(),
+            POPH(mask) => op::POPH::new(mask.value().into()).into(),
+            POPL(mask) => op::POPL::new(mask.value().into()).into(),
+            SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
 
             /* Contract Instructions */
             BAL(a, b, c) => op::BAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
@@ -690,9 +706,13 @@ impl AllocatedOp {
             CROO(a, b) => op::CROO::new(a.to_reg_id(), b.to_reg_id()).into(),
             CSIZ(a, b) => op::CSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
             BSIZ(a, b) => op::BSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
-            LDC(a, b, c, d) => {
-                op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
+            LDC(a, b, c, d) => op::LDC::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             BLDD(a, b, c, d) => {
                 op::BLDD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -734,14 +754,14 @@ impl AllocatedOp {
 
             /* Other Instructions */
             FLAG(a) => op::FLAG::new(a.to_reg_id()).into(),
-            GM(a, b) => op::GM::new(a.to_reg_id(), b.value.into()).into(),
-            GTF(a, b, c) => op::GTF::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            GM(a, b) => op::GM::new(a.to_reg_id(), b.value().into()).into(),
+            GTF(a, b, c) => op::GTF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
 
             /* Non-VM Instructions */
             BLOB(a) => {
                 return FuelAsmData::Instructions(
                     std::iter::repeat(op::NOOP::new().into())
-                        .take(a.value as usize)
+                        .take(a.value() as usize)
                         .collect(),
                 )
             }
@@ -874,14 +894,14 @@ fn realize_load(
         vec![fuel_asm::op::LB::new(
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value.into(),
+            offset.value().into(),
         )
         .into()]
     } else {
         vec![fuel_asm::op::LW::new(
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value.into(),
+            offset.value().into(),
         )
         .into()]
     }

@@ -1284,7 +1284,7 @@ impl VirtualOp {
             JI(i) => Self::JI(
                 VirtualImmediate24::new(
                     *offset_map
-                        .get(&(i.value as u64))
+                        .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
@@ -1295,7 +1295,7 @@ impl VirtualOp {
                 r2.clone(),
                 VirtualImmediate12::new(
                     *offset_map
-                        .get(&(i.value as u64))
+                        .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
@@ -1305,7 +1305,7 @@ impl VirtualOp {
                 r1.clone(),
                 VirtualImmediate18::new(
                     *offset_map
-                        .get(&(i.value as u64))
+                        .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
