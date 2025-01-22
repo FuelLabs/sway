@@ -989,8 +989,6 @@ pub struct StorageVecIter<V> {
 }
 
 impl<V> Iterator for StorageVecIter<V> {
-
-    const MY_CONST: u64 = 5;
     type Item = StorageKey<V>;
     fn next(ref mut self) -> Option<Self::Item> {
         if self.index >= self.len {
