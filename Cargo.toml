@@ -169,7 +169,7 @@ minifier = "0.3"
 normalize-path = "0.2"
 notify = "6.1"
 notify-debouncer-mini = "0.4"
-num-bigint = "0.4"
+num-bigint = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 object = "0.36"
 once_cell = "1.18"
