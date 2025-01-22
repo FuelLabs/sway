@@ -58,6 +58,7 @@ forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.6" }
 forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.6" }
 forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.6" }
 forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.6" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.66.6" }
 
 sway-ast = { path = "sway-ast/", version = "0.66.6" }
 sway-core = { path = "sway-core/", version = "0.66.6" }
