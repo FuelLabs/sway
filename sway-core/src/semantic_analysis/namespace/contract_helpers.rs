@@ -99,16 +99,13 @@ fn bind_contract_id_in_root_module(
     let type_check_ctx =
         TypeCheckContext::from_namespace(&mut namespace, &mut symbol_ctx, engines, experimental);
     // Typecheck the const declaration. This will add the binding in the supplied namespace
-    match TyAstNode::type_check(handler, type_check_ctx, &ast_node)
-        .unwrap()
-        .content
-    {
-        TyAstNodeContent::Declaration(_) => Ok(namespace.root()),
-        _ => Err(
-            handler.emit_err(CompileError::Internal(
-                "Contract ID declaration did not typecheck to a declaration, which should be impossible",
-                const_item_span,
-            )),
-        ),
+    let type_checked = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
+    if let TyAstNodeContent::Declaration(_) = type_checked.content {
+        Ok(namespace.root())
+    } else {
+        Err(handler.emit_err(CompileError::Internal(
+            "Contract ID declaration did not typecheck to a declaration, which should be impossible",
+            const_item_span,
+        )))
     }
 }
