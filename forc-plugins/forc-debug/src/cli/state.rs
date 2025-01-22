@@ -97,26 +97,14 @@ impl Completer for DebuggerHelper {
                         return Ok((word_start, get_transaction_files(word_to_complete)));
                     }
                     2 => {
-                        // Second argument could be either:
-                        // 1. a local ABI file (ends in .json)
-                        // 2. the --abi flag
-                        if word_to_complete.is_empty() || word_to_complete.starts_with('-') {
-                            return Ok((word_start, vec!["--abi".to_string()]));
-                        } else {
-                            return Ok((word_start, get_abi_files(word_to_complete)));
-                        }
+                        // Second argument is local ABI file
+                        return Ok((word_start, get_abi_files(word_to_complete)));
                     }
                     _ => {
-                        // If previous word was --abi, we expect contract_id:abi.json
+                        // After this, if someone explicitly types --abi, then we can help with contract_id:abi.json
                         if words[words.len() - 2] == "--abi" {
-                            // Here we could potentially provide completion for known contract IDs
-                            // followed by a colon and the ABI file
-                            let abi_files = get_abi_files("");
-                            let completions: Vec<String> = abi_files
-                                .into_iter()
-                                .map(|abi| format!("contract_id:{}", abi))
-                                .collect();
-                            return Ok((word_start, completions));
+                            let abi_files = get_abi_files(word_to_complete);
+                            return Ok((word_start, abi_files));
                         }
                     }
                 }
