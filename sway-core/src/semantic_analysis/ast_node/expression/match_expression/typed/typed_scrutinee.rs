@@ -10,7 +10,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
-        CallPath,
+        CallPath, CallPathType,
     },
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
@@ -82,7 +82,7 @@ impl TyScrutinee {
                     CallPath {
                         prefixes: vec![],
                         suffix: ident.clone(),
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     Scrutinee::Tuple {
                         elems: vec![],
@@ -419,7 +419,7 @@ fn type_check_struct(
             instantiation_call_path: CallPath {
                 prefixes: vec![],
                 suffix: struct_name,
-                is_absolute: false,
+                callpath_type: CallPathType::Ambiguous,
             },
         },
     };
@@ -475,7 +475,7 @@ fn type_check_enum(
             let enum_callpath = CallPath {
                 suffix: enum_name,
                 prefixes,
-                is_absolute: call_path.is_absolute,
+                callpath_type: call_path.callpath_type,
             };
             // find the enum definition from the name
             let unknown_decl = ctx.resolve_call_path(handler, &enum_callpath)?;

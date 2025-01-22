@@ -232,3 +232,8 @@ deallocated
 deallocate
 destructors
 destructor
+semiautomatically
+FuelLabs
+github
+toml
+hardcoded

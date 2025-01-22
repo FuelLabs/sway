@@ -3,26 +3,26 @@ library;
 use ::foo::{Foo, Baz};
 use core::ops::Add;
 
-pub struct Bar {}
+pub struct Bar<T> {}
 
-impl Foo for Bar {
+impl<T> Foo for Bar<T> {
     /// something more about foo();
     fn foo() {}
 }
-impl Baz for Bar {}
-impl Bar {
+impl<T> Baz for Bar<T> {}
+impl<T> Bar<T> {
     fn foo_bar() {
         Self::foo()
     }
 }
 
 // test dependency impls
-impl Add for Bar {
+impl<T> Add for Bar<T> {
     fn add(self, other: Self) -> Self {
         Bar {}
     }
 }
-impl core::ops::Subtract for Bar {
+impl<T> core::ops::Subtract for Bar<T> {
     fn subtract(self, other: Self) -> Self {
         Bar {}
     }

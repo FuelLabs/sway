@@ -124,11 +124,12 @@ pub(crate) fn compile_const_decl(
         (Some(const_val), _) => Ok(Some(const_val)),
         (None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.current_items().check_symbol(&call_path.suffix);
+            let decl = module_ns.root_items().check_symbol(&call_path.suffix);
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
             };
+
             let const_decl = match decl {
                 Ok(decl) => match decl.expect_typed() {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
@@ -138,6 +139,7 @@ pub(crate) fn compile_const_decl(
                 },
                 Err(_) => const_decl.cloned(),
             };
+
             match const_decl {
                 Some(const_decl) => {
                     let ty::TyConstantDecl {
@@ -164,6 +166,7 @@ pub(crate) fn compile_const_decl(
                         call_path.as_vec_string().to_vec(),
                         const_val,
                     );
+
                     Ok(Some(const_val))
                 }
                 None => Ok(None),
@@ -1524,17 +1527,17 @@ mod tests {
         let handler = Handler::default();
         let mut context = Context::new(engines.se(), ExperimentalFeatures::default());
         let mut md_mgr = MetadataManager::default();
-        let mut core_lib = namespace::Root::from(namespace::Module::new(
+        let core_lib = namespace::Root::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
-            crate::Visibility::Private,
             None,
-        ));
+            false,
+        );
 
         let r = crate::compile_to_ast(
             &handler,
             &engines,
             std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
-            &mut core_lib,
+            core_lib,
             None,
             "test",
             None,

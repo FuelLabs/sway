@@ -2,18 +2,18 @@ script;
 
 use utils::*;
 
-fn alloc_slice<T>(len: u64) -> &mut __slice[T] {
+fn alloc_slice<T>(len: u64) -> &mut [T] {
     let size_in_bytes = len * __size_of::<T>();
     let ptr = asm(size_in_bytes: size_in_bytes) {
         aloc size_in_bytes;
         hp: raw_ptr
     };
     asm(buf: (ptr,  len)) {
-        buf: &mut __slice[T]
+        buf: &mut [T]
     }
 }
 
-fn realloc_slice<T>(old: &mut __slice[T], len: u64) -> &mut __slice[T] {
+fn realloc_slice<T>(old: &mut [T], len: u64) -> &mut [T] {
     let old_ptr = old.ptr();
     let old_len_in_bytes = old.len() * __size_of::<T>();
 
@@ -25,12 +25,12 @@ fn realloc_slice<T>(old: &mut __slice[T], len: u64) -> &mut __slice[T] {
     };
 
     asm(buf: (new_ptr,  len)) {
-        buf: &mut __slice[T]
+        buf: &mut [T]
     }
 }
 
 pub struct Vec<T> {
-    buf: &mut __slice[T],
+    buf: &mut [T],
     len: u64,
 }
 
@@ -119,10 +119,10 @@ fn type_check() {
     let _: &mut u64 = __elem_at(&mut mutable_array, 0);
     let _: &u64 = __elem_at(&mut mutable_array, 0);
 
-    let immutable_slice: &__slice[u64] = __slice(&immutable_array, 0, 5);
+    let immutable_slice: &[u64] = __slice(&immutable_array, 0, 5);
     let _: &u64 = __elem_at(immutable_slice, 0);
 
-    let mutable_slice: &mut __slice[u64] = __slice(&mut mutable_array, 0, 5);
+    let mutable_slice: &mut [u64] = __slice(&mut mutable_array, 0, 5);
     let _: &mut u64 = __elem_at(mutable_slice, 0);
     let _: &u64 = __elem_at(mutable_slice, 0);
 }
@@ -139,7 +139,7 @@ fn main()  {
     assert(5, *__elem_at(&some_array, 4));
 
     // slice arrays
-    let some_slice: &__slice[u64] = __slice(&some_array, 0, 5);
+    let some_slice: &[u64] = __slice(&some_array, 0, 5);
     assert(1, *__elem_at(some_slice, 0));
     assert(2, *__elem_at(some_slice, 1));
     assert(3, *__elem_at(some_slice, 2));
@@ -147,7 +147,7 @@ fn main()  {
     assert(5, *__elem_at(some_slice, 4));
 
     // slice another slice
-    let another_slice: &__slice[u64] = __slice(some_slice, 1, 4);
+    let another_slice: &[u64] = __slice(some_slice, 1, 4);
     assert(2, *__elem_at(another_slice, 0));
     assert(3, *__elem_at(another_slice, 1));
     assert(4, *__elem_at(another_slice, 2));
@@ -178,6 +178,6 @@ fn main()  {
     //indices as expressions
     assert(2, *__elem_at(&some_array, v.get(0)));
 
-    let _some_slice: &__slice[u64] = __slice(&some_array, v.get(0), v.get(4));
+    let _some_slice: &[u64] = __slice(&some_array, v.get(0), v.get(4));
     assert(2, *__elem_at(some_slice, v.get(0)));
 }

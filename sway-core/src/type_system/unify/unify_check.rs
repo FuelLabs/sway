@@ -1,6 +1,9 @@
 use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
-    language::ty::{TyEnumDecl, TyStructDecl},
+    language::{
+        ty::{TyEnumDecl, TyStructDecl},
+        CallPathType,
+    },
     type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
 };
 
@@ -736,8 +739,9 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_enums(&self, left: &TyEnumDecl, right: &TyEnumDecl) -> bool {
         assert!(
-            left.call_path.is_absolute && right.call_path.is_absolute,
-            "The call paths of the enum declarations must always be absolute."
+            matches!(left.call_path.callpath_type, CallPathType::Full)
+                && matches!(right.call_path.callpath_type, CallPathType::Full),
+            "The call paths of the enum declarations must always be resolved."
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
@@ -796,8 +800,9 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_structs(&self, left: &TyStructDecl, right: &TyStructDecl) -> bool {
         assert!(
-            left.call_path.is_absolute && right.call_path.is_absolute,
-            "The call paths of the struct declarations must always be absolute."
+            matches!(left.call_path.callpath_type, CallPathType::Full)
+                && matches!(right.call_path.callpath_type, CallPathType::Full),
+            "The call paths of the enum declarations must always be resolved."
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
