@@ -7770,7 +7770,6 @@ name = "sway-core"
 version = "0.66.6"
 dependencies = [
  "clap",
- "derivative",
  "dirs 5.0.1",
  "either",
  "fuel-abi-types",
