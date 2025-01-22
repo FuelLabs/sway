@@ -56,6 +56,7 @@ for toml_path in \
     "workspace.dependencies.forc-fmt.version" \
     "workspace.dependencies.forc-lsp.version" \
     "workspace.dependencies.forc-tx.version" \
+    "workspace.dependencies.forc-migrate.version" \
     "workspace.dependencies.sway-ast.version" \
     "workspace.dependencies.sway-core.version" \
     "workspace.dependencies.sway-error.version" \
