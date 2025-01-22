@@ -214,7 +214,9 @@ pub async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()
                             &abi_content,
                         )
                         .map_err(Error::JsonError)?;
-                    state.register_abi(ContractId::zeroed(), ProgramABI::Fuel(fuel_abi));
+                    state
+                        .contract_abis
+                        .register_abi(ContractId::zeroed(), ProgramABI::Fuel(fuel_abi));
                 }
                 i += 1;
             }
@@ -236,7 +238,9 @@ pub async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<()
                 serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(&abi_content)
                     .map_err(Error::JsonError)?;
 
-            state.register_abi(contract_id, ProgramABI::Fuel(fuel_abi));
+            state
+                .contract_abis
+                .register_abi(contract_id, ProgramABI::Fuel(fuel_abi));
         } else {
             return Err(
                 ArgumentError::Invalid(format!("Invalid --abi argument: {}", abi_arg)).into(),
@@ -454,7 +458,7 @@ fn pretty_print_run_result(rr: &RunResult, state: &mut State) {
         } = receipt
         {
             // If the ABI is available, decode the log data
-            if let Some(abi) = state.get_or_fetch_abi(&id) {
+            if let Some(abi) = state.contract_abis.get_or_fetch_abi(&id) {
                 if let Ok(decoded_log_data) =
                     forc_test::decode_log_data(&rb.to_string(), &data, abi)
                 {

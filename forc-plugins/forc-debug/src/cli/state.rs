@@ -1,9 +1,4 @@
-use crate::{
-    cli::commands::Commands,
-    error::{Error, Result},
-    names, FuelClient,
-};
-use fuel_types::ContractId;
+use crate::{cli::commands::Commands, names, types::AbiMap, FuelClient};
 use rustyline::{
     completion::Completer,
     highlight::{CmdKind, Highlighter},
@@ -12,17 +7,12 @@ use rustyline::{
     Context, Helper,
 };
 use serde_json::Value;
-use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet},
-    fs,
-};
-use sway_core::asm_generation::ProgramABI;
+use std::{borrow::Cow, collections::HashSet, fs};
 
 pub struct State {
     pub client: FuelClient,
     pub session_id: String,
-    pub contract_abis: HashMap<ContractId, ProgramABI>,
+    pub contract_abis: AbiMap,
 }
 
 impl State {
@@ -30,37 +20,9 @@ impl State {
         Self {
             client,
             session_id: String::new(),
-            contract_abis: HashMap::new(),
+            contract_abis: AbiMap::default(),
         }
     }
-
-    /// Registers the given ABI for the given contract ID.
-    pub fn register_abi(&mut self, contract_id: ContractId, abi: ProgramABI) {
-        self.contract_abis.insert(contract_id, abi);
-    }
-
-    /// Either fetches the ABI from the Sway ABI Registry or returns it from the cache if it's already known.
-    pub fn get_or_fetch_abi(&mut self, contract_id: &ContractId) -> Option<&ProgramABI> {
-        // If we already have it, return it
-        if self.contract_abis.contains_key(contract_id) {
-            return self.contract_abis.get(contract_id);
-        }
-
-        // Try to fetch from ABI Registry
-        match fetch_abi_from_api(contract_id) {
-            Ok(abi) => {
-                self.register_abi(*contract_id, abi);
-                self.contract_abis.get(contract_id)
-            }
-            Err(_) => None,
-        }
-    }
-}
-
-/// Fetches the ABI for the given contract ID from the Sway ABI Registry.
-fn fetch_abi_from_api(_contract_id: &ContractId) -> Result<ProgramABI> {
-    // TODO: Implement this once the Sway ABI Registry is available
-    Err(Error::AbiError("Not implemented yet".to_string()))
 }
 
 pub struct DebuggerHelper {
