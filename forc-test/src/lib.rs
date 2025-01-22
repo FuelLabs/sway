@@ -230,7 +230,7 @@ impl PackageWithDeploymentToTest {
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
                 let tx = tx
-                    .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                    .into_ready(gas_price, params.gas_costs(), params.fee_params(), None)
                     .unwrap();
                 interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
@@ -247,7 +247,7 @@ impl PackageWithDeploymentToTest {
                 &params,
             );
             let root_contract_tx = root_contract_tx
-                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .into_ready(gas_price, params.gas_costs(), params.fee_params(), None)
                 .unwrap();
             // Deploy the root contract.
             interpreter
