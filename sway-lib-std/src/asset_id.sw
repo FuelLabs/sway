@@ -275,8 +275,10 @@ impl TryFrom<Bytes> for AssetId {
             return None;
         }
 
-        Some(Self { 
-            bits: asm(ptr: bytes.ptr()) { ptr: b256 } 
+        Some(Self {
+            bits: asm(ptr: bytes.ptr()) {
+                ptr: b256
+            },
         })
     }
 }

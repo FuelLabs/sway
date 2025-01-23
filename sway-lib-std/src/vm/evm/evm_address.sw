@@ -169,7 +169,9 @@ impl TryFrom<Bytes> for EvmAddress {
         }
 
         let bits = b256::zero();
-        bytes.ptr().copy_bytes_to(__addr_of(bits).add_uint_offset(12), 20);
+        bytes
+            .ptr()
+            .copy_bytes_to(__addr_of(bits).add_uint_offset(12), 20);
 
         Some(Self { bits })
     }

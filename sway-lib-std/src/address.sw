@@ -148,9 +148,10 @@ impl TryFrom<Bytes> for Address {
             return None;
         }
 
-
-        Some(Self { 
-            bits: asm(ptr: bytes.ptr()) { ptr: b256 } 
+        Some(Self {
+            bits: asm(ptr: bytes.ptr()) {
+                ptr: b256
+            },
         })
     }
 }
