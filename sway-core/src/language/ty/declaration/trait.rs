@@ -1,12 +1,3 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use monomorphization::MonomorphizeHelper;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::{
         DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
@@ -16,6 +7,7 @@ use crate::{
     has_changes,
     language::{
         parsed::{self, TraitDeclaration},
+        ty::{TyDecl, TyDeclParsedType},
         CallPath, Visibility,
     },
     semantic_analysis::{
@@ -25,10 +17,16 @@ use crate::{
     transform,
     type_system::*,
 };
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyDecl, TyDeclParsedType};
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTraitDecl {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -46,7 +44,7 @@ impl TyDeclParsedType for TyTraitDecl {
     type ParsedType = TraitDeclaration;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyTraitInterfaceItem {
     TraitFn(DeclRefTraitFn),
     Constant(DeclRefConstant),
@@ -82,7 +80,7 @@ impl DebugWithEngines for TyTraitInterfaceItem {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),

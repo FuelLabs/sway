@@ -349,9 +349,10 @@ impl AbstractProgram {
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Left(AllocatedOpcode::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
-                VirtualImmediate18 {
-                    value: compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-                },
+                VirtualImmediate18::new_unchecked(
+                    compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE.into(),
+                    "constant must fit in 18 bits",
+                ),
             )),
             comment: "[function selection]: load revert code for mismatched function selector"
                 .into(),
@@ -369,9 +370,10 @@ impl AbstractProgram {
     fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24 {
-                value: len_in_bytes as u32,
-            })),
+            opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24::new_unchecked(
+                len_in_bytes,
+                "length (bytes) must fit in 24 bits",
+            ))),
             comment: "allocate stack space for globals".into(),
             owning_span: None,
         });

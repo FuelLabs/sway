@@ -668,6 +668,17 @@ impl ::ops::Divide for U128 {
     }
 }
 
+impl core::ops::Mod for U128 {
+    fn modulo(self, other: Self) -> Self {
+        assert(other != Self::zero());
+
+        // a mod b = a - b * (a / b)
+        let quotient = self / other;
+        let product = quotient * other;
+        self - product
+    }
+}
+
 fn u64_checked_add(a: u64, b: u64) -> Option<u64> {
     let of = asm(a: a, b: b, res) {
         add res a b;

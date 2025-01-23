@@ -67,8 +67,8 @@ pub async fn handle_document_symbol(
         .await
     {
         Ok((uri, session)) => Ok(session
-            .symbol_information(&uri)
-            .map(DocumentSymbolResponse::Flat)),
+            .document_symbols(&uri)
+            .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -439,10 +439,10 @@ pub async fn handle_show_ast(
                         Ok(program.typed.as_ref().and_then(|typed_program| {
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
-                                &typed_program.root.all_nodes,
+                                &typed_program.root_module.all_nodes,
                                 session.engines.read().de(),
                             );
-                            for (ident, submodule) in &typed_program.root.submodules {
+                            for (ident, submodule) in &typed_program.root_module.submodules {
                                 if path_is_submodule(ident, &path) {
                                     // overwrite the root AST with the submodule AST
                                     formatted_ast = debug::print_decl_engine_types(

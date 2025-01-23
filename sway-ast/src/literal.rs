@@ -1,25 +1,37 @@
 use crate::priv_prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct LitString {
     pub span: Span,
     pub parsed: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct LitChar {
     pub span: Span,
     pub parsed: char,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct LitInt {
     pub span: Span,
     pub parsed: BigUint,
     pub ty_opt: Option<(LitIntType, Span)>,
+    /// True if this [LitInt] represents a `b256` hex literal
+    /// in a manually generated lexed tree.
+    ///
+    /// `b256` hex literals are not explicitly modeled in the
+    /// [Literal]. During parsing, they are parsed as [LitInt]
+    /// with [LitInt::ty_opt] set to `None`.
+    ///
+    /// To properly render `b256` manually created hex literals,
+    /// that are not backed by a [Span] in the source code,
+    /// we need this additional information, to distinguish
+    /// them from `u256` hex literals.
+    pub is_generated_b256: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum LitIntType {
     U8,
     U16,
@@ -32,13 +44,13 @@ pub enum LitIntType {
     I64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct LitBool {
     pub span: Span,
     pub kind: LitBoolType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum LitBoolType {
     True,
     False,
@@ -53,7 +65,7 @@ impl From<LitBoolType> for bool {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Literal {
     String(LitString),
     Char(LitChar),

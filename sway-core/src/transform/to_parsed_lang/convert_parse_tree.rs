@@ -314,7 +314,7 @@ fn item_use_to_use_statements(
 
 fn use_tree_to_use_statements(
     use_tree: UseTree,
-    is_absolute: bool,
+    is_relative_to_package_root: bool,
     reexport: Visibility,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
@@ -325,7 +325,7 @@ fn use_tree_to_use_statements(
             for use_tree in imports.into_inner() {
                 use_tree_to_use_statements(
                     use_tree,
-                    is_absolute,
+                    is_relative_to_package_root,
                     reexport,
                     path,
                     ret,
@@ -343,7 +343,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
@@ -358,7 +358,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: Some(alias),
             });
@@ -368,14 +368,21 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type: ImportType::Star,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, reexport, path, ret, item_span);
+            use_tree_to_use_statements(
+                *suffix,
+                is_relative_to_package_root,
+                reexport,
+                path,
+                ret,
+                item_span,
+            );
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
@@ -765,7 +772,7 @@ pub fn item_impl_to_declaration(
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context, handler, engines, const_item, attributes, true,
+                    context, handler, engines, const_item, attributes, false,
                 )
                 .map(ImplItem::Constant),
                 sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
@@ -809,7 +816,7 @@ pub fn item_impl_to_declaration(
                 let impl_self = ImplSelfOrTrait {
                     is_self: true,
                     trait_name: CallPath {
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                         prefixes: vec![],
                         suffix: BaseIdent::dummy(),
                     },
@@ -836,14 +843,20 @@ fn path_type_to_call_path_and_type_arguments(
     let root_opt = path_type.root_opt.clone();
     let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type.clone())?;
 
-    let (is_absolute, qualified_path) =
+    let (is_relative_to_root, qualified_path) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
 
     let qualified_call_path = QualifiedCallPath {
         call_path: CallPath {
             prefixes,
             suffix: suffix.name,
-            is_absolute,
+            callpath_type,
         },
         qualified_path_root: qualified_path.map(Box::new),
     };
@@ -1446,7 +1459,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
-        "Self" | "self" => Some(TypeInfo::new_self_type(name.span())),
+        "Self" => Some(TypeInfo::new_self_type(name.span())),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
     }
@@ -1544,13 +1557,20 @@ fn ty_to_call_path_tree(
             vec![]
         };
 
-        let (is_absolute, qualified_path) =
+        let (is_relative_to_root, qualified_path) =
             path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+
+        let callpath_type = if is_relative_to_root {
+            CallPathType::RelativeToPackageRoot
+        } else {
+            CallPathType::Ambiguous
+        };
+
         let call_path = QualifiedCallPath {
             call_path: CallPath {
                 prefixes,
                 suffix: suffix.name,
-                is_absolute,
+                callpath_type,
             },
             qualified_path_root: qualified_path.map(Box::new),
         };
@@ -1676,7 +1696,12 @@ fn path_type_to_call_path(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -1687,13 +1712,13 @@ fn path_type_to_call_path(
             CallPath {
                 prefixes,
                 suffix: path_type_segment_to_ident(context, handler, call_path_suffix)?,
-                is_absolute,
+                callpath_type,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
             suffix: path_type_segment_to_ident(context, handler, prefix)?,
-            is_absolute,
+            callpath_type,
         },
     };
     Ok(call_path)
@@ -1844,7 +1869,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let (is_absolute, qualified_path_root) =
+    let (is_relative_to_root, qualified_path_root) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
     let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
@@ -1889,7 +1914,7 @@ fn expr_func_app_to_expression_kind(
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
         Some(Intrinsic::Log)
-            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
+            if context.experimental.new_encoding && last.is_none() && !is_relative_to_root =>
         {
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
@@ -1907,7 +1932,7 @@ fn expr_func_app_to_expression_kind(
                                     inner: CallPath {
                                         prefixes: vec![],
                                         suffix: Ident::new_no_span("encode".into()),
-                                        is_absolute: false,
+                                        callpath_type: CallPathType::Ambiguous,
                                     },
                                     type_arguments: TypeArgs::Regular(type_arguments),
                                     span: span.clone(),
@@ -1921,7 +1946,7 @@ fn expr_func_app_to_expression_kind(
                 },
             ));
         }
-        Some(intrinsic) if last.is_none() && !is_absolute => {
+        Some(intrinsic) if last.is_none() && !is_relative_to_root => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
                     name: call_seg.name,
@@ -1937,6 +1962,12 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
+
     // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
         Some(last) => last,
@@ -1948,7 +1979,7 @@ fn expr_func_app_to_expression_kind(
             let call_path = CallPath {
                 prefixes,
                 suffix,
-                is_absolute,
+                callpath_type,
             };
             let span = match type_arguments_span {
                 Some(span) => Span::join(call_path.span(), &span),
@@ -1984,7 +2015,7 @@ fn expr_func_app_to_expression_kind(
     let call_path = CallPath {
         prefixes,
         suffix,
-        is_absolute,
+        callpath_type,
     };
     let call_path_binding = TypeBinding {
         span: name_args_span(call_path.span(), type_arguments_span),
@@ -2131,6 +2162,7 @@ fn expr_to_expression(
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
                 body: braced_code_block_contents_to_code_block(context, handler, engines, block)?,
+                is_desugared_for_loop: false,
             }),
             span,
         },
@@ -2499,7 +2531,7 @@ fn op_call(
                     Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
                 suffix: Ident::new_with_override(name.into(), op_span.clone()),
-                is_absolute: true,
+                callpath_type: CallPathType::Full,
             },
         },
         type_arguments: TypeArgs::Regular(vec![]),
@@ -2604,7 +2636,7 @@ fn configurable_field_to_configurable_declaration(
                     inner: CallPath {
                         prefixes: vec![],
                         suffix: Ident::new_with_override("encode".into(), span.clone()),
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     type_arguments: TypeArgs::Regular(vec![type_ascription.clone()]),
                     span: span.clone(),
@@ -2782,7 +2814,12 @@ fn path_type_to_supertrait(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, call_path_suffix) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -2801,7 +2838,7 @@ fn path_type_to_supertrait(
     let name = CallPath {
         prefixes,
         suffix,
-        is_absolute,
+        callpath_type,
     };
     /*
     let type_parameters = match generics_opt {
@@ -3278,6 +3315,7 @@ fn for_expr_to_expression(
                                 span: Span::dummy(),
                             }),
                             body: while_body,
+                            is_desugared_for_loop: true,
                         }),
                         span: Span::dummy(),
                     }),
@@ -3333,22 +3371,18 @@ fn path_root_opt_to_bool_and_qualified_path_root(
                 close_angle_bracket_token: _,
             }),
             _,
-        )) => (
-            false,
-            if let Some((_, path_type)) = as_trait {
-                Some(QualifiedPathType {
-                    ty: ty_to_type_argument(context, handler, engines, *ty)?,
-                    as_trait: engines.te().insert(
-                        engines,
-                        path_type_to_type_info(context, handler, engines, *path_type.clone())?,
-                        path_type.span().source_id(),
-                    ),
-                    as_trait_span: path_type.span(),
-                })
-            } else {
-                None
-            },
-        ),
+        )) => (false, {
+            let (_, path_type) = as_trait;
+            Some(QualifiedPathType {
+                ty: ty_to_type_argument(context, handler, engines, *ty)?,
+                as_trait: engines.te().insert(
+                    engines,
+                    path_type_to_type_info(context, handler, engines, *path_type.clone())?,
+                    path_type.span().source_id(),
+                ),
+                as_trait_span: path_type.span(),
+            })
+        }),
     })
 }
 
@@ -3381,6 +3415,7 @@ fn literal_to_literal(
                 parsed,
                 ty_opt,
                 span,
+                is_generated_b256: _,
             } = lit_int;
             match ty_opt {
                 None => {
@@ -3493,8 +3528,13 @@ fn path_expr_to_qualified_call_path_binding(
         mut suffix,
         ..
     } = path_expr;
-    let (is_absolute, qualified_path_root) =
+    let (is_relative_to_root, qualified_path_root) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
         Some((_, call_path_suffix)) => {
@@ -3556,7 +3596,7 @@ fn path_expr_to_qualified_call_path_binding(
             call_path: CallPath {
                 prefixes,
                 suffix,
-                is_absolute,
+                callpath_type,
             },
             qualified_path_root: qualified_path_root.map(Box::new),
         },
@@ -3608,7 +3648,12 @@ fn path_expr_to_call_path(
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
@@ -3619,13 +3664,13 @@ fn path_expr_to_call_path(
             CallPath {
                 prefixes,
                 suffix: path_expr_segment_to_ident(context, handler, &call_path_suffix)?,
-                is_absolute,
+                callpath_type,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
             suffix: path_expr_segment_to_ident(context, handler, &prefix)?,
-            is_absolute,
+            callpath_type,
         },
     };
     Ok(call_path)
@@ -4598,7 +4643,10 @@ fn path_type_to_type_info(
             }
         }
         None => {
-            if name.as_str() == "ContractCaller" {
+            if name.as_str() == "self" {
+                let error = ConvertParseTreeError::UnknownTypeNameSelf { span };
+                return Err(handler.emit_err(error.into()));
+            } else if name.as_str() == "ContractCaller" {
                 if root_opt.is_some() || !suffix.is_empty() {
                     let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
                     return Err(handler.emit_err(error.into()));

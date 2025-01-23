@@ -12,7 +12,7 @@ use crate::{
         },
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, Items},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, ConstShadowingMode,
         GenericShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -77,7 +77,7 @@ impl TyDecl {
 
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: &mut TypeCheckContext,
         decl: parsed::Declaration,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -157,7 +157,7 @@ impl TyDecl {
                 let fn_decl = engines.pe().get_function(&decl_id);
                 let span = fn_decl.span.clone();
 
-                let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
+                let mut ctx = ctx.by_ref().with_type_annotation(type_engine.new_unknown());
                 let fn_decl = match ty::TyFunctionDecl::type_check(
                     handler,
                     ctx.by_ref(),
@@ -187,26 +187,20 @@ impl TyDecl {
 
                 // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
-                    let _ = ctx
-                        .namespace()
-                        .resolve_call_path_typed(
-                            handler,
-                            engines,
-                            &supertrait.name,
-                            ctx.self_type(),
-                        )
-                        .map(|supertrait_decl| {
-                            if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                decl_id: supertrait_decl_id,
-                            }) = supertrait_decl
-                            {
-                                supertrait.decl_ref = Some(DeclRef::new(
-                                    engines.de().get(&supertrait_decl_id).name.clone(),
-                                    supertrait_decl_id,
-                                    engines.de().get(&supertrait_decl_id).span.clone(),
-                                ));
-                            }
-                        });
+                    let _ =
+                        ctx.resolve_call_path(handler, &supertrait.name)
+                            .map(|supertrait_decl| {
+                                if let ty::TyDecl::TraitDecl(ty::TraitDecl {
+                                    decl_id: supertrait_decl_id,
+                                }) = supertrait_decl
+                                {
+                                    supertrait.decl_ref = Some(DeclRef::new(
+                                        engines.de().get(&supertrait_decl_id).name.clone(),
+                                        supertrait_decl_id,
+                                        engines.de().get(&supertrait_decl_id).span.clone(),
+                                    ));
+                                }
+                            });
                 }
 
                 let decl: ty::TyDecl = decl_engine
@@ -281,10 +275,11 @@ impl TyDecl {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
                             let collecting_unifications = ctx.collecting_unifications();
-                            let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
-                                m.current_items_mut().insert_typed_symbol(
+                            let _ = ctx.namespace.current_module_mut().write(engines, |m| {
+                                Items::insert_typed_symbol(
                                     handler,
                                     engines,
+                                    m,
                                     Ident::new_no_span(format!(
                                         "__contract_entry_{}",
                                         decl.name.clone()
@@ -301,12 +296,7 @@ impl TyDecl {
 
                 // Choose which items are going to be visible depending if this is an abi impl
                 // or trait impl
-                let t = ctx.namespace().resolve_call_path_typed(
-                    &Handler::default(),
-                    engines,
-                    &impl_trait.trait_name,
-                    ctx.self_type(),
-                );
+                let t = ctx.resolve_call_path(&Handler::default(), &impl_trait.trait_name);
 
                 let empty_vec = vec![];
                 let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = t {
@@ -369,26 +359,20 @@ impl TyDecl {
 
                 // save decl_refs for the LSP
                 for supertrait in abi_decl.supertraits.iter_mut() {
-                    let _ = ctx
-                        .namespace()
-                        .resolve_call_path_typed(
-                            handler,
-                            engines,
-                            &supertrait.name,
-                            ctx.self_type(),
-                        )
-                        .map(|supertrait_decl| {
-                            if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                decl_id: supertrait_decl_id,
-                            }) = supertrait_decl
-                            {
-                                supertrait.decl_ref = Some(DeclRef::new(
-                                    engines.de().get(&supertrait_decl_id).name.clone(),
-                                    supertrait_decl_id,
-                                    engines.de().get(&supertrait_decl_id).span.clone(),
-                                ));
-                            }
-                        });
+                    let _ =
+                        ctx.resolve_call_path(handler, &supertrait.name)
+                            .map(|supertrait_decl| {
+                                if let ty::TyDecl::TraitDecl(ty::TraitDecl {
+                                    decl_id: supertrait_decl_id,
+                                }) = supertrait_decl
+                                {
+                                    supertrait.decl_ref = Some(DeclRef::new(
+                                        engines.de().get(&supertrait_decl_id).name.clone(),
+                                        supertrait_decl_id,
+                                        engines.de().get(&supertrait_decl_id).span.clone(),
+                                    ));
+                                }
+                            });
                 }
 
                 let decl: ty::TyDecl = decl_engine.insert(abi_decl.clone(), Some(&decl_id)).into();
@@ -512,7 +496,7 @@ impl TyDecl {
 
                 // declarations are not allowed
                 ctx.namespace_mut()
-                    .module_mut(engines)
+                    .current_module_mut()
                     .write(engines, |m| {
                         m.current_items_mut()
                             .set_storage_declaration(handler, decl_ref.clone())

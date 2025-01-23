@@ -7,10 +7,16 @@ use crate::{
     language::{
         parsed::{EnumDeclaration, StructDeclaration},
         ty::{self, TyEnumDecl, TyStructDecl},
-        CallPath, QualifiedCallPath,
+        CallPath, CallPathType, QualifiedCallPath,
     },
     type_system::priv_prelude::*,
     Ident,
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
 };
 use sway_error::{
     error::{CompileError, InvalidImplementingForType},
@@ -18,13 +24,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, span::Span};
 
-use std::{
-    cmp::Ordering,
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AbiName {
     Deferred,
     Known(CallPath),
@@ -309,8 +309,9 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = ctx.engines().de().get_enum(l_decl_ref);
                 let r_decl = ctx.engines().de().get_enum(r_decl_ref);
                 assert!(
-                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
-                    "The call paths of the enum declarations must always be absolute."
+                    matches!(l_decl.call_path.callpath_type, CallPathType::Full)
+                        && matches!(r_decl.call_path.callpath_type, CallPathType::Full),
+                    "The call paths of the enum declarations must always be resolved."
                 );
                 l_decl.call_path == r_decl.call_path
                     && l_decl.variants.eq(&r_decl.variants, ctx)
@@ -320,8 +321,9 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = ctx.engines().de().get_struct(l_decl_ref);
                 let r_decl = ctx.engines().de().get_struct(r_decl_ref);
                 assert!(
-                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
-                    "The call paths of the struct declarations must always be absolute."
+                    matches!(l_decl.call_path.callpath_type, CallPathType::Full)
+                        && matches!(r_decl.call_path.callpath_type, CallPathType::Full),
+                    "The call paths of the struct declarations must always be resolved."
                 );
                 l_decl.call_path == r_decl.call_path
                     && l_decl.fields.eq(&r_decl.fields, ctx)
@@ -819,7 +821,7 @@ impl TypeInfo {
                 call_path: CallPath {
                     prefixes: vec![],
                     suffix: Ident::new_with_override("Self".into(), span),
-                    is_absolute: false,
+                    callpath_type: CallPathType::Ambiguous,
                 },
                 qualified_path_root: None,
             },

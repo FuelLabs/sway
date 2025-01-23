@@ -31,6 +31,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-debug
           cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-crypto
+          cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
@@ -50,7 +51,7 @@ jobs:
         run: mdbook build docs/reference
 
       - name: Build Sway std library
-        run: forc doc --manifest-path ./sway-lib-std
+        run: forc doc --path ./sway-lib-std
 
       - name: Deploy master std
         uses: peaceiris/actions-gh-pages@v3

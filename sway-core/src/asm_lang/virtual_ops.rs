@@ -109,11 +109,11 @@ pub(crate) enum VirtualOp {
     RET(VirtualRegister),
 
     /* Memory Instructions */
-    ALOC(VirtualRegister),
-    CFEI(VirtualImmediate24),
-    CFSI(VirtualImmediate24),
-    CFE(VirtualRegister),
-    CFS(VirtualRegister),
+    ALOC(VirtualRegister, VirtualRegister),
+    CFEI(VirtualRegister, VirtualImmediate24),
+    CFSI(VirtualRegister, VirtualImmediate24),
+    CFE(VirtualRegister, VirtualRegister),
+    CFS(VirtualRegister, VirtualRegister),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
     LW(VirtualRegister, VirtualRegister, VirtualImmediate12),
     MCL(VirtualRegister, VirtualRegister),
@@ -290,11 +290,11 @@ impl VirtualOp {
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
-            ALOC(r1) => vec![r1],
-            CFEI(_imm) => vec![],
-            CFSI(_imm) => vec![],
-            CFE(r1) => vec![r1],
-            CFS(r1) => vec![r1],
+            ALOC(hp, r1) => vec![hp, r1],
+            CFEI(sp, _imm) => vec![sp],
+            CFSI(sp, _imm) => vec![sp],
+            CFE(sp, r1) => vec![sp, r1],
+            CFS(sp, r1) => vec![sp, r1],
             LB(r1, r2, _i) => vec![r1, r2],
             LW(r1, r2, _i) => vec![r1, r2],
             MCL(r1, r2) => vec![r1, r2],
@@ -425,11 +425,11 @@ impl VirtualOp {
             | JNEI(_, _, _)
             | JNZI(_, _)
             | RET(_)
-            | ALOC(_)
-            | CFEI(_)
-            | CFSI(_)
-            | CFE(_)
-            | CFS(_)
+            | ALOC(..)
+            | CFEI(..)
+            | CFSI(..)
+            | CFE(..)
+            | CFS(..)
             | MCL(_, _)
             | MCLI(_, _)
             | MCP(_, _, _)
@@ -522,17 +522,17 @@ impl VirtualOp {
             | ED19(_, _, _, _)
              => vec![&VirtualRegister::Constant(Overflow), &VirtualRegister::Constant(Error)],
             FLAG(_) => vec![&VirtualRegister::Constant(Flags)],
+            | ALOC(hp, _) => vec![hp],
+            | CFEI(sp, _)
+            | CFSI(sp, _)
+            | CFE(sp, _)
+            | CFS(sp, _) => vec![sp],
             JMP(_)
             | JI(_)
             | JNE(_, _, _)
             | JNEI(_, _, _)
             | JNZI(_, _)
             | RET(_)
-            | ALOC(_)
-            | CFEI(_)
-            | CFSI(_)
-            | CFE(_)
-            | CFS(_)
             | LB(_, _, _)
             | LW(_, _, _)
             | MCL(_, _)
@@ -638,11 +638,11 @@ impl VirtualOp {
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
-            ALOC(r1) => vec![r1],
-            CFEI(_imm) => vec![],
-            CFSI(_imm) => vec![],
-            CFE(r1) => vec![r1],
-            CFS(r1) => vec![r1],
+            ALOC(hp, r1) => vec![hp, r1],
+            CFEI(sp, _imm) => vec![sp],
+            CFSI(sp, _imm) => vec![sp],
+            CFE(sp, r1) => vec![sp, r1],
+            CFS(sp, r1) => vec![sp, r1],
             LB(_r1, r2, _i) => vec![r2],
             LW(_r1, r2, _i) => vec![r2],
             MCL(r1, r2) => vec![r1, r2],
@@ -760,11 +760,11 @@ impl VirtualOp {
             RET(_r1) => vec![],
 
             /* Memory Instructions */
-            ALOC(_r1) => vec![],
-            CFEI(_imm) => vec![],
-            CFSI(_imm) => vec![],
-            CFE(_r1) => vec![],
-            CFS(_r1) => vec![],
+            ALOC(hp, _r1) => vec![hp],
+            CFEI(sp, _imm) => vec![sp],
+            CFSI(sp, _imm) => vec![sp],
+            CFE(sp, _r1) => vec![sp],
+            CFS(sp, _r1) => vec![sp],
             LB(r1, _r2, _i) => vec![r1],
             LW(r1, _r2, _i) => vec![r1],
             MCL(_r1, _r2) => vec![],
@@ -1060,11 +1060,11 @@ impl VirtualOp {
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
 
             /* Memory Instructions */
-            ALOC(r1) => Self::ALOC(update_reg(reg_to_reg_map, r1)),
-            CFEI(i) => Self::CFEI(i.clone()),
-            CFSI(i) => Self::CFSI(i.clone()),
-            CFE(r1) => Self::CFE(update_reg(reg_to_reg_map, r1)),
-            CFS(r1) => Self::CFS(update_reg(reg_to_reg_map, r1)),
+            ALOC(hp, r1) => Self::ALOC(hp.clone(), update_reg(reg_to_reg_map, r1)),
+            CFEI(sp, i) => Self::CFEI(sp.clone(), i.clone()),
+            CFSI(sp, i) => Self::CFSI(sp.clone(), i.clone()),
+            CFE(sp, r1) => Self::CFE(sp.clone(), update_reg(reg_to_reg_map, r1)),
+            CFS(sp, r1) => Self::CFS(sp.clone(), update_reg(reg_to_reg_map, r1)),
             LB(r1, r2, i) => Self::LB(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -1284,7 +1284,7 @@ impl VirtualOp {
             JI(i) => Self::JI(
                 VirtualImmediate24::new(
                     *offset_map
-                        .get(&(i.value as u64))
+                        .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
@@ -1295,7 +1295,7 @@ impl VirtualOp {
                 r2.clone(),
                 VirtualImmediate12::new(
                     *offset_map
-                        .get(&(i.value as u64))
+                        .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
@@ -1305,7 +1305,7 @@ impl VirtualOp {
                 r1.clone(),
                 VirtualImmediate18::new(
                     *offset_map
-                        .get(&(i.value as u64))
+                        .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
@@ -1550,11 +1550,11 @@ impl VirtualOp {
             RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
 
             /* Memory Instructions */
-            ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
-            CFEI(imm) => AllocatedOpcode::CFEI(imm.clone()),
-            CFSI(imm) => AllocatedOpcode::CFSI(imm.clone()),
-            CFE(reg) => AllocatedOpcode::CFE(map_reg(&mapping, reg)),
-            CFS(reg) => AllocatedOpcode::CFS(map_reg(&mapping, reg)),
+            ALOC(_hp, reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
+            CFEI(_sp, imm) => AllocatedOpcode::CFEI(imm.clone()),
+            CFSI(_sp, imm) => AllocatedOpcode::CFSI(imm.clone()),
+            CFE(_sp, reg) => AllocatedOpcode::CFE(map_reg(&mapping, reg)),
+            CFS(_sp, reg) => AllocatedOpcode::CFS(map_reg(&mapping, reg)),
             LB(reg1, reg2, imm) => AllocatedOpcode::LB(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1775,6 +1775,7 @@ fn update_reg(
     reg: &VirtualRegister,
 ) -> VirtualRegister {
     if let Some(r) = reg_to_reg_map.get(reg) {
+        assert!(reg.is_virtual(), "Only virtual registers should be updated");
         (*r).into()
     } else {
         reg.clone()

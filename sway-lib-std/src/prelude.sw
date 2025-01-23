@@ -27,7 +27,7 @@ pub use ::revert::{require, revert, revert_with_log};
 pub use ::convert::From;
 
 // Primitive conversions
-pub use ::primitive_conversions::{b256::*, str::*, u16::*, u256::*, u32::*, u64::*, u8::*,};
+pub use ::primitive_conversions::{b256::*, str::*, u16::*, u256::*, u32::*, u64::*, u8::*};
 
 // Logging
 pub use ::logging::log;

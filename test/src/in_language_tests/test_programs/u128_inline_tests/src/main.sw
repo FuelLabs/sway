@@ -695,6 +695,60 @@ fn u128_root() {
 }
 
 #[test]
+fn u128_mod() {
+    let u128_zero = U128::zero();
+    let u128_1 = U128::from((0, 1));
+    let u128_2 = U128::from((0, 2));
+    let u128_3 = U128::from((0, 3));
+    let u128_max = U128::max();
+
+    assert(u128_zero % u128_1 == u128_zero);
+    assert(u128_zero % u128_2 == u128_zero);
+    assert(u128_zero % u128_3 == u128_zero);
+    assert(u128_zero % u128_max == u128_zero);
+
+    assert(u128_1 % u128_1 == u128_zero);
+    assert(U128::from((0, 10)) % u128_1 == u128_zero);
+    assert(U128::from((0, 10000)) % u128_1 == u128_zero);
+    assert(u128_max % u128_1 == u128_zero);
+
+    assert(u128_2 % u128_2 == u128_zero);
+    assert(u128_3 % u128_2 == u128_1);
+    assert(U128::from((0, 10)) % u128_2 == u128_zero);
+    assert(U128::from((0, 10000)) % u128_2 == u128_zero);
+    assert(U128::from((0, 10001)) % u128_2 == u128_1);
+    assert(U128::from((0, u64::max())) % u128_2 == u128_1);
+    assert(U128::from((u64::max(), 0)) % u128_2 == u128_zero);
+    assert(U128::from((u64::max(), 1)) % u128_2 == u128_1);
+    assert(u128_max % u128_2 == u128_1);
+
+    assert(u128_3 % u128_3 == u128_zero);
+    assert(u128_2 % u128_3 == u128_2);
+    assert(u128_1 % u128_3 == u128_1);
+    assert(U128::from((0, 30000)) % u128_3 == u128_zero);
+    assert(U128::from((0, 30001)) % u128_3 == u128_1);
+    assert(U128::from((0, 30002)) % u128_3 == u128_2);
+    assert(U128::from((u64::max(), 0)) % u128_3 == u128_zero);
+    assert(U128::from((u64::max(), 1)) % u128_3 == u128_1);
+    assert(U128::from((u64::max(), 2)) % u128_3 == u128_2);
+    assert(u128_max % u128_3 == u128_zero);
+
+    assert(U128::from((u64::max(), 0)) % U128::from((u64::max(), 0)) == u128_zero);
+    assert(U128::from((u64::max(), 1)) % U128::from((u64::max(), 0)) == u128_1);
+    assert(U128::from((u64::max(), 2)) % U128::from((u64::max(), 0)) == u128_2);
+    assert(U128::from((u64::max(), 3)) % U128::from((u64::max(), 0)) == u128_3);
+    assert(u128_max % U128::from((u64::max(), 0)) == U128::from((0, u64::max())));
+}
+
+#[test(should_revert)]
+fn revert_u128_mod_zero() {
+    let a = U128::from((0, 1));
+    let b = U128::zero();
+
+    let result = a % b;
+}
+
+#[test]
 fn u128_log() {
     let prior_flags = flags();
 

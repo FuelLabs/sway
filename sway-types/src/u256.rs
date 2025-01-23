@@ -1,10 +1,10 @@
-use std::ops::{Not, Shl, Shr};
-
 use num_bigint::{BigUint, ParseBigIntError, TryFromBigIntError};
 use num_traits::Zero;
+use serde::{Deserialize, Serialize};
+use std::ops::{Not, Shl, Shr};
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize)]
 pub struct U256(BigUint);
 
 impl U256 {
@@ -132,7 +132,7 @@ impl<'a> std::ops::Rem<&'a U256> for &'a U256 {
     }
 }
 
-impl<'a> std::ops::Not for &'a U256 {
+impl std::ops::Not for &U256 {
     type Output = U256;
 
     fn not(self) -> Self::Output {

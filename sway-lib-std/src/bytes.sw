@@ -587,10 +587,7 @@ impl Bytes {
     pub fn ptr(self) -> raw_ptr {
         self.buf.ptr()
     }
-}
 
-// Need to use separate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
-impl Bytes {
     /// Divides one Bytes into two at an index.
     ///
     /// # Additional Information
@@ -695,7 +692,7 @@ impl Bytes {
     ///     assert(bytes.capacity() == first_cap + second_cap);
     /// }
     /// ```
-    pub fn append(ref mut self, ref mut other: self) {
+    pub fn append(ref mut self, ref mut other: Self) {
         let other_len = other.len();
         if other_len == 0 {
             return

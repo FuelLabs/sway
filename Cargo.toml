@@ -9,6 +9,7 @@ members = [
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
+    "forc-plugins/forc-migrate",
     "forc-plugins/forc-tx",
     "forc-test",
     "forc-tracing",
@@ -31,7 +32,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.66.4"
+version = "0.66.6"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -42,35 +43,36 @@ repository = "https://github.com/FuelLabs/sway"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.66.4" }
-forc-pkg = { path = "forc-pkg/", version = "0.66.4" }
-forc-test = { path = "forc-test/", version = "0.66.4" }
-forc-tracing = { path = "forc-tracing/", version = "0.66.4" }
-forc-util = { path = "forc-util/", version = "0.66.4" }
+forc = { path = "forc/", version = "0.66.6" }
+forc-pkg = { path = "forc-pkg/", version = "0.66.6" }
+forc-test = { path = "forc-test/", version = "0.66.6" }
+forc-tracing = { path = "forc-tracing/", version = "0.66.6" }
+forc-util = { path = "forc-util/", version = "0.66.6" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.66.4" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.66.4" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.66.4" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.66.4" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.4" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.4" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.4" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.4" }
+forc-plugins = { path = "forc-plugins/", version = "0.66.6" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.66.6" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.66.6" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.66.6" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.6" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.6" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.6" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.6" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.66.6" }
 
-sway-ast = { path = "sway-ast/", version = "0.66.4" }
-sway-core = { path = "sway-core/", version = "0.66.4" }
-sway-error = { path = "sway-error/", version = "0.66.4" }
-sway-features = { path = "sway-features/", version = "0.66.4" }
-sway-lsp = { path = "sway-lsp/", version = "0.66.4" }
-sway-parse = { path = "sway-parse/", version = "0.66.4" }
-sway-types = { path = "sway-types/", version = "0.66.4" }
-sway-utils = { path = "sway-utils/", version = "0.66.4" }
-swayfmt = { path = "swayfmt/", version = "0.66.4" }
+sway-ast = { path = "sway-ast/", version = "0.66.6" }
+sway-core = { path = "sway-core/", version = "0.66.6" }
+sway-error = { path = "sway-error/", version = "0.66.6" }
+sway-features = { path = "sway-features/", version = "0.66.6" }
+sway-lsp = { path = "sway-lsp/", version = "0.66.6" }
+sway-parse = { path = "sway-parse/", version = "0.66.6" }
+sway-types = { path = "sway-types/", version = "0.66.6" }
+sway-utils = { path = "sway-utils/", version = "0.66.6" }
+swayfmt = { path = "swayfmt/", version = "0.66.6" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.66.4" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.4" }
+sway-ir = { path = "sway-ir/", version = "0.66.6" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.6" }
 
 #
 # External Fuel dependencies
@@ -168,7 +170,7 @@ minifier = "0.3"
 normalize-path = "0.2"
 notify = "6.1"
 notify-debouncer-mini = "0.4"
-num-bigint = "0.4"
+num-bigint = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 object = "0.36"
 once_cell = "1.18"
@@ -193,6 +195,7 @@ revm = "14.0"
 ropey = "1.5"
 rpassword = "7.2"
 rustc-hash = "1.1"
+rustyline = "15.0"
 semver = "1.0"
 serde = "1.0"
 serde_ignored = "0.1"
@@ -202,7 +205,6 @@ serde_yaml = "0.9"
 serial_test = "3.0"
 sha2 = "0.10"
 sha3 = "0.10"
-shellfish = "0.9"
 slotmap = "1.0"
 smallvec = "1.7"
 strsim = "0.11"
