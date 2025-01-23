@@ -3,7 +3,7 @@ library;
 use ::alloc::alloc_bytes;
 use ::b512::B512;
 use ::bytes::Bytes;
-use ::convert::{From, TryFrom};
+use ::convert::{From, Into, TryFrom};
 use ::crypto::{message::Message, public_key::PublicKey, signature_error::SignatureError};
 use ::hash::*;
 use ::result::Result::{self, *};
@@ -163,22 +163,22 @@ impl TryFrom<Bytes> for Ed25519 {
     }
 }
 
-impl From<Ed25519> for B512 {
-    fn from(signature: Ed25519) -> Self {
-        let ptr = __addr_of(signature.bits());
+impl Into<B512> for Ed25519 {
+    fn into(self) -> B512 {
+        let ptr = __addr_of(self.bits);
         let b256_1 = asm(bits: ptr) {
             bits: b256
         };
         let b256_2 = asm(bits: ptr.add_uint_offset(32)) {
             bits: b256
         };
-        Self::from((b256_1, b256_2))
+        B512::from((b256_1, b256_2))
     }
 }
 
-impl From<Ed25519> for (b256, b256) {
-    fn from(signature: Ed25519) -> Self {
-        let ptr = __addr_of(signature.bits());
+impl Into<(b256, b256)> for Ed25519 {
+    fn into(self) -> (b256, b256) {
+        let ptr = __addr_of(self.bits);
         let b256_1 = asm(bits: ptr) {
             bits: b256
         };
@@ -189,9 +189,9 @@ impl From<Ed25519> for (b256, b256) {
     }
 }
 
-impl From<Ed25519> for Bytes {
-    fn from(signature: Ed25519) -> Self {
-        Self::from(raw_slice::from_parts::<u8>(__addr_of(signature), 64))
+impl Into<Bytes> for Ed25519 {
+    fn into(self) -> Bytes {
+        Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64))
     }
 }
 

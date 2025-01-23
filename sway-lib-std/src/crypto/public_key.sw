@@ -4,7 +4,7 @@ use ::b512::B512;
 use ::bytes::Bytes;
 use ::alloc::alloc_bytes;
 use ::constants::ZERO_B256;
-use ::convert::{From, TryFrom};
+use ::convert::{From, TryInto, TryFrom};
 use ::option::Option::{self, *};
 use ::hash::*;
 
@@ -126,16 +126,16 @@ impl TryFrom<Bytes> for PublicKey {
     }
 }
 
-impl TryFrom<PublicKey> for (b256, b256) {
-    fn try_from(public_key: PublicKey) -> Option<Self> {
-        if public_key.bytes.len() != 64 {
+impl TryInto<(b256, b256)> for PublicKey {
+    fn try_into(self) -> Option<(b256, b256)> {
+        if self.bytes.len() != 64 {
             return None;
         }
 
-        let b256_1 = asm(bits: public_key.bytes().ptr()) {
+        let b256_1 = asm(bits: self.bytes.ptr()) {
             bits: b256
         };
-        let b256_2 = asm(bits: public_key.bytes().ptr().add_uint_offset(32)) {
+        let b256_2 = asm(bits: self.bytes.ptr().add_uint_offset(32)) {
             bits: b256
         };
 
@@ -143,30 +143,30 @@ impl TryFrom<PublicKey> for (b256, b256) {
     }
 }
 
-impl TryFrom<PublicKey> for B512 {
-    fn try_from(public_key: PublicKey) -> Option<Self> {
-        if public_key.bytes.len() != 64 {
+impl TryInto<B512> for PublicKey {
+    fn try_into(self) -> Option<B512> {
+        if self.bytes.len() != 64 {
             return None;
         }
 
-        let b256_1 = asm(bits: public_key.bytes.ptr()) {
+        let b256_1 = asm(bits: self.bytes.ptr()) {
             bits: b256
         };
-        let b256_2 = asm(bits: public_key.bytes.ptr().add_uint_offset(32)) {
+        let b256_2 = asm(bits: self.bytes.ptr().add_uint_offset(32)) {
             bits: b256
         };
-        Some(Self::from((b256_1, b256_2)))
+        Some(B512::from((b256_1, b256_2)))
     }
 }
 
 // Used for Ed25519 signatures
-impl TryFrom<PublicKey> for b256 {
-    fn try_from(public_key: PublicKey) -> Option<Self> {
-        if public_key.bytes.len() != 32 {
+impl TryInto<b256> for PublicKey {
+    fn try_into(self) -> Option<b256> {
+        if self.bytes.len() != 32 {
             return None;
         }
 
-        Some(asm(bits: public_key.bytes().ptr()) {
+        Some(asm(bits: self.bytes().ptr()) {
             bits: b256
         })
     }

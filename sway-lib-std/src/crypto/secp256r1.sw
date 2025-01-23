@@ -4,7 +4,7 @@ use ::address::Address;
 use ::alloc::alloc_bytes;
 use ::b512::B512;
 use ::bytes::Bytes;
-use ::convert::{From, TryFrom};
+use ::convert::{From, Into, TryFrom};
 use ::crypto::{message::Message, public_key::PublicKey, signature_error::SignatureError};
 use ::hash::*;
 use ::registers::error;
@@ -399,22 +399,22 @@ impl TryFrom<Bytes> for Secp256r1 {
     }
 }
 
-impl From<Secp256r1> for B512 {
-    fn from(signature: Secp256r1) -> Self {
-        let ptr = __addr_of(signature.bits());
+impl Into<B512> for Secp256r1 {
+    fn into(self) -> B512 {
+        let ptr = __addr_of(self.bits);
         let b256_1 = asm(bits: ptr) {
             bits: b256
         };
         let b256_2 = asm(bits: ptr.add_uint_offset(32)) {
             bits: b256
         };
-        Self::from((b256_1, b256_2))
+        B512::from((b256_1, b256_2))
     }
 }
 
-impl From<Secp256r1> for (b256, b256) {
-    fn from(signature: Secp256r1) -> (b256, b256) {
-        let ptr = __addr_of(signature.bits());
+impl Into<(b256, b256)> for Secp256r1 {
+    fn into(self) -> (b256, b256) {
+        let ptr = __addr_of(self.bits);
         let b256_1 = asm(bits: ptr) {
             bits: b256
         };
@@ -425,9 +425,9 @@ impl From<Secp256r1> for (b256, b256) {
     }
 }
 
-impl From<Secp256r1> for Bytes {
-    fn from(signature: Secp256r1) -> Self {
-        Self::from(raw_slice::from_parts::<u8>(__addr_of(signature), 64))
+impl Into<Bytes> for Secp256r1 {
+    fn into(self) -> Bytes {
+        Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64))
     }
 }
 

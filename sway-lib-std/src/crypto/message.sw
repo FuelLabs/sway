@@ -3,7 +3,7 @@ library;
 use ::b512::B512;
 use ::bytes::Bytes;
 use ::alloc::alloc_bytes;
-use ::convert::{From, TryFrom};
+use ::convert::{From, TryInto, TryFrom};
 use ::option::Option::{self, *};
 use ::hash::*;
 
@@ -71,13 +71,13 @@ impl From<Bytes> for Message {
     }
 }
 
-impl TryFrom<Message> for b256 {
-    fn try_from(message: Message) -> Option<Self> {
-        if message.bytes().len() != 32 {
+impl TryInto<b256> for Message {
+    fn try_into(self) -> Option<b256> {
+        if self.bytes.len() != 32 {
             return None;
         }
 
-        Some(asm(bits: message.bytes().ptr()) {
+        Some(asm(bits: self.bytes.ptr()) {
             bits: b256
         })
     }
