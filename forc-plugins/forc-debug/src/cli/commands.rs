@@ -448,7 +448,7 @@ pub async fn cmd_help(helper: &DebuggerHelper, args: &[String]) -> Result<()> {
 /// If the execution terminated without hitting a breakpoint, it prints "Terminated".
 fn pretty_print_run_result(rr: &RunResult, state: &mut State) {
     for receipt in rr.receipts() {
-        println!("Receipt: {receipt:#?}");
+        println!("Receipt: {receipt:?}");
 
         if let Receipt::LogData {
             id,

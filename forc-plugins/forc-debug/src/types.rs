@@ -32,7 +32,7 @@ impl AbiMap {
         }
 
         // Try to fetch from ABI Registry
-        match fetch_abi_from_api(contract_id) {
+        match fetch_abi_from_registry(contract_id) {
             Ok(abi) => {
                 self.register_abi(*contract_id, abi);
                 self.get(contract_id)
@@ -62,7 +62,7 @@ impl DerefMut for AbiMap {
 }
 
 /// Fetches the ABI for the given contract ID from the Sway ABI Registry.
-fn fetch_abi_from_api(_contract_id: &ContractId) -> Result<ProgramABI> {
+fn fetch_abi_from_registry(_contract_id: &ContractId) -> Result<ProgramABI> {
     // TODO: Implement this once the Sway ABI Registry is available
     Err(Error::AbiError("Not implemented yet".to_string()))
 }
