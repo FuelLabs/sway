@@ -1,7 +1,9 @@
 //! The `B512` type supports the usage of 64-byte values in Sway which are needed when working with public keys and signatures.
 library;
 
-use ::convert::From;
+use ::convert::{From, TryFrom};
+use ::bytes::Bytes;
+use ::option::Option::{self, *};
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -157,5 +159,38 @@ impl B512 {
     /// ```
     pub fn is_zero(self) -> bool {
         (self.bits)[0] == b256::zero() && (self.bits)[1] == b256::zero()
+    }
+}
+
+impl TryFrom<Bytes> for B512 {
+    /// Casts raw `Bytes` data to an `B512`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes`: [Bytes] - The raw `Bytes` data to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [B512] - The newly created `B512` from the raw `Bytes`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo(bytes: Bytes) {
+    ///    let result = B512::try_from(bytes);
+    ///    assert(result.is_some());
+    ///    let b512 = result.unwrap();
+    /// }
+    /// ```
+    fn try_from(bytes: Bytes) -> Option<Self> {
+        if bytes.len() != 64 {
+            return None;
+        }
+
+        Some(Self { 
+            bits: asm(ptr: bytes.ptr()) { ptr: [b256; 2] } 
+        })
     }
 }

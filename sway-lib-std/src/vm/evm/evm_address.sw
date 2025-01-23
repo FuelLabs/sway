@@ -2,8 +2,10 @@
 library;
 
 use ::intrinsics::size_of_val;
-use ::convert::From;
+use ::convert::{From, TryFrom};
 use ::hash::*;
+use ::bytes::Bytes;
+use ::option::Option::{self, *};
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
@@ -136,6 +138,40 @@ impl From<EvmAddress> for b256 {
     /// ```
     fn from(addr: EvmAddress) -> b256 {
         addr.bits
+    }
+}
+
+impl TryFrom<Bytes> for EvmAddress {
+    /// Casts raw `Bytes` data to an `EvmAddress`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes`: [Bytes] - The raw `Bytes` data to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [EvmAddress] - The newly created `EvmAddress` from the raw `Bytes`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo(bytes: Bytes) {
+    ///    let result = EvmAddress::try_from(bytes);
+    ///    assert(result.is_some());
+    ///    let evm_address = result.unwrap();
+    /// }
+    /// ```
+    fn try_from(bytes: Bytes) -> Option<Self> {
+        if bytes.len() != 20 {
+            return None;
+        }
+
+        let bits = b256::zero();
+        bytes.ptr().copy_bytes_to(__addr_of(bits).add_uint_offset(12), 20);
+
+        Some(Self { bits })
     }
 }
 

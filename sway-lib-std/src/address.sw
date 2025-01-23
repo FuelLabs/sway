@@ -1,8 +1,10 @@
 //! The `Address` type used for interacting with addresses on the fuel network.
 library;
 
-use ::convert::From;
+use ::convert::{From, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::bytes::Bytes;
+use ::option::Option::{self, *};
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
@@ -116,6 +118,40 @@ impl From<Address> for b256 {
     /// ```
     fn from(address: Address) -> Self {
         address.bits()
+    }
+}
+
+impl TryFrom<Bytes> for Address {
+    /// Casts raw `Bytes` data to an `Address`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes`: [Bytes] - The raw `Bytes` data to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [Address] - The newly created `Address` from the raw `Bytes`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo(bytes: Bytes) {
+    ///    let result = Address::try_from(bytes);
+    ///    assert(result.is_some());
+    ///    let address = result.unwrap();
+    /// }
+    /// ```
+    fn try_from(bytes: Bytes) -> Option<Self> {
+        if bytes.len() != 32 {
+            return None;
+        }
+
+
+        Some(Self { 
+            bits: asm(ptr: bytes.ptr()) { ptr: b256 } 
+        })
     }
 }
 
