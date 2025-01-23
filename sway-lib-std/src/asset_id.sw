@@ -3,7 +3,7 @@ library;
 
 use ::alias::SubId;
 use ::contract_id::ContractId;
-use ::convert::{From, TryFrom};
+use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
@@ -238,8 +238,8 @@ impl From<AssetId> for b256 {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let asset_id = AssetId::b256::zero();
-    ///     let b256_data: b256 = asset_id.into();
+    ///     let asset_id = AssetId::zero();
+    ///     let b256_data: b256 = b256::from(asset_id);
     ///     assert(b256_data == b256::zero());
     /// }
     /// ```
@@ -278,5 +278,26 @@ impl TryFrom<Bytes> for AssetId {
         Some(Self { 
             bits: asm(ptr: bytes.ptr()) { ptr: b256 } 
         })
+    }
+}
+
+impl Into<Bytes> for AssetId {
+    /// Casts an `AssetId` to raw `Bytes` data.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The underlying raw `Bytes` data of the `AssetId`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let asset_id = AssetId::zero();
+    ///     let bytes_data: Bytes = asset_id.into();
+    ///     assert(bytes_data.len() == 32);
+    /// }
+    /// ```
+    fn into(self) -> Bytes {
+        Bytes::from(self.bits())
     }
 }

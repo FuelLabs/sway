@@ -1,7 +1,7 @@
 //! The `B512` type supports the usage of 64-byte values in Sway which are needed when working with public keys and signatures.
 library;
 
-use ::convert::{From, TryFrom};
+use ::convert::{From, Into, TryFrom};
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 
@@ -192,5 +192,26 @@ impl TryFrom<Bytes> for B512 {
         Some(Self { 
             bits: asm(ptr: bytes.ptr()) { ptr: [b256; 2] } 
         })
+    }
+}
+
+impl Into<Bytes> for B512 {
+    /// Casts an `B512` to raw `Bytes` data.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The underlying raw `Bytes` data of the `B512`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let b512 = B512::from((b256::zero(), b256::zero()));
+    ///     let bytes_data: Bytes = b512.into()
+    ///     assert(bytes_data.len() == 64);
+    /// }
+    /// ```
+    fn into(self) -> Bytes {
+        Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64))
     }
 }

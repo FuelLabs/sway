@@ -1,7 +1,7 @@
 //! The `Address` type used for interacting with addresses on the fuel network.
 library;
 
-use ::convert::{From, TryFrom};
+use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
@@ -112,7 +112,7 @@ impl From<Address> for b256 {
     /// ```sway
     /// fn foo() {
     ///     let address = Address::zero();
-    ///     let b256_data: b256 = address.into();
+    ///     let b256_data: b256 = b256::from(address);
     ///     assert(b256_data == b256::zero());
     /// }
     /// ```
@@ -152,6 +152,27 @@ impl TryFrom<Bytes> for Address {
         Some(Self { 
             bits: asm(ptr: bytes.ptr()) { ptr: b256 } 
         })
+    }
+}
+
+impl Into<Bytes> for Address {
+    /// Casts an `Address` to raw `Bytes` data.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The underlying raw `Bytes` data of the `Address`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let address = Address::zero();
+    ///     let bytes_data: Bytes = address.into()
+    ///     assert(bytes_data.len() == 32);
+    /// }
+    /// ```
+    fn into(self) -> Bytes {
+        Bytes::from(self.bits())
     }
 }
 
