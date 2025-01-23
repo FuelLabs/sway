@@ -4,9 +4,6 @@ use abi_with_tuples::{MyContract, Person, Location, some_module::SomeStruct};
 
 impl MyContract for Contract {
     fn bug1(_param: (Person, u64)) -> bool {
-        __log(asm() {
-            hp: u64
-        });
         true
     }
 

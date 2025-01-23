@@ -17,9 +17,6 @@ fn main() -> bool {
         },
         2u64,
     );
-    __log(asm() {
-        hp: u64
-    });
     let foo = the_abi.bug1(param1);
     assert(foo);
 

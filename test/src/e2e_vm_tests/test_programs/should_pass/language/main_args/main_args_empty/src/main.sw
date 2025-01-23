@@ -1,5 +1,5 @@
 script;
 
-fn main(v: u64) -> u64 {
+fn main() -> u64 {
     1337
 }
