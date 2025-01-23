@@ -46,34 +46,6 @@ After this the resulting binary should be located at `out/debug/dbg_example.bin`
 forc parse-bytecode out/debug/dbg_example.bin
 ```
 
-<!-- Which should give us something like
-
-```text
-
-  half-word   byte   op                                    raw           notes
-          0   0      JI { imm: 4 }                         90 00 00 04   jump to byte 16
-          1   4      NOOP                                  47 00 00 00
-          2   8      InvalidOpcode                         00 00 00 00   data section offset lo (0)
-          3   12     InvalidOpcode                         00 00 00 44   data section offset hi (68)
-          4   16     LW { ra: 63, rb: 12, imm: 1 }         5d fc c0 01
-          5   20     ADD { ra: 63, rb: 63, rc: 12 }        10 ff f3 00
-          6   24     MOVE { ra: 18, rb: 1 }                1a 48 10 00
-          7   28     MOVE { ra: 17, rb: 0 }                1a 44 00 00
-          8   32     LW { ra: 16, rb: 63, imm: 0 }         5d 43 f0 00
-          9   36     LT { ra: 16, rb: 17, rc: 16 }         16 41 14 00
-         10   40     JNZI { ra: 16, imm: 13 }              73 40 00 0d   conditionally jump to byte 52
-         11   44     LOG { ra: 18, rb: 0, rc: 0, rd: 0 }   33 48 00 00
-         12   48     RET { ra: 0 }                         24 00 00 00
-         13   52     ADD { ra: 17, rb: 17, rc: 1 }         10 45 10 40
-         14   56     MUL { ra: 18, rb: 18, rc: 17 }        1b 49 24 40
-         15   60     JI { imm: 8 }                         90 00 00 08   jump to byte 32
-         16   64     NOOP                                  47 00 00 00
-         17   68     InvalidOpcode                         00 00 00 00
-         18   72     InvalidOpcode                         00 00 00 05
-```
-
-We can recognize the `while` loop by the conditional jumps `JNZI`. The condition just before the first jump can be identified by `LT` instruction (for `<`). Some notable instructions that are generated only once in our code include `MUL` for multiplication and `LOG {.., 0, 0, 0}` from the `log` function. -->
-
 We can recognize the main loop by observing the control flow. Looking around halfword 58-60, we can see:
 
 ```text
@@ -158,7 +130,7 @@ So now we replace the script array with the result, and save it as `tx.json`.
 Now we can actually execute the script with an ABI to decode the log values:
 
 ```text
->> tx tx.json out/debug/dbg_example-abi.json
+>> start_tx tx.json out/debug/dbg_example-abi.json
 
 Receipt: LogData { id: 0000000000000000000000000000000000000000000000000000000000000000, ra: 0, rb: 1515152261580153489, ptr: 67107840, len: 8, digest: d2b80ebb9ce633ad49a9ccfcc58ac7ad33a9ab4741529ae4247a3b07e8fa1c74, pc: 10924, is: 10368, data: Some(0000000000000078) }
 Decoded log value: 120, from contract: 0000000000000000000000000000000000000000000000000000000000000000
