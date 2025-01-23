@@ -103,19 +103,28 @@ fn message_from_bytes() {
 }
 
 #[test]
-fn message_b256_try_from() {
+fn message_try_into_b256() {
     let zero_b256 = b256::zero();
     let max_b256 = b256::max();
     let other_b256 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+    let mut bytes = Bytes::from(b256::max());
+    bytes.push(0u8);
 
     let zero_message = Message::from(zero_b256);
-    assert(b256::try_from(zero_message).unwrap() == zero_b256);
+    let b256_1 = <Message as TryInto<b256>>::try_into(zero_message);
+    assert(b256_1.unwrap() == zero_b256);
 
     let max_message = Message::from(max_b256);
-    assert(b256::try_from(max_message).unwrap() == max_b256);
+    let b256_2 = <Message as TryInto<b256>>::try_into(max_message);
+    assert(b256_2.unwrap() == max_b256);
 
     let other_message = Message::from(other_b256);
-    assert(b256::try_from(other_b256).unwrap() == other_b256);
+    let b256_3 = <Message as TryInto<b256>>::try_into(other_message);
+    assert(b256_3.unwrap() == other_b256);
+
+    let bytes_message = Message::from(bytes);
+    let b256_4 = <Message as TryInto<b256>>::try_into(bytes_message);
+    assert(b256_4.is_none());
 }
 
 #[test]

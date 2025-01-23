@@ -198,62 +198,62 @@ fn public_key_try_from_bytes() {
 }
 
 #[test]
-fn public_key_b256_tuple_try_from() {
+fn public_key_try_into_b256_tuple() {
     let public_key_1 = PublicKey::from((b256::zero(), b256::zero()));
-    let (result_1_1, result_2_1) = <(b256, b256) as TryFrom<PublicKey>>::try_from(public_key_1).unwrap();
+    let (result_1_1, result_2_1) = <PublicKey as TryInto<(b256, b256)>>::try_into(public_key_1).unwrap();
     assert(result_1_1 == b256::zero());
     assert(result_2_1 == b256::zero());
 
     let public_key_2 = PublicKey::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
-    let (result_1_2, result_2_2) = <(b256, b256) as TryFrom<PublicKey>>::try_from(public_key_2).unwrap();
+    let (result_1_2, result_2_2) = <PublicKey as TryInto<(b256, b256)>>::try_into(public_key_2).unwrap();
     assert(result_1_2 == b256::zero());
     assert(result_2_2 == 0x0000000000000000000000000000000000000000000000000000000000000001);
 
     let public_key_3 = PublicKey::from((b256::max(), b256::max()));
-    let (result_1_3, result_2_3) = <(b256, b256) as TryFrom<PublicKey>>::try_from(public_key_3).unwrap();
+    let (result_1_3, result_2_3) = <PublicKey as TryInto<(b256, b256)>>::try_into(public_key_3).unwrap();
     assert(result_1_3 == b256::max());
     assert(result_2_3 == b256::max());
 
     let public_key_4 = PublicKey::from(b256::zero());
-    let result_4 = <(b256, b256) as TryFrom<PublicKey>>::try_from(public_key_4);
+    let result_4 = <PublicKey as TryInto<(b256, b256)>>::try_into(public_key_4);
     assert(result_4.is_none());
 }
 
 #[test]
-fn public_key_b512_try_from() {
+fn public_key_try_into_b512() {
     let b512_1 = B512::from((b256::zero(), b256::zero()));
     let public_key_1 = PublicKey::from(b512_1);
-    assert(B512::try_from(public_key_1).unwrap() == b512_1);
+    assert(<PublicKey as TryInto<B512>>::try_into(public_key_1).unwrap() == b512_1);
 
     let b512_2 = B512::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
     let public_key_2 = PublicKey::from(b512_2);
-    assert(B512::try_from(public_key_2).unwrap() == b512_2);
+    assert(<PublicKey as TryInto<B512>>::try_into(public_key_2).unwrap() == b512_2);
 
     let b512_3 = B512::from((b256::max(), b256::max()));
     let public_key_3 = PublicKey::from(b512_3);
-    assert(B512::try_from(public_key_3).unwrap() == b512_3);
+    assert(<PublicKey as TryInto<B512>>::try_into(public_key_3).unwrap() == b512_3);
 
     let public_key_4 = PublicKey::from(b256::zero());
-    let result = B512::try_from(public_key_4);
+    let result = <PublicKey as TryInto<B512>>::try_into(public_key_4);
     assert(result.is_none());
 }
 
 #[test]
-fn public_key_b256_try_from() {
+fn public_key_try_into_b256() {
     let public_key_1 = PublicKey::from(b256::zero());
-    let result_1 = b256::try_from(public_key_1).unwrap();
+    let result_1: b256 = <PublicKey as TryInto<b256>>::try_into(public_key_1).unwrap();
     assert(result_1 == b256::zero());
 
     let public_key_2 = PublicKey::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    let result_2 = b256::try_from(public_key_2).unwrap();
+    let result_2: b256 = <PublicKey as TryInto<b256>>::try_into(public_key_2).unwrap();
     assert(result_2 == 0x0000000000000000000000000000000000000000000000000000000000000001);
 
     let public_key_3 = PublicKey::from(b256::max());
-    let result_3 = b256::try_from(public_key_3).unwrap();
+    let result_3: b256 = <PublicKey as TryInto<b256>>::try_into(public_key_3).unwrap();
     assert(result_3 == b256::max());
 
     let public_key_4 = PublicKey::from((b256::zero(), b256::zero()));
-    let result_4 = b256::try_from(public_key_4);
+    let result_4 = <PublicKey as TryInto<b256>>::try_into(public_key_4);
     assert(result_4.is_none());
 }
 
@@ -309,6 +309,4 @@ fn public_key_hash() {
     let one_public_key = PublicKey::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let result_2 = sha256(one_public_key);
     assert(result_2 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
-
-    // TODO: Test with length 64
 }

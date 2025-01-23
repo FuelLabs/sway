@@ -206,42 +206,42 @@ fn ed25519_try_from_bytes() {
 }
 
 #[test]
-fn ed25519_b512_from() {
+fn ed25519_into_b512() {
     let b512_1 = B512::from((b256::zero(), b256::zero()));
     let ed25519_1 = Ed25519::from(b512_1);
-    assert(B512::from(ed25519_1) == b512_1);
+    assert(<Ed25519 as Into<B512>>::into(ed25519_1) == b512_1);
 
     let b512_2 = B512::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
     let ed25519_2 = Ed25519::from(b512_2);
-    assert(B512::from(ed25519_2) == b512_2);
+    assert(<Ed25519 as Into<B512>>::into(ed25519_2) == b512_2);
 
     let b512_3 = B512::from((b256::max(), b256::max()));
     let ed25519_3 = Ed25519::from(b512_3);
-    assert(B512::from(ed25519_3) == b512_3);
+    assert(<Ed25519 as Into<B512>>::into(ed25519_3) == b512_3);
 }
 
 #[test]
-fn ed25519_b256_tuple_from() {
+fn ed25519_into_b256() {
     let ed25519_1 = Ed25519::from((b256::zero(), b256::zero()));
-    let (result_1_1, result_2_1) = <(b256, b256) as From<Ed25519>>::from(ed25519_1);
+    let (result_1_1, result_2_1)  = <Ed25519 as Into<(b256, b256)>>::into(ed25519_1);
     assert(result_1_1 == b256::zero());
     assert(result_2_1 == b256::zero());
 
     let ed25519_2 = Ed25519::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
-    let (result_1_2, result_2_2) = <(b256, b256) as From<Ed25519>>::from(ed25519_2);
+    let (result_1_2, result_2_2): (b256, b256) = <Ed25519 as Into<(b256, b256)>>::into(ed25519_2);
     assert(result_1_2 == b256::zero());
     assert(result_2_2 == 0x0000000000000000000000000000000000000000000000000000000000000001);
 
     let ed25519_3 = Ed25519::from((b256::max(), b256::max()));
-    let (result_1_3, result_2_3) = <(b256, b256) as From<Ed25519>>::from(ed25519_3);
+    let (result_1_3, result_2_3): (b256, b256) = <Ed25519 as Into<(b256, b256)>>::into(ed25519_3);
     assert(result_1_3 == b256::max());
     assert(result_2_3 == b256::max());
 }
 
 #[test]
-fn ed25519_bytes_from() {
+fn ed25519_into_bytes() {
     let ed25519_1 = Ed25519::from((b256::zero(), b256::zero()));
-    let bytes_result_1 = Bytes::from(ed25519_1);
+    let bytes_result_1: Bytes = <Ed25519 as Into<Bytes>>::into(ed25519_1);
     let mut iter_1 = 0;
     while iter_1 < 64 {
         assert(bytes_result_1.get(iter_1).unwrap() == 0u8);
@@ -249,7 +249,7 @@ fn ed25519_bytes_from() {
     }
 
     let ed25519_2 = Ed25519::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
-    let bytes_result_2 = Bytes::from(ed25519_2);
+    let bytes_result_2: Bytes = <Ed25519 as Into<Bytes>>::into(ed25519_2);
     assert(bytes_result_2.get(63).unwrap() == 1u8);
     let mut iter_2 = 0;
     while iter_2 < 63 {
@@ -258,7 +258,7 @@ fn ed25519_bytes_from() {
     }
 
     let ed25519_3 = Ed25519::from((b256::max(), b256::max()));
-    let bytes_result_3 = Bytes::from(ed25519_3);
+    let bytes_result_3: Bytes = <Ed25519 as Into<Bytes>>::into(ed25519_3);
     let mut iter_3 = 0;
     while iter_3 < 64 {
         assert(bytes_result_3.get(iter_3).unwrap() == 255u8);
