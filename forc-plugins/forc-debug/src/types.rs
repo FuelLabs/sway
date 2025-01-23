@@ -16,6 +16,7 @@ pub type SourceMap = HashMap<PathBuf, FileSourceMap>;
 pub type Breakpoints = HashMap<PathBuf, Vec<Breakpoint>>;
 
 /// A map storing ABIs for contracts, capable of fetching ABIs from the registry for unknown contracts.
+#[derive(Debug, Default)]
 pub struct AbiMap(HashMap<ContractId, ProgramABI>);
 
 impl AbiMap {
@@ -39,12 +40,6 @@ impl AbiMap {
             }
             Err(_) => None,
         }
-    }
-}
-
-impl Default for AbiMap {
-    fn default() -> Self {
-        Self(HashMap::new())
     }
 }
 
