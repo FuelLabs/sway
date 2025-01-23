@@ -3,6 +3,7 @@ layout: cover
 marp: true
 ---
 
+<!-- markdownlint-disable -->
 # Sway Encoding
 
 ---
