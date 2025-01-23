@@ -282,3 +282,48 @@ fn b512_is_zero() {
     ));
     assert(!b512_4.is_zero());
 }
+
+#[test]
+fn b512_try_from_bytes() {
+    use std::bytes::Bytes;
+
+    // Test empty bytes
+    let bytes_1 = Bytes::new();
+    assert(B512::try_from(bytes_1).is_none());
+
+    // Test not full length but capacity bytes
+    let mut bytes_2 = Bytes::with_capacity(64);
+    bytes_2.push(1u8);
+    bytes_2.push(3u8);
+    bytes_2.push(5u8);
+    assert(B512::try_from(bytes_2).is_none());
+
+    // Test zero bytes
+    let b256_tuple_3 = (b256::zero(), b256::zero());
+    let bytes_3 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_3), 64));
+    let b512_3 = B512::try_from(bytes_3);
+    assert(b512_3.is_some());
+    assert(b512_3.unwrap() == B512::zero());
+
+    // Test max bytes
+    let b256_tuple_4 = (b256::max(), b256::max());
+    let bytes_4 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_4), 64));
+    let b512_4 = B512::try_from(bytes_4);
+    assert(b512_4.is_some());
+    assert(b512_4.unwrap() == B512::from((b256::max(), b256::max())));
+
+    // Test too many bytes
+    let b256_tuple_5 = (b256::max(), b256::max());
+    let mut bytes_5 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_5), 64));
+    bytes_5.push(255u8);
+    assert(B512::try_from(bytes_5).is_none());
+
+    // Test modifying bytes after doesn't impact 
+    let b256_tuple_6 = (b256::zero(), b256::zero());
+    let mut bytes_6 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_6), 64));
+    let b512_6 = B512::try_from(bytes_6);
+    assert(b512_6.is_some());
+    assert(b512_6.unwrap() == B512::zero());
+    bytes_6.set(0, 255u8);
+    assert(b512_6.unwrap() == B512::zero());
+}

@@ -180,3 +180,44 @@ fn address_is_zero() {
     let address_3 = Address::from(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
     assert(!address_3.is_zero());
 }
+
+#[test]
+fn address_try_from_bytes() {
+    use std::bytes::Bytes;
+
+    // Test empty bytes
+    let bytes_1 = Bytes::new();
+    assert(Address::try_from(bytes_1).is_none());
+
+    // Test not full length but capacity bytes
+    let mut bytes_2 = Bytes::with_capacity(32);
+    bytes_2.push(1u8);
+    bytes_2.push(3u8);
+    bytes_2.push(5u8);
+    assert(Address::try_from(bytes_2).is_none());
+
+    // Test zero bytes
+    let bytes_3 = Bytes::from(b256::zero());
+    let address_3 = Address::try_from(bytes_3);
+    assert(address_3.is_some());
+    assert(address_3.unwrap() == Address::zero());
+
+    // Test max bytes
+    let bytes_4 = Bytes::from(b256::max());
+    let address_4 = Address::try_from(bytes_4);
+    assert(address_4.is_some());
+    assert(address_4.unwrap() == Address::from(b256::max()));
+
+    // Test too many bytes
+    let mut bytes_5 = Bytes::from(b256::max());
+    bytes_5.push(255u8);
+    assert(Address::try_from(bytes_5).is_none());
+
+    // Test modifying bytes after doesn't impact 
+    let mut bytes_6 = Bytes::from(b256::zero());
+    let address_6 = Address::try_from(bytes_6);
+    assert(address_6.is_some());
+    assert(address_6.unwrap() == Address::zero());
+    bytes_6.set(0, 255u8);
+    assert(address_6.unwrap() == Address::zero());
+}

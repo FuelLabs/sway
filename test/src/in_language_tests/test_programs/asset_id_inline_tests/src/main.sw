@@ -250,3 +250,44 @@ fn asset_id_is_zero() {
     let asset_3 = AssetId::from(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
     assert(!asset_3.is_zero());
 }
+
+#[test]
+fn asset_id_try_from_bytes() {
+    use std::bytes::Bytes;
+
+    // Test empty bytes
+    let bytes_1 = Bytes::new();
+    assert(AssetId::try_from(bytes_1).is_none());
+
+    // Test not full length but capacity bytes
+    let mut bytes_2 = Bytes::with_capacity(32);
+    bytes_2.push(1u8);
+    bytes_2.push(3u8);
+    bytes_2.push(5u8);
+    assert(AssetId::try_from(bytes_2).is_none());
+
+    // Test zero bytes
+    let bytes_3 = Bytes::from(b256::zero());
+    let asset_id_3 = AssetId::try_from(bytes_3);
+    assert(asset_id_3.is_some());
+    assert(asset_id_3.unwrap() == AssetId::zero());
+
+    // Test max bytes
+    let bytes_4 = Bytes::from(b256::max());
+    let asset_id_4 = AssetId::try_from(bytes_4);
+    assert(asset_id_4.is_some());
+    assert(asset_id_4.unwrap() == AssetId::from(b256::max()));
+
+    // Test too many bytes
+    let mut bytes_5 = Bytes::from(b256::max());
+    bytes_5.push(255u8);
+    assert(AssetId::try_from(bytes_5).is_none());
+
+    // Test modifying bytes after doesn't impact 
+    let mut bytes_6 = Bytes::from(b256::zero());
+    let asset_id_6 = AssetId::try_from(bytes_6);
+    assert(asset_id_6.is_some());
+    assert(asset_id_6.unwrap() == AssetId::zero());
+    bytes_6.set(0, 255u8);
+    assert(asset_id_6.unwrap() == AssetId::zero());
+}
