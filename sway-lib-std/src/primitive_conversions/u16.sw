@@ -46,10 +46,7 @@ impl u16 {
             input: u64
         }
     }
-}
 
-// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
-impl u16 {
     /// Extends a `u16` to a `u256`.
     ///
     /// # Returns
@@ -71,9 +68,7 @@ impl u16 {
             input: u256
         }
     }
-}
 
-impl u16 {
     /// Attempts to convert the u16 value into a u8 value.
     ///
     /// # Additional Information

@@ -26,9 +26,7 @@ impl u64 {
             input: u256
         }
     }
-}
 
-impl u64 {
     /// Attempts to convert the u64 value into a u8 value.
     ///
     /// # Additional Information

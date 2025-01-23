@@ -67,10 +67,7 @@ impl u8 {
             input: u64
         }
     }
-}
 
-// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
-impl u8 {
     /// Extends a `u8` to a `u256`.
     ///
     /// # Returns

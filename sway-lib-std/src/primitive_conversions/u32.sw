@@ -25,10 +25,7 @@ impl u32 {
             input: u64
         }
     }
-}
 
-// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
-impl u32 {
     /// Extends a `u32` to a `u256`.
     ///
     /// # Returns
@@ -50,9 +47,7 @@ impl u32 {
             input: u256
         }
     }
-}
 
-impl u32 {
     /// Attempts to convert the u32 value into a u8 value.
     ///
     /// # Additional Information
