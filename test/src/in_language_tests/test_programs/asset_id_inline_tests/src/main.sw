@@ -291,3 +291,39 @@ fn asset_id_try_from_bytes() {
     bytes_6.set(0, 255u8);
     assert(asset_id_6.unwrap() == AssetId::zero());
 }
+
+#[test]
+fn asset_id_try_into_bytes() {
+    use std::bytes::Bytes;
+
+    let asset_id_1 = AssetId::zero();
+    let bytes_1: Bytes = <AssetId as Into<Bytes>>::into(asset_id_1);
+    assert(bytes_1.capacity() == 32);
+    assert(bytes_1.len() == 32);
+    let mut iter_1 = 0;
+    while iter_1 < 32 {
+        assert(bytes_1.get(iter_1).unwrap() == 0u8);
+        iter_1 += 1;
+    }
+
+    let asset_id_2 = AssetId::from(b256::max());
+    let bytes_2: Bytes = <AssetId as Into<Bytes>>::into(asset_id_2);
+    assert(bytes_2.capacity() == 32);
+    assert(bytes_2.len() == 32);
+    let mut iter_2 = 0;
+    while iter_2 < 32 {
+        assert(bytes_2.get(iter_2).unwrap() == 255u8);
+        iter_2 += 1;
+    }
+
+    let asset_id_3 = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let bytes_3: Bytes = <AssetId as Into<Bytes>>::into(asset_id_3);
+    assert(bytes_3.capacity() == 32);
+    assert(bytes_3.len() == 32);
+    assert(bytes_3.get(31).unwrap() == 1u8);
+    let mut iter_3 = 0;
+    while iter_3 < 31 {
+        assert(bytes_3.get(iter_3).unwrap() == 0u8);
+        iter_3 += 1;
+    }
+}

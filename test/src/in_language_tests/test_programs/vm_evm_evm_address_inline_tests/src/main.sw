@@ -205,3 +205,39 @@ fn evm_address_try_from_bytes() {
     bytes_6.set(0, 255u8);
     assert(evm_address_6.unwrap() == EvmAddress::zero());
 }
+
+#[test]
+fn evm_address_into_bytes() {
+    use std::bytes::Bytes;
+
+    let evm_address_1 = EvmAddress::zero();
+    let bytes_1: Bytes = <EvmAddress as Into<Bytes>>::into(evm_address_1);
+    assert(bytes_1.capacity() == 20);
+    assert(bytes_1.len() == 20);
+    let mut iter_1 = 0;
+    while iter_1 < 20 {
+        assert(bytes_1.get(iter_1).unwrap() == 0u8);
+        iter_1 += 1;
+    }
+
+    let evm_address_2 = EvmAddress::from(b256::max());
+    let bytes_2: Bytes = <EvmAddress as Into<Bytes>>::into(evm_address_2);
+    assert(bytes_2.capacity() == 20);
+    assert(bytes_2.len() == 20);
+    let mut iter_2 = 0;
+    while iter_2 < 20 {
+        assert(bytes_2.get(iter_2).unwrap() == 255u8);
+        iter_2 += 1;
+    }
+
+    let evm_address_3 = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let bytes_3: Bytes = <EvmAddress as Into<Bytes>>::into(evm_address_3);
+    assert(bytes_3.capacity() == 20);
+    assert(bytes_3.len() == 20);
+    assert(bytes_3.get(19).unwrap() == 1u8);
+    let mut iter_3 = 0;
+    while iter_3 < 19 {
+        assert(bytes_3.get(iter_3).unwrap() == 0u8);
+        iter_3 += 1;
+    }
+}
