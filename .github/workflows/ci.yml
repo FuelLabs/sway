@@ -506,6 +506,7 @@ jobs:
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_KEY }}
+          owner: FuelLabs
       - name: Checkout benchmark data
         if: github.event_name == 'push'
         uses: actions/checkout@v3
