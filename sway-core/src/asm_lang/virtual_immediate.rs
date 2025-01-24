@@ -28,7 +28,7 @@ pub enum WideCmp {
 /// 6-bit immediate value type
 #[derive(Clone, Debug)]
 pub struct VirtualImmediate06 {
-    pub(crate) value: u8,
+    value: u8,
 }
 
 impl VirtualImmediate06 {
@@ -78,6 +78,10 @@ impl VirtualImmediate06 {
         let rhs = if rhs_indirect { 32u8 } else { 0 };
         VirtualImmediate06 { value: rhs }
     }
+
+    pub fn value(&self) -> u8 {
+        self.value
+    }
 }
 
 impl fmt::Display for VirtualImmediate06 {
@@ -89,7 +93,7 @@ impl fmt::Display for VirtualImmediate06 {
 /// 12-bits immediate value type
 #[derive(Clone, Debug)]
 pub struct VirtualImmediate12 {
-    pub(crate) value: u16,
+    value: u16,
 }
 
 impl VirtualImmediate12 {
@@ -115,6 +119,10 @@ impl VirtualImmediate12 {
             value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
         }
     }
+
+    pub fn value(&self) -> u16 {
+        self.value
+    }
 }
 
 impl fmt::Display for VirtualImmediate12 {
@@ -126,7 +134,7 @@ impl fmt::Display for VirtualImmediate12 {
 /// 18-bits immediate value type
 #[derive(Clone, Debug)]
 pub struct VirtualImmediate18 {
-    pub(crate) value: u32,
+    value: u32,
 }
 impl VirtualImmediate18 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
@@ -151,6 +159,10 @@ impl VirtualImmediate18 {
             value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
         }
     }
+
+    pub fn value(&self) -> u32 {
+        self.value
+    }
 }
 impl fmt::Display for VirtualImmediate18 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -161,7 +173,7 @@ impl fmt::Display for VirtualImmediate18 {
 /// 24-bits immediate value type
 #[derive(Clone, Debug)]
 pub struct VirtualImmediate24 {
-    pub(crate) value: u32,
+    value: u32,
 }
 impl VirtualImmediate24 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
@@ -185,6 +197,10 @@ impl VirtualImmediate24 {
         Self {
             value: raw.try_into().unwrap_or_else(|_| panic!("{}", &msg.into())),
         }
+    }
+
+    pub fn value(&self) -> u32 {
+        self.value
     }
 }
 impl fmt::Display for VirtualImmediate24 {

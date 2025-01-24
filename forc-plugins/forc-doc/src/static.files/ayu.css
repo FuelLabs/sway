@@ -124,10 +124,6 @@ pre,
   color: #39afd7;
 }
 .content span.type,
-.content a.type {
-  color: #39afd7;
-}
-.content span.type,
 .content a.type,
 .block a.current.type {
   color: #39afd7;
