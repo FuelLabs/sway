@@ -245,8 +245,8 @@ fn foo() {
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">fn foo() {
-    let asset_id = AssetId::b256::zero();
-    let b256_data: b256 = asset_id.into();
+    let asset_id = AssetId::zero();
+    let b256_data: b256 = b256::from(asset_id);
     assert(b256_data == b256::zero());
 }
 </code></pre>
@@ -258,7 +258,7 @@ fn foo() {
 <h1>Examples</h1>
 <pre><code class="language-sway">fn foo() {
     let address = Address::zero();
-    let b256_data: b256 = address.into();
+    let b256_data: b256 = b256::from(address);
     assert(b256_data == b256::zero());
 }
 </code></pre>
