@@ -513,6 +513,8 @@ mod tx {
             .await
             .unwrap();
         wallet.set_provider(provider.clone());
+        let consensus_params = provider.consensus_parameters().await.unwrap();
+        let base_asset_id = consensus_params.base_asset_id();
 
         // Get the predicate
         let predicate_data = TestTxTypePredicateEncoder::default()
@@ -526,7 +528,7 @@ mod tx {
 
         // Predicate has no funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance, 0);
@@ -542,7 +544,7 @@ mod tx {
                 .transfer(
                     predicate.address(),
                     predicate_coin_amount,
-                    *provider.base_asset_id(),
+                    *base_asset_id,
                     TxPolicies::default(),
                 )
                 .await
@@ -551,7 +553,7 @@ mod tx {
 
         // Predicate has funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(
@@ -568,14 +570,14 @@ mod tx {
 
             // Inputs for predicate
             let predicate_input = predicate
-                .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                .get_asset_inputs_for_amount(*base_asset_id, 1, None)
                 .await
                 .unwrap();
 
             // Outputs for predicate
             let predicate_output = wallet.get_asset_outputs_for_amount(
                 &wallet.address(),
-                *provider.base_asset_id(),
+                *base_asset_id,
                 1,
             );
 
@@ -595,7 +597,7 @@ mod tx {
 
         // The predicate has spent it's funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance, 0);
@@ -616,6 +618,8 @@ mod tx {
             .await
             .unwrap();
         wallet.set_provider(provider.clone());
+        let consensus_params = provider.consensus_parameters().await.unwrap();
+        let base_asset_id = consensus_params.base_asset_id();
 
         // Prepare bytecode and subsections
         let bytecode = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
@@ -650,7 +654,7 @@ mod tx {
 
             // Predicate has no funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, 0);
@@ -658,7 +662,7 @@ mod tx {
                 .transfer(
                     predicate.address(),
                     predicate_coin_amount,
-                    *provider.base_asset_id(),
+                    *base_asset_id,
                     TxPolicies::default(),
                 )
                 .await
@@ -666,7 +670,7 @@ mod tx {
 
             // Predicate has funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(
@@ -676,14 +680,14 @@ mod tx {
 
             // Inputs for predicate
             let predicate_input = predicate
-                .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                .get_asset_inputs_for_amount(*base_asset_id, 1, None)
                 .await
                 .unwrap();
 
             // Outputs for predicate
             let predicate_output = wallet.get_asset_outputs_for_amount(
                 &wallet.address(),
-                *provider.base_asset_id(),
+                *base_asset_id,
                 1,
             );
 
@@ -702,7 +706,7 @@ mod tx {
 
             // The predicate has spent it's funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, 0);
@@ -725,6 +729,8 @@ mod tx {
             .await
             .unwrap();
         wallet.set_provider(provider.clone());
+        let consensus_params = provider.consensus_parameters().await.unwrap();
+        let base_asset_id = consensus_params.base_asset_id();
 
         // Get the predicate
         let predicate_data = TestTxTypePredicateEncoder::default()
@@ -738,7 +744,7 @@ mod tx {
 
         // Predicate has no funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance, 0);
@@ -748,7 +754,7 @@ mod tx {
             .transfer(
                 predicate.address(),
                 predicate_coin_amount,
-                *provider.base_asset_id(),
+                *base_asset_id,
                 TxPolicies::default(),
             )
             .await
@@ -756,7 +762,7 @@ mod tx {
 
         // Predicate has funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
@@ -773,13 +779,13 @@ mod tx {
         let blob = blobs[0].clone();
         // Inputs for predicate
         let predicate_input = predicate
-            .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+            .get_asset_inputs_for_amount(*base_asset_id, 1, None)
             .await
             .unwrap();
 
         // Outputs for predicate
         let predicate_output =
-            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
+            wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
 
         let mut builder = BlobTransactionBuilder::default().with_blob(blob);
 
@@ -802,7 +808,7 @@ mod tx {
 
         // The predicate has spent it's funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance, 0);
@@ -824,6 +830,8 @@ mod tx {
             .await
             .unwrap();
         wallet.set_provider(provider.clone());
+        let consensus_params = provider.consensus_parameters().await.unwrap();
+        let base_asset_id = consensus_params.base_asset_id();
 
         // Prepare blobs
         let max_words_per_blob = 10_000;
@@ -859,7 +867,7 @@ mod tx {
 
         // Predicate has no funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance, 0);
@@ -867,7 +875,7 @@ mod tx {
             .transfer(
                 predicate.address(),
                 predicate_coin_amount,
-                *provider.base_asset_id(),
+                *base_asset_id,
                 TxPolicies::default(),
             )
             .await
@@ -875,20 +883,20 @@ mod tx {
 
         // Predicate has funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
         // Inputs for predicate
         let predicate_input = predicate
-            .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+            .get_asset_inputs_for_amount(*base_asset_id, 1, None)
             .await
             .unwrap();
 
         // Outputs for predicate
         let predicate_output =
-            wallet.get_asset_outputs_for_amount(&wallet.address(), *provider.base_asset_id(), 1);
+            wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
 
         // Append the predicate to the transaction
         builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -905,7 +913,7 @@ mod tx {
 
         // The predicate has spent it's funds
         let predicate_balance = predicate
-            .get_asset_balance(&provider.base_asset_id())
+            .get_asset_balance(base_asset_id)
             .await
             .unwrap();
         assert_eq!(predicate_balance, 0);
@@ -1052,6 +1060,8 @@ mod inputs {
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
+            let consensus_params = provider.consensus_parameters().await.unwrap();
+            let base_asset_id = consensus_params.base_asset_id();
 
             // Prepare bytecode and subsections
             let bytecode = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
@@ -1078,7 +1088,7 @@ mod inputs {
 
                 // Predicate has no funds
                 let predicate_balance = predicate
-                    .get_asset_balance(&provider.base_asset_id())
+                    .get_asset_balance(base_asset_id)
                     .await
                     .unwrap();
                 assert_eq!(predicate_balance, 0);
@@ -1086,7 +1096,7 @@ mod inputs {
                     .transfer(
                         predicate.address(),
                         predicate_coin_amount,
-                        *provider.base_asset_id(),
+                        *base_asset_id,
                         TxPolicies::default(),
                     )
                     .await
@@ -1094,7 +1104,7 @@ mod inputs {
 
                 // Predicate has funds
                 let predicate_balance = predicate
-                    .get_asset_balance(&provider.base_asset_id())
+                    .get_asset_balance(base_asset_id)
                     .await
                     .unwrap();
                 assert_eq!(
@@ -1104,14 +1114,14 @@ mod inputs {
 
                 // Inputs for predicate
                 let predicate_input = predicate
-                    .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                    .get_asset_inputs_for_amount(*base_asset_id, 1, None)
                     .await
                     .unwrap();
 
                 // Outputs for predicate
                 let predicate_output = wallet.get_asset_outputs_for_amount(
                     &wallet.address(),
-                    *provider.base_asset_id(),
+                    *base_asset_id,
                     1,
                 );
 
@@ -1130,7 +1140,7 @@ mod inputs {
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate
-                    .get_asset_balance(&provider.base_asset_id())
+                    .get_asset_balance(base_asset_id)
                     .await
                     .unwrap();
                 assert_eq!(predicate_balance, 0);
@@ -1152,6 +1162,8 @@ mod inputs {
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
+            let consensus_params = provider.consensus_parameters().await.unwrap();
+            let base_asset_id = consensus_params.base_asset_id();
 
             // Prepare blobs
             let max_words_per_blob = 10_000;
@@ -1179,7 +1191,7 @@ mod inputs {
 
             // Predicate has no funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, 0);
@@ -1187,7 +1199,7 @@ mod inputs {
                 .transfer(
                     predicate.address(),
                     predicate_coin_amount,
-                    *provider.base_asset_id(),
+                    *base_asset_id,
                     TxPolicies::default(),
                 )
                 .await
@@ -1195,21 +1207,21 @@ mod inputs {
 
             // Predicate has funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
             // Inputs for predicate
             let predicate_input = predicate
-                .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                .get_asset_inputs_for_amount(*base_asset_id, 1, None)
                 .await
                 .unwrap();
 
             // Outputs for predicate
             let predicate_output = wallet.get_asset_outputs_for_amount(
                 &wallet.address(),
-                *provider.base_asset_id(),
+                *base_asset_id,
                 1,
             );
 
@@ -1228,7 +1240,7 @@ mod inputs {
 
             // The predicate has spent it's funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, 0);
@@ -1757,6 +1769,8 @@ mod outputs {
             .pop()
             .unwrap();
             let provider = wallet.try_provider().unwrap();
+            let consensus_params = provider.consensus_parameters().await.unwrap();
+            let base_asset_id = consensus_params.base_asset_id();
 
             // Get the predicate
             let predicate: Predicate =
@@ -1767,7 +1781,7 @@ mod outputs {
 
             // Predicate has no funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, 0);
@@ -1777,7 +1791,7 @@ mod outputs {
                 .transfer(
                     predicate.address(),
                     predicate_coin_amount,
-                    *provider.base_asset_id(),
+                    *base_asset_id,
                     TxPolicies::default(),
                 )
                 .await
@@ -1785,7 +1799,7 @@ mod outputs {
 
             // Predicate has funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, predicate_coin_amount);
@@ -1809,14 +1823,14 @@ mod outputs {
 
             // Inputs
             let inputs = predicate
-                .get_asset_inputs_for_amount(*provider.base_asset_id(), predicate_coin_amount, None)
+                .get_asset_inputs_for_amount(*base_asset_id, predicate_coin_amount, None)
                 .await
                 .unwrap();
 
             // Outputs
             let mut outputs = wallet.get_asset_outputs_for_amount(
                 &wallet.address(),
-                *provider.base_asset_id(),
+                *base_asset_id,
                 predicate_coin_amount,
             );
             outputs.push(SdkOutput::contract_created(
@@ -1902,6 +1916,8 @@ mod outputs {
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
+            let consensus_params = provider.consensus_parameters().await.unwrap();
+            let base_asset_id = consensus_params.base_asset_id();
 
             // Prepare bytecode and subsections
             let bytecode = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
@@ -1928,7 +1944,7 @@ mod outputs {
 
                 // Predicate has no funds
                 let predicate_balance = predicate
-                    .get_asset_balance(&provider.base_asset_id())
+                    .get_asset_balance(base_asset_id)
                     .await
                     .unwrap();
                 assert_eq!(predicate_balance, 0);
@@ -1936,7 +1952,7 @@ mod outputs {
                     .transfer(
                         predicate.address(),
                         predicate_coin_amount,
-                        *provider.base_asset_id(),
+                        *base_asset_id,
                         TxPolicies::default(),
                     )
                     .await
@@ -1944,7 +1960,7 @@ mod outputs {
 
                 // Predicate has funds
                 let predicate_balance = predicate
-                    .get_asset_balance(&provider.base_asset_id())
+                    .get_asset_balance(base_asset_id)
                     .await
                     .unwrap();
                 assert_eq!(
@@ -1954,14 +1970,14 @@ mod outputs {
 
                 // Inputs for predicate
                 let predicate_input = predicate
-                    .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                    .get_asset_inputs_for_amount(*base_asset_id, 1, None)
                     .await
                     .unwrap();
 
                 // Outputs for predicate
                 let predicate_output = wallet.get_asset_outputs_for_amount(
                     &wallet.address(),
-                    *provider.base_asset_id(),
+                    *base_asset_id,
                     1,
                 );
 
@@ -1980,7 +1996,7 @@ mod outputs {
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate
-                    .get_asset_balance(&provider.base_asset_id())
+                    .get_asset_balance(base_asset_id)
                     .await
                     .unwrap();
                 assert_eq!(predicate_balance, 0);
@@ -2002,6 +2018,8 @@ mod outputs {
                 .await
                 .unwrap();
             wallet.set_provider(provider.clone());
+            let consensus_params = provider.consensus_parameters().await.unwrap();
+            let base_asset_id = consensus_params.base_asset_id();
 
             // Prepare blobs
             let max_words_per_blob = 10_000;
@@ -2030,7 +2048,7 @@ mod outputs {
 
             // Predicate has no funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, 0);
@@ -2038,7 +2056,7 @@ mod outputs {
                 .transfer(
                     predicate.address(),
                     predicate_coin_amount,
-                    *provider.base_asset_id(),
+                    *base_asset_id,
                     TxPolicies::default(),
                 )
                 .await
@@ -2046,21 +2064,21 @@ mod outputs {
 
             // Predicate has funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
             // Inputs for predicate
             let predicate_input = predicate
-                .get_asset_inputs_for_amount(*provider.base_asset_id(), 1, None)
+                .get_asset_inputs_for_amount(*base_asset_id, 1, None)
                 .await
                 .unwrap();
 
             // Outputs for predicate
             let predicate_output = wallet.get_asset_outputs_for_amount(
                 &wallet.address(),
-                *provider.base_asset_id(),
+                *base_asset_id,
                 1,
             );
 
@@ -2079,7 +2097,7 @@ mod outputs {
 
             // The predicate has spent it's funds
             let predicate_balance = predicate
-                .get_asset_balance(&provider.base_asset_id())
+                .get_asset_balance(base_asset_id)
                 .await
                 .unwrap();
             assert_eq!(predicate_balance, 0);
