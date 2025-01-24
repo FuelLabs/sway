@@ -160,3 +160,84 @@ fn evm_address_hash() {
     let digest_4 = sha256(evm_address_4);
     assert(digest_4 != 0x4eaddc8cfcdd27223821e3e31ab54b2416dd3b0c1a86afd7e8d6538ca1bd0a77);
 }
+
+#[test]
+fn evm_address_try_from_bytes() {
+    use std::bytes::Bytes;
+
+    // Test empty bytes
+    let bytes_1 = Bytes::new();
+    assert(EvmAddress::try_from(bytes_1).is_none());
+
+    // Test not full length but capacity bytes
+    let mut bytes_2 = Bytes::with_capacity(20);
+    bytes_2.push(1u8);
+    bytes_2.push(3u8);
+    bytes_2.push(5u8);
+    assert(EvmAddress::try_from(bytes_2).is_none());
+
+    // Test zero bytes
+    let bytes_3_full = Bytes::from(b256::zero());
+    let (bytes_3, bytes_3_discard) = bytes_3_full.split_at(20);
+    let evm_address_3 = EvmAddress::try_from(bytes_3);
+    assert(evm_address_3.is_some());
+    assert(evm_address_3.unwrap() == EvmAddress::zero());
+
+    // Test max bytes
+    let bytes_4_full = Bytes::from(b256::max());
+    let (bytes_4, bytes_4_discard) = bytes_4_full.split_at(20);
+    let evm_address_4 = EvmAddress::try_from(bytes_4);
+    assert(evm_address_4.is_some());
+    assert(evm_address_4.unwrap() == EvmAddress::from(b256::max()));
+
+    // Test too many bytes
+    let bytes_5_full = Bytes::from(b256::zero());
+    let (mut bytes_5, bytes_5_discard) = bytes_5_full.split_at(20);
+    bytes_5.push(255u8);
+    assert(EvmAddress::try_from(bytes_5).is_none());
+
+    // Test modifying bytes after doesn't impact 
+    let bytes_6_full = Bytes::from(b256::zero());
+    let (mut bytes_6, bytes_6_discard) = bytes_6_full.split_at(20);
+    let evm_address_6 = EvmAddress::try_from(bytes_6);
+    assert(evm_address_6.is_some());
+    assert(evm_address_6.unwrap() == EvmAddress::zero());
+    bytes_6.set(0, 255u8);
+    assert(evm_address_6.unwrap() == EvmAddress::zero());
+}
+
+#[test]
+fn evm_address_into_bytes() {
+    use std::bytes::Bytes;
+
+    let evm_address_1 = EvmAddress::zero();
+    let bytes_1: Bytes = <EvmAddress as Into<Bytes>>::into(evm_address_1);
+    assert(bytes_1.capacity() == 20);
+    assert(bytes_1.len() == 20);
+    let mut iter_1 = 0;
+    while iter_1 < 20 {
+        assert(bytes_1.get(iter_1).unwrap() == 0u8);
+        iter_1 += 1;
+    }
+
+    let evm_address_2 = EvmAddress::from(b256::max());
+    let bytes_2: Bytes = <EvmAddress as Into<Bytes>>::into(evm_address_2);
+    assert(bytes_2.capacity() == 20);
+    assert(bytes_2.len() == 20);
+    let mut iter_2 = 0;
+    while iter_2 < 20 {
+        assert(bytes_2.get(iter_2).unwrap() == 255u8);
+        iter_2 += 1;
+    }
+
+    let evm_address_3 = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let bytes_3: Bytes = <EvmAddress as Into<Bytes>>::into(evm_address_3);
+    assert(bytes_3.capacity() == 20);
+    assert(bytes_3.len() == 20);
+    assert(bytes_3.get(19).unwrap() == 1u8);
+    let mut iter_3 = 0;
+    while iter_3 < 19 {
+        assert(bytes_3.get(iter_3).unwrap() == 0u8);
+        iter_3 += 1;
+    }
+}
