@@ -722,6 +722,103 @@ impl Bytes {
         // set capacity and length
         self.len = both_len;
     }
+
+    /// Removes and returns a range of elements from the `Bytes` (i.e. indices `[start, end)`),
+    /// then replaces that range with the contents of `replace_with`.
+    ///
+    /// # Arguments
+    ///
+    /// * `start`: [u64] - The starting index for the splice (inclusive).
+    /// * `end`: [u64] - The ending index for the splice (exclusive).
+    /// * `replace_with`: [Bytes] - The elements to insert in place of the removed range.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - A new `Bytes` containing all of the elements from `start` up to (but not including) `end`.
+    ///
+    /// # Reverts
+    ///
+    /// * When `start > end`.
+    /// * When `end > self.len`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5u8);  // index 0
+    ///     bytes.push(7u8);  // index 1
+    ///     bytes.push(9u8);  // index 2
+    ///
+    ///     // Replace the middle item (index 1) with two new items
+    ///     let mut replacement = Bytes::new();
+    ///     replacement.push(42u8);
+    ///     replacement.push(100u8);
+    ///
+    ///     // Splice out range [1..2) => removes the single element 7u8,
+    ///     // then inserts [42, 100] there
+    ///     let spliced = bytes.splice(1, 2, replacement);
+    ///
+    ///     // `spliced` has the element [7u8]
+    ///     assert(spliced.len() == 1);
+    ///     assert(spliced.get(0).unwrap() == 7u8);
+    ///
+    ///     // `bytes` is now [5u8, 42u8, 100u8, 9u8]
+    ///     assert(bytes.len() == 4);
+    ///     assert(bytes.get(0).unwrap() == 5u8);
+    ///     assert(bytes.get(1).unwrap() == 42u8);
+    ///     assert(bytes.get(2).unwrap() == 100u8);
+    ///     assert(bytes.get(3).unwrap() == 9u8);
+    /// }
+    /// ```
+    pub fn splice(ref mut self, start: u64, end: u64, replace_with: Bytes) -> Bytes {
+        assert(start <= end);
+        assert(end <= self.len);
+
+        let splice_len = end - start;
+        let replace_len = replace_with.len();
+
+        // Build the Bytes to return
+        let mut spliced = Bytes::with_capacity(splice_len);
+        if splice_len > 0 {
+            let old_ptr = self.buf.ptr().add_uint_offset(start);
+            old_ptr.copy_bytes_to(spliced.buf.ptr(), splice_len);
+            spliced.len = splice_len;
+        }
+
+        // New self
+        let new_len = self.len - splice_len + replace_len;
+        let mut new_buf = Bytes::with_capacity(new_len);
+
+        // Move head
+        if start > 0 {
+            let old_ptr = self.buf.ptr();
+            old_ptr.copy_bytes_to(new_buf.buf.ptr(), start);
+        }
+
+        // Move middle
+        if replace_len > 0 {
+            replace_with
+                .buf
+                .ptr()
+                .copy_bytes_to(new_buf.buf.ptr().add_uint_offset(start), replace_len);
+        }
+
+        // Move tail
+        let tail_len = self.len - end;
+        if tail_len > 0 {
+            let old_tail = self.buf.ptr().add_uint_offset(end);
+            let new_tail = new_buf.buf.ptr().add_uint_offset(start + replace_len);
+            old_tail.copy_bytes_to(new_tail, tail_len);
+        }
+
+        self.buf = new_buf.buf;
+        self.len = new_len;
+
+        spliced
+    }
 }
 
 impl Eq for Bytes {
