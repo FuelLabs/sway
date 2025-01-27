@@ -1,7 +1,7 @@
 //! Allows logging of arbitrary stack types, emitted as either `Log` or `Logd` receipts.
 library;
 
-use ::codec::AbiEncode;
+use ::codec::*;
 
 /// Log any stack type.
 ///

@@ -482,19 +482,19 @@ impl U128 {
     }
 }
 
-impl ::BitwiseAnd for U128 {
+impl BitwiseAnd for U128 {
     fn binary_and(self, other: Self) -> Self {
         Self::from((self.upper & other.upper, self.lower & other.lower))
     }
 }
 
-impl ::BitwiseOr for U128 {
+impl BitwiseOr for U128 {
     fn binary_or(self, other: Self) -> Self {
         Self::from((self.upper | other.upper, self.lower | other.lower))
     }
 }
 
-impl ::Shift for U128 {
+impl Shift for U128 {
     fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
@@ -544,7 +544,7 @@ impl ::Shift for U128 {
     }
 }
 
-impl ::Not for U128 {
+impl Not for U128 {
     fn not(self) -> Self {
         Self {
             upper: !self.upper,
@@ -553,7 +553,7 @@ impl ::Not for U128 {
     }
 }
 
-impl ::Add for U128 {
+impl Add for U128 {
     /// Add a `U128` to a `U128`. Reverts on overflow.
     fn add(self, other: Self) -> Self {
         let mut upper_128 = self.upper.overflowing_add(other.upper);
@@ -583,7 +583,7 @@ impl ::Add for U128 {
     }
 }
 
-impl ::Subtract for U128 {
+impl Subtract for U128 {
     /// Subtract a `U128` from a `U128`. Reverts on underflow.
     fn subtract(self, other: Self) -> Self {
         // panic_on_overflow_enabled is also for underflow
@@ -606,7 +606,7 @@ impl ::Subtract for U128 {
         Self { upper, lower }
     }
 }
-impl ::Multiply for U128 {
+impl Multiply for U128 {
     /// Multiply a `U128` with a `U128`. Reverts of overflow.
     fn multiply(self, other: Self) -> Self {
         // in case both of the `U128` upper parts are bigger than zero,
@@ -629,7 +629,7 @@ impl ::Multiply for U128 {
     }
 }
 
-impl ::Divide for U128 {
+impl Divide for U128 {
     /// Divide a `U128` by a `U128`. Reverts if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = Self::from((0, 0));
