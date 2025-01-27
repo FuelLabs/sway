@@ -1076,7 +1076,7 @@ async fn deployed_predicate_call() {
     wallet_unlocked
         .transfer(
             predicate.address(),
-            500,
+            2000,
             *base_asset_id,
             TxPolicies::default(),
         )
@@ -1085,7 +1085,7 @@ async fn deployed_predicate_call() {
 
     // Check predicate balance.
     let balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
-    assert_eq!(balance, 500);
+    assert_eq!(balance, 2000);
 
     // Try to spend it
     let amount_to_unlock = 300;
@@ -1101,7 +1101,7 @@ async fn deployed_predicate_call() {
 
     // Check predicate balance again.
     let balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
-    assert_eq!(balance, 200);
+    assert_eq!(balance, 828);
 
     node.kill().unwrap();
 }
