@@ -6,6 +6,7 @@ use ::primitives::*;
 use ::convert::{From, Into, TryFrom};
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
+use ::raw_slice::*;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.

@@ -11,7 +11,7 @@ use ::registers::error;
 use ::result::Result::{self, *};
 use ::option::Option::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
-
+use ::ops::Eq;
 /// A secp256r1 signature.
 pub struct Secp256r1 {
     /// The underlying raw `[u8; 64]` data of the signature.
@@ -425,7 +425,7 @@ impl Into<Bytes> for Secp256r1 {
     }
 }
 
-impl core::ops::Eq for Secp256r1 {
+impl Eq for Secp256r1 {
     fn eq(self, other: Self) -> bool {
         let mut iter = 0;
         while iter < 64 {
