@@ -1048,7 +1048,7 @@ pub(crate) fn item_const_to_constant_declaration(
         name: item_const.name,
         type_ascription,
         value: expr,
-        visibility: pub_token_opt_to_visibility(item_const.visibility),
+        visibility: pub_token_opt_to_visibility(item_const.pub_token),
         attributes,
         span,
     };
