@@ -3,7 +3,6 @@ library;
 use ::bytes::Bytes;
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
-use ::u128::U128;
 use ::b512::B512;
 
 impl b256 {
@@ -93,34 +92,7 @@ impl From<u256> for b256 {
     /// }
     /// ```
     fn from(num: u256) -> Self {
-        num.as_b256()
-    }
-}
-
-impl From<U128> for b256 {
-    /// Converts a `U128` to a `b256`.
-    ///
-    /// # Arguments
-    ///
-    /// * `num`: [U128] - The `U128` to be converted.
-    ///
-    /// # Returns
-    ///
-    /// * [b256] - The `b256` representation of the `U128` value.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::u128::U128;
-    ///
-    /// fn foo() {
-    ///    let u128_value = U128::from((18446744073709551615_u64, 18446744073709551615_u64));
-    ///    let b256_value = b256::from(u128_value);
-    /// }
-    /// ```
-    fn from(num: U128) -> Self {
-        let input = (0u64, 0u64, num.upper(), num.lower());
-        asm(input: input) {
+        asm(input: num) {
             input: b256
         }
     }

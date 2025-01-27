@@ -1399,3 +1399,123 @@ impl Eq for str {
         }
     }
 }
+
+impl u8 {
+    /// Returns whether a `u8` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u8` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u8 = u8::zero();
+    ///     assert(zero_u8.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u8
+    }
+}
+
+impl u16 {
+    /// Returns whether a `u16` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u16` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u16 = u16::zero();
+    ///     assert(zero_u16.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u16
+    }
+}
+
+impl u32 {
+    /// Returns whether a `u32` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u32` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u32 = u32::zero();
+    ///     assert(zero_u32.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u32
+    }
+}
+
+impl u64 {
+    /// Returns whether a `u64` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u64` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u64 = u64::zero();
+    ///     assert(zero_u64.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u64
+    }
+}
+
+impl u256 {
+    /// Returns whether a `u256` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u256` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u256 = u256::zero();
+    ///     assert(zero_u256.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0x00u256
+    }
+}
+
+impl b256 {
+    /// Returns whether a `b256` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `b256` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_b256 = b256::zero();
+    ///     assert(zero_b256.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0x0000000000000000000000000000000000000000000000000000000000000000
+    }
+}

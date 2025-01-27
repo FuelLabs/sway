@@ -10,6 +10,7 @@ use ::asset_id::AssetId;
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};
+use ::ops::Eq;
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
@@ -19,7 +20,7 @@ pub enum Identity {
 }
 // ANCHOR_END: docs_identity
 
-impl ::ops::Eq for Identity {
+impl Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,

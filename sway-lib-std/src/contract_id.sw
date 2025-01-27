@@ -3,6 +3,9 @@ library;
 
 use ::convert::From;
 use ::hash::{Hash, Hasher};
+use ::ops::Eq;
+use ::primitives::*;
+use ::codec::*;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -30,7 +33,7 @@ impl ContractId {
     }
 }
 
-impl ::ops::Eq for ContractId {
+impl Eq for ContractId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
@@ -152,5 +155,11 @@ impl ContractId {
     /// ```
     pub fn is_zero(self) -> bool {
         self.bits == b256::zero()
+    }
+}
+
+impl AbiEncode for ContractId {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        self.bits.abi_encode(buffer)
     }
 }

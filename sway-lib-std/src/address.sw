@@ -3,6 +3,8 @@ library;
 
 use ::convert::From;
 use ::hash::{Hash, Hasher};
+use ::ops::Eq;
+use ::primitives::*;
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
@@ -68,7 +70,7 @@ impl Address {
     }
 }
 
-impl ::ops::Eq for Address {
+impl Eq for Address {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }

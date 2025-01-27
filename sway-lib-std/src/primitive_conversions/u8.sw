@@ -2,7 +2,7 @@ library;
 
 use ::convert::TryFrom;
 use ::option::Option::{self, *};
-use ::u128::U128;
+use ::ops::*;
 
 impl u8 {
     /// Extends a `u8` to a `u16`.
@@ -143,16 +143,6 @@ impl TryFrom<u256> for u8 {
             Some(asm(r1: parts.3) {
                 r1: u8
             })
-        }
-    }
-}
-
-impl TryFrom<U128> for u8 {
-    fn try_from(u: U128) -> Option<Self> {
-        if u.upper() == 0 {
-            <u8 as TryFrom<u64>>::try_from(u.lower())
-        } else {
-            None
         }
     }
 }

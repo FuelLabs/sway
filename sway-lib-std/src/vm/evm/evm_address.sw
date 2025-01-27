@@ -4,6 +4,8 @@ library;
 use ::intrinsics::size_of_val;
 use ::convert::From;
 use ::hash::*;
+use ::ops::Eq;
+use ::primitives::*;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
@@ -75,7 +77,7 @@ impl EvmAddress {
     }
 }
 
-impl ::ops::Eq for EvmAddress {
+impl Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }

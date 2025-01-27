@@ -2,6 +2,8 @@
 library;
 
 use ::convert::From;
+use ::ops::*;
+use ::primitives::*;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -10,7 +12,7 @@ pub struct B512 {
     bits: [b256; 2],
 }
 
-impl ::ops::Eq for B512 {
+impl Eq for B512 {
     fn eq(self, other: Self) -> bool {
         (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
     }

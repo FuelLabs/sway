@@ -2,6 +2,8 @@ library;
 
 use ::alloc::alloc;
 use ::option::Option::{self, *};
+use ::ops::*;
+use ::primitive_conversions::{u64::*, b256::*, u256::*};
 
 /// Stores a stack value in storage. Will not work for heap values.
 ///

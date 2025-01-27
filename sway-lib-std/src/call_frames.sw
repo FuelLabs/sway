@@ -6,6 +6,8 @@ use ::asset_id::AssetId;
 use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::registers::frame_ptr;
+use ::raw_ptr::*;
+use ::codec::*;
 
 // Note that everything when serialized is padded to word length.
 //

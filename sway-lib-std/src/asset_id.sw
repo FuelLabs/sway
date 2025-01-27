@@ -5,6 +5,8 @@ use ::alias::SubId;
 use ::contract_id::ContractId;
 use ::convert::From;
 use ::hash::{Hash, Hasher};
+use ::ops::Eq;
+use ::primitives::*;
 
 /// An AssetId is used for interacting with an asset on the network.
 ///
@@ -27,7 +29,7 @@ impl Hash for AssetId {
     }
 }
 
-impl ::ops::Eq for AssetId {
+impl Eq for AssetId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
@@ -81,7 +83,7 @@ impl AssetId {
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
-        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let result_buffer = b256::zero();
         asm(
             asset_id: result_buffer,
             ptr: (contract_id, sub_id),
@@ -120,12 +122,12 @@ impl AssetId {
         let contract_id = asm() {
             fp: b256
         };
-        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let result_buffer = b256::zero();
         asm(
             asset_id: result_buffer,
             ptr: (
                 contract_id,
-                0x0000000000000000000000000000000000000000000000000000000000000000,
+                b256::zero(),
             ),
             bytes: 64,
         ) {
