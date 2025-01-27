@@ -383,7 +383,7 @@ impl Parse for ItemAbi {
 
 impl Parse for ItemConst {
     fn parse(&self, ctx: &ParseContext) {
-        if let Some(visibility) = &self.visibility {
+        if let Some(visibility) = &self.pub_token {
             insert_keyword(ctx, visibility.span());
         }
         insert_keyword(ctx, self.const_token.span());
