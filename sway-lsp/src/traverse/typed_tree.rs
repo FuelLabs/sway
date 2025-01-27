@@ -78,6 +78,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::VariableDecl(decl) => decl.parse(ctx),
             ty::TyDecl::ConstantDecl(decl) => decl.parse(ctx),
             ty::TyDecl::ConfigurableDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::ConstGenericDecl(decl) => decl.parse(ctx),
             ty::TyDecl::FunctionDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TraitDecl(decl) => decl.parse(ctx),
             ty::TyDecl::StructDecl(decl) => decl.parse(ctx),
@@ -287,6 +288,17 @@ impl Parse for ty::TyExpression {
                 ..
             } => {
                 collect_const_decl(ctx, decl, Some(&Ident::new(span.clone())));
+                if let Some(call_path) = call_path {
+                    collect_call_path_prefixes(ctx, &call_path.prefixes);
+                }
+            }
+            ty::TyExpressionVariant::ConstGenericExpression {
+                ref decl,
+                span,
+                call_path,
+                ..
+            } => {
+                // collect_const_decl(ctx, decl, Some(&Ident::new(span.clone()))); // TODO
                 if let Some(call_path) = call_path {
                     collect_call_path_prefixes(ctx, &call_path.prefixes);
                 }
@@ -631,6 +643,13 @@ impl Parse for ty::ConfigurableDecl {
     fn parse(&self, ctx: &ParseContext) {
         let decl = ctx.engines.de().get_configurable(&self.decl_id);
         collect_configurable_decl(ctx, &decl, None);
+    }
+}
+
+impl Parse for ty::ConstGenericDecl {
+    fn parse(&self, ctx: &ParseContext) {
+        // let decl = ctx.engines.de().get(&self.decl_id);
+        // collect_configurable_decl(ctx, &decl, None);
     }
 }
 
@@ -1260,6 +1279,10 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
     if let Some(value) = &const_decl.value {
         value.parse(ctx);
     }
+}
+
+fn collect_const_generic_decl(ctx: &ParseContext, const_decl: &ty::TyConstGenericDecl, ident: Option<&Ident>) {
+    // TODO
 }
 
 fn collect_configurable_decl(

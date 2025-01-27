@@ -130,6 +130,7 @@ impl Parse for Declaration {
             Declaration::ImplSelfOrTrait(decl_id) => decl_id.parse(ctx),
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::ConstGenericDeclaration(decl_id) => {/*decl_id.parse(ctx)*/},
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),

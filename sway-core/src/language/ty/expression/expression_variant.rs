@@ -873,9 +873,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     Ok(has_changes)
                 }
                 ConstantExpression { decl, .. } => decl.replace_decls(decl_mapping, handler, ctx),
-                ConstGenericExpression { .. } => {
-                    todo!()
-                }
+                ConstGenericExpression { .. } => Ok(false),
                 ConfigurableExpression { decl, .. } => {
                     decl.replace_decls(decl_mapping, handler, ctx)
                 }

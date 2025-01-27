@@ -133,6 +133,14 @@ impl TyImplSelfOrTrait {
                             decl_id: *decl_ref.id(),
                         }),
                     )?;
+
+                    // Allow type check to finish, but give an error
+                    // if const_generics is off
+                    if !ctx.experimental.const_generics {
+                        handler.emit_err(
+                            sway_features::Feature::ConstGenerics.error_because_is_disabled(&const_generic.span),
+                        );
+                    }
                 }
 
                 // Type check the type parameters

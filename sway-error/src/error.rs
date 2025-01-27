@@ -51,6 +51,14 @@ impl fmt::Display for InterfaceName {
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error(
+        "This needs \"{feature}\" to be enabled, but it is currently disabled. For more details go to {url}."
+    )]
+    FeatureIsDisabled {
+        feature: String,
+        url: String,
+        span: Span,
+    },
+    #[error(
         "There was an error while evaluating the evaluation order for the module dependency graph."
     )]
     ModuleDepGraphEvaluationError {},
@@ -1047,6 +1055,7 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
+            FeatureIsDisabled { span, ..} => span.clone(),
             ModuleDepGraphEvaluationError { .. } => Span::dummy(),
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),

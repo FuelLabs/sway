@@ -10,7 +10,7 @@ impl<T, const N: u64> A for [T; N] {
     }
 }
 
-fn main(a: [u64; 1]) {
+fn main() {
     let a = [9].lenxxx();
     let b = [9, 10].lenxxx();
 

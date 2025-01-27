@@ -178,7 +178,7 @@ enum TypeRootFilter {
     Enum(ParsedDeclId<EnumDeclaration>),
     Struct(ParsedDeclId<StructDeclaration>),
     ContractCaller(String),
-    Array(String),
+    Array,
     RawUntypedPtr,
     RawUntypedSlice,
     Ptr,
@@ -192,9 +192,6 @@ impl TypeRootFilter {
     pub fn generalize(&self, filters: &mut Vec<TypeRootFilter>) {
         match self {
             TypeRootFilter::Placeholder => {}
-            TypeRootFilter::Array(x) if x != "N" => {
-                filters.push(TypeRootFilter::Array("N".into()));
-            }
             _ => filters.push(TypeRootFilter::Placeholder),
         }
     }
@@ -1654,7 +1651,7 @@ impl TraitMap {
                 TypeRootFilter::Struct(engines.de().get_parsed_decl_id(decl_id).unwrap())
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
-            Array(_a, length) => TypeRootFilter::Array(length.get_length_str()),
+            Array(_a, _length) => TypeRootFilter::Array,
             RawUntypedPtr => TypeRootFilter::RawUntypedPtr,
             RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
             Ptr(_) => TypeRootFilter::Ptr,

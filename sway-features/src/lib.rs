@@ -19,6 +19,22 @@ macro_rules! features {
                 )*
             }
 
+            impl Feature {
+                pub fn error_because_is_disabled(&self, span: &sway_types::Span) -> sway_error::error::CompileError {
+                    match self {
+                        $(
+                            Self::[<$name:camel>] => {
+                                sway_error::error::CompileError::FeatureIsDisabled {
+                                    feature: stringify!([<$name:snake>]).into(),
+                                    url: $url.into(),
+                                    span: span.clone()
+                                }
+                            },
+                        )*
+                    }
+                }
+            }
+
             impl std::str::FromStr for Feature {
                 type Err = Error;
 
@@ -133,6 +149,8 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5727",
     storage_domains = false,
     "https://github.com/FuelLabs/sway/issues/6701",
+    const_generics = false,
+    "https://github.com/FuelLabs/sway/issues/6860",
 }
 
 #[derive(Clone, Debug, Default, Parser)]
