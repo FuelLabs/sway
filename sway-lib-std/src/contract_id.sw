@@ -9,7 +9,6 @@ use ::codec::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 
-
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
     /// The underlying raw `b256` data of the contract id.

@@ -11,7 +11,7 @@ use ::flags::{
     set_flags,
 };
 use ::registers::{flags, overflow};
-use ::primitive_conversions::{u8::*, u16::*, u32::*, u64::*, u256::*};
+use ::primitive_conversions::{u16::*, u256::*, u32::*, u64::*, u8::*};
 
 /// Calculates the square root.
 pub trait Root {

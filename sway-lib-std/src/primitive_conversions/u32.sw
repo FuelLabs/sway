@@ -3,7 +3,7 @@ library;
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 use ::ops::*;
-use ::primitive_conversions::{u8::*, u16::*};
+use ::primitive_conversions::{u16::*, u8::*};
 
 impl u32 {
     /// Extends a `u32` to a `u64`.
@@ -189,5 +189,3 @@ impl TryFrom<u256> for u32 {
         }
     }
 }
-
-

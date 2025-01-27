@@ -127,10 +127,7 @@ impl AssetId {
         let result_buffer = b256::zero();
         asm(
             asset_id: result_buffer,
-            ptr: (
-                contract_id,
-                b256::zero(),
-            ),
+            ptr: (contract_id, b256::zero()),
             bytes: 64,
         ) {
             s256 asset_id ptr bytes;

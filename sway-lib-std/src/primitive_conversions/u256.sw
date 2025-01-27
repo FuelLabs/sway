@@ -4,7 +4,7 @@ use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 use ::b512::B512;
 use ::ops::*;
-use ::primitive_conversions::{u8::*, u16::*, u32::*, u64::*, b256::*};
+use ::primitive_conversions::{b256::*, u16::*, u32::*, u64::*, u8::*};
 
 impl u256 {
     /// Converts a `u256` to a `b256`.
