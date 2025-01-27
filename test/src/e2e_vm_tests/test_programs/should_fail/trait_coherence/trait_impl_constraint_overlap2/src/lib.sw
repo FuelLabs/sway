@@ -1,3 +1,4 @@
+
 library;
 
 trait Cat {
@@ -8,7 +9,7 @@ struct S<T> {
     x: T,
 }
 
-impl<Z> S<Z>
+impl<Z> S<S<Z>>
 where
 Z: Cat,
 {
@@ -17,7 +18,7 @@ Z: Cat,
     }
 }
 
-impl S<u32> {
+impl S<S<u32>> {
     fn foo(self) -> u64 {
         1
     }

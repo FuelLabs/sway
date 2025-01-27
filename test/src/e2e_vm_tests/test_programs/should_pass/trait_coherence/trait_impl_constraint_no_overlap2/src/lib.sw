@@ -12,7 +12,7 @@ impl<Z> S<Z>
 where
 Z: Cat,
 {
-    fn foo(self) -> u64 {
+    fn bar(self) -> u64 {
         1
     }
 }
@@ -28,3 +28,5 @@ impl Cat for u32 {
         1
     }
 }
+
+
