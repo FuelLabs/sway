@@ -83,7 +83,7 @@ impl ty::TyFunctionDecl {
 
         let type_engine = ctx.engines.te();
 
-        // If functions aren't allowed in this location, return an error.
+        // If functions aXren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
             return Err(handler.emit_err(CompileError::Unimplemented {
                 feature: "Declaring nested functions".to_string(),

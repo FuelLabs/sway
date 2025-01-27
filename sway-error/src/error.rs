@@ -994,6 +994,8 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
+    #[error("Methods {method_name} and {other_method_name} name have clashing function selectors.")]
+    FunctionSelectorClash { method_name: Ident, other_method_name: Ident, span: Span },
     #[error("{invalid_type} is not a valid type in the self type of an impl block.")]
     TypeIsNotValidAsImplementingFor {
         invalid_type: InvalidImplementingForType,
@@ -1240,6 +1242,7 @@ impl Spanned for CompileError {
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AssociatedTypeNotSupportedInAbi { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
+            FunctionSelectorClash { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
             TypeIsNotValidAsImplementingFor { span, .. } => span.clone(),

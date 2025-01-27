@@ -190,6 +190,7 @@ impl ty::TyAbiDecl {
 
                 // Type check the items.
                 let mut new_items = vec![];
+                let mut selectors: HashMap<Vec<u8>, Ident> = HashSet::default();
                 for method_id in methods.into_iter() {
                     let method = engines.pe().get_function(&method_id);
                     let method = ty::TyFunctionDecl::type_check(
@@ -216,6 +217,19 @@ impl ty::TyAbiDecl {
                             span: method.name.span(),
                         });
                     }
+		    // If using v0 encoding then check for clashing function selector values
+		    if !context.experimental.new_encoding {
+			let selector = method.to_fn_selector_value(handler, engines);
+			if let Some(other_method) = selectors.get(selector) {
+			    handler.emit_err(CompileError::FunctionSelectorClash {
+				method_name: method.name.clone(),
+				other_method_name: other_method.clone(),
+				span: method.name.span(),
+			    })
+			} else {
+			    selectors.insert(selector, method.name)
+			}
+		    }
                     new_items.push(TyTraitItem::Fn(
                         ctx.engines.de().insert(method, Some(&method_id)),
                     ));
