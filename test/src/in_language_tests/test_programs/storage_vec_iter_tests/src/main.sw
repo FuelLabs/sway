@@ -3,6 +3,7 @@ contract;
 mod impls;
 
 use impls::*;
+use impls::Enum;
 
 use std::hash::{Hash, sha256};
 use std::storage::storage_vec::*;

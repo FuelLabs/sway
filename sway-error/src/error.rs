@@ -616,6 +616,13 @@ pub enum CompileError {
         existing_impl_span: Span,
         second_impl_span: Span,
     },
+    #[error(
+        "\"{marker_trait_full_name}\" is a marker trait and cannot be explicitly implemented."
+    )]
+    MarkerTraitExplicitlyImplemented {
+        marker_trait_full_name: String,
+        span: Span,
+    },
     #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
     DuplicateDeclDefinedForType {
         decl_kind: String,
@@ -1152,6 +1159,7 @@ impl Spanned for CompileError {
             ConflictingImplsForTraitAndType {
                 second_impl_span, ..
             } => second_impl_span.clone(),
+            MarkerTraitExplicitlyImplemented { span, .. } => span.clone(),
             DuplicateDeclDefinedForType { span, .. } => span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
@@ -2162,14 +2170,14 @@ impl ToDiagnostic for CompileError {
                 }
             },
             SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
+                reason: Some(Reason::new(code(1), "Multiple bindings exist for symbol in the scope".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
+                    format!("The following paths are all valid bindings for symbol \"{}\": {}.", name, sequence_to_str(&paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>(), Enclosing::DoubleQuote, 2)),
                 ),
-                hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
-                help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
+                hints: vec![],
+                help: vec![format!("Consider using a fully qualified name, e.g., `{}::{}`.", paths[0], name)],
             },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
@@ -2309,6 +2317,25 @@ impl ToDiagnostic for CompileError {
                     "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
                     "This property is called \"trait coherence\".".to_string(),
                 ],
+            },
+            MarkerTraitExplicitlyImplemented { marker_trait_full_name, span} => Diagnostic {
+                reason: Some(Reason::new(code(1), "Marker traits cannot be explicitly implemented".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Trait \"{marker_trait_full_name}\" is a marker trait and cannot be explicitly implemented.")
+                ),
+                hints: vec![],
+                help: match marker_trait_name(marker_trait_full_name) {
+                    "Error" => vec![
+                        "\"Error\" marker trait is automatically implemented by the compiler for string slices".to_string(),
+                        "and enums annotated with the `#[error_type]` attribute.".to_string(),
+                    ],
+                    "Enum" => vec![
+                        "\"Enum\" marker trait is automatically implemented by the compiler for all enum types.".to_string(),
+                    ],
+                    _ => vec![],
+                }
             },
             AssignmentToNonMutableVariable { lhs_span, decl_name } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Immutable variables cannot be assigned to".to_string())),
@@ -2935,4 +2962,32 @@ impl fmt::Display for StorageAccess {
             )),
         }
     }
+}
+
+/// Extracts only the suffix part of the `marker_trait_full_name`, without the arguments.
+/// E.g.:
+/// - `core::marker::Error` => `Error`
+/// - `core::marker::SomeMarkerTrait::<T>` => `SomeMarkerTrait`
+/// - `core::marker::SomeMarkerTrait<T>` => `SomeMarkerTrait`
+///
+/// Panics if the `marker_trait_full_name` does not start with "core::marker::".
+fn marker_trait_name(marker_trait_full_name: &str) -> &str {
+    const MARKER_TRAITS_MODULE: &str = "core::marker::";
+    assert!(
+        marker_trait_full_name.starts_with(MARKER_TRAITS_MODULE),
+        "`marker_trait_full_name` must start with \"core::marker::\", but it was \"{}\"",
+        marker_trait_full_name
+    );
+
+    let lower_boundary = MARKER_TRAITS_MODULE.len();
+    let name_part = &marker_trait_full_name[lower_boundary..];
+
+    let upper_boundary = marker_trait_full_name.len() - lower_boundary;
+    let only_name_len = std::cmp::min(
+        name_part.find(':').unwrap_or(upper_boundary),
+        name_part.find('<').unwrap_or(upper_boundary),
+    );
+    let upper_boundary = lower_boundary + only_name_len;
+
+    &marker_trait_full_name[lower_boundary..upper_boundary]
 }
