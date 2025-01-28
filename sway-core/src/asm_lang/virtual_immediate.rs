@@ -97,6 +97,10 @@ pub struct VirtualImmediate12 {
 }
 
 impl VirtualImmediate12 {
+    pub(crate) fn zero() -> Self {
+        VirtualImmediate12 { value: 0 }
+    }
+
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > compiler_constants::TWELVE_BITS {
             Err(CompileError::Immediate12TooLarge {
