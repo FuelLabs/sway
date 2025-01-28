@@ -24,8 +24,9 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl,
-        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+        self, TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyExpression,
+        TyFunctionDecl, TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn,
+        TyTraitType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -153,6 +154,23 @@ where
         } else {
             None
         }
+    }
+
+    pub(crate) fn materialize_const_generics_and_insert_new_with_parent(
+        &self,
+        engines: &Engines,
+        name: &str,
+        value: &TyExpression,
+    ) -> Self
+    where
+        T: MaterializeConstGenerics,
+    {
+        let decl_engine = engines.de();
+        let mut decl = (*decl_engine.get(&self.id)).clone();
+        decl.materialize_const_generics(engines, name, value);
+        decl_engine
+            .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
+            .with_parent(decl_engine, self.id.into())
     }
 }
 
