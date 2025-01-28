@@ -406,7 +406,11 @@ pub(crate) fn compile_configurables(
                         encoded_bytes,
                         decode_fn: Cell::new(decode_fn),
                         opt_metadata,
-                        indirect: decl.is_indirect(engines),
+                        storage: if decl.is_indirect(engines) {
+                            ConfigContentStorage::Indirect
+                        } else {
+                            ConfigContentStorage::Direct
+                        },
                     },
                 );
             } else {

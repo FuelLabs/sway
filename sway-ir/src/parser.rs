@@ -1601,7 +1601,7 @@ mod ir_builder {
                     // this will point to the correct function after all functions are compiled
                     decode_fn: Cell::new(Function(KeyData::default().into())),
                     opt_metadata,
-                    indirect: ConfigContent::v1_indirect_from_flags(config.flags),
+                    storage: ConfigContent::v1_storage_from_flags(config.flags),
                 };
 
                 module.add_config(context, config.value_name.clone(), config_val.clone());
