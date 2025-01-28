@@ -45,6 +45,7 @@ configurable {
     VEC_U8: Vec<u8> = Vec::new(),
     STRING_SLICE: str = "Hello, Sway",
 
+    // Can be removed when https://github.com/FuelLabs/sway/issues/6866 is implemented.
     // The test runner does not have a way to calculate the dynamic part of the data section
     // This configurable guarantee that all the others have their buffer size calculated correctly.
     ZZ_LAST_CONFIGURABLE: u8 = 1,
