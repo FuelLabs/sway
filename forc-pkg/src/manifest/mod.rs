@@ -194,8 +194,13 @@ pub struct PackageManifest {
 pub struct Project {
     pub authors: Option<Vec<String>>,
     pub name: String,
+    pub version: Option<String>,
+    pub description: Option<String>,
     pub organization: Option<String>,
     pub license: String,
+    pub homepage: Option<String>,
+    pub repository: Option<String>,
+    pub documentation: Option<String>,
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
@@ -316,6 +321,14 @@ impl Dependency {
         match *self {
             Self::Simple(_) => None,
             Self::Detailed(ref det) => det.package.as_deref(),
+        }
+    }
+
+    /// The string of the `version` field if specified.
+    pub fn version(&self) -> Option<&str> {
+        match *self {
+            Self::Simple(ref version) => Some(version),
+            Self::Detailed(ref det) => det.version.as_deref(),
         }
     }
 }
@@ -571,10 +584,25 @@ impl PackageManifest {
         // package or a workspace. While doing so, we should be printing the warnings if the given
         // file parses so that we only see warnings for the correct type of manifest.
         let path = path.as_ref();
-        let mut warnings = vec![];
-        let manifest_str = std::fs::read_to_string(path)
+        let contents = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let toml_de = toml::de::Deserializer::new(&manifest_str);
+        Self::from_string(contents)
+    }
+
+    /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`.
+    ///
+    /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
+    /// fields were used.
+    ///
+    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// implicitly. In this case, the git tag associated with the version of this crate is used to
+    /// specify the pinned commit at which we fetch `std`.
+    pub fn from_string(contents: String) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // file parses so that we only see warnings for the correct type of manifest.
+        let mut warnings = vec![];
+        let toml_de = toml::de::Deserializer::new(&contents);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("unused manifest key: {path}");
             warnings.push(warning);
@@ -1338,6 +1366,11 @@ mod tests {
         let project = Project {
             authors: Some(vec!["Test Author".to_string()]),
             name: "test-project".to_string(),
+            version: Some("0.1.0".to_string()),
+            description: Some("test description".to_string()),
+            homepage: None,
+            documentation: None,
+            repository: None,
             organization: None,
             license: "Apache-2.0".to_string(),
             entry: "main.sw".to_string(),
@@ -1359,6 +1392,11 @@ mod tests {
         let project = Project {
             authors: Some(vec!["Test Author".to_string()]),
             name: "test-project".to_string(),
+            version: Some("0.1.0".to_string()),
+            description: Some("test description".to_string()),
+            homepage: Some("https://example.com".to_string()),
+            documentation: Some("https://docs.example.com".to_string()),
+            repository: Some("https://example.com".to_string()),
             organization: None,
             license: "Apache-2.0".to_string(),
             entry: "main.sw".to_string(),
@@ -1372,6 +1410,11 @@ mod tests {
         let deserialized: Project = toml::from_str(&serialized).unwrap();
 
         assert_eq!(project.name, deserialized.name);
+        assert_eq!(project.version, deserialized.version);
+        assert_eq!(project.description, deserialized.description);
+        assert_eq!(project.homepage, deserialized.homepage);
+        assert_eq!(project.documentation, deserialized.documentation);
+        assert_eq!(project.repository, deserialized.repository);
         assert_eq!(project.metadata, deserialized.metadata);
         assert_eq!(project.metadata, None);
     }
@@ -1383,13 +1426,11 @@ mod tests {
             license = "Apache-2.0"
             entry = "main.sw"
             authors = ["Test Author"]
-
-            [metadata]
             description = "A test project"
             version = "1.0.0"
-            homepage = "https://example.com"
-            documentation = "https://docs.example.com"
-            repository = "https://github.com/example/test-project"
+
+            [metadata]
+            mykey = "https://example.com"
             keywords = ["test", "project"]
             categories = ["test"]
         "#;
@@ -1401,12 +1442,7 @@ mod tests {
         let table = metadata.as_table().unwrap();
 
         assert_eq!(
-            table.get("description").unwrap().as_str().unwrap(),
-            "A test project"
-        );
-        assert_eq!(table.get("version").unwrap().as_str().unwrap(), "1.0.0");
-        assert_eq!(
-            table.get("homepage").unwrap().as_str().unwrap(),
+            table.get("mykey").unwrap().as_str().unwrap(),
             "https://example.com"
         );
 
