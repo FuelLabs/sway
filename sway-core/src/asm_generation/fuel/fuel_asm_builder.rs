@@ -114,7 +114,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                 ty,
                 encoded_bytes,
                 decode_fn,
-                indirect,
+                storage,
                 ..
             } => {
                 let size_in_bytes = ty.size(self.context).in_bytes();
@@ -124,7 +124,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
 
                 let (decode_fn_label, _) = self.func_label_map.get(&decode_fn.get()).unwrap();
 
-                if *indirect {
+                if matches!(storage, ConfigContentStorage::Indirect) {
                     let mut encoded_bytes = Entry::new_byte_array(
                         encoded_bytes.clone(),
                         EntryName::Dynamic(name.clone()),

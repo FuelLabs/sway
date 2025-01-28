@@ -29,7 +29,7 @@ pub struct TyConfigurableDecl {
 }
 
 impl TyConfigurableDecl {
-    // A configurable is indirect if its type encoded buffer size
+    // A configurable is indirect if its encoded buffer size
     // cannot be known at compilation time
     pub fn is_indirect(&self, engines: &Engines) -> bool {
         let type_info = engines.te().get(self.type_ascription.type_id);
