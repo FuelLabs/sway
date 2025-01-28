@@ -49,7 +49,8 @@ fn test_cli() {
     cmd.send_line("breakpoint 0").unwrap();
 
     cmd.exp_string(prompt).unwrap();
-    cmd.send_line("start_tx examples/example_tx.json examples/example_abi.json").unwrap(); 
+    cmd.send_line("start_tx examples/example_tx.json examples/example_abi.json")
+        .unwrap();
     cmd.exp_regex(r"Stopped on breakpoint at address 0 of contract 0x0{64}")
         .unwrap();
 
@@ -65,13 +66,14 @@ fn test_cli() {
     cmd.send_line("step off").unwrap();
 
     cmd.exp_string(prompt).unwrap();
-    cmd.send_line("continue").unwrap();    
+    cmd.send_line("continue").unwrap();
 
     cmd.exp_string(prompt).unwrap();
     cmd.send_line("reset").unwrap();
 
     cmd.exp_string(prompt).unwrap();
-    cmd.send_line("start_tx examples/example_tx.json examples/example_abi.json").unwrap();
+    cmd.send_line("start_tx examples/example_tx.json examples/example_abi.json")
+        .unwrap();
     cmd.exp_regex(r"Decoded log value: 120").unwrap();
 
     cmd.exp_string(prompt).unwrap();
