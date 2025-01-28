@@ -133,6 +133,78 @@ impl DisplayWithEngines for TyFunctionDecl {
     }
 }
 
+impl DeclRefFunction {
+    /// Makes method with a copy of type_id.
+    /// This avoids altering the type_id already in the type map.
+    /// Without this it is possible to retrieve a method from the type map unify its types and
+    /// the second time it won't be possible to retrieve the same method.
+    pub fn get_method_safe_to_unify(&self, engines: &Engines, type_id: TypeId) -> Self {
+        let decl_engine = engines.de();
+
+        let mut method = (*decl_engine.get_function(self)).clone();
+
+        if let Some(method_implementing_for_typeid) = method.implementing_for_typeid {
+            let mut type_id_type_subst_map = TypeSubstMap::new();
+            if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
+                let impl_self_or_trait = &*engines.de().get(&t.decl_id);
+                let mut type_id_type_parameters = vec![];
+                type_id.extract_type_parameters(
+                    engines,
+                    0,
+                    &mut type_id_type_parameters,
+                    impl_self_or_trait.implementing_for.type_id,
+                );
+
+                for impl_type_parameter in impl_self_or_trait.impl_type_parameters.clone() {
+                    let matches = type_id_type_parameters
+                        .iter()
+                        .filter(|(_, orig_tp)| {
+                            engines.te().get(orig_tp.type_id).eq(
+                                &*engines.te().get(impl_type_parameter.type_id),
+                                &PartialEqWithEnginesContext::new(engines),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    if !matches.is_empty() {
+                        type_id_type_subst_map
+                            .insert(impl_type_parameter.type_id, matches[0].0.type_id);
+                    }
+                    if engines
+                        .te()
+                        .get(impl_self_or_trait.implementing_for.initial_type_id)
+                        .eq(
+                            &*engines.te().get(impl_type_parameter.initial_type_id),
+                            &PartialEqWithEnginesContext::new(engines),
+                        )
+                    {
+                        type_id_type_subst_map.insert(impl_type_parameter.type_id, type_id);
+                    }
+                }
+            }
+
+            let mut method_type_subst_map = TypeSubstMap::new();
+            method_type_subst_map.extend(&type_id_type_subst_map);
+            method_type_subst_map.insert(method_implementing_for_typeid, type_id);
+
+            method.subst(&SubstTypesContext::new(
+                engines,
+                &method_type_subst_map,
+                true,
+            ));
+
+            return engines
+                .de()
+                .insert(
+                    method.clone(),
+                    engines.de().get_parsed_decl_id(self.id()).as_ref(),
+                )
+                .with_parent(decl_engine, self.id().into());
+        }
+
+        self.clone()
+    }
+}
+
 impl Named for TyFunctionDecl {
     fn name(&self) -> &Ident {
         &self.name
@@ -480,6 +552,25 @@ impl TyFunctionDecl {
             }
             _ => Some(false),
         }
+    }
+
+    pub fn is_from_blanket_impl(&self, engines: &Engines) -> bool {
+        if let Some(TyDecl::ImplSelfOrTrait(existing_impl_trait)) = self.implementing_type.clone() {
+            let existing_trait_decl = engines
+                .de()
+                .get_impl_self_or_trait(&existing_impl_trait.decl_id);
+            if !existing_trait_decl.impl_type_parameters.is_empty()
+                && matches!(
+                    *engines
+                        .te()
+                        .get(existing_trait_decl.implementing_for.type_id),
+                    TypeInfo::UnknownGeneric { .. }
+                )
+            {
+                return true;
+            }
+        }
+        false
     }
 }
 

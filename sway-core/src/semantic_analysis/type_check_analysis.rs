@@ -317,7 +317,7 @@ impl TypeCheckAnalysisContext<'_> {
             .collect::<Vec<_>>();
 
         if !parents.is_empty() {
-            *parents.first().unwrap()
+            self.get_normalized_fn_node_id(parents.first().unwrap())
         } else {
             *fn_decl_id
         }

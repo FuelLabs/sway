@@ -3,7 +3,6 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{ty::*, *},
-    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -833,7 +832,6 @@ impl ReplaceDecls for TyExpressionVariant {
                                     .map(|a| a.1.return_type)
                                     .collect::<VecDeque<_>>(),
                                 None,
-                                TryInsertingTraitImplOnFailure::Yes,
                             )?;
                             method = (*decl_engine.get(&implementing_type_method_ref)).clone();
                         }
