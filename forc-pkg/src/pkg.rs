@@ -2285,7 +2285,6 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
                 .as_ref()
                 .map(|p| output_dir.join(p))
                 .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
-            println!("Writing debug symbols to {:?}", debug_path);
             built_package.write_debug_info(&debug_path)?;
         }
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
