@@ -821,7 +821,7 @@ impl Bytes {
     ///
     /// # Additional Information
     ///
-    /// If `new_len` is greater than `len`, the `Bytes` is extended by the difference, with each additional slot filled with value. If `new_len` is less than `len`, the `Bytes` is simply truncated.
+    /// If `new_len` is greater than `len`, the `Bytes` is extended by the difference, with each additional slot filled with `value`. If `new_len` is less than `len`, the `Bytes` is simply truncated.
     ///
     /// # Arguments
     ///
@@ -849,7 +849,7 @@ impl Bytes {
     /// }
     /// ```
     pub fn resize(ref mut self, new_len: u64, value: u8) {
-        // If the length is the less, just truncate
+        // If the `new_len` is less then truncate
         if self.len >= new_len {
             self.len = new_len;
             return;

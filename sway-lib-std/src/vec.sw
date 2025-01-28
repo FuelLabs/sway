@@ -702,7 +702,7 @@ impl<T> Vec<T> {
     ///
     /// # Additional Information
     ///
-    /// If `new_len` is greater than `len`, the `Vec` is extended by the difference, with each additional slot filled with value. If `new_len` is less than `len`, the `Vec` is simply truncated.
+    /// If `new_len` is greater than `len`, the `Vec` is extended by the difference, with each additional slot filled with `value`. If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
     /// # Arguments
     ///
@@ -730,7 +730,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     pub fn resize(ref mut self, new_len: u64, value: T) {
-        // If the length is the less, just truncate
+        // If the `new_len` is less then truncate
         if self.len >= new_len {
             self.len = new_len;
             return;
@@ -742,7 +742,7 @@ impl<T> Vec<T> {
             self.buf.cap = new_len;
         }
 
-        // Fill the new length with value
+        // Fill the new length with `value`
         let mut i = 0;
         let start_ptr = self.buf.ptr.add::<T>(self.len);
         while i + self.len < new_len {
