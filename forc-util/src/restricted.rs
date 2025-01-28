@@ -107,6 +107,12 @@ pub fn is_valid_project_name_format(name: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn is_valid_package_version(vers: &str) -> bool {
+    // Must start with an alphanumeric character, can contain only letters, numbers, underscores, dots and hyphens
+    let re = Regex::new(r"^[a-zA-Z0-9][\w.-]*$").unwrap();
+    re.is_match(vers)
+}
+
 #[test]
 fn test_invalid_char() {
     assert_eq!(

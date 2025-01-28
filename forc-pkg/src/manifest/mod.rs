@@ -3,8 +3,8 @@ pub mod build_profile;
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
-use forc_util::{validate_name, validate_project_name};
-use serde::{Deserialize, Serialize};
+use forc_util::{restricted::is_valid_package_version, validate_name, validate_project_name};
+use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -19,6 +19,7 @@ use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,
 };
+use url::Url;
 
 use self::build_profile::BuildProfile;
 
@@ -193,14 +194,16 @@ pub struct PackageManifest {
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
+    #[serde(deserialize_with = "validate_package_name")]
     pub name: String,
+    #[serde(deserialize_with = "validate_package_version")]
     pub version: Option<String>,
     pub description: Option<String>,
     pub organization: Option<String>,
     pub license: String,
-    pub homepage: Option<String>,
-    pub repository: Option<String>,
-    pub documentation: Option<String>,
+    pub homepage: Option<Url>,
+    pub repository: Option<Url>,
+    pub documentation: Option<Url>,
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
@@ -208,6 +211,35 @@ pub struct Project {
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
     pub metadata: Option<toml::Value>,
+}
+
+// Validation function for the `name` field
+fn validate_package_name<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let name: String = Deserialize::deserialize(deserializer)?;
+    match validate_project_name(&name) {
+        Ok(_) => Ok(name),
+        Err(e) => Err(de::Error::custom(e.to_string())),
+    }
+}
+
+// Validation function for `version`
+fn validate_package_version<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let version: Option<String> = Deserialize::deserialize(deserializer)?;
+    if let Some(ref version_str) = version {
+        if is_valid_package_version(version_str) {
+            return Err(de::Error::custom(format!(
+                "Invalid semantic version: '{}'",
+                version_str
+            )));
+        }
+    }
+    Ok(version)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -1394,9 +1426,9 @@ mod tests {
             name: "test-project".to_string(),
             version: Some("0.1.0".to_string()),
             description: Some("test description".to_string()),
-            homepage: Some("https://example.com".to_string()),
-            documentation: Some("https://docs.example.com".to_string()),
-            repository: Some("https://example.com".to_string()),
+            homepage: Some(Url::parse("https://example.com").unwrap()),
+            documentation: Some(Url::parse("https://docs.example.com").unwrap()),
+            repository: Some(Url::parse("https://example.com").unwrap()),
             organization: None,
             license: "Apache-2.0".to_string(),
             entry: "main.sw".to_string(),
