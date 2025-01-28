@@ -702,3 +702,67 @@ fn vec_encode_and_decode() {
     assert(v2.get(1) == Some(2));
     assert(v2.get(2) == Some(3));
 }
+
+#[test]
+fn vec_resize() {
+    let (mut vec_1, a, b, c) = setup();
+    assert(vec_1.len() == 3);
+    assert(vec_1.capacity() == 4);
+
+    // Resize to same size, no effect
+    vec_1.resize(3, 0);
+    assert(vec_1.len() == 3);
+    assert(vec_1.capacity() == 4);
+
+    // Resize to capacity size doesn't impact capacity
+    vec_1.resize(4, 1);
+    assert(vec_1.len() == 4);
+    assert(vec_1.capacity() == 4);
+    assert(vec_1.get(0) == Some(5));
+    assert(vec_1.get(1) == Some(7));
+    assert(vec_1.get(2) == Some(9));
+    assert(vec_1.get(3) == Some(1));
+
+    // Resize increases size and capacity
+    vec_1.resize(10, 2);
+    assert(vec_1.len() == 10);
+    assert(vec_1.capacity() == 10);
+    assert(vec_1.get(0) == Some(5));
+    assert(vec_1.get(1) == Some(7));
+    assert(vec_1.get(2) == Some(9));
+    assert(vec_1.get(3) == Some(1));
+    assert(vec_1.get(4) == Some(2));
+    assert(vec_1.get(5) == Some(2));
+    assert(vec_1.get(6) == Some(2));
+    assert(vec_1.get(7) == Some(2));
+    assert(vec_1.get(8) == Some(2));
+    assert(vec_1.get(9) == Some(2));
+
+    // Resize to less doesn't impact capacity or order
+    vec_1.resize(1, 0);
+    assert(vec_1.len() == 1);
+    assert(vec_1.capacity() == 10);
+    assert(vec_1.get(0) == Some(5));
+    assert(vec_1.get(1) == None);
+
+    // Resize to zero doesn't impact capacity and returns None
+    vec_1.resize(0, 0);
+    assert(vec_1.len() == 0);
+    assert(vec_1.capacity() == 10);
+    assert(vec_1.get(0) == None);
+
+    let mut vec_2 = Vec::new();
+
+    // Resize to zero on empty vec doesn't impact
+    vec_2.resize(0, 0);
+    assert(vec_2.len() == 0);
+    assert(vec_2.capacity() == 0);
+
+    // Resize on empty vec fills and sets capacity
+    vec_2.resize(3, 1);
+    assert(vec_2.len() == 3);
+    assert(vec_2.capacity() == 3);
+    assert(vec_2.get(0) == Some(1));
+    assert(vec_2.get(1) == Some(1));
+    assert(vec_2.get(2) == Some(1));
+}
