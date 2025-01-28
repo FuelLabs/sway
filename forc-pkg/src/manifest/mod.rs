@@ -232,7 +232,7 @@ where
 {
     let version: Option<String> = Deserialize::deserialize(deserializer)?;
     if let Some(ref version_str) = version {
-        if is_valid_package_version(version_str) {
+        if !is_valid_package_version(version_str) {
             return Err(de::Error::custom(format!(
                 "Invalid semantic version: '{}'",
                 version_str
