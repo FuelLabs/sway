@@ -59,5 +59,6 @@ impl DerefMut for AbiMap {
 /// Fetches the ABI for the given contract ID from the Sway ABI Registry.
 fn fetch_abi_from_registry(_contract_id: &ContractId) -> Result<ProgramABI> {
     // TODO: Implement this once the Sway ABI Registry is available
+    // See this github issue: https://github.com/FuelLabs/sway/issues/6862
     Err(Error::AbiError("Not implemented yet".to_string()))
 }
