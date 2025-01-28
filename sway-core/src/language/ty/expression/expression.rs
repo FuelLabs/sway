@@ -83,6 +83,8 @@ impl UpdateConstantExpression for TyExpression {
 
 impl MaterializeConstGenerics for TyExpression {
     fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        self.return_type
+            .materialize_const_generics(engines, name, value);
         self.expression
             .materialize_const_generics(engines, name, value)
     }

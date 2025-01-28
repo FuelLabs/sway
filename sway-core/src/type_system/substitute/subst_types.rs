@@ -1,6 +1,6 @@
 use crate::{engine_threading::Engines, type_system::priv_prelude::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum HasChanges {
     Yes,
     #[default]

@@ -1,0 +1,7 @@
+category = "run"
+
+script_data = "0000000000000538"
+expected_result = { action = "return_data", value = "0000000000000539" }
+
+validate_abi = true
+experimental = { new_encoding = true, const_generics = true }

@@ -59,6 +59,7 @@ pub(super) fn convert_resolved_type_id(
     ast_type: TypeId,
     span: &Span,
 ) -> Result<Type, CompileError> {
+    dbg!();
     let t = type_engine.get(ast_type);
     convert_resolved_type_info(type_engine, decl_engine, context, &t, span)
 }
@@ -122,7 +123,13 @@ fn convert_resolved_type_info(
             &decl_engine.get_enum(decl_ref).variants,
         )?,
         TypeInfo::Array(elem_type, length) => {
-            assert!(matches!(length, Length::Literal { .. }));
+            assert!(
+                matches!(length, Length::Literal { .. }),
+                "{length:?} {:?}",
+                context
+                    .source_engine()
+                    .get_file_name(span.source_id().unwrap())
+            );
 
             let elem_type = convert_resolved_type_id(
                 type_engine,

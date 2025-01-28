@@ -66,6 +66,10 @@ impl TypeSubstMap {
         }
     }
 
+    pub(crate) fn insert(&mut self, key: TypeId, value: TypeId) {
+        self.mapping.insert(key, value);
+    }
+
     pub(crate) fn source_ids_contains_concrete_type(&self, engines: &Engines) -> bool {
         for source_id in self.mapping.keys() {
             if source_id.is_concrete(engines, TreatNumericAs::Concrete) {
@@ -443,10 +447,13 @@ impl TypeSubstMap {
                 }
             }
             TypeInfo::Array(mut elem_type, length) => {
-                self.find_match(elem_type.type_id, engines).map(|type_id| {
-                    elem_type.type_id = type_id;
-                    type_engine.insert_array(engines, elem_type, length)
-                })
+                match iter_for_match(engines, self, &type_info) {
+                    Some(id) => Some(id),
+                    None => self.find_match(elem_type.type_id, engines).map(|type_id| {
+                        elem_type.type_id = type_id;
+                        type_engine.insert_array(engines, elem_type, length)
+                    }),
+                }
             }
             TypeInfo::Slice(mut elem_type) => {
                 self.find_match(elem_type.type_id, engines).map(|type_id| {

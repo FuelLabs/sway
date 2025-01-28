@@ -1019,10 +1019,25 @@ impl MaterializeConstGenerics for TyExpressionVariant {
             }
             TyExpressionVariant::FunctionApplication { arguments, .. } => {
                 for (_, expr) in arguments {
+                    dbg!(expr.span.as_str());
                     expr.materialize_const_generics(engines, name, value);
                 }
             }
-            _ => {}
+            TyExpressionVariant::WhileLoop { condition, body } => {
+                condition.materialize_const_generics(engines, name, value);
+                body.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::Reassignment(expr) => {
+                expr.rhs.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.materialize_const_generics(engines, name, value);
+                index.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {}
+            x => {
+                todo!("{x:?}");
+            }
         }
     }
 }
