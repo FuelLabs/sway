@@ -15,6 +15,7 @@ pub enum IrError {
     RemoveMissingBlock(String),
     ValueNotFound(String),
     InconsistentParent(String, String, String),
+    InvalidConfigFlags,
 
     VerifyArgumentValueIsNotArgument(String),
     VerifyUnaryOpIncorrectArgType,
@@ -124,6 +125,12 @@ impl fmt::Display for IrError {
                     f,
                     "For IR Entity (module/function/block) {entity}, expected parent to be {expected_parent}, \
                     but found {found_parent}."
+                )
+            }
+            IrError::InvalidConfigFlags => {
+                write!(
+                    f,
+                    "`config` should have only one byte as flags, for example: 0x00"
                 )
             }
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
