@@ -345,6 +345,8 @@ impl AbiDecode for String {
 
 impl Clone for String {
     fn clone(self) -> Self {
-        Self { bytes: self.bytes.clone() }
+        Self {
+            bytes: self.bytes.clone(),
+        }
     }
 }
