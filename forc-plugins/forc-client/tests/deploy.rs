@@ -1231,7 +1231,6 @@ async fn call_with_forc_generated_overrides(node_url: &str, contract_id: Contrac
     let used_loader_abi_path = project_dir.join("deployed_script-loader-abi.json");
     let used_loader_abi = fs::read_to_string(&used_loader_abi_path).unwrap();
 
-    dbg!(&generated_loader_abi_path, &used_loader_abi_path);
     pretty_assertions::assert_eq!(generated_loader_abi, used_loader_abi);
 
     let generated_loader_bin = tmp_dir.path().join("out/deployed_script-loader.bin");
