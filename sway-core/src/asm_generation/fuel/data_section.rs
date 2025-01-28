@@ -516,39 +516,69 @@ fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
 fn ok_data_section_to_string() {
     let mut ds = DataSection::default();
 
-    let id_vec_u8 = ds.insert_data_value(Entry::new_byte_array(
-        vec![0, 1, 2, 3, 4, 5],
-        EntryName::Dynamic("VEC_U8_BYTES".into()),
+    let mut configurable_array_bytes = Entry::new_byte_array(
+        vec![1, 2, 3, 4, 5, 6],
+        EntryName::Dynamic("ARRAY_BYTES".into()),
         None,
-    ));
-    let id_u8 = ds.insert_data_value(Entry::new_byte(
+    );
+    configurable_array_bytes.word_aligned = false; // IR compiler sets this to false
+    let configurable_array_bytes = ds.insert_data_value(configurable_array_bytes);
+
+    let mut configurable_array_2_bytes = Entry::new_byte_array(
+        vec![7, 8, 9],
+        EntryName::Dynamic("ARRAY_2_BYTES".into()),
+        None,
+    );
+    configurable_array_2_bytes.word_aligned = false; // IR compiler sets this to false
+    let configurable_array_2_bytes = ds.insert_data_value(configurable_array_2_bytes);
+
+    let configurable_u8 = ds.insert_data_value(Entry::new_byte(
         1,
         EntryName::Configurable("U8".into()),
         None,
     ));
-    let id_vec_u8_offset = ds.insert_data_value(Entry::new_offset_of(
-        id_vec_u8.clone(),
-        EntryName::Configurable("VEC_U8_OFFSET".into()),
+    let configurable_array_offset = ds.insert_data_value(Entry::new_offset_of(
+        configurable_array_bytes.clone(),
+        EntryName::Configurable("ARRAY_OFFSET".into()),
         None,
     ));
-    let id_const = ds.insert_data_value(Entry::new_word(
+    let _configurable_u8_2 = ds.insert_data_value(Entry::new_byte(
+        2,
+        EntryName::Configurable("U8_2".into()),
+        None,
+    ));
+
+    let non_configurable_u64_max = ds.insert_data_value(Entry::new_word(
         0xffffffffffffffff_u64,
         EntryName::NonConfigurable,
         None,
     ));
+    let non_configurable_u8_max =
+        ds.insert_data_value(Entry::new_word(0xff_u64, EntryName::NonConfigurable, None));
 
     assert_eq!(
         ds.serialize_to_bytes(),
         [
-            255, 255, 255, 255, 255, 255, 255, 255, // NonConfigurable
-            1, 0, 0, 0, 0, 0, 0, 0, // U8
-            0, 0, 0, 0, 0, 0, 0, 24, // VEC_U8_OFFSET
-            0, 1, 2, 3, 4, 5 // VEC_U8_BYTES
+            // non configurable section
+            255, 255, 255, 255, 255, 255, 255, 255, // non_configurable_u64_max
+            0, 0, 0, 0, 0, 0, 0, 255, // non_configurable_u8_max
+            // configurable section
+            1, 0, 0, 0, 0, 0, 0, 0, // configurable_u8
+            0, 0, 0, 0, 0, 0, 0, 33, // configurable_array_offset
+            2,  // configurable_u8_2
+            // dynamic section
+            1, 2, 3, 4, 5, 6, // configurable_array_bytes
+            7, 8, 9, // configurable_array_2_bytes
         ]
     );
 
-    assert_eq!(ds.data_id_to_offset(&id_const), 0);
-    assert_eq!(ds.data_id_to_offset(&id_u8), 8);
-    assert_eq!(ds.data_id_to_offset(&id_vec_u8_offset), 16);
-    assert_eq!(ds.data_id_to_offset(&id_vec_u8), 24);
+    assert_eq!(ds.data_id_to_offset(&non_configurable_u64_max), 0);
+    assert_eq!(ds.data_id_to_offset(&non_configurable_u8_max), 8);
+
+    assert_eq!(ds.data_id_to_offset(&configurable_u8), 16);
+    assert_eq!(ds.data_id_to_offset(&configurable_array_offset), 24);
+    assert_eq!(ds.data_id_to_offset(&configurable_u8), 16);
+
+    assert_eq!(ds.data_id_to_offset(&configurable_array_bytes), 33);
+    assert_eq!(ds.data_id_to_offset(&configurable_array_2_bytes), 39);
 }
