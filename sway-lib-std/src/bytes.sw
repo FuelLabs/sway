@@ -816,6 +816,61 @@ impl Bytes {
 
         spliced
     }
+
+    /// Resizes the `Bytes` in-place so that `len` is equal to `new_len`.
+    /// 
+    /// # Additional Information
+    ///
+    /// If `new_len` is greater than `len`, the `Bytes` is extended by the difference, with each additional slot filled with value. If `new_len` is less than `len`, the `Bytes` is simply truncated.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_len`: [u64] - The new length of the `Bytes`.
+    /// * `value`: [u8] - The value to fill the new length.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.resize(1, 7u8);
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///
+    ///     bytes.resize(2, 9u8);
+    ///     assert(bytes.len() == 2);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///     assert(bytes.get(1).unwrap() == 9u8);
+    ///
+    ///     bytes.resize(1, 0);
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///     assert(bytes.get(1) == None);
+    /// }
+    /// ```
+    pub fn resize(ref mut self, new_len: u64, value: u8) {
+        // If the length is the less, just truncate
+        if self.len >= new_len {
+            self.len = new_len;
+            return;
+        }
+
+        // If we don't have enough capacity, alloc more
+        if self.buf.cap < new_len {
+            self.buf.ptr = realloc_bytes(self.buf.ptr, self.buf.cap, new_len);
+            self.buf.cap = new_len;
+        }
+
+        // Fill the new length with value
+        let mut i = 0;
+        let start_ptr = self.buf.ptr.add_uint_offset(self.len);
+        while i + self.len < new_len {
+            start_ptr.add_uint_offset(i).write_byte(value);
+            i += 1;
+        }
+
+        self.len = new_len;
+    }
 }
 
 impl core::ops::Eq for Bytes {
