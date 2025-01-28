@@ -151,7 +151,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                         opcode: Either::Left(VirtualOp::LW(
                             VirtualRegister::Constant(ConstantRegister::FuncArg0),
                             VirtualRegister::Constant(ConstantRegister::FuncArg0),
-                            VirtualImmediate12 { value: 0 },
+                            VirtualImmediate12::zero(),
                         )),
                         comment: format!("load offset to configurable {} default value", name),
                         owning_span: None,
