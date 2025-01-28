@@ -196,7 +196,7 @@ pub struct Project {
     pub authors: Option<Vec<String>>,
     #[serde(deserialize_with = "validate_package_name")]
     pub name: String,
-    #[serde(deserialize_with = "validate_package_version")]
+    #[serde(default, deserialize_with = "validate_package_version")]
     pub version: Option<String>,
     pub description: Option<String>,
     pub organization: Option<String>,
