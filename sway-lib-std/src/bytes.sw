@@ -818,7 +818,7 @@ impl Bytes {
     }
 
     /// Resizes the `Bytes` in-place so that `len` is equal to `new_len`.
-    /// 
+    ///
     /// # Additional Information
     ///
     /// If `new_len` is greater than `len`, the `Bytes` is extended by the difference, with each additional slot filled with value. If `new_len` is less than `len`, the `Bytes` is simply truncated.

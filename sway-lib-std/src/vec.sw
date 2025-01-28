@@ -699,7 +699,7 @@ impl<T> Vec<T> {
     }
 
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
-    /// 
+    ///
     /// # Additional Information
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the difference, with each additional slot filled with value. If `new_len` is less than `len`, the `Vec` is simply truncated.

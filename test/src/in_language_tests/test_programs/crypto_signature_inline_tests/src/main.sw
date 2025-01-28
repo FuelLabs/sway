@@ -1,6 +1,20 @@
 library;
 
-use std::{crypto::{signature::Signature, message::Message, public_key::PublicKey, secp256k1::Secp256k1, secp256r1::Secp256r1, ed25519::Ed25519}, hash::{Hash, sha256}, vm::evm::evm_address::EvmAddress};
+use std::{
+    crypto::{
+        ed25519::Ed25519,
+        message::Message,
+        public_key::PublicKey,
+        secp256k1::Secp256k1,
+        secp256r1::Secp256r1,
+        signature::Signature,
+    },
+    hash::{
+        Hash,
+        sha256,
+    },
+    vm::evm::evm_address::EvmAddress,
+};
 
 #[test]
 fn signature_recover() {
