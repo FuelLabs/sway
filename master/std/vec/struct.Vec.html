@@ -320,6 +320,32 @@ fn foo() {
     assert(!vec.ptr().is_null());
 }
 </code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.resize" class="method trait-impl"><a href="#method.resize" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.resize">resize</a>(<br>    refmut self,<br>    new_len: u64,<br>    value: T,<br>)</h4></div></summary><div class="docblock"><p>Resizes the <code>Vec</code> in-place so that <code>len</code> is equal to <code>new_len</code>.</p>
+<h1>Additional Information</h1>
+<p>If <code>new_len</code> is greater than <code>len</code>, the <code>Vec</code> is extended by the difference, with each additional slot filled with <code>value</code>. If <code>new_len</code> is less than <code>len</code>, the <code>Vec</code> is simply truncated.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>new_len</code>: [u64] - The new length of the <code>Vec</code>.</li>
+<li><code>value</code>: [T] - The value to fill the new length.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let vec: Vec&lt;u64&gt; = Vec::new();
+    vec.resize(1, 7);
+    assert(vec.len() == 1);
+    assert(vec.get(0).unwrap() == 7);
+
+    vec.resize(2, 9);
+    assert(vec.len() == 2);
+    assert(vec.get(0).unwrap() == 7);
+    assert(vec.get(1).unwrap() == 9);
+
+    vec.resize(1, 0);
+    assert(vec.len() == 1);
+    assert(vec.get(0).unwrap() == 7);
+    assert(vec.get(1) == None);
+}
+</code></pre>
 </div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AsRawSlice" class="impl has-srclink"><a href="#impl-AsRawSlice" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/raw_slice/trait.AsRawSlice.html">AsRawSlice</a> for Vec&lt;T&gt;</h3></div></summary><div class="impl-items"><div id="method.as_raw_slice" class="method trait-impl"><a href="#method.as_raw_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_raw_slice">as_raw_slice</a>(self) -&gt; raw_slice</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;raw_slice&gt;" class="impl has-srclink"><a href="#impl-From&lt;raw_slice&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;raw_slice&gt; for Vec&lt;T&gt;</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/codec/trait.AbiEncode.html">AbiEncode</a> for Vec&lt;T&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(self, buffer: Buffer) -&gt; Buffer</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiDecode" class="impl has-srclink"><a href="#impl-AbiDecode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/codec/trait.AbiDecode.html">AbiDecode</a> for Vec&lt;T&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_decode" class="method trait-impl"><a href="#method.abi_decode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_decode">abi_decode</a>(refmut buffer: BufferReader) -&gt; Vec&lt;T&gt;</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Clone" class="impl has-srclink"><a href="#impl-Clone" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../clone/trait.Clone.html">Clone</a> for Vec&lt;T&gt;</h3></div></summary><div class="impl-items"><div id="method.clone" class="method trait-impl"><a href="#method.clone" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clone">clone</a>(self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;Bytes&gt;" class="impl has-srclink"><a href="#impl-From&lt;Bytes&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;Bytes&gt; for Vec&lt;u8&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(bytes: Bytes) -&gt; Vec&lt;u8&gt;</h4></div></summary><div class="docblock"><p>Creates a <code>Vec&lt;u8&gt;</code> from a <code>Bytes</code>.</p>
 <h3>Examples</h3>
 <pre><code class="language-sway">use std:bytes::Bytes;
