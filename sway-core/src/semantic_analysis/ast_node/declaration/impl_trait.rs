@@ -302,10 +302,14 @@ impl TyImplSelfOrTrait {
                             true,
                         )?;
 
-			// Check that the contract doesn't have selector collisions
-			let _ = check_for_function_selector_collisions(handler, ctx.by_ref(), &new_items);
+                        // Check that the contract doesn't have selector collisions
+                        let _ = check_for_function_selector_collisions(
+                            handler,
+                            ctx.by_ref(),
+                            &new_items,
+                        );
 
-			ty::TyImplSelfOrTrait {
+                        ty::TyImplSelfOrTrait {
                             impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                             trait_name,
                             trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
@@ -1115,38 +1119,38 @@ fn type_check_trait_implementation(
 fn check_for_function_selector_collisions(
     handler: &Handler,
     ctx: TypeCheckContext,
-    items: &[TyImplItem])
-    -> Result<(), ErrorEmitted> {
+    items: &[TyImplItem],
+) -> Result<(), ErrorEmitted> {
     // If using v0 encoding then check for clashing function selector values
     if ctx.experimental.new_encoding {
-	return Ok(());
+        return Ok(());
     } else {
-	let engines = ctx.engines();
-	let mut selectors: HashMap<[u8; 4], (Ident, Span)> = HashMap::default();
-	
-	for item in items.iter() {
-	    match item {
-		TyImplItem::Fn(decl_ref) => {
+        let engines = ctx.engines();
+        let mut selectors: HashMap<[u8; 4], (Ident, Span)> = HashMap::default();
+
+        for item in items.iter() {
+            match item {
+                TyImplItem::Fn(decl_ref) => {
                     let method = (engines.de().get_function(decl_ref)).clone();
-		    let selector = method.to_fn_selector_value(handler, engines)?;
-		    if let Some((other_method, other_span)) = selectors.get(&selector) {
-			handler.emit_err(CompileError::FunctionSelectorClash {
-			    method_name: method.name.clone(),
-			    span: method.name.span(),
-			    other_method_name: other_method.clone(),
-			    other_span: other_span.clone(),
-			});
-		    } else {
-			selectors.insert(selector, (method.name.clone(), method.name.span().clone()));
-		    }
-		},
-		_ => {},
-	    }
-	}
-	Ok(())
+                    let selector = method.to_fn_selector_value(handler, engines)?;
+                    if let Some((other_method, other_span)) = selectors.get(&selector) {
+                        handler.emit_err(CompileError::FunctionSelectorClash {
+                            method_name: method.name.clone(),
+                            span: method.name.span(),
+                            other_method_name: other_method.clone(),
+                            other_span: other_span.clone(),
+                        });
+                    } else {
+                        selectors
+                            .insert(selector, (method.name.clone(), method.name.span().clone()));
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
     }
 }
-
 
 #[allow(clippy::too_many_arguments)]
 fn type_check_impl_method(
