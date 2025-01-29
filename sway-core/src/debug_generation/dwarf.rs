@@ -47,7 +47,15 @@ pub fn write_dwarf(
         sway_error::error::CompileError::InternalOwned(err.to_string(), Span::dummy())
     })?;
 
-    let file = File::create(out_file).unwrap();
+    // Create parent directories if they don't exist
+    if let Some(parent) = out_file.parent() {
+        std::fs::create_dir_all(parent).map_err(|err| {
+            sway_error::error::CompileError::InternalOwned(err.to_string(), Span::dummy())
+        })?;
+    }
+    let file = File::create(out_file).map_err(|err| {
+        sway_error::error::CompileError::InternalOwned(err.to_string(), Span::dummy())
+    })?;
     let mut obj = Object::new(
         object::BinaryFormat::Elf,
         object::Architecture::X86_64,
