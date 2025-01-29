@@ -25,6 +25,7 @@ pub use ::revert::{require, revert, revert_with_log};
 
 // Convert
 pub use ::convert::From;
+pub use ::clone::Clone;
 
 // Primitive conversions
 pub use ::primitive_conversions::{b256::*, str::*, u16::*, u256::*, u32::*, u64::*, u8::*};

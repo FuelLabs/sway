@@ -687,6 +687,45 @@ fn vec_raw_slice_into() {
     assert(vec.len() == slice.len::<u64>());
 }
 
+#[test]
+fn vec_clone() {
+    let (mut vec, _a, _b, _c) = setup();
+
+    let cloned_vec = vec.clone();
+
+    assert(cloned_vec.ptr() != vec.ptr());
+    assert(cloned_vec.len() == vec.len());
+    // Capacity is not cloned
+    assert(cloned_vec.capacity() != vec.capacity());
+    assert(cloned_vec.get(0).unwrap() == vec.get(0).unwrap());
+    assert(cloned_vec.get(1).unwrap() == vec.get(1).unwrap());
+    assert(cloned_vec.get(2).unwrap() == vec.get(2).unwrap());
+}
+
+#[test]
+fn vec_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+
+    // Check Vec duplicates the original slice
+    let mut bytes = Vec::<u8>::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
+
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
+
+    // `Vec<u8>` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
+
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
+}
+
 #[test()]
 fn vec_encode_and_decode() {
     let mut v1: Vec<u64> = Vec::new();
@@ -701,4 +740,68 @@ fn vec_encode_and_decode() {
     assert(v2.get(0) == Some(1));
     assert(v2.get(1) == Some(2));
     assert(v2.get(2) == Some(3));
+}
+
+#[test]
+fn vec_resize() {
+    let (mut vec_1, a, b, c) = setup();
+    assert(vec_1.len() == 3);
+    assert(vec_1.capacity() == 4);
+
+    // Resize to same size, no effect
+    vec_1.resize(3, 0);
+    assert(vec_1.len() == 3);
+    assert(vec_1.capacity() == 4);
+
+    // Resize to capacity size doesn't impact capacity
+    vec_1.resize(4, 1);
+    assert(vec_1.len() == 4);
+    assert(vec_1.capacity() == 4);
+    assert(vec_1.get(0) == Some(5));
+    assert(vec_1.get(1) == Some(7));
+    assert(vec_1.get(2) == Some(9));
+    assert(vec_1.get(3) == Some(1));
+
+    // Resize increases size and capacity
+    vec_1.resize(10, 2);
+    assert(vec_1.len() == 10);
+    assert(vec_1.capacity() == 10);
+    assert(vec_1.get(0) == Some(5));
+    assert(vec_1.get(1) == Some(7));
+    assert(vec_1.get(2) == Some(9));
+    assert(vec_1.get(3) == Some(1));
+    assert(vec_1.get(4) == Some(2));
+    assert(vec_1.get(5) == Some(2));
+    assert(vec_1.get(6) == Some(2));
+    assert(vec_1.get(7) == Some(2));
+    assert(vec_1.get(8) == Some(2));
+    assert(vec_1.get(9) == Some(2));
+
+    // Resize to less doesn't impact capacity or order
+    vec_1.resize(1, 0);
+    assert(vec_1.len() == 1);
+    assert(vec_1.capacity() == 10);
+    assert(vec_1.get(0) == Some(5));
+    assert(vec_1.get(1) == None);
+
+    // Resize to zero doesn't impact capacity and returns None
+    vec_1.resize(0, 0);
+    assert(vec_1.len() == 0);
+    assert(vec_1.capacity() == 10);
+    assert(vec_1.get(0) == None);
+
+    let mut vec_2 = Vec::new();
+
+    // Resize to zero on empty vec doesn't impact
+    vec_2.resize(0, 0);
+    assert(vec_2.len() == 0);
+    assert(vec_2.capacity() == 0);
+
+    // Resize on empty vec fills and sets capacity
+    vec_2.resize(3, 1);
+    assert(vec_2.len() == 3);
+    assert(vec_2.capacity() == 3);
+    assert(vec_2.get(0) == Some(1));
+    assert(vec_2.get(1) == Some(1));
+    assert(vec_2.get(2) == Some(1));
 }

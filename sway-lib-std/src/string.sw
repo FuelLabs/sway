@@ -6,6 +6,7 @@ use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
+use ::clone::Clone;
 
 /// A UTF-8 encoded growable string. It has ownership over its buffer.
 ///
@@ -338,6 +339,14 @@ impl AbiDecode for String {
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         String {
             bytes: Bytes::abi_decode(buffer),
+        }
+    }
+}
+
+impl Clone for String {
+    fn clone(self) -> Self {
+        Self {
+            bytes: self.bytes.clone(),
         }
     }
 }

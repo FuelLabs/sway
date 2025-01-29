@@ -9,6 +9,7 @@ pub mod assert;
 pub mod convert;
 pub mod alloc;
 pub mod iterator;
+pub mod clone;
 pub mod vec;
 
 pub mod prelude;

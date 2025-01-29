@@ -380,3 +380,16 @@ fn string_test_abi_encoding() {
 
     assert(string == decoded_string);
 }
+
+#[test]
+fn string_clone() {
+    let string = String::from_ascii_str("fuel");
+
+    let cloned_string = string.clone();
+
+    assert(cloned_string.ptr() != string.ptr());
+    assert(cloned_string.as_bytes().len() == string.as_bytes().len());
+    assert(cloned_string.as_bytes().get(0).unwrap() == string.as_bytes().get(0).unwrap());
+    assert(cloned_string.as_bytes().get(1).unwrap() == string.as_bytes().get(1).unwrap());
+    assert(cloned_string.as_bytes().get(2).unwrap() == string.as_bytes().get(2).unwrap());
+}

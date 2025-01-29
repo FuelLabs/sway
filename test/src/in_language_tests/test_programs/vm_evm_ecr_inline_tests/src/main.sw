@@ -1,6 +1,6 @@
 library;
 
-use std::{b512::B512, vm::evm::{ecr::ec_recover_evm_address, evm_address::EvmAddress,}};
+use std::{b512::B512, vm::evm::{ecr::ec_recover_evm_address, evm_address::EvmAddress}};
 
 #[test]
 fn ecr_ec_recover() {

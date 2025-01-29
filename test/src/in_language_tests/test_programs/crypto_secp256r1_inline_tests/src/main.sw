@@ -1,6 +1,19 @@
 library;
 
-use std::{b512::B512, bytes::Bytes, crypto::{secp256r1::*, public_key::*, message::*}, hash::{Hash, sha256}, vm::evm::evm_address::EvmAddress};
+use std::{
+    b512::B512,
+    bytes::Bytes,
+    crypto::{
+        message::*,
+        public_key::*,
+        secp256r1::*,
+    },
+    hash::{
+        Hash,
+        sha256,
+    },
+    vm::evm::evm_address::EvmAddress,
+};
 
 #[test]
 fn secp256r1_new() {
@@ -195,7 +208,10 @@ fn secp256r1_from_b512() {
         iter_1 += 1;
     }
 
-    let b512_2 = B512::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let b512_2 = B512::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let secp256r1_2 = Secp256r1::from(b512_2);
     assert(secp256r1_2.bits()[63] == 1u8);
     let mut iter_2 = 0;
@@ -222,7 +238,10 @@ fn secp256r1_from_b256_tuple() {
         iter_1 += 1;
     }
 
-    let secp256r1_2 = Secp256r1::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let secp256r1_2 = Secp256r1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     assert(secp256r1_2.bits()[63] == 1u8);
     let mut iter_2 = 0;
     while iter_2 < 63 {
@@ -241,12 +260,12 @@ fn secp256r1_from_b256_tuple() {
 #[test]
 fn secp256r1_from_u8_array() {
     let array_1 = [
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            ];
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8,
+    ];
     let secp256r1_1 = Secp256r1::from(array_1);
     let mut iter_1 = 0;
     while iter_1 < 64 {
@@ -255,12 +274,12 @@ fn secp256r1_from_u8_array() {
     }
 
     let array_2 = [
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8,
-            ];
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 1u8,
+    ];
     let secp256r1_2 = Secp256r1::from(array_2);
     assert(secp256r1_2.bits()[63] == 1u8);
     let mut iter_2 = 0;
@@ -270,12 +289,13 @@ fn secp256r1_from_u8_array() {
     }
 
     let array_3 = [
-                255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-                255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-                255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-                255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-                255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-            ];
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+    ];
     let secp256r1_3 = Secp256r1::from(array_3);
     let mut iter_3 = 0;
     while iter_3 < 64 {
@@ -295,7 +315,10 @@ fn secp256r1_try_from_bytes() {
         iter_1 += 1;
     }
 
-    let b256_tuple_2 = (b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_tuple_2 = (
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
     let bytes_2 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_2), 64));
     let secp256r1_2 = Secp256r1::try_from(bytes_2).unwrap();
     assert(secp256r1_2.bits()[63] == 1u8);
@@ -332,7 +355,10 @@ fn secp256r1_into_b512() {
     let secp256r1_1 = Secp256r1::from(b512_1);
     assert(<Secp256r1 as Into<B512>>::into(secp256r1_1) == b512_1);
 
-    let b512_2 = B512::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let b512_2 = B512::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let secp256r1_2 = Secp256r1::from(b512_2);
     assert(<Secp256r1 as Into<B512>>::into(secp256r1_2) == b512_2);
 
@@ -348,10 +374,15 @@ fn secp256r1_into_b256_tuple() {
     assert(result_1_1 == b256::zero());
     assert(result_2_1 == b256::zero());
 
-    let secp256r1_2 = Secp256r1::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let secp256r1_2 = Secp256r1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let (result_1_2, result_2_2) = <Secp256r1 as Into<(b256, b256)>>::into(secp256r1_2);
     assert(result_1_2 == b256::zero());
-    assert(result_2_2 == 0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        result_2_2 == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
 
     let secp256r1_3 = Secp256r1::from((b256::max(), b256::max()));
     let (result_1_3, result_2_3) = <Secp256r1 as Into<(b256, b256)>>::into(secp256r1_3);
@@ -369,7 +400,10 @@ fn secp256r1_into_bytes() {
         iter_1 += 1;
     }
 
-    let secp256r1_2 = Secp256r1::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let secp256r1_2 = Secp256r1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let bytes_result_2 = <Secp256r1 as Into<Bytes>>::into(secp256r1_2);
     assert(bytes_result_2.get(63).unwrap() == 1u8);
     let mut iter_2 = 0;
@@ -391,8 +425,14 @@ fn secp256r1_into_bytes() {
 fn secp256r1_eq() {
     let secp256r1_1 = Secp256r1::from((b256::zero(), b256::zero()));
     let secp256r1_2 = Secp256r1::from((b256::zero(), b256::zero()));
-    let secp256r1_3 = Secp256r1::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
-    let secp256r1_4 = Secp256r1::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let secp256r1_3 = Secp256r1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
+    let secp256r1_4 = Secp256r1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let secp256r1_5 = Secp256r1::from((b256::max(), b256::max()));
     let secp256r1_6 = Secp256r1::from((b256::max(), b256::max()));
 
