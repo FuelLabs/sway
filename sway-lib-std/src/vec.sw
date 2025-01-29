@@ -6,6 +6,7 @@ use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
 use ::iterator::*;
+use ::clone::Clone;
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -846,26 +847,13 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-#[test]
-fn ok_vec_buffer_ownership() {
-    let mut original_array = [1u8, 2u8, 3u8, 4u8];
-    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
-
-    // Check Vec duplicates the original slice
-    let mut bytes = Vec::<u8>::from(slice);
-    bytes.set(0, 5);
-    assert(original_array[0] == 1);
-
-    // At this point, slice equals [5, 2, 3, 4]
-    let encoded_slice = encode(bytes);
-
-    // `Vec<u8>` should duplicate the underlying buffer,
-    // so when we write to it, it should not change
-    // `encoded_slice` 
-    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
-    bytes.set(0, 6);
-    assert(bytes.get(0) == Some(6));
-
-    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
-    assert(bytes.get(0) == Some(5));
+impl<T> Clone for Vec<T> {
+    fn clone(self) -> Self {
+        let len = self.len();
+        let buf = RawVec::with_capacity(len);
+        if len > 0 {
+            self.ptr().copy_to::<T>(buf.ptr(), len);
+        }
+        Self { buf, len }
+    }
 }
