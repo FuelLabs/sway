@@ -3,7 +3,8 @@ pub mod build_profile;
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
-use forc_util::{restricted::is_valid_package_version, validate_name, validate_project_name};
+use forc_util::{validate_name, validate_project_name};
+use semver::Version;
 use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{
@@ -196,8 +197,7 @@ pub struct Project {
     pub authors: Option<Vec<String>>,
     #[serde(deserialize_with = "validate_package_name")]
     pub name: String,
-    #[serde(default, deserialize_with = "validate_package_version")]
-    pub version: Option<String>,
+    pub version: Option<Version>,
     pub description: Option<String>,
     pub organization: Option<String>,
     pub license: String,
@@ -223,23 +223,6 @@ where
         Ok(_) => Ok(name),
         Err(e) => Err(de::Error::custom(e.to_string())),
     }
-}
-
-// Validation function for `version`
-fn validate_package_version<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: de::Deserializer<'de>,
-{
-    let version: Option<String> = Deserialize::deserialize(deserializer)?;
-    if let Some(ref version_str) = version {
-        if !is_valid_package_version(version_str) {
-            return Err(de::Error::custom(format!(
-                "Invalid semantic version: '{}'",
-                version_str
-            )));
-        }
-    }
-    Ok(version)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -1398,7 +1381,7 @@ mod tests {
         let project = Project {
             authors: Some(vec!["Test Author".to_string()]),
             name: "test-project".to_string(),
-            version: Some("0.1.0".to_string()),
+            version: Some(Version::parse("0.1.0").unwrap()),
             description: Some("test description".to_string()),
             homepage: None,
             documentation: None,
@@ -1424,7 +1407,7 @@ mod tests {
         let project = Project {
             authors: Some(vec!["Test Author".to_string()]),
             name: "test-project".to_string(),
-            version: Some("0.1.0".to_string()),
+            version: Some(Version::parse("0.1.0").unwrap()),
             description: Some("test description".to_string()),
             homepage: Some(Url::parse("https://example.com").unwrap()),
             documentation: Some(Url::parse("https://docs.example.com").unwrap()),
