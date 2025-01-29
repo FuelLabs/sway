@@ -69,7 +69,7 @@ pub fn u32_modulo() {
     assert(0u32 % 2u32 == 0u32);
     assert(1u32 % 1u32 == 0u32);
     assert(1u32 % 2u32 == 1u32);
-    
+
     assert(u32_max % 1u32 == 0u32);
     assert(u32_max % 2u32 == 1u32);
     assert(u32_max % u32_max == 0u32);
