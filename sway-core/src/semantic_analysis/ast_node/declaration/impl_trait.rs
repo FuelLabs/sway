@@ -1122,21 +1122,22 @@ fn check_for_function_selector_collisions(
 	return Ok(());
     } else {
 	let engines = ctx.engines();
-	let mut selectors: HashMap<[u8; 4], Ident> = HashMap::default();
+	let mut selectors: HashMap<[u8; 4], (Ident, Span)> = HashMap::default();
 	
 	for item in items.iter() {
 	    match item {
 		TyImplItem::Fn(decl_ref) => {
                     let method = (engines.de().get_function(decl_ref)).clone();
 		    let selector = method.to_fn_selector_value(handler, engines)?;
-		    if let Some(other_method) = selectors.get(&selector) {
+		    if let Some((other_method, other_span)) = selectors.get(&selector) {
 			handler.emit_err(CompileError::FunctionSelectorClash {
 			    method_name: method.name.clone(),
-			    other_method_name: other_method.clone(),
 			    span: method.name.span(),
+			    other_method_name: other_method.clone(),
+			    other_span: other_span.clone(),
 			});
 		    } else {
-			selectors.insert(selector, method.name.clone());
+			selectors.insert(selector, (method.name.clone(), method.name.span().clone()));
 		    }
 		},
 		_ => {},
