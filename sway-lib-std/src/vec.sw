@@ -698,6 +698,61 @@ impl<T> Vec<T> {
     pub fn ptr(self) -> raw_ptr {
         self.buf.ptr()
     }
+
+    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
+    ///
+    /// # Additional Information
+    ///
+    /// If `new_len` is greater than `len`, the `Vec` is extended by the difference, with each additional slot filled with `value`. If `new_len` is less than `len`, the `Vec` is simply truncated.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_len`: [u64] - The new length of the `Vec`.
+    /// * `value`: [T] - The value to fill the new length.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let vec: Vec<u64> = Vec::new();
+    ///     vec.resize(1, 7);
+    ///     assert(vec.len() == 1);
+    ///     assert(vec.get(0).unwrap() == 7);
+    ///
+    ///     vec.resize(2, 9);
+    ///     assert(vec.len() == 2);
+    ///     assert(vec.get(0).unwrap() == 7);
+    ///     assert(vec.get(1).unwrap() == 9);
+    ///
+    ///     vec.resize(1, 0);
+    ///     assert(vec.len() == 1);
+    ///     assert(vec.get(0).unwrap() == 7);
+    ///     assert(vec.get(1) == None);
+    /// }
+    /// ```
+    pub fn resize(ref mut self, new_len: u64, value: T) {
+        // If the `new_len` is less then truncate
+        if self.len >= new_len {
+            self.len = new_len;
+            return;
+        }
+
+        // If we don't have enough capacity, alloc more
+        if self.buf.cap < new_len {
+            self.buf.ptr = realloc::<T>(self.buf.ptr, self.buf.cap, new_len);
+            self.buf.cap = new_len;
+        }
+
+        // Fill the new length with `value`
+        let mut i = 0;
+        let start_ptr = self.buf.ptr.add::<T>(self.len);
+        while i + self.len < new_len {
+            start_ptr.add::<T>(i).write::<T>(value);
+            i += 1;
+        }
+
+        self.len = new_len;
+    }
 }
 
 impl<T> AsRawSlice for Vec<T> {
