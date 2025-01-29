@@ -1123,29 +1123,25 @@ fn check_for_function_selector_collisions(
 ) -> Result<(), ErrorEmitted> {
     // If using v0 encoding then check for clashing function selector values
     if ctx.experimental.new_encoding {
-        return Ok(());
+        Ok(())
     } else {
         let engines = ctx.engines();
         let mut selectors: HashMap<[u8; 4], (Ident, Span)> = HashMap::default();
 
         for item in items.iter() {
-            match item {
-                TyImplItem::Fn(decl_ref) => {
-                    let method = (engines.de().get_function(decl_ref)).clone();
-                    let selector = method.to_fn_selector_value(handler, engines)?;
-                    if let Some((other_method, other_span)) = selectors.get(&selector) {
-                        handler.emit_err(CompileError::FunctionSelectorClash {
-                            method_name: method.name.clone(),
-                            span: method.name.span(),
-                            other_method_name: other_method.clone(),
-                            other_span: other_span.clone(),
-                        });
-                    } else {
-                        selectors
-                            .insert(selector, (method.name.clone(), method.name.span().clone()));
-                    }
+            if let TyImplItem::Fn(decl_ref) = item {
+                let method = (engines.de().get_function(decl_ref)).clone();
+                let selector = method.to_fn_selector_value(handler, engines)?;
+                if let Some((other_method, other_span)) = selectors.get(&selector) {
+                    handler.emit_err(CompileError::FunctionSelectorClash {
+                        method_name: method.name.clone(),
+                        span: method.name.span(),
+                        other_method_name: other_method.clone(),
+                        other_span: other_span.clone(),
+                    });
+                } else {
+                    selectors.insert(selector, (method.name.clone(), method.name.span().clone()));
                 }
-                _ => {}
             }
         }
         Ok(())
