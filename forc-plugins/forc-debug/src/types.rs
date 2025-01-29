@@ -11,9 +11,10 @@ use sway_core::asm_generation::ProgramABI;
 pub type Line = i64;
 pub type ExitCode = i64;
 pub type Instruction = u64;
-pub type FileSourceMap = HashMap<Line, Vec<Instruction>>;
-pub type SourceMap = HashMap<PathBuf, FileSourceMap>;
 pub type Breakpoints = HashMap<PathBuf, Vec<Breakpoint>>;
+
+// pub type FileSourceMap = HashMap<Line, Vec<Instruction>>;
+// pub type SourceMap = HashMap<PathBuf, FileSourceMap>;
 
 /// A map storing ABIs for contracts, capable of fetching ABIs from the registry for unknown contracts.
 #[derive(Debug, Default)]
