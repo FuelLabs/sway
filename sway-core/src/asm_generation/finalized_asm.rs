@@ -136,8 +136,8 @@ fn to_bytecode_mut(
             }
             AllocatedOpcode::ConfigurablesOffsetPlaceholder => 8,
             AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
-            AllocatedOpcode::BLOB(count) => count.value as u64 * 4,
-            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value == 0 => 0,
+            AllocatedOpcode::BLOB(count) => count.value() as u64 * 4,
+            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value() == 0 => 0,
             _ => 4,
         }
     }
