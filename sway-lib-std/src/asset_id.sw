@@ -3,8 +3,10 @@ library;
 
 use ::alias::SubId;
 use ::contract_id::ContractId;
-use ::convert::From;
+use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::bytes::Bytes;
+use ::option::Option::{self, *};
 
 /// An AssetId is used for interacting with an asset on the network.
 ///
@@ -71,7 +73,7 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::callframes::contract_id;
+    /// use std::call_frames::contract_id;
     ///
     /// fn foo() {
     ///     let contract_id = contract_id();
@@ -109,7 +111,7 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{callframes::contract_id, constants::DEFAULT_SUB_ID};
+    /// use std::{call_frames::contract_id, constants::DEFAULT_SUB_ID};
     ///
     /// fn foo() {
     ///     let asset_id = AssetId::default();
@@ -236,12 +238,68 @@ impl From<AssetId> for b256 {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let asset_id = AssetId::b256::zero();
-    ///     let b256_data: b256 = asset_id.into();
+    ///     let asset_id = AssetId::zero();
+    ///     let b256_data: b256 = b256::from(asset_id);
     ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(id: AssetId) -> Self {
         id.bits()
+    }
+}
+
+impl TryFrom<Bytes> for AssetId {
+    /// Casts raw `Bytes` data to an `AssetId`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes`: [Bytes] - The raw `Bytes` data to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] - The newly created `AssetId` from the raw `Bytes`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo(bytes: Bytes) {
+    ///    let result = AssetId::try_from(bytes);
+    ///    assert(result.is_some());
+    ///    let asset_id = result.unwrap();
+    /// }
+    /// ```
+    fn try_from(bytes: Bytes) -> Option<Self> {
+        if bytes.len() != 32 {
+            return None;
+        }
+
+        Some(Self {
+            bits: asm(ptr: bytes.ptr()) {
+                ptr: b256
+            },
+        })
+    }
+}
+
+impl Into<Bytes> for AssetId {
+    /// Casts an `AssetId` to raw `Bytes` data.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The underlying raw `Bytes` data of the `AssetId`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let asset_id = AssetId::zero();
+    ///     let bytes_data: Bytes = asset_id.into();
+    ///     assert(bytes_data.len() == 32);
+    /// }
+    /// ```
+    fn into(self) -> Bytes {
+        Bytes::from(self.bits())
     }
 }
