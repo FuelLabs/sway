@@ -38,8 +38,11 @@ fn assert_empty_vec_next_returns_none_impl<T>(slot_id_preimage: u64) {
 }
 
 #[storage(read, write)]
-fn assert_vec_with_elements_next_returns_element_impl<T>(slot_id_preimage: u64)
-    where T: Eq + TestInstance + AbiEncode
+fn assert_vec_with_elements_next_returns_element_impl<T>(
+    slot_id_preimage: u64,
+)
+where
+    T: Eq + TestInstance + AbiEncode,
 {
     let vec: StorageKey<StorageVec<T>> = StorageKey::new(sha256(slot_id_preimage), 0, sha256(slot_id_preimage + 100));
 
@@ -72,8 +75,11 @@ fn assert_vec_with_elements_next_returns_element_impl<T>(slot_id_preimage: u64)
 }
 
 #[storage(read, write)]
-fn assert_vec_with_elements_for_loop_iteration_impl<T>(slot_id_preimage: u64)
-    where T: Eq + TestInstance + AbiEncode
+fn assert_vec_with_elements_for_loop_iteration_impl<T>(
+    slot_id_preimage: u64,
+)
+where
+    T: Eq + TestInstance + AbiEncode,
 {
     let vec: StorageKey<StorageVec<T>> = StorageKey::new(sha256(slot_id_preimage), 0, sha256(slot_id_preimage + 100));
 
@@ -109,8 +115,8 @@ impl StorageVecIterTest for Contract {
         assert_empty_vec_next_returns_none_impl::<u32>(5);
         assert_empty_vec_next_returns_none_impl::<u64>(6);
         assert_empty_vec_next_returns_none_impl::<u256>(7);
-        assert_empty_vec_next_returns_none_impl::<[u64;2]>(8);
-        assert_empty_vec_next_returns_none_impl::<[u64;0]>(9);
+        assert_empty_vec_next_returns_none_impl::<[u64; 2]>(8);
+        assert_empty_vec_next_returns_none_impl::<[u64; 0]>(9);
         assert_empty_vec_next_returns_none_impl::<Struct>(10);
         assert_empty_vec_next_returns_none_impl::<EmptyStruct>(11);
         assert_empty_vec_next_returns_none_impl::<str>(12);
@@ -132,7 +138,7 @@ impl StorageVecIterTest for Contract {
         assert_vec_with_elements_next_returns_element_impl::<u32>(5);
         assert_vec_with_elements_next_returns_element_impl::<u64>(6);
         assert_vec_with_elements_next_returns_element_impl::<u256>(7);
-        assert_vec_with_elements_next_returns_element_impl::<[u64;2]>(8);
+        assert_vec_with_elements_next_returns_element_impl::<[u64; 2]>(8);
         // assert_vec_with_elements_next_returns_element_impl::<[u64;0]>(9);
         assert_vec_with_elements_next_returns_element_impl::<Struct>(10);
         // assert_vec_with_elements_next_returns_element_impl::<EmptyStruct>(11);
@@ -155,7 +161,7 @@ impl StorageVecIterTest for Contract {
         assert_vec_with_elements_for_loop_iteration_impl::<u32>(5);
         assert_vec_with_elements_for_loop_iteration_impl::<u64>(6);
         assert_vec_with_elements_for_loop_iteration_impl::<u256>(7);
-        assert_vec_with_elements_for_loop_iteration_impl::<[u64;2]>(8);
+        assert_vec_with_elements_for_loop_iteration_impl::<[u64; 2]>(8);
         // assert_vec_with_elements_for_loop_iteration_impl::<[u64;0]>(9);
         assert_vec_with_elements_for_loop_iteration_impl::<Struct>(10);
         // assert_vec_with_elements_for_loop_iteration_impl::<EmptyStruct>(11);

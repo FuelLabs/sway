@@ -917,11 +917,6 @@ impl TraitMap {
                         *map_type_id,
                         *type_id,
                     );
-                    type_id.subst(&SubstTypesContext::new(
-                        engines,
-                        &type_mapping,
-                        matches!(code_block_first_pass, CodeBlockFirstPass::No),
-                    ));
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()

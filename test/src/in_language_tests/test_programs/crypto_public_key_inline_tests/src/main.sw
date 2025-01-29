@@ -48,12 +48,15 @@ fn public_key_from_b512() {
         iter_1 += 1;
     }
 
-    let b512_2 = B512::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let b512_2 = B512::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let public_key_2 = PublicKey::from(b512_2);
     assert(public_key_2.bytes().len() == 64);
     assert(public_key_2.bytes().get(63).unwrap() == 1u8);
     let mut iter_2 = 0;
-    while iter_2 < public_key_2.bytes().len() - 1{
+    while iter_2 < public_key_2.bytes().len() - 1 {
         assert(public_key_2.bytes().get(iter_2).unwrap() == 0u8);
         iter_2 += 1;
     }
@@ -78,11 +81,14 @@ fn public_key_from_b256_tuple() {
         iter_1 += 1;
     }
 
-    let public_key_2 = PublicKey::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let public_key_2 = PublicKey::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     assert(public_key_2.bytes().len() == 64);
     assert(public_key_2.bytes().get(63).unwrap() == 1u8);
     let mut iter_2 = 0;
-    while iter_2 < public_key_2.bytes().len() - 1{
+    while iter_2 < public_key_2.bytes().len() - 1 {
         assert(public_key_2.bytes().get(iter_2).unwrap() == 0u8);
         iter_2 += 1;
     }
@@ -98,7 +104,7 @@ fn public_key_from_b256_tuple() {
 
 #[test]
 fn public_key_from_b256() {
-        let public_key_1 = PublicKey::from(b256::zero());
+    let public_key_1 = PublicKey::from(b256::zero());
     assert(public_key_1.bytes().len() == 32);
     let mut iter_1 = 0;
     while iter_1 < public_key_1.bytes().len() {
@@ -110,7 +116,7 @@ fn public_key_from_b256() {
     assert(public_key_2.bytes().len() == 32);
     assert(public_key_2.bytes().get(31).unwrap() == 1u8);
     let mut iter_2 = 0;
-    while iter_2 < public_key_2.bytes().len() - 1{
+    while iter_2 < public_key_2.bytes().len() - 1 {
         assert(public_key_2.bytes().get(iter_2).unwrap() == 0u8);
         iter_2 += 1;
     }
@@ -185,7 +191,10 @@ fn public_key_try_from_bytes() {
         iter_7 += 1;
     }
 
-    let b256_tuple_8 = (b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_tuple_8 = (
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
     let bytes_8 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_8), 64));
     let public_key_8 = PublicKey::try_from(bytes_8).unwrap();
     assert(public_key_8.bytes().len() == 64);
@@ -204,10 +213,15 @@ fn public_key_try_into_b256_tuple() {
     assert(result_1_1 == b256::zero());
     assert(result_2_1 == b256::zero());
 
-    let public_key_2 = PublicKey::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let public_key_2 = PublicKey::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let (result_1_2, result_2_2) = <PublicKey as TryInto<(b256, b256)>>::try_into(public_key_2).unwrap();
     assert(result_1_2 == b256::zero());
-    assert(result_2_2 == 0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        result_2_2 == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
 
     let public_key_3 = PublicKey::from((b256::max(), b256::max()));
     let (result_1_3, result_2_3) = <PublicKey as TryInto<(b256, b256)>>::try_into(public_key_3).unwrap();
@@ -225,7 +239,10 @@ fn public_key_try_into_b512() {
     let public_key_1 = PublicKey::from(b512_1);
     assert(<PublicKey as TryInto<B512>>::try_into(public_key_1).unwrap() == b512_1);
 
-    let b512_2 = B512::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let b512_2 = B512::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
     let public_key_2 = PublicKey::from(b512_2);
     assert(<PublicKey as TryInto<B512>>::try_into(public_key_2).unwrap() == b512_2);
 
@@ -269,8 +286,14 @@ fn public_key_eq() {
     let public_key_8 = PublicKey::from((b256::zero(), b256::zero()));
     let public_key_9 = PublicKey::from((b256::max(), b256::max()));
     let public_key_10 = PublicKey::from((b256::max(), b256::max()));
-    let public_key_11 = PublicKey::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
-    let public_key_12 = PublicKey::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    let public_key_11 = PublicKey::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
+    let public_key_12 = PublicKey::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
 
     assert(public_key_1 == public_key_2);
     assert(public_key_3 == public_key_4);
