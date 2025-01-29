@@ -2804,7 +2804,7 @@ impl ToDiagnostic for CompileError {
                 help: vec!["Contract methods names must be unique, even when implementing multiple ABIs.".into()],
             },
 	    FunctionSelectorClash { method_name, span, other_method_name, other_span } => Diagnostic {
-		reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} name have clashing function selectors."))),
+		reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} have clashing function selectors."))),
 		issue: Issue::error(
 		    source_engine,
 		    span.clone(),
