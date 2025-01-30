@@ -24,13 +24,11 @@ use forc_test::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     io::{BufReader, BufWriter, Read, Write},
     process,
     sync::Arc,
 };
 use sway_core::BuildTarget;
-use sway_types::LineCol;
 
 pub const THREAD_ID: i64 = 0;
 pub const REGISTERS_VARIABLE_REF: i64 = 1;
@@ -327,52 +325,19 @@ impl DapServer {
             reason: format!("build packages: {err:?}"),
         })?;
 
-        // 2. Store the source maps
-        let mut pkg_to_debug: Option<&BuiltPackage> = None;
-        for (_, built_pkg) in &built_packages {
-            if built_pkg.descriptor.manifest_file == pkg_manifest {
-                pkg_to_debug = Some(built_pkg);
-            }
-            self.state.compiler_source_map = Some(built_pkg.source_map.clone());
-            let source_map = &built_pkg.source_map;
+        // 2. Store the source maps and find debug package
+        let pkg_to_debug = built_packages
+            .iter()
+            .find(|(_, pkg)| pkg.descriptor.manifest_file == pkg_manifest)
+            .map(|(_, pkg)| pkg)
+            .ok_or(AdapterError::BuildFailed {
+                reason: format!("find package: {project_name}"),
+            })?;
 
-            let paths = &source_map.paths;
-            source_map.map.iter().for_each(|(instruction, sm_span)| {
-                if let Some(path_buf) = paths.get(sm_span.path.0) {
-                    let LineCol { line, .. } = sm_span.range.start;
-                    let (line, instruction) = (line as i64, *instruction as Instruction);
-
-                    self.state
-                        .source_map
-                        .entry(path_buf.clone())
-                        .and_modify(|new_map| {
-                            new_map
-                                .entry(line)
-                                .and_modify(|val| {
-                                    // Store the instructions in ascending order
-                                    match val.binary_search(&instruction) {
-                                        Ok(_) => {} // Ignore duplicates
-                                        Err(pos) => val.insert(pos, instruction),
-                                    }
-                                })
-                                .or_insert(vec![instruction]);
-                        })
-                        .or_insert(HashMap::from([(line, vec![instruction])]));
-                } else {
-                    self.error(format!(
-                        "Path missing from source map: {:?}",
-                        sm_span.path.0
-                    ));
-                }
-            });
-        }
+        self.state.source_map = pkg_to_debug.source_map.clone();
 
         // 3. Build the tests
-        let built_package = pkg_to_debug.ok_or(AdapterError::BuildFailed {
-            reason: format!("find package: {project_name}"),
-        })?;
-
-        let built = Built::Package(Arc::from(built_package.clone()));
+        let built = Built::Package(Arc::from(pkg_to_debug.clone()));
 
         let built_tests = BuiltTests::from_built(built, &build_plan).map_err(|err| {
             AdapterError::BuildFailed {
@@ -391,9 +356,9 @@ impl DapServer {
         let test_setup = pkg_tests.setup().map_err(|err| AdapterError::BuildFailed {
             reason: format!("test setup: {err:?}"),
         })?;
-        self.state.built_package = Some(built_package.clone());
+        self.state.built_package = Some(pkg_to_debug.clone());
         self.state.test_setup = Some(test_setup.clone());
-        Ok((built_package.clone(), test_setup))
+        Ok((pkg_to_debug.clone(), test_setup))
     }
 
     /// Sends the 'exited' event to the client and kills the server process.
