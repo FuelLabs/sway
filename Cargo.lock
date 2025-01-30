@@ -3115,9 +3115,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-client"
-version = "0.41.2"
+version = "0.41.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73603764463b2d7dd7b219e299e20eb677160d7314d657c722cadda5cd6b3837"
+checksum = "bdd96a66ac7026c8c60df5cf171ad9eecbf0648e49abfc57d3f7d5df739ced47"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3213,9 +3213,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-types"
-version = "0.41.2"
+version = "0.41.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bcbdccf728872ae7f8534bc60f22c1ecdd0bc13b3cc30735eb235fc0d821851"
+checksum = "40479537a591e091863ee5f939f3a8ec248cabf864fb287c13cc2f09d8059d11"
 dependencies = [
  "anyhow",
  "bs58",
