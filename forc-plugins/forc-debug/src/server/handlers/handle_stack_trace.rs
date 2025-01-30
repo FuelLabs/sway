@@ -46,7 +46,7 @@ impl DapServer {
                     executor.interpreter.registers(),
                 ))
                 .ok()
-                .map(|(source_path, line)| (Some(util::path_into_source(source_path)), line)),
+                .map(|(source_path, line)| (Some(util::path_into_source(&source_path)), line)),
         };
 
         // For now, we only return 1 stack frame.
