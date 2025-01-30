@@ -1378,7 +1378,7 @@ mod inputs {
                 // Assert none returned when not a valid index
                 let none_result = contract_instance
                     .methods()
-                    .get_input_witness_index(3)
+                    .get_input_witness_index(0)
                     .call()
                     .await
                     .unwrap();
