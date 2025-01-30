@@ -301,7 +301,7 @@ fn test_sourcemap_build() {
     let mut line_to_instructions: BTreeMap<i64, Vec<usize>> = BTreeMap::new();
     let source_map = &server.state.source_map;
 
-    for (pc, _span) in &source_map.map {
+    for pc in source_map.map.keys() {
         if let Some((path, range)) = source_map.addr_to_span(*pc) {
             if path == program_path {
                 line_to_instructions
