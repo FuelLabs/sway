@@ -845,7 +845,6 @@ mod tx {
         let mut builder = BlobTransactionBuilder::default().with_blob(blob.clone());
 
         // Prepare the predicate
-        let witnesses = builder.witnesses().clone();
         let predicate_data = TestTxWitnessPredicateEncoder::new(EncoderConfig {
             max_depth: 10,
             max_tokens: 100_000,
