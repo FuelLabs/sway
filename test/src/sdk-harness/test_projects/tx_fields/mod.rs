@@ -1009,32 +1009,27 @@ mod inputs {
             let provider = wallet.provider().unwrap();
 
             // Add predicate coin to inputs and call contract
-            let mut tb = contract_instance
+            let handler = contract_instance
                 .methods()
-                .get_input_predicate(1, predicate_bytes.clone())
-                .transaction_builder()
-                .await
-                .unwrap();
+                .get_input_predicate(1, predicate_bytes.clone());
+            let mut tb = handler.transaction_builder().await.unwrap();
 
             tb.inputs_mut().push(predicate_coin);
 
-            let tx = tb.build(provider).await.unwrap();
+            let tx = tb.enable_burn(true).build(provider).await.unwrap();
 
             let provider = wallet.provider().unwrap();
 
-            let tx_id = provider.send_transaction(tx).await.unwrap();
-            let receipts = provider
-                .tx_status(&tx_id)
-                .await
-                .unwrap()
-                .take_receipts_checked(None)
-                .unwrap();
-            assert_eq!(receipts[1].data(), Some(&[1u8][..]));
+            let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+            let receipts = tx_status.take_receipts_checked(None).unwrap();
+            let response = handler.get_response(receipts).unwrap();
+
+            assert!(response.value);
 
             // Assert invalid index returns None
             let result = contract_instance
                 .methods()
-                .get_input_predicate(3, predicate_bytes.clone())
+                .get_input_predicate(0, predicate_bytes.clone())
                 .call()
                 .await
                 .unwrap();
