@@ -100,11 +100,11 @@ impl ServerState {
 
         // Set breakpoints in the VM
         self.executors.iter_mut().for_each(|executor| {
-            // TODO: use `overwrite_breakpoints` when released
-            opcode_indexes.clone().for_each(|&opcode_index| {
-                let bp = fuel_vm::state::Breakpoint::script(opcode_index as u64);
-                executor.interpreter.set_breakpoint(bp);
-            });
+            let bps: Vec<_> = opcode_indexes
+                .clone()
+                .map(|opcode_index| fuel_vm::state::Breakpoint::script(*opcode_index as u64))
+                .collect();
+            executor.interpreter.overwrite_breakpoints(&bps);
         });
 
         self.breakpoints_need_update = false;
