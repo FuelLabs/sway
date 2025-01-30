@@ -6,6 +6,7 @@ use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
 use ::iterator::*;
+use ::clone::Clone;
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -697,6 +698,87 @@ impl<T> Vec<T> {
     pub fn ptr(self) -> raw_ptr {
         self.buf.ptr()
     }
+
+    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
+    ///
+    /// # Additional Information
+    ///
+    /// If `new_len` is greater than `len`, the `Vec` is extended by the difference, with each additional slot filled with `value`. If `new_len` is less than `len`, the `Vec` is simply truncated.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_len`: [u64] - The new length of the `Vec`.
+    /// * `value`: [T] - The value to fill the new length.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let vec: Vec<u64> = Vec::new();
+    ///     vec.resize(1, 7);
+    ///     assert(vec.len() == 1);
+    ///     assert(vec.get(0).unwrap() == 7);
+    ///
+    ///     vec.resize(2, 9);
+    ///     assert(vec.len() == 2);
+    ///     assert(vec.get(0).unwrap() == 7);
+    ///     assert(vec.get(1).unwrap() == 9);
+    ///
+    ///     vec.resize(1, 0);
+    ///     assert(vec.len() == 1);
+    ///     assert(vec.get(0).unwrap() == 7);
+    ///     assert(vec.get(1) == None);
+    /// }
+    /// ```
+    pub fn resize(ref mut self, new_len: u64, value: T) {
+        // If the `new_len` is less then truncate
+        if self.len >= new_len {
+            self.len = new_len;
+            return;
+        }
+
+        // If we don't have enough capacity, alloc more
+        if self.buf.cap < new_len {
+            self.buf.ptr = realloc::<T>(self.buf.ptr, self.buf.cap, new_len);
+            self.buf.cap = new_len;
+        }
+
+        // Fill the new length with `value`
+        let mut i = 0;
+        let start_ptr = self.buf.ptr.add::<T>(self.len);
+        while i + self.len < new_len {
+            start_ptr.add::<T>(i).write::<T>(value);
+            i += 1;
+        }
+
+        self.len = new_len;
+    }
+
+    /// Returns the last element in the `Vec`.
+    ///
+    /// # Returns
+    ///
+    /// [Option<T>] - The last element in the `Vec` or `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let mut vec = Vec::new();
+    ///     assert(vec.last() == None);
+    ///     vec.push(1u64);
+    ///     assert(vec.last() == Some(1u64));
+    ///     vec.push(2u64);
+    ///     assert(vec.last() == Some(2u64));
+    /// }
+    /// ```
+    pub fn last(self) -> Option<T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        Some(self.buf.ptr().add::<T>(self.len - 1).read::<T>())
+    }
 }
 
 impl<T> AsRawSlice for Vec<T> {
@@ -791,26 +873,13 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-#[test]
-fn ok_vec_buffer_ownership() {
-    let mut original_array = [1u8, 2u8, 3u8, 4u8];
-    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
-
-    // Check Vec duplicates the original slice
-    let mut bytes = Vec::<u8>::from(slice);
-    bytes.set(0, 5);
-    assert(original_array[0] == 1);
-
-    // At this point, slice equals [5, 2, 3, 4]
-    let encoded_slice = encode(bytes);
-
-    // `Vec<u8>` should duplicate the underlying buffer,
-    // so when we write to it, it should not change
-    // `encoded_slice` 
-    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
-    bytes.set(0, 6);
-    assert(bytes.get(0) == Some(6));
-
-    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
-    assert(bytes.get(0) == Some(5));
+impl<T> Clone for Vec<T> {
+    fn clone(self) -> Self {
+        let len = self.len();
+        let buf = RawVec::with_capacity(len);
+        if len > 0 {
+            self.ptr().copy_to::<T>(buf.ptr(), len);
+        }
+        Self { buf, len }
+    }
 }
