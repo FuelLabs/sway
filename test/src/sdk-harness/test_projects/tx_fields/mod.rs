@@ -1392,36 +1392,28 @@ mod inputs {
                 let provider = wallet.provider().unwrap();
 
                 let message = &wallet.get_messages().await.unwrap()[0];
-                let mut builder = contract_instance
-                    .methods()
-                    .get_input_message_data_length(3)
-                    .transaction_builder()
-                    .await
-                    .unwrap();
 
-                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
+                let handler = contract_instance
+                    .methods()
+                    .get_input_message_data_length(1);
+                let mut builder = handler.transaction_builder().await.unwrap();
 
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
                     resource: CoinType::Message(message.clone()),
                 });
+
+                wallet.adjust_for_fee(&mut builder, 1_000_000_000).await.unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
-                    .take_receipts_checked(None)
-                    .unwrap();
+                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let receipts = tx_status.take_receipts_checked(None).unwrap();
+                let response = handler.get_response(receipts).unwrap();
 
-                assert_eq!(
-                    receipts[1].data(),
-                    Some(&[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3][..])
-                );
+                assert_eq!(response.value.unwrap(), 3);
 
                 // Assert none returned when transaction type is not a message
                 let none_result = contract_instance
