@@ -1964,11 +1964,9 @@ mod outputs {
 
             let blob = blobs[0].clone();
 
-            let mut builder = BlobTransactionBuilder::default().with_blob(blob);
-
             // Prepare the predicate
             let predicate_data = TestTxOutputCountPredicateEncoder::default()
-                .encode_data(builder.inputs().len() as u16 + 1u16) // Add one for this predicate
+                .encode_data(1) // There is only 1 output - which is a change output
                 .unwrap();
             let predicate: Predicate =
                 Predicate::load_from(TX_OUTPUT_COUNT_PREDICATE_BYTECODE_PATH)
@@ -2006,21 +2004,13 @@ mod outputs {
                 .await
                 .unwrap();
 
-            // Outputs for predicate
-            let predicate_output = wallet.get_asset_outputs_for_amount(
-                &wallet.address(),
-                *base_asset_id,
-                1,
-            );
+            let mut builder = BlobTransactionBuilder::default().with_blob(blob);
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
             builder
                 .outputs
-                .push(predicate_output.get(0).unwrap().clone());
-
-            wallet.add_witnesses(&mut builder).unwrap();
-            wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
+                .push(SdkOutput::change(wallet.address().into(), 0, *base_asset_id));
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
