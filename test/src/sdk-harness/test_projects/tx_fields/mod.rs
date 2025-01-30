@@ -1558,34 +1558,27 @@ mod inputs {
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let provider = wallet.provider().unwrap();
 
-                let mut builder = contract_instance
+                let handler = contract_instance
                     .methods()
-                    .get_input_message_data(3, 1, Bytes(MESSAGE_DATA[1..].into()))
-                    .transaction_builder()
-                    .await
-                    .unwrap();
+                    .get_input_message_data(1, 1, Bytes(MESSAGE_DATA[1..].into()));
+                let mut builder = handler.transaction_builder().await.unwrap();
 
-                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
                     resource: CoinType::Message(message.clone()),
                 });
+
+                wallet.adjust_for_fee(&mut builder, 1_000_000_000).await.unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
-                    .take_receipts_checked(None)
-                    .unwrap();
-
-                assert_eq!(receipts[1].data(), Some(&[1][..]));
+                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let receipts = tx_status.take_receipts_checked(None).unwrap();
+                let response = handler.get_response(receipts).unwrap();
+                assert!(response.value);
             }
 
             #[tokio::test]
