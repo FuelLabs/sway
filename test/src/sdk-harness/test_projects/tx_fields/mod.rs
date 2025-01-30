@@ -979,7 +979,7 @@ mod inputs {
 
         #[tokio::test]
         async fn can_get_tx_input_coin_owner() {
-            let (contract_instance, _, _, deployment_wallet) = get_contracts(true).await;
+            let (contract_instance, _, wallet, _) = get_contracts(true).await;
 
             let owner_result = contract_instance
                 .methods()
@@ -988,12 +988,12 @@ mod inputs {
                 .await
                 .unwrap();
 
-            assert_eq!(owner_result.value, Some(deployment_wallet.address().into()));
+            assert_eq!(owner_result.value, Some(wallet.address().into()));
 
             // Assert invalid index returns None
             let result = contract_instance
                 .methods()
-                .get_input_coin_owner(2)
+                .get_input_coin_owner(0)
                 .call()
                 .await
                 .unwrap();
