@@ -109,7 +109,7 @@ async fn input_message_msg_sender_from_contract() {
     let call_handler = instance
         .methods()
         .returns_msg_sender_address(Address::from(*msg.recipient.hash()));
-    let mut tb = call_handler.transaction_builder().await.unwrap();
+    let mut tb = call_handler.transaction_builder().await.unwrap().enable_burn(true);
 
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
@@ -258,7 +258,7 @@ async fn caller_addresses_from_messages() {
     tb.add_signer(wallet3.clone()).unwrap();
 
     let provider = wallet1.provider().unwrap();
-    let tx = tb.build(provider.clone()).await.unwrap();
+    let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
     let tx_id = provider.send_transaction(tx).await.unwrap();
@@ -398,7 +398,7 @@ async fn caller_addresses_from_coins() {
     tb.add_signer(wallet3.clone()).unwrap();
 
     let provider = wallet1.provider().unwrap();
-    let tx = tb.build(provider.clone()).await.unwrap();
+    let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
     let tx_id = provider.send_transaction(tx).await.unwrap();
@@ -539,7 +539,7 @@ async fn caller_addresses_from_coins_and_messages() {
     tb.add_signer(wallet3.clone()).unwrap();
 
     let provider = wallet1.provider().unwrap();
-    let tx = tb.build(provider.clone()).await.unwrap();
+    let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
     let tx_id = provider.send_transaction(tx).await.unwrap();

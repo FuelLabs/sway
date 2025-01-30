@@ -362,7 +362,7 @@ mod tx {
 
         builder.add_signer(wallet.clone()).unwrap();
 
-        let tx = builder.build(provider).await.unwrap();
+        let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
         let tx_inputs = tx.inputs().clone();
 
@@ -1270,7 +1270,7 @@ mod inputs {
 
                 builder.add_signer(wallet.clone()).unwrap();
 
-                let tx = builder.build(provider).await.unwrap();
+                let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
                 let tx_id = provider.send_transaction(tx).await.unwrap();
