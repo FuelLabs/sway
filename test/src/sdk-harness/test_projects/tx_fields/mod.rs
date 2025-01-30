@@ -112,11 +112,11 @@ async fn get_contracts(
 
     let contract_id = Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
         .unwrap()
-        .deploy(&wallet, TxPolicies::default())
+        .deploy(&deployment_wallet, TxPolicies::default())
         .await
         .unwrap();
 
-    let instance = TxContractTest::new(contract_id.clone(), deployment_wallet.clone());
+    let instance = TxContractTest::new(contract_id.clone(), wallet.clone());
 
     (instance, contract_id.into(), wallet, deployment_wallet)
 }
