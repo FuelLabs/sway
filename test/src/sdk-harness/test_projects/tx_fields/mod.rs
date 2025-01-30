@@ -194,10 +194,8 @@ async fn setup_output_predicate(
         ],
     );
 
-    let mut node_config = NodeConfig::default();
-    node_config.starting_gas_price = 0;
     let mut wallets =
-        launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
+        launch_custom_provider_and_get_wallets(wallets_config, None, None)
             .await
             .unwrap();
     let wallet1 = wallets.pop().unwrap();
