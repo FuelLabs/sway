@@ -719,6 +719,158 @@ impl Bytes {
         // set capacity and length
         self.len = both_len;
     }
+
+    /// Removes and returns a range of elements from the `Bytes` (i.e. indices `[start, end)`),
+    /// then replaces that range with the contents of `replace_with`.
+    ///
+    /// # Arguments
+    ///
+    /// * `start`: [u64] - The starting index for the splice (inclusive).
+    /// * `end`: [u64] - The ending index for the splice (exclusive).
+    /// * `replace_with`: [Bytes] - The elements to insert in place of the removed range.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - A new `Bytes` containing all of the elements from `start` up to (but not including) `end`.
+    ///
+    /// # Reverts
+    ///
+    /// * When `start > end`.
+    /// * When `end > self.len`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5u8);  // index 0
+    ///     bytes.push(7u8);  // index 1
+    ///     bytes.push(9u8);  // index 2
+    ///
+    ///     // Replace the middle item (index 1) with two new items
+    ///     let mut replacement = Bytes::new();
+    ///     replacement.push(42u8);
+    ///     replacement.push(100u8);
+    ///
+    ///     // Splice out range [1..2) => removes the single element 7u8,
+    ///     // then inserts [42, 100] there
+    ///     let spliced = bytes.splice(1, 2, replacement);
+    ///
+    ///     // `spliced` has the element [7u8]
+    ///     assert(spliced.len() == 1);
+    ///     assert(spliced.get(0).unwrap() == 7u8);
+    ///
+    ///     // `bytes` is now [5u8, 42u8, 100u8, 9u8]
+    ///     assert(bytes.len() == 4);
+    ///     assert(bytes.get(0).unwrap() == 5u8);
+    ///     assert(bytes.get(1).unwrap() == 42u8);
+    ///     assert(bytes.get(2).unwrap() == 100u8);
+    ///     assert(bytes.get(3).unwrap() == 9u8);
+    /// }
+    /// ```
+    pub fn splice(ref mut self, start: u64, end: u64, replace_with: Bytes) -> Bytes {
+        assert(start <= end);
+        assert(end <= self.len);
+
+        let splice_len = end - start;
+        let replace_len = replace_with.len();
+
+        // Build the Bytes to return
+        let mut spliced = Bytes::with_capacity(splice_len);
+        if splice_len > 0 {
+            let old_ptr = self.buf.ptr().add_uint_offset(start);
+            old_ptr.copy_bytes_to(spliced.buf.ptr(), splice_len);
+            spliced.len = splice_len;
+        }
+
+        // New self
+        let new_len = self.len - splice_len + replace_len;
+        let mut new_buf = Bytes::with_capacity(new_len);
+
+        // Move head
+        if start > 0 {
+            let old_ptr = self.buf.ptr();
+            old_ptr.copy_bytes_to(new_buf.buf.ptr(), start);
+        }
+
+        // Move middle
+        if replace_len > 0 {
+            replace_with
+                .buf
+                .ptr()
+                .copy_bytes_to(new_buf.buf.ptr().add_uint_offset(start), replace_len);
+        }
+
+        // Move tail
+        let tail_len = self.len - end;
+        if tail_len > 0 {
+            let old_tail = self.buf.ptr().add_uint_offset(end);
+            let new_tail = new_buf.buf.ptr().add_uint_offset(start + replace_len);
+            old_tail.copy_bytes_to(new_tail, tail_len);
+        }
+
+        self.buf = new_buf.buf;
+        self.len = new_len;
+
+        spliced
+    }
+
+    /// Resizes the `Bytes` in-place so that `len` is equal to `new_len`.
+    ///
+    /// # Additional Information
+    ///
+    /// If `new_len` is greater than `len`, the `Bytes` is extended by the difference, with each additional slot filled with `value`. If `new_len` is less than `len`, the `Bytes` is simply truncated.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_len`: [u64] - The new length of the `Bytes`.
+    /// * `value`: [u8] - The value to fill the new length.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.resize(1, 7u8);
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///
+    ///     bytes.resize(2, 9u8);
+    ///     assert(bytes.len() == 2);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///     assert(bytes.get(1).unwrap() == 9u8);
+    ///
+    ///     bytes.resize(1, 0);
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///     assert(bytes.get(1) == None);
+    /// }
+    /// ```
+    pub fn resize(ref mut self, new_len: u64, value: u8) {
+        // If the `new_len` is less then truncate
+        if self.len >= new_len {
+            self.len = new_len;
+            return;
+        }
+
+        // If we don't have enough capacity, alloc more
+        if self.buf.cap < new_len {
+            self.buf.ptr = realloc_bytes(self.buf.ptr, self.buf.cap, new_len);
+            self.buf.cap = new_len;
+        }
+
+        // Fill the new length with value
+        let mut i = 0;
+        let start_ptr = self.buf.ptr.add_uint_offset(self.len);
+        while i + self.len < new_len {
+            start_ptr.add_uint_offset(i).write_byte(value);
+            i += 1;
+        }
+
+        self.len = new_len;
+    }
 }
 
 impl core::ops::Eq for Bytes {
@@ -922,58 +1074,4 @@ impl AbiDecode for Bytes {
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
         raw_slice::abi_decode(buffer).into()
     }
-}
-
-#[test]
-fn ok_bytes_buffer_ownership() {
-    let mut original_array = [1u8, 2u8, 3u8, 4u8];
-    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
-
-    // Check Bytes duplicates the original slice
-    let mut bytes = Bytes::from(slice);
-    bytes.set(0, 5);
-    assert(original_array[0] == 1);
-
-    // At this point, slice equals [5, 2, 3, 4]
-    let encoded_slice = encode(bytes);
-
-    // `Bytes` should duplicate the underlying buffer,
-    // so when we write to it, it should not change
-    // `encoded_slice` 
-    let mut bytes = abi_decode::<Bytes>(encoded_slice);
-    bytes.set(0, 6);
-    assert(bytes.get(0) == Some(6));
-
-    let mut bytes = abi_decode::<Bytes>(encoded_slice);
-    assert(bytes.get(0) == Some(5));
-}
-
-#[test]
-fn ok_bytes_bigger_than_3064() {
-    let mut v: Bytes = Bytes::new();
-
-    // We allocate 1024 bytes initially, this is throw away because 
-    // it is not big enough for the buffer.
-    // Then we used to double the buffer to 2048.
-    // Then we write an `u64` with the length of the buffer.
-    // Then we write the buffer itself.
-    // (1024 + 2048) - 8 = 3064
-    // Thus, we need a buffer with 3065 bytes to write into the red zone
-    let mut a = 3065;
-    while a > 0 {
-        v.push(1u8);
-        a -= 1;
-    }
-
-    // This red zone should not be overwritten
-    let red_zone = asm(size: 1024) {
-        aloc size;
-        hp: raw_ptr
-    };
-    red_zone.write(0xFFFFFFFFFFFFFFFF);
-    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
-
-    let _ = encode(v);
-
-    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
 }

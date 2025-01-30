@@ -282,3 +282,87 @@ fn b512_is_zero() {
     ));
     assert(!b512_4.is_zero());
 }
+
+#[test]
+fn b512_try_from_bytes() {
+    use std::bytes::Bytes;
+
+    // Test empty bytes
+    let bytes_1 = Bytes::new();
+    assert(B512::try_from(bytes_1).is_none());
+
+    // Test not full length but capacity bytes
+    let mut bytes_2 = Bytes::with_capacity(64);
+    bytes_2.push(1u8);
+    bytes_2.push(3u8);
+    bytes_2.push(5u8);
+    assert(B512::try_from(bytes_2).is_none());
+
+    // Test zero bytes
+    let b256_tuple_3 = (b256::zero(), b256::zero());
+    let bytes_3 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_3), 64));
+    let b512_3 = B512::try_from(bytes_3);
+    assert(b512_3.is_some());
+    assert(b512_3.unwrap() == B512::zero());
+
+    // Test max bytes
+    let b256_tuple_4 = (b256::max(), b256::max());
+    let bytes_4 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_4), 64));
+    let b512_4 = B512::try_from(bytes_4);
+    assert(b512_4.is_some());
+    assert(b512_4.unwrap() == B512::from((b256::max(), b256::max())));
+
+    // Test too many bytes
+    let b256_tuple_5 = (b256::max(), b256::max());
+    let mut bytes_5 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_5), 64));
+    bytes_5.push(255u8);
+    assert(B512::try_from(bytes_5).is_none());
+
+    // Test modifying bytes after doesn't impact 
+    let b256_tuple_6 = (b256::zero(), b256::zero());
+    let mut bytes_6 = Bytes::from(raw_slice::from_parts::<u8>(__addr_of(b256_tuple_6), 64));
+    let b512_6 = B512::try_from(bytes_6);
+    assert(b512_6.is_some());
+    assert(b512_6.unwrap() == B512::zero());
+    bytes_6.set(0, 255u8);
+    assert(b512_6.unwrap() == B512::zero());
+}
+
+#[test]
+fn b512_into_bytes() {
+    use std::bytes::Bytes;
+
+    let b512_1 = B512::zero();
+    let bytes_1: Bytes = <B512 as Into<Bytes>>::into(b512_1);
+    assert(bytes_1.capacity() == 64);
+    assert(bytes_1.len() == 64);
+    let mut iter_1 = 0;
+    while iter_1 < 64 {
+        assert(bytes_1.get(iter_1).unwrap() == 0u8);
+        iter_1 += 1;
+    }
+
+    let b512_2 = B512::from((b256::max(), b256::max()));
+    let bytes_2: Bytes = <B512 as Into<Bytes>>::into(b512_2);
+    assert(bytes_2.capacity() == 64);
+    assert(bytes_2.len() == 64);
+    let mut iter_2 = 0;
+    while iter_2 < 64 {
+        assert(bytes_2.get(iter_2).unwrap() == 255u8);
+        iter_2 += 1;
+    }
+
+    let b512_3 = B512::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
+    let bytes_3: Bytes = <B512 as Into<Bytes>>::into(b512_3);
+    assert(bytes_3.capacity() == 64);
+    assert(bytes_3.len() == 64);
+    assert(bytes_3.get(63).unwrap() == 1u8);
+    let mut iter_3 = 0;
+    while iter_3 < 63 {
+        assert(bytes_3.get(iter_3).unwrap() == 0u8);
+        iter_3 += 1;
+    }
+}

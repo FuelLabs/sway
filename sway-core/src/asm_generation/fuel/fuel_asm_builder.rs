@@ -24,6 +24,7 @@ use crate::{
     BuildConfig,
 };
 
+use fuel_vm::fuel_asm::Imm12;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -91,7 +92,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     pub(super) before_entries: Vec<Op>,
 }
 
-impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
+impl AsmBuilder for FuelAsmBuilder<'_, '_> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
@@ -140,9 +141,10 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::ADDI(
                         VirtualRegister::Constant(ConstantRegister::FuncArg1),
                         VirtualRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate12 {
-                            value: encoded_bytes.len() as u16,
-                        },
+                        VirtualImmediate12::new_unchecked(
+                            encoded_bytes.len() as u64,
+                            "Error representing encoded_bytes length as 12-bit immediate",
+                        ),
                     )),
                     comment: format!("get length of configurable {} default value", name),
                     owning_span: None,
@@ -152,9 +154,10 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::ADDI(
                         VirtualRegister::Constant(ConstantRegister::FuncArg2),
                         VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                        VirtualImmediate12 {
-                            value: global.offset_in_bytes as u16,
-                        },
+                        VirtualImmediate12::new_unchecked(
+                            global.offset_in_bytes,
+                            "Error representing global offset as 12-bit immediate",
+                        ),
                     )),
                     comment: format!("get pointer to configurable {} stack address", name),
                     owning_span: None,
@@ -697,7 +700,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 opcode: Either::Left(VirtualOp::XORI(
                     res_reg.clone(),
                     res_reg.clone(),
-                    VirtualImmediate12 { value: 1 },
+                    VirtualImmediate12::new_unchecked(
+                        1,
+                        "Error representing 1 as 12-bit immediate",
+                    ),
                 )),
                 comment: "[bitcast to bool]: invert inverted boolean".into(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
@@ -1277,7 +1283,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             opcode: Either::Left(VirtualOp::MULI(
                                 instr_reg.clone(),
                                 instr_reg.clone(),
-                                VirtualImmediate12 { value: 8u16 },
+                                VirtualImmediate12::new_unchecked(
+                                    8,
+                                    "Error representing 8 as 12-bit immediate",
+                                ),
                             )),
                             comment: "get byte offset to local from base".into(),
                             owning_span: owning_span.clone(),
@@ -1344,9 +1353,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 opcode: either::Either::Left(VirtualOp::ADDI(
                     addr_reg.clone(),
                     VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                    VirtualImmediate12 {
-                        value: g.offset_in_bytes as u16,
-                    },
+                    VirtualImmediate12::new_unchecked(
+                        g.offset_in_bytes,
+                        "offset must fit in 12 bits",
+                    ),
                 )),
                 comment: format!("get address of configurable {}", name),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
@@ -1381,9 +1391,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 instr_reg.clone(),
                 index_reg,
-                VirtualImmediate12 {
-                    value: tx_field_id as u16,
-                },
+                VirtualImmediate12::new_unchecked(tx_field_id, "tx_field_id must fit in 12 bits"),
             )),
             comment: "get transaction field".into(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
@@ -1415,7 +1423,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::LB(
                         instr_reg.clone(),
                         src_reg,
-                        VirtualImmediate12 { value: 0 },
+                        VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
                     )),
                     comment: "load byte".into(),
                     owning_span,
@@ -1426,7 +1434,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::LW(
                         instr_reg.clone(),
                         src_reg,
-                        VirtualImmediate12 { value: 0 },
+                        VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
                     )),
                     comment: "load word".into(),
                     owning_span,
@@ -1461,23 +1469,38 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let dst_reg = self.value_to_register(dst_val_ptr)?;
         let src_reg = self.value_to_register(src_val_ptr)?;
 
-        let len_reg = self.reg_seqr.next();
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVI(
-                len_reg.clone(),
-                VirtualImmediate18 {
-                    value: byte_len as u32,
-                },
-            )),
-            comment: "get data length for memory copy".into(),
-            owning_span: owning_span.clone(),
-        });
+        if byte_len <= u64::from(Imm12::MAX.to_u16()) {
+            // Can be done using a single MCPI instruction.
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MCPI(
+                    dst_reg,
+                    src_reg,
+                    VirtualImmediate12::new_unchecked(byte_len, "argument size checked above"),
+                )),
+                comment: "copy memory".into(),
+                owning_span,
+            });
+        } else {
+            // Too many bytes for MCPI, so we need to use a separate register to hold the length.
+            let len_reg = self.reg_seqr.next();
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MOVI(
+                    len_reg.clone(),
+                    VirtualImmediate18::new_unchecked(
+                        byte_len,
+                        "cannot fit byte length in 18 bits",
+                    ),
+                )),
+                comment: "get data length for memory copy".into(),
+                owning_span: owning_span.clone(),
+            });
 
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
-            comment: "copy memory".into(),
-            owning_span,
-        });
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
+                comment: "copy memory".into(),
+                owning_span,
+            });
+        }
 
         Ok(())
     }
@@ -1540,7 +1563,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::LW(
                         ptr_reg.clone(),
                         log_val_reg.clone(),
-                        VirtualImmediate12 { value: 0 },
+                        VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
                     )),
                     owning_span: owning_span.clone(),
                     comment: "load slice pointer for logging data".into(),
@@ -1549,7 +1572,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::LW(
                         size_reg.clone(),
                         log_val_reg.clone(),
-                        VirtualImmediate12 { value: 1 },
+                        VirtualImmediate12::new_unchecked(1, "one must fit in 12 bits"),
                     )),
                     owning_span: owning_span.clone(),
                     comment: "load slice size for logging data".into(),
@@ -1660,7 +1683,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         opcode: Either::Left(VirtualOp::LW(
                             size_reg.clone(),
                             ret_reg.clone(),
-                            VirtualImmediate12 { value: 1 },
+                            VirtualImmediate12::new_unchecked(1, "one must fit in 12 bits"),
                         )),
                         owning_span: owning_span.clone(),
                         comment: "load size of returned slice".into(),
@@ -1669,7 +1692,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         opcode: Either::Left(VirtualOp::LW(
                             ret_reg.clone(),
                             ret_reg.clone(),
-                            VirtualImmediate12 { value: 0 },
+                            VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
                         )),
                         owning_span: owning_span.clone(),
                         comment: "load pointer to returned slice".into(),
@@ -1989,7 +2012,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         opcode: Either::Left(VirtualOp::SB(
                             dst_reg,
                             val_reg,
-                            VirtualImmediate12 { value: 0 },
+                            VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
                         )),
                         comment: "store byte".into(),
                         owning_span,
@@ -2000,7 +2023,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         opcode: Either::Left(VirtualOp::SW(
                             dst_reg,
                             val_reg,
-                            VirtualImmediate12 { value: 0 },
+                            VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
                         )),
                         comment: "store word".into(),
                         owning_span,
@@ -2164,7 +2187,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     reg,
                     #[allow(clippy::unnecessary_unwrap)]
                     base.unwrap().clone(),
-                    VirtualImmediate12 { value: imm as u16 },
+                    VirtualImmediate12::new_unchecked(imm, "immediate must fit in 12 bits"),
                 )),
                 comment: comment.into(),
                 owning_span: span,
@@ -2174,7 +2197,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MOVI(
                     reg.clone(),
-                    VirtualImmediate18 { value: imm as u32 },
+                    VirtualImmediate18::new_unchecked(imm, "immediate must fit in 12 bits"),
                 )),
                 comment: comment.clone(),
                 owning_span: span.clone(),

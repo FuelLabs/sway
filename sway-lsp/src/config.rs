@@ -163,7 +163,7 @@ impl<'de> serde::Deserialize<'de> for Warnings {
     {
         struct WarningsVisitor;
 
-        impl<'de> serde::de::Visitor<'de> for WarningsVisitor {
+        impl serde::de::Visitor<'_> for WarningsVisitor {
             type Value = Warnings;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
