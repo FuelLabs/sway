@@ -3095,9 +3095,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-chain-config"
-version = "0.41.0"
+version = "0.41.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "561dab934413f1d3b56b1c6023e1f828deb5d969284fa78ec8940dd236b5ecc9"
+checksum = "c07eb148d6490789534dca63a77e2d8033ecd85b74c0bbd3118f3e0962f4233e"
 dependencies = [
  "anyhow",
  "bech32",
@@ -3140,9 +3140,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-metrics"
-version = "0.41.0"
+version = "0.41.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaac31027b604babadec94cb3f601ac076610c9ac6eb0b798d911314792886c0"
+checksum = "4862e95dd35b0d0dde68ea5d1b3ba3ac74f688a1f5268b145aa73be723a620eb"
 dependencies = [
  "once_cell",
  "parking_lot",
@@ -3156,9 +3156,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-poa"
-version = "0.41.0"
+version = "0.41.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d26d7fc9d370871c6312a2901d831648f2eca0740f69e353f421fadd956d096"
+checksum = "6b075ba0902dbc2e73cc8e160af1174336df68edc72de16e53a4c54687ff866f"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3175,9 +3175,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-services"
-version = "0.41.0"
+version = "0.41.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa93d053b71ccaea58b677eac43aaa5ca9ac68a50cb23fb193bfc0f765d0fa66"
+checksum = "eeedffccabe0b1cf36ee799c4eca8ced6acb08512082c4a8106d418089449f41"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3191,9 +3191,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-storage"
-version = "0.41.0"
+version = "0.41.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1092d1940760240b1888123c0b8b83d3f3c47483de5b8097499a7a86a67abf2"
+checksum = "d7b2fb00d3888948699b8412e67fa21fb4a5d19e73b220295071a59b2ced1fc5"
 dependencies = [
  "anyhow",
  "derive_more 0.99.18",
@@ -5490,7 +5490,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af1844ef2428cc3e1cb900be36181049ef3d3193c63e43026cfe202983b27a56"
 dependencies = [
- "proc-macro-crate 3.2.0",
+ "proc-macro-crate 1.1.3",
  "proc-macro2",
  "quote",
  "syn 2.0.87",
