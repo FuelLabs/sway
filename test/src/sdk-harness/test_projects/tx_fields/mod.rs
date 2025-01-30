@@ -946,7 +946,7 @@ mod inputs {
             // Assert invalid index returns None
             let result = contract_instance
                 .methods()
-                .get_input_type(2)
+                .get_input_type(100) // 100 is a very high input index
                 .call()
                 .await
                 .unwrap();
@@ -955,7 +955,7 @@ mod inputs {
 
         #[tokio::test]
         async fn can_get_tx_input_amount() {
-            let default_amount = 1000000000;
+            let default_amount = 1000;
             let (contract_instance, _, _, _) = get_contracts(true).await;
             let result = contract_instance
                 .methods()
@@ -969,7 +969,7 @@ mod inputs {
             // Assert invalid index returns None
             let result = contract_instance
                 .methods()
-                .get_input_amount(2)
+                .get_input_amount(0)
                 .call()
                 .await
                 .unwrap();
