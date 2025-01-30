@@ -75,9 +75,13 @@ async fn msg_sender_from_contract() {
 async fn input_message_msg_sender_from_contract() {
     // Wallet
     let mut wallet = WalletUnlocked::new_random(None);
+    let mut deployer_wallet = WalletUnlocked::new_random(None);
 
     // Setup coins and messages
     let coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
+    let coins_2 = setup_single_asset_coins(deployer_wallet.address(), AssetId::BASE, 100, 1000);
+    let total_coins = [coins, coins_2].concat();
+
     let msg = setup_single_message(
         &Bech32Address {
             hrp: "".to_string(),
@@ -89,10 +93,11 @@ async fn input_message_msg_sender_from_contract() {
         vec![],
     );
 
-    let provider = setup_test_provider(coins.clone(), vec![msg.clone()], None, None)
+    let provider = setup_test_provider(total_coins.clone(), vec![msg.clone()], None, None)
         .await
         .unwrap();
     wallet.set_provider(provider.clone());
+    deployer_wallet.set_provider(provider.clone());
 
     // Setup contract
     let id = Contract::load_from(
@@ -100,7 +105,7 @@ async fn input_message_msg_sender_from_contract() {
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxPolicies::default())
+    .deploy(&deployer_wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = AuthContract::new(id.clone(), wallet.clone());
