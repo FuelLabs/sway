@@ -805,3 +805,21 @@ fn vec_resize() {
     assert(vec_2.get(1) == Some(1));
     assert(vec_2.get(2) == Some(1));
 }
+
+#[test]
+fn vec_last() {
+    let (mut vec_1, a, b, c) = setup();
+    assert(vec_1.last() == Some(9));
+
+    vec_1.push(2);
+    assert(vec_1.last() == Some(2));
+
+    vec_1.push(3);
+    assert(vec_1.last() == Some(3));
+
+    let _ = vec_1.pop();
+    assert(vec_1.last() == Some(2));
+
+    let vec_2: Vec<u64> = Vec::new();
+    assert(vec_2.last() == None)
+}

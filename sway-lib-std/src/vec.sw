@@ -753,6 +753,32 @@ impl<T> Vec<T> {
 
         self.len = new_len;
     }
+
+    /// Returns the last element in the `Vec`.
+    ///
+    /// # Returns
+    ///
+    /// [Option<T>] - The last element in the `Vec` or `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let mut vec = Vec::new();
+    ///     assert(vec.last() == None);
+    ///     vec.push(1u64);
+    ///     assert(vec.last() == Some(1u64));
+    ///     vec.push(2u64);
+    ///     assert(vec.last() == Some(2u64));
+    /// }
+    /// ```
+    pub fn last(self) -> Option<T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        Some(self.buf.ptr().add::<T>(self.len - 1).read::<T>())
+    }
 }
 
 impl<T> AsRawSlice for Vec<T> {
