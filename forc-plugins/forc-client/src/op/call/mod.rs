@@ -35,7 +35,7 @@ use fuels_core::{
         ContractId,
     },
 };
-use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 use sway_ast::Item;
 use swayfmt::parse::with_handler;
 
@@ -64,22 +64,13 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             bail!("Function must be a selector; e.g. \"transfer\"; got {:?}", function);
         };
 
-        let (file_path, is_temp_file) = match abi {
-            Either::Left(path) => (path, false),
+        let abi_str = match abi {
+            Either::Left(path) => std::fs::read_to_string(&path)?,
             Either::Right(url) => {
-                // Download the file to tempfile; move blocking operations to a new thread
-                let path = std::env::temp_dir().join("temp_abi.json");
-                let mut file = File::create(&path)?;
                 let response = reqwest::get(url).await?.bytes().await?;
-                file.write_all(&response)?;
-                (path, true)
+                String::from_utf8(response.to_vec())?
             }
         };
-
-        let abi_str = std::fs::read_to_string(&file_path).expect("Failed to read ABI file");
-        if is_temp_file {
-            std::fs::remove_file(file_path).expect("Failed to remove ABI file");
-        }
         let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
 
         let type_lookup = parsed_abi
