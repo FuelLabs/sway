@@ -1,6 +1,6 @@
 use crate::{
     error::AdapterError,
-    types::{Breakpoints, Instruction, SourceMap},
+    types::{Breakpoints, Instruction},
 };
 use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
@@ -21,7 +21,8 @@ pub struct ServerState {
     pub breakpoints: Breakpoints,
 
     // Build state
-    pub source_map: SourceMap,
+    pub source_map: crate::types::SourceMap,
+    pub compiler_source_map: Option<sway_core::source_map::SourceMap>,
     pub built_package: Option<BuiltPackage>,
 
     // Test state

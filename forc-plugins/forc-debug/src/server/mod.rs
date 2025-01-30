@@ -53,7 +53,7 @@ pub struct DapServer {
     /// Used to generate unique breakpoint IDs.
     breakpoint_id_gen: IdGenerator,
     /// The server state.
-    state: ServerState,
+    pub state: ServerState,
 }
 
 impl Default for DapServer {
@@ -261,7 +261,7 @@ impl DapServer {
     }
 
     /// Builds the tests at the given [PathBuf] and stores the source maps.
-    pub(crate) fn build_tests(&mut self) -> Result<(BuiltPackage, TestSetup), AdapterError> {
+    pub fn build_tests(&mut self) -> Result<(BuiltPackage, TestSetup), AdapterError> {
         if let Some(pkg) = &self.state.built_package {
             if let Some(setup) = &self.state.test_setup {
                 return Ok((pkg.clone(), setup.clone()));
@@ -333,6 +333,7 @@ impl DapServer {
             if built_pkg.descriptor.manifest_file == pkg_manifest {
                 pkg_to_debug = Some(built_pkg);
             }
+            self.state.compiler_source_map = Some(built_pkg.source_map.clone());
             let source_map = &built_pkg.source_map;
 
             let paths = &source_map.paths;
