@@ -75,7 +75,7 @@ mod ir_builder {
                 }
 
             rule init_config() -> IrAstConfig
-                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:id() _ "," _ encoded_bytes:config_encoded_bytes()
+                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:id() _ "," _ encoded_bytes:config_encoded_bytes() _ "," _ flags:config_encoded_bytes()
                 metadata:comma_metadata_idx()? {
                     IrAstConfig {
                         value_name,
@@ -83,6 +83,7 @@ mod ir_builder {
                         encoded_bytes,
                         decode_fn,
                         metadata,
+                        flags,
                     }
                 }
 
@@ -782,6 +783,7 @@ mod ir_builder {
         encoded_bytes: Vec<u8>,
         decode_fn: String,
         metadata: Option<MdIdxRef>,
+        flags: Vec<u8>,
     }
 
     #[derive(Debug)]
@@ -969,7 +971,7 @@ mod ir_builder {
         let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
             module,
-            configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
+            configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map)?,
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -1506,10 +1508,14 @@ mod ir_builder {
         module: &Module,
         configs: Vec<IrAstConfig>,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-    ) -> BTreeMap<String, String> {
+    ) -> Result<BTreeMap<String, String>, IrError> {
         configs
             .into_iter()
             .map(|config| {
+                if config.flags.len() != 1 {
+                    return Err(IrError::InvalidConfigFlags);
+                }
+
                 let opt_metadata = config
                     .metadata
                     .map(|mdi| md_map.get(&mdi).unwrap())
@@ -1525,13 +1531,14 @@ mod ir_builder {
                     // this will point to the correct function after all functions are compiled
                     decode_fn: Cell::new(Function(KeyData::default().into())),
                     opt_metadata,
+                    storage: ConfigContent::v1_storage_from_flags(config.flags[0]),
                 };
 
                 module.add_config(context, config.value_name.clone(), config_val.clone());
 
-                (config.value_name.clone(), config.decode_fn.clone())
+                Ok((config.value_name.clone(), config.decode_fn.clone()))
             })
-            .collect()
+            .collect::<Result<BTreeMap<_, _>, _>>()
     }
 
     /// Create the metadata for the module in `context` and generate a map from the parsed

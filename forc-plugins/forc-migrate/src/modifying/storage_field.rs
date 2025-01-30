@@ -34,7 +34,7 @@ impl ToInKey for Expr {
     }
 }
 
-impl<'a> Modifier<'a, StorageField> {
+impl Modifier<'_, StorageField> {
     pub(crate) fn with_in_key<K: ToInKey>(&mut self, key: K) -> &mut Self {
         // If the `in` token already exists, just replace the key and leave the `in`
         // token as is. Place the key after the `in` token.

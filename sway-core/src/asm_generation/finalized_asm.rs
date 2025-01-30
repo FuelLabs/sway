@@ -309,11 +309,18 @@ fn to_bytecode_mut(
         println!(".data_section:");
 
         let offset = bytecode.len();
+        let ds_start = offset as u64;
 
-        fn print_entry(indentation: usize, offset: usize, pair: &Entry) {
+        fn print_entry(
+            ds: &DataSection,
+            indentation: usize,
+            ds_start: u64,
+            offset: usize,
+            entry: &Entry,
+        ) {
             print!("{}{:#010x} ", " ".repeat(indentation), offset);
 
-            match &pair.value {
+            match &entry.value {
                 Datum::Byte(w) => println!(".byte i{w}, as hex {w:02X}"),
                 Datum::Word(w) => {
                     println!(".word i{w}, as hex be bytes ({:02X?})", w.to_be_bytes())
@@ -351,15 +358,32 @@ fn to_bytecode_mut(
                 Datum::Collection(els) => {
                     println!(".collection");
                     for e in els {
-                        print_entry(indentation + 1, offset, e);
+                        print_entry(ds, indentation + 1, ds_start, offset, e);
                     }
+                }
+                Datum::OffsetOf(_) => {
+                    let offset_as_bytes = entry.to_bytes(ds);
+                    let offset_as_u64 =
+                        u64::from_be_bytes(offset_as_bytes.as_slice().try_into().unwrap());
+                    println!(
+                        ".offset of 0x{:08x}, as word {}, as hex be bytes ({:02X?})",
+                        ds_start + offset_as_u64,
+                        offset_as_u64,
+                        offset_as_bytes
+                    );
                 }
             };
         }
 
         for (i, entry) in data_section.iter_all_entries().enumerate() {
             let entry_offset = data_section.absolute_idx_to_offset(i);
-            print_entry(indentation, offset + entry_offset, &entry);
+            print_entry(
+                data_section,
+                indentation,
+                ds_start,
+                offset + entry_offset,
+                &entry,
+            );
         }
 
         println!(";; --- END OF TARGET BYTECODE ---\n");

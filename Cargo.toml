@@ -79,7 +79,7 @@ sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.6" }
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.7"
+fuel-abi-types = "0.8"
 
 # Dependencies from the `fuel-core` repository:
 #
@@ -234,3 +234,10 @@ vec1 = "1.8"
 vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
+
+[patch.crates-io]
+fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "xunilrj/indirect-configurables" }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
+fuels-code-gen = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/dynamic-configurables" }
