@@ -1433,16 +1433,14 @@ mod inputs {
                     generate_predicate_inputs(100, &wallet).await;
                 let provider = wallet.provider().unwrap();
 
-                let mut builder = contract_instance
+                let handler = contract_instance
                     .methods()
-                    .get_input_predicate_length(3)
-                    .transaction_builder()
-                    .await
-                    .unwrap();
-
-                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
+                    .get_input_predicate_length(1);
+                let mut builder = handler.transaction_builder().await.unwrap();
 
                 builder.inputs_mut().push(message);
+                
+                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
 
@@ -1450,24 +1448,17 @@ mod inputs {
 
                 let provider = wallet.provider().unwrap();
 
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
-                    .take_receipts_checked(None)
-                    .unwrap();
+                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let receipts = tx_status.take_receipts_checked(None).unwrap();
+                let response = handler.get_response(receipts).unwrap();
 
-                let len = predicate_bytecode.len() as u64;
-                assert_eq!(
-                    receipts[1].data().unwrap()[8..16],
-                    *len.to_be_bytes().as_slice()
-                );
+                let expected_length = predicate_bytecode.len() as u64;
+                assert_eq!(response.value.unwrap(), expected_length);
 
                 // Assert none returned when index is invalid
                 let none_result = contract_instance
                     .methods()
-                    .get_input_predicate_length(3)
+                    .get_input_predicate_length(0) // always a contract input
                     .call()
                     .await
                     .unwrap();
