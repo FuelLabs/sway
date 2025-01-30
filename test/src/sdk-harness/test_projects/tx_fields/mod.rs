@@ -1289,38 +1289,29 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_recipient() {
-                let (contract_instance, _, wallet, _) = get_contracts(true).await;
+                let (contract_instance, _, wallet, _) = get_contracts(false).await;
                 let provider = wallet.provider().unwrap();
 
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let recipient = message.recipient.hash;
-                let mut builder = contract_instance
+                let handler = contract_instance
                     .methods()
-                    .get_input_message_recipient(3)
-                    .transaction_builder()
-                    .await
-                    .unwrap();
-
-                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
-
+                    .get_input_message_recipient(1);
+                let mut builder = handler.transaction_builder().await.unwrap();
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
                     resource: CoinType::Message(message.clone()),
                 });
-
+                // This message will pay for the tx fee - hence no need to use adjust_for_fee
                 builder.add_signer(wallet.clone()).unwrap();
 
-                let tx = builder.build(provider).await.unwrap();
+                let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
-                    .take_receipts_checked(None)
-                    .unwrap();
+                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let receipts = tx_status.take_receipts_checked(None).unwrap();
+                let response = handler.get_response(receipts).unwrap();
 
-                assert_eq!(receipts[1].data().unwrap()[8..40], *recipient.as_slice());
+                assert_eq!(response.value.unwrap().as_slice(), recipient.as_slice());
 
                 // Assert none returned when transaction type is not a message
                 let none_result = contract_instance
