@@ -414,6 +414,8 @@ impl CallPath {
 
         format!(
             "{}{}",
+            // TODO: Replace with a context aware string representation of the path
+            //       once https://github.com/FuelLabs/sway/issues/6873 is fixed.
             &self,
             if args.is_empty() {
                 String::new()
