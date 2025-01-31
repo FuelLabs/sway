@@ -26,17 +26,23 @@ pub struct NodeTarget {
     #[clap(long)]
     pub target: Option<Target>,
 
+    /// Use preset configuration for mainnet.
+    ///
+    /// You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
+    #[clap(long)]
+    pub mainnet: bool,
+
     /// Use preset configuration for testnet.
     ///
     /// You can also use `--node-url`, `--target`, or `--mainnet` to specify the Fuel node.
     #[clap(long)]
     pub testnet: bool,
 
-    /// Use preset configuration for mainnet.
+    /// Use preset configuration for devnet.
     ///
     /// You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
     #[clap(long)]
-    pub mainnet: bool,
+    pub devnet: bool,
 }
 
 impl NodeTarget {
@@ -45,12 +51,13 @@ impl NodeTarget {
         match (
             self.testnet,
             self.mainnet,
+            self.devnet,
             self.target.clone(),
             self.node_url.clone(),
         ) {
-            (true, false, None, None) => Target::testnet().explorer_url(),
-            (false, true, None, None) => Target::mainnet().explorer_url(),
-            (false, false, Some(target), None) => target.explorer_url(),
+            (true, false, _, None, None) => Target::testnet().explorer_url(),
+            (false, true, _, None, None) => Target::mainnet().explorer_url(),
+            (false, false, _, Some(target), None) => target.explorer_url(),
             _ => None,
         }
     }
@@ -61,27 +68,42 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_get_explorer_url_mainnet() {
+        let node = NodeTarget {
+            target: Some(Target::Mainnet),
+            node_url: None,
+            mainnet: false,
+            testnet: false,
+            devnet: false,
+        };
+        let actual = node.get_explorer_url().unwrap();
+        assert_eq!("https://app.fuel.network", actual);
+    }
+
+    #[test]
     fn test_get_explorer_url_testnet() {
         let node = NodeTarget {
             target: Some(Target::Testnet),
             node_url: None,
-            testnet: false,
             mainnet: false,
+            testnet: false,
+            devnet: false,
         };
         let actual = node.get_explorer_url().unwrap();
         assert_eq!("https://app-testnet.fuel.network", actual);
     }
 
     #[test]
-    fn test_get_explorer_url_mainnet() {
+    fn test_get_explorer_url_devnet() {
         let node = NodeTarget {
-            target: Some(Target::Mainnet),
+            target: Some(Target::Devnet),
             node_url: None,
-            testnet: false,
             mainnet: false,
+            testnet: false,
+            devnet: true,
         };
-        let actual = node.get_explorer_url().unwrap();
-        assert_eq!("https://app.fuel.network", actual);
+        let actual = node.get_explorer_url();
+        assert_eq!(None, actual);
     }
 
     #[test]
@@ -89,8 +111,9 @@ mod tests {
         let node = NodeTarget {
             target: Some(Target::Local),
             node_url: None,
-            testnet: false,
             mainnet: false,
+            testnet: false,
+            devnet: false,
         };
         let actual = node.get_explorer_url();
         assert_eq!(None, actual);
