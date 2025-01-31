@@ -106,3 +106,4 @@
     - [forc fmt](./forc/plugins/forc_fmt.md)
     - [forc lsp](./forc/plugins/forc_lsp.md)
     - [forc migrate](./forc/plugins/forc_migrate.md)
+    - [forc node](./forc/plugins/forc_node.md)
