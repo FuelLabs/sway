@@ -342,6 +342,11 @@ impl TyTraitDecl {
         call_path: &CallPath,
         type_arguments: &[TypeArgument],
     ) -> (InterfaceItemMap, ItemMap, ItemMap) {
+        let debug = call_path.suffix.as_str().contains("AbiEncode");
+        if debug {
+            dbg!(ctx.engines.help_out(type_id));
+        }
+
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
@@ -411,6 +416,9 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = (*decl_engine.get_function(&decl_ref)).clone();
+                    if debug {
+                        dbg!(method.name.as_str());
+                    }
                     let name = method.name.clone();
                     let r = if method
                         .subst(&SubstTypesContext::new(
@@ -420,6 +428,9 @@ impl TyTraitDecl {
                         ))
                         .has_changes()
                     {
+                        if debug {
+                            dbg!();
+                        }
                         let new_ref = decl_engine
                             .insert(
                                 method,
@@ -428,6 +439,9 @@ impl TyTraitDecl {
                             .with_parent(decl_engine, (*decl_ref.id()).into());
                         new_ref
                     } else {
+                        if debug {
+                            dbg!();
+                        }
                         decl_ref.clone()
                     };
                     impld_item_refs.insert((name, type_id), TyTraitItem::Fn(r));

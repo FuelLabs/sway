@@ -1039,6 +1039,7 @@ impl MaterializeConstGenerics for TyExpressionVariant {
                 index.materialize_const_generics(engines, name, value);
             }
             TyExpressionVariant::IntrinsicFunction(kind) => {
+                dbg!(kind.span.as_str());
                 for expr in kind.arguments.iter_mut() {
                     expr.materialize_const_generics(engines, name, value);
                 }

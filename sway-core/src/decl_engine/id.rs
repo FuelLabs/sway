@@ -168,6 +168,7 @@ impl SubstTypes for DeclId<TyTraitDecl> {
 }
 impl SubstTypes for DeclId<TyTraitFn> {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        dbg!();
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {

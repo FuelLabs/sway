@@ -210,6 +210,11 @@ where
         self_type,
         subst_ctx,
     )?;
+    dbg!(
+        engines.help_out(&type_mapping),
+        std::any::type_name::<T>(),
+        value.name().as_str()
+    );
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
 
     for (name, expr) in const_generics.iter() {

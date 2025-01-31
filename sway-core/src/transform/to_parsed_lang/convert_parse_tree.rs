@@ -566,6 +566,7 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
+    dbg!(item_fn.fn_signature.name.as_str());
     let (type_parameters, const_generic_parameters) =
         generic_params_opt_to_type_parameters_with_parent(
             context,
@@ -1295,12 +1296,12 @@ fn generic_params_opt_to_type_parameters_with_parent(
             GenericParam::Const { ident, .. } => {
                 let ty = type_engine.id_of_u64();
                 let span = ident.span();
-                Either::Right(ConstGenericParameter {
+                Either::Right(dbg!(ConstGenericParameter {
                     name: ident,
                     ty,
                     is_from_parent,
                     span, // TODO the whole span may be better
-                })
+                }))
             }
         });
 
