@@ -5,7 +5,7 @@ use ::slice::*;
 
 const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
 const MAX_U16_U64: u64 = __transmute::<u16, u64>(u16::max());
-// TODO: investigate error
+// TODO: investigate as causing error: Could not evaluate initializer to a const declaration.
 // const MAX_U8_U64: u64 = __transmute::<u8, u64>(u8::max());
 
 /// Trait for the addition of two values.
@@ -116,6 +116,7 @@ impl Add for u8 {
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
+                // TODO: investigate as causing ICE: Types size do not match
                 __transmute::<u64, Self>(__mod(res_u64, __add(max_u8_u64, 1)))
             }
         } else {
