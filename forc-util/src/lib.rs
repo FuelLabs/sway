@@ -23,13 +23,14 @@ use sway_error::{
 use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
 
+pub mod bytecode;
 pub mod fs_locking;
 pub mod restricted;
 
 #[macro_use]
 pub mod cli;
 
-pub use ansi_term;
+pub use ansiterm;
 pub use paste;
 pub use regex::Regex;
 pub use serial_test;
@@ -347,7 +348,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
     };
     println_action_green(
         "Compiling",
-        &format!("{ty}{} ({src})", ansi_term::Style::new().bold().paint(name)),
+        &format!("{ty}{} ({src})", ansiterm::Style::new().bold().paint(name)),
     );
 }
 
@@ -447,7 +448,7 @@ pub fn create_diagnostics_renderer() -> Renderer {
         )
 }
 
-fn format_diagnostic(diagnostic: &Diagnostic) {
+pub fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
     const SHOW_DIAGNOSTIC_CODE: bool = false;
@@ -499,6 +500,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     let renderer = create_diagnostics_renderer();
     match diagnostic.level() {
+        Level::Info => tracing::info!("{}\n____\n", renderer.render(snippet)),
         Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
         Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
     }
@@ -510,7 +512,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             label: if issue.is_in_source() {
                 None
             } else {
-                Some(issue.friendly_text())
+                Some(issue.text())
             },
             id: None,
             annotation_type,
@@ -532,7 +534,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
                 origin: Some(issue.source_path().unwrap().as_str()),
                 fold: false,
                 annotations: vec![SourceAnnotation {
-                    label: issue.friendly_text(),
+                    label: issue.text(),
                     annotation_type,
                     range: (start_pos, end_pos),
                 }],
@@ -560,6 +562,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
         match level {
+            Level::Info => AnnotationType::Info,
             Level::Warning => AnnotationType::Warning,
             Level::Error => AnnotationType::Error,
         }
@@ -594,7 +597,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
 
     for message in labels {
         annotations.push(SourceAnnotation {
-            label: message.friendly_text(),
+            label: message.text(),
             annotation_type: label_type_to_annotation_type(message.label_type()),
             range: get_annotation_range(message.span(), source_code, shift_in_bytes),
         });

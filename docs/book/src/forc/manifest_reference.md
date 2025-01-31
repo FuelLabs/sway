@@ -4,13 +4,19 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 
 * [`[project]`](#the-project-section) — Defines a sway project.
   * `name` — The name of the project.
+  * `version` — The version of the project.
+  * `description` — A description of the project.
   * `authors` — The authors of the project.
   * `organization` — The organization of the project.
-  * `license`— The project license.
+  * `license` — The project license.
+  * `homepage` — URL of the project homepage.
+  * `repository` — URL of the project source repository.
+  * `documentation` — URL of the project documentation.
   * `entry` — The entry point for the compiler to start parsing from.
     * For the recommended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
   * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
   * `forc-version` - The minimum forc version required for this project to work properly.
+  * `metadata` - Metadata for the project; can be used by tools which would like to store package configuration in `Forc.toml`.
 
 * [`[dependencies]`](#the-dependencies-section) — Defines the dependencies.
 * `[network]` — Defines a network for forc to interact with.
@@ -28,6 +34,11 @@ An example `Forc.toml` is shown below. Under `[project]` the following fields ar
 
 * `authors`
 * `organization`
+* `version`
+* `description`
+* `homepage`
+* `repository`
+* `documentation`
 
 Also for the following fields, a default value is provided so omitting them is allowed:
 
@@ -38,10 +49,92 @@ Also for the following fields, a default value is provided so omitting them is a
 [project]
 authors = ["user"]
 entry = "main.sw"
+description = "Wallet contract"
+version = "1.0.0"
+homepage = "https://example.com/"
+repository = "https://example.com/"
+documentation = "https://example.com/"
 organization = "Fuel_Labs"
 license = "Apache-2.0"
 name = "wallet_contract"
+
+[project.metadata]
+indexing = { namespace = "counter-contract", schema_path = "out/release/counter-contract-abi.json" }
 ```
+
+### Metadata Section in `Forc.toml`
+
+The `[project.metadata]` section provides a dedicated space for external tools and plugins to store their configuration in `Forc.toml`. The metadata key names are arbitrary and do not need to match the tool's name.
+
+#### Workspace vs Project Metadata
+
+Metadata can be defined at two levels:
+
+Workspace level - defined in the workspace\'s root `Forc.toml`:
+
+```toml
+[workspace.metadata]
+my_tool = { shared_setting = "value" }
+```
+
+Project level - defined in individual project\'s `Forc.toml`:
+
+```toml
+[project.metadata.any_name_here]
+option1 = "value"
+option2 = "value"
+
+[project.metadata.my_custom_config]
+setting1 = "value"
+setting2 = "value"
+```
+
+Example for an indexing tool:
+
+```toml
+[project.metadata.indexing]
+namespace = "counter-contract"
+schema_path = "out/release/counter-contract-abi.json"
+```
+
+When both workspace and project metadata exist:
+
+* Project-level metadata should take precedence over workspace metadata
+* Tools can choose to merge workspace and project settings
+* Consider documenting your tool's metadata inheritance behavior
+
+#### Guidelines for Plugin Developers
+
+Best Practices
+
+* Choose clear, descriptive metadata key names
+* Document the exact metadata key name your tool expects
+* Don't require `Forc.toml` if tool can function without it
+* Consider using TOML format for dedicated config files
+* Specify how your tool handles workspace vs project metadata
+
+Implementation Notes
+
+* The metadata section is optional
+* Forc does not parse metadata contents
+* Plugin developers handle their own configuration parsing
+* Choose unique metadata keys to avoid conflicts with other tools
+
+#### Example Use Cases
+
+* Documentation generation settings
+* Formatter configurations
+* Debugger options
+* Wallet integration
+* Contract indexing
+* Testing frameworks
+
+This allows for a streamlined developer experience while maintaining clear separation between core Forc functionality and third-party tools.
+
+#### External Tooling Examples
+
+* [forc-index-ts](https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-ts): A TypeScript CLI tool for parsing `Forc.toml` metadata to read contract ABI JSON file.
+* [forc-index-rs](https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-rs): A Rust CLI tool for parsing `Forc.toml` metadata to read contract ABI JSON file.
 
 ## The `[dependencies]` section
 

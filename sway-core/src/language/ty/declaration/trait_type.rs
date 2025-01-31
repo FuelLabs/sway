@@ -1,18 +1,15 @@
+use crate::{
+    engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration,
+    language::ty::TyDeclParsedType, transform, type_system::*,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
-
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration, transform,
-    type_system::*,
-};
-
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTraitType {
     pub name: Ident,
     pub attributes: transform::AttributesMap,

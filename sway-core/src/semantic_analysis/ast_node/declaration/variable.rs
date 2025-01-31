@@ -4,11 +4,11 @@ use crate::{
         parsed::*,
         ty::{self, TyExpression, TyVariableDecl},
     },
-    namespace::ResolvedDeclaration,
     semantic_analysis::*,
     type_system::*,
     Engines,
 };
+use namespace::ResolvedDeclaration;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Spanned;
 use symbol_collection_context::SymbolCollectionContext;
@@ -48,7 +48,7 @@ impl ty::TyVariableDecl {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         let mut ctx = ctx
             .with_type_annotation(type_ascription.type_id)
             .with_help_text(
@@ -85,7 +85,7 @@ impl ty::TyVariableDecl {
         if !ctx.code_block_first_pass() {
             let previous_symbol = ctx
                 .namespace()
-                .module(engines)
+                .current_module()
                 .current_items()
                 .check_symbols_unique_while_collecting_unifications(&var_decl.name.clone())
                 .ok();

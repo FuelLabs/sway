@@ -4,7 +4,8 @@ use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
 use forc_util::{validate_name, validate_project_name};
-use serde::{Deserialize, Serialize};
+use semver::Version;
+use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -19,6 +20,7 @@ use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,
 };
+use url::Url;
 
 use self::build_profile::BuildProfile;
 
@@ -166,7 +168,7 @@ impl TryInto<WorkspaceManifestFile> for ManifestFile {
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: PackageManifest,
@@ -175,7 +177,7 @@ pub struct PackageManifestFile {
 }
 
 /// A direct mapping to a `Forc.toml`.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct PackageManifest {
     pub project: Project,
@@ -189,19 +191,38 @@ pub struct PackageManifest {
     pub proxy: Option<Proxy>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
+    #[serde(deserialize_with = "validate_package_name")]
     pub name: String,
+    pub version: Option<Version>,
+    pub description: Option<String>,
     pub organization: Option<String>,
     pub license: String,
+    pub homepage: Option<Url>,
+    pub repository: Option<Url>,
+    pub documentation: Option<Url>,
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
     pub forc_version: Option<semver::Version>,
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
+    pub metadata: Option<toml::Value>,
+}
+
+// Validation function for the `name` field
+fn validate_package_name<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let name: String = Deserialize::deserialize(deserializer)?;
+    match validate_project_name(&name) {
+        Ok(_) => Ok(name),
+        Err(e) => Err(de::Error::custom(e.to_string())),
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -315,6 +336,14 @@ impl Dependency {
         match *self {
             Self::Simple(_) => None,
             Self::Detailed(ref det) => det.package.as_deref(),
+        }
+    }
+
+    /// The string of the `version` field if specified.
+    pub fn version(&self) -> Option<&str> {
+        match *self {
+            Self::Simple(ref version) => Some(version),
+            Self::Detailed(ref det) => det.version.as_deref(),
         }
     }
 }
@@ -570,10 +599,25 @@ impl PackageManifest {
         // package or a workspace. While doing so, we should be printing the warnings if the given
         // file parses so that we only see warnings for the correct type of manifest.
         let path = path.as_ref();
-        let mut warnings = vec![];
-        let manifest_str = std::fs::read_to_string(path)
+        let contents = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let toml_de = toml::de::Deserializer::new(&manifest_str);
+        Self::from_string(contents)
+    }
+
+    /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`.
+    ///
+    /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
+    /// fields were used.
+    ///
+    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// implicitly. In this case, the git tag associated with the version of this crate is used to
+    /// specify the pinned commit at which we fetch `std`.
+    pub fn from_string(contents: String) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // file parses so that we only see warnings for the correct type of manifest.
+        let mut warnings = vec![];
+        let toml_de = toml::de::Deserializer::new(&contents);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("unused manifest key: {path}");
             warnings.push(warning);
@@ -850,6 +894,7 @@ pub struct WorkspaceManifest {
 #[serde(rename_all = "kebab-case")]
 pub struct Workspace {
     pub members: Vec<PathBuf>,
+    pub metadata: Option<toml::Value>,
 }
 
 impl WorkspaceManifestFile {
@@ -1329,5 +1374,296 @@ mod tests {
         assert!(dependency_details_git_branch.validate().is_ok());
         assert!(dependency_details_git_rev.validate().is_ok());
         assert!(dependency_details_ipfs.validate().is_ok());
+    }
+
+    #[test]
+    fn test_project_with_null_metadata() {
+        let project = Project {
+            authors: Some(vec!["Test Author".to_string()]),
+            name: "test-project".to_string(),
+            version: Some(Version::parse("0.1.0").unwrap()),
+            description: Some("test description".to_string()),
+            homepage: None,
+            documentation: None,
+            repository: None,
+            organization: None,
+            license: "Apache-2.0".to_string(),
+            entry: "main.sw".to_string(),
+            implicit_std: None,
+            forc_version: None,
+            experimental: HashMap::new(),
+            metadata: Some(toml::Value::from(toml::value::Table::new())),
+        };
+
+        let serialized = toml::to_string(&project).unwrap();
+        let deserialized: Project = toml::from_str(&serialized).unwrap();
+
+        assert_eq!(project.name, deserialized.name);
+        assert_eq!(project.metadata, deserialized.metadata);
+    }
+
+    #[test]
+    fn test_project_without_metadata() {
+        let project = Project {
+            authors: Some(vec!["Test Author".to_string()]),
+            name: "test-project".to_string(),
+            version: Some(Version::parse("0.1.0").unwrap()),
+            description: Some("test description".to_string()),
+            homepage: Some(Url::parse("https://example.com").unwrap()),
+            documentation: Some(Url::parse("https://docs.example.com").unwrap()),
+            repository: Some(Url::parse("https://example.com").unwrap()),
+            organization: None,
+            license: "Apache-2.0".to_string(),
+            entry: "main.sw".to_string(),
+            implicit_std: None,
+            forc_version: None,
+            experimental: HashMap::new(),
+            metadata: None,
+        };
+
+        let serialized = toml::to_string(&project).unwrap();
+        let deserialized: Project = toml::from_str(&serialized).unwrap();
+
+        assert_eq!(project.name, deserialized.name);
+        assert_eq!(project.version, deserialized.version);
+        assert_eq!(project.description, deserialized.description);
+        assert_eq!(project.homepage, deserialized.homepage);
+        assert_eq!(project.documentation, deserialized.documentation);
+        assert_eq!(project.repository, deserialized.repository);
+        assert_eq!(project.metadata, deserialized.metadata);
+        assert_eq!(project.metadata, None);
+    }
+
+    #[test]
+    fn test_project_metadata_from_toml() {
+        let toml_str = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            authors = ["Test Author"]
+            description = "A test project"
+            version = "1.0.0"
+
+            [metadata]
+            mykey = "https://example.com"
+            keywords = ["test", "project"]
+            categories = ["test"]
+        "#;
+
+        let project: Project = toml::from_str(toml_str).unwrap();
+        assert!(project.metadata.is_some());
+
+        let metadata = project.metadata.unwrap();
+        let table = metadata.as_table().unwrap();
+
+        assert_eq!(
+            table.get("mykey").unwrap().as_str().unwrap(),
+            "https://example.com"
+        );
+
+        let keywords = table.get("keywords").unwrap().as_array().unwrap();
+        assert_eq!(keywords[0].as_str().unwrap(), "test");
+        assert_eq!(keywords[1].as_str().unwrap(), "project");
+    }
+
+    #[test]
+    fn test_project_with_invalid_metadata() {
+        // Test with invalid TOML syntax - unclosed table
+        let invalid_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata
+            description = "Invalid TOML"
+        "#;
+
+        let result: Result<Project, _> = toml::from_str(invalid_toml);
+        assert!(result.is_err());
+
+        // Test with invalid TOML syntax - invalid key
+        let invalid_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata]
+            ] = "Invalid key"
+        "#;
+
+        let result: Result<Project, _> = toml::from_str(invalid_toml);
+        assert!(result.is_err());
+
+        // Test with duplicate keys
+        let invalid_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata]
+            nested = { key = "value1" }
+
+            [metadata.nested]
+            key = "value2"
+        "#;
+
+        let result: Result<Project, _> = toml::from_str(invalid_toml);
+        assert!(result.is_err());
+        assert!(result
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("duplicate key `nested` in table `metadata`"));
+    }
+
+    #[test]
+    fn test_metadata_roundtrip() {
+        let original_toml = r#"
+            name = "test-project"
+            license = "Apache-2.0"
+            entry = "main.sw"
+            
+            [metadata]
+            boolean = true
+            integer = 42
+            float = 3.12
+            string = "value"
+            array = [1, 2, 3]
+            mixed_array = [1, "two", true]
+
+            [metadata.nested]
+            key = "value2"
+        "#;
+
+        let project: Project = toml::from_str(original_toml).unwrap();
+        let serialized = toml::to_string(&project).unwrap();
+        let deserialized: Project = toml::from_str(&serialized).unwrap();
+
+        // Verify that the metadata is preserved
+        assert_eq!(project.metadata, deserialized.metadata);
+
+        // Verify all types were preserved
+        let table_val = project.metadata.unwrap();
+        let table = table_val.as_table().unwrap();
+        assert!(table.get("boolean").unwrap().as_bool().unwrap());
+        assert_eq!(table.get("integer").unwrap().as_integer().unwrap(), 42);
+        assert_eq!(table.get("float").unwrap().as_float().unwrap(), 3.12);
+        assert_eq!(table.get("string").unwrap().as_str().unwrap(), "value");
+        assert_eq!(table.get("array").unwrap().as_array().unwrap().len(), 3);
+        assert!(table.get("nested").unwrap().as_table().is_some());
+    }
+
+    #[test]
+    fn test_workspace_with_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+            
+            [workspace.metadata]
+            description = "A test workspace"
+            version = "1.0.0"
+            authors = ["Test Author"]
+            homepage = "https://example.com"
+            
+            [workspace.metadata.ci]
+            workflow = "main"
+            timeout = 3600
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        assert!(manifest.workspace.metadata.is_some());
+
+        let metadata = manifest.workspace.metadata.unwrap();
+        let table = metadata.as_table().unwrap();
+
+        assert_eq!(
+            table.get("description").unwrap().as_str().unwrap(),
+            "A test workspace"
+        );
+        assert_eq!(table.get("version").unwrap().as_str().unwrap(), "1.0.0");
+
+        let ci = table.get("ci").unwrap().as_table().unwrap();
+        assert_eq!(ci.get("workflow").unwrap().as_str().unwrap(), "main");
+        assert_eq!(ci.get("timeout").unwrap().as_integer().unwrap(), 3600);
+    }
+
+    #[test]
+    fn test_workspace_without_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        assert!(manifest.workspace.metadata.is_none());
+    }
+
+    #[test]
+    fn test_workspace_empty_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+            
+            [workspace.metadata]
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        assert!(manifest.workspace.metadata.is_some());
+        let metadata = manifest.workspace.metadata.unwrap();
+        assert!(metadata.as_table().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_workspace_complex_metadata() {
+        let toml_str = r#"
+            [workspace]
+            members = ["package1", "package2"]
+            
+            [workspace.metadata]
+            numbers = [1, 2, 3]
+            strings = ["a", "b", "c"]
+            mixed = [1, "two", true]
+            
+            [workspace.metadata.nested]
+            key = "value"
+            
+            [workspace.metadata.nested.deep]
+            another = "value"
+        "#;
+
+        let manifest: WorkspaceManifest = toml::from_str(toml_str).unwrap();
+        let metadata = manifest.workspace.metadata.unwrap();
+        let table = metadata.as_table().unwrap();
+
+        assert!(table.get("numbers").unwrap().as_array().is_some());
+        assert!(table.get("strings").unwrap().as_array().is_some());
+        assert!(table.get("mixed").unwrap().as_array().is_some());
+
+        let nested = table.get("nested").unwrap().as_table().unwrap();
+        assert_eq!(nested.get("key").unwrap().as_str().unwrap(), "value");
+
+        let deep = nested.get("deep").unwrap().as_table().unwrap();
+        assert_eq!(deep.get("another").unwrap().as_str().unwrap(), "value");
+    }
+
+    #[test]
+    fn test_workspace_metadata_roundtrip() {
+        let original = WorkspaceManifest {
+            workspace: Workspace {
+                members: vec![PathBuf::from("package1"), PathBuf::from("package2")],
+                metadata: Some(toml::Value::Table({
+                    let mut table = toml::value::Table::new();
+                    table.insert("key".to_string(), toml::Value::String("value".to_string()));
+                    table
+                })),
+            },
+            patch: None,
+        };
+
+        let serialized = toml::to_string(&original).unwrap();
+        let deserialized: WorkspaceManifest = toml::from_str(&serialized).unwrap();
+
+        assert_eq!(original.workspace.members, deserialized.workspace.members);
+        assert_eq!(original.workspace.metadata, deserialized.workspace.metadata);
     }
 }

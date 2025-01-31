@@ -32,7 +32,6 @@ Cryptography Libraries are any libraries that provided cryptographic functionali
 
 Math Libraries are libraries which provide mathematic functions or number types that are outside of the std-lib's scope.
 
-- [Fixed Point Number Library](https://fuellabs.github.io/sway-libs/book/fixed_point/index.html); an interface to implement fixed-point numbers.
 - [Signed Integers Library](https://fuellabs.github.io/sway-libs/book/signed_integers/index.html); an interface to implement signed integers.
 
 ## Data Structures Libraries

@@ -314,7 +314,7 @@ fn item_use_to_use_statements(
 
 fn use_tree_to_use_statements(
     use_tree: UseTree,
-    is_absolute: bool,
+    is_relative_to_package_root: bool,
     reexport: Visibility,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
@@ -325,7 +325,7 @@ fn use_tree_to_use_statements(
             for use_tree in imports.into_inner() {
                 use_tree_to_use_statements(
                     use_tree,
-                    is_absolute,
+                    is_relative_to_package_root,
                     reexport,
                     path,
                     ret,
@@ -343,7 +343,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
@@ -358,7 +358,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: Some(alias),
             });
@@ -368,14 +368,21 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type: ImportType::Star,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, reexport, path, ret, item_span);
+            use_tree_to_use_statements(
+                *suffix,
+                is_relative_to_package_root,
+                reexport,
+                path,
+                ret,
+                item_span,
+            );
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
@@ -542,11 +549,7 @@ pub fn item_fn_to_function_declaration(
     let return_type = match item_fn.fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
         None => {
-            let type_id = engines.te().insert(
-                engines,
-                TypeInfo::Tuple(Vec::new()),
-                item_fn.fn_signature.span().source_id(),
-            );
+            let type_id = engines.te().id_of_unit();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -769,7 +772,7 @@ pub fn item_impl_to_declaration(
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context, handler, engines, const_item, attributes, true,
+                    context, handler, engines, const_item, attributes, false,
                 )
                 .map(ImplItem::Constant),
                 sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
@@ -813,7 +816,7 @@ pub fn item_impl_to_declaration(
                 let impl_self = ImplSelfOrTrait {
                     is_self: true,
                     trait_name: CallPath {
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                         prefixes: vec![],
                         suffix: BaseIdent::dummy(),
                     },
@@ -840,14 +843,20 @@ fn path_type_to_call_path_and_type_arguments(
     let root_opt = path_type.root_opt.clone();
     let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type.clone())?;
 
-    let (is_absolute, qualified_path) =
+    let (is_relative_to_root, qualified_path) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
 
     let qualified_call_path = QualifiedCallPath {
         call_path: CallPath {
             prefixes,
             suffix: suffix.name,
-            is_absolute,
+            callpath_type,
         },
         qualified_path_root: qualified_path.map(Box::new),
     };
@@ -992,7 +1001,7 @@ pub(crate) fn item_const_to_constant_declaration(
                     return Err(errors);
                 }
             }
-            engines.te().insert(engines, TypeInfo::Unknown, None).into()
+            engines.te().new_unknown().into()
         }
     };
 
@@ -1255,18 +1264,11 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .into_inner()
             .into_iter()
             .map(|ident| {
-                let custom_type = type_engine.insert(
-                    engines,
-                    TypeInfo::Custom {
-                        qualified_call_path: ident.clone().into(),
-                        type_arguments: None,
-                    },
-                    ident.span().source_id(),
-                );
+                let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
                 TypeParameter {
                     type_id: custom_type,
                     initial_type_id: custom_type,
-                    name_ident: ident,
+                    name: ident,
                     trait_constraints: Vec::new(),
                     trait_constraints_span: Span::dummy(),
                     is_from_parent,
@@ -1286,12 +1288,12 @@ fn generic_params_opt_to_type_parameters_with_parent(
     {
         let param_to_edit = if let Some(o) = params
             .iter_mut()
-            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             o
         } else if let Some(o2) = parent_params
             .iter()
-            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             params.push(o2.clone());
             params.last_mut().unwrap()
@@ -1405,11 +1407,7 @@ fn fn_args_to_function_parameters(
                 (Some(reference), None) => reference.span(),
                 (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
             };
-            let type_id = engines.te().insert(
-                engines,
-                TypeInfo::new_self_type(self_token.span()),
-                self_token.span().source_id(),
-            );
+            let type_id = engines.te().new_self_type(engines, self_token.span());
             let mut function_parameters = vec![FunctionParameter {
                 name: Ident::new(self_token.span()),
                 is_reference: ref_self.is_some(),
@@ -1461,7 +1459,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "str" => Some(TypeInfo::StringSlice),
         "raw_ptr" => Some(TypeInfo::RawUntypedPtr),
         "raw_slice" => Some(TypeInfo::RawUntypedSlice),
-        "Self" | "self" => Some(TypeInfo::new_self_type(name.span())),
+        "Self" => Some(TypeInfo::new_self_type(name.span())),
         "Contract" => Some(TypeInfo::Contract),
         _other => None,
     }
@@ -1559,13 +1557,20 @@ fn ty_to_call_path_tree(
             vec![]
         };
 
-        let (is_absolute, qualified_path) =
+        let (is_relative_to_root, qualified_path) =
             path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+
+        let callpath_type = if is_relative_to_root {
+            CallPathType::RelativeToPackageRoot
+        } else {
+            CallPathType::Ambiguous
+        };
+
         let call_path = QualifiedCallPath {
             call_path: CallPath {
                 prefixes,
                 suffix: suffix.name,
-                is_absolute,
+                callpath_type,
             },
             qualified_path_root: qualified_path.map(Box::new),
         };
@@ -1613,11 +1618,7 @@ fn fn_signature_to_trait_fn(
     let return_type = match &fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
         None => {
-            let type_id = engines.te().insert(
-                engines,
-                TypeInfo::Tuple(Vec::new()),
-                fn_signature.span().source_id(),
-            );
+            let type_id = engines.te().id_of_unit();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -1695,7 +1696,12 @@ fn path_type_to_call_path(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -1706,13 +1712,13 @@ fn path_type_to_call_path(
             CallPath {
                 prefixes,
                 suffix: path_type_segment_to_ident(context, handler, call_path_suffix)?,
-                is_absolute,
+                callpath_type,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
             suffix: path_type_segment_to_ident(context, handler, prefix)?,
-            is_absolute,
+            callpath_type,
         },
     };
     Ok(call_path)
@@ -1863,7 +1869,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let (is_absolute, qualified_path_root) =
+    let (is_relative_to_root, qualified_path_root) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
     let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
@@ -1908,7 +1914,7 @@ fn expr_func_app_to_expression_kind(
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
         Some(Intrinsic::Log)
-            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
+            if context.experimental.new_encoding && last.is_none() && !is_relative_to_root =>
         {
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
@@ -1926,7 +1932,7 @@ fn expr_func_app_to_expression_kind(
                                     inner: CallPath {
                                         prefixes: vec![],
                                         suffix: Ident::new_no_span("encode".into()),
-                                        is_absolute: false,
+                                        callpath_type: CallPathType::Ambiguous,
                                     },
                                     type_arguments: TypeArgs::Regular(type_arguments),
                                     span: span.clone(),
@@ -1940,7 +1946,7 @@ fn expr_func_app_to_expression_kind(
                 },
             ));
         }
-        Some(intrinsic) if last.is_none() && !is_absolute => {
+        Some(intrinsic) if last.is_none() && !is_relative_to_root => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
                     name: call_seg.name,
@@ -1956,6 +1962,12 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
+
     // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
         Some(last) => last,
@@ -1967,7 +1979,7 @@ fn expr_func_app_to_expression_kind(
             let call_path = CallPath {
                 prefixes,
                 suffix,
-                is_absolute,
+                callpath_type,
             };
             let span = match type_arguments_span {
                 Some(span) => Span::join(call_path.span(), &span),
@@ -2003,7 +2015,7 @@ fn expr_func_app_to_expression_kind(
     let call_path = CallPath {
         prefixes,
         suffix,
-        is_absolute,
+        callpath_type,
     };
     let call_path_binding = TypeBinding {
         span: name_args_span(call_path.span(), type_arguments_span),
@@ -2150,6 +2162,7 @@ fn expr_to_expression(
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
                 condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
                 body: braced_code_block_contents_to_code_block(context, handler, engines, block)?,
+                is_desugared_for_loop: false,
             }),
             span,
         },
@@ -2518,7 +2531,7 @@ fn op_call(
                     Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
                 suffix: Ident::new_with_override(name.into(), op_span.clone()),
-                is_absolute: true,
+                callpath_type: CallPathType::Full,
             },
         },
         type_arguments: TypeArgs::Regular(vec![]),
@@ -2623,7 +2636,7 @@ fn configurable_field_to_configurable_declaration(
                     inner: CallPath {
                         prefixes: vec![],
                         suffix: Ident::new_with_override("encode".into(), span.clone()),
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     type_arguments: TypeArgs::Regular(vec![type_ascription.clone()]),
                     span: span.clone(),
@@ -2754,7 +2767,10 @@ fn expr_to_length(
     expr: Expr,
 ) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
-    Ok(Length::new(expr_to_usize(context, handler, expr)?, span))
+    Ok(Length::from_numeric_literal(
+        expr_to_usize(context, handler, expr)?,
+        span,
+    ))
 }
 
 fn expr_to_usize(
@@ -2798,7 +2814,12 @@ fn path_type_to_supertrait(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, call_path_suffix) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -2817,7 +2838,7 @@ fn path_type_to_supertrait(
     let name = CallPath {
         prefixes,
         suffix,
-        is_absolute,
+        callpath_type,
     };
     /*
     let type_parameters = match generics_opt {
@@ -3047,7 +3068,7 @@ fn match_expr_to_expression(
 
     let var_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
-            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            let type_id = engines.te().new_unknown();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -3131,7 +3152,7 @@ fn for_expr_to_expression(
     // Declare iterable with iterator return
     let iterable_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
-            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            let type_id = engines.te().new_unknown();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -3164,7 +3185,7 @@ fn for_expr_to_expression(
     // Declare value_opt = iterable.next()
     let value_opt_to_next_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
-            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            let type_id = engines.te().new_unknown();
             TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -3294,6 +3315,7 @@ fn for_expr_to_expression(
                                 span: Span::dummy(),
                             }),
                             body: while_body,
+                            is_desugared_for_loop: true,
                         }),
                         span: Span::dummy(),
                     }),
@@ -3349,22 +3371,18 @@ fn path_root_opt_to_bool_and_qualified_path_root(
                 close_angle_bracket_token: _,
             }),
             _,
-        )) => (
-            false,
-            if let Some((_, path_type)) = as_trait {
-                Some(QualifiedPathType {
-                    ty: ty_to_type_argument(context, handler, engines, *ty)?,
-                    as_trait: engines.te().insert(
-                        engines,
-                        path_type_to_type_info(context, handler, engines, *path_type.clone())?,
-                        path_type.span().source_id(),
-                    ),
-                    as_trait_span: path_type.span(),
-                })
-            } else {
-                None
-            },
-        ),
+        )) => (false, {
+            let (_, path_type) = as_trait;
+            Some(QualifiedPathType {
+                ty: ty_to_type_argument(context, handler, engines, *ty)?,
+                as_trait: engines.te().insert(
+                    engines,
+                    path_type_to_type_info(context, handler, engines, *path_type.clone())?,
+                    path_type.span().source_id(),
+                ),
+                as_trait_span: path_type.span(),
+            })
+        }),
     })
 }
 
@@ -3397,6 +3415,7 @@ fn literal_to_literal(
                 parsed,
                 ty_opt,
                 span,
+                is_generated_b256: _,
             } = lit_int;
             match ty_opt {
                 None => {
@@ -3509,8 +3528,13 @@ fn path_expr_to_qualified_call_path_binding(
         mut suffix,
         ..
     } = path_expr;
-    let (is_absolute, qualified_path_root) =
+    let (is_relative_to_root, qualified_path_root) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
         Some((_, call_path_suffix)) => {
@@ -3572,7 +3596,7 @@ fn path_expr_to_qualified_call_path_binding(
             call_path: CallPath {
                 prefixes,
                 suffix,
-                is_absolute,
+                callpath_type,
             },
             qualified_path_root: qualified_path_root.map(Box::new),
         },
@@ -3624,7 +3648,12 @@ fn path_expr_to_call_path(
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
@@ -3635,13 +3664,13 @@ fn path_expr_to_call_path(
             CallPath {
                 prefixes,
                 suffix: path_expr_segment_to_ident(context, handler, &call_path_suffix)?,
-                is_absolute,
+                callpath_type,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
             suffix: path_expr_segment_to_ident(context, handler, &prefix)?,
-            is_absolute,
+            callpath_type,
         },
     };
     Ok(call_path)
@@ -3820,7 +3849,7 @@ fn statement_let_to_ast_nodes_unfold(
             let type_ascription = match ty_opt {
                 Some(ty) => ty_to_type_argument(context, handler, engines, ty)?,
                 None => {
-                    let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+                    let type_id = engines.te().new_unknown();
                     TypeArgument {
                         type_id,
                         initial_type_id: type_id,
@@ -3870,7 +3899,7 @@ fn statement_let_to_ast_nodes_unfold(
             let type_ascription = match &ty_opt {
                 Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                 None => {
-                    let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+                    let type_id = engines.te().new_unknown();
                     TypeArgument {
                         type_id,
                         initial_type_id: type_id,
@@ -3954,52 +3983,38 @@ fn statement_let_to_ast_nodes_unfold(
             let tuple_name =
                 generate_tuple_var_name(context.next_destructured_tuple_unique_suffix());
 
-            let tuple_name = Ident::new_with_override(tuple_name, pat_tuple.span().clone());
+            let tuple_name = Ident::new_with_override(tuple_name, pat_tuple.span());
 
-            // Acript a second declaration to a tuple of placeholders to check that the tuple
-            // is properly sized to the pattern
+            // Ascribe a second declaration to a tuple of placeholders to check that the tuple
+            // is properly sized to the pattern.
             let placeholders_type_ascription = {
-                let type_id = engines.te().insert(
+                let type_id = engines.te().insert_tuple_without_annotations(
                     engines,
-                    TypeInfo::Tuple(
-                        pat_tuple
-                            .clone()
-                            .into_inner()
-                            .into_iter()
-                            .map(|pat| {
-                                let initial_type_id =
-                                    engines.te().insert(engines, TypeInfo::Unknown, None);
-                                let dummy_type_param = TypeParameter {
-                                    type_id: initial_type_id,
-                                    initial_type_id,
-                                    name_ident: Ident::new_with_override(
-                                        "_".into(),
-                                        pat.span().clone(),
-                                    ),
-                                    trait_constraints: vec![],
-                                    trait_constraints_span: Span::dummy(),
-                                    is_from_parent: false,
-                                };
-                                let initial_type_id = engines.te().insert(
-                                    engines,
-                                    TypeInfo::Placeholder(dummy_type_param),
-                                    None,
-                                );
-                                TypeArgument {
-                                    type_id: initial_type_id,
-                                    initial_type_id,
-                                    call_path_tree: None,
-                                    span: Span::dummy(),
-                                }
-                            })
-                            .collect(),
-                    ),
-                    tuple_name.span().source_id(),
+                    pat_tuple
+                        .clone()
+                        .into_inner()
+                        .into_iter()
+                        .map(|pat| {
+                            // Since these placeholders are generated specifically for checks, the `pat.span()` must not
+                            // necessarily point to a "_" string in code. E.g., in this example:
+                            //   let (a, _) = (0, 0);
+                            // The first `pat.span()` will point to "a", while the second one will indeed point to "_".
+                            // However, their `pat.span()`s will always be in the source file in which the placeholder
+                            // is logically situated.
+                            engines.te().new_placeholder(TypeParameter::new_placeholder(
+                                engines.te().new_unknown(),
+                                pat.span(),
+                            ))
+                        })
+                        .collect(),
                 );
+
+                // The type argument is a tuple of place holders of unknowns pointing to
+                // the tuple pattern.
                 TypeArgument {
                     type_id,
                     initial_type_id: type_id,
-                    span: tuple_name.span(),
+                    span: pat_tuple.span(),
                     call_path_tree: None,
                 }
             };
@@ -4313,14 +4328,14 @@ fn ty_to_type_parameter(
 ) -> Result<TypeParameter, ErrorEmitted> {
     let type_engine = engines.te();
 
-    let name_ident = match ty {
+    let name = match ty {
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+            let unknown_type = type_engine.new_unknown();
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
-                name_ident: underscore_token.into(),
+                name: underscore_token.into(),
                 trait_constraints: Vec::default(),
                 trait_constraints_span: Span::dummy(),
                 is_from_parent: false,
@@ -4328,25 +4343,18 @@ fn ty_to_type_parameter(
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
-        Ty::StringSlice(..) => panic!("str types are not allowed in this position"),
-        Ty::StringArray { .. } => panic!("str types are not allowed in this position"),
+        Ty::StringSlice(..) => panic!("str slice types are not allowed in this position"),
+        Ty::StringArray { .. } => panic!("str array types are not allowed in this position"),
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
         Ty::Ref { .. } => panic!("ref types are not allowed in this position"),
         Ty::Never { .. } => panic!("never types are not allowed in this position"),
     };
-    let custom_type = type_engine.insert(
-        engines,
-        TypeInfo::Custom {
-            qualified_call_path: name_ident.clone().into(),
-            type_arguments: None,
-        },
-        name_ident.span().source_id(),
-    );
+    let custom_type = type_engine.new_custom_from_name(engines, name.clone());
     Ok(TypeParameter {
         type_id: custom_type,
         initial_type_id: custom_type,
-        name_ident,
+        name,
         trait_constraints: Vec::new(),
         trait_constraints_span: Span::dummy(),
         is_from_parent: false,
@@ -4635,7 +4643,10 @@ fn path_type_to_type_info(
             }
         }
         None => {
-            if name.as_str() == "ContractCaller" {
+            if name.as_str() == "self" {
+                let error = ConvertParseTreeError::UnknownTypeNameSelf { span };
+                return Err(handler.emit_err(error.into()));
+            } else if name.as_str() == "ContractCaller" {
                 if root_opt.is_some() || !suffix.is_empty() {
                     let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
                     return Err(handler.emit_err(error.into()));

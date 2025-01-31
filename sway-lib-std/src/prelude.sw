@@ -21,13 +21,14 @@ pub use ::vec::{Vec, VecIter};
 pub use ::assert::{assert, assert_eq, assert_ne};
 pub use ::option::Option::{self, *};
 pub use ::result::Result::{self, *};
-pub use ::revert::{require, revert};
+pub use ::revert::{require, revert, revert_with_log};
 
 // Convert
 pub use ::convert::From;
+pub use ::clone::Clone;
 
 // Primitive conversions
-pub use ::primitive_conversions::{b256::*, str::*, u16::*, u256::*, u32::*, u64::*, u8::*,};
+pub use ::primitive_conversions::{b256::*, str::*, u16::*, u256::*, u32::*, u64::*, u8::*};
 
 // Logging
 pub use ::logging::log;

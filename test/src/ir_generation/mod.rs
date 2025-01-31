@@ -8,8 +8,8 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program,
-    language::Visibility, namespace, BuildTarget, Engines,
+    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program, namespace,
+    BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
 
@@ -179,7 +179,7 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(core_lib_name, build_target, &engines, run_config);
+    let core_root = compile_core(build_target, &engines, run_config);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -223,7 +223,9 @@ pub(super) async fn run(
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
                 let experimental = ExperimentalFeatures {
-                    new_encoding: false, // IR tests still need encoding v1 off
+                    new_encoding: false, // IR tests still need encoding v1 off.
+                    // TODO: Properly support experimental features in IR tests.
+                    ..Default::default()
                 };
 
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
@@ -239,12 +241,13 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-                let mut initial_namespace = namespace::Root::from(core_lib.clone());
+		let mut initial_namespace = namespace::namespace_without_contract_id(core_lib_name.clone());
+		initial_namespace.add_external("core".to_owned(), core_root.clone());
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
                     Arc::from(sway_str),
-                    &mut initial_namespace,
+                    initial_namespace,
                     Some(&bld_cfg),
                     PACKAGE_NAME,
                     None,
@@ -523,11 +526,10 @@ fn discover_test_files() -> Vec<PathBuf> {
 }
 
 fn compile_core(
-    lib_name: sway_types::Ident,
     build_target: BuildTarget,
     engines: &Engines,
     run_config: &RunConfig,
-) -> namespace::Module {
+) -> namespace::Root {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -550,32 +552,7 @@ fn compile_core(
     };
 
     match res.0 {
-        Some(typed_program) => {
-            // Create a module for core and copy the compiled modules into it.  Unfortunately we
-            // can't get mutable access to move them out so they're cloned.
-            let core_module = typed_program
-                .root
-                .namespace
-                .module(engines)
-                .submodules()
-                .into_iter()
-                .fold(
-                    namespace::Module::new(
-                        sway_types::Ident::new_no_span("core".to_string()),
-                        Visibility::Private,
-                        None,
-                    ),
-                    |mut core_mod, (name, sub_mod)| {
-                        core_mod.insert_submodule(name.clone(), sub_mod.clone());
-                        core_mod
-                    },
-                );
-
-            // Create a module for std and insert the core module.
-            let mut std_module = namespace::Module::new(lib_name, Visibility::Private, None);
-            std_module.insert_submodule("core".to_owned(), core_module);
-            std_module
-        }
+        Some(typed_program) => typed_program.namespace.root_ref().clone(),
         _ => {
             let (errors, _warnings) = res.1.consume();
             for err in errors {

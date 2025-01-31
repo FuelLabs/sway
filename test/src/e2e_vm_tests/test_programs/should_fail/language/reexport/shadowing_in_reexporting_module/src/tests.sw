@@ -5,7 +5,7 @@ use ::lib_1::*;
  // Reexported items from items_2_1.sw and items_2_2.sw. All reexports from items_2_1.sw are
  // shadowed by items imported and not reexported from items_2_2.sw
 use ::lib_2::*;
-// Reexported items from items_3_1.sw and items_3_2.sw. All reexports shadowed by private local
+// Reexported items from items_3_1.sw. All reexports shadowed by private local
 // definitions in lib_3.sw.
 use ::lib_3::Items3_Struct;
 use ::lib_3::Items3_Enum;

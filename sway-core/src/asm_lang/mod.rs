@@ -120,7 +120,10 @@ impl Op {
         size_to_allocate_in_bytes: VirtualImmediate24,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_bytes)),
+            opcode: Either::Left(VirtualOp::CFEI(
+                VirtualRegister::Constant(ConstantRegister::StackPointer),
+                size_to_allocate_in_bytes,
+            )),
             comment: String::new(),
             owning_span: None,
         }
@@ -481,23 +484,35 @@ impl Op {
             /* Memory Instructions */
             "aloc" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::ALOC(r1)
+                VirtualOp::ALOC(VirtualRegister::Constant(ConstantRegister::HeapPointer), r1)
             }
             "cfei" => {
                 let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFEI(imm)
+                VirtualOp::CFEI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    imm,
+                )
             }
             "cfsi" => {
                 let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFSI(imm)
+                VirtualOp::CFSI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    imm,
+                )
             }
             "cfe" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFE(r1)
+                VirtualOp::CFE(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    r1,
+                )
             }
             "cfs" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFS(r1)
+                VirtualOp::CFS(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    r1,
+                )
             }
             "lb" => {
                 let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
@@ -866,32 +881,6 @@ fn four_regs(
         }
     };
 
-    impl ConstantRegister {
-        pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
-            use ConstantRegister::*;
-            Some(match raw {
-                "zero" => Zero,
-                "one" => One,
-                "of" => Overflow,
-                "pc" => ProgramCounter,
-                "ssp" => StackStartPointer,
-                "sp" => StackPointer,
-                "fp" => FramePointer,
-                "hp" => HeapPointer,
-                "err" => Error,
-                "ggas" => GlobalGas,
-                "cgas" => ContextGas,
-                "bal" => Balance,
-                "is" => InstructionStart,
-                "flag" => Flags,
-                "retl" => ReturnLength,
-                "ret" => ReturnValue,
-                "ds" => DataSectionStart,
-                _ => return None,
-            })
-        }
-    }
-
     // Immediate Value.
     pub type ImmediateValue = u32;
 
@@ -1190,11 +1179,11 @@ impl fmt::Display for VirtualOp {
             RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */
-            ALOC(a) => write!(fmtr, "aloc {a}"),
-            CFEI(a) => write!(fmtr, "cfei {a}"),
-            CFSI(a) => write!(fmtr, "cfsi {a}"),
-            CFE(a) => write!(fmtr, "cfe {a}"),
-            CFS(a) => write!(fmtr, "cfs {a}"),
+            ALOC(_hp, a) => write!(fmtr, "aloc {a}"),
+            CFEI(_sp, a) => write!(fmtr, "cfei {a}"),
+            CFSI(_sp, a) => write!(fmtr, "cfsi {a}"),
+            CFE(_sp, a) => write!(fmtr, "cfe {a}"),
+            CFS(_sp, a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl {a} {b}"),
@@ -1248,6 +1237,7 @@ impl fmt::Display for VirtualOp {
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
             DataSectionOffsetPlaceholder => write!(fmtr, "data section offset placeholder"),
+            ConfigurablesOffsetPlaceholder => write!(fmtr, "configurables offset placeholder"),
             LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
             AddrDataId(a, b) => write!(fmtr, "addr {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
@@ -1277,6 +1267,8 @@ pub(crate) enum ControlFlowOp<Reg> {
     Call(Label),
     // Save a return label address in a register.
     SaveRetAddr(Reg, Label),
+    // Placeholder for the offset into the configurables section.
+    ConfigurablesOffsetPlaceholder,
     // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
     // Placeholder for loading an address from the data section.
@@ -1304,6 +1296,8 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
+                ConfigurablesOffsetPlaceholder =>
+                    "CONFIGURABLES_OFFSET[0..32]\nCONFIGURABLES_OFFSET[32..64]".into(),
                 LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),
@@ -1321,6 +1315,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Jump(_)
             | Call(_)
             | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
 
@@ -1339,6 +1334,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Call(_)
             | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
             | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => vec![],
@@ -1360,6 +1356,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | JumpIfNotZero(..)
             | Call(_)
             | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
         })
@@ -1381,6 +1378,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Jump(_)
             | Call(_)
             | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => self.clone(),
 
@@ -1410,6 +1408,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | Call(_)
             | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
             | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => (),
@@ -1466,6 +1465,7 @@ impl ControlFlowOp<VirtualRegister> {
             Jump(label) => Jump(*label),
             Call(label) => Call(*label),
             DataSectionOffsetPlaceholder => DataSectionOffsetPlaceholder,
+            ConfigurablesOffsetPlaceholder => ConfigurablesOffsetPlaceholder,
             PushAll(label) => PushAll(*label),
             PopAll(label) => PopAll(*label),
 

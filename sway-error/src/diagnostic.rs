@@ -5,10 +5,10 @@ use sway_types::{SourceEngine, Span};
 /// Provides detailed, rich description of a compile error or warning.
 #[derive(Debug, Default)]
 pub struct Diagnostic {
-    pub(crate) reason: Option<Reason>, // TODO: Make mandatory once we remove all old-style warnings and errors.
-    pub(crate) issue: Issue,
-    pub(crate) hints: Vec<Hint>,
-    pub(crate) help: Vec<String>,
+    pub reason: Option<Reason>, // TODO: Make mandatory once we remove all old-style warnings and errors.
+    pub issue: Issue,
+    pub hints: Vec<Hint>,
+    pub help: Vec<String>,
 }
 
 impl Diagnostic {
@@ -23,7 +23,8 @@ impl Diagnostic {
         match self.issue.label_type {
             LabelType::Error => Level::Error,
             LabelType::Warning => Level::Warning,
-            _ => unreachable!("The diagnostic level can be only Error or Warning, and this is enforced via Diagnostics API.")
+            LabelType::Info => Level::Info,
+            _ => unreachable!("The diagnostic level can be only Error, Warning, or Info, and this is enforced via Diagnostics API.")
         }
     }
 
@@ -122,6 +123,7 @@ impl Diagnostic {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Level {
+    Info,
     Warning,
     #[default]
     Error,
@@ -154,7 +156,6 @@ pub struct Label {
     label_type: LabelType,
     span: Span,
     text: String,
-    friendly_text: String,
     source_path: Option<SourcePath>,
 }
 
@@ -176,13 +177,11 @@ impl Label {
     }
 
     fn new(source_engine: &SourceEngine, label_type: LabelType, span: Span, text: String) -> Label {
-        let friendly_text = Self::maybe_uwuify(text.as_str());
         let source_path = Self::get_source_path(source_engine, &span);
         Label {
             label_type,
             span,
             text,
-            friendly_text,
             source_path,
         }
     }
@@ -204,10 +203,6 @@ impl Label {
         self.text.as_ref()
     }
 
-    pub fn friendly_text(&self) -> &str {
-        self.friendly_text.as_ref()
-    }
-
     pub fn source_path(&self) -> Option<&SourcePath> {
         self.source_path.as_ref()
     }
@@ -227,23 +222,6 @@ impl Label {
             _ => None,
         }
     }
-
-    #[cfg(all(feature = "uwu", any(target_arch = "x86", target_arch = "x86_64")))]
-    fn maybe_uwuify(raw: &str) -> String {
-        use uwuifier::uwuify_str_sse;
-        uwuify_str_sse(raw)
-    }
-
-    #[cfg(all(feature = "uwu", not(any(target_arch = "x86", target_arch = "x86_64"))))]
-    fn maybe_uwuify(raw: &str) -> String {
-        compile_error!("The `uwu` feature only works on x86 or x86_64 processors.");
-        Default::default()
-    }
-
-    #[cfg(not(feature = "uwu"))]
-    fn maybe_uwuify(raw: &str) -> String {
-        raw.to_string()
-    }
 }
 
 impl Default for Label {
@@ -252,7 +230,6 @@ impl Default for Label {
             label_type: LabelType::Info,
             span: Span::dummy(),
             text: "".to_string(),
-            friendly_text: "".to_string(),
             source_path: None,
         }
     }
@@ -273,6 +250,12 @@ impl Issue {
     pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
             label: Label::error(source_engine, span, text),
+        }
+    }
+
+    pub fn info(source_engine: &SourceEngine, span: Span, text: String) -> Self {
+        Self {
+            label: Label::info(source_engine, span, text),
         }
     }
 }
@@ -402,6 +385,7 @@ pub enum DiagnosticArea {
     TypeChecking,
     SemanticAnalysis,
     Warnings,
+    Migrations,
 }
 
 impl DiagnosticArea {
@@ -413,6 +397,7 @@ impl DiagnosticArea {
             Self::TypeChecking => "E3",
             Self::SemanticAnalysis => "E4",
             Self::Warnings => "W0",
+            Self::Migrations => "M0",
         }
     }
 }
@@ -447,6 +432,10 @@ impl Code {
 
     pub fn warnings(number: u16) -> Code {
         Self::new(DiagnosticArea::Warnings, number)
+    }
+
+    pub fn migrations(number: u16) -> Code {
+        Self::new(DiagnosticArea::Migrations, number)
     }
 
     fn new(area: DiagnosticArea, number: u16) -> Self {

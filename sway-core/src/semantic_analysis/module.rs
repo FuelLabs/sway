@@ -463,7 +463,6 @@ impl ty::TyModule {
         let ty_module = Arc::new(Self {
             span: span.clone(),
             submodules,
-            namespace: ctx.namespace.clone(),
             all_nodes,
             attributes: attributes.clone(),
         });
@@ -687,17 +686,18 @@ impl ty::TySubmodule {
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(
+            handler,
             engines,
             mod_name,
             *visibility,
             module.span.clone(),
             |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
-        )
+        )?
     }
 
     pub fn type_check(
         handler: &Handler,
-        parent_ctx: TypeCheckContext,
+        mut parent_ctx: TypeCheckContext,
         engines: &Engines,
         mod_name: ModName,
         kind: TreeType,
@@ -709,13 +709,25 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res =
-                ty::TyModule::type_check(handler, submod_ctx, engines, kind, module, build_config);
-            module_res.map(|module| ty::TySubmodule {
-                module,
-                mod_name_span: mod_name_span.clone(),
-            })
-        })
+        parent_ctx.enter_submodule(
+            handler,
+            mod_name,
+            *visibility,
+            module.span.clone(),
+            |submod_ctx| {
+                let module_res = ty::TyModule::type_check(
+                    handler,
+                    submod_ctx,
+                    engines,
+                    kind,
+                    module,
+                    build_config,
+                );
+                module_res.map(|module| ty::TySubmodule {
+                    module,
+                    mod_name_span: mod_name_span.clone(),
+                })
+            },
+        )?
     }
 }

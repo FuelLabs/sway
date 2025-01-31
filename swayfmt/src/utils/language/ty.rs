@@ -6,8 +6,12 @@ use std::fmt::Write;
 use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{AmpersandToken, MutToken, PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
+    keywords::{
+        AmpersandToken, BangToken, Keyword, MutToken, PtrToken, SemicolonToken, SliceToken,
+        StrToken, Token, UnderscoreToken,
+    },
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
+    CommaToken,
 };
 use sway_types::{ast::Delimiter, Spanned};
 
@@ -24,39 +28,35 @@ impl Format for Ty {
                 write!(formatted_code, "{}", Delimiter::Bracket.as_close_char())?;
                 Ok(())
             }
-            Self::Infer { underscore_token } => format_infer(formatted_code, underscore_token),
+            Self::Infer {
+                underscore_token: _,
+            } => format_infer(formatted_code),
             Self::Path(path_ty) => path_ty.format(formatted_code, formatter),
             Self::StringSlice(_) => {
-                write!(formatted_code, "str")?;
+                write!(formatted_code, "{}", StrToken::AS_STR)?;
                 Ok(())
             }
-            Self::StringArray { str_token, length } => {
-                format_str(formatted_code, str_token.clone(), length.clone())
-            }
+            Self::StringArray {
+                str_token: _,
+                length,
+            } => format_str(formatted_code, formatter, length.clone()),
             Self::Tuple(tup_descriptor) => {
                 write!(formatted_code, "{}", Delimiter::Parenthesis.as_open_char())?;
                 tup_descriptor.get().format(formatted_code, formatter)?;
                 write!(formatted_code, "{}", Delimiter::Parenthesis.as_close_char())?;
                 Ok(())
             }
-            Self::Ptr { ptr_token, ty } => {
-                format_ptr(formatted_code, ptr_token.clone(), ty.clone())
-            }
+            Self::Ptr { ptr_token: _, ty } => format_ptr(formatted_code, formatter, ty.clone()),
             Self::Slice { slice_token, ty } => {
-                format_slice(formatted_code, slice_token.clone(), ty.clone())
+                format_slice(formatted_code, formatter, slice_token, ty.clone())
             }
             Self::Ref {
-                ampersand_token,
+                ampersand_token: _,
                 mut_token,
                 ty,
-            } => format_ref(
-                formatted_code,
-                ampersand_token.clone(),
-                mut_token.clone(),
-                ty.clone(),
-            ),
-            Self::Never { bang_token } => {
-                write!(formatted_code, "{}", bang_token.span().as_str(),)?;
+            } => format_ref(formatted_code, formatter, mut_token, ty),
+            Self::Never { bang_token: _ } => {
+                write!(formatted_code, "{}", BangToken::AS_STR)?;
                 Ok(())
             }
         }
@@ -64,11 +64,9 @@ impl Format for Ty {
 }
 
 /// Simply inserts a `_` token to the `formatted_code`.
-fn format_infer(
-    formatted_code: &mut FormattedCode,
-    underscore_token: &UnderscoreToken,
-) -> Result<(), FormatterError> {
-    formatted_code.push_str(underscore_token.ident().as_str());
+fn format_infer(formatted_code: &mut FormattedCode) -> Result<(), FormatterError> {
+    formatted_code.push_str(UnderscoreToken::AS_STR);
+
     Ok(())
 }
 
@@ -79,78 +77,73 @@ impl Format for TyArrayDescriptor {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.ty.format(formatted_code, formatter)?;
-        write!(formatted_code, "{} ", self.semicolon_token.span().as_str())?;
+        write!(formatted_code, "{} ", SemicolonToken::AS_STR)?;
         self.length.format(formatted_code, formatter)?;
+
         Ok(())
     }
 }
 
 fn format_str(
     formatted_code: &mut FormattedCode,
-    str_token: StrToken,
+    formatter: &mut Formatter,
     length: SquareBrackets<Box<Expr>>,
 ) -> Result<(), FormatterError> {
-    write!(
-        formatted_code,
-        "{}{}{}{}",
-        str_token.span().as_str(),
-        Delimiter::Bracket.as_open_char(),
-        length.into_inner().span().as_str(),
-        Delimiter::Bracket.as_close_char()
-    )?;
+    write!(formatted_code, "{}", StrToken::AS_STR)?;
+    write!(formatted_code, "{}", Delimiter::Bracket.as_open_char())?;
+    length.into_inner().format(formatted_code, formatter)?;
+    write!(formatted_code, "{}", Delimiter::Bracket.as_close_char())?;
+
     Ok(())
 }
 
 fn format_ptr(
     formatted_code: &mut FormattedCode,
-    ptr_token: PtrToken,
+    formatter: &mut Formatter,
     ty: SquareBrackets<Box<Ty>>,
 ) -> Result<(), FormatterError> {
-    write!(
-        formatted_code,
-        "{}[{}]",
-        ptr_token.span().as_str(),
-        ty.into_inner().span().as_str()
-    )?;
+    write!(formatted_code, "{}", PtrToken::AS_STR)?;
+    write!(formatted_code, "{}", Delimiter::Bracket.as_open_char())?;
+    ty.into_inner().format(formatted_code, formatter)?;
+    write!(formatted_code, "{}", Delimiter::Bracket.as_close_char())?;
+
     Ok(())
 }
 
 fn format_slice(
     formatted_code: &mut FormattedCode,
-    slice_token: Option<SliceToken>,
+    formatter: &mut Formatter,
+    slice_token: &Option<SliceToken>,
     ty: SquareBrackets<Box<Ty>>,
 ) -> Result<(), FormatterError> {
-    if let Some(slice_token) = slice_token {
-        write!(
-            formatted_code,
-            "{}[{}]",
-            slice_token.span().as_str(),
-            ty.into_inner().span().as_str()
-        )?;
-    } else {
-        write!(formatted_code, "[{}]", ty.into_inner().span().as_str())?;
+    if slice_token.is_some() {
+        write!(formatted_code, "{}", SliceToken::AS_STR)?;
     }
+    write!(formatted_code, "{}", Delimiter::Bracket.as_open_char())?;
+    ty.into_inner().format(formatted_code, formatter)?;
+    write!(formatted_code, "{}", Delimiter::Bracket.as_close_char())?;
 
     Ok(())
 }
 
 fn format_ref(
     formatted_code: &mut FormattedCode,
-    ampersand_token: AmpersandToken,
-    mut_token: Option<MutToken>,
-    ty: Box<Ty>,
+    formatter: &mut Formatter,
+    mut_token: &Option<MutToken>,
+    ty: &Ty,
 ) -> Result<(), FormatterError> {
     write!(
         formatted_code,
-        "{}{}{}",
-        ampersand_token.span().as_str(),
-        if let Some(mut_token) = mut_token {
-            format!("{} ", mut_token.span().as_str())
+        "{}{}",
+        AmpersandToken::AS_STR,
+        if mut_token.is_some() {
+            format!("{} ", MutToken::AS_STR)
         } else {
             "".to_string()
         },
-        ty.span().as_str()
     )?;
+    ty.format(formatted_code, formatter)?;
+
     Ok(())
 }
 
@@ -162,7 +155,7 @@ impl Format for TyTupleDescriptor {
     ) -> Result<(), FormatterError> {
         if let TyTupleDescriptor::Cons {
             head,
-            comma_token,
+            comma_token: _,
             tail,
         } = self
         {
@@ -170,7 +163,7 @@ impl Format for TyTupleDescriptor {
                 formatter.shape.with_default_code_line(),
                 |formatter| -> Result<(), FormatterError> {
                     head.format(formatted_code, formatter)?;
-                    write!(formatted_code, "{} ", comma_token.ident().as_str())?;
+                    write!(formatted_code, "{} ", CommaToken::AS_STR)?;
                     tail.format(formatted_code, formatter)?;
 
                     Ok(())

@@ -373,7 +373,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "e50f0b4b396504398c0aff45951b1e44e108399c856cb92257dfa58fe96d53eb",
+            "6c1ba5b247a2fc44e7a5166c3518c96f3cd566a4f144483a5310dcc82d08d010",
         )
         .unwrap(),
         proxy: None,
@@ -416,7 +416,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "e50f0b4b396504398c0aff45951b1e44e108399c856cb92257dfa58fe96d53eb",
+            "6c1ba5b247a2fc44e7a5166c3518c96f3cd566a4f144483a5310dcc82d08d010",
         )
         .unwrap(),
         proxy: None,
@@ -462,12 +462,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "e50f0b4b396504398c0aff45951b1e44e108399c856cb92257dfa58fe96d53eb",
+            "6c1ba5b247a2fc44e7a5166c3518c96f3cd566a4f144483a5310dcc82d08d010",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "1c50e2d4d602fdd88b47fb7b84b7f87bbdefcf9b7e5985bb7ceeee9266a8e977",
+                "90b8a908206724fcff5430ee124f6032f0a52010cd2f4c1549c4c9fdd65431e5",
             )
             .unwrap(),
         ),
@@ -693,7 +693,7 @@ async fn test_non_owner_fails_to_set_target() {
 // It would also require overriding `default_wallet_path` function for tests, so as not to interfere with the user's wallet.
 
 #[test]
-fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error> {
+fn test_deploy_interactive_missing_wallet() -> Result<(), rexpect::error::Error> {
     let (mut node, port) = run_node();
     let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
 
@@ -711,9 +711,8 @@ fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error>
     process
         .exp_string("\u{1b}[1;32mConfirming\u{1b}[0m transactions [deploy standalone_contract]")?;
     process.exp_string(&format!("Network: {node_url}"))?;
-    process.exp_string("Wallet: ")?;
-    process.exp_string("Wallet password")?;
-    process.send_line("mock_password")?;
+    process.exp_regex("Could not find a wallet at")?;
+    process.send_line("n")?;
 
     process.process.exit()?;
     node.kill().unwrap();
@@ -1304,7 +1303,7 @@ async fn offset_shifted_abi_works() {
     let loader_with_configs_from_sdk =
         call_with_sdk_generated_overrides(&node_url, contract_id).await;
 
-    // Genearating the forc-deploy loader bytecode and loader abi.
+    // Generating the forc-deploy loader bytecode and loader abi.
     let loader_with_configs_from_forc =
         call_with_forc_generated_overrides(&node_url, contract_id).await;
     pretty_assertions::assert_eq!(loader_with_configs_from_forc, loader_with_configs_from_sdk);

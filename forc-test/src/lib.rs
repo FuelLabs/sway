@@ -151,6 +151,8 @@ pub struct TestOpts {
     pub error_on_warnings: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Profile the compilation process.
+    pub profile: bool,
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
     /// Set of enabled experimental flags
@@ -453,6 +455,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             release: val.release,
             error_on_warnings: val.error_on_warnings,
             time_phases: val.time_phases,
+            profile: val.profile,
             metrics_outfile: val.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
@@ -476,6 +479,7 @@ impl TestOpts {
             release: self.release,
             error_on_warnings: self.error_on_warnings,
             time_phases: self.time_phases,
+            profile: self.profile,
             metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
@@ -543,7 +547,7 @@ pub struct TestCount {
     pub ignored: usize,
 }
 
-impl<'a> TestFilter<'a> {
+impl TestFilter<'_> {
     fn filter(&self, fn_name: &str) -> bool {
         if self.exact_match {
             fn_name == self.filter_phrase

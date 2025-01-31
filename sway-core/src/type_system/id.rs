@@ -1,5 +1,6 @@
 #![allow(clippy::mutable_key_type)]
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -10,6 +11,7 @@ use crate::{
     decl_engine::DeclEngineGet,
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
+    namespace::TraitMap,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
@@ -34,7 +36,7 @@ pub enum TreatNumericAs {
 }
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, Deserialize, Serialize)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
@@ -80,7 +82,7 @@ impl CollectTypesMetadata for TypeId {
                 }
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
-                        type_param.name_ident.clone(),
+                        type_param.name.clone(),
                         ctx.call_site_get(self),
                     ));
                 }
@@ -94,7 +96,10 @@ impl CollectTypesMetadata for TypeId {
 impl SubstTypes for TypeId {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let type_engine = ctx.engines.te();
-        if let Some(matching_id) = ctx.type_subst_map.find_match(*self, ctx.engines) {
+        if let Some(matching_id) = ctx
+            .type_subst_map
+            .and_then(|tsm| tsm.find_match(*self, ctx.engines))
+        {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
                 HasChanges::Yes
@@ -108,7 +113,7 @@ impl SubstTypes for TypeId {
 }
 
 impl TypeId {
-    pub(super) fn new(index: usize) -> TypeId {
+    pub(super) const fn new(index: usize) -> TypeId {
         TypeId(index)
     }
 
@@ -383,19 +388,6 @@ impl TypeId {
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
-            TypeInfo::Storage { fields } => {
-                for field in fields {
-                    extend(
-                        &mut found,
-                        field.type_argument.type_id.extract_any_including_self(
-                            engines,
-                            filter_fn,
-                            vec![],
-                            depth + 1,
-                        ),
-                    );
-                }
-            }
             TypeInfo::Alias { name: _, ty } => {
                 extend(
                     &mut found,
@@ -641,6 +633,7 @@ impl TypeId {
                                         )
                                     );
                                 }
+
                                 handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                                     type_id: structure_type_id.index(),
                                     ty: structure_type_info_with_engines.to_string(),
@@ -669,18 +662,20 @@ impl TypeId {
         f: impl Fn(&TraitConstraint),
     ) -> bool {
         let engines = ctx.engines();
+
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut found_error = false;
-        let generic_trait_constraints_trait_names_and_args = ctx
-            .namespace()
-            .module(ctx.engines())
-            .current_items()
-            .implemented_traits
-            .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
+        let generic_trait_constraints_trait_names_and_args =
+            TraitMap::get_trait_names_and_type_arguments_for_type(
+                ctx.namespace().current_module(),
+                engines,
+                *structure_type_id,
+            );
         for structure_trait_constraint in structure_trait_constraints {
             let structure_trait_constraint_trait_name = &structure_trait_constraint
                 .trait_name
-                .to_fullpath(ctx.engines(), ctx.namespace());
+                .to_canonical_path(ctx.engines(), ctx.namespace());
+
             if !generic_trait_constraints_trait_names_and_args.iter().any(
                 |(trait_name, trait_args)| {
                     trait_name == structure_trait_constraint_trait_name
@@ -697,13 +692,7 @@ impl TypeId {
                                         EnforceTypeArguments::No,
                                         None,
                                     )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
+                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
                                     ctx.resolve_type(
                                         handler,
                                         t2.type_id,
@@ -711,13 +700,7 @@ impl TypeId {
                                         EnforceTypeArguments::No,
                                         None,
                                     )
-                                    .unwrap_or_else(|err| {
-                                        engines.te().insert(
-                                            engines,
-                                            TypeInfo::ErrorRecovery(err),
-                                            None,
-                                        )
-                                    }),
+                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
                                 )
                             })
                 },

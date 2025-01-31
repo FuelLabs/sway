@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-708A1FDFF71F06AE"
+
+[[package]]
+name = "std"
+source = "path+from-root-708A1FDFF71F06AE"
+dependencies = ["core"]
+
+[[package]]
+name = "trait_generic_override"
+source = "member"
+dependencies = ["std"]

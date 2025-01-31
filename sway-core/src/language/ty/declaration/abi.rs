@@ -1,18 +1,17 @@
+use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 use crate::{
     engine_threading::*,
     language::parsed::{self, AbiDeclaration},
     transform,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-
 use sway_types::{Ident, Named, Span, Spanned};
-
-use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyAbiDecl {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
@@ -76,12 +75,9 @@ impl HashWithEngines for TyAbiDecl {
 
 impl CreateTypeId for TyAbiDecl {
     fn create_type_id(&self, engines: &Engines) -> TypeId {
-        let type_engine = engines.te();
-        let ty = TypeInfo::ContractCaller {
-            abi_name: AbiName::Known(self.name.clone().into()),
-            address: None,
-        };
-        type_engine.insert(engines, ty, self.name.span().source_id())
+        engines
+            .te()
+            .new_contract_caller(engines, AbiName::Known(self.name.clone().into()), None)
     }
 }
 

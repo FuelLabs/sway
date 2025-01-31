@@ -40,16 +40,16 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::{parsed::TreeType, Visibility},
+    language::parsed::TreeType,
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{PrintAsm, PrintIr};
+use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::constants::{CORE, PRELUDE, STD};
+use sway_types::constants::{CORE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
@@ -181,7 +181,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub root_module: namespace::Module,
+    pub root_module: namespace::Root,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -300,6 +300,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Profile the build process.
+    pub profile: bool,
     /// If set, outputs compilation metrics info in JSON format.
     pub metrics_outfile: Option<String>,
     /// Warnings must be treated as compiler errors.
@@ -549,7 +551,7 @@ impl Built {
     /// Returns an iterator yielding all member built packages.
     pub fn into_members<'a>(
         &'a self,
-    ) -> Box<dyn Iterator<Item = (&Pinned, Arc<BuiltPackage>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a Pinned, Arc<BuiltPackage>)> + 'a> {
         // NOTE: Since pkg is a `Arc<_>`, pkg clones in this function are only reference
         // increments. `BuiltPackage` struct does not get copied.`
         match self {
@@ -1561,13 +1563,11 @@ pub fn sway_build_config(
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
+    .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
     .with_optimization_level(build_profile.optimization_level);
     Ok(build_config)
 }
-
-/// The name of the constant holding the contract's id.
-pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
@@ -1582,7 +1582,7 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 /// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 pub fn dependency_namespace(
-    lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Root>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
@@ -1593,16 +1593,15 @@ pub fn dependency_namespace(
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
-    let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::default_with_contract_id(
+    let mut root_namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::namespace_with_contract_id(
             engines,
             name.clone(),
-            Visibility::Public,
             contract_id_value,
             experimental,
         )?
     } else {
-        namespace::Module::new(name, Visibility::Public, None)
+        namespace::namespace_without_contract_id(name.clone())
     };
 
     // Add direct dependencies.
@@ -1611,12 +1610,12 @@ pub fn dependency_namespace(
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_edge = edge.weight();
-        let mut dep_namespace = match dep_edge.kind {
+        let dep_namespace = match dep_edge.kind {
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no namespace module")
-                .read(engines, Clone::clone),
+                .expect("no root namespace module")
+                .clone(),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1627,17 +1626,15 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-                namespace::default_with_contract_id(
+                namespace::namespace_with_contract_id(
                     engines,
                     name.clone(),
-                    Visibility::Private,
                     contract_id_value,
                     experimental,
                 )?
             }
         };
-        dep_namespace.is_external = true;
-        root_module.insert_submodule(dep_name, dep_namespace);
+        root_namespace.add_external(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1648,50 +1645,11 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
-            core_added = true;
+            root_namespace.add_external(CORE.to_string(), core_namespace.clone());
         }
     }
 
-    let mut root = namespace::Root::from(root_module);
-
-    if core_added {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    if has_std_dep(graph, node) {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    Ok(root)
-}
-
-/// Find the `std` dependency, if it is a direct one, of the given node.
-fn has_std_dep(graph: &Graph, node: NodeIx) -> bool {
-    // If we are `std`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == STD {
-        return false;
-    }
-
-    // If we have `std` as a direct dep, use it.
-    graph.edges_directed(node, Direction::Outgoing).any(|edge| {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        matches!(&dep.name[..], STD)
-    })
+    Ok(root_namespace)
 }
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
@@ -1752,7 +1710,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: &mut namespace::Root,
+    namespace: namespace::Root,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
@@ -1780,6 +1738,7 @@ pub fn compile(
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
+        pkg.name,
         "compile to ast",
         "compile_to_ast",
         sway_core::compile_to_ast(
@@ -1812,13 +1771,12 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
-    let namespace = typed_program.root.namespace.clone();
-
     if handler.has_errors() {
         return fail(handler);
     }
 
     let asm_res = time_expr!(
+        pkg.name,
         "compile ast to asm",
         "compile_ast_to_asm",
         sway_core::ast_to_asm(
@@ -1839,6 +1797,7 @@ pub fn compile(
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let program_abi_res = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 fuel_abi::generate_program_abi(
@@ -1877,6 +1836,7 @@ pub fn compile(
             };
 
             let abi = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 evm_abi::generate_abi_program(typed_program, engines),
@@ -1899,22 +1859,29 @@ pub fn compile(
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
 
-    let asm = match asm_res {
+    let mut asm = match asm_res {
         Err(_) => return fail(handler),
         Ok(asm) => asm,
     };
 
     let bc_res = time_expr!(
+        pkg.name,
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se(), &sway_build_config),
+        sway_core::asm_to_bytecode(
+            &handler,
+            &mut asm,
+            source_map,
+            engines.se(),
+            &sway_build_config
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
 
     let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
-    let compiled = match bc_res {
+    let mut compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };
@@ -1923,9 +1890,12 @@ pub fn compile(
 
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
+    // Metadata to be placed into the binary.
+    let mut md = [0u8, 0, 0, 0, 0, 0, 0, 0];
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
+        let mut configurables_offset = compiled.bytecode.len() as u64;
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
             configurables.retain(|c| {
@@ -1934,12 +1904,22 @@ pub fn compile(
                     .contains_key(&c.name)
             });
             // Set the actual offsets in the JSON object
-            for (config, offset) in compiled.named_data_section_entries_offsets {
-                if let Some(idx) = configurables.iter().position(|c| c.name == config) {
-                    configurables[idx].offset = offset;
+            for (config, offset) in &compiled.named_data_section_entries_offsets {
+                if *offset < configurables_offset {
+                    configurables_offset = *offset;
+                }
+                if let Some(idx) = configurables.iter().position(|c| &c.name == config) {
+                    configurables[idx].offset = *offset;
                 }
             }
         }
+
+        md = configurables_offset.to_be_bytes();
+    }
+
+    // We know to set the metadata only for fuelvm right now.
+    if let BuildTarget::Fuel = pkg.target {
+        set_bytecode_configurables_offset(&mut compiled, &md);
     }
 
     metrics.bytecode_size = compiled.bytecode.len();
@@ -1953,11 +1933,85 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: namespace.root_module().clone(),
+        root_module: typed_program.namespace.root_ref().clone(),
         warnings,
         metrics,
     };
+    if sway_build_config.profile {
+        report_assembly_information(&asm, &compiled_package);
+    }
+
     Ok(compiled_package)
+}
+
+/// Reports assembly information for a compiled package to an external `dyno` process through `stdout`.
+fn report_assembly_information(
+    compiled_asm: &sway_core::CompiledAsm,
+    compiled_package: &CompiledPackage,
+) {
+    // Get the bytes of the compiled package.
+    let mut bytes = compiled_package.bytecode.bytes.clone();
+
+    // Attempt to get the data section offset out of the compiled package bytes.
+    let data_offset = u64::from_be_bytes(
+        bytes
+            .iter()
+            .skip(8)
+            .take(8)
+            .cloned()
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+    );
+    let data_section_size = bytes.len() as u64 - data_offset;
+
+    // Remove the data section from the compiled package bytes.
+    bytes.truncate(data_offset as usize);
+
+    // Calculate the unpadded size of each data section section.
+    // Implementation based directly on `sway_core::asm_generation::Entry::to_bytes`, referenced here:
+    // https://github.com/FuelLabs/sway/blob/afd6a6709e7cb11c676059a5004012cc466e653b/sway-core/src/asm_generation/fuel/data_section.rs#L147
+    fn calculate_entry_size(entry: &sway_core::asm_generation::Entry) -> u64 {
+        match &entry.value {
+            sway_core::asm_generation::Datum::Byte(value) => std::mem::size_of_val(value) as u64,
+
+            sway_core::asm_generation::Datum::Word(value) => std::mem::size_of_val(value) as u64,
+
+            sway_core::asm_generation::Datum::ByteArray(bytes)
+            | sway_core::asm_generation::Datum::Slice(bytes) => {
+                if bytes.len() % 8 == 0 {
+                    bytes.len() as u64
+                } else {
+                    ((bytes.len() + 7) & 0xfffffff8_usize) as u64
+                }
+            }
+
+            sway_core::asm_generation::Datum::Collection(items) => {
+                items.iter().map(calculate_entry_size).sum()
+            }
+        }
+    }
+
+    // Compute the assembly information to be reported.
+    let asm_information = sway_core::asm_generation::AsmInformation {
+        bytecode_size: bytes.len() as _,
+        data_section: sway_core::asm_generation::DataSectionInformation {
+            size: data_section_size,
+            used: compiled_asm
+                .0
+                .data_section
+                .iter_all_entries()
+                .map(|entry| calculate_entry_size(&entry))
+                .sum(),
+            value_pairs: compiled_asm.0.data_section.iter_all_entries().collect(),
+        },
+    };
+
+    // Report the assembly information to the `dyno` process through `stdout`.
+    println!(
+        "/dyno info {}",
+        serde_json::to_string(&asm_information).unwrap()
+    );
 }
 
 impl PkgEntry {
@@ -2062,6 +2116,7 @@ fn build_profile_from_opts(
         pkg,
         print,
         time_phases,
+        profile: profile_opt,
         build_profile,
         release,
         metrics_outfile,
@@ -2102,6 +2157,7 @@ fn build_profile_from_opts(
     profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
+    profile.profile |= profile_opt;
     if profile.metrics_outfile.is_none() {
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
@@ -2223,8 +2279,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         if let Some(outfile) = &binary_outfile {
             built_package.write_bytecode(outfile.as_ref())?;
         }
-        if let Some(outfile) = &debug_outfile {
-            built_package.write_debug_info(outfile.as_ref())?;
+        // Generate debug symbols if explicitly requested via -g flag or if in debug build
+        if debug_outfile.is_some() || build_profile.name == BuildProfile::DEBUG {
+            let debug_path = debug_outfile
+                .as_ref()
+                .map(|p| output_dir.join(p))
+                .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
+            built_package.write_debug_info(&debug_path)?;
         }
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));
@@ -2244,13 +2305,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
 
 fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
     let prog_ty_str = forc_util::program_type_str(&built_pkg.tree_type);
-    // The ansi_term formatters ignore the `std::fmt` right-align
+    // The ansiterm formatters ignore the `std::fmt` right-align
     // formatter, so we manually calculate the padding to align the program
     // type and name around the 10th column ourselves.
     let padded_ty_str = format!("{prog_ty_str:>10}");
     let padding = &padded_ty_str[..padded_ty_str.len() - prog_ty_str.len()];
-    let ty_ansi = ansi_term::Colour::Green.bold().paint(prog_ty_str);
-    let name_ansi = ansi_term::Style::new()
+    let ty_ansi = ansiterm::Colour::Green.bold().paint(prog_ty_str);
+    let name_ansi = ansiterm::Style::new()
         .bold()
         .paint(&built_pkg.descriptor.name);
     debug!("{padding}{ty_ansi} {name_ansi}");
@@ -2385,7 +2446,7 @@ pub fn build(
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let mut dep_namespace = match dependency_namespace(
+            let dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
@@ -2402,7 +2463,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                &mut dep_namespace,
+                dep_namespace,
                 &mut source_map,
                 experimental,
             )?;
@@ -2450,7 +2511,7 @@ pub fn build(
         };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let mut dep_namespace = match dependency_namespace(
+        let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
@@ -2476,7 +2537,7 @@ pub fn build(
             &descriptor,
             &profile,
             &engines,
-            &mut dep_namespace,
+            dep_namespace,
             &mut source_map,
             experimental,
         )?;
@@ -2556,7 +2617,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let mut dep_namespace = dependency_namespace(
+        let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
@@ -2587,7 +2648,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            &mut dep_namespace,
+            dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
@@ -2611,12 +2672,8 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut module = typed_program
-                    .root
-                    .namespace
-                    .program_id(engines)
-                    .read(engines, |m| m.clone());
-                module.set_span(
+                let mut lib_root = typed_program.namespace.root_ref().clone();
+                lib_root.current_package_root_module_mut().set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,
@@ -2625,7 +2682,7 @@ pub fn check(
                     )
                     .unwrap(),
                 );
-                lib_namespace_map.insert(node, module);
+                lib_namespace_map.insert(node, lib_root);
             }
             source_map.insert_dependency(manifest.dir());
         } else {

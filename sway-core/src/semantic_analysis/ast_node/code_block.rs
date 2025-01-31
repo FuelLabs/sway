@@ -11,15 +11,20 @@ impl ty::TyCodeBlock {
         ctx: &mut SymbolCollectionContext,
         code_block: &CodeBlock,
     ) -> Result<(), ErrorEmitted> {
-        let _ = ctx.scoped(engines, code_block.whole_block_span.clone(), |scoped_ctx| {
-            let _ = code_block
-                .contents
-                .iter()
-                .map(|node| ty::TyAstNode::collect(handler, engines, scoped_ctx, node))
-                .filter_map(|res| res.ok())
-                .collect::<Vec<_>>();
-            Ok(())
-        });
+        let _ = ctx.scoped(
+            engines,
+            code_block.whole_block_span.clone(),
+            None,
+            |scoped_ctx| {
+                let _ = code_block
+                    .contents
+                    .iter()
+                    .map(|node| ty::TyAstNode::collect(handler, engines, scoped_ctx, node))
+                    .filter_map(|res| res.ok())
+                    .collect::<Vec<_>>();
+                Ok(())
+            },
+        );
         Ok(())
     }
 
@@ -32,7 +37,7 @@ impl ty::TyCodeBlock {
         if !is_root {
             let code_block_result =
                 ctx.by_ref()
-                    .scoped(handler, Some(code_block.span()), |mut ctx| {
+                    .scoped(handler, Some(code_block.span()), |ctx| {
                         let evaluated_contents = code_block
                             .contents
                             .iter()
@@ -51,7 +56,7 @@ impl ty::TyCodeBlock {
 
         ctx.engines.te().clear_unifications();
         ctx.namespace()
-            .module(ctx.engines)
+            .current_module()
             .current_lexical_scope()
             .items
             .clear_symbols_unique_while_collecting_unifications();
@@ -63,7 +68,7 @@ impl ty::TyCodeBlock {
         ctx.by_ref()
             .with_collecting_unifications()
             .with_code_block_first_pass(true)
-            .scoped(handler, Some(code_block.span()), |mut ctx| {
+            .scoped(handler, Some(code_block.span()), |ctx| {
                 code_block.contents.iter().for_each(|node| {
                     ty::TyAstNode::type_check(&Handler::default(), ctx.by_ref(), node).ok();
                 });
@@ -73,7 +78,7 @@ impl ty::TyCodeBlock {
         ctx.engines.te().reapply_unifications(ctx.engines());
 
         ctx.by_ref()
-            .scoped(handler, Some(code_block.span()), |mut ctx| {
+            .scoped(handler, Some(code_block.span()), |ctx| {
                 let evaluated_contents = code_block
                     .contents
                     .iter()
@@ -91,8 +96,6 @@ impl ty::TyCodeBlock {
         ctx: &TypeCheckContext,
         code_block: &TyCodeBlock,
     ) -> (TypeId, Span) {
-        let engines = ctx.engines();
-
         let implicit_return_span = code_block
             .contents
             .iter()
@@ -122,12 +125,8 @@ impl ty::TyCodeBlock {
                                 ..
                             }),
                         ..
-                    } => Some(
-                        ctx.engines
-                            .te()
-                            .insert(engines, TypeInfo::Never, span.source_id()),
-                    ),
-                    // find the implicit return, if any, and use it as the code block's return type.
+                    } => Some(ctx.engines.te().id_of_never()),
+                    // Find the implicit return, if any, and use it as the code block's return type.
                     // The fact that there is at most one implicit return is an invariant held by the parser.
                     ty::TyAstNode {
                         content:
@@ -153,11 +152,7 @@ impl ty::TyCodeBlock {
                     _ => None,
                 }
             })
-            .unwrap_or_else(|| {
-                ctx.engines
-                    .te()
-                    .insert(engines, TypeInfo::Tuple(Vec::new()), span.source_id())
-            });
+            .unwrap_or_else(|| ctx.engines.te().id_of_unit());
 
         (block_type, span)
     }

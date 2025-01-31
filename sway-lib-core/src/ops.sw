@@ -1039,7 +1039,7 @@ impl BitwiseXor for u8 {
 }
 
 /// Trait to evaluate if one value is greater than or equal, or less than or equal to another of the same type.
-trait OrdEq: Ord + Eq {
+pub trait OrdEq: Ord + Eq {
 } {
     /// Evaluates if one value of the same type is greater or equal to than another.
     ///

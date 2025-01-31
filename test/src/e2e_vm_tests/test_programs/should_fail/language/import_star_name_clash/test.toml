@@ -49,7 +49,7 @@ category = "fail"
 # check: $()Unknown type name "MyEnum".
 
 # check: $()error
-# check: $()No method named "B" found for type "MyEnum".
+# check: $()No method "B(numeric)" found for type "MyEnum".
 
 # check: $()error
 # check: $()Mismatched types.
@@ -73,4 +73,4 @@ category = "fail"
 # nextln: $()expected: MyEnumVariants
 # nextln: $()found:    MyOtherEnumVariants.
 
-# check: $()Aborting due to 23 errors.
+# check: $()Aborting due to 32 errors.

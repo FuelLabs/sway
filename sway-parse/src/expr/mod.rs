@@ -603,6 +603,7 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
                     span,
                     parsed,
                     ty_opt,
+                    is_generated_b256: _,
                 } = lit_int;
                 if ty_opt.is_some() {
                     return Err(

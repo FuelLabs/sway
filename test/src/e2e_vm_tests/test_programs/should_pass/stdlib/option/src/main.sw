@@ -1,6 +1,6 @@
 script;
 
-mod data_structures;
+pub mod data_structures;
 mod tests;
 
 use tests::*;

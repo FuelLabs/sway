@@ -16,7 +16,6 @@ use sway_types::{ident::Ident, span::Span};
 // -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
-
 pub(crate) fn order_ast_nodes_by_dependency(
     handler: &Handler,
     engines: &Engines,
@@ -1029,7 +1028,6 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
         TypeInfo::Array(..) => "array",
-        TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
         TypeInfo::RawUntypedSlice => "raw untyped slice",
         TypeInfo::Ptr(..) => "__ptr",

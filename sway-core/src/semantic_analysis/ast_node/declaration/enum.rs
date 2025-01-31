@@ -16,21 +16,19 @@ impl ty::TyEnumDecl {
         decl_id: &ParsedDeclId<EnumDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let enum_decl = engines.pe().get_enum(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            enum_decl.name.clone(),
-            Declaration::EnumDeclaration(*decl_id),
-        )?;
+        let decl = Declaration::EnumDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl.clone())?;
 
         // create a namespace for the decl, used to create a scope for generics
-        let _ = ctx.scoped(engines, enum_decl.span.clone(), |mut _ctx| Ok(()));
+        let _ = ctx.scoped(engines, enum_decl.span.clone(), Some(decl), |mut _ctx| {
+            Ok(())
+        });
         Ok(())
     }
 
     pub fn type_check(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         decl: EnumDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let EnumDeclaration {
@@ -44,7 +42,7 @@ impl ty::TyEnumDecl {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        ctx.scoped(handler, Some(span.clone()), |mut ctx| {
+        ctx.scoped(handler, Some(span.clone()), |ctx| {
             // Type check the type parameters.
             let new_type_parameters = TypeParameter::type_check_type_params(
                 handler,
@@ -87,7 +85,6 @@ impl ty::TyEnumVariant {
         variant: EnumVariant,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
         let mut type_argument = variant.type_argument;
         type_argument.type_id = ctx
             .resolve_type(
@@ -97,7 +94,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         Ok(ty::TyEnumVariant {
             name: variant.name.clone(),
             type_argument,

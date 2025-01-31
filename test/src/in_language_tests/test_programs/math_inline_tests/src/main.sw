@@ -1,5 +1,7 @@
 library;
 
+mod modulo;
+
 use std::{flags::{disable_panic_on_overflow, disable_panic_on_unsafe_math}, registers::flags};
 
 #[test]

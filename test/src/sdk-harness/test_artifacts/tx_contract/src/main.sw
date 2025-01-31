@@ -135,7 +135,8 @@ impl TxContractTest for Contract {
 
         let mut iter = 0;
         while iter < expected_data_bytes.len() {
-            if data.get(iter).unwrap() != expected_data_bytes.get(iter).unwrap() {
+            if data.get(iter).unwrap() != expected_data_bytes.get(iter).unwrap()
+            {
                 return false
             }
             iter += 1;
