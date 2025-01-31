@@ -194,10 +194,9 @@ async fn setup_output_predicate(
         ],
     );
 
-    let mut wallets =
-        launch_custom_provider_and_get_wallets(wallets_config, None, None)
-            .await
-            .unwrap();
+    let mut wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None)
+        .await
+        .unwrap();
     let wallet1 = wallets.pop().unwrap();
     let wallet2 = wallets.pop().unwrap();
 
@@ -525,10 +524,7 @@ mod tx {
         let predicate_coin_amount = 100;
 
         // Predicate has no funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance, 0);
 
         // Prepare bytecode and subsections
@@ -550,10 +546,7 @@ mod tx {
         }
 
         // Predicate has funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(
             predicate_balance as usize,
             predicate_coin_amount as usize * subsections.len()
@@ -573,11 +566,8 @@ mod tx {
                 .unwrap();
 
             // Outputs for predicate
-            let predicate_output = wallet.get_asset_outputs_for_amount(
-                &wallet.address(),
-                *base_asset_id,
-                1,
-            );
+            let predicate_output =
+                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -594,10 +584,7 @@ mod tx {
         }
 
         // The predicate has spent it's funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance, 0);
     }
 
@@ -651,10 +638,7 @@ mod tx {
             let predicate_coin_amount = 100;
 
             // Predicate has no funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, 0);
             wallet
                 .transfer(
@@ -667,10 +651,7 @@ mod tx {
                 .unwrap();
 
             // Predicate has funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(
                 predicate_balance as usize,
                 predicate_coin_amount as usize * subsections.len()
@@ -683,11 +664,8 @@ mod tx {
                 .unwrap();
 
             // Outputs for predicate
-            let predicate_output = wallet.get_asset_outputs_for_amount(
-                &wallet.address(),
-                *base_asset_id,
-                1,
-            );
+            let predicate_output =
+                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -703,10 +681,7 @@ mod tx {
             provider.send_transaction(tx).await.unwrap();
 
             // The predicate has spent it's funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, 0);
         }
     }
@@ -741,10 +716,7 @@ mod tx {
         let predicate_coin_amount = 100;
 
         // Predicate has no funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance, 0);
 
         // Transfer enough funds to the predicate
@@ -759,10 +731,7 @@ mod tx {
             .unwrap();
 
         // Predicate has funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
         // Prepare blobs
@@ -805,10 +774,7 @@ mod tx {
             .unwrap();
 
         // The predicate has spent it's funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance, 0);
     }
 
@@ -849,7 +815,8 @@ mod tx {
             max_depth: 10,
             max_tokens: 100_000,
         })
-        .encode_data( // Blob and witnesses are just wrappers for Vec<u8>, and function the same in case of Transaction::Blob, so using blobs here instead of witnesses
+        .encode_data(
+            // Blob and witnesses are just wrappers for Vec<u8>, and function the same in case of Transaction::Blob, so using blobs here instead of witnesses
             0,
             blobs.len() as u64 + 1,
             blob.len() as u64,
@@ -863,10 +830,7 @@ mod tx {
         let predicate_coin_amount = 100;
 
         // Predicate has no funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance, 0);
         wallet
             .transfer(
@@ -879,10 +843,7 @@ mod tx {
             .unwrap();
 
         // Predicate has funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
         // Inputs for predicate
@@ -909,10 +870,7 @@ mod tx {
         provider.send_transaction(tx).await.unwrap();
 
         // The predicate has spent it's funds
-        let predicate_balance = predicate
-            .get_asset_balance(base_asset_id)
-            .await
-            .unwrap();
+        let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
         assert_eq!(predicate_balance, 0);
     }
 }
@@ -1020,7 +978,10 @@ mod inputs {
 
             let provider = wallet.provider().unwrap();
 
-            let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+            let tx_status = provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .unwrap();
             let receipts = tx_status.take_receipts_checked(None).unwrap();
             let response = handler.get_response(receipts).unwrap();
 
@@ -1079,10 +1040,7 @@ mod inputs {
                 let predicate_coin_amount = 100;
 
                 // Predicate has no funds
-                let predicate_balance = predicate
-                    .get_asset_balance(base_asset_id)
-                    .await
-                    .unwrap();
+                let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
                 assert_eq!(predicate_balance, 0);
                 wallet
                     .transfer(
@@ -1095,10 +1053,7 @@ mod inputs {
                     .unwrap();
 
                 // Predicate has funds
-                let predicate_balance = predicate
-                    .get_asset_balance(base_asset_id)
-                    .await
-                    .unwrap();
+                let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
                 assert_eq!(
                     predicate_balance as usize,
                     predicate_coin_amount as usize * subsections.len()
@@ -1111,11 +1066,8 @@ mod inputs {
                     .unwrap();
 
                 // Outputs for predicate
-                let predicate_output = wallet.get_asset_outputs_for_amount(
-                    &wallet.address(),
-                    *base_asset_id,
-                    1,
-                );
+                let predicate_output =
+                    wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
 
                 // Append the predicate to the transaction
                 builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -1131,10 +1083,7 @@ mod inputs {
                 provider.send_transaction(tx).await.unwrap();
 
                 // The predicate has spent it's funds
-                let predicate_balance = predicate
-                    .get_asset_balance(base_asset_id)
-                    .await
-                    .unwrap();
+                let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
                 assert_eq!(predicate_balance, 0);
             }
         }
@@ -1182,10 +1131,7 @@ mod inputs {
             let predicate_coin_amount = 100;
 
             // Predicate has no funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, 0);
             wallet
                 .transfer(
@@ -1198,10 +1144,7 @@ mod inputs {
                 .unwrap();
 
             // Predicate has funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
             // Inputs for predicate
@@ -1211,11 +1154,8 @@ mod inputs {
                 .unwrap();
 
             // Outputs for predicate
-            let predicate_output = wallet.get_asset_outputs_for_amount(
-                &wallet.address(),
-                *base_asset_id,
-                1,
-            );
+            let predicate_output =
+                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -1231,10 +1171,7 @@ mod inputs {
             provider.send_transaction(tx).await.unwrap();
 
             // The predicate has spent it's funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, 0);
         }
 
@@ -1294,9 +1231,7 @@ mod inputs {
 
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let recipient = message.recipient.hash;
-                let handler = contract_instance
-                    .methods()
-                    .get_input_message_recipient(1);
+                let handler = contract_instance.methods().get_input_message_recipient(1);
                 let mut builder = handler.transaction_builder().await.unwrap();
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
                     resource: CoinType::Message(message.clone()),
@@ -1307,7 +1242,10 @@ mod inputs {
                 let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
                 let receipts = tx_status.take_receipts_checked(None).unwrap();
                 let response = handler.get_response(receipts).unwrap();
 
@@ -1332,9 +1270,7 @@ mod inputs {
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let nonce = message.nonce;
 
-                let handler = contract_instance
-                    .methods()
-                    .get_input_message_nonce(1);
+                let handler = contract_instance.methods().get_input_message_nonce(1);
                 let mut builder = handler.transaction_builder().await.unwrap();
 
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
@@ -1346,7 +1282,10 @@ mod inputs {
                 let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
                 let receipts = tx_status.take_receipts_checked(None).unwrap();
                 let response = handler.get_response(receipts).unwrap();
 
@@ -1393,23 +1332,27 @@ mod inputs {
 
                 let message = &wallet.get_messages().await.unwrap()[0];
 
-                let handler = contract_instance
-                    .methods()
-                    .get_input_message_data_length(1);
+                let handler = contract_instance.methods().get_input_message_data_length(1);
                 let mut builder = handler.transaction_builder().await.unwrap();
 
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.adjust_for_fee(&mut builder, 1_000_000_000).await.unwrap();
+                wallet
+                    .adjust_for_fee(&mut builder, 1_000_000_000)
+                    .await
+                    .unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
                 let receipts = tx_status.take_receipts_checked(None).unwrap();
                 let response = handler.get_response(receipts).unwrap();
 
@@ -1433,13 +1376,11 @@ mod inputs {
                     generate_predicate_inputs(100, &wallet).await;
                 let provider = wallet.provider().unwrap();
 
-                let handler = contract_instance
-                    .methods()
-                    .get_input_predicate_length(1);
+                let handler = contract_instance.methods().get_input_predicate_length(1);
                 let mut builder = handler.transaction_builder().await.unwrap();
 
                 builder.inputs_mut().push(message);
-                
+
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
@@ -1448,7 +1389,10 @@ mod inputs {
 
                 let provider = wallet.provider().unwrap();
 
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
                 let receipts = tx_status.take_receipts_checked(None).unwrap();
                 let response = handler.get_response(receipts).unwrap();
 
@@ -1519,23 +1463,31 @@ mod inputs {
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let provider = wallet.provider().unwrap();
 
-                let handler = contract_instance
-                    .methods()
-                    .get_input_message_data(1, 0, Bytes(MESSAGE_DATA.into()));
+                let handler = contract_instance.methods().get_input_message_data(
+                    1,
+                    0,
+                    Bytes(MESSAGE_DATA.into()),
+                );
                 let mut builder = handler.transaction_builder().await.unwrap();
 
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.adjust_for_fee(&mut builder, 1_000_000_000).await.unwrap();
+                wallet
+                    .adjust_for_fee(&mut builder, 1_000_000_000)
+                    .await
+                    .unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
                 let receipts = tx_status.take_receipts_checked(None).unwrap();
                 let response = handler.get_response(receipts).unwrap();
 
@@ -1558,24 +1510,31 @@ mod inputs {
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let provider = wallet.provider().unwrap();
 
-                let handler = contract_instance
-                    .methods()
-                    .get_input_message_data(1, 1, Bytes(MESSAGE_DATA[1..].into()));
+                let handler = contract_instance.methods().get_input_message_data(
+                    1,
+                    1,
+                    Bytes(MESSAGE_DATA[1..].into()),
+                );
                 let mut builder = handler.transaction_builder().await.unwrap();
-
 
                 builder.inputs_mut().push(SdkInput::ResourceSigned {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.adjust_for_fee(&mut builder, 1_000_000_000).await.unwrap();
+                wallet
+                    .adjust_for_fee(&mut builder, 1_000_000_000)
+                    .await
+                    .unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
                 let receipts = tx_status.take_receipts_checked(None).unwrap();
                 let response = handler.get_response(receipts).unwrap();
                 assert!(response.value);
@@ -1635,7 +1594,7 @@ mod inputs {
                 let mut builder = handler.transaction_builder().await.unwrap();
 
                 builder.inputs_mut().push(message);
-                
+
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 builder.add_signer(wallet.clone()).unwrap();
@@ -1643,7 +1602,10 @@ mod inputs {
                 let tx = builder.build(provider).await.unwrap();
 
                 let provider = wallet.provider().unwrap();
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
                 let receipts = tx_status.take_receipts_checked(None).unwrap();
 
                 // Use the handler to get and decode the response using the receipt
@@ -1668,6 +1630,8 @@ mod outputs {
     use super::*;
 
     mod success {
+        use fuel_core_client::client::schema::schema::__fields::GasCosts::exp;
+
         use super::*;
 
         #[tokio::test]
@@ -1721,10 +1685,7 @@ mod outputs {
             let predicate_coin_amount = 100;
 
             // Predicate has no funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, 0);
 
             // Transfer funds to predicate
@@ -1739,10 +1700,7 @@ mod outputs {
                 .unwrap();
 
             // Predicate has funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, predicate_coin_amount);
 
             // Get contract ready for deployment
@@ -1826,8 +1784,8 @@ mod outputs {
                 .unwrap();
 
             let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
-
-            assert!(balance - transfer_amount == new_balance);
+            let expected_fee = 1;
+            assert_eq!(balance - transfer_amount - expected_fee, new_balance);
         }
 
         #[tokio::test]
@@ -1884,10 +1842,7 @@ mod outputs {
                 let predicate_coin_amount = 100;
 
                 // Predicate has no funds
-                let predicate_balance = predicate
-                    .get_asset_balance(base_asset_id)
-                    .await
-                    .unwrap();
+                let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
                 assert_eq!(predicate_balance, 0);
                 wallet
                     .transfer(
@@ -1900,10 +1855,7 @@ mod outputs {
                     .unwrap();
 
                 // Predicate has funds
-                let predicate_balance = predicate
-                    .get_asset_balance(base_asset_id)
-                    .await
-                    .unwrap();
+                let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
                 assert_eq!(
                     predicate_balance as usize,
                     predicate_coin_amount as usize * subsections.len()
@@ -1917,19 +1869,18 @@ mod outputs {
 
                 // Append the predicate to the transaction
                 builder.inputs.push(predicate_input.get(0).unwrap().clone());
-                builder
-                    .outputs
-                    .push(SdkOutput::change(wallet.address().into(), 0, *base_asset_id));
+                builder.outputs.push(SdkOutput::change(
+                    wallet.address().into(),
+                    0,
+                    *base_asset_id,
+                ));
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
                 provider.send_transaction(tx).await.unwrap();
 
                 // The predicate has spent it's funds
-                let predicate_balance = predicate
-                    .get_asset_balance(base_asset_id)
-                    .await
-                    .unwrap();
+                let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
                 assert_eq!(predicate_balance, 0);
             }
         }
@@ -1976,10 +1927,7 @@ mod outputs {
             let predicate_coin_amount = 100;
 
             // Predicate has no funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, 0);
             wallet
                 .transfer(
@@ -1992,10 +1940,7 @@ mod outputs {
                 .unwrap();
 
             // Predicate has funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance as usize, predicate_coin_amount as usize);
 
             // Inputs for predicate
@@ -2008,19 +1953,18 @@ mod outputs {
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
-            builder
-                .outputs
-                .push(SdkOutput::change(wallet.address().into(), 0, *base_asset_id));
+            builder.outputs.push(SdkOutput::change(
+                wallet.address().into(),
+                0,
+                *base_asset_id,
+            ));
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
             provider.send_transaction(tx).await.unwrap();
 
             // The predicate has spent it's funds
-            let predicate_balance = predicate
-                .get_asset_balance(base_asset_id)
-                .await
-                .unwrap();
+            let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
             assert_eq!(predicate_balance, 0);
         }
 
@@ -2058,34 +2002,32 @@ mod outputs {
             let mut tb = call_handler.transaction_builder().await.unwrap();
 
             // Inputs for predicate
-            let transfer_amount = 100;
-            let predicate_input = predicate
+            let transfer_amount = 99;
+            let predicate_inputs = predicate
                 .get_asset_inputs_for_amount(asset_id, transfer_amount, None)
                 .await
                 .unwrap();
 
             // Outputs for predicate
-            let predicate_output =
-                wallet.get_asset_outputs_for_amount(&wallet.address(), asset_id, transfer_amount);
+            let predicate_outputs =
+                wallet.get_asset_outputs_for_amount(wallet.address(), asset_id, transfer_amount);
 
             // Append the inputs and outputs to the transaction
-            tb.inputs.push(predicate_input.get(0).unwrap().clone());
-            tb.outputs.push(predicate_output.get(0).unwrap().clone());
-            tb.outputs.push(SdkOutput::Change {
-                to: wallet.address().into(),
-                amount: 0,
-                asset_id,
-            });
-
-            wallet.adjust_for_fee(&mut tb, 0).await.unwrap();
-            tb.add_signer(wallet.clone()).unwrap();
+            tb.inputs.extend(predicate_inputs);
+            tb.outputs.extend(predicate_outputs);
 
             let tx = tb.build(provider.clone()).await.unwrap();
-            let _tx_id = provider.send_transaction(tx).await.unwrap();
+            use fuels::types::transaction::Transaction;
+            dbg!(&tx.outputs());
+            let _ = provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .unwrap();
 
             // Assert the predicate balance has changed
             let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
-            assert!(balance - transfer_amount == new_balance);
+            let expected_fee = 1;
+            assert_eq!(balance - transfer_amount - expected_fee, new_balance);
         }
 
         #[tokio::test]
