@@ -26,7 +26,10 @@ use fuels::{
     },
 };
 use fuels_core::{
-    codec::{encode_fn_selector, ABIEncoder, DecoderConfig, EncoderConfig},
+    codec::{
+        encode_fn_selector, log_formatters_lookup, ABIDecoder, ABIEncoder, DecoderConfig,
+        EncoderConfig, LogDecoder,
+    },
     types::{
         bech32::Bech32ContractId,
         param_types::ParamType,
@@ -52,16 +55,20 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         mode,
         gas,
         external_contracts,
+        output,
     } = cmd;
     let node_url = get_node_url(&node, &None)?;
-    let provider: Provider = Provider::connect(node_url.clone()).await?;
+    let provider: Provider = Provider::connect(node_url).await?;
 
     let wallet = get_wallet(caller, provider).await?;
 
     if let Some(abi) = abi {
         // If ABI is provided, ensure function signature is just the selector
         let cmd::call::FuncType::Selector(selector) = function else {
-            bail!("Function must be a selector; e.g. \"transfer\"; got {:?}", function);
+            bail!(
+                "Function must be a selector; e.g. \"transfer\"; got {:?}",
+                function
+            );
         };
 
         let abi_str = match abi {
@@ -127,9 +134,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
 
         let provider = wallet.provider().unwrap();
         // TODO: log decoding would be required for verbose debugging mode
-        let log_decoder = fuels::core::codec::LogDecoder::new(
-            fuels::core::codec::log_formatters_lookup(vec![], contract_id),
-        );
+        let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
 
         let tx_policies = gas
             .as_ref()
@@ -225,11 +230,23 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             .take_receipts_checked(Some(&log_decoder))
             .expect("Failed to take receipts");
 
-        let token = ReceiptParser::new(&receipts, DecoderConfig::default())
+        let mut receipt_parser = ReceiptParser::new(&receipts, DecoderConfig::default());
+        let result = match output {
+            cmd::call::OutputFormat::Default => {
+                let data = receipt_parser
+                    .extract_contract_call_data(contract_id)
+                    .expect("Failed to extract contract call data");
+                ABIDecoder::default()
+                    .decode_as_debug_str(&output_param, data.as_slice())
+                    .expect("Failed to decode as debug string")
+            }
+            cmd::call::OutputFormat::Raw => {
+                let token = receipt_parser
             .parse_call(&Bech32ContractId::from(contract_id), &output_param)
             .expect("Failed to extract contract call data");
-
-        let result = token_to_string(&token).expect("Failed to convert token to string");
+                token_to_string(&token).expect("Failed to convert token to string")
+            }
+        };
 
         forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
         forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
@@ -339,7 +356,11 @@ mod tests {
                 .arg("--check")
                 .status()
                 .expect("Failed to execute forc fmt");
-            assert!(fmt_status.success(), "\"forc fmt --check\" failed for file: {}/src/main.sw", test_contract_dir.to_str().unwrap());
+            assert!(
+                fmt_status.success(),
+                "\"forc fmt --check\" failed for file: {}/src/main.sw",
+                test_contract_dir.to_str().unwrap()
+            );
 
             // Run forc build
             let status = Command::new("forc")
@@ -419,6 +440,7 @@ mod tests {
             mode: cmd::call::ExecutionMode::DryRun,
             gas: None,
             external_contracts: None,
+            output: cmd::call::OutputFormat::Raw,
         }
     }
 
@@ -743,7 +765,11 @@ mod tests {
             gas_forwarded: None,
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
-        assert_eq!(call(cmd).await.unwrap_err().to_string(), "Contract execution panicked with reason: PanicInstruction { reason: NotEnoughBalance, instruction: TRO { contract_id_addr: 0x12, output_index: 0x11, amount: 0x15, asset_id_addr: 0x10 } (bytes: 3d 49 15 50) }");
+        assert!(call(cmd)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("PanicInstruction { reason: NotEnoughBalance"));
         assert_eq!(get_contract_balance(id).await, 1);
 
         // contract call transfer funds to another address

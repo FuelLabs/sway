@@ -119,6 +119,24 @@ impl FromStr for ExecutionMode {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum OutputFormat {
+    #[default]
+    Default,
+    Raw,
+}
+
+impl FromStr for OutputFormat {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "default" => Ok(OutputFormat::Default),
+            "raw" => Ok(OutputFormat::Raw),
+            _ => Err(format!("Invalid output format: {}", s)),
+        }
+    }
+}
+
 /// Call a contract function.
 #[derive(Debug, Default, Parser, Clone)]
 #[clap(bin_name = "forc call", version)]
@@ -162,6 +180,10 @@ pub struct Command {
     /// to the node, and extract the contract addresses based on the revert reason
     #[clap(long, alias = "contracts")]
     pub external_contracts: Option<Vec<ContractId>>,
+
+    /// The output format to use; possible values: default, raw
+    #[clap(long, default_value = "default")]
+    pub output: OutputFormat,
 }
 
 fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {
