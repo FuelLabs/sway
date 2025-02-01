@@ -2732,7 +2732,7 @@ dependencies = [
  "pretty_assertions",
  "rand",
  "regex",
- "reqwest 0.12.9",
+ "reqwest",
  "rexpect 0.5.0",
  "rpassword",
  "serde",
