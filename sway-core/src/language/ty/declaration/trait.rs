@@ -87,6 +87,16 @@ pub enum TyTraitItem {
     Type(DeclRefTraitType),
 }
 
+impl Named for TyTraitItem {
+    fn name(&self) -> &sway_types::BaseIdent {
+        match self {
+            TyTraitItem::Fn(decl_ref) => decl_ref.name(),
+            TyTraitItem::Constant(decl_ref) => decl_ref.name(),
+            TyTraitItem::Type(decl_ref) => decl_ref.name(),
+        }
+    }
+}
+
 impl DisplayWithEngines for TyTraitItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{:?}", engines.help_out(self))

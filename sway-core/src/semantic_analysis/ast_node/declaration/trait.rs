@@ -418,6 +418,10 @@ impl TyTraitDecl {
                     let mut method = (*decl_engine.get_function(&decl_ref)).clone();
                     if debug {
                         dbg!(method.name.as_str());
+                        dbg!(&method.const_generic_parameters);
+                        dbg!(&method.const_generic_parameters);
+                        dbg!(ctx.engines.help_out(&type_id));
+                        dbg!(ctx.engines.help_out(&type_mapping));
                     }
                     let name = method.name.clone();
                     let r = if method
