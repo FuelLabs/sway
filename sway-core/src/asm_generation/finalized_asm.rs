@@ -136,8 +136,8 @@ fn to_bytecode_mut(
             }
             AllocatedOpcode::ConfigurablesOffsetPlaceholder => 8,
             AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
-            AllocatedOpcode::BLOB(count) => count.value as u64 * 4,
-            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value == 0 => 0,
+            AllocatedOpcode::BLOB(count) => count.value() as u64 * 4,
+            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value() == 0 => 0,
             _ => 4,
         }
     }
@@ -599,6 +599,8 @@ fn print_instruction(op: &Instruction) {
         Instruction::ECAL(x) => f("ECAL", x.unpack()),
         Instruction::BSIZ(x) => f("BSIZ", x.unpack()),
         Instruction::BLDD(x) => f("BLDD", x.unpack()),
+        Instruction::ECOP(x) => f("ECOP", x.unpack()),
+        Instruction::EPAR(x) => f("EPAR", x.unpack()),
     }
 }
 

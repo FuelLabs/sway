@@ -50,7 +50,7 @@ impl AllocatedAbstractInstructionSet {
             let remove = match &op.opcode {
                 // `cfei i0` and `cfsi i0` pairs.
                 Either::Left(AllocatedOpcode::CFEI(imm))
-                | Either::Left(AllocatedOpcode::CFSI(imm)) => imm.value == 0u32,
+                | Either::Left(AllocatedOpcode::CFSI(imm)) => imm.value() == 0u32,
                 // `cfe $zero` and `cfs $zero` pairs.
                 Either::Left(AllocatedOpcode::CFE(reg))
                 | Either::Left(AllocatedOpcode::CFS(reg)) => reg.is_zero(),
@@ -78,21 +78,21 @@ impl AllocatedAbstractInstructionSet {
             .fold(
                 (IndexMap::new(), IndexSet::new()),
                 |(mut reg_sets, mut active_sets), op| {
-                    let reg = match &op.opcode {
+                    let regs: Box<dyn Iterator<Item = &AllocatedRegister>> = match &op.opcode {
                         Either::Right(ControlFlowOp::PushAll(label)) => {
                             active_sets.insert(*label);
-                            None
+                            Box::new(std::iter::empty())
                         }
                         Either::Right(ControlFlowOp::PopAll(label)) => {
                             active_sets.swap_remove(label);
-                            None
+                            Box::new(std::iter::empty())
                         }
 
-                        Either::Left(alloc_op) => alloc_op.def_registers().into_iter().next(),
-                        Either::Right(ctrl_op) => ctrl_op.def_registers().into_iter().next(),
+                        Either::Left(alloc_op) => Box::new(alloc_op.def_registers().into_iter()),
+                        Either::Right(ctrl_op) => Box::new(ctrl_op.def_registers().into_iter()),
                     };
 
-                    if let Some(reg) = reg {
+                    for reg in regs {
                         for active_label in active_sets.clone() {
                             reg_sets
                                 .entry(active_label)
@@ -145,14 +145,14 @@ impl AllocatedAbstractInstructionSet {
                         .collect::<Vec<_>>();
 
                     let (mask_l, mask_h) = generate_mask(&regs);
-                    if mask_l.value != 0 {
+                    if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::PSHL(mask_l)),
                             comment: "save registers 16..40".into(),
                             owning_span: op.owning_span.clone(),
                         });
                     }
-                    if mask_h.value != 0 {
+                    if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::PSHH(mask_h)),
                             comment: "save registers 40..64".into(),
@@ -171,14 +171,14 @@ impl AllocatedAbstractInstructionSet {
                         .collect::<Vec<_>>();
 
                     let (mask_l, mask_h) = generate_mask(&regs);
-                    if mask_h.value != 0 {
+                    if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::POPH(mask_h)),
                             comment: "restore registers 40..64".into(),
                             owning_span: op.owning_span.clone(),
                         });
                     }
-                    if mask_l.value != 0 {
+                    if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
                             comment: "restore registers 16..40".into(),
@@ -334,7 +334,7 @@ impl AllocatedAbstractInstructionSet {
                             opcode: AllocatedOpcode::SRLI(
                                 r1.clone(),
                                 r1.clone(),
-                                VirtualImmediate12 { value: 2 },
+                                VirtualImmediate12::new_unchecked(2, "two must fit in 12 bits"),
                             ),
                             owning_span: owning_span.clone(),
                             comment: "get current instruction offset in 32-bit words".into(),
@@ -469,13 +469,13 @@ impl AllocatedAbstractInstructionSet {
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedOpcode::CFEI(ref op))
             | Either::Left(AllocatedOpcode::CFSI(ref op))
-                if op.value == 0 =>
+                if op.value() == 0 =>
             {
                 0
             }
 
             // Another special case for the blob opcode, used for testing.
-            Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value as u64,
+            Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value() as u64,
 
             // These ops will end up being exactly one op, so the cur_offset goes up one.
             Either::Right(Jump(..) | JumpIfNotZero(..) | Call(..) | LoadLabel(..))
@@ -612,7 +612,7 @@ impl AllocatedAbstractInstructionSet {
                                 new_ops.push(AllocatedAbstractOp {
                                     opcode: Either::Left(AllocatedOpcode::JMPB(
                                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate18 { value: 0 },
+                                        VirtualImmediate18::new_unchecked(0, "zero must fit in 18 bits"),
                                     )),
                                     ..op
                                 });
@@ -620,7 +620,7 @@ impl AllocatedAbstractInstructionSet {
                                 new_ops.push(AllocatedAbstractOp {
                                     opcode: Either::Left(AllocatedOpcode::JMPF(
                                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate18 { value: 0 },
+                                        VirtualImmediate18 ::new_unchecked(0, "zero must fit in 18 bits"),
                                     )),
                                     ..op
                                 });
@@ -656,7 +656,7 @@ impl AllocatedAbstractInstructionSet {
                                     opcode: Either::Left(AllocatedOpcode::JNZB(
                                         r1.clone(),
                                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate12 { value: 0 },
+                                        VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
                                     )),
                                     ..op
                                 });
@@ -665,7 +665,7 @@ impl AllocatedAbstractInstructionSet {
                                     opcode: Either::Left(AllocatedOpcode::JNZF(
                                         r1.clone(),
                                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate12 { value: 0 },
+                                        VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
                                     )),
                                     ..op
                                 });

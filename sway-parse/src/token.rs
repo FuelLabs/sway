@@ -736,6 +736,7 @@ fn lex_int_lit(
         span: span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
         ty_opt,
+        is_generated_b256: false,
     });
 
     Ok(Some(CommentedTokenTree::Tree(literal.into())))

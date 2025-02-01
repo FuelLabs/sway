@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-B299C98691745B40"
+
+[[package]]
+name = "pusha_popa_multiple_defreg"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-B299C98691745B40"
+dependencies = ["core"]

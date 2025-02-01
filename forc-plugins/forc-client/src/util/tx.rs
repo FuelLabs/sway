@@ -192,7 +192,7 @@ pub(crate) async fn select_account(
             let total_balance = account_balances
                 .iter()
                 .flat_map(|account| account.values())
-                .sum::<u64>();
+                .sum::<u128>();
             if total_balance == 0 {
                 let first_account = accounts
                     .get(&0)

@@ -10,7 +10,6 @@ repository.workspace = true
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-derivative.workspace = true
 dirs.workspace = true
 either.workspace = true
 ethabi.workspace = true
