@@ -172,6 +172,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             }
         };
 
+        let chain_id = provider.consensus_parameters().await?.chain_id();
         let (tx_status, tx_hash) = match mode {
             cmd::call::ExecutionMode::DryRun => {
                 let tx = call
@@ -179,7 +180,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                     .build_tx(tx_policies, variable_output_policy, &wallet)
                     .await
                     .expect("Failed to build transaction");
-                let tx_hash = tx.id(provider.chain_id());
+                let tx_hash = tx.id(chain_id);
                 let tx_status = provider
                     .dry_run(tx)
                     .await
@@ -199,7 +200,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                     .with_build_strategy(ScriptBuildStrategy::StateReadOnly)
                     .build(provider)
                     .await?;
-                let tx_hash = tx.id(provider.chain_id());
+                let tx_hash = tx.id(chain_id);
                 let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
                 let tx_status = provider
                     .dry_run_opt(tx, false, gas_price)
@@ -217,7 +218,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
                     .build_tx(tx_policies, variable_output_policy, &wallet)
                     .await
                     .expect("Failed to build transaction");
-                let tx_hash = tx.id(provider.chain_id());
+                let tx_hash = tx.id(chain_id);
                 let tx_status = provider
                     .send_transaction_and_await_commit(tx)
                     .await
@@ -242,8 +243,8 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             }
             cmd::call::OutputFormat::Raw => {
                 let token = receipt_parser
-            .parse_call(&Bech32ContractId::from(contract_id), &output_param)
-            .expect("Failed to extract contract call data");
+                    .parse_call(&Bech32ContractId::from(contract_id), &output_param)
+                    .expect("Failed to extract contract call data");
                 token_to_string(&token).expect("Failed to convert token to string")
             }
         };
@@ -348,7 +349,7 @@ mod tests {
                 .join("test")
                 .join("data")
                 .join("contract_with_types");
-            
+
             // Run forc fmt --check
             let fmt_status = Command::new("forc")
                 .current_dir(&test_contract_dir)
@@ -690,7 +691,8 @@ mod tests {
         let (_, id, wallet) = get_contract_instance().await;
 
         let provider = wallet.provider().unwrap();
-        let base_asset_id = provider.base_asset_id();
+        let consensus_parameters = provider.consensus_parameters().await.unwrap();
+        let base_asset_id = consensus_parameters.base_asset_id();
         let get_recipient_balance = |addr: Bech32Address| async move {
             provider
                 .get_asset_balance(&addr, *base_asset_id)
