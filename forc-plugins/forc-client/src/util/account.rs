@@ -24,6 +24,31 @@ pub enum ForcClientAccount {
 
 #[async_trait]
 impl Account for ForcClientAccount {
+    fn add_witnesses<Tb: TransactionBuilder>(&self, tb: &mut Tb) -> Result<()> {
+        tb.add_signer(self.clone())?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl ViewOnlyAccount for ForcClientAccount {
+    fn address(&self) -> &Bech32Address {
+        match self {
+            ForcClientAccount::Wallet(wallet) => wallet.address(),
+            ForcClientAccount::KmsSigner(account) => {
+                fuels_accounts::ViewOnlyAccount::address(account)
+            }
+        }
+    }
+
+    fn try_provider(&self) -> Result<&Provider> {
+        match self {
+            ForcClientAccount::Wallet(wallet) => wallet.try_provider(),
+            ForcClientAccount::KmsSigner(account) => Ok(account.provider()),
+        }
+    }
+
     async fn get_asset_inputs_for_amount(
         &self,
         asset_id: AssetId,
@@ -41,30 +66,6 @@ impl Account for ForcClientAccount {
                     .get_asset_inputs_for_amount(asset_id, amount, excluded_coins)
                     .await
             }
-        }
-    }
-
-    fn add_witnesses<Tb: TransactionBuilder>(&self, tb: &mut Tb) -> Result<()> {
-        tb.add_signer(self.clone())?;
-
-        Ok(())
-    }
-}
-
-impl ViewOnlyAccount for ForcClientAccount {
-    fn address(&self) -> &Bech32Address {
-        match self {
-            ForcClientAccount::Wallet(wallet) => wallet.address(),
-            ForcClientAccount::KmsSigner(account) => {
-                fuels_accounts::ViewOnlyAccount::address(account)
-            }
-        }
-    }
-
-    fn try_provider(&self) -> Result<&Provider> {
-        match self {
-            ForcClientAccount::Wallet(wallet) => wallet.try_provider(),
-            ForcClientAccount::KmsSigner(account) => Ok(account.provider()),
         }
     }
 }
