@@ -123,6 +123,14 @@ macro_rules! define_op_codes (
                 }
             }
 
+            pub fn op_code_as_str(&self) -> &'static str {
+                match self {
+                    $(Instruction::$op_name { .. } => {
+                        $s
+                    },)*
+                }
+            }
+
             #[allow(clippy::vec_init_then_push)]
             pub fn register_arg_idents(&self) -> Vec<Ident> {
                 match self {

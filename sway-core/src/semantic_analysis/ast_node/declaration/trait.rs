@@ -104,7 +104,7 @@ impl TyTraitDecl {
 
         // A temporary namespace for checking within the trait's scope.
         ctx.with_self_type(Some(self_type))
-            .scoped(handler, Some(span.clone()), |mut ctx| {
+            .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -396,6 +396,7 @@ impl TyTraitDecl {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
+
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,

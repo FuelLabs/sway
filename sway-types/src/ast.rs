@@ -6,14 +6,14 @@ pub enum Delimiter {
 }
 
 impl Delimiter {
-    pub fn as_open_char(self) -> char {
+    pub const fn as_open_char(self) -> char {
         match self {
             Delimiter::Parenthesis => '(',
             Delimiter::Brace => '{',
             Delimiter::Bracket => '[',
         }
     }
-    pub fn as_close_char(self) -> char {
+    pub const fn as_close_char(self) -> char {
         match self {
             Delimiter::Parenthesis => ')',
             Delimiter::Brace => '}',

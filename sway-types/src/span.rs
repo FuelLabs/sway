@@ -94,6 +94,32 @@ impl Span {
         })
     }
 
+    /// Creates an empty [Span], means a span whose [Span::start] and [Span::end] are the same.
+    /// The resulting empty [Span] will point to the start of the provided `span` and
+    /// be in the same file.
+    pub fn empty_at_start(span: &Span) -> Span {
+        Span::new(
+            span.src().clone(),
+            span.start(),
+            span.start(),
+            span.source_id().copied(),
+        )
+        .expect("the existing `span` is a valid `Span`")
+    }
+
+    /// Creates an empty [Span], means a span whose [Span::start] and [Span::end] are the same.
+    /// The resulting empty [Span] will point to the end of the provided `span` and
+    /// be in the same file.
+    pub fn empty_at_end(span: &Span) -> Span {
+        Span::new(
+            span.src().clone(),
+            span.end(),
+            span.end(),
+            span.source_id().copied(),
+        )
+        .expect("the existing `span` is a valid `Span`")
+    }
+
     pub fn from_string(source: String) -> Span {
         let len = source.len();
         Span::new(Arc::from(source), 0, len, None).unwrap()
@@ -202,6 +228,10 @@ impl Span {
 
     pub fn is_dummy(&self) -> bool {
         self.eq(&DUMMY_SPAN)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
     }
 }
 

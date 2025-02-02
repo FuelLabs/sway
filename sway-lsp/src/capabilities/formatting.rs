@@ -24,7 +24,7 @@ pub fn get_page_text_edit(
 ) -> Result<TextEdit, LanguageServerError> {
     // we only format if code is correct
     let formatted_code = formatter
-        .format(text.clone(), None)
+        .format(text.clone())
         .map_err(LanguageServerError::FormatError)?;
 
     let text_lines_count = text.split('\n').count();
