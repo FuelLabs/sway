@@ -1,0 +1,38 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+snapshot_kind: text
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_cfg_arg_with_invalid_item
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_cfg_arg_with_invalid_item
+   Compiling predicate attributes_invalid_cfg_arg_with_invalid_item (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_cfg_arg_with_invalid_item)
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_cfg_arg_with_invalid_item/src/main.sw:2:11
+  |
+1 | predicate;
+2 | #[cfg(c)] a
+  |           ^ Expected an item.
+  |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_cfg_arg_with_invalid_item/src/main.sw:1:7
+  |
+0 | predicate;
+1 | #[cfg(c)] a
+  |       ^ "c" is an invalid argument for attribute "cfg".
+  |       - help: Valid arguments are:
+  |       - help:   - program_type
+  |       - help:   - target
+  |       - help:   - experimental_error_type
+  |       - help:   - experimental_new_encoding
+  |       - help:   - experimental_partial_eq
+  |       - help:   - experimental_references
+  |       - help:   - experimental_storage_domains
+  |
+____
+
+  Aborting due to 2 errors.
+error: Failed to compile attributes_invalid_cfg_arg_with_invalid_item

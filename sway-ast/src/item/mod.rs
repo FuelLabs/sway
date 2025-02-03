@@ -44,6 +44,43 @@ pub enum ItemKind {
     Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
 
+impl ItemKind {
+    /// [ItemKind]'s friendly name string used for various reportings.
+    ///
+    /// Note that all friendly names are lowercase.
+    /// This is also the case for names containing acronyms like ABI.
+    /// For contexts in which acronyms need to be uppercase, like
+    /// e.g., error reporting, use `friendly_name_with_acronym` instead.
+    pub fn friendly_name(&self) -> &'static str {
+        use ItemKind::*;
+        match self {
+            Submodule(_) => "submodule (`mod`)",
+            Use(_) => "import (`use`)",
+            Struct(_) => "struct declaration",
+            Enum(_) => "enum declaration",
+            Fn(_) => "function declaration",
+            Trait(_) => "trait declaration",
+            Impl(item_impl) => match item_impl.trait_opt {
+                Some(_) => "ABI or trait implementation",
+                None =>  "inherent implementation",
+            },
+            Abi(_) => "abi declaration",
+            Const(_) => "constant declaration",
+            Storage(_) => "contract storage declaration",
+            Configurable(_) => "configurable declaration",
+            TypeAlias(_) => "type alias declaration",
+            Error(..) => "error",
+        }
+    }
+
+    pub fn friendly_name_with_acronym(&self) -> &'static str {
+        match self.friendly_name() {
+            "abi declaration" => "ABI declaration",
+            friendly_name => friendly_name,
+        }
+    }
+}
+
 impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {

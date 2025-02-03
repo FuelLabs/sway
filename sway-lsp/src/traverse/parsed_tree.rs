@@ -89,10 +89,14 @@ impl<'a> ParsedTree<'a> {
 
 impl Parse for AttributesMap {
     fn parse(&self, ctx: &ParseContext) {
-        self.par_iter()
-            .filter(|(kind, ..)| **kind != AttributeKind::DocComment)
-            .flat_map(|(.., attrs)| attrs)
-            .for_each_with(ctx, |ctx, attribute| {
+        // TODO-IG!: Return parallel iteration.
+        // Note that in practice, most of the time attributes are empty,
+        // or have a very few elements. Therefore, using parallel iteration
+        // does not pay off.
+        self
+            .all()
+            .filter(|attribute| !attribute.is_doc_comment())
+            .for_each(|attribute| {
                 ctx.tokens.insert(
                     ctx.ident(&attribute.name),
                     Token::from_parsed(

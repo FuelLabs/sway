@@ -123,6 +123,7 @@ pub fn lex_commented(
         source_id,
         stream,
     };
+    // TODO-IG!: Remove `gather_module_docs`.
     let mut gather_module_docs = false;
     let mut file_start_offset: usize = 0;
 
@@ -373,13 +374,15 @@ fn lex_line_comment(
     let doc_style = match (sp.as_str().chars().nth(2), sp.as_str().chars().nth(3)) {
         // `//!` is an inner line doc comment.
         (Some('!'), _) => {
-            if index - offset == 0 || gather_module_docs {
-                // TODO(#4112): remove this conditional block to enable
-                // inner doc comment attributes for all items
-                Some(DocStyle::Inner)
-            } else {
-                None
-            }
+            Some(DocStyle::Inner)
+            // TODO-IG!: Remove `gather_module_docs`.
+            // if index - offset == 0 || gather_module_docs {
+            //     // TODO(#4112): remove this conditional block to enable
+            //     // inner doc comment attributes for all items
+            //     Some(DocStyle::Inner)
+            // } else {
+            //     None
+            // }
         }
         // `////` (more than 3 slashes) is not considered a doc comment.
         (Some('/'), Some('/')) => None,

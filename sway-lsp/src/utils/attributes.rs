@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 use crate::core::token::{ParsedAstToken, Token, TokenAstNode, TypedAstToken};
 use sway_core::{
-    language::{parsed::Declaration, ty},
-    transform, Engines,
+    fuel_prelude::fuel_vm::call, language::{parsed::Declaration, ty}, transform, Engines
 };
 
 /// Gets attributes map from typed token, falling back to parsed AST node if needed.
@@ -103,28 +102,26 @@ where
 
 pub fn doc_comment_attributes<F>(engines: &Engines, token: &Token, mut callback: F)
 where
-    F: FnMut(&[transform::Attribute]),
+    F: FnMut(&[&transform::Attribute]),
 {
+    // TODO-IG!: Rename attributes_map, attribute_map
     attributes_map(engines, token, |attribute_map| {
-        let attrs = attribute_map
-            .get(&transform::AttributeKind::DocComment)
-            .map(Vec::as_slice);
-        if let Some(attrs) = attrs {
-            callback(attrs);
+        let attrs = attribute_map.of_kind(transform::AttributeKind::DocComment).collect::<Vec<_>>();
+        if !attrs.is_empty() {
+            callback(attrs.as_slice())
         }
     });
 }
 
 pub fn storage_attributes<F>(engines: &Engines, token: &Token, callback: F)
 where
-    F: Fn(&[transform::Attribute]),
+    F: Fn(&[&transform::Attribute]),
 {
+    // TODO-IG!: Rename attributes_map, attribute_map
     attributes_map(engines, token, |attribute_map| {
-        let attrs = attribute_map
-            .get(&transform::AttributeKind::Storage)
-            .map(Vec::as_slice);
-        if let Some(attrs) = attrs {
-            callback(attrs);
+        let attrs = attribute_map.of_kind(transform::AttributeKind::Storage).collect::<Vec<_>>();
+        if !attrs.is_empty() {
+            callback(attrs.as_slice())
         }
     });
 }

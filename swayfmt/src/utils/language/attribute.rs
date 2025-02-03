@@ -13,7 +13,7 @@ use sway_ast::{
     keywords::{HashToken, Token},
     CommaToken,
 };
-use sway_types::{ast::Delimiter, constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
+use sway_types::{ast::Delimiter, Spanned};
 
 impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     fn format(
@@ -88,7 +88,7 @@ impl Format for AttributeDecl {
             .attribute
             .get()
             .into_iter()
-            .partition(|a| a.name.as_str() == DOC_COMMENT_ATTRIBUTE_NAME);
+            .partition(|a| a.is_doc_comment());
 
         // invariant: doc comment attributes are singleton lists
         if let Some(attr) = doc_comment_attrs.into_iter().next() {
@@ -116,6 +116,7 @@ impl Format for AttributeDecl {
         // invariant: attribute lists cannot be empty
         // `#`
         match &self.hash_kind {
+            // TODO-IG! Implement this without throwing error.
             AttributeHashKind::Inner(_) => return Err(FormatterError::HashBangAttributeError),
             AttributeHashKind::Outer(_hash_token) => {
                 write!(formatted_code, "{}", HashToken::AS_STR)?;

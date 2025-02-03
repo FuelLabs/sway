@@ -60,15 +60,20 @@ impl Handler {
     ) -> Result<T, ErrorEmitted> {
         let scoped_handler = Handler::default();
         let closure_res = f(&scoped_handler);
-        let had_errors = scoped_handler.has_errors();
 
-        self.append(scoped_handler);
-
-        if had_errors {
-            Err(ErrorEmitted { _priv: () })
-        } else {
-            closure_res
+        match self.append(scoped_handler) {
+            Some(err) => Err(err),
+            None => closure_res,
         }
+        // let had_errors = scoped_handler.has_errors();
+
+        // self.append(scoped_handler);
+
+        // if had_errors {
+        //     Err(ErrorEmitted { _priv: () })
+        // } else {
+        //     closure_res
+        // }
     }
 
     /// Extract all the warnings and errors from this handler.
@@ -77,13 +82,21 @@ impl Handler {
         (inner.errors, inner.warnings)
     }
 
-    pub fn append(&self, other: Handler) {
+    pub fn append(&self, other: Handler) -> Option<ErrorEmitted> {
+        let other_has_errors = other.has_errors();
+
         let (errors, warnings) = other.consume();
         for warn in warnings {
             self.emit_warn(warn);
         }
         for err in errors {
             self.emit_err(err);
+        }
+
+        if other_has_errors {
+            Some(ErrorEmitted { _priv: () })
+        } else {
+            None
         }
     }
 

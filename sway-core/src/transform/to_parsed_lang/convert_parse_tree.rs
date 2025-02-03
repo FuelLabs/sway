@@ -1,17 +1,11 @@
 use crate::{
     ast_elements::{length::NumericLength, type_parameter::ConstGenericParameter},
-    compiler_generated::{
+    attr_decls_to_attributes, compiler_generated::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
-    },
-    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId},
-    language::{parsed::*, *},
-    transform::{attribute::*, to_parsed_lang::context::Context},
-    type_system::*,
-    BuildTarget, Engines,
+    }, decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId}, language::{parsed::*, *}, transform::{attribute::*, to_parsed_lang::context::Context}, type_system::*, BuildTarget, Engines
 };
 use either::Either;
-use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
     assignable::ElementAccess,
@@ -19,7 +13,7 @@ use sway_ast::{
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
     generics::GenericParam,
     ty::TyTupleDescriptor,
-    AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
+    AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents,
     CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
     FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
     Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
@@ -29,24 +23,17 @@ use sway_ast::{
     Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
 use sway_features::ExperimentalFeatures;
+use sway_ir::value;
 use sway_types::{
-    constants::{
-        ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
-        DEPRECATED_ATTRIBUTE_NAME, DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME,
-        FALLBACK_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME,
-        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
-        TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
-    },
     integer_bits::IntegerBits,
     BaseIdent,
 };
 use sway_types::{Ident, Span, Spanned};
 
 use std::{
-    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr, sync::Arc,
+    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr,
 };
 
 pub fn convert_parse_tree(
@@ -102,7 +89,7 @@ pub fn module_to_sway_parse_tree(
 fn ast_node_is_test_fn(engines: &Engines, node: &AstNode) -> bool {
     if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(decl_id)) = node.content {
         let decl = engines.pe().get_function(&decl_id);
-        if decl.attributes.contains_key(&AttributeKind::Test) {
+        if decl.attributes.has_any_of_kind(AttributeKind::Test) {
             return true;
         }
     }
@@ -114,46 +101,28 @@ pub fn item_to_ast_nodes(
     handler: &Handler,
     engines: &Engines,
     item: Item,
+    // TODO-IG!: Remove `is_root` and `prev_item`. Replace with: `item_can_be_submodule`.
     is_root: bool,
     prev_item: Option<Annotated<ItemKind>>,
     override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
-    if !cfg_eval(context, handler, &attributes, context.experimental)? {
+    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item.attribute_list, |attr| attr.can_annotate_item_kind(&item.value), item.value.friendly_name_with_acronym());
+    // TODO: Remove the special handling for submodules (`mod`) once
+    //       https://github.com/FuelLabs/sway/issues/6879 is fixed.
+    if !matches!(item.value, ItemKind::Submodule(_)) && !cfg_eval(context, handler, &attributes, context.experimental)? {
         return Ok(vec![]);
     }
+
+    let attributes_error_emitted = handler.append(attributes_map_handler);
 
     let decl = |d| vec![AstNodeContent::Declaration(d)];
 
     let span = item.span();
     let contents = match item.value {
         ItemKind::Submodule(submodule) => {
-            // Check that Dependency is not annotated
-            if attributes.contains_key(&AttributeKind::DocComment) {
-                let error = ConvertParseTreeError::CannotDocCommentDependency {
-                    span: attributes
-                        .get(&AttributeKind::DocComment)
-                        .unwrap()
-                        .last()
-                        .unwrap()
-                        .span
-                        .clone(),
-                };
-                handler.emit_err(error.into());
-            }
-            for (attribute_kind, attributes) in attributes.iter() {
-                if attribute_kind != &AttributeKind::DocComment {
-                    for attribute in attributes {
-                        let error = ConvertParseTreeError::CannotAnnotateDependency {
-                            span: attribute.span.clone(),
-                        };
-                        handler.emit_err(error.into());
-                    }
-                }
-            }
-            // Check that Dependency comes after only other Dependencies
+            // Check that `mod` comes after only other `mod`s
             let emit_expected_dep_at_beginning = || {
-                let error = ConvertParseTreeError::ExpectedDependencyAtBeginning {
+                let error = ConvertParseTreeError::ExpectedModuleAtBeginning {
                     span: submodule.span(),
                 };
                 handler.emit_err(error.into());
@@ -272,13 +241,17 @@ pub fn item_to_ast_nodes(
         }
     };
 
-    Ok(contents
-        .into_iter()
-        .map(|content| AstNode {
-            span: span.clone(),
-            content,
-        })
-        .collect())
+    match attributes_error_emitted {
+        Some(err) => Err(err),
+        None => Ok(contents
+            .into_iter()
+            .map(|content| AstNode {
+                span: span.clone(),
+                content,
+            })
+            .collect()
+        ),
+    }
 }
 
 fn item_use_to_use_statements(
@@ -393,6 +366,7 @@ fn use_tree_to_use_statements(
     }
 }
 
+// TODO-IG!: Change all usages and remove `emit_all`.
 fn emit_all(handler: &Handler, errors: Vec<ConvertParseTreeError>) -> Option<ErrorEmitted> {
     errors
         .into_iter()
@@ -406,49 +380,58 @@ fn item_struct_to_struct_declaration(
     item_struct: ItemStruct,
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
+    // TODO-IG!: Use handler.scope() and remove `errors`.
     // FIXME(Centril): We shouldn't be collecting into a temporary  `errors` here. Recover instead!
-    let mut errors = Vec::new();
     let span = item_struct.span();
     let fields = item_struct
         .fields
         .into_inner()
         .into_iter()
         .map(|type_field| {
-            let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
+            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&type_field.attribute_list, |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::StructField), "struct field");
+            
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(type_field_to_struct_field(
+
+            let attributes_error_emitted = handler.append(attributes_map_handler);
+            
+            let struct_field = type_field_to_struct_field(
                 context,
                 handler,
                 engines,
                 type_field.value,
                 attributes,
-            )?))
+            )?;
+
+            match attributes_error_emitted {
+                Some(err) => Err(err),
+                None => Ok(Some(struct_field)),
+            }
         })
         .filter_map_ok(|field| field)
         .collect::<Result<Vec<_>, _>>()?;
 
-    if fields.iter().any(
-        |field| matches!(&&*engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
-    ) {
-        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
-    }
-
-    // Make sure each struct field is declared once
-    let mut names_of_fields = std::collections::HashSet::new();
-    for v in &fields {
-        if !names_of_fields.insert(v.name.clone()) {
-            errors.push(ConvertParseTreeError::DuplicateStructField {
-                name: v.name.clone(),
-                span: v.name.span(),
-            });
+    handler.scope(|handler| {
+        if fields.iter().any(
+            |field| matches!(&&*engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
+        ) {
+            handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
         }
-    }
 
-    if let Some(emitted) = emit_all(handler, errors) {
-        return Err(emitted);
-    }
+        // Make sure each struct field is declared once
+        let mut names_of_fields = std::collections::HashSet::new();
+        for field in &fields {
+            if !names_of_fields.insert(field.name.clone()) {
+                handler.emit_err(ConvertParseTreeError::DuplicateStructField {
+                    name: field.name.clone(),
+                    span: field.name.span(),
+                }.into());
+            }
+        }
+
+        Ok(())
+    })?;
 
     let (type_parameters, _) = generic_params_opt_to_type_parameters(
         context,
@@ -465,6 +448,7 @@ fn item_struct_to_struct_declaration(
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
     });
+
     Ok(struct_declaration_id)
 }
 
@@ -475,7 +459,6 @@ fn item_enum_to_enum_declaration(
     item_enum: ItemEnum,
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
-    let mut errors = Vec::new();
     let span = item_enum.span();
     let variants = item_enum
         .fields
@@ -483,42 +466,51 @@ fn item_enum_to_enum_declaration(
         .into_iter()
         .enumerate()
         .map(|(tag, type_field)| {
-            let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
+            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&type_field.attribute_list, |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::EnumField), "enum variant");
+
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(type_field_to_enum_variant(
+
+            let attributes_error_emitted = handler.append(attributes_map_handler);
+
+            let enum_variant = type_field_to_enum_variant(
                 context,
                 handler,
                 engines,
                 type_field.value,
                 attributes,
                 tag,
-            )?))
+            )?;
+
+            match attributes_error_emitted {
+                Some(err) => Err(err),
+                None => Ok(Some(enum_variant)),
+            }
         })
         .filter_map_ok(|field| field)
         .collect::<Result<Vec<_>, _>>()?;
 
-    if variants.iter().any(|variant| {
-       matches!(&&*engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
-    }) {
-        errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
-    }
-
-    // Make sure each enum variant is declared once
-    let mut names_of_variants = std::collections::HashSet::new();
-    for v in variants.iter() {
-        if !names_of_variants.insert(v.name.clone()) {
-            errors.push(ConvertParseTreeError::DuplicateEnumVariant {
-                name: v.name.clone(),
-                span: v.name.span(),
-            });
+    handler.scope(|handler| {
+        if variants.iter().any(|variant| {
+        matches!(&&*engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
+        }) {
+            handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
         }
-    }
 
-    if let Some(emitted) = emit_all(handler, errors) {
-        return Err(emitted);
-    }
+        // Make sure each enum variant is declared once
+        let mut names_of_variants = std::collections::HashSet::new();
+        for v in variants.iter() {
+            if !names_of_variants.insert(v.name.clone()) {
+                handler.emit_err(ConvertParseTreeError::DuplicateEnumVariant {
+                    name: v.name.clone(),
+                    span: v.name.span(),
+                }.into());
+            }
+        }
+
+        Ok(())
+    })?;
 
     let (type_parameters, _) = generic_params_opt_to_type_parameters(
         context,
@@ -611,38 +603,13 @@ pub fn item_fn_to_function_declaration(
     Ok(decl_id)
 }
 
+// TODO-IG!: Remove whole function.
 fn get_attributed_purity(
     _context: &mut Context,
     handler: &Handler,
     attributes: &AttributesMap,
 ) -> Result<Purity, ErrorEmitted> {
-    let mut purity = Purity::Pure;
-    let mut add_impurity = |new_impurity, counter_impurity| {
-        if purity == Purity::Pure {
-            purity = new_impurity;
-        } else if purity == counter_impurity {
-            purity = Purity::ReadsWrites;
-        }
-    };
-    match attributes.get(&AttributeKind::Storage) {
-        Some(attrs) if !attrs.is_empty() => {
-            for arg in attrs.iter().flat_map(|attr| &attr.args) {
-                match arg.name.as_str() {
-                    STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
-                    STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
-                    _otherwise => {
-                        let error = ConvertParseTreeError::InvalidAttributeArgument {
-                            attribute: "storage".to_owned(),
-                            span: arg.span(),
-                        };
-                        return Err(handler.emit_err(error.into()));
-                    }
-                }
-            }
-            Ok(purity)
-        }
-        _otherwise => Ok(Purity::Pure),
-    }
+    Ok(attributes.purity())
 }
 
 fn where_clause_to_trait_constraints(
@@ -683,39 +650,53 @@ fn item_trait_to_trait_declaration(
         .into_inner()
         .into_iter()
         .map(|annotated| {
-            let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
+            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&annotated.attribute_list, |attr| attr.can_annotate_abi_or_trait_item(&annotated.value, TraitItemParent::Trait), annotated.value.friendly_name());
+
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(match annotated.value {
+
+            let attributes_error_emitted = handler.append(attributes_map_handler);
+
+            let trait_item = match annotated.value {
                 ItemTraitItem::Fn(fn_sig, _) => {
                     fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
                         .map(TraitItem::TraitFn)
                 }
                 ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                    context, handler, engines, const_decl, attributes, false,
-                )
-                .map(TraitItem::Constant),
+                        context, handler, engines, const_decl, attributes, false,
+                    )
+                    .map(TraitItem::Constant),
                 ItemTraitItem::Type(trait_type, _) => trait_type_to_trait_type_declaration(
-                    context, handler, engines, trait_type, attributes,
-                )
-                .map(TraitItem::Type),
+                        context, handler, engines, trait_type, attributes,
+                    )
+                    .map(TraitItem::Type),
                 ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
-            }?))
+            }?;
+
+            match attributes_error_emitted {
+                Some(err) => Err(err),
+                None => Ok(Some(trait_item)),
+            }
         })
         .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
+
     let methods = match item_trait.trait_defs_opt {
         None => Vec::new(),
         Some(trait_defs) => trait_defs
             .into_inner()
             .into_iter()
             .map(|item_fn| {
-                let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
+                let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item_fn.attribute_list, |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Trait), "provided trait function");
+
                 if !cfg_eval(context, handler, &attributes, context.experimental)? {
                     return Ok(None);
                 }
-                Ok(Some(item_fn_to_function_declaration(
+
+                let attributes_error_emitted = handler.append(attributes_map_handler);
+
+                let function_declaration_id = item_fn_to_function_declaration(
                     context,
                     handler,
                     engines,
@@ -724,7 +705,12 @@ fn item_trait_to_trait_declaration(
                     item_trait.generics.clone(),
                     item_trait.where_clause_opt.clone(),
                     None,
-                )?))
+                )?;
+
+                match attributes_error_emitted {
+                    Some(err) => Err(err),
+                    None => Ok(Some(function_declaration_id)),
+                }
             })
             .filter_map_ok(|fn_decl| fn_decl)
             .collect::<Result<_, _>>()?,
@@ -755,16 +741,22 @@ pub fn item_impl_to_declaration(
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
     let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
+    let impl_item_parent =  (&*engines.te().get(implementing_for.type_id)).into();
+
     let items = item_impl
         .contents
         .into_inner()
         .into_iter()
         .map(|item| {
-            let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
+            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item.attribute_list, |attr| attr.can_annotate_impl_item(&item.value, impl_item_parent), item.value.friendly_name(impl_item_parent));
+
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(match item.value {
+
+            let attributes_error_emitted = handler.append(attributes_map_handler);
+
+            let impl_item = match item.value {
                 sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
                     context,
                     handler,
@@ -784,7 +776,12 @@ pub fn item_impl_to_declaration(
                     context, handler, engines, type_item, attributes,
                 )
                 .map(ImplItem::Type),
-            }?))
+            }?;
+
+            match attributes_error_emitted {
+                Some(err) => Err(err),
+                None => Ok(Some(impl_item)),
+            }
         })
         .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
@@ -906,12 +903,15 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|annotated| {
-                    let attributes =
-                        item_attrs_to_map(context, handler, &annotated.attribute_list)?;
+                    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&annotated.attribute_list, |attr| attr.can_annotate_abi_or_trait_item(&annotated.value, TraitItemParent::Abi), annotated.value.friendly_name());
+
                     if !cfg_eval(context, handler, &attributes, context.experimental)? {
                         return Ok(None);
                     }
-                    Ok(Some(match annotated.value {
+
+                    let attributes_error_emitted = handler.append(attributes_map_handler);
+
+                    let trait_item = match annotated.value {
                         ItemTraitItem::Fn(fn_signature, _) => {
                             let trait_fn = fn_signature_to_trait_fn(
                                 context,
@@ -938,7 +938,12 @@ fn item_abi_to_abi_declaration(
                         )
                         .map(TraitItem::Type),
                         ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
-                    }?))
+                    }?;
+
+                    match attributes_error_emitted {
+                        Some(err) => Err(err),
+                        None => Ok(Some(trait_item)),
+                    }
                 })
                 .filter_map_ok(|item| item)
                 .collect::<Result<_, _>>()?
@@ -953,10 +958,14 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| {
-                    let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
+                    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item_fn.attribute_list, |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Abi), "provided ABI function");
+
                     if !cfg_eval(context, handler, &attributes, context.experimental)? {
                         return Ok(None);
                     }
+
+                    let attributes_error_emitted = handler.append(attributes_map_handler);
+
                     let function_declaration_id = item_fn_to_function_declaration(
                         context,
                         handler,
@@ -967,6 +976,7 @@ fn item_abi_to_abi_declaration(
                         None,
                         None,
                     )?;
+
                     let function_declaration = engines.pe().get_function(&function_declaration_id);
                     error_if_self_param_is_not_allowed(
                         context,
@@ -975,7 +985,11 @@ fn item_abi_to_abi_declaration(
                         &function_declaration.parameters,
                         "a method provided by ABI",
                     )?;
-                    Ok(Some(function_declaration_id))
+
+                    match attributes_error_emitted {
+                        Some(err) => Err(err),
+                        None => Ok(Some(function_declaration_id)),
+                    }
                 })
                 .filter_map_ok(|fn_decl| fn_decl)
                 .collect::<Result<_, _>>()?,
@@ -1073,17 +1087,26 @@ fn item_storage_to_storage_declaration(
         .into_inner()
         .into_iter()
         .map(|storage_entry| {
-            let attributes = item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
+            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&storage_entry.attribute_list, |attr| attr.can_annotate_storage_entry(), storage_entry.value.friendly_kind_name());
+
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(storage_entry_to_storage_entry(
+
+            let attributes_error_emitted = handler.append(attributes_map_handler);
+    
+            let storage_entry = storage_entry_to_storage_entry(
                 context,
                 handler,
                 engines,
                 storage_entry.value,
                 attributes,
-            )?))
+            )?;
+
+            match attributes_error_emitted {
+                Some(err) => Err(err),
+                None => Ok(Some(storage_entry)),
+            }
         })
         .filter_map_ok(|entry| entry)
         .collect::<Result<_, _>>()?;
@@ -1154,19 +1177,27 @@ fn item_configurable_to_configurable_declarations(
         .into_inner()
         .into_iter()
         .map(|configurable_field| {
-            let attributes =
-                item_attrs_to_map(context, handler, &configurable_field.attribute_list)?;
+            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&configurable_field.attribute_list, |attr| attr.can_annotate_configurable_field(), "configurable field");
+
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(configurable_field_to_configurable_declaration(
+
+            let attributes_error_emitted = handler.append(attributes_map_handler);
+    
+            let configurable_decl = configurable_field_to_configurable_declaration(
                 context,
                 handler,
                 engines,
                 configurable_field.value,
                 attributes,
                 item_configurable_keyword_span.clone(),
-            )?))
+            )?;
+
+            match attributes_error_emitted {
+                Some(err) => Err(err),
+                None => Ok(Some(configurable_decl)),
+            }
         })
         .filter_map_ok(|decl| decl)
         .collect::<Result<_, _>>()?;
@@ -2608,18 +2639,26 @@ fn storage_entry_to_storage_entry(
             .into_inner()
             .into_iter()
             .flat_map(|storage_entry| {
-                let attributes =
-                    item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
+                let (attributes_map_handler, attributes) = attr_decls_to_attributes(&storage_entry.attribute_list, |attr| attr.can_annotate_storage_entry(), storage_entry.value.friendly_kind_name());
+
                 if !cfg_eval(context, handler, &attributes, context.experimental)? {
                     return Ok::<Option<StorageEntry>, ErrorEmitted>(None);
                 }
-                Ok(Some(storage_entry_to_storage_entry(
+
+                let attributes_error_emitted = handler.append(attributes_map_handler);
+
+                let storage_entry = storage_entry_to_storage_entry(
                     context,
                     handler,
                     engines,
                     *storage_entry.value,
                     attributes,
-                )?))
+                )?;
+
+                match attributes_error_emitted {
+                    Some(err) => Err(err),
+                    None => Ok(Some(storage_entry)),
+                }
             })
             .flatten()
         {
@@ -4164,11 +4203,11 @@ fn statement_let_to_ast_nodes_unfold(
     Ok(ast_nodes)
 }
 
-fn submodule_to_include_statement(dependency: &Submodule) -> IncludeStatement {
+fn submodule_to_include_statement(submodule: &Submodule) -> IncludeStatement {
     IncludeStatement {
-        span: dependency.span(),
-        mod_name: dependency.name.clone(),
-        visibility: pub_token_opt_to_visibility(dependency.visibility.clone()),
+        span: submodule.span(),
+        mod_name: submodule.name.clone(),
+        visibility: pub_token_opt_to_visibility(submodule.visibility.clone()),
     }
 }
 
@@ -4785,116 +4824,6 @@ where
     Some(ret)
 }
 
-fn item_attrs_to_map(
-    _context: &mut Context,
-    handler: &Handler,
-    attribute_list: &[AttributeDecl],
-) -> Result<AttributesMap, ErrorEmitted> {
-    let mut attrs_map: IndexMap<_, Vec<Attribute>> = IndexMap::new();
-
-    for attr_decl in attribute_list {
-        let attrs = attr_decl.attribute.get().into_iter();
-        for attr in attrs {
-            let name = attr.name.as_str();
-            if !VALID_ATTRIBUTE_NAMES.contains(&name) {
-                handler.emit_warn(CompileWarning {
-                    span: attr_decl.span().clone(),
-                    warning_content: Warning::UnrecognizedAttribute {
-                        attrib_name: attr.name.clone(),
-                    },
-                });
-            }
-
-            let args = attr
-                .args
-                .as_ref()
-                .map(|parens| {
-                    parens
-                        .get()
-                        .into_iter()
-                        .cloned()
-                        .map(|arg| AttributeArg {
-                            name: arg.name.clone(),
-                            value: arg.value.clone(),
-                            span: arg.span(),
-                        })
-                        .collect()
-                })
-                .unwrap_or_else(Vec::new);
-
-            let attribute = Attribute {
-                name: attr.name.clone(),
-                args,
-                span: attr_decl.span(),
-            };
-
-            if let Some(attr_kind) = match name {
-                DOC_ATTRIBUTE_NAME => Some(AttributeKind::Doc),
-                DOC_COMMENT_ATTRIBUTE_NAME => Some(AttributeKind::DocComment),
-                STORAGE_PURITY_ATTRIBUTE_NAME => Some(AttributeKind::Storage),
-                INLINE_ATTRIBUTE_NAME => Some(AttributeKind::Inline),
-                TEST_ATTRIBUTE_NAME => Some(AttributeKind::Test),
-                PAYABLE_ATTRIBUTE_NAME => Some(AttributeKind::Payable),
-                ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
-                CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
-                DEPRECATED_ATTRIBUTE_NAME => Some(AttributeKind::Deprecated),
-                FALLBACK_ATTRIBUTE_NAME => Some(AttributeKind::Fallback),
-                _ => None,
-            } {
-                match attrs_map.get_mut(&attr_kind) {
-                    Some(old_args) => {
-                        old_args.push(attribute);
-                    }
-                    None => {
-                        attrs_map.insert(attr_kind, vec![attribute]);
-                    }
-                }
-            }
-        }
-    }
-
-    // Check attribute arguments
-    for (attribute_kind, attributes) in &attrs_map {
-        for attribute in attributes {
-            // check attribute arguments length
-            let (expected_min_len, expected_max_len) =
-                attribute_kind.clone().expected_args_len_min_max();
-            if attribute.args.len() < expected_min_len
-                || attribute.args.len() > expected_max_len.unwrap_or(usize::MAX)
-            {
-                handler.emit_warn(CompileWarning {
-                    span: attribute.name.span().clone(),
-                    warning_content: Warning::AttributeExpectedNumberOfArguments {
-                        attrib_name: attribute.name.clone(),
-                        received_args: attribute.args.len(),
-                        expected_min_len,
-                        expected_max_len,
-                    },
-                });
-            }
-
-            // check attribute argument value
-            for (index, arg) in attribute.args.iter().enumerate() {
-                let possible_values = attribute_kind.clone().expected_args_values(index);
-                if let Some(possible_values) = possible_values {
-                    if !possible_values.iter().any(|v| v == arg.name.as_str()) {
-                        handler.emit_warn(CompileWarning {
-                            span: attribute.name.span().clone(),
-                            warning_content: Warning::UnexpectedAttributeArgumentValue {
-                                attrib_name: attribute.name.clone(),
-                                received_value: arg.name.as_str().to_string(),
-                                expected_values: possible_values,
-                            },
-                        })
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(AttributesMap::new(Arc::new(attrs_map)))
-}
-
 fn error_if_self_param_is_not_allowed(
     _context: &mut Context,
     handler: &Handler,
@@ -4914,6 +4843,7 @@ fn error_if_self_param_is_not_allowed(
     Ok(())
 }
 
+// TODO-IG!: Comment that all the node is excluded incl. attributes.
 /// Walks all the cfg attributes in a map, evaluating them
 /// and returning false if any evaluated to false.
 pub fn cfg_eval(
@@ -4922,24 +4852,17 @@ pub fn cfg_eval(
     attrs_map: &AttributesMap,
     experimental: ExperimentalFeatures,
 ) -> Result<bool, ErrorEmitted> {
-    if let Some(cfg_attrs) = attrs_map.get(&AttributeKind::Cfg) {
-        for cfg_attr in cfg_attrs {
-            for arg in &cfg_attr.args {
-                match arg.name.as_str() {
-                    CFG_TARGET_ARG_NAME => {
-                        if let Some(value) = &arg.value {
-                            if let sway_ast::Literal::String(value_str) = value {
-                                if let Ok(target) = BuildTarget::from_str(value_str.parsed.as_str())
-                                {
-                                    if target != context.build_target() {
-                                        return Ok(false);
-                                    }
-                                } else {
-                                    let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
-                                        span: value.span(),
-                                        value: value.span().str(),
-                                    };
-                                    return Err(handler.emit_err(error.into()));
+    // TODO-IG!: Rewrite `cfg_eval`.
+    for cfg_attr in attrs_map.of_kind(AttributeKind::Cfg) {
+        for arg in &cfg_attr.args {
+            match arg.name.as_str() {
+                CFG_TARGET_ARG_NAME => {
+                    if let Some(value) = &arg.value {
+                        if let sway_ast::Literal::String(value_str) = value {
+                            if let Ok(target) = BuildTarget::from_str(value_str.parsed.as_str())
+                            {
+                                if target != context.build_target() {
+                                    return Ok(false);
                                 }
                             } else {
                                 let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
@@ -4949,77 +4872,89 @@ pub fn cfg_eval(
                                 return Err(handler.emit_err(error.into()));
                             }
                         } else {
-                            let error = ConvertParseTreeError::ExpectedCfgTargetArgValue {
-                                span: arg.span(),
+                            let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
+                                span: value.span(),
+                                value: value.span().str(),
                             };
                             return Err(handler.emit_err(error.into()));
                         }
+                    } else {
+                        let error = ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                            attribute: cfg_attr.name.clone(),
+                            arg: (&arg.name).into(),
+                            value_span: arg.value.as_ref().map(|literal| literal.span())
+                        };
+                        return Err(handler.emit_err(error.into()));
                     }
-                    CFG_PROGRAM_TYPE_ARG_NAME => {
-                        if let Some(value) = &arg.value {
-                            if let sway_ast::Literal::String(value_str) = value {
-                                if let Ok(program_type) =
-                                    TreeType::from_str(value_str.parsed.as_str())
-                                {
-                                    if program_type != context.program_type().unwrap() {
-                                        return Ok(false);
-                                    }
-                                } else {
-                                    let error =
-                                        ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
-                                            span: value.span(),
-                                            value: value.span().str(),
-                                        };
-                                    return Err(handler.emit_err(error.into()));
+                }
+                CFG_PROGRAM_TYPE_ARG_NAME => {
+                    if let Some(value) = &arg.value {
+                        if let sway_ast::Literal::String(value_str) = value {
+                            if let Ok(program_type) =
+                                TreeType::from_str(value_str.parsed.as_str())
+                            {
+                                if program_type != context.program_type().unwrap() {
+                                    return Ok(false);
                                 }
                             } else {
-                                let error = ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
-                                    span: value.span(),
-                                    value: value.span().str(),
-                                };
-                                return Err(handler.emit_err(error.into()));
-                            }
-                        } else {
-                            let error = ConvertParseTreeError::ExpectedCfgTargetArgValue {
-                                span: arg.span(),
-                            };
-                            return Err(handler.emit_err(error.into()));
-                        }
-                    }
-                    // Check if this is a known experimental feature
-                    cfg_experimental
-                        if sway_features::CFG.iter().any(|x| *x == cfg_experimental) =>
-                    {
-                        match &arg.value {
-                            Some(sway_ast::Literal::Bool(v)) => {
-                                let is_true =
-                                    matches!(v.kind, sway_ast::literal::LitBoolType::True);
-                                return Ok(experimental
-                                    .is_enabled_for_cfg(cfg_experimental)
-                                    .unwrap()
-                                    == is_true);
-                            }
-                            _ => {
                                 let error =
-                                    ConvertParseTreeError::UnexpectedValueForCfgExperimental {
-                                        span: arg.span(),
+                                    ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
+                                        span: value.span(),
+                                        value: value.span().str(),
                                     };
                                 return Err(handler.emit_err(error.into()));
                             }
+                        } else {
+                            let error = ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
+                                span: value.span(),
+                                value: value.span().str(),
+                            };
+                            return Err(handler.emit_err(error.into()));
+                        }
+                    } else {
+                        let error = ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                            attribute: cfg_attr.name.clone(),
+                            arg: (&arg.name).into(),
+                            value_span: arg.value.as_ref().map(|literal| literal.span())
+                        };
+                        return Err(handler.emit_err(error.into()));
+                    }
+                }
+                // Check if this is a known experimental feature
+                cfg_experimental
+                    if sway_features::CFG.iter().any(|x| *x == cfg_experimental) =>
+                {
+                    match &arg.value {
+                        Some(sway_ast::Literal::Bool(v)) => {
+                            let is_true =
+                                matches!(v.kind, sway_ast::literal::LitBoolType::True);
+                            return Ok(experimental
+                                .is_enabled_for_cfg(cfg_experimental)
+                                .unwrap()
+                                == is_true);
+                        }
+                        _ => {
+                            let error =
+                                ConvertParseTreeError::UnexpectedValueForCfgExperimental {
+                                    span: arg.span(),
+                                };
+                            return Err(handler.emit_err(error.into()));
                         }
                     }
-                    _ => {
-                        return Err(handler.emit_err(
-                            ConvertParseTreeError::InvalidCfgArg {
-                                span: arg.span(),
-                                value: arg.name.as_str().to_string(),
-                            }
-                            .into(),
-                        ));
-                    }
+                }
+                _ => {
+                    return Err(handler.emit_err(
+                        ConvertParseTreeError::InvalidAttributeArg {
+                            attribute: cfg_attr.name.clone(),
+                            arg: (&arg.name).into(),
+                            expected_args: cfg_attr.expected_args().args_names(),
+                        }
+                        .into(),
+                    ));
                 }
             }
         }
     }
+
     Ok(true)
 }

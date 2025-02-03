@@ -413,15 +413,16 @@ impl TyExpression {
                 return;
             }
 
-            if let Some(v) = attributes
-                .get(&AttributeKind::Deprecated)
-                .and_then(|x| x.last())
+            if let Some(v) = attributes.deprecated()
             {
                 let mut message = message.to_string();
 
                 if let Some(sway_ast::Literal::String(s)) = v
                     .args
                     .iter()
+                    // TODO-IG!: Use constant.
+                    // TODO-IG!: Check for attribute type.
+                    // TODO-IG!: Create diagnostics for UsingDeprecated. Show where is declared as deprecated.
                     .find(|x| x.name.as_str() == "note")
                     .and_then(|x| x.value.as_ref())
                 {
@@ -459,9 +460,9 @@ impl TyExpression {
                 {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
                     if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
-                        let s = engines.de().get(struct_id);
+                        let struct_decl = engines.de().get(struct_id);
                         emit_warning_if_deprecated(
-                            &s.attributes,
+                            &struct_decl.attributes,
                             &call_path.span(),
                             handler,
                             "deprecated struct",

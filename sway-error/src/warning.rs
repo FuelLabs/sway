@@ -1,6 +1,6 @@
 use crate::{
     diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic},
-    formatting::Indent,
+    formatting::{did_you_mean_help, sequence_to_list, sequence_to_str, Enclosing, Indent},
 };
 
 use core::fmt;
@@ -33,6 +33,7 @@ impl CompileWarning {
     }
 }
 
+// TODO-IG!: Double check and remove all warnings related to attributes.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Warning {
     NonClassCaseStructName {
@@ -107,26 +108,21 @@ pub enum Warning {
         is_last_arm: bool,
         is_catch_all_arm: bool,
     },
-    UnrecognizedAttribute {
-        attrib_name: Ident,
+    UnknownAttribute {
+        // TODO-IG!: Rename to attribute.
+        attrib_name: IdentUnique,
+        known_attributes: &'static[&'static str],
     },
-    AttributeExpectedNumberOfArguments {
-        attrib_name: Ident,
-        received_args: usize,
-        expected_min_len: usize,
-        expected_max_len: Option<usize>,
-    },
-    UnexpectedAttributeArgumentValue {
-        attrib_name: Ident,
-        received_value: String,
-        expected_values: Vec<String>,
+    UnknownAttributeArg {
+        attribute: Ident,
+        arg: IdentUnique,
+        expected_args: Vec<&'static str>,
     },
     EffectAfterInteraction {
         effect: String,
         effect_in_suggestion: String,
         block_name: Ident,
     },
-    ModulePrivacyDisabled,
     UsingDeprecated {
         message: String,
     },
@@ -262,31 +258,14 @@ impl fmt::Display for Warning {
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
             MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
-            UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
-            AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
+            UnknownAttribute { attrib_name, .. } => write!(f, "Unknown attribute \"{attrib_name}\"."),
+            UnknownAttributeArg { attribute, arg, expected_args } => write!(
                 f,
-                "Attribute: \"{attrib_name}\" expected {} argument(s) received {received_args}.",
-                if let Some(expected_max_len) = expected_max_len {
-                    if expected_min_len == expected_max_len {
-                        format!("exactly {expected_min_len}")
-                    } else {
-                        format!("between {expected_min_len} and {expected_max_len}")
-                    }
-                } else {
-                    format!("at least {expected_min_len}")
-                }
-            ),
-            UnexpectedAttributeArgumentValue {attrib_name, received_value, expected_values } => write!(
-                f,
-                "Unexpected attribute value: \"{received_value}\" for attribute: \"{attrib_name}\" expected value {}",
-                expected_values.iter().map(|v| format!("\"{v}\"")).collect::<Vec<_>>().join(" or ")
+                "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX)
             ),
             EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
                 write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
                           Consider {effect_in_suggestion} before calling another contract"),
-            ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
-                                            You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
-                                            More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
             UsingDeprecated { message } => write!(f, "{}", message),
             DuplicatedStorageKey { first_field_full_name, second_field_full_name, key, .. } =>
                 write!(f, "Two storage fields have the same storage key.\nFirst field: {first_field_full_name}\nSecond field: {second_field_full_name}\nKey: {key}"),
@@ -474,6 +453,44 @@ impl ToDiagnostic for CompileWarning {
                     format!("The common key is: {key}.")
                 ],
             },
+            UnknownAttribute { attrib_name, known_attributes } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Attribute is unknown".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    attrib_name.span(),
+                    format!("\"{attrib_name}\" attribute is unknown.")
+                ),
+                hints: vec![did_you_mean_help(source_engine, attrib_name.span(), known_attributes.iter(), 2, Enclosing::DoubleQuote)],
+                help: vec![
+                    "Unknown attributes are allowed and can be used by third-party tools,".to_string(),
+                    "but the compiler ignores them.".to_string(),
+                ],
+            },
+            UnknownAttributeArg { attribute, arg, expected_args } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Attribute argument is unknown".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    arg.span(),
+                    format!("\"{arg}\" is an unknown argument for attribute \"{attribute}\".")
+                ),
+                hints: {
+                    let mut hints = vec![did_you_mean_help(source_engine, arg.span(), expected_args, 2, Enclosing::DoubleQuote)];
+                    if expected_args.len() == 1 {
+                        hints.push(Hint::help(source_engine, arg.span(), format!("The only known argument is \"{}\".", expected_args[0])));
+                    } else if expected_args.len() <= 3 {
+                        hints.push(Hint::help(source_engine, arg.span(), format!("Known arguments are {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX))));
+                    } else {
+                        hints.push(Hint::help(source_engine, arg.span(), "Known arguments are:".to_string()));
+                        hints.append(&mut Hint::multi_help(source_engine, &arg.span(), sequence_to_list(&expected_args, Indent::Single, usize::MAX)))
+                    }
+                    hints
+                },
+                help: vec![
+                    format!("Unknown attribute arguments are allowed for some attributes like \"{attribute}\"."),
+                    "They can be used by third-party tools, but the compiler ignores them.".to_string(),
+                ],
+            },
+            // "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX)
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we

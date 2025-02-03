@@ -255,7 +255,6 @@ pub mod __mod_name {
         attribute::{Attribute, AttributeArg},
         AttributeDecl, CommaToken, Parens, Punctuated,
     };
-    use sway_types::constants::CFG_ATTRIBUTE_NAME;
 
     pub(crate) fn storage_decl<'a, P>(parent: __ref_type([P])) -> Option<__ref_type([ItemStorage])>
     where
@@ -306,7 +305,7 @@ pub mod __mod_name {
         attributes
             .__iter()
             .flat_map(|attr| attr.attribute.inner.__iter())
-            .filter(|attr| attr.name.as_str() == CFG_ATTRIBUTE_NAME)
+            .filter(|attr| attr.is_cfg())
     }
 
     /// Returns all `cfg` attributes that act as only attribute within
@@ -323,7 +322,7 @@ pub mod __mod_name {
             .__iter()
             .filter(|attr| attr.attribute.inner.iter().count() == 1)
             .flat_map(|attr| attr.attribute.inner.__iter())
-            .filter(|attr| attr.name.as_str() == CFG_ATTRIBUTE_NAME)
+            .filter(|attr| attr.is_cfg())
             .filter(|attr| {
                 attr.args
                     .as_ref()

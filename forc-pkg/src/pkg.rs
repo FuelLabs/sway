@@ -2053,11 +2053,10 @@ impl PkgTestEntry {
 
         const FAILING_TEST_KEYWORD: &str = "should_revert";
 
+        // TODO-IG!: Simplify and move to attributes. `AttributeArg::value`.
         let test_args: HashMap<String, Option<String>> = test_function_decl
             .attributes
-            .get(&AttributeKind::Test)
-            .expect("test declaration is missing test attribute")
-            .iter()
+            .of_kind(AttributeKind::Test)
             .flat_map(|attr| attr.args.iter())
             .map(|arg| {
                 (

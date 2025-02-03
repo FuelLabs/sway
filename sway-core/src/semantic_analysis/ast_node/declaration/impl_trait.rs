@@ -1346,8 +1346,8 @@ fn type_check_impl_method(
         // check there is no mismatch of payability attributes
         // between the method signature and the method implementation
         use crate::transform::AttributeKind::Payable;
-        let impl_method_signature_payable = impl_method_signature.attributes.contains_key(&Payable);
-        let impl_method_payable = impl_method.attributes.contains_key(&Payable);
+        let impl_method_signature_payable = impl_method_signature.attributes.has_any_of_kind(Payable);
+        let impl_method_payable = impl_method.attributes.has_any_of_kind(Payable);
         match (impl_method_signature_payable, impl_method_payable) {
             (true, false) =>
             // implementation does not have payable attribute

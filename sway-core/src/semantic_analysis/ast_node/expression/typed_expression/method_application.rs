@@ -253,7 +253,7 @@ pub(crate) fn type_check_method_application(
             if coins_analysis::possibly_nonzero_u64_expression(&ctx, coins_expr)
                 && !method
                     .attributes
-                    .contains_key(&crate::transform::AttributeKind::Payable)
+                    .has_any_of_kind(crate::transform::AttributeKind::Payable)
             {
                 return Err(
                     handler.emit_err(CompileError::CoinsPassedToNonPayableMethod {

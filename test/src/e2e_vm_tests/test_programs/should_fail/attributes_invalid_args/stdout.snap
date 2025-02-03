@@ -1,0 +1,246 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+snapshot_kind: text
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args
+   Compiling library attributes_invalid_args (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args)
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/unknown_attr.sw:3:3
+  |
+...
+3 | #[unknown(arg_1)]
+  |   ------- "unknown" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/unknown_attr.sw:4:3
+  |
+...
+4 | #[unknown(arg_1, arg_2)]
+  |   ------- "unknown" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute argument is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/allow_attr.sw:9:9
+  |
+...
+9 | #[allow(ded_code)]
+  |         -------- "ded_code" is an unknown argument for attribute "allow".
+  |         -------- help: Did you mean "dead_code"?
+  |         -------- help: Known arguments are "dead_code" and "deprecated".
+  |
+  = help: Unknown attribute arguments are allowed for some attributes like "allow".
+  = help: They can be used by third-party tools, but the compiler ignores them.
+____
+
+warning: Attribute argument is unknown
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/allow_attr.sw:10:9
+   |
+...
+10 | #[allow(unknown_arg_1, unknown_arg_2)]
+   |         ------------- "unknown_arg_1" is an unknown argument for attribute "allow".
+   |         ------------- help: Known arguments are "dead_code" and "deprecated".
+   |
+   = help: Unknown attribute arguments are allowed for some attributes like "allow".
+   = help: They can be used by third-party tools, but the compiler ignores them.
+____
+
+warning: Attribute argument is unknown
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/allow_attr.sw:10:24
+   |
+...
+10 | #[allow(unknown_arg_1, unknown_arg_2)]
+   |                        ------------- "unknown_arg_2" is an unknown argument for attribute "allow".
+   |                        ------------- help: Known arguments are "dead_code" and "deprecated".
+   |
+   = help: Unknown attribute arguments are allowed for some attributes like "allow".
+   = help: They can be used by third-party tools, but the compiler ignores them.
+____
+
+error: Attribute can be applied only once
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/storage_attr.sw:10:7
+   |
+...
+ 9 |     #[storage(red, writte)]
+   |       ------- info: It is already applied here.
+10 |     #[storage(unknown_arg)]
+   |       ^^^^^^^ "storage" attribute can be applied only once, but is applied two times.
+   |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/storage_attr.sw:9:15
+  |
+...
+9 |     #[storage(red, writte)]
+  |               ^^^ "red" is an invalid argument for attribute "storage".
+  |               --- help: Did you mean "read"?
+  |               --- help: Valid arguments are "read" and "write".
+  |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/storage_attr.sw:9:20
+  |
+...
+9 |     #[storage(red, writte)]
+  |                    ^^^^^^ "writte" is an invalid argument for attribute "storage".
+  |                    ------ help: Did you mean "write"?
+  |                    ------ help: Valid arguments are "read" and "write".
+  |
+____
+
+error: Attribute argument is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/storage_attr.sw:10:15
+   |
+...
+10 |     #[storage(unknown_arg)]
+   |               ^^^^^^^^^^^ "unknown_arg" is an invalid argument for attribute "storage".
+   |               ----------- help: Valid arguments are "read" and "write".
+   |
+____
+
+error: Attribute can be applied only once
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/inline_attr.sw:13:7
+   |
+...
+12 |     #[inline(alwys)]
+   |       ------ info: It is already applied here.
+13 |     #[inline(unknown_arg)]
+   |       ^^^^^^ "inline" attribute can be applied only once, but is applied two times.
+   |
+____
+
+error: Attribute argument is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/inline_attr.sw:12:14
+   |
+...
+12 |     #[inline(alwys)]
+   |              ^^^^^ "alwys" is an invalid argument for attribute "inline".
+   |              ----- help: Did you mean "always"?
+   |              ----- help: Valid arguments are "always" and "never".
+   |
+____
+
+error: Attribute argument is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/inline_attr.sw:13:14
+   |
+...
+13 |     #[inline(unknown_arg)]
+   |              ^^^^^^^^^^^ "unknown_arg" is an invalid argument for attribute "inline".
+   |              ----------- help: Valid arguments are "always" and "never".
+   |
+____
+
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/test_attr.sw:7:3
+  |
+...
+6 | #[test(should_rvert)]
+  |   ---- info: It is already applied here.
+7 | #[test(unknown_arg)]
+  |   ^^^^ "test" attribute can be applied only once, but is applied two times.
+  |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/test_attr.sw:6:8
+  |
+...
+6 | #[test(should_rvert)]
+  |        ^^^^^^^^^^^^ "should_rvert" is an invalid argument for attribute "test".
+  |        ------------ help: Did you mean "should_revert"?
+  |        ------------ help: The only valid argument is "should_revert".
+  |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/test_attr.sw:7:8
+  |
+...
+7 | #[test(unknown_arg)]
+  |        ^^^^^^^^^^^ "unknown_arg" is an invalid argument for attribute "test".
+  |        ----------- help: The only valid argument is "should_revert".
+  |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/payable_attr.sw:7:15
+  |
+...
+7 |     #[payable(invalid)] // Should be no invalid arg error or warning here.
+  |               ^^^^^^^ "payable" attribute must not have any arguments, but has one.
+  |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/cfg_attr.sw:9:7
+  |
+...
+9 | #[cfg(trget = "fuel")]
+  |       ^^^^^ "trget" is an invalid argument for attribute "cfg".
+  |       ----- help: Did you mean "target"?
+  |       ----- help: Valid arguments are:
+  |       ----- help:   - program_type
+  |       ----- help:   - target
+  |       ----- help:   - experimental_error_type
+  |       ----- help:   - experimental_new_encoding
+  |       ----- help:   - experimental_partial_eq
+  |       ----- help:   - experimental_references
+  |       ----- help:   - experimental_storage_domains
+  |
+____
+
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/deprecated_attr.sw:7:3
+  |
+...
+6 | #[deprecated(noe = "note")]
+  |   ---------- info: It is already applied here.
+7 | #[deprecated(unknown_arg = "note")]
+  |   ^^^^^^^^^^ "deprecated" attribute can be applied only once, but is applied two times.
+  |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/deprecated_attr.sw:6:14
+  |
+...
+6 | #[deprecated(noe = "note")]
+  |              ^^^ "noe" is an invalid argument for attribute "deprecated".
+  |              --- help: Did you mean "note"?
+  |              --- help: The only valid argument is "note".
+  |
+____
+
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/deprecated_attr.sw:7:14
+  |
+...
+7 | #[deprecated(unknown_arg = "note")]
+  |              ^^^^^^^^^^^ "unknown_arg" is an invalid argument for attribute "deprecated".
+  |              ----------- help: The only valid argument is "note".
+  |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/fallback_attr.sw:6:12
+  |
+...
+6 | #[fallback(invalid)] // Should be no invalid arg error or warning here.
+  |            ^^^^^^^ "fallback" attribute must not have any arguments, but has one.
+  |
+____
+
+  Aborting due to 16 errors.
+error: Failed to compile attributes_invalid_args

@@ -1,12 +1,11 @@
 use sway_ast::{
-    attribute::{Attribute, AttributeArg},
+    attribute::{Attribute, AttributeArg, CFG_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME},
     brackets::SquareBrackets,
     keywords::{HashBangToken, HashToken, Token},
     AttributeDecl, Literal, Parens, Punctuated,
 };
 use sway_features::Feature;
 use sway_types::{
-    constants::{CFG_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME},
     Ident, Span, Spanned,
 };
 

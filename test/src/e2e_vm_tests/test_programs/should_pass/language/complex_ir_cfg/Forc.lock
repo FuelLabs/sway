@@ -1,0 +1,13 @@
+[[package]]
+name = "complex_ir_cfg"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-0B76675D58C57D7C"
+
+[[package]]
+name = "std"
+source = "path+from-root-0B76675D58C57D7C"
+dependencies = ["core"]

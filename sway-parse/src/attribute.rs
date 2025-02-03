@@ -2,15 +2,13 @@ use crate::priv_prelude::{Peek, Peeker};
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind};
-use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{EqToken, HashBangToken, HashToken, StorageToken, Token};
+use sway_ast::brackets::Parens;
+use sway_ast::keywords::{EqToken, HashBangToken, HashToken, StorageToken};
 use sway_ast::literal::LitBool;
-use sway_ast::punctuated::Punctuated;
 use sway_ast::token::{DocComment, DocStyle};
 use sway_ast::Literal;
 use sway_error::parser_error::ParseErrorKind;
-use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
-use sway_types::{Ident, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 impl Peek for DocComment {
     fn peek(peeker: Peeker<'_>) -> Option<DocComment> {
@@ -27,43 +25,52 @@ impl Parse for DocComment {
     }
 }
 
+impl Parse for Vec<AttributeDecl> {
+    fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        let mut attributes = Vec::new();
+
+        loop {
+          if let Some(DocComment { .. }) = parser.peek() {
+            let doc_comment = parser.parse::<DocComment>()?;
+            let doc_comment_attr_decl = match doc_comment.doc_style {
+                DocStyle::Outer => AttributeDecl::new_outer_doc_comment(doc_comment.span, doc_comment.content_span),
+                DocStyle::Inner => AttributeDecl::new_inner_doc_comment(doc_comment.span, doc_comment.content_span),
+            };
+            attributes.push(doc_comment_attr_decl);
+            continue;
+          }
+
+          // This will parse both `#` and `#!` attributes.
+          if let Some(attr_decl) = parser.guarded_parse::<HashToken, _>()? {
+              attributes.push(attr_decl);
+              continue;
+          }
+
+          break;
+        }
+        
+        Ok(attributes)
+    }
+}
+
 impl<T: Parse> Parse for Annotated<T> {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
-        // Parse the attribute list.
-        let mut attribute_list = Vec::new();
-        while let Some(DocComment {
-            doc_style: DocStyle::Outer,
-            ..
-        }) = parser.peek()
-        {
-            let doc_comment = parser.parse::<DocComment>()?;
-            // TODO: Use a Literal instead of an Ident when Attribute args
-            // start supporting them and remove `Ident::new_no_trim`.
-            let name = Ident::new_no_trim(doc_comment.content_span.clone());
-            attribute_list.push(AttributeDecl {
-                hash_kind: AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone())),
-                attribute: SquareBrackets::new(
-                    Punctuated::single(Attribute {
-                        name: Ident::new_with_override(
-                            DOC_COMMENT_ATTRIBUTE_NAME.to_string(),
-                            doc_comment.span.clone(),
-                        ),
-                        args: Some(Parens::new(
-                            Punctuated::single(AttributeArg { name, value: None }),
-                            doc_comment.content_span,
-                        )),
-                    }),
-                    doc_comment.span,
-                ),
-            });
-        }
-
-        while let Some(attr) = parser.guarded_parse::<HashToken, _>()? {
-            attribute_list.push(attr);
-        }
+        let attributes = parser.parse::<Vec<AttributeDecl>>()?;
 
         if parser.check_empty().is_some() {
-            let error = parser.emit_error(ParseErrorKind::ExpectedAnItemAfterDocComment);
+            // Provide a dedicated error message for the case when we have
+            // inner doc comments (`//!`) at the end of the module (because
+            // there are no items after the comments).
+            let error = if attributes.iter().all(|attr| attr.is_inner() && attr.is_doc_comment()) {
+                // Show the error on the complete doc comment.
+                let first_doc_line = attributes.first().expect("parsing `Annotated` guarantees that `attributes` have at least one element");
+                let last_doc_line = attributes.last().expect("parsing `Annotated` guarantees that `attributes` have at least one element");
+                let span = Span::join(first_doc_line.span(), &last_doc_line.span().start_span());
+                parser.emit_error_with_span(ParseErrorKind::ExpectedInnerDocCommentAtTheTopOfFile, span)
+            } else {
+                let is_only_documented = attributes.iter().all(|attr| attr.is_doc_comment());
+                parser.emit_error(ParseErrorKind::ExpectedAnAnnotatedElement { is_only_documented })
+            };
             Err(error)
         } else {
             // Parse the `T` value.
@@ -81,7 +88,7 @@ impl<T: Parse> Parse for Annotated<T> {
             };
 
             Ok(Annotated {
-                attribute_list,
+                attribute_list: attributes,
                 value,
             })
         }

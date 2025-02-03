@@ -9,7 +9,7 @@ use crate::{
         },
         CallPath, CallPathType, Visibility,
     },
-    transform::{self, AttributesMap},
+    transform::AttributesMap,
     type_system::TypeInfo,
     Engines, TypeArgument, TypeEngine, TypeId,
 };
@@ -22,7 +22,7 @@ use sway_error::{
     warning::{CompileWarning, Warning},
 };
 use sway_types::{
-    constants::{ALLOW_DEAD_CODE_NAME, STD},
+    constants::STD,
     span::Span,
     Ident, Named, Spanned,
 };
@@ -2522,23 +2522,10 @@ fn connect_call_path_decl<'eng: 'cfg, 'cfg>(
     Ok(())
 }
 
-/// Checks [AttributesMap] for `#[allow(dead_code)]` usage, if so returns true
+/// Checks [AttributesMap] for any `#[allow(dead_code)]` usage, if so returns true
 /// otherwise returns false.
 fn allow_dead_code(attributes: AttributesMap) -> bool {
-    fn allow_dead_code_helper(attributes: AttributesMap) -> Option<bool> {
-        Some(
-            attributes
-                .get(&transform::AttributeKind::Allow)?
-                .last()?
-                .args
-                .first()?
-                .name
-                .as_str()
-                == ALLOW_DEAD_CODE_NAME,
-        )
-    }
-
-    allow_dead_code_helper(attributes).unwrap_or_default()
+    attributes.has_allow_dead_code()
 }
 
 /// Returns true when the given `node` contains the attribute `#[allow(dead_code)]`

@@ -23,6 +23,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span};
+use sway_ast::ImplItemParent;
 
 use super::ast_elements::length::NumericLength;
 
@@ -1774,6 +1775,15 @@ impl TypeInfo {
                     referenced_type.type_id.get_type_str(engines)
                 )
             }
+        }
+    }
+}
+
+impl From<&TypeInfo> for ImplItemParent {
+    fn from(value: &TypeInfo) -> Self {
+        match value {
+            TypeInfo::Contract => Self::Contract,
+            _ => Self::Other,
         }
     }
 }

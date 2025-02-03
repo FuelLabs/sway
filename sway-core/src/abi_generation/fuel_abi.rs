@@ -1203,14 +1203,12 @@ fn generate_attributes_map(attr_map: &AttributesMap) -> Option<Vec<program_abi::
     } else {
         Some(
             attr_map
-                .iter()
-                .flat_map(|(_attr_kind, attrs)| {
-                    attrs.iter().map(|attr| program_abi::Attribute {
-                        name: attr.name.to_string(),
-                        arguments: attr.args.iter().map(|arg| arg.name.to_string()).collect(),
-                    })
+                .all()
+                .map(|attr| program_abi::Attribute {
+                    name: attr.name.to_string(),
+                    arguments: attr.args.iter().map(|arg| arg.name.to_string()).collect(),
                 })
-                .collect(),
+                .collect()
         )
     }
 }
