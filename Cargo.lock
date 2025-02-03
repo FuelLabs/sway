@@ -2743,7 +2743,6 @@ dependencies = [
  "sway-parse",
  "sway-types",
  "sway-utils",
- "swayfmt",
  "tempfile",
  "tokio",
  "toml_edit",
