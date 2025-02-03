@@ -2229,8 +2229,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         if let Some(outfile) = &binary_outfile {
             built_package.write_bytecode(outfile.as_ref())?;
         }
-        if let Some(outfile) = &debug_outfile {
-            built_package.write_debug_info(outfile.as_ref())?;
+        // Generate debug symbols if explicitly requested via -g flag or if in debug build
+        if debug_outfile.is_some() || build_profile.name == BuildProfile::DEBUG {
+            let debug_path = debug_outfile
+                .as_ref()
+                .map(|p| output_dir.join(p))
+                .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
+            built_package.write_debug_info(&debug_path)?;
         }
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));

@@ -203,7 +203,7 @@ pub(crate) fn runs_in_vm(
 
             let tx = tb
                 .finalize_checked(block_height)
-                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .into_ready(gas_price, params.gas_costs(), params.fee_params(), None)
                 .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
             let mem_instance = MemoryInstance::new();
