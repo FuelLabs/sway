@@ -962,17 +962,16 @@ impl TraitMap {
                             ResolvedTraitImplItem::Typed(item) => match item {
                                 ty::TyTraitItem::Fn(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
+                                    if engines.help_out(*type_id).to_string().contains("OpName") {
+                                        dbg!(
+                                            engines.help_out(*type_id),
+                                            &name,
+                                            engines.help_out(&type_mapping)
+                                        );
+                                    }
                                     if decl.is_trait_method_dummy && !insertable {
                                         None
                                     } else {
-                                        if engines.help_out(*type_id).to_string().contains("OpName")
-                                        {
-                                            dbg!(
-                                                engines.help_out(*type_id),
-                                                &name,
-                                                engines.help_out(&type_mapping)
-                                            );
-                                        }
                                         decl.subst(&SubstTypesContext::new(
                                             engines,
                                             &type_mapping,
