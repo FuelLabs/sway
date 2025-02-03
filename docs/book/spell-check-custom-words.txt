@@ -237,3 +237,7 @@ FuelLabs
 github
 toml
 hardcoded
+RawSlice
+StringArray
+StringSlice
+calldata
