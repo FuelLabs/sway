@@ -76,30 +76,15 @@ pub(crate) fn instantiate_function_application(
 
     let function_ident: IdentUnique = function_decl.name.clone().into();
     let function_sig = TyFunctionSig::from_fn_decl(&function_decl);
-    if dbg!(function_decl.call_path.suffix.as_str()) == "encode" {
-        dbg!(ctx.engines.help_out(&function_sig.return_type));
-        for arg in &function_sig.parameters {
-            dbg!(ctx.engines.help_out(&arg));
-        }
-    }
 
     let new_decl_ref = if let Some(cached_fn_ref) =
         ctx.engines()
             .qe()
             .get_function(engines, function_ident.clone(), function_sig.clone())
     {
-        if dbg!(function_decl.call_path.suffix.as_str()) == "encode" {
-            dbg!();
-        }
         cached_fn_ref
     } else {
-        if function_decl.call_path.suffix.as_str() == "encode" {
-            dbg!();
-        }
         if !ctx.code_block_first_pass() {
-            if function_decl.call_path.suffix.as_str() == "encode" {
-                dbg!();
-            }
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the
             // constraint with new decl ids based on the new type.
@@ -133,7 +118,6 @@ pub(crate) fn instantiate_function_application(
             && function_is_type_check_finalized
             && !function_is_trait_method_dummy
         {
-            dbg!();
             ctx.engines().qe().insert_function(
                 engines,
                 function_ident,

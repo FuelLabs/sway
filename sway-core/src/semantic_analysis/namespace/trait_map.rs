@@ -10,7 +10,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Named, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 
 use crate::{
     decl_engine::{
@@ -219,21 +219,6 @@ pub(crate) enum IsExtendingExistingImpl {
 }
 
 impl TraitMap {
-    fn dump(&self, engines: &Engines) {
-        eprintln!("DUMPING TRAIT MAP");
-        for e in self.trait_impls.iter() {
-            eprintln!("    {:?}", e.0);
-            for entry in e.1 {
-                eprintln!(
-                    "        key: {:?} {:?}",
-                    entry.key.name,
-                    engines.help_out(entry.key.type_id),
-                );
-                eprintln!("        value: {:?}", entry.value);
-                eprintln!("");
-            }
-        }
-    }
     /// Given a [TraitName] `trait_name`, [TypeId] `type_id`, and list of
     /// [TyImplItem](ty::TyImplItem) `items`, inserts
     /// `items` into the [TraitMap] with the key `(trait_name, type_id)`.
@@ -255,9 +240,6 @@ impl TraitMap {
         is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
-        if format!("{:?}", engines.help_out(type_id)).contains("OpName") {
-            dbg!(engines.help_out(type_id), trait_name.suffix.as_str());
-        }
         handler.scope(|handler| {
             let mut trait_items: TraitItems = im::HashMap::new();
             for item in items.iter() {
@@ -609,10 +591,6 @@ impl TraitMap {
         type_id: TypeId,
         code_block_first_pass: CodeBlockFirstPass,
     ) {
-        if engines.help_out(type_id).to_string().contains("OpName") {
-            dbg!(engines.help_out(type_id));
-            eprintln!("{}", std::backtrace::Backtrace::force_capture());
-        }
         self.extend(
             self.filter_by_type(type_id, engines, code_block_first_pass),
             engines,
@@ -962,13 +940,6 @@ impl TraitMap {
                             ResolvedTraitImplItem::Typed(item) => match item {
                                 ty::TyTraitItem::Fn(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    if engines.help_out(*type_id).to_string().contains("OpName") {
-                                        dbg!(
-                                            engines.help_out(*type_id),
-                                            &name,
-                                            engines.help_out(&type_mapping)
-                                        );
-                                    }
                                     if decl.is_trait_method_dummy && !insertable {
                                         None
                                     } else {
@@ -981,7 +952,6 @@ impl TraitMap {
                                         for (name, value) in
                                             type_mapping.const_generics_materialization.iter()
                                         {
-                                            dbg!(name, value);
                                             decl.materialize_const_generics(engines, name, value);
                                         }
 
@@ -1182,7 +1152,6 @@ impl TraitMap {
                 suffix: e.key.name.suffix.name.clone(),
                 is_absolute: e.key.name.is_absolute,
             };
-            let before_unify = format!("{:?}", engines.help_out(&e.key.type_id.clone()));
             if &map_trait_name == trait_name
                 && unify_check.check(type_id, e.key.type_id)
                 && trait_type_args.len() == e.key.name.suffix.args.len()
@@ -1191,14 +1160,6 @@ impl TraitMap {
                     .zip(e.key.name.suffix.args.iter())
                     .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
             {
-                if format!("{:?}", engines.help_out(type_id)).contains("[(OpName, SignedNum); 2]") {
-                    dbg!(
-                        engines.help_out(&type_id),
-                        engines.help_out(&e.key.type_id),
-                        before_unify
-                    );
-                    dbg!(e.value.trait_items.values().collect::<Vec<_>>());
-                }
                 let mut trait_items = e.value.trait_items.values().cloned().collect::<Vec<_>>();
                 items.append(&mut trait_items);
             }

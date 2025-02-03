@@ -219,28 +219,6 @@ impl HashWithEngines for TyFunctionDecl {
 
 impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        if let Some(s) = self.parameters.get(0) {
-            if ctx
-                .engines
-                .help_out(s.type_argument.type_id)
-                .to_string()
-                .contains("; N")
-            {
-                dbg!(
-                    ctx.engines.help_out(s.type_argument.type_id).to_string(),
-                    ctx.engines.help_out(ctx.type_subst_map.as_ref().unwrap())
-                );
-                eprintln!("{}", std::backtrace::Backtrace::force_capture());
-            }
-        }
-
-        for p in self.parameters.iter() {
-            dbg!(
-                p.name.as_str(),
-                ctx.engines.help_out(p.type_argument.type_id)
-            );
-        }
-
         if ctx.subst_function_body {
             has_changes! {
                 self.type_parameters.subst(ctx);
@@ -267,7 +245,6 @@ impl ReplaceDecls for TyFunctionDecl {
         handler: &Handler,
         ctx: &mut TypeCheckContext,
     ) -> Result<bool, ErrorEmitted> {
-        // dbg!(ctx.engines.help_out(decl_mapping));
         let mut func_ctx = ctx.by_ref().with_self_type(self.implementing_for_typeid);
         self.body
             .replace_decls(decl_mapping, handler, &mut func_ctx)

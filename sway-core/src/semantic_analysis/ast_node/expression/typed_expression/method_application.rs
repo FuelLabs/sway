@@ -111,12 +111,6 @@ pub(crate) fn type_check_method_application(
         let b = engines
             .te()
             .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
-        eprintln!(
-            "{}: {:?} vs {:?}",
-            line!(),
-            engines.help_out(&a),
-            engines.help_out(&b)
-        );
         match (&*a, &*b) {
             (
                 TypeInfo::Array(_, Length::Literal { .. }),
@@ -135,7 +129,6 @@ pub(crate) fn type_check_method_application(
                             span: Span::dummy(),
                         },
                     );
-                    dbg!(&const_generics);
                 }
                 _ => todo!(),
             },

@@ -235,25 +235,6 @@ impl Module {
             .unwrap()
     }
 
-    pub fn dump_until_parent(&self) {
-        dbg!(&self.mod_path, &self.name);
-        let mut current_id = self.current_lexical_scope_id;
-        loop {
-            dbg!(current_id);
-            let current = &self.lexical_scopes[current_id];
-            dbg!(current
-                .items
-                .get_all_declared_symbols()
-                .map(|x| x.as_str())
-                .collect::<Vec<_>>());
-            if let Some(parent) = current.parent.as_ref() {
-                current_id = *parent;
-            } else {
-                break;
-            }
-        }
-    }
-
     /// Returns the mutable current lexical scope associated with this module.
     pub fn current_lexical_scope_mut(&mut self) -> &mut LexicalScope {
         self.lexical_scopes

@@ -38,7 +38,7 @@ where
         T: Parse,
     {
         // Uncomment this to see what is being generated
-        println!("{}", input);
+        // println!("{}", input);
 
         let handler = <_>::default();
         let source_id =
@@ -341,7 +341,7 @@ where
         });
 
         // Uncomment this to understand why an entry function was not generated
-        //println!("{:#?}", handler);
+        // println!("{:#?}", handler);
 
         let (decl, namespace) = r.map_err(|_| handler.clone())?;
 
@@ -398,7 +398,7 @@ where
         });
 
         // Uncomment this to understand why auto impl failed for a type.
-        //println!("{:#?}", handler);
+        // println!("{:#?}", handler);
 
         let (decl, namespace) = r.map_err(|_| handler.clone())?;
 

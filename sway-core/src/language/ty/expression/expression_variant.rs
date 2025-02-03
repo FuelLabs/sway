@@ -1017,12 +1017,7 @@ impl MaterializeConstGenerics for TyExpressionVariant {
             TyExpressionVariant::ImplicitReturn(expr) => {
                 expr.materialize_const_generics(engines, name, value);
             }
-            TyExpressionVariant::FunctionApplication {
-                arguments, fn_ref, ..
-            } => {
-                let new_id = fn_ref
-                    .materialize_const_generics_and_insert_new_with_parent(engines, name, value);
-                fn_ref.replace_id(*new_id.id());
+            TyExpressionVariant::FunctionApplication { arguments, .. } => {
                 for (_, expr) in arguments {
                     expr.materialize_const_generics(engines, name, value);
                 }
@@ -1039,7 +1034,6 @@ impl MaterializeConstGenerics for TyExpressionVariant {
                 index.materialize_const_generics(engines, name, value);
             }
             TyExpressionVariant::IntrinsicFunction(kind) => {
-                dbg!(kind.span.as_str());
                 for expr in kind.arguments.iter_mut() {
                     expr.materialize_const_generics(engines, name, value);
                 }

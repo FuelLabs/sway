@@ -83,7 +83,6 @@ impl UpdateConstantExpression for TyExpression {
 
 impl MaterializeConstGenerics for TyExpression {
     fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
-        dbg!(self.span.as_str());
         self.return_type
             .materialize_const_generics(engines, name, value);
         self.expression

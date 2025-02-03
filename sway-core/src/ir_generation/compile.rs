@@ -505,7 +505,6 @@ fn compile_fn(
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
-    dbg!(original_name.as_str());
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
@@ -540,8 +539,6 @@ fn compile_fn(
         .parameters
         .iter()
         .map(|param| {
-            dbg!(param.name.as_str());
-            dbg!(engines.help_out(&param.type_argument));
             // Convert to an IR type.
             convert_resolved_type_id(
                 type_engine,

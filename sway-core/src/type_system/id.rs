@@ -118,7 +118,6 @@ impl MaterializeConstGenerics for TypeId {
         name: &str,
         value: &crate::language::ty::TyExpression,
     ) {
-        dbg!(engines.help_out(&engines.te().get(*self)));
         match &*engines.te().get(*self) {
             TypeInfo::Array(type_argument, length) if length.get_length_str() == name => {
                 let val = match &value.expression {
@@ -139,12 +138,11 @@ impl MaterializeConstGenerics for TypeId {
 
                 let mut type_subst_map = TypeSubstMap::new();
                 type_subst_map.insert(self.clone(), new_array);
-
-                dbg!(self.subst(&SubstTypesContext {
+                self.subst(&SubstTypesContext {
                     engines,
                     type_subst_map: Some(&type_subst_map),
-                    subst_function_body: true,
-                }));
+                    subst_function_body: false,
+                });
             }
             _ => {}
         }

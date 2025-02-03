@@ -138,7 +138,8 @@ impl TyImplSelfOrTrait {
                     // if const_generics is off
                     if !ctx.experimental.const_generics {
                         handler.emit_err(
-                            sway_features::Feature::ConstGenerics.error_because_is_disabled(&const_generic.span),
+                            sway_features::Feature::ConstGenerics
+                                .error_because_is_disabled(&const_generic.span),
                         );
                     }
                 }

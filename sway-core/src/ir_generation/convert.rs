@@ -59,7 +59,6 @@ pub(super) fn convert_resolved_type_id(
     ast_type: TypeId,
     span: &Span,
 ) -> Result<Type, CompileError> {
-    dbg!();
     let t = type_engine.get(ast_type);
     convert_resolved_type_info(type_engine, decl_engine, context, &t, span)
 }
