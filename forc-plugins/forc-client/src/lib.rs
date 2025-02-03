@@ -14,13 +14,13 @@ pub struct NodeTarget {
     /// If unspecified, checks the manifest's `network` table, then falls back
     /// to `http://127.0.0.1:4000`
     ///
-    /// You can also use `--target`, `--testnet`, or `--mainnet` to specify the Fuel node.
+    /// You can also use `--target`, `--devnet`, `--testnet`, or `--mainnet` to specify the Fuel node.
     #[clap(long, env = "FUEL_NODE_URL")]
     pub node_url: Option<String>,
 
     /// Use preset configurations for deploying to a specific target.
     ///
-    /// You can also use `--node-url`, `--testnet`, or `--mainnet` to specify the Fuel node.
+    /// You can also use `--node-url`, `--devnet`, `--testnet`, or `--mainnet` to specify the Fuel node.
     ///
     /// Possible values are: [local, testnet, mainnet]
     #[clap(long)]
