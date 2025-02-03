@@ -17,8 +17,10 @@ async fn can_get_base_asset_id() {
         .await
         .unwrap()
         .value;
+    let consensus_params = wallet.provider().unwrap().consensus_parameters().await.unwrap();
+    let base_asset_id = consensus_params.base_asset_id();
 
-    assert_eq!(asset_id, *wallet.provider().unwrap().base_asset_id());
+    assert_eq!(asset_id, *base_asset_id);
 }
 
 async fn get_instance(wallet: WalletUnlocked) -> (TestAssetId<WalletUnlocked>, ContractId) {

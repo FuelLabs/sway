@@ -22,7 +22,7 @@ use fuels::{
         transaction_builders::{BuildableTransaction, VariableOutputPolicy},
     },
 };
-use fuels_accounts::{provider::Provider, Account};
+use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};

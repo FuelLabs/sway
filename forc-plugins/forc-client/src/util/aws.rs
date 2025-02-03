@@ -241,6 +241,7 @@ impl Signer for AwsSigner {
     }
 }
 
+#[async_trait]
 impl ViewOnlyAccount for AwsSigner {
     fn address(&self) -> &Bech32Address {
         &self.bech
@@ -249,10 +250,7 @@ impl ViewOnlyAccount for AwsSigner {
     fn try_provider(&self) -> Result<&Provider> {
         Ok(&self.provider)
     }
-}
 
-#[async_trait]
-impl Account for AwsSigner {
     async fn get_asset_inputs_for_amount(
         &self,
         asset_id: AssetId,
@@ -267,3 +265,6 @@ impl Account for AwsSigner {
             .collect::<Vec<Input>>())
     }
 }
+
+#[async_trait]
+impl Account for AwsSigner {}

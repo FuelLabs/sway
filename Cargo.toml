@@ -79,31 +79,31 @@ sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.6" }
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.7"
+fuel-abi-types = "0.8"
 
 # Dependencies from the `fuel-core` repository:
 #
 # Although ALL verions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball
-fuel-core-client = { version = "0.40.0", default-features = false }
-fuel-core-types = { version = "0.40", default-features = false }
+fuel-core-client = { version = "0.41.4", default-features = false }
+fuel-core-types = { version = "0.41", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.66.10"
-fuels-core = "0.66.10"
-fuels-accounts = "0.66.10"
+fuels = "0.70"
+fuels-core = "0.70"
+fuels-accounts = "0.70"
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.58"
-fuel-crypto = "0.58"
-fuel-types = "0.58"
-fuel-tx = "0.58"
-fuel-vm = "0.58"
+fuel-asm = "0.59"
+fuel-crypto = "0.59"
+fuel-types = "0.59"
+fuel-tx = "0.59"
+fuel-vm = "0.59"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.11"
+forc-wallet = "0.12"
 
 #
 # External dependencies
@@ -129,7 +129,6 @@ comrak = "0.28"
 crossbeam-channel = "0.5"
 dap = "0.4.1-alpha"
 dashmap = "6.1"
-derivative = "2.2"
 devault = "0.2"
 dialoguer = "0.11"
 dirs = "5.0"
