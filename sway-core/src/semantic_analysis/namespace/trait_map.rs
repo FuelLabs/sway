@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 
+use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -463,6 +464,7 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
@@ -651,7 +653,7 @@ impl TraitMap {
                 let callpath = CallPath {
                     prefixes: self_entry.key.name.prefixes.clone(),
                     suffix: self_entry.key.name.suffix.name.clone(),
-                    is_absolute: self_entry.key.name.is_absolute,
+                    callpath_type: self_entry.key.name.callpath_type,
                 };
                 if let Some(vec) = traits_types.get_mut(&callpath) {
                     vec.push(self_entry.key.type_id);
@@ -685,8 +687,7 @@ impl TraitMap {
                     .key
                     .impl_type_parameters
                     .iter()
-                    .map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
-                    .flatten()
+                    .flat_map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
                     .collect::<Vec<_>>();
 
                 for other_entry in other.get_impls(engines, self_entry.key.type_id, true) {
@@ -700,8 +701,7 @@ impl TraitMap {
                             .key
                             .impl_type_parameters
                             .iter()
-                            .map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
-                            .flatten()
+                            .flat_map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
                             .collect::<Vec<_>>();
                         let other_tcs_satisfied = other_tcs.iter().all(|(tc, tp)| {
                             if let Some(tc_type_ids) = traits_types.get(&tc.trait_name) {
@@ -740,8 +740,11 @@ impl TraitMap {
                         });
 
                         if other_tcs_satisfied && self_tcs_satisfied {
-                            for (trait_item_name1, _) in self_entry.value.trait_items.clone() {
-                                for (trait_item_name2, _) in other_entry.value.trait_items.clone() {
+                            let entry_items = self_entry.value.trait_items.keys().sorted();
+                            for trait_item_name1 in entry_items {
+                                let other_entry_items =
+                                    other_entry.value.trait_items.keys().sorted();
+                                for trait_item_name2 in other_entry_items {
                                     if trait_item_name1 == trait_item_name2 {
                                         handler.emit_err(CompileError::InternalOwned(
                                             format!("Overlapped item {}", trait_item_name1),
