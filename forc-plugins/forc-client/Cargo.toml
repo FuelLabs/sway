@@ -48,7 +48,6 @@ sway-features.workspace = true
 sway-parse.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
-swayfmt.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = [
     "macros",
