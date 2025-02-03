@@ -50,7 +50,7 @@ Where the following arguments are required:
 forc call --help
 ```
 
-```
+```output
 Perform Fuel RPC calls from the comfort of your command line
 
 Usage: forc call [OPTIONS] --abi <ABI> <CONTRACT_ID> <FUNCTION> [ARGS]...
@@ -169,15 +169,16 @@ Here's how to format different types:
 | Enum                                          | `(Active: true)` or `(1: true)`       | Enums are key-val pairs with keys as being variant name (case-sensitive) or variant index (starting from 0) and values as being the variant value; this could represent the following `enum MyEnum { Inactive, Active(bool) }` |
 
 ## ABI Support
-The ABI (Application Binary Interface) can be provided in two ways:
 
-### Local file:
+The ABI (Application Binary Interface) can be provided in two ways.
+
+### Local file
 
 ```bash
 forc call <CONTRACT_ID> --abi ./path/to/abi.json <FUNCTION> [ARGS...]
 ```
 
-### Remote ABI file/URL:
+### Remote ABI file/URL
 
 ```bash
 forc call <CONTRACT_ID> --abi https://example.com/abi.json <FUNCTION> [ARGS...]
@@ -235,7 +236,7 @@ forc call <CONTRACT_ID> --abi <PATH> <FUNCTION> --max-fee 5000
 
 ### Common Use Cases
 
-1. Contract State Queries
+- 1. Contract State Queries
 
 ```sh
 # Read contract state
@@ -245,7 +246,7 @@ forc call <CONTRACT_ID> --abi <PATH> get_balance
 forc call <CONTRACT_ID> --abi <PATH> get_user_info 0x1234...
 ```
 
-2. Token Operations
+- 2. Token Operations
 
 ```sh
 # Check token balance
@@ -255,7 +256,7 @@ forc call <CONTRACT_ID> --abi <PATH> balance_of 0x1234...
 forc call <CONTRACT_ID> --abi <PATH> transfer 0x1234... 100 --live
 ```
 
-3. Contract Administration
+- 3. Contract Administration
 
 ```sh
 # Check contract owner
@@ -275,7 +276,7 @@ forc call <CONTRACT_ID> --abi <PATH> update_params 42 --live
 
 ## Troubleshooting
 
-### Common issues and solutions:
+### Common issues and solutions
 
 - **ABI Mismatch**:
   - Ensure the ABI matches the deployed contract
