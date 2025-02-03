@@ -505,6 +505,7 @@ jobs:
           repository: FuelLabs/sway-performance-data
           path: performance-data
       - name: Get GitHub app token
+        if: github.event_name == 'push'
         uses: actions/create-github-app-token@v1
         id: app-token
         with:
