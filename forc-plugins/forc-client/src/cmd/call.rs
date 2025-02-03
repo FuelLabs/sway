@@ -12,14 +12,7 @@ pub use forc_tx::{Gas, Maturity};
 
 forc_util::cli_examples! {
     super::Command {
-        [ Call a contract with function parameters => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> <ARGS>" ]
-        [ Call a contract without function parameters => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE>" ]
-        [ Call a contract given an ABI file with function parameters => "forc call <CONTRACT_ID> --abi <ABI_FILE> <FUNCTION_SELECTOR> <ARGS>" ]
-        [ Call a contract that makes external contract calls => "forc call <CONTRACT_ID> --abi <ABI_FILE> <FUNCTION_SELECTOR> <ARGS> --contracts <CONTRACT_ADDRESS_1> <CONTRACT_ADDRESS_2>..." ]
-        [ Call a contract in simulation mode => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --simulate" ]
-        [ Call a contract in live mode which performs state changes => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live" ]
-        [ Call a contract payable function which transfers value of native asset => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live --amount <VALUE>" ]
-        [ Call a contract payable function which transfers value of custom asset => "forc call <CONTRACT_ID> <FUNCTION_SIGNATURE> --live --amount <VALUE> --asset-id <ASSET_ID>" ]
+        [ Call a contract with function parameters => "forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 --abi ./contract-abi.json get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423" ]
     }
 }
 
