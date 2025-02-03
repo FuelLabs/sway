@@ -2919,12 +2919,12 @@ dependencies = [
 
 [[package]]
 name = "forc-node"
-version = "0.66.5"
+version = "0.66.6"
 dependencies = [
  "anyhow",
  "clap",
  "dialoguer",
- "forc-tracing 0.66.5",
+ "forc-tracing 0.66.6",
  "forc-util",
  "fuel-crypto",
  "libp2p-identity",
