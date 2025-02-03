@@ -13,10 +13,10 @@ impl Format for GenericParam {
         match self {
             GenericParam::Trait { ident } => ident.format(formatted_code, formatter),
             GenericParam::Const { ident, ty } => {
-                ident.format(formatted_code, formatter);
-                colon(formatted_code);
+                let _ = ident.format(formatted_code, formatter);
+                let _ = colon(formatted_code);
                 ty.format(formatted_code, formatter)
-            },
+            }
         }
     }
 }

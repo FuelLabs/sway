@@ -147,7 +147,6 @@ pub fn fn_inline(
 ///
 /// e.g., If this is applied to main() then all calls in the program are removed.  This is
 /// obviously dangerous for recursive functions, in which case this pass would inline forever.
-
 pub fn inline_all_function_calls(
     context: &mut Context,
     function: &Function,
@@ -163,7 +162,6 @@ pub fn inline_all_function_calls(
 /// - The number of calls made to the function or if the function is called inside a loop.
 /// - A particular call has constant arguments implying further constant folding.
 /// - An attribute request, e.g., #[always_inline], #[never_inline].
-
 pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     context: &mut Context,
     function: &Function,
@@ -214,7 +212,6 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
 ///
 /// The max_stack_size is a bit tricky, as the IR doesn't really know (or care) about the size of
 /// types.  See the source code for how it works.
-
 pub fn is_small_fn(
     max_blocks: Option<usize>,
     max_instrs: Option<usize>,
@@ -260,7 +257,6 @@ pub fn is_small_fn(
 ///
 /// The destination function, block and call site must be specified along with the function to
 /// inline.
-
 pub fn inline_function_call(
     context: &mut Context,
     function: Function,

@@ -1,5 +1,5 @@
 #![allow(clippy::mutable_key_type)]
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
@@ -578,7 +578,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
-        const_generics: HashMap<String, TyExpression>,
+        const_generics: BTreeMap<String, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> Result<(), ErrorEmitted>

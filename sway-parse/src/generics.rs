@@ -7,16 +7,16 @@ use sway_ast::{AngleBrackets, GenericArgs, GenericParams};
 use sway_types::Ident;
 
 impl Parse for GenericParam {
-    fn parse(parser: &mut Parser) -> ParseResult<Self> where Self: Sized {
-        if parser.peek::<ConstToken>().is_some() { 
+    fn parse(parser: &mut Parser) -> ParseResult<Self>
+    where
+        Self: Sized,
+    {
+        if parser.peek::<ConstToken>().is_some() {
             let _ = parser.parse::<ConstToken>()?;
             let ident = parser.parse::<Ident>()?;
             let _ = parser.parse::<ColonToken>()?;
             let ty = parser.parse::<Ident>()?;
-            Ok(GenericParam::Const {
-                ident,
-                ty,
-            })
+            Ok(GenericParam::Const { ident, ty })
         } else {
             let ident = parser.parse::<Ident>()?;
             Ok(GenericParam::Trait { ident })

@@ -1,15 +1,13 @@
-use std::collections::HashMap;
-
-use sway_error::error::CompileError;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned};
-
 use crate::EnforceTypeArguments;
 use crate::{
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
     TypeId,
 };
+use std::collections::BTreeMap;
+use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Span, Spanned};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum SupertraitOf {
@@ -85,7 +83,7 @@ pub(crate) fn insert_supertraits_into_namespace(
                             handler,
                             &mut trait_decl,
                             &mut type_arguments,
-                            HashMap::new(),
+                            BTreeMap::new(),
                             EnforceTypeArguments::Yes,
                             &supertrait.name.span(),
                         )

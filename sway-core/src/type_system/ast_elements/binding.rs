@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
@@ -17,6 +15,7 @@ use crate::{
     EnforceTypeArguments, Ident,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
@@ -327,7 +326,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                     handler,
                     &mut new_copy,
                     self.type_arguments.to_vec_mut(),
-                    HashMap::new(),
+                    BTreeMap::new(),
                     EnforceTypeArguments::No,
                     &self.span,
                 )?;
@@ -402,7 +401,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             handler,
             &mut new_copy,
             self.type_arguments.to_vec_mut(),
-            HashMap::new(),
+            BTreeMap::new(),
             EnforceTypeArguments::No,
             &self.span,
         )?;
@@ -452,7 +451,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             handler,
             &mut new_copy,
             self.type_arguments.to_vec_mut(),
-            HashMap::new(),
+            BTreeMap::new(),
             EnforceTypeArguments::No,
             &self.span,
         )?;

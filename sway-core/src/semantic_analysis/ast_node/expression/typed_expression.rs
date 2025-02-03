@@ -40,7 +40,7 @@ use either::Either;
 use indexmap::IndexMap;
 use namespace::{LexicalScope, Module, ResolvedDeclaration};
 use rustc_hash::FxHashSet;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -124,7 +124,7 @@ impl ty::TyExpression {
             ctx,
             decl_ref.clone(),
             method_name_binding.type_arguments.to_vec_mut(),
-            HashMap::new(),
+            BTreeMap::new(),
         )?;
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
@@ -1299,7 +1299,7 @@ impl ty::TyExpression {
             handler,
             &mut storage_key_struct_decl,
             &mut type_arguments,
-            HashMap::new(),
+            BTreeMap::new(),
             EnforceTypeArguments::Yes,
             span,
         )?;

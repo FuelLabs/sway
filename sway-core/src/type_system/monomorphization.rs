@@ -1,11 +1,3 @@
-use std::collections::HashMap;
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::{Ident, Span, Spanned};
-
 use crate::{
     decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
     language::{
@@ -18,6 +10,12 @@ use crate::{
     EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
     TypeParameter, TypeSubstMap,
 };
+use std::collections::BTreeMap;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::{Ident, Span, Spanned};
 
 pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
@@ -188,7 +186,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     namespace: &Namespace,
     value: &mut T,
     type_arguments: &mut [TypeArgument],
-    const_generics: HashMap<String, TyExpression>,
+    const_generics: BTreeMap<String, TyExpression>,
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
@@ -250,7 +248,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 namespace,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
-                HashMap::new(),
+                BTreeMap::new(),
                 enforce_type_arguments,
                 span,
                 mod_path,
@@ -281,7 +279,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 namespace,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
-                HashMap::new(),
+                BTreeMap::new(),
                 enforce_type_arguments,
                 span,
                 mod_path,

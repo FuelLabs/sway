@@ -13,10 +13,8 @@ use sway_types::integer_bits::IntegerBits;
 use sway_types::Spanned;
 use sway_types::{ident::Ident, span::Span};
 
-// -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
-
 pub(crate) fn order_ast_nodes_by_dependency(
     handler: &Handler,
     engines: &Engines,

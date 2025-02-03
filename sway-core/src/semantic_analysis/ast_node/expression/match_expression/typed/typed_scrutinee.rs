@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use itertools::Itertools;
+use std::collections::BTreeMap;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
@@ -226,7 +225,7 @@ fn type_check_struct(
         handler,
         &mut struct_decl,
         &mut [],
-        HashMap::new(),
+        BTreeMap::new(),
         EnforceTypeArguments::No,
         &struct_name.span(),
     )?;
@@ -506,7 +505,7 @@ fn type_check_enum(
         handler,
         &mut enum_decl,
         &mut [],
-        HashMap::new(),
+        BTreeMap::new(),
         EnforceTypeArguments::No,
         &callsite_span,
     )?;

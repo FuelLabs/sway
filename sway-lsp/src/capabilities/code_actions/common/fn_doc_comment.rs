@@ -60,7 +60,7 @@ impl<'a, T: Spanned + Named + FunctionSignature> CodeAction<'a, T>
     }
 }
 
-impl<'a, T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'a, T> {
+impl<T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'_, T> {
     /// Formats the return value of the function into a vector of strings.
     fn reverts_section(&self) -> Vec<String> {
         vec![

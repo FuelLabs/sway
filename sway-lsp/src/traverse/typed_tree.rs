@@ -292,12 +292,7 @@ impl Parse for ty::TyExpression {
                     collect_call_path_prefixes(ctx, &call_path.prefixes);
                 }
             }
-            ty::TyExpressionVariant::ConstGenericExpression {
-                ref decl,
-                span,
-                call_path,
-                ..
-            } => {
+            ty::TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
                 // collect_const_decl(ctx, decl, Some(&Ident::new(span.clone()))); // TODO
                 if let Some(call_path) = call_path {
                     collect_call_path_prefixes(ctx, &call_path.prefixes);
@@ -647,7 +642,7 @@ impl Parse for ty::ConfigurableDecl {
 }
 
 impl Parse for ty::ConstGenericDecl {
-    fn parse(&self, ctx: &ParseContext) {
+    fn parse(&self, _ctx: &ParseContext) {
         // let decl = ctx.engines.de().get(&self.decl_id);
         // collect_configurable_decl(ctx, &decl, None);
     }
@@ -1281,7 +1276,11 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
     }
 }
 
-fn collect_const_generic_decl(ctx: &ParseContext, const_decl: &ty::TyConstGenericDecl, ident: Option<&Ident>) {
+fn collect_const_generic_decl(
+    _ctx: &ParseContext,
+    _const_decl: &ty::TyConstGenericDecl,
+    _ident: Option<&Ident>,
+) {
     // TODO
 }
 

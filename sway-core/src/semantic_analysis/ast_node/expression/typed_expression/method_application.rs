@@ -15,7 +15,7 @@ use crate::{
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -99,7 +99,7 @@ pub(crate) fn type_check_method_application(
 
     // Prepare const generics materialization
 
-    let mut const_generics = HashMap::new();
+    let mut const_generics = BTreeMap::new();
 
     let original_decl = engines.de().get(original_decl_ref.id());
     if !original_decl.const_generic_parameters.is_empty() {
@@ -962,7 +962,7 @@ pub(crate) fn monomorphize_method(
     mut ctx: TypeCheckContext,
     decl_ref: DeclRefFunction,
     type_arguments: &mut [TypeArgument],
-    const_generics: HashMap<String, TyExpression>,
+    const_generics: BTreeMap<String, TyExpression>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();

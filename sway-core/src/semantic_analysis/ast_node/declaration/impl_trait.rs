@@ -55,7 +55,7 @@ impl TyImplSelfOrTrait {
                     handler,
                     engines,
                     const_generic_decl.name.clone(),
-                    Declaration::ConstGenericDeclaration(const_generic_parameter.clone()),
+                    Declaration::ConstGenericDeclaration(*const_generic_parameter),
                 )?;
             }
 
@@ -227,7 +227,7 @@ impl TyImplSelfOrTrait {
                             handler,
                             &mut trait_decl,
                             &mut trait_type_arguments,
-                            HashMap::new(),
+                            BTreeMap::new(),
                             EnforceTypeArguments::Yes,
                             &trait_name.span(),
                         )?;
@@ -416,7 +416,7 @@ impl TyImplSelfOrTrait {
                                 suffix: pe_decl.name.clone(),
                                 is_absolute: false,
                             },
-                            return_type: pe_decl.ty.clone(),
+                            return_type: pe_decl.ty,
                             span: pe_decl.span.clone(),
                             value: None,
                         },
@@ -427,7 +427,7 @@ impl TyImplSelfOrTrait {
                         handler,
                         pe_decl.name.clone(),
                         TyDecl::ConstGenericDecl(ConstGenericDecl {
-                            decl_id: decl_ref.id().clone(),
+                            decl_id: *decl_ref.id(),
                         }),
                     )?;
                 }

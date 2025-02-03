@@ -62,9 +62,7 @@ pub(crate) fn close_angle_bracket(
     Ok(())
 }
 
-pub(crate) fn colon(
-    formatted_code: &mut FormattedCode,
-) -> Result<(), FormatterError> {
+pub(crate) fn colon(formatted_code: &mut FormattedCode) -> Result<(), FormatterError> {
     write!(formatted_code, "{}", PunctKind::Colon.as_char())?;
     Ok(())
 }
