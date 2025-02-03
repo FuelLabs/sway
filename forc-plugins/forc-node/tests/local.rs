@@ -8,6 +8,8 @@ use forc_node::{
 use serde_json::json;
 use tokio::time::sleep;
 
+// Ignored because of https://github.com/FuelLabs/sway/issues/6884
+#[ignore]
 #[tokio::test]
 async fn start_local_node_check_health() {
     let port = portpicker::pick_unused_port().expect("No ports free");
