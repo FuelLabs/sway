@@ -1868,7 +1868,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         if !val
             .get_type(self.context)
             .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
-            .map_or(false, |(val_ty, key_ty)| {
+            .is_some_and(|(val_ty, key_ty)| {
                 val_ty.is_ptr(self.context) && key_ty.is_ptr(self.context)
             })
         {
@@ -1958,7 +1958,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         if !store_val
             .get_type(self.context)
             .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
-            .map_or(false, |(val_ty, key_ty)| {
+            .is_some_and(|(val_ty, key_ty)| {
                 val_ty.is_uint64(self.context) && key_ty.is_ptr(self.context)
             })
         {

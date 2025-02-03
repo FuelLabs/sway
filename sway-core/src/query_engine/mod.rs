@@ -211,7 +211,7 @@ impl QueryEngine {
     pub fn clear_module(&mut self, source_id: &SourceId) {
         self.function_cache
             .write()
-            .retain(|(ident, _), _| ident.span().source_id().map_or(true, |id| id != source_id));
+            .retain(|(ident, _), _| (ident.span().source_id() != Some(source_id)));
     }
 
     /// Removes all data associated with the `program_id` from the function cache.

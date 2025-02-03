@@ -474,7 +474,7 @@ impl FuelAsmBuilder<'_, '_> {
                         // XXX val.get_type() should be a pointer if it's not meant to be loaded.
                         if val
                             .get_type(self.context)
-                            .map_or(false, |t| self.is_copy_type(&t))
+                            .is_some_and(|t| self.is_copy_type(&t))
                         {
                             self.cur_bytecode.push(Op {
                                 opcode: either::Either::Left(VirtualOp::LW(
