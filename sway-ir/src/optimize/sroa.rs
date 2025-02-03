@@ -479,12 +479,13 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
                 }
                 continue;
             }
-            if combine_indices(context, *ptr).map_or(false, |indices| {
-                indices.iter().any(|idx| !idx.is_constant(context))
-            }) || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
-                super::target_fuel::is_demotable_type(context, &pointee_ty)
-                    && !matches!(inst.op, InstOp::MemCopyVal { .. })
-            }) {
+            if combine_indices(context, *ptr)
+                .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)))
+                || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
+                    super::target_fuel::is_demotable_type(context, &pointee_ty)
+                        && !matches!(inst.op, InstOp::MemCopyVal { .. })
+                })
+            {
                 candidates.remove(syms.iter().next().unwrap());
             }
         }

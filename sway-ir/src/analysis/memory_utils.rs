@@ -326,7 +326,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
         }
     }
 
-    if !val.get_type(context).map_or(false, |t| t.is_ptr(context)) {
+    if !val.get_type(context).is_some_and(|t| t.is_ptr(context)) {
         return ReferredSymbols::new(true, IndexSet::default());
     }
 

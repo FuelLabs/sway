@@ -577,10 +577,7 @@ impl ty::TyExpression {
                 Self::type_check_deref(handler, ctx.by_ref(), expr, span)
             }
         };
-        let mut typed_expression = match res {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
+        let mut typed_expression = res?;
 
         // if the return type cannot be cast into the annotation type then it is a type error
         ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);

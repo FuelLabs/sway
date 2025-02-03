@@ -374,7 +374,7 @@ impl Block {
     /// Those instructions are: [InstOp::Ret], [FuelVmInstruction::Retd],
     /// [FuelVmInstruction::JmpMem], and [FuelVmInstruction::Revert]).
     pub fn is_terminated_by_return_or_revert(&self, context: &Context) -> bool {
-        self.get_terminator(context).map_or(false, |i| {
+        self.get_terminator(context).is_some_and(|i| {
             matches!(
                 i,
                 Instruction {

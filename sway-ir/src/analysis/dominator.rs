@@ -140,7 +140,7 @@ fn compute_dom_tree(
                     // "p" may not be reachable, and hence not in dom_tree.
                     po.block_to_po
                         .get(p)
-                        .map_or(false, |p_po| *p_po > po.block_to_po[b])
+                        .is_some_and(|p_po| *p_po > po.block_to_po[b])
                 })
                 .cloned()
                 .unwrap();
