@@ -174,7 +174,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(false, |count| count > 1)
+                            .is_some_and(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::FunctionParameter {
@@ -216,7 +216,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(false, |count| count > 0)
+                        .is_some_and(|count| count > 0)
                 }
                 _ => false,
             }
