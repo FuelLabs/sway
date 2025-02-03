@@ -25,13 +25,14 @@ forc_util::cli_examples! {
 
 #[derive(Debug, Clone)]
 pub enum FuncType {
-    Signature(String),
     Selector(String),
+    // TODO: add support for function signatures - without ABI files
+    // Signature(String),
 }
 
 impl Default for FuncType {
     fn default() -> Self {
-        FuncType::Signature(String::new())
+        FuncType::Selector(String::new())
     }
 }
 
@@ -45,7 +46,7 @@ impl FromStr for FuncType {
         // Check if function signature is a valid selector (alphanumeric and underscore support)
         let selector_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
         if !selector_pattern.is_match(&s) {
-            return Ok(FuncType::Signature(s.to_string()));
+            return Err("Function signature must be a valid selector".to_string());
         }
         Ok(FuncType::Selector(s.to_string()))
     }
@@ -144,13 +145,13 @@ pub struct Command {
     /// The contract ID to call.
     pub contract_id: ContractId,
 
-    /// Optional path or URI to a JSON ABI file.
+    /// Path or URI to a JSON ABI file.
     #[clap(long, value_parser = parse_abi_path)]
-    pub abi: Option<Either<PathBuf, Url>>,
+    pub abi: Either<PathBuf, Url>,
 
-    /// The function signature to call.
-    /// When ABI is provided, this should be a selector (e.g. "transfer")
-    /// When no ABI is provided, this should be the full function signature (e.g. "transfer(address,u64)")
+    /// The function selector to call.
+    /// The function selector is the name of the function to call (e.g. "transfer").
+    /// It must be a valid selector present in the ABI file.
     pub function: FuncType,
 
     /// Arguments to pass into main function with forc run.

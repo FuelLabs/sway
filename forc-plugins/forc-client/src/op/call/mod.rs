@@ -39,8 +39,6 @@ use fuels_core::{
     },
 };
 use std::{collections::HashMap, str::FromStr};
-use sway_ast::Item;
-use swayfmt::parse::with_handler;
 
 /// A command for calling a contract function.
 pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
@@ -62,240 +60,199 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
 
     let wallet = get_wallet(caller, provider).await?;
 
-    if let Some(abi) = abi {
-        // If ABI is provided, ensure function signature is just the selector
-        let cmd::call::FuncType::Selector(selector) = function else {
-            bail!(
-                "Function must be a selector; e.g. \"transfer\"; got {:?}",
-                function
-            );
-        };
-
-        let abi_str = match abi {
-            Either::Left(path) => std::fs::read_to_string(&path)?,
-            Either::Right(url) => {
-                let response = reqwest::get(url).await?.bytes().await?;
-                String::from_utf8(response.to_vec())?
-            }
-        };
-        let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
-
-        let type_lookup = parsed_abi
-            .types
-            .into_iter()
-            .map(|decl| (decl.type_id, decl))
-            .collect::<HashMap<_, _>>();
-
-        // get the function selector from the abi
-        let abi_func = parsed_abi
-            .functions
-            .iter()
-            .find(|abi_func| abi_func.name == selector)
-            .unwrap_or_else(|| panic!("Function not found in ABI: {}", selector));
-
-        // println!("function: {:?}", abi_func); // TODO: remove
-
-        if abi_func.inputs.len() != args.len() {
-            bail!("Number of arguments does not match number of parameters in function signature; expected {}, got {}", abi_func.inputs.len(), args.len());
+    let cmd::call::FuncType::Selector(selector) = function;
+    let abi_str = match abi {
+        Either::Left(path) => std::fs::read_to_string(&path)?,
+        Either::Right(url) => {
+            let response = reqwest::get(url).await?.bytes().await?;
+            String::from_utf8(response.to_vec())?
         }
+    };
+    let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
 
-        let tokens = abi_func
-            .inputs
-            .iter()
-            .zip(&args)
-            .map(|(type_application, arg)| {
-                // println!("type_application: {:?}", type_application); // TODO: remove
+    let type_lookup = parsed_abi
+        .types
+        .into_iter()
+        .map(|decl| (decl.type_id, decl))
+        .collect::<HashMap<_, _>>();
 
-                let param_type =
-                    ParamType::try_from_type_application(type_application, &type_lookup)
-                        .expect("Failed to convert input type application");
-                println!("param_type: {:?}", param_type);
-                param_type_val_to_token(&param_type, arg)
-            })
-            .collect::<Result<Vec<_>>>()?;
+    // get the function selector from the abi
+    let abi_func = parsed_abi
+        .functions
+        .iter()
+        .find(|abi_func| abi_func.name == selector)
+        .unwrap_or_else(|| panic!("Function not found in ABI: {}", selector));
 
-        let output_param = ParamType::try_from_type_application(&abi_func.output, &type_lookup)
-            .expect("Failed to convert output type");
+    // println!("function: {:?}", abi_func); // TODO: remove
 
-        let abi_encoder = ABIEncoder::new(EncoderConfig::default());
-        let encoded_data = abi_encoder.encode(&tokens)?;
-
-        // Create and execute call
-        let call = ContractCall {
-            contract_id: contract_id.into(),
-            encoded_selector: encode_fn_selector(&selector),
-            encoded_args: Ok(encoded_data),
-            call_parameters: call_parameters.clone().into(),
-            external_contracts: vec![], // set below
-            output_param: output_param.clone(),
-            is_payable: call_parameters.amount > 0,
-            custom_assets: Default::default(),
-        };
-
-        let provider = wallet.provider().unwrap();
-        // TODO: log decoding would be required for verbose debugging mode
-        let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
-
-        let tx_policies = gas
-            .as_ref()
-            .map(Into::into)
-            .unwrap_or(TxPolicies::default());
-        let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
-        let external_contracts = match external_contracts {
-            Some(external_contracts) => external_contracts
-                .iter()
-                .map(|addr| Bech32ContractId::from(*addr))
-                .collect(),
-            None => {
-                // Automatically retrieve missing contract addresses from the call - by simulating the call
-                // and checking for missing contracts in the receipts
-                // This makes the CLI more ergonomic
-                let external_contracts = get_missing_contracts(
-                    call.clone(),
-                    provider,
-                    &tx_policies,
-                    &variable_output_policy,
-                    &log_decoder,
-                    &wallet,
-                    None,
-                )
-                .await?;
-                if !external_contracts.is_empty() {
-                    forc_tracing::println_warning(
-                        "Automatically provided external contract addresses with call (max 10):",
-                    );
-                    external_contracts.iter().for_each(|addr| {
-                        forc_tracing::println_warning(&format!("- 0x{}", ContractId::from(addr)));
-                    });
-                }
-                external_contracts
-            }
-        };
-
-        let chain_id = provider.consensus_parameters().await?.chain_id();
-        let (tx_status, tx_hash) = match mode {
-            cmd::call::ExecutionMode::DryRun => {
-                let tx = call
-                    .with_external_contracts(external_contracts)
-                    .build_tx(tx_policies, variable_output_policy, &wallet)
-                    .await
-                    .expect("Failed to build transaction");
-                let tx_hash = tx.id(chain_id);
-                let tx_status = provider
-                    .dry_run(tx)
-                    .await
-                    .expect("Failed to dry run transaction");
-                (tx_status, tx_hash)
-            }
-            cmd::call::ExecutionMode::Simulate => {
-                forc_tracing::println_warning(&format!(
-                    "Simulating transaction with wallet... {}",
-                    wallet.address().hash()
-                ));
-                let tx = call
-                    .with_external_contracts(external_contracts)
-                    .transaction_builder(tx_policies, variable_output_policy, &wallet)
-                    .await
-                    .expect("Failed to build transaction")
-                    .with_build_strategy(ScriptBuildStrategy::StateReadOnly)
-                    .build(provider)
-                    .await?;
-                let tx_hash = tx.id(chain_id);
-                let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
-                let tx_status = provider
-                    .dry_run_opt(tx, false, gas_price)
-                    .await
-                    .expect("Failed to simulate transaction");
-                (tx_status, tx_hash)
-            }
-            cmd::call::ExecutionMode::Live => {
-                forc_tracing::println_action_green(
-                    "Sending transaction with wallet",
-                    &format!("0x{}", wallet.address().hash()),
-                );
-                let tx = call
-                    .with_external_contracts(external_contracts)
-                    .build_tx(tx_policies, variable_output_policy, &wallet)
-                    .await
-                    .expect("Failed to build transaction");
-                let tx_hash = tx.id(chain_id);
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
-                    .await
-                    .expect("Failed to send transaction");
-                (tx_status, tx_hash)
-            }
-        };
-
-        let receipts = tx_status
-            .take_receipts_checked(Some(&log_decoder))
-            .expect("Failed to take receipts");
-
-        let mut receipt_parser = ReceiptParser::new(&receipts, DecoderConfig::default());
-        let result = match output {
-            cmd::call::OutputFormat::Default => {
-                let data = receipt_parser
-                    .extract_contract_call_data(contract_id)
-                    .expect("Failed to extract contract call data");
-                ABIDecoder::default()
-                    .decode_as_debug_str(&output_param, data.as_slice())
-                    .expect("Failed to decode as debug string")
-            }
-            cmd::call::OutputFormat::Raw => {
-                let token = receipt_parser
-                    .parse_call(&Bech32ContractId::from(contract_id), &output_param)
-                    .expect("Failed to extract contract call data");
-                token_to_string(&token).expect("Failed to convert token to string")
-            }
-        };
-
-        forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
-        forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
-        forc_tracing::println_action_green("result:", &result);
-
-        // display transaction url if live mode
-        if cmd::call::ExecutionMode::Live == mode {
-            if let Some(explorer_url) = node.get_explorer_url() {
-                forc_tracing::println_action_green(
-                    "\nView transaction:",
-                    &format!("{}/tx/0x{}", explorer_url, tx_hash),
-                );
-            }
-        }
-
-        return Ok(result);
+    if abi_func.inputs.len() != args.len() {
+        bail!("Number of arguments does not match number of parameters in function signature; expected {}, got {}", abi_func.inputs.len(), args.len());
     }
 
-    let cmd::call::FuncType::Signature(function_signature) = function else {
-        bail!("Function must be a signature if no ABI is provided");
+    let tokens = abi_func
+        .inputs
+        .iter()
+        .zip(&args)
+        .map(|(type_application, arg)| {
+            // println!("type_application: {:?}", type_application); // TODO: remove
+
+            let param_type = ParamType::try_from_type_application(type_application, &type_lookup)
+                .expect("Failed to convert input type application");
+            println!("param_type: {:?}", param_type);
+            param_type_val_to_token(&param_type, arg)
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    let output_param = ParamType::try_from_type_application(&abi_func.output, &type_lookup)
+        .expect("Failed to convert output type");
+
+    let abi_encoder = ABIEncoder::new(EncoderConfig::default());
+    let encoded_data = abi_encoder.encode(&tokens)?;
+
+    // Create and execute call
+    let call = ContractCall {
+        contract_id: contract_id.into(),
+        encoded_selector: encode_fn_selector(&selector),
+        encoded_args: Ok(encoded_data),
+        call_parameters: call_parameters.clone().into(),
+        external_contracts: vec![], // set below
+        output_param: output_param.clone(),
+        is_payable: call_parameters.amount > 0,
+        custom_assets: Default::default(),
     };
 
-    let parsed = with_handler(|handler| {
-        let token_stream = sway_parse::lex(
-            handler,
-            &function_signature.clone().into(),
-            0,
-            function_signature.len(),
-            None,
-        )?;
-        sway_parse::Parser::new(handler, &token_stream).parse::<Item>()
-    })
-    .expect("Parse error");
+    let provider = wallet.provider().unwrap();
+    // TODO: log decoding would be required for verbose debugging mode
+    let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
 
-    eprintln!("{:?}", parsed);
+    let tx_policies = gas
+        .as_ref()
+        .map(Into::into)
+        .unwrap_or(TxPolicies::default());
+    let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
+    let external_contracts = match external_contracts {
+        Some(external_contracts) => external_contracts
+            .iter()
+            .map(|addr| Bech32ContractId::from(*addr))
+            .collect(),
+        None => {
+            // Automatically retrieve missing contract addresses from the call - by simulating the call
+            // and checking for missing contracts in the receipts
+            // This makes the CLI more ergonomic
+            let external_contracts = get_missing_contracts(
+                call.clone(),
+                provider,
+                &tx_policies,
+                &variable_output_policy,
+                &log_decoder,
+                &wallet,
+                None,
+            )
+            .await?;
+            if !external_contracts.is_empty() {
+                forc_tracing::println_warning(
+                    "Automatically provided external contract addresses with call (max 10):",
+                );
+                external_contracts.iter().for_each(|addr| {
+                    forc_tracing::println_warning(&format!("- 0x{}", ContractId::from(addr)));
+                });
+            }
+            external_contracts
+        }
+    };
 
-    // function calling via signature unsupported
-    bail!("Function calling via signature is unsupported");
+    let chain_id = provider.consensus_parameters().await?.chain_id();
+    let (tx_status, tx_hash) = match mode {
+        cmd::call::ExecutionMode::DryRun => {
+            let tx = call
+                .with_external_contracts(external_contracts)
+                .build_tx(tx_policies, variable_output_policy, &wallet)
+                .await
+                .expect("Failed to build transaction");
+            let tx_hash = tx.id(chain_id);
+            let tx_status = provider
+                .dry_run(tx)
+                .await
+                .expect("Failed to dry run transaction");
+            (tx_status, tx_hash)
+        }
+        cmd::call::ExecutionMode::Simulate => {
+            forc_tracing::println_warning(&format!(
+                "Simulating transaction with wallet... {}",
+                wallet.address().hash()
+            ));
+            let tx = call
+                .with_external_contracts(external_contracts)
+                .transaction_builder(tx_policies, variable_output_policy, &wallet)
+                .await
+                .expect("Failed to build transaction")
+                .with_build_strategy(ScriptBuildStrategy::StateReadOnly)
+                .build(provider)
+                .await?;
+            let tx_hash = tx.id(chain_id);
+            let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
+            let tx_status = provider
+                .dry_run_opt(tx, false, gas_price)
+                .await
+                .expect("Failed to simulate transaction");
+            (tx_status, tx_hash)
+        }
+        cmd::call::ExecutionMode::Live => {
+            forc_tracing::println_action_green(
+                "Sending transaction with wallet",
+                &format!("0x{}", wallet.address().hash()),
+            );
+            let tx = call
+                .with_external_contracts(external_contracts)
+                .build_tx(tx_policies, variable_output_policy, &wallet)
+                .await
+                .expect("Failed to build transaction");
+            let tx_hash = tx.id(chain_id);
+            let tx_status = provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .expect("Failed to send transaction");
+            (tx_status, tx_hash)
+        }
+    };
 
-    // let handler = Handler::default();
-    // let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-    // let r = Parser::new(&handler, &ts).parse();
+    let receipts = tx_status
+        .take_receipts_checked(Some(&log_decoder))
+        .expect("Failed to take receipts");
 
-    // if handler.has_errors() || handler.has_warnings() {
-    //     panic!("{:?}", handler.consume());
-    // }
+    let mut receipt_parser = ReceiptParser::new(&receipts, DecoderConfig::default());
+    let result = match output {
+        cmd::call::OutputFormat::Default => {
+            let data = receipt_parser
+                .extract_contract_call_data(contract_id)
+                .expect("Failed to extract contract call data");
+            ABIDecoder::default()
+                .decode_as_debug_str(&output_param, data.as_slice())
+                .expect("Failed to decode as debug string")
+        }
+        cmd::call::OutputFormat::Raw => {
+            let token = receipt_parser
+                .parse_call(&Bech32ContractId::from(contract_id), &output_param)
+                .expect("Failed to extract contract call data");
+            token_to_string(&token).expect("Failed to convert token to string")
+        }
+    };
 
-    // r.unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
+    forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
+    forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
+    forc_tracing::println_action_green("result:", &result);
+
+    // display transaction url if live mode
+    if cmd::call::ExecutionMode::Live == mode {
+        if let Some(explorer_url) = node.get_explorer_url() {
+            forc_tracing::println_action_green(
+                "\nView transaction:",
+                &format!("{}/tx/0x{}", explorer_url, tx_hash),
+            );
+        }
+    }
+
+    Ok(result)
 }
 
 async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<WalletUnlocked> {
@@ -384,9 +341,9 @@ mod tests {
             unsafe { std::mem::transmute::<&WalletUnlocked, &(Wallet, SecretKey)>(wallet).1 };
         cmd::Call {
             contract_id: id,
-            abi: Some(Either::Left(std::path::PathBuf::from(
+            abi: Either::Left(std::path::PathBuf::from(
                 "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json",
-            ))),
+            )),
             function: cmd::call::FuncType::Selector(selector.into()),
             args: args.into_iter().map(String::from).collect(),
             node: crate::NodeTarget {
