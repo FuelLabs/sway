@@ -139,7 +139,7 @@ impl FromStr for OutputFormat {
 }
 
 /// Call a contract function.
-#[derive(Debug, Default, Parser, Clone)]
+#[derive(Debug, Parser, Clone)]
 #[clap(bin_name = "forc call", version)]
 pub struct Command {
     /// The contract ID to call.
