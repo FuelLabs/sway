@@ -173,7 +173,7 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
             },
         );
 
-    candidate.map_or(false, |(inst_val, block, cn_replace)| {
+    candidate.is_some_and(|(inst_val, block, cn_replace)| {
         // Replace this `cmp` instruction with a constant.
         inst_val.replace(
             context,
@@ -240,7 +240,7 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
         );
 
     // Replace this binary op instruction with a constant.
-    candidate.map_or(false, |(inst_val, block, new_value)| {
+    candidate.is_some_and(|(inst_val, block, new_value)| {
         inst_val.replace(context, ValueDatum::Constant(new_value));
         block.remove_instruction(context, inst_val);
         true
@@ -282,7 +282,7 @@ fn remove_useless_binary_op(context: &mut Context, function: &Function) -> bool 
                 },
             );
 
-    candidate.map_or(false, |(block, old_value, new_value)| {
+    candidate.is_some_and(|(block, old_value, new_value)| {
         let replace_map = FxHashMap::from_iter([(old_value, new_value)]);
         function.replace_values(context, &replace_map, None);
 
@@ -324,7 +324,7 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
         );
 
     // Replace this unary op instruction with a constant.
-    candidate.map_or(false, |(inst_val, block, new_value)| {
+    candidate.is_some_and(|(inst_val, block, new_value)| {
         inst_val.replace(context, ValueDatum::Constant(new_value));
         block.remove_instruction(context, inst_val);
         true

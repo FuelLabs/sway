@@ -43,7 +43,7 @@ pub(crate) struct MutProgramInfo<'a> {
     pub engines: &'a Engines,
 }
 
-impl<'a> ProgramInfo<'a> {
+impl ProgramInfo<'_> {
     pub(crate) fn as_mut(&mut self) -> MutProgramInfo {
         MutProgramInfo {
             lexed_program: &mut self.lexed_program,

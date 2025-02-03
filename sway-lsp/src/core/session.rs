@@ -527,7 +527,7 @@ pub fn parse_lexed_program(
             .map(|path| {
                 item.span()
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -562,7 +562,7 @@ fn parse_ast_to_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -597,7 +597,7 @@ fn parse_ast_to_typed_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };

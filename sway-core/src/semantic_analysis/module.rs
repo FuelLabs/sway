@@ -270,7 +270,7 @@ impl ty::TyModule {
 
         // Create a cache key and get the module cache
         let path = engines.se().get_path(source_id);
-        let include_tests = build_config.map_or(false, |x| x.include_tests);
+        let include_tests = build_config.is_some_and(|x| x.include_tests);
         let key = ModuleCacheKey::new(path.clone().into(), include_tests);
         let cache = engines.qe().module_cache.read();
         cache.get(&key).and_then(|entry| {
@@ -475,7 +475,7 @@ impl ty::TyModule {
                 .and_then(|lsp| lsp.file_versions.get(&path).copied())
                 .flatten();
 
-            let include_tests = build_config.map_or(false, |x| x.include_tests);
+            let include_tests = build_config.is_some_and(|x| x.include_tests);
             let key = ModuleCacheKey::new(path.clone().into(), include_tests);
             engines.qe().update_typed_module_cache_entry(
                 &key,

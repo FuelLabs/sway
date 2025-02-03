@@ -1009,10 +1009,7 @@ impl TypeInfo {
                     engines,
                     error_msg_span,
                 );
-                let name = match name {
-                    Ok(name) => name,
-                    Err(e) => return Err(e),
-                };
+                let name = name?;
                 format!("a[{};{}]", name, length.val())
             }
             RawUntypedPtr => "rawptr".to_string(),
