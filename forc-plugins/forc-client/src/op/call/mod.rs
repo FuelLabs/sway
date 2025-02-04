@@ -117,7 +117,8 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     };
 
     let provider = wallet.provider().unwrap();
-    // TODO: log decoding would be required for verbose debugging mode
+    // TODO: add support for decoding logs and viewing them in output (verbose mode)
+    // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6887
     let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
 
     let tx_policies = gas
