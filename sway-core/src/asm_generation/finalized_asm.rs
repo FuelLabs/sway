@@ -599,6 +599,8 @@ fn print_instruction(op: &Instruction) {
         Instruction::ECAL(x) => f("ECAL", x.unpack()),
         Instruction::BSIZ(x) => f("BSIZ", x.unpack()),
         Instruction::BLDD(x) => f("BLDD", x.unpack()),
+        Instruction::ECOP(x) => f("ECOP", x.unpack()),
+        Instruction::EPAR(x) => f("EPAR", x.unpack()),
     }
 }
 
