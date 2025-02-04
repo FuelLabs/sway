@@ -111,7 +111,7 @@ impl AbstractInstructionSet {
                             };
                         }
                         VirtualOp::ADDI(dest, opd1, opd2) => {
-                            let c2 = opd2.value as u64;
+                            let c2 = opd2.value() as u64;
                             process_add(&mut reg_contents, &mut latest_version, dest, opd1, c2);
                         }
                         VirtualOp::MUL(dest, opd1, opd2) => {
@@ -140,30 +140,28 @@ impl AbstractInstructionSet {
                         }
                         VirtualOp::MOVI(dest, imm) => {
                             reg_contents
-                                .insert(dest.clone(), RegContents::Constant(imm.value as u64));
+                                .insert(dest.clone(), RegContents::Constant(imm.value() as u64));
                             record_new_def(&mut latest_version, dest);
                         }
                         VirtualOp::LW(dest, addr_reg, imm) => match reg_contents.get(addr_reg) {
                             Some(RegContents::BaseOffset(base_reg, offset))
-                                if get_def_version(&latest_version, &base_reg.reg)
-                                    == base_reg.ver
-                                    && ((offset / 8) + imm.value as u64)
+                                if offset % 8 == 0
+                                    && get_def_version(&latest_version, &base_reg.reg)
+                                        == base_reg.ver
+                                    && ((offset / 8) + imm.value() as u64)
                                         < compiler_constants::TWELVE_BITS =>
                             {
-                                // bail if LW cannot read where this memory is
-                                if offset % 8 == 0 {
-                                    let new_imm = VirtualImmediate12::new_unchecked(
-                                        (offset / 8) + imm.value as u64,
-                                        "Immediate offset too big for LW",
-                                    );
-                                    let new_lw =
-                                        VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
-                                    // The register defined is no more useful for us. Forget anything from its past.
-                                    reg_contents.remove(dest);
-                                    record_new_def(&mut latest_version, dest);
-                                    // Replace the LW with a new one in-place.
-                                    *op = new_lw;
-                                }
+                                let new_imm = VirtualImmediate12::new_unchecked(
+                                    (offset / 8) + imm.value() as u64,
+                                    "Immediate offset too big for LW",
+                                );
+                                let new_lw =
+                                    VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
+                                // The register defined is no more useful for us. Forget anything from its past.
+                                reg_contents.remove(dest);
+                                record_new_def(&mut latest_version, dest);
+                                // Replace the LW with a new one in-place.
+                                *op = new_lw;
                             }
                             _ => {
                                 reg_contents.remove(dest);
@@ -172,13 +170,14 @@ impl AbstractInstructionSet {
                         },
                         VirtualOp::SW(addr_reg, src, imm) => match reg_contents.get(addr_reg) {
                             Some(RegContents::BaseOffset(base_reg, offset))
-                                if get_def_version(&latest_version, &base_reg.reg)
-                                    == base_reg.ver
-                                    && ((offset / 8) + imm.value as u64)
+                                if offset % 8 == 0
+                                    && get_def_version(&latest_version, &base_reg.reg)
+                                        == base_reg.ver
+                                    && ((offset / 8) + imm.value() as u64)
                                         < compiler_constants::TWELVE_BITS =>
                             {
                                 let new_imm = VirtualImmediate12::new_unchecked(
-                                    (offset / 8) + imm.value as u64,
+                                    (offset / 8) + imm.value() as u64,
                                     "Immediate offset too big for SW",
                                 );
                                 let new_sw =

@@ -163,6 +163,12 @@ pub(crate) enum LineStyle {
     Multiline,
 }
 
+impl LineStyle {
+    pub fn is_multiline(&self) -> bool {
+        matches!(self, Self::Multiline)
+    }
+}
+
 impl Default for LineStyle {
     fn default() -> Self {
         Self::Normal

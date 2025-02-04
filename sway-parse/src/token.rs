@@ -224,7 +224,7 @@ pub fn lex_commented(
             let not_is_single_underscore = character != '_'
                 || l.stream
                     .peek()
-                    .map_or(false, |(_, next)| next.is_xid_continue());
+                    .is_some_and(|(_, next)| next.is_xid_continue());
             if not_is_single_underscore {
                 // Consume until we hit other than `XID_CONTINUE`.
                 while l.stream.next_if(|(_, c)| c.is_xid_continue()).is_some() {}
@@ -736,6 +736,7 @@ fn lex_int_lit(
         span: span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
         ty_opt,
+        is_generated_b256: false,
     });
 
     Ok(Some(CommentedTokenTree::Tree(literal.into())))

@@ -43,7 +43,7 @@ pub fn create_module_verifier_pass() -> Pass {
     }
 }
 
-impl<'eng> Context<'eng> {
+impl Context<'_> {
     /// Verify the contents of this [`Context`] is valid.
     pub fn verify(self) -> Result<Self, IrError> {
         for (module, _) in &self.modules {
@@ -223,7 +223,7 @@ struct InstructionVerifier<'a, 'eng> {
     cur_block: Block,
 }
 
-impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
+impl InstructionVerifier<'_, '_> {
     fn verify_instructions(&self) -> Result<(), IrError> {
         for ins in self.cur_block.instruction_iter(self.context) {
             let value_content = &self.context.values[ins.0];
@@ -362,8 +362,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         let val_ty = value
             .get_type(self.context)
             .ok_or(IrError::VerifyBitcastUnknownSourceType)?;
-        if self.type_bit_size(&val_ty).map_or(false, |sz| sz > 64)
-            || self.type_bit_size(ty).map_or(false, |sz| sz > 64)
+        if self.type_bit_size(&val_ty).is_some_and(|sz| sz > 64)
+            || self.type_bit_size(ty).is_some_and(|sz| sz > 64)
         {
             Err(IrError::VerifyBitcastBetweenInvalidTypes(
                 val_ty.as_string(self.context),

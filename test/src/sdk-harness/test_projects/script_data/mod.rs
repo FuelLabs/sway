@@ -19,7 +19,8 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
             .with_script(std::fs::read(
                 "test_projects/script_data/out/release/script_data.bin",
             )?)
-            .with_script_data(script_data);
+            .with_script_data(script_data)
+            .enable_burn(true);
 
     tx.add_signer(wallet.clone()).unwrap();
 

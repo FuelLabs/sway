@@ -270,7 +270,7 @@ impl ty::TyModule {
 
         // Create a cache key and get the module cache
         let path = engines.se().get_path(source_id);
-        let include_tests = build_config.map_or(false, |x| x.include_tests);
+        let include_tests = build_config.is_some_and(|x| x.include_tests);
         let key = ModuleCacheKey::new(path.clone().into(), include_tests);
         let cache = engines.qe().module_cache.read();
         cache.get(&key).and_then(|entry| {
@@ -463,7 +463,6 @@ impl ty::TyModule {
         let ty_module = Arc::new(Self {
             span: span.clone(),
             submodules,
-            namespace: ctx.namespace.clone(),
             all_nodes,
             attributes: attributes.clone(),
         });
@@ -476,7 +475,7 @@ impl ty::TyModule {
                 .and_then(|lsp| lsp.file_versions.get(&path).copied())
                 .flatten();
 
-            let include_tests = build_config.map_or(false, |x| x.include_tests);
+            let include_tests = build_config.is_some_and(|x| x.include_tests);
             let key = ModuleCacheKey::new(path.clone().into(), include_tests);
             engines.qe().update_typed_module_cache_entry(
                 &key,
@@ -687,17 +686,18 @@ impl ty::TySubmodule {
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(
+            handler,
             engines,
             mod_name,
             *visibility,
             module.span.clone(),
             |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
-        )
+        )?
     }
 
     pub fn type_check(
         handler: &Handler,
-        parent_ctx: TypeCheckContext,
+        mut parent_ctx: TypeCheckContext,
         engines: &Engines,
         mod_name: ModName,
         kind: TreeType,
@@ -709,13 +709,25 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res =
-                ty::TyModule::type_check(handler, submod_ctx, engines, kind, module, build_config);
-            module_res.map(|module| ty::TySubmodule {
-                module,
-                mod_name_span: mod_name_span.clone(),
-            })
-        })
+        parent_ctx.enter_submodule(
+            handler,
+            mod_name,
+            *visibility,
+            module.span.clone(),
+            |submod_ctx| {
+                let module_res = ty::TyModule::type_check(
+                    handler,
+                    submod_ctx,
+                    engines,
+                    kind,
+                    module,
+                    build_config,
+                );
+                module_res.map(|module| ty::TySubmodule {
+                    module,
+                    mod_name_span: mod_name_span.clone(),
+                })
+            },
+        )?
     }
 }

@@ -10,6 +10,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     Engines, TypeArgument, TypeInfo, TypeParameter,
 };
+use std::collections::BTreeMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -320,7 +321,7 @@ where
         }
         assert!(!handler.has_warnings(), "{:?}", handler);
 
-        let ctx = self.ctx.by_ref();
+        let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
             &handler,
             engines,
@@ -331,24 +332,22 @@ where
             return Err(handler);
         }
 
-        let ctx = self.ctx.by_ref();
-        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
+        let r = ctx.scoped(&handler, None, |ctx| {
             TyDecl::type_check(
                 &handler,
-                ctx,
+                &mut ctx.by_ref(),
                 parsed::Declaration::FunctionDeclaration(decl),
             )
         });
 
         // Uncomment this to understand why an entry function was not generated
-        //println!("{:#?}", handler);
+        // println!("{}, {:#?}", r.is_ok(), handler);
 
-        let (decl, namespace) = r.map_err(|_| handler.clone())?;
+        let decl = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            *self.ctx.namespace = namespace;
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
@@ -382,7 +381,7 @@ where
 
         assert!(!handler.has_errors(), "{:?}", handler);
 
-        let ctx = self.ctx.by_ref();
+        let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
             &handler,
             engines,
@@ -393,19 +392,41 @@ where
             return Err(handler);
         }
 
-        let r = ctx.scoped_and_namespace(&handler, None, |ctx| {
+        let r = ctx.scoped(&handler, None, |ctx| {
             TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 
         // Uncomment this to understand why auto impl failed for a type.
-        //println!("{:#?}", handler);
+        // println!("{:#?}", handler);
 
-        let (decl, namespace) = r.map_err(|_| handler.clone())?;
+        let decl = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
-            *self.ctx.namespace = namespace;
+            let impl_trait = if let TyDecl::ImplSelfOrTrait(impl_trait_id) = &decl {
+                engines.de().get_impl_self_or_trait(&impl_trait_id.decl_id)
+            } else {
+                unreachable!();
+            };
+
+            // Insert trait implementation generated in the previous scope into the current scope.
+            ctx.insert_trait_implementation(
+                &handler,
+                impl_trait.trait_name.clone(),
+                impl_trait.trait_type_arguments.clone(),
+                impl_trait.implementing_for.type_id,
+                &impl_trait.items,
+                &impl_trait.span,
+                impl_trait
+                    .trait_decl_ref
+                    .as_ref()
+                    .map(|decl_ref| decl_ref.decl_span().clone()),
+                crate::namespace::IsImplSelf::No,
+                crate::namespace::IsExtendingExistingImpl::No,
+            )
+            .ok();
+
             Ok(TyAstNode {
                 span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
@@ -419,7 +440,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.root().module.name().as_str() == "core" {
+        if self.ctx.namespace.current_package_name().as_str() == "core" {
             return Some((None, None));
         }
 
@@ -454,7 +475,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.root().module.name().as_str() == "core" {
+        if self.ctx.namespace.current_package_name().as_str() == "core" {
             return Some((None, None));
         }
 
@@ -520,8 +541,21 @@ where
         let mut reads = false;
         let mut writes = false;
 
+        // used to check for name collisions
+        let mut contract_methods: BTreeMap<String, Vec<Span>> = <_>::default();
+
+        // generate code
         for r in contract_fns {
             let decl = engines.de().get(r);
+
+            let name = decl.name.as_str();
+            if !contract_methods.contains_key(name) {
+                contract_methods.insert(name.to_string(), vec![]);
+            }
+            contract_methods
+                .get_mut(name)
+                .unwrap()
+                .push(decl.name.span());
 
             match decl.purity {
                 Purity::Pure => {}
@@ -594,6 +628,21 @@ where
 
             code.push_str("\n}\n");
         }
+
+        // check contract methods are unique
+        // we need to allow manual_try_fold to avoid short-circuit and show
+        // all errors.
+        #[allow(clippy::manual_try_fold)]
+        contract_methods
+            .into_iter()
+            .fold(Ok(()), |error, (_, spans)| {
+                if spans.len() > 1 {
+                    Err(handler
+                        .emit_err(CompileError::MultipleContractsMethodsWithTheSameName { spans }))
+                } else {
+                    error
+                }
+            })?;
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);

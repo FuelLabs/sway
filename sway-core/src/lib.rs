@@ -36,6 +36,7 @@ pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
+use semantic_analysis::program::TypeCheckFailed;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -440,14 +441,14 @@ pub(crate) fn is_ty_module_cache_up_to_date(
 ) -> bool {
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    cache.get(&key).map_or(false, |entry| {
-        entry.typed.as_ref().map_or(false, |typed| {
+    cache.get(&key).is_some_and(|entry| {
+        entry.typed.as_ref().is_some_and(|typed| {
             // Check if the cache is up to date based on file versions
             let cache_up_to_date = build_config
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
                 .map_or(true, |version| {
-                    version.map_or(true, |v| typed.version.map_or(false, |tv| v <= tv))
+                    version.map_or(true, |v| typed.version.is_some_and(|tv| v <= tv))
                 });
 
             // If the cache is up to date, recursively check all dependencies
@@ -471,7 +472,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
 ) -> bool {
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    cache.get(&key).map_or(false, |entry| {
+    cache.get(&key).is_some_and(|entry| {
         // Determine if the cached dependency information is still valid
         let cache_up_to_date = build_config
             .and_then(|x| x.lsp_mode.as_ref())
@@ -497,7 +498,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
                     //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
                     //     is not greater than the cached version.
-                    version.map_or(true, |v| entry.parsed.version.map_or(false, |ev| v <= ev))
+                    version.map_or(true, |v| entry.parsed.version.is_some_and(|ev| v <= ev))
                 },
             );
 
@@ -548,35 +549,67 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &mut parsed::ParseProgram,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     experimental: ExperimentalFeatures,
-) -> Result<ty::TyProgram, ErrorEmitted> {
+) -> Result<ty::TyProgram, TypeCheckFailed> {
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.
-    build_module_dep_graph(handler, &mut parse_program.root)?;
+    build_module_dep_graph(handler, &mut parse_program.root).map_err(|error| TypeCheckFailed {
+        root_module: None,
+        namespace: initial_namespace.clone(),
+        error,
+    })?;
 
-    let namespace = Namespace::init_root(initial_namespace);
+    let collection_namespace = Namespace::new(handler, engines, initial_namespace.clone(), true)
+        .map_err(|error| TypeCheckFailed {
+            root_module: None,
+            namespace: initial_namespace.clone(),
+            error,
+        })?;
     // Collect the program symbols.
-    let mut collection_ctx =
-        ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
 
+    let mut collection_ctx =
+        ty::TyProgram::collect(handler, engines, parse_program, collection_namespace).map_err(
+            |error| TypeCheckFailed {
+                root_module: None,
+                namespace: initial_namespace.clone(),
+                error,
+            },
+        )?;
+
+    let typecheck_namespace =
+        Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
+            TypeCheckFailed {
+                root_module: None,
+                namespace: collection_ctx.namespace().root_ref().clone(),
+                error,
+            }
+        })?;
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
         &mut collection_ctx,
-        namespace,
+        typecheck_namespace,
         package_name,
         build_config,
         experimental,
     );
-    check_should_abort(handler, retrigger_compilation.clone())?;
 
+    let mut typed_program = typed_program_opt?;
+
+    check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
+        TypeCheckFailed {
+            root_module: Some(Arc::new(typed_program.root_module.clone())),
+            namespace: typed_program.namespace.root_ref().clone(),
+            error,
+        }
+    })?;
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.
@@ -584,18 +617,17 @@ pub fn parsed_to_ast(
         engines.pe().clear();
     }
 
-    let mut typed_program = match typed_program_opt {
-        Ok(typed_program) => typed_program,
-        Err(e) => return Err(e),
-    };
-
     typed_program.check_deprecated(engines, handler);
 
     match typed_program.check_recursive(engines, handler) {
         Ok(()) => {}
-        Err(e) => {
+        Err(error) => {
             handler.dedup();
-            return Err(e);
+            return Err(TypeCheckFailed {
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.root().clone(),
+                error,
+            });
         }
     };
 
@@ -608,9 +640,13 @@ pub fn parsed_to_ast(
         );
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,
-            Err(e) => {
+            Err(error) => {
                 handler.dedup();
-                return Err(e);
+                return Err(TypeCheckFailed {
+                    root_module: Some(Arc::new(typed_program.root_module.clone())),
+                    namespace: typed_program.namespace.root().clone(),
+                    error,
+                });
             }
         };
 
@@ -636,7 +672,13 @@ pub fn parsed_to_ast(
             None => (None, None),
         };
 
-        check_should_abort(handler, retrigger_compilation.clone())?;
+        check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
+            TypeCheckFailed {
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.root_ref().clone(),
+                error,
+            }
+        })?;
 
         // Perform control flow analysis and extend with any errors.
         let _ = perform_control_flow_analysis(
@@ -654,16 +696,16 @@ pub fn parsed_to_ast(
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se(), experimental);
-    let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
-    if let Err(e) = ir_generation::compile::compile_constants(
+    if let Err(errs) = ir_generation::compile::compile_constants_for_package(
         engines,
         &mut ctx,
-        &mut md_mgr,
         module,
-        typed_program.root.namespace.module(engines),
+        typed_program.namespace.root_ref(),
     ) {
-        handler.emit_err(e);
+        errs.into_iter().for_each(|err| {
+            handler.emit_err(err.clone());
+        });
     }
 
     // CEI pattern analysis
@@ -673,21 +715,24 @@ pub fn parsed_to_ast(
         handler.emit_warn(warn);
     }
 
+    let mut md_mgr = MetadataManager::default();
     // Check that all storage initializers can be evaluated at compile time.
-    let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
-        handler,
-        engines,
-        &mut ctx,
-        &mut md_mgr,
-        module,
-    );
-    let typed_program_with_storage_slots = match typed_wiss_res {
-        Ok(typed_program_with_storage_slots) => typed_program_with_storage_slots,
-        Err(e) => {
+    typed_program
+        .get_typed_program_with_initialized_storage_slots(
+            handler,
+            engines,
+            &mut ctx,
+            &mut md_mgr,
+            module,
+        )
+        .map_err(|error: ErrorEmitted| {
             handler.dedup();
-            return Err(e);
-        }
-    };
+            TypeCheckFailed {
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.root_ref().clone(),
+                error,
+            }
+        })?;
 
     // All unresolved types lead to compile errors.
     for err in types_metadata.iter().filter_map(|m| match m {
@@ -702,10 +747,7 @@ pub fn parsed_to_ast(
         handler.emit_err(err);
     }
 
-    // Check if a non-test function calls `#[test]` function.
-
-    handler.dedup();
-    Ok(typed_program_with_storage_slots)
+    Ok(typed_program)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -713,7 +755,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -764,7 +806,7 @@ pub fn compile_to_ast(
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = time_expr!(
+    let program = time_expr!(
         package_name,
         "parse the concrete syntax tree (CST) to a typed AST",
         "parse_ast",
@@ -786,7 +828,7 @@ pub fn compile_to_ast(
 
     handler.dedup();
 
-    let programs = Programs::new(lexed_program, parsed_program, typed_res, metrics);
+    let programs = Programs::new(lexed_program, parsed_program, program, metrics);
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
@@ -809,7 +851,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: &BuildConfig,
     package_name: &str,
     experimental: ExperimentalFeatures,
@@ -838,7 +880,7 @@ pub fn ast_to_asm(
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let typed_program = match &programs.typed {
         Ok(typed_program) => typed_program,
-        Err(err) => return Err(*err),
+        Err(err) => return Err(err.error),
     };
 
     let asm =
@@ -976,7 +1018,7 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Root,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
@@ -1076,7 +1118,7 @@ fn dead_code_analysis<'a>(
     module_dead_code_analysis(
         handler,
         engines,
-        &program.root,
+        &program.root_module,
         &tree_type,
         &mut dead_code_graph,
     )?;
@@ -1117,7 +1159,7 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
 
 fn return_path_analysis(engines: &Engines, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    module_return_path_analysis(engines, &program.root, &mut errors);
+    module_return_path_analysis(engines, &program.root_module, &mut errors);
     errors
 }
 

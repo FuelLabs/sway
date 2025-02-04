@@ -1,0 +1,41 @@
+---
+source: test/tests/tests.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods
+   Compiling library core (sway-lib-core)
+   Compiling library std (sway-lib-std)
+   Compiling contract contract_implements_multiple_abis_with_same_methods (test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods)
+error: Multiple contracts methods with the same name.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods/src/main.sw:14:8
+   |
+...
+14 |     fn foo() -> u64 {
+   |        ^^^ This is the first method
+...
+22 |     fn foo() -> u64 {
+   |        ^^^ This is the duplicated method.
+   |
+   = help: Contract methods names must be unique, even when implementing multiple ABIs.
+____
+
+error: Multiple contracts methods with the same name.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods/src/main.sw:18:8
+   |
+...
+18 |     fn foo2() {}
+   |        ^^^^ This is the first method
+...
+26 |     fn foo2() {}
+   |        ^^^^ This is the duplicated method.
+   |
+   = help: Contract methods names must be unique, even when implementing multiple ABIs.
+____
+
+error: Could not generate the entry method. See errors above for more details.
+____
+
+  Aborting due to 3 errors.
+error: Failed to compile contract_implements_multiple_abis_with_same_methods

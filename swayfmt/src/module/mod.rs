@@ -4,7 +4,12 @@ use crate::{
     utils::map::byte_span::{self, ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{Item, ItemKind, Module, ModuleKind};
+use sway_ast::{
+    keywords::{
+        ContractToken, Keyword, LibraryToken, PredicateToken, ScriptToken, SemicolonToken, Token,
+    },
+    Item, ItemKind, Module, ModuleKind,
+};
 use sway_types::Spanned;
 
 pub(crate) mod item;
@@ -18,7 +23,7 @@ impl Format for Module {
     ) -> Result<(), FormatterError> {
         write_comments(formatted_code, 0..self.span().start(), formatter)?;
         self.kind.format(formatted_code, formatter)?;
-        writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
+        writeln!(formatted_code, "{}", SemicolonToken::AS_STR)?;
 
         // Format comments between module kind declaration and rest of items
         if !self.items.is_empty() {
@@ -69,17 +74,17 @@ impl Format for ModuleKind {
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            ModuleKind::Script { script_token } => {
-                write!(formatted_code, "{}", script_token.span().as_str())?
+            ModuleKind::Script { script_token: _ } => {
+                write!(formatted_code, "{}", ScriptToken::AS_STR)?
             }
-            ModuleKind::Contract { contract_token } => {
-                write!(formatted_code, "{}", contract_token.span().as_str())?
+            ModuleKind::Contract { contract_token: _ } => {
+                write!(formatted_code, "{}", ContractToken::AS_STR)?
             }
-            ModuleKind::Predicate { predicate_token } => {
-                write!(formatted_code, "{}", predicate_token.span().as_str())?
+            ModuleKind::Predicate { predicate_token: _ } => {
+                write!(formatted_code, "{}", PredicateToken::AS_STR)?
             }
-            ModuleKind::Library { library_token } => {
-                write!(formatted_code, "{}", library_token.span().as_str())?;
+            ModuleKind::Library { library_token: _ } => {
+                write!(formatted_code, "{}", LibraryToken::AS_STR)?;
             }
         };
 

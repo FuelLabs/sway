@@ -239,6 +239,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-tx
           cargo install --locked --debug --path ./forc-plugins/forc-crypto
+          cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
@@ -287,7 +288,7 @@ jobs:
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-doc
       - name: Build sway-lib-std docs
-        run: forc doc --manifest-path ./sway-lib-std
+        run: forc doc --path ./sway-lib-std
 
   build-forc-test-project:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -470,9 +471,14 @@ jobs:
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Tests - Experimental Feature 'storage_domains'
+        run: cargo run --locked --release -p forc -- build --experimental storage_domains --release --locked --path ./test/src/sdk-harness
+      - name: Cargo Test sway-lib-std - Experimental Feature 'storage_domains'
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: buildjet-4vcpu-ubuntu-2204
+    environment: fuel-sway-bot
     permissions:
       contents: write
     steps:
@@ -494,13 +500,21 @@ jobs:
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
+      - name: Get GitHub app token
+        if: github.event_name == 'push'
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_KEY }}
+          owner: FuelLabs
       - name: Checkout benchmark data
         if: github.event_name == 'push'
         uses: actions/checkout@v3
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
-          token: ${{ secrets.CI_ACCOUNT_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
       - name: Prepare benchmarks data for commit
         if: github.event_name == 'push'
         run: ./benchmark.sh --prepare-for-commit
@@ -525,10 +539,16 @@ jobs:
         run: cargo install --locked --debug --path ./forc
       - name: Run Core Unit Tests
         run: forc build --path sway-lib-core && forc test --path sway-lib-core
+      - name: Run Core Unit Tests - Experimental feature 'storage_domains'
+        run: forc build --experimental storage_domains --path sway-lib-core && forc test --experimental storage_domains --path sway-lib-core
       - name: Run Std Unit Tests
         run: forc build --path sway-lib-std && forc test --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'storage_domains'
+        run: forc build --experimental storage_domains --path sway-lib-std && forc test --experimental storage_domains --path sway-lib-std
       - name: Run In Language Unit Tests
         run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'storage_domains'
+        run: forc build --experimental storage_domains --path test/src/in_language_tests && forc test --experimental storage_domains --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -966,13 +986,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -982,7 +1002,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -996,7 +1016,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

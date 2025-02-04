@@ -7,7 +7,7 @@ use crate::{
             self, ConfigurableDecl, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl,
             TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
-        CallPath, Visibility,
+        CallPath, CallPathType, Visibility,
     },
     transform::{self, AttributesMap},
     type_system::TypeInfo,
@@ -174,7 +174,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(false, |count| count > 1)
+                            .is_some_and(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::FunctionParameter {
@@ -216,7 +216,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(false, |count| count > 0)
+                        .is_some_and(|count| count > 0)
                 }
                 _ => false,
             }
@@ -857,7 +857,7 @@ fn connect_trait_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
@@ -881,7 +881,7 @@ fn connect_abi_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,

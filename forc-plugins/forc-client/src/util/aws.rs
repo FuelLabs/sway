@@ -266,4 +266,5 @@ impl ViewOnlyAccount for AwsSigner {
     }
 }
 
+#[async_trait]
 impl Account for AwsSigner {}

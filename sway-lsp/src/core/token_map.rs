@@ -33,7 +33,7 @@ impl<'a> TokenMap {
     pub fn try_get_mut_with_retry(
         &'a self,
         ident: &TokenIdent,
-    ) -> Option<RefMut<TokenIdent, Token>> {
+    ) -> Option<RefMut<'a, TokenIdent, Token>> {
         const MAX_RETRIES: usize = 14;
         let backoff_times = [
             1,
@@ -239,11 +239,8 @@ impl<'a> TokenMap {
 
     /// Remove all tokens for the given file from the token map.
     pub fn remove_tokens_for_file(&self, path_to_remove: &PathBuf) {
-        self.0.retain(|key, _value| {
-            key.path
-                .as_ref()
-                .map_or(true, |path| path != path_to_remove)
-        });
+        self.0
+            .retain(|key, _value| (key.path.as_ref() != Some(path_to_remove)));
     }
 }
 

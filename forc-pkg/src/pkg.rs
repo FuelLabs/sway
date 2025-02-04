@@ -40,7 +40,7 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::{parsed::TreeType, Visibility},
+    language::parsed::TreeType,
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
@@ -49,7 +49,7 @@ use sway_core::{
 use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::constants::{CORE, PRELUDE, STD};
+use sway_types::constants::{CORE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
@@ -181,7 +181,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub root_module: namespace::Module,
+    pub root_module: namespace::Root,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -551,7 +551,7 @@ impl Built {
     /// Returns an iterator yielding all member built packages.
     pub fn into_members<'a>(
         &'a self,
-    ) -> Box<dyn Iterator<Item = (&Pinned, Arc<BuiltPackage>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a Pinned, Arc<BuiltPackage>)> + 'a> {
         // NOTE: Since pkg is a `Arc<_>`, pkg clones in this function are only reference
         // increments. `BuiltPackage` struct does not get copied.`
         match self {
@@ -1569,9 +1569,6 @@ pub fn sway_build_config(
     Ok(build_config)
 }
 
-/// The name of the constant holding the contract's id.
-pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
-
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
 /// This function is designed to be called for each node in order of compilation.
@@ -1585,7 +1582,7 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 /// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 pub fn dependency_namespace(
-    lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Root>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
@@ -1596,16 +1593,15 @@ pub fn dependency_namespace(
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
-    let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::default_with_contract_id(
+    let mut root_namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::namespace_with_contract_id(
             engines,
             name.clone(),
-            Visibility::Public,
             contract_id_value,
             experimental,
         )?
     } else {
-        namespace::Module::new(name, Visibility::Public, None)
+        namespace::namespace_without_contract_id(name.clone())
     };
 
     // Add direct dependencies.
@@ -1614,12 +1610,12 @@ pub fn dependency_namespace(
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_edge = edge.weight();
-        let mut dep_namespace = match dep_edge.kind {
+        let dep_namespace = match dep_edge.kind {
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no namespace module")
-                .read(engines, Clone::clone),
+                .expect("no root namespace module")
+                .clone(),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1630,17 +1626,15 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-                namespace::default_with_contract_id(
+                namespace::namespace_with_contract_id(
                     engines,
                     name.clone(),
-                    Visibility::Private,
                     contract_id_value,
                     experimental,
                 )?
             }
         };
-        dep_namespace.is_external = true;
-        root_module.insert_submodule(dep_name, dep_namespace);
+        root_namespace.add_external(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1651,50 +1645,11 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
-            core_added = true;
+            root_namespace.add_external(CORE.to_string(), core_namespace.clone());
         }
     }
 
-    let mut root = namespace::Root::from(root_module);
-
-    if core_added {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    if has_std_dep(graph, node) {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    Ok(root)
-}
-
-/// Find the `std` dependency, if it is a direct one, of the given node.
-fn has_std_dep(graph: &Graph, node: NodeIx) -> bool {
-    // If we are `std`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == STD {
-        return false;
-    }
-
-    // If we have `std` as a direct dep, use it.
-    graph.edges_directed(node, Direction::Outgoing).any(|edge| {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        matches!(&dep.name[..], STD)
-    })
+    Ok(root_namespace)
 }
 
 /// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
@@ -1755,7 +1710,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: &mut namespace::Root,
+    namespace: namespace::Root,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
@@ -1815,8 +1770,6 @@ pub fn compile(
 
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
-
-    let namespace = typed_program.root.namespace.clone();
 
     if handler.has_errors() {
         return fail(handler);
@@ -1980,7 +1933,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: namespace.root_module().clone(),
+        root_module: typed_program.namespace.root_ref().clone(),
         warnings,
         metrics,
     };
@@ -2326,8 +2279,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         if let Some(outfile) = &binary_outfile {
             built_package.write_bytecode(outfile.as_ref())?;
         }
-        if let Some(outfile) = &debug_outfile {
-            built_package.write_debug_info(outfile.as_ref())?;
+        // Generate debug symbols if explicitly requested via -g flag or if in debug build
+        if debug_outfile.is_some() || build_profile.name == BuildProfile::DEBUG {
+            let debug_path = debug_outfile
+                .as_ref()
+                .map(|p| output_dir.join(p))
+                .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
+            built_package.write_debug_info(&debug_path)?;
         }
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));
@@ -2488,7 +2446,7 @@ pub fn build(
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let mut dep_namespace = match dependency_namespace(
+            let dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
@@ -2505,7 +2463,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                &mut dep_namespace,
+                dep_namespace,
                 &mut source_map,
                 experimental,
             )?;
@@ -2553,7 +2511,7 @@ pub fn build(
         };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let mut dep_namespace = match dependency_namespace(
+        let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
@@ -2579,7 +2537,7 @@ pub fn build(
             &descriptor,
             &profile,
             &engines,
-            &mut dep_namespace,
+            dep_namespace,
             &mut source_map,
             experimental,
         )?;
@@ -2659,7 +2617,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let mut dep_namespace = dependency_namespace(
+        let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
@@ -2690,7 +2648,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            &mut dep_namespace,
+            dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
@@ -2714,12 +2672,8 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut module = typed_program
-                    .root
-                    .namespace
-                    .program_id(engines)
-                    .read(engines, |m| m.clone());
-                module.set_span(
+                let mut lib_root = typed_program.namespace.root_ref().clone();
+                lib_root.current_package_root_module_mut().set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,
@@ -2728,7 +2682,7 @@ pub fn check(
                     )
                     .unwrap(),
                 );
-                lib_namespace_map.insert(node, module);
+                lib_namespace_map.insert(node, lib_root);
             }
             source_map.insert_dependency(manifest.dir());
         } else {

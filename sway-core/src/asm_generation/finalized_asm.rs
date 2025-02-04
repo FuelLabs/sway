@@ -129,11 +129,15 @@ fn to_bytecode_mut(
             {
                 8
             }
-            AllocatedOpcode::AddrDataId(_, _data_id) => 8,
+            AllocatedOpcode::AddrDataId(_, id)
+                if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) =>
+            {
+                8
+            }
             AllocatedOpcode::ConfigurablesOffsetPlaceholder => 8,
             AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
-            AllocatedOpcode::BLOB(count) => count.value as u64 * 4,
-            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value == 0 => 0,
+            AllocatedOpcode::BLOB(count) => count.value() as u64 * 4,
+            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value() == 0 => 0,
             _ => 4,
         }
     }

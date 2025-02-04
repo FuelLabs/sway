@@ -23,11 +23,17 @@ pub enum Error {
     #[error("I/O error")]
     IoError(std::io::Error),
 
+    #[error("ABI error: {0}")]
+    AbiError(String),
+
     #[error("Json error")]
     JsonError(#[from] serde_json::Error),
 
     #[error("Server error: {0}")]
     DapServerError(#[from] dap::errors::ServerError),
+
+    #[error("Readline error: {0}")]
+    Readline(#[from] rustyline::error::ReadlineError),
 }
 
 #[derive(Debug, thiserror::Error)]
