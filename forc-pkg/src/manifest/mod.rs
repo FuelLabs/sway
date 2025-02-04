@@ -654,6 +654,11 @@ impl PackageManifest {
             {
                 bail!(format!("Dependency \"{dep_name}\" declares an alias (\"package\" field) that is the same as project name"))
             }
+            if dep_name == &self.project.name {
+                bail!(format!(
+                    "Dependency \"{dep_name}\" collides with project name."
+                ))
+            }
         }
         Ok(())
     }
@@ -1708,6 +1713,10 @@ mod tests {
         "#;
 
         let project = PackageManifest::from_string(original_toml.to_string());
-        assert!(project.is_ok())
+        let err = project.unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            format!("Dependency \"lib_contract\" collides with project name.")
+        )
     }
 }
