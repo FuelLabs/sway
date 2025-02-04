@@ -442,14 +442,14 @@ pub(crate) fn is_ty_module_cache_up_to_date(
 ) -> bool {
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    cache.get(&key).map_or(false, |entry| {
-        entry.typed.as_ref().map_or(false, |typed| {
+    cache.get(&key).is_some_and(|entry| {
+        entry.typed.as_ref().is_some_and(|typed| {
             // Check if the cache is up to date based on file versions
             let cache_up_to_date = build_config
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
                 .map_or(true, |version| {
-                    version.map_or(true, |v| typed.version.map_or(false, |tv| v <= tv))
+                    version.map_or(true, |v| typed.version.is_some_and(|tv| v <= tv))
                 });
 
             // If the cache is up to date, recursively check all dependencies
@@ -473,7 +473,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
 ) -> bool {
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    cache.get(&key).map_or(false, |entry| {
+    cache.get(&key).is_some_and(|entry| {
         // Determine if the cached dependency information is still valid
         let cache_up_to_date = build_config
             .and_then(|x| x.lsp_mode.as_ref())
@@ -499,7 +499,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
                     //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
                     //     is not greater than the cached version.
-                    version.map_or(true, |v| entry.parsed.version.map_or(false, |ev| v <= ev))
+                    version.map_or(true, |v| entry.parsed.version.is_some_and(|ev| v <= ev))
                 },
             );
 
@@ -602,10 +602,7 @@ pub fn parsed_to_ast(
         experimental,
     );
 
-    let mut typed_program = match typed_program_opt {
-        Ok(typed_program) => typed_program,
-        Err(e) => return Err(e),
-    };
+    let mut typed_program = typed_program_opt?;
 
     check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
         TypeCheckFailed {

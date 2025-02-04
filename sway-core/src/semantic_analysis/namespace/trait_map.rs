@@ -624,12 +624,7 @@ impl TraitMap {
         for key in keys {
             let vec = &self.trait_impls[key];
             for entry in vec {
-                if entry
-                    .key
-                    .trait_decl_span
-                    .as_ref()
-                    .map_or(false, |span| span == &trait_decl_span)
-                {
+                if entry.key.trait_decl_span.as_ref() == Some(&trait_decl_span) {
                     let trait_map_vec =
                         if let Some(trait_map_vec) = trait_map.trait_impls.get_mut(key) {
                             trait_map_vec
