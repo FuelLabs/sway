@@ -31,11 +31,6 @@ impl FromStr for FuncType {
         if s.is_empty() {
             return Err("Function signature cannot be empty".to_string());
         }
-        // Check if function signature is a valid selector (alphanumeric and underscore support)
-        let selector_pattern = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9_]*$").unwrap();
-        if !selector_pattern.is_match(&s) {
-            return Err("Function signature must be a valid selector".to_string());
-        }
         Ok(FuncType::Selector(s.to_string()))
     }
 }
