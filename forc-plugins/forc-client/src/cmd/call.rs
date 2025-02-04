@@ -14,6 +14,7 @@ pub use forc_tx::{Gas, Maturity};
 pub enum FuncType {
     Selector(String),
     // TODO: add support for function signatures - without ABI files
+    // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6886
     // Signature(String),
 }
 
