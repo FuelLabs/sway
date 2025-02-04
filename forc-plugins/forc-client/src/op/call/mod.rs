@@ -83,8 +83,6 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         .find(|abi_func| abi_func.name == selector)
         .unwrap_or_else(|| panic!("Function not found in ABI: {}", selector));
 
-    // println!("function: {:?}", abi_func); // TODO: remove
-
     if abi_func.inputs.len() != args.len() {
         bail!("Number of arguments does not match number of parameters in function signature; expected {}, got {}", abi_func.inputs.len(), args.len());
     }
@@ -94,11 +92,8 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         .iter()
         .zip(&args)
         .map(|(type_application, arg)| {
-            // println!("type_application: {:?}", type_application); // TODO: remove
-
             let param_type = ParamType::try_from_type_application(type_application, &type_lookup)
                 .expect("Failed to convert input type application");
-            println!("param_type: {:?}", param_type);
             param_type_val_to_token(&param_type, arg)
         })
         .collect::<Result<Vec<_>>>()?;

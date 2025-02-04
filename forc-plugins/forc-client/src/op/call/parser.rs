@@ -134,11 +134,7 @@ pub fn param_type_val_to_token(param_type: &ParamType, input: &str) -> Result<To
             let parsed_struct = fields
                 .iter()
                 .zip(parsed_vals.iter())
-                .map(|((_, ty), val)| {
-                    println!("ty: {:?}", ty);
-                    println!("val: {:?}", val);
-                    param_type_val_to_token(ty, val)
-                })
+                .map(|((_, ty), val)| param_type_val_to_token(ty, val))
                 .collect::<Result<Vec<_>>>()?;
             Ok(Token::Struct(parsed_struct))
         }
@@ -146,7 +142,6 @@ pub fn param_type_val_to_token(param_type: &ParamType, input: &str) -> Result<To
             // enums must start with '(' and end with ')'
             // enums must be in format of (variant_index:variant_value) or (variant_name:variant_value)
             let parsed_enum = parse_delimited_string(param_type, input)?;
-            println!("parsed_enum: {:?}", parsed_enum);
             if parsed_enum.len() != 2 {
                 bail!(
                     "enum must have exactly two parts `(variant:value)`: {}",
@@ -436,23 +431,8 @@ fn parse_delimited_string(param_type: &ParamType, input: &str) -> Result<Vec<Str
         parts.push(current.trim().to_string());
     }
 
-    println!("inner: {}", inner);
-    println!("current: {}", current);
-    println!("parts: {:?}", parts);
-
     Ok(parts)
 }
-
-// pub (crate) fn ty_to_token(ty: &Ty) -> Result<Token> {
-//     match ty {
-//         Ty::Path(path) => {
-//             let prefix = path.prefix.name.to_string();
-//             println!("prefix: {}", prefix);
-//             Ok(Token::String(prefix))
-//         },
-//         _ => bail!("Unsupported type: {:?}", ty),
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
