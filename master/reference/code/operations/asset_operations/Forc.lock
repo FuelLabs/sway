@@ -1,0 +1,13 @@
+[[package]]
+name = 'asset_operations'
+source = 'root'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-6A09A1886494359D'
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.30.0#37deaee8fccf5804d78a003cf64f14fac654fc41'
+dependencies = ['core']
