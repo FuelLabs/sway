@@ -1,4 +1,4 @@
-use crate::{cli::commands::Commands, names, FuelClient};
+use crate::{cli::commands::Commands, names, types::AbiMap, FuelClient};
 use rustyline::{
     completion::Completer,
     highlight::{CmdKind, Highlighter},
@@ -7,11 +7,12 @@ use rustyline::{
     Context, Helper,
 };
 use serde_json::Value;
-use std::{borrow::Cow, fs, path::Path};
+use std::{borrow::Cow, collections::HashSet, fs};
 
 pub struct State {
     pub client: FuelClient,
     pub session_id: String,
+    pub contract_abis: AbiMap,
 }
 
 impl State {
@@ -19,6 +20,7 @@ impl State {
         Self {
             client,
             session_id: String::new(),
+            contract_abis: AbiMap::default(),
         }
     }
 }
@@ -50,8 +52,24 @@ impl Completer for DebuggerHelper {
 
         // Transaction command context
         if let Some(first_word) = words.first() {
-            if self.commands.is_tx_command(first_word) && line[..word_start].ends_with(' ') {
-                return Ok((word_start, get_transaction_files(word_to_complete)));
+            if self.commands.is_tx_command(first_word) {
+                match words.len() {
+                    1 => {
+                        // First argument is transaction file
+                        return Ok((word_start, get_transaction_files(word_to_complete)));
+                    }
+                    2 => {
+                        // Second argument is local ABI file
+                        return Ok((word_start, get_abi_files(word_to_complete)));
+                    }
+                    _ => {
+                        // After this, if someone explicitly types --abi, then we can help with contract_id:abi.json
+                        if words[words.len() - 2] == "--abi" {
+                            let abi_files = get_abi_files(word_to_complete);
+                            return Ok((word_start, abi_files));
+                        }
+                    }
+                }
             }
 
             // Register command context
@@ -141,56 +159,95 @@ impl Validator for DebuggerHelper {
 
 impl Helper for DebuggerHelper {}
 
+/// Get valid ABI files matching the current word
+fn get_abi_files(current_word: &str) -> Vec<String> {
+    find_valid_json_files(current_word, is_valid_abi)
+}
+
 /// Returns valid transaction JSON files from current directory and subdirectories.
 /// Files must contain one of: Script, Create, Mint, Upgrade, Upload, or Blob keys.
 fn get_transaction_files(current_word: &str) -> Vec<String> {
-    fn is_valid_transaction_json(path: &Path) -> bool {
-        // Read and parse the JSON file
-        let content = match fs::read_to_string(path) {
-            Ok(content) => content,
-            Err(_) => return false,
-        };
-        let json: Value = match serde_json::from_str(&content) {
-            Ok(json) => json,
-            Err(_) => return false,
-        };
+    find_valid_json_files(current_word, is_valid_transaction)
+}
 
-        // Check if it's a valid transaction JSON
-        if let Value::Object(obj) = json {
-            // Check for transaction type
-            let has_valid_type = obj.keys().any(|key| {
-                matches!(
-                    key.as_str(),
-                    "Script" | "Create" | "Mint" | "Upgrade" | "Upload" | "Blob"
-                )
-            });
-            return has_valid_type;
-        }
-        false
-    }
-
+/// Generic function to find and validate JSON files
+fn find_valid_json_files<F>(current_word: &str, is_valid: F) -> Vec<String>
+where
+    F: Fn(&Value) -> bool,
+{
     let mut matches = Vec::new();
-
-    // Create the walker and iterate through entries
     let walker = walkdir::WalkDir::new(".").follow_links(true);
+
     for entry in walker.into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() {
-            let path = entry.path();
-
-            // Check if it's a .json file and starts with the current word
-            if let Some(filename) = path
+            if let Some(filename) = entry
+                .path()
                 .to_string_lossy()
                 .strip_prefix("./")
                 .map(|f| f.to_string())
             {
-                if filename.ends_with(".json")
-                    && filename.starts_with(current_word)
-                    && is_valid_transaction_json(path)
-                {
-                    matches.push(filename);
+                if filename.ends_with(".json") && filename.starts_with(current_word) {
+                    // Try to read and parse the file
+                    if let Ok(content) = fs::read_to_string(entry.path()) {
+                        if let Ok(json) = serde_json::from_str::<Value>(&content) {
+                            if is_valid(&json) {
+                                matches.push(filename);
+                            }
+                        }
+                    }
                 }
             }
         }
     }
     matches
+}
+
+/// Checks if a JSON value represents a valid transaction
+fn is_valid_transaction(json: &Value) -> bool {
+    if let Value::Object(obj) = json {
+        // Check for transaction type
+        obj.keys().any(|key| {
+            matches!(
+                key.as_str(),
+                "Script" | "Create" | "Mint" | "Upgrade" | "Upload" | "Blob"
+            )
+        })
+    } else {
+        false
+    }
+}
+
+/// Checks if a JSON value represents a valid ABI
+fn is_valid_abi(json: &Value) -> bool {
+    if let Value::Object(obj) = json {
+        // Required fields for an ABI
+        let required_fields: HashSet<_> = [
+            "programType",
+            "functions",
+            "concreteTypes",
+            "encodingVersion",
+        ]
+        .iter()
+        .collect();
+
+        // Check that all required fields exist and have the correct type
+        if !required_fields
+            .iter()
+            .all(|&field| obj.contains_key(*field))
+        {
+            return false;
+        }
+
+        // Validate functions array
+        if let Some(Value::Array(functions)) = obj.get("functions") {
+            // Every function should have a name and inputs field
+            functions.iter().all(|f| {
+                matches!(f, Value::Object(f_obj) if f_obj.contains_key("name") && f_obj.contains_key("inputs"))
+            })
+        } else {
+            false
+        }
+    } else {
+        false
+    }
 }

@@ -16,7 +16,9 @@ dirs.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
 forc-tracing.workspace = true
+fuel-abi-types.workspace = true
 fuel-core-client.workspace = true
+fuel-tx.workspace = true
 fuel-types = { workspace = true, features = ["serde"] }
 fuel-vm = { workspace = true, features = ["serde"] }
 rayon.workspace = true

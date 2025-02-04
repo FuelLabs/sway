@@ -237,3 +237,4 @@ FuelLabs
 github
 toml
 hardcoded
+subdirectories

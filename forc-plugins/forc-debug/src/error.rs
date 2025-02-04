@@ -23,6 +23,9 @@ pub enum Error {
     #[error("I/O error")]
     IoError(std::io::Error),
 
+    #[error("ABI error: {0}")]
+    AbiError(String),
+
     #[error("Json error")]
     JsonError(#[from] serde_json::Error),
 
