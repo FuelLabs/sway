@@ -493,10 +493,7 @@ where
     }
 
     fn encompasses_all(&self, others: &[Range<T>]) -> bool {
-        others
-            .iter()
-            .map(|other| self.encompasses(other))
-            .all(|x| x)
+        others.iter().all(|other| self.encompasses(other))
     }
 
     /// Checks to see if two ranges are within ± 1 of one another. There are 2

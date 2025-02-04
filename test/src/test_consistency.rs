@@ -113,7 +113,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
                 .and_then(|t| {
                     t.values().find(|v| {
                         v.get("package")
-                            .map_or(false, |p| p.as_str().unwrap_or_default() == lib_name)
+                            .is_some_and(|p| p.as_str().unwrap_or_default() == lib_name)
                     })
                 })
             {
@@ -216,7 +216,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
         } else if path.is_file()
             && path
                 .file_name()
-                .map(|f| f.to_ascii_lowercase() == "forc.toml")
+                .map(|f| f.eq_ignore_ascii_case("forc.toml"))
                 .unwrap_or(false)
         {
             forc_tomls.push(path.to_path_buf());
