@@ -326,6 +326,7 @@ impl DependencyDetails {
         if git.is_none() && (branch.is_some() || tag.is_some() || rev.is_some()) {
             bail!("Details reserved for git sources used without a git field");
         }
+
         Ok(())
     }
 }
@@ -638,13 +639,21 @@ impl PackageManifest {
     /// 1. The project and organization names against a set of reserved/restricted keywords and patterns.
     /// 2. The validity of the details provided. Makes sure that there are no mismatching detail
     ///    declarations (to prevent mixing details specific to certain types).
+    /// 3. The dependencies listed does not have an alias ("package" field) that is the same as package name.
     pub fn validate(&self) -> Result<()> {
         validate_project_name(&self.project.name)?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
         }
-        for (_, dependency_details) in self.deps_detailed() {
+        for (dep_name, dependency_details) in self.deps_detailed() {
             dependency_details.validate()?;
+            if dependency_details
+                .package
+                .as_ref()
+                .is_some_and(|package_alias| package_alias == &self.project.name)
+            {
+                bail!(format!("Dependency \"{dep_name}\" declares an alias (\"package\" field) that is the same as project name"))
+            }
         }
         Ok(())
     }
@@ -1665,5 +1674,40 @@ mod tests {
 
         assert_eq!(original.workspace.members, deserialized.workspace.members);
         assert_eq!(original.workspace.metadata, deserialized.workspace.metadata);
+    }
+
+    #[test]
+    fn test_dependency_alias_project_name_collision() {
+        let original_toml = r#"
+        [project]
+        authors = ["Fuel Labs <contact@fuel.sh>"]
+        entry = "main.sw"
+        license = "Apache-2.0"
+        name = "lib_contract_abi"
+
+        [dependencies]
+        lib_contract = { path = "../lib_contract_abi/", package = "lib_contract_abi" }
+        "#;
+
+        let project = PackageManifest::from_string(original_toml.to_string());
+        let err = project.unwrap_err();
+        assert_eq!(err.to_string(), format!("Dependency \"lib_contract\" declares an alias (\"package\" field) that is the same as project name"))
+    }
+
+    #[test]
+    fn test_dependency_name_project_name_collision() {
+        let original_toml = r#"
+        [project]
+        authors = ["Fuel Labs <contact@fuel.sh>"]
+        entry = "main.sw"
+        license = "Apache-2.0"
+        name = "lib_contract"
+
+        [dependencies]
+        lib_contract = { path = "../lib_contract_abi/", package = "lib_contract_abi" }
+        "#;
+
+        let project = PackageManifest::from_string(original_toml.to_string());
+        assert!(project.is_ok())
     }
 }
