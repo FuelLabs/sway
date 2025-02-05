@@ -109,7 +109,7 @@ mod test {
         "#;
         fs::write(&cred_path, credentials).unwrap();
 
-        let result = get_auth_token(None, Some(cred_path)).unwrap();
+        let result = get_auth_token(None, Some(temp_dir.path().into())).unwrap();
         assert_eq!(result, "file_token".to_string());
     }
 
