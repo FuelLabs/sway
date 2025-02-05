@@ -6,6 +6,8 @@ use fuels_core::types::{
     bech32::Bech32ContractId, transaction::TxPolicies, transaction_builders::VariableOutputPolicy,
 };
 
+/// Get the missing contracts from a contract call by dry-running the transaction
+/// to find contracts that are not explicitly listed in the call's `external_contracts` field.
 pub async fn get_missing_contracts(
     mut call: ContractCall,
     provider: &Provider,
