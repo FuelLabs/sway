@@ -18,7 +18,7 @@ pub struct NodeTarget {
     #[clap(long, env = "FUEL_NODE_URL")]
     pub node_url: Option<String>,
 
-    /// Use preset configurations for deploying to a specific target.
+    /// Preset configurations for using a specific target.
     ///
     /// You can also use `--node-url`, `--devnet`, `--testnet`, or `--mainnet` to specify the Fuel node.
     ///

@@ -77,7 +77,7 @@ Options:
     [env: FUEL_NODE_URL=]
 
   --target <TARGET>
-    Use preset configurations for deploying to a specific target.
+    Preset configurations for using a specific target.
     
     You can also use `--node-url`, `--testnet`, or `--mainnet` to specify the Fuel node.
     
