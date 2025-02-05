@@ -62,6 +62,9 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
 
     let cmd::call::FuncType::Selector(selector) = function;
     let abi_str = match abi {
+        // TODO: add support for fetching verified ABI from registry (forc.pub)
+        // - This should be the default behaviour if no ABI is provided
+        // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6893
         Either::Left(path) => std::fs::read_to_string(&path)?,
         Either::Right(url) => {
             let response = reqwest::get(url).await?.bytes().await?;
