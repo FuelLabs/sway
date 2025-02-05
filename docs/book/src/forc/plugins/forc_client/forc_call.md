@@ -53,7 +53,7 @@ forc call --help
 ```output
 Perform Fuel RPC calls from the comfort of your command line
 
-Usage: forc call [OPTIONS] --abi <ABI> <CONTRACT_ID> <FUNCTION> [ARGS]...
+Usage: forc call [OPTIONS] --abi <ABI> <CONTRACT_ID> <FUNCTION> [FUNCTION_ARGS]...
 
 Arguments:
   <CONTRACT_ID>
@@ -62,8 +62,8 @@ Arguments:
   <FUNCTION>
     The function signature to call. When ABI is provided, this should be a selector (e.g. "transfer") When no ABI is provided, this should be the full function signature (e.g. "transfer(address,u64)")
 
-  [ARGS]...
-    Arguments to pass into main function with forc run
+  [FUNCTION_ARGS]...
+    Arguments to pass into the function to be called
 
 Options:
   --abi <ABI>

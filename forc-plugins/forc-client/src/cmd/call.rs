@@ -192,8 +192,8 @@ pub struct Command {
     /// It must be a valid selector present in the ABI file.
     pub function: FuncType,
 
-    /// Arguments to pass into main function with forc run.
-    pub args: Vec<String>,
+    /// Arguments to pass into the function to be called.
+    pub function_args: Vec<String>,
 
     #[clap(flatten)]
     pub node: NodeTarget,

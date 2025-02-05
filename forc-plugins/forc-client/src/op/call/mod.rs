@@ -46,7 +46,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         contract_id,
         abi,
         function,
-        args,
+        function_args,
         node,
         caller,
         call_parameters,
@@ -86,14 +86,14 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         .find(|abi_func| abi_func.name == selector)
         .unwrap_or_else(|| panic!("Function not found in ABI: {}", selector));
 
-    if abi_func.inputs.len() != args.len() {
-        bail!("Number of arguments does not match number of parameters in function signature; expected {}, got {}", abi_func.inputs.len(), args.len());
+    if abi_func.inputs.len() != function_args.len() {
+        bail!("Number of arguments does not match number of parameters in function signature; expected {}, got {}", abi_func.inputs.len(), function_args.len());
     }
 
     let tokens = abi_func
         .inputs
         .iter()
-        .zip(&args)
+        .zip(&function_args)
         .map(|(type_application, arg)| {
             let param_type = ParamType::try_from_type_application(type_application, &type_lookup)
                 .expect("Failed to convert input type application");
@@ -349,7 +349,7 @@ mod tests {
                 "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json",
             )),
             function: cmd::call::FuncType::Selector(selector.into()),
-            args: args.into_iter().map(String::from).collect(),
+            function_args: args.into_iter().map(String::from).collect(),
             node: crate::NodeTarget {
                 node_url: Some(wallet.provider().unwrap().url().to_owned()),
                 ..Default::default()
