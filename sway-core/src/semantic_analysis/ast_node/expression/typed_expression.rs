@@ -1984,6 +1984,7 @@ impl ty::TyExpression {
             abi_name.clone(),
             vec![],
             return_type,
+            vec![],
             &abi_items,
             span,
             Some(span.clone()),

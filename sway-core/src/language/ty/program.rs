@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
-    language::{parsed, ty::*, Purity},
+    language::{parsed, ty::*, Purity, Visibility},
     semantic_analysis::namespace,
     transform::AllowDeprecatedState,
     type_system::*,
@@ -65,6 +65,7 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         root: &TyModule,
+        root_namespace: &mut namespace::Namespace,
         kind: parsed::TreeType,
         package_name: &str,
         experimental: ExperimentalFeatures,
@@ -81,6 +82,7 @@ impl TyProgram {
                 handler,
                 engines,
                 &submodule.module,
+                root_namespace,
                 parsed::TreeType::Library,
                 package_name,
                 experimental,
@@ -421,6 +423,37 @@ impl TyProgram {
             if let Some(error) = e {
                 handler.emit_err(error);
             }
+        }
+
+        // check trait overlap
+        let mut unified_trait_map = root_namespace
+            .root_ref()
+            .current_package_root_module()
+            .root_lexical_scope()
+            .items
+            .implemented_traits
+            .clone();
+        unified_trait_map.check_overlap_and_extend(handler, unified_trait_map.clone(), engines)?;
+
+        for (submod_name, submodule) in root.submodules.iter() {
+            root_namespace.push_submodule(
+                handler,
+                engines,
+                submod_name.clone(),
+                Visibility::Public,
+                submodule.mod_name_span.clone(),
+            )?;
+
+            unified_trait_map.check_overlap_and_extend(
+                handler,
+                root_namespace
+                    .current_module()
+                    .root_lexical_scope()
+                    .items
+                    .implemented_traits
+                    .clone(),
+                engines,
+            )?;
         }
 
         Ok((typed_program_kind, declarations, configurables))

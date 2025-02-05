@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 
+use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -24,7 +25,7 @@ use crate::{
     },
     type_system::{SubstTypes, TypeId},
     IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
-    TypeSubstMap, UnifyCheck,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
 use super::Module;
@@ -102,14 +103,18 @@ type TraitName = Arc<CallPath<TraitSuffix>>;
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
+    impl_type_parameters: Vec<TypeParameter>,
     trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
-        self.name
-            .cmp(&other.name, ctx)
-            .then_with(|| self.type_id.cmp(&other.type_id))
+        self.name.cmp(&other.name, ctx).then_with(|| {
+            self.type_id.cmp(&other.type_id).then_with(|| {
+                self.impl_type_parameters
+                    .cmp(&other.impl_type_parameters, ctx)
+            })
+        })
     }
 }
 
@@ -221,6 +226,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
+        impl_type_parameters: Vec<TypeParameter>,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -265,6 +271,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: _,
+                        impl_type_parameters: _,
                     },
                 value:
                     TraitValue {
@@ -448,6 +455,7 @@ impl TraitMap {
                 impl_span.clone(),
                 trait_decl_span,
                 type_id,
+                impl_type_parameters,
                 trait_items,
                 engines,
             );
@@ -456,12 +464,14 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
+        impl_type_parameters: Vec<TypeParameter>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
@@ -469,6 +479,7 @@ impl TraitMap {
             name: trait_name,
             type_id,
             trait_decl_span,
+            impl_type_parameters,
         };
         let value = TraitValue {
             trait_items: trait_methods,
@@ -629,6 +640,137 @@ impl TraitMap {
                 }
             }
         }
+    }
+
+    fn get_traits_types(
+        &self,
+        traits_types: &mut HashMap<CallPath, Vec<TypeId>>,
+    ) -> Result<(), ErrorEmitted> {
+        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
+        keys.sort();
+        for key in keys {
+            for self_entry in self.trait_impls[key].iter() {
+                let callpath = CallPath {
+                    prefixes: self_entry.key.name.prefixes.clone(),
+                    suffix: self_entry.key.name.suffix.name.clone(),
+                    callpath_type: self_entry.key.name.callpath_type,
+                };
+                if let Some(vec) = traits_types.get_mut(&callpath) {
+                    vec.push(self_entry.key.type_id);
+                } else {
+                    traits_types.insert(callpath, vec![self_entry.key.type_id]);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Given [TraitMap]s `self` and `other`, checks for overlaps between `self` and `other`.
+    /// If no overlaps are found extends `self` with `other`.
+    pub(crate) fn check_overlap_and_extend(
+        &mut self,
+        handler: &Handler,
+        other: TraitMap,
+        engines: &Engines,
+    ) -> Result<(), ErrorEmitted> {
+        let mut overlap_err = None;
+        let unify_check = UnifyCheck::coercion(engines);
+        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
+        keys.sort();
+        let mut traits_types = HashMap::<CallPath, Vec<TypeId>>::new();
+        self.get_traits_types(&mut traits_types)?;
+        other.get_traits_types(&mut traits_types)?;
+
+        for key in keys {
+            for self_entry in self.trait_impls[key].iter() {
+                let self_tcs = self_entry
+                    .key
+                    .impl_type_parameters
+                    .iter()
+                    .flat_map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
+                    .collect::<Vec<_>>();
+
+                for other_entry in other.get_impls(engines, self_entry.key.type_id, true) {
+                    if self_entry.key.name.eq(
+                        &*other_entry.key.name,
+                        &PartialEqWithEnginesContext::new(engines),
+                    ) && self_entry.value.impl_span != other_entry.value.impl_span
+                        && unify_check.check(self_entry.key.type_id, other_entry.key.type_id)
+                    {
+                        let other_tcs = other_entry
+                            .key
+                            .impl_type_parameters
+                            .iter()
+                            .flat_map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
+                            .collect::<Vec<_>>();
+                        let other_tcs_satisfied = other_tcs.iter().all(|(tc, tp)| {
+                            if let Some(tc_type_ids) = traits_types.get(&tc.trait_name) {
+                                tc_type_ids.iter().any(|tc_type_id| {
+                                    let mut type_mapping = TypeSubstMap::new();
+                                    type_mapping.insert(tp.type_id, *tc_type_id);
+                                    let mut type_id = other_entry.key.type_id;
+                                    type_id.subst(&SubstTypesContext::new(
+                                        engines,
+                                        &type_mapping,
+                                        false,
+                                    ));
+                                    unify_check.check(self_entry.key.type_id, type_id)
+                                })
+                            } else {
+                                false
+                            }
+                        });
+
+                        let self_tcs_satisfied = self_tcs.iter().all(|(tc, tp)| {
+                            if let Some(tc_type_ids) = traits_types.get(&tc.trait_name) {
+                                tc_type_ids.iter().any(|tc_type_id| {
+                                    let mut type_mapping = TypeSubstMap::new();
+                                    type_mapping.insert(tp.type_id, *tc_type_id);
+                                    let mut type_id = self_entry.key.type_id;
+                                    type_id.subst(&SubstTypesContext::new(
+                                        engines,
+                                        &type_mapping,
+                                        false,
+                                    ));
+                                    unify_check.check(other_entry.key.type_id, type_id)
+                                })
+                            } else {
+                                false
+                            }
+                        });
+
+                        if other_tcs_satisfied && self_tcs_satisfied {
+                            let entry_items = self_entry.value.trait_items.keys().sorted();
+                            for trait_item_name1 in entry_items {
+                                let other_entry_items =
+                                    other_entry.value.trait_items.keys().sorted();
+                                for trait_item_name2 in other_entry_items {
+                                    if trait_item_name1 == trait_item_name2 {
+                                        handler.emit_err(CompileError::InternalOwned(
+                                            format!("Overlapped item {}", trait_item_name1),
+                                            self_entry.value.impl_span.clone(),
+                                        ));
+                                        overlap_err =
+                                            Some(handler.emit_err(CompileError::InternalOwned(
+                                                format!("Overlapped item {}", trait_item_name1),
+                                                other_entry.value.impl_span.clone(),
+                                            )));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(overlap_err) = overlap_err {
+            return Err(overlap_err);
+        }
+
+        self.extend(other, engines);
+
+        Ok(())
     }
 
     /// Filters the entries in `self` and return a new [TraitMap] with all of
@@ -891,6 +1033,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: map_trait_decl_span,
+                        impl_type_parameters: map_impl_type_parameters,
                     },
                 value:
                     TraitValue {
@@ -906,6 +1049,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_impl_type_parameters.clone(),
                         map_trait_items.clone(),
                         engines,
                     );
@@ -999,6 +1143,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_impl_type_parameters.clone(),
                         trait_items,
                         engines,
                     );
