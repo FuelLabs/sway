@@ -58,7 +58,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     let node_url = get_node_url(&node, &None)?;
     let provider: Provider = Provider::connect(node_url).await?;
 
-    let wallet = get_wallet(caller, provider).await?;
+    let wallet = get_wallet(caller.signing_key, caller.wallet, provider).await?;
 
     let cmd::call::FuncType::Selector(selector) = function;
     let abi_str = match abi {
@@ -251,8 +251,13 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     Ok(result)
 }
 
-async fn get_wallet(caller: cmd::call::Caller, provider: Provider) -> Result<WalletUnlocked> {
-    match (caller.signing_key, caller.wallet) {
+/// Get the wallet to use for the call - based on optionally provided signing key and wallet flag.
+async fn get_wallet(
+    signing_key: Option<SecretKey>,
+    use_wallet: bool,
+    provider: Provider,
+) -> Result<WalletUnlocked> {
+    match (signing_key, use_wallet) {
         (None, false) => {
             let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap();
             let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
