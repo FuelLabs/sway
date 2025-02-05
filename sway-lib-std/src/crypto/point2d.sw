@@ -4,7 +4,7 @@ use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
 
-// NOTE: Bytes are use to support numbers greater than 32 bytes for future curves.
+// NOTE: Bytes are used to support numbers greater than 32 bytes for future curves.
 /// A 2D point on a field.
 ///
 /// # Additional Information

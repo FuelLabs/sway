@@ -10,7 +10,7 @@ use ::alloc::alloc;
 pub enum AltBn128Error {
     /// The elliptic curve point used was invalid.
     InvalidEllipticCurvePoint: (),
-    /// The elliptice curve scalar used was invalid.
+    /// The elliptic curve scalar used was invalid.
     InvalidEllipticCurveScalar: (),
 }
 

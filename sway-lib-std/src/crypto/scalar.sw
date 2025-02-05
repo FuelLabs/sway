@@ -4,7 +4,7 @@ use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
 
-// NOTE: Bytes are use to support numbers greater than 32 bytes for future curves.
+// NOTE: Bytes are used to support numbers greater than 32 bytes for future curves.
 /// The Scalar type used in cryptographic operations.
 pub struct Scalar {
     bytes: Bytes,
@@ -96,7 +96,7 @@ impl Scalar {
         }
     }
 
-    /// Returns true if the scalae is zero, otherwise false.
+    /// Returns true if the scalar is zero, otherwise false.
     ///
     /// # Returns
     ///
