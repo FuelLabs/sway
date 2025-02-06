@@ -13,7 +13,7 @@ use crate::{
         tx::{prompt_forc_wallet_password, select_local_wallet_account},
     },
 };
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use either::Either;
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
 use fuels::{
@@ -84,7 +84,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         .functions
         .iter()
         .find(|abi_func| abi_func.name == selector)
-        .unwrap_or_else(|| panic!("Function not found in ABI: {}", selector));
+        .ok_or_else(|| anyhow!("Function '{}' not found in ABI", selector))?;
 
     if abi_func.inputs.len() != function_args.len() {
         bail!("Number of arguments does not match number of parameters in function signature; expected {}, got {}", abi_func.inputs.len(), function_args.len());
