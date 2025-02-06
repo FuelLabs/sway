@@ -1,0 +1,22 @@
+---
+source: test/tests/tests.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
+   Compiling library core (sway-lib-core)
+error
+   --> sway-lib-core/src/codec.sw:700:15
+    |
+698 | }
+699 | 
+700 | impl<T, const N: u64> AbiEncode for [T; N] 
+    |               ^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
+701 |     where T: AbiEncode
+702 | {
+    |
+____
+
+  Aborting due to 1 error.
+error: Failed to compile core

@@ -53,8 +53,7 @@ error
 14 |     // Invalid types
 15 |     let _ = __transmute::<&u64, &u8>(&1u64);
    |                           ^^^^ references, pointers, slices, string slices or types containing any of these are not allowed.
-16 | 
-17 |     // u8 cannot be transmuted to other types
+16 | }
    |
 ____
 

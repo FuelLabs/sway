@@ -20,7 +20,6 @@ fn big_array_repeat() -> [bool; 25] {
 }
 
 fn main() -> bool {
-    
     let _a: [bool; 5] = [true, true, true, false, true];
     let b: [u32; 10] = [3; 10];
     let _c = [0x01, 0x02, 0x03];
