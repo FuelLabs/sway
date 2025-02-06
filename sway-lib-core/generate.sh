@@ -13,7 +13,7 @@ remove_generated_code "ARRAY_ENCODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
     sed -i "s/\/\/ BEGIN ARRAY_ENCODE/\/\/ BEGIN ARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
@@ -21,7 +21,7 @@ remove_generated_code "ARRAY_DECODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl<T> AbiDecode for [T; $i] where T: AbiDecode { fn abi_decode(ref mut buffer: BufferReader) -> [T; $i] { let first: T = buffer.decode::<T>(); let mut array = [first; $i]; let mut i = 1; while i < $i { array[i] = buffer.decode::<T>(); i += 1; }; array } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiDecode for [T; $i] where T: AbiDecode { fn abi_decode(ref mut buffer: BufferReader) -> [T; $i] { let first: T = buffer.decode::<T>(); let mut array = [first; $i]; let mut i = 1; while i < $i { array[i] = buffer.decode::<T>(); i += 1; }; array } }"
     sed -i "s/\/\/ BEGIN ARRAY_DECODE/\/\/ BEGIN ARRAY_DECODE\n$CODE/g" ./src/codec.sw
 done
 
