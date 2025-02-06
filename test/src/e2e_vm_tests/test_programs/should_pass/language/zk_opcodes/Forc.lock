@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-11C3CFAE4942D9B7"
+
+[[package]]
+name = "std"
+source = "path+from-root-11C3CFAE4942D9B7"
+dependencies = ["core"]
+
+[[package]]
+name = "zk_opcodes"
+source = "member"
+dependencies = ["std"]

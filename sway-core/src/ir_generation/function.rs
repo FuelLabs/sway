@@ -332,7 +332,7 @@ impl<'eng> FnCompiler<'eng> {
                 if val
                     .value
                     .get_type(context)
-                    .map_or(false, |ty| ty.is_ptr(context))
+                    .is_some_and(|ty| ty.is_ptr(context))
                 {
                     let load_val = self.current_block.append(context).load(val.value);
                     TerminatorValue::new(load_val, context)
@@ -2548,7 +2548,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let ptr_as_int = if ref_value
             .get_type(context)
-            .map_or(false, |ref_value_type| ref_value_type.is_ptr(context))
+            .is_some_and(|ref_value_type| ref_value_type.is_ptr(context))
         {
             // We are dereferencing a reference variable and we got a pointer to it.
             // To get the address the reference is pointing to we need to load the value.
@@ -4277,7 +4277,7 @@ impl<'eng> FnCompiler<'eng> {
                     let init_type = self.engines.te().get_unaliased(init_expr.return_type);
                     if initializer_val
                         .get_type(context)
-                        .map_or(false, |ty| ty.is_ptr(context))
+                        .is_some_and(|ty| ty.is_ptr(context))
                         && (init_type.is_copy_type() || init_type.is_reference())
                     {
                         // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
