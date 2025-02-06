@@ -189,6 +189,7 @@ impl Into<Bytes> for Ed25519 {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for Ed25519 {
     fn eq(self, other: Self) -> bool {
         let mut iter = 0;
@@ -202,6 +203,22 @@ impl core::ops::Eq for Ed25519 {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Ed25519 {
+    fn eq(self, other: Self) -> bool {
+        let mut iter = 0;
+        while iter < 64 {
+            if self.bits[iter] != other.bits[iter] {
+                return false;
+            }
+            iter += 1;
+        }
+
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Ed25519 {}
 
 impl Hash for Ed25519 {
     fn hash(self, ref mut state: Hasher) {
