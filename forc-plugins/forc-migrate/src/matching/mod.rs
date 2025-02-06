@@ -26,7 +26,7 @@
 //! [Clippy](https://doc.rust-lang.org/clippy/), `forc migrate` is significantly
 //! different. Instead of providing hundreds of independent lints that
 //! automatically check for localized issues, migrations provide only a handful
-//! of migration steps, that are orchestrated withing a single migration process,
+//! of migration steps, that are orchestrated within a single migration process,
 //! some of them possibly being interactive.
 //!
 //! Each migration step, in general, wants to take a look at a larger scope at a time,
