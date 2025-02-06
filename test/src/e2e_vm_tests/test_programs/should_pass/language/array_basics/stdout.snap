@@ -1,7 +1,7 @@
 ---
 source: test/tests/tests.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/array_basics --release --ir final
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/array_basics --release --ir final --asm final
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array_basics
@@ -601,5 +601,295 @@ script {
 !196 = (!194 !195 !191)
 !197 = span !79 265 275
 !198 = span !79 266 270
+
+;; ASM: Final program
+;; Program kind: Script
+.program:
+move $$tmp $pc
+jmpf $zero i4
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+CONFIGURABLES_OFFSET[0..32]
+CONFIGURABLES_OFFSET[32..64]
+lw   $$ds $$tmp i1
+add  $$ds $$ds $$tmp
+cfei i0                       ; allocate stack space for globals
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i360                     ; allocate 360 bytes for locals and 0 slots for call arguments
+addi $r0 $$locbase i320       ; get offset to local
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; [call]: set new return address
+jmpf $zero i62                ; [call]: call main_0
+move $r3 $$retv               ; [call]: copy the return value
+movi $r1 i1024                ; initialize constant into register
+aloc $r1
+move $r1 $hp                  ; return value from ASM block with return register hp
+addi $r2 $$locbase i112       ; get offset to local
+sw   $$locbase $r1 i14        ; store word
+movi $r1 i1024                ; initialize constant into register
+sw   $$locbase $r1 i15        ; store word
+sw   $$locbase $zero i16      ; store word
+mcpi $$locbase $r2 i24        ; copy memory
+addi $r1 $$locbase i184       ; get offset to local
+mcpi $r1 $$locbase i24        ; copy memory
+addi $r2 $$locbase i272       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+addi $r1 $$locbase i24        ; get offset to local
+mcpi $r1 $r2 i24              ; copy memory
+addi $r2 $$locbase i136       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+lw   $r6 $$locbase i17        ; load word
+lw   $r5 $$locbase i18        ; load word
+lw   $r1 $$locbase i19        ; load word
+add  $r2 $r1 $one
+gt   $r4 $r2 $r5
+jnzf $r4 $zero i1
+jmpf $zero i6
+movi $r4 i2                   ; initialize constant into register
+mul  $r4 $r5 $r4
+add  $r5 $r4 $one
+aloc $r5
+mcp  $hp $r6 $r1
+move $r6 $hp                  ; return value from ASM block with return register hp
+add  $r1 $r6 $r1
+sb   $r1 $r3 i0               ; store byte
+addi $r1 $$locbase i208       ; get offset to local
+sw   $$locbase $r6 i26        ; store word
+sw   $$locbase $r5 i27        ; store word
+sw   $$locbase $r2 i28        ; store word
+addi $r2 $$locbase i48        ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+addi $r1 $$locbase i248       ; get offset to local
+mcpi $r1 $r2 i24              ; copy memory
+addi $r2 $$locbase i336       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+addi $r1 $$locbase i336       ; get offset to local
+addi $r2 $$locbase i296       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+addi $r1 $$locbase i72        ; get offset to local
+mcpi $r1 $r2 i24              ; copy memory
+addi $r2 $$locbase i160       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+lw   $r1 $$locbase i20        ; load word
+addi $r2 $r2 i16              ; get offset to aggregate element
+addi $r3 $$locbase i232       ; get offset to local
+sw   $$locbase $r1 i29        ; store word
+addi $r1 $r3 i8               ; get offset to aggregate element
+mcpi $r1 $r2 i8               ; copy memory
+addi $r1 $$locbase i96        ; get offset to local
+mcpi $r1 $r3 i16              ; copy memory
+mcpi $r0 $r1 i16              ; copy memory
+lw   $r1 $r0 i1               ; load size of returned slice
+lw   $r0 $r0 i0               ; load pointer to returned slice
+retd  $r0 $r1
+pshl i127                     ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function main_0
+cfei i312                     ; allocate 312 bytes for locals and 0 slots for call arguments
+move $r3 $$reta               ; save return address
+addi $r0 $$locbase i80        ; get offset to local
+move $r4 $zero                ; move parameter from branch to block argument
+movi $r1 i8                   ; get array element size
+mul  $r1 $r4 $r1              ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+movi $r2 i3                   ; initialize constant into register
+sw   $r1 $r2 i0               ; store word
+add  $r4 $r4 $one
+movi $r1 i10                  ; initialize constant into register
+lt   $r1 $r4 $r1
+jnzb $r1 $zero i7
+movi $r1 i8                   ; get array element size
+mul  $r1 $zero $r1            ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+lw   $r5 $r1 i0               ; load word
+lw   $r6 $r0 i9               ; load word
+move $r0 $zero                ; move parameter from branch to block argument
+add  $r0 $r0 $one
+movi $r1 i10                  ; initialize constant into register
+lt   $r1 $r0 $r1
+jnzb $r1 $zero i2
+addi $r0 $$locbase i280       ; get offset to local
+movi $r1 i16                  ; get array element size
+mul  $r1 $zero $r1            ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+movi $r2 i10                  ; initialize constant into register
+sw   $r1 $r2 i0               ; store word
+movi $r1 i16                  ; get array element size
+mul  $r1 $zero $r1            ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+movi $r2 i20                  ; initialize constant into register
+sw   $r1 $r2 i1               ; store word
+movi $r1 i16                  ; get array element size
+mul  $r1 $one $r1             ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+sw   $r1 $one i0              ; store word
+movi $r1 i16                  ; get array element size
+mul  $r1 $one $r1             ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+movi $r0 i2                   ; initialize constant into register
+sw   $r1 $r0 i1               ; store word
+move $r1 $zero                ; move parameter from branch to block argument
+movi $r0 i8                   ; get array element size
+mul  $r2 $r1 $r0              ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+movi $r0 i11                  ; initialize constant into register
+sw   $r2 $r0 i0               ; store word
+add  $r1 $r1 $one
+movi $r0 i10                  ; initialize constant into register
+lt   $r0 $r1 $r0
+jnzb $r0 $zero i7
+addi $r0 $$locbase i200       ; get offset to local
+mcpi $r0 $$locbase i80        ; copy memory
+move $r4 $zero                ; move parameter from branch to block argument
+move $r2 $zero                ; move parameter from branch to block argument
+movi $r0 i10                  ; initialize constant into register
+lt   $r0 $r4 $r0
+jnzf $r0 $zero i74
+movi $r0 i110                 ; initialize constant into register
+eq   $r0 $r2 $r0
+eq   $r0 $r0 $zero
+jnzf $r0 $zero i68
+eq   $r0 $r5 $r6
+jnzf $r0 $zero i1
+jmpf $zero i5
+movi $r0 i2                   ; initialize constant into register
+movi $r1 i7                   ; initialize constant into register
+add  $r0 $r0 $r1
+movi $r1 i9                   ; initialize constant into register
+eq   $r0 $r0 $r1
+jnzf $r0 $zero i1
+jmpf $zero i13
+addi $r0 $$locbase i280       ; get offset to local
+movi $r1 i16                  ; get array element size
+mul  $r1 $zero $r1            ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+lw   $r0 $r1 i0               ; load word
+addi $r1 $$locbase i280       ; get offset to local
+movi $r2 i16                  ; get array element size
+mul  $r2 $one $r2             ; get offset to array element
+add  $r2 $r1 $r2              ; add array element offset to array base
+lw   $r1 $r2 i1               ; load word
+add  $r0 $r0 $r1
+movi $r1 i12                  ; initialize constant into register
+eq   $r0 $r0 $r1
+jnzf $r0 $zero i1
+jmpf $zero i12
+addi $r0 $$locbase i280       ; get offset to local
+movi $r1 i16                  ; get array element size
+mul  $r1 $zero $r1            ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+lw   $r1 $r1 i0               ; load word
+movi $r2 i16                  ; get array element size
+mul  $r2 $one $r2             ; get offset to array element
+add  $r2 $r0 $r2              ; add array element offset to array base
+lw   $r0 $r2 i1               ; load word
+add  $r0 $r1 $r0
+movi $r1 i12                  ; initialize constant into register
+eq   $r0 $r0 $r1
+jnzf $r0 $zero i1
+jmpf $zero i1
+move $r0 $one                 ; move parameter from branch to block argument
+jnzf $r0 $zero i1
+jmpf $zero i11
+addi $r0 $$locbase i160       ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; [call]: set new return address
+jmpf $zero i35                ; [call]: call small_array_repeat_11
+move $r0 $$retv               ; [call]: copy the return value
+movi $r1 i1                   ; get array element size
+mul  $r1 $zero $r1            ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+lb   $r0 $r1 i0               ; load byte
+jnzf $r0 $zero i1
+jmpf $zero i11
+addi $r0 $$locbase i168       ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
+srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
+addi $$reta $$reta i4         ; [call]: set new return address
+jmpf $zero i55                ; [call]: call big_array_repeat_12
+move $r0 $$retv               ; [call]: copy the return value
+movi $r1 i1                   ; get array element size
+mul  $r1 $one $r1             ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+lb   $r0 $r1 i0               ; load byte
+move $$retv $r0               ; set return value
+jmpf $zero i10
+load $r0 data_NonConfigurable_0; load constant from data section
+rvrt $r0
+addi $r0 $$locbase i200       ; get offset to local
+movi $r1 i8                   ; get array element size
+mul  $r1 $r4 $r1              ; get offset to array element
+add  $r1 $r0 $r1              ; add array element offset to array base
+lw   $r0 $r1 i0               ; load word
+add  $r2 $r2 $r0
+add  $r4 $r4 $one
+jmpb $zero i83
+cfsi i312                     ; free 312 bytes for locals and 0 slots for extra call arguments
+move $$reta $r3               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i127                     ; restore registers 16..40
+jmp $$reta                    ; return from call
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function small_array_repeat_11
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+movi $r2 i1                   ; get array element size
+mul  $r2 $zero $r2            ; get offset to array element
+add  $r2 $r0 $r2              ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+movi $r2 i1                   ; get array element size
+mul  $r2 $one $r2             ; get offset to array element
+add  $r2 $r0 $r2              ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+movi $r2 i1                   ; get array element size
+movi $r3 i2                   ; initialize constant into register
+mul  $r2 $r3 $r2              ; get offset to array element
+add  $r2 $r0 $r2              ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+movi $r2 i1                   ; get array element size
+movi $r3 i3                   ; initialize constant into register
+mul  $r2 $r3 $r2              ; get offset to array element
+add  $r2 $r0 $r2              ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+movi $r2 i1                   ; get array element size
+movi $r3 i4                   ; initialize constant into register
+mul  $r2 $r3 $r2              ; get offset to array element
+add  $r2 $r0 $r2              ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+move $$retv $r0               ; set return value
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jmp $$reta                    ; return from call
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function big_array_repeat_12
+cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+move $r3 $zero                ; move parameter from branch to block argument
+movi $r2 i1                   ; get array element size
+mul  $r2 $r3 $r2              ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+add  $r3 $r3 $one
+movi $r2 i25                  ; initialize constant into register
+lt   $r2 $r3 $r2
+jnzb $r2 $zero i6
+mcpi $r0 $$locbase i25        ; copy memory
+move $$retv $r0               ; set return value
+cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jmp $$reta                    ; return from call
+.data:
+data_NonConfigurable_0 .word 18446744073709486084
+
 
     Finished release [optimized + fuel] target(s) [1.136 KB] in ???
