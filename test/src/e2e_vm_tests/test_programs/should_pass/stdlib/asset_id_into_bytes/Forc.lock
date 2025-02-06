@@ -1,0 +1,13 @@
+[[package]]
+name = "asset_id_into_bytes"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-F9E4FAEF7F341E13"
+
+[[package]]
+name = "std"
+source = "path+from-root-F9E4FAEF7F341E13"
+dependencies = ["core"]
