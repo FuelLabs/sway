@@ -337,6 +337,14 @@ impl Parse for ty::TyExpression {
             } => {
                 adaptive_iter(contents, |exp| exp.parse(ctx));
             }
+            ty::TyExpressionVariant::ArrayRepeat {
+                elem_type: _,
+                value,
+                length,
+            } => {
+                value.parse(ctx);
+                length.parse(ctx);
+            }
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
                 prefix.parse(ctx);
                 index.parse(ctx);

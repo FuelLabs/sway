@@ -468,10 +468,10 @@ impl ty::TyExpression {
                 Self::type_check_abi_cast(handler, ctx.by_ref(), abi_name.clone(), address, span)
             }
             ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => {
-                Self::type_check_array_explicit(handler, ctx.by_ref(), &contents, span)
+                Self::type_check_array_explicit(handler, ctx.by_ref(), contents, span)
             }
             ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
-                Self::type_check_array_repeat(handler, ctx.by_ref(), &value, &length, span)
+                Self::type_check_array_repeat(handler, ctx.by_ref(), value, length, span)
             }
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                 let ctx = ctx
@@ -2039,14 +2039,14 @@ impl ty::TyExpression {
             .by_ref()
             .with_help_text("")
             .with_type_annotation(elem_type);
-        let value = Self::type_check(&handler, value_ctx, value)
+        let value = Self::type_check(handler, value_ctx, value)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
 
         let length_ctx = ctx
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.id_of_u64());
-        let length = Self::type_check(&handler, length_ctx, length)
+        let length = Self::type_check(handler, length_ctx, length)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
         let length_u64 = length.as_literal_u64().unwrap() as usize;
 
@@ -3213,7 +3213,7 @@ mod tests {
     fn test_array_type_check_non_homogeneous_0() {
         // [true, 0] -- first element is correct, assumes type is [bool; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::Boolean(true)),
@@ -3247,7 +3247,7 @@ mod tests {
     fn test_array_type_check_non_homogeneous_1() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::U64(0)),
@@ -3281,7 +3281,7 @@ mod tests {
     fn test_array_type_check_bad_count() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::Boolean(true)),
@@ -3317,7 +3317,7 @@ mod tests {
     #[test]
     fn test_array_type_check_empty() {
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: Vec::new(),
                 length_span: None,
             }),

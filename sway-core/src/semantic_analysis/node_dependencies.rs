@@ -586,8 +586,8 @@ impl Dependencies {
                     deps.gather_from_expr(engines, expr)
                 }),
             ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => self
-                .gather_from_expr(engines, &value)
-                .gather_from_expr(engines, &length),
+                .gather_from_expr(engines, value)
+                .gather_from_expr(engines, length),
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => self
                 .gather_from_expr(engines, prefix)
                 .gather_from_expr(engines, index),

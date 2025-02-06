@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    ast_elements::length,
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},

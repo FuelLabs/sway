@@ -103,7 +103,7 @@ impl PartialEqWithEngines for ArrayExpression {
                     contents: other_contents,
                     length_span: other_length_span,
                 },
-            ) => self_contents.eq(&other_contents, ctx) && self_length_span == other_length_span,
+            ) => self_contents.eq(other_contents, ctx) && self_length_span == other_length_span,
             (
                 ArrayExpression::Repeat {
                     value: self_value,

@@ -3697,7 +3697,7 @@ impl<'eng> FnCompiler<'eng> {
                 let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                     array_value,
                     elem_type,
-                    i as u64,
+                    i,
                 );
                 self.current_block
                     .append(context)
