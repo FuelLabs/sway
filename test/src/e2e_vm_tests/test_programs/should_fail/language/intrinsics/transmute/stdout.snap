@@ -1,6 +1,5 @@
 ---
 source: test/tests/tests.rs
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute
 exit status: 1
@@ -54,7 +53,8 @@ error
 14 |     // Invalid types
 15 |     let _ = __transmute::<&u64, &u8>(&1u64);
    |                           ^^^^ references, pointers, slices, string slices or types containing any of these are not allowed.
-16 | }
+16 | 
+17 |     // u8 cannot be transmuted to other types
    |
 ____
 
