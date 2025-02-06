@@ -1,13 +1,14 @@
 //! Optimization passes for manipulating constant values.
 
 use crate::{
-    constant::{Constant, ConstantValue},
+    constant::{ConstantContent, ConstantValue},
     context::Context,
     error::IrError,
     function::Function,
     instruction::InstOp,
     value::ValueDatum,
-    AnalysisResults, BranchToWithArgs, Instruction, Pass, PassMutability, Predicate, ScopedPass,
+    AnalysisResults, BranchToWithArgs, Constant, Instruction, Pass, PassMutability, Predicate,
+    ScopedPass,
 };
 use rustc_hash::FxHashMap;
 
@@ -76,7 +77,12 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                         },
                     ..
                 }) if cond_value.is_constant(context) => {
-                    match &cond_value.get_constant(context).unwrap().value {
+                    match &cond_value
+                        .get_constant(context)
+                        .unwrap()
+                        .get_content(context)
+                        .value
+                    {
                         ConstantValue::Bool(true) => Some(Ok((
                             inst_val,
                             in_block,
@@ -140,9 +146,12 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
 
                     use ConstantValue::*;
                     match pred {
-                        Predicate::Equal => Some((inst_val, block, val1.eq(context, val2))),
+                        Predicate::Equal => Some((inst_val, block, val1 == val2)),
                         Predicate::GreaterThan => {
-                            let r = match (&val1.value, &val2.value) {
+                            let r = match (
+                                &val1.get_content(context).value,
+                                &val2.get_content(context).value,
+                            ) {
                                 (Uint(val1), Uint(val2)) => val1 > val2,
                                 (U256(val1), U256(val2)) => val1 > val2,
                                 (B256(val1), B256(val2)) => val1 > val2,
@@ -155,7 +164,10 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
                             Some((inst_val, block, r))
                         }
                         Predicate::LessThan => {
-                            let r = match (&val1.value, &val2.value) {
+                            let r = match (
+                                &val1.get_content(context).value,
+                                &val2.get_content(context).value,
+                            ) {
                                 (Uint(val1), Uint(val2)) => val1 < val2,
                                 (U256(val1), U256(val2)) => val1 < val2,
                                 (B256(val1), B256(val2)) => val1 < val2,
@@ -174,11 +186,10 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
         );
 
     candidate.map_or(false, |(inst_val, block, cn_replace)| {
+        let const_content = ConstantContent::new_bool(context, cn_replace);
+        let constant = crate::Constant::unique(context, const_content);
         // Replace this `cmp` instruction with a constant.
-        inst_val.replace(
-            context,
-            ValueDatum::Constant(Constant::new_bool(context, cn_replace)),
-        );
+        inst_val.replace(context, ValueDatum::Constant(constant));
         block.remove_instruction(context, inst_val);
         true
     })
@@ -193,8 +204,8 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
                     op: InstOp::BinaryOp { op, arg1, arg2 },
                     ..
                 }) if arg1.is_constant(context) && arg2.is_constant(context) => {
-                    let val1 = arg1.get_constant(context).unwrap();
-                    let val2 = arg2.get_constant(context).unwrap();
+                    let val1 = arg1.get_constant(context).unwrap().get_content(context);
+                    let val2 = arg2.get_constant(context).unwrap().get_content(context);
                     use crate::BinaryOpKind::*;
                     use ConstantValue::*;
                     let v = match (op, &val1.value, &val2.value) {
@@ -233,7 +244,7 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
                         (Lsh, U256(l), Uint(r)) => l.checked_shl(r).map(U256),
                         _ => None,
                     };
-                    v.map(|value| (inst_val, block, Constant { ty: val1.ty, value }))
+                    v.map(|value| (inst_val, block, ConstantContent { ty: val1.ty, value }))
                 }
                 _ => None,
             },
@@ -241,6 +252,7 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
 
     // Replace this binary op instruction with a constant.
     candidate.map_or(false, |(inst_val, block, new_value)| {
+        let new_value = Constant::unique(context, new_value);
         inst_val.replace(context, ValueDatum::Constant(new_value));
         block.remove_instruction(context, inst_val);
         true
@@ -257,8 +269,12 @@ fn remove_useless_binary_op(context: &mut Context, function: &Function) -> bool 
                         op: InstOp::BinaryOp { op, arg1, arg2 },
                         ..
                     }) if arg1.is_constant(context) || arg2.is_constant(context) => {
-                        let val1 = arg1.get_constant(context).map(|x| &x.value);
-                        let val2 = arg2.get_constant(context).map(|x| &x.value);
+                        let val1 = arg1
+                            .get_constant(context)
+                            .map(|x| &x.get_content(context).value);
+                        let val2 = arg2
+                            .get_constant(context)
+                            .map(|x| &x.get_content(context).value);
 
                         use crate::BinaryOpKind::*;
                         use ConstantValue::*;
@@ -303,21 +319,34 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
                     let val = arg.get_constant(context).unwrap();
                     use crate::UnaryOpKind::*;
                     use ConstantValue::*;
-                    let v = match (op, &val.value) {
-                        (Not, Uint(v)) => val.ty.get_uint_width(context).and_then(|width| {
-                            let max = match width {
-                                8 => u8::MAX as u64,
-                                16 => u16::MAX as u64,
-                                32 => u32::MAX as u64,
-                                64 => u64::MAX,
-                                _ => return None,
-                            };
-                            Some(Uint((!v) & max))
-                        }),
+                    let v = match (op, &val.get_content(context).value) {
+                        (Not, Uint(v)) => val
+                            .get_content(context)
+                            .ty
+                            .get_uint_width(context)
+                            .and_then(|width| {
+                                let max = match width {
+                                    8 => u8::MAX as u64,
+                                    16 => u16::MAX as u64,
+                                    32 => u32::MAX as u64,
+                                    64 => u64::MAX,
+                                    _ => return None,
+                                };
+                                Some(Uint((!v) & max))
+                            }),
                         (Not, U256(v)) => Some(U256(!v)),
                         _ => None,
                     };
-                    v.map(|value| (inst_val, block, Constant { ty: val.ty, value }))
+                    v.map(|value| {
+                        (
+                            inst_val,
+                            block,
+                            ConstantContent {
+                                ty: val.get_content(context).ty,
+                                value,
+                            },
+                        )
+                    })
                 }
                 _ => None,
             },
@@ -325,6 +354,7 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
 
     // Replace this unary op instruction with a constant.
     candidate.map_or(false, |(inst_val, block, new_value)| {
+        let new_value = Constant::unique(context, new_value);
         inst_val.replace(context, ValueDatum::Constant(new_value));
         block.remove_instruction(context, inst_val);
         true

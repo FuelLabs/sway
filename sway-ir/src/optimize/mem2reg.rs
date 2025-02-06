@@ -251,12 +251,11 @@ pub fn promote_to_registers(
                                 Some(val) => *val,
                                 None => {
                                     // Nothing on the stack, let's attempt to get the initializer
-                                    Value::new_constant(
-                                        context,
-                                        var.get_initializer(context)
-                                            .expect("We're dealing with an uninitialized value")
-                                            .clone(),
-                                    )
+                                    let constant = var
+                                        .get_initializer(context)
+                                        .expect("We're dealing with an uninitialized value")
+                                        .clone();
+                                    Value::new_constant(context, constant)
                                 }
                             };
                             rewrites.insert(inst, new_val);
@@ -304,12 +303,11 @@ pub fn promote_to_registers(
                         Some(val) => *val,
                         None => {
                             // Nothing on the stack, let's attempt to get the initializer
-                            Value::new_constant(
-                                context,
-                                ptr.get_initializer(context)
-                                    .expect("We're dealing with an uninitialized value")
-                                    .clone(),
-                            )
+                            let constant = ptr
+                                .get_initializer(context)
+                                .expect("We're dealing with an uninitialized value")
+                                .clone();
+                            Value::new_constant(context, constant)
                         }
                     };
                     let params = node.get_succ_params_mut(context, &succ).unwrap();

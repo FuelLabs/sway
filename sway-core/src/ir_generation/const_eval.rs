@@ -23,11 +23,11 @@ use super::{
 use sway_ast::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{
-    constant::{Constant, ConstantValue},
+    constant::{ConstantContent, ConstantValue},
     context::Context,
     module::Module,
     value::Value,
-    InstOp, Instruction, Type, TypeContent,
+    Constant, InstOp, Instruction, Type, TypeContent,
 };
 use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Named, Span};
 use sway_utils::mapped_stack::MappedStack;
@@ -374,11 +374,16 @@ fn const_eval_typed_expr(
                 &field_typs,
             )
             .map_or(None, |struct_ty| {
-                Some(Constant::new_struct(
+                let c = ConstantContent::new_struct(
                     lookup.context,
                     struct_ty.get_field_types(lookup.context),
-                    field_vals,
-                ))
+                    field_vals
+                        .iter()
+                        .map(|fv| fv.get_content(lookup.context).clone())
+                        .collect(),
+                );
+                let c = Constant::unique(lookup.context, c);
+                Some(c)
             })
         }
         ty::TyExpressionVariant::Tuple { fields } => {
@@ -406,11 +411,16 @@ fn const_eval_typed_expr(
                 &field_typs,
             )
             .map_or(None, |tuple_ty| {
-                Some(Constant::new_struct(
+                let c = ConstantContent::new_struct(
                     lookup.context,
                     tuple_ty.get_field_types(lookup.context),
-                    field_vals,
-                ))
+                    field_vals
+                        .iter()
+                        .map(|fv| fv.get_content(lookup.context).clone())
+                        .collect(),
+                );
+                let c = Constant::unique(lookup.context, c);
+                Some(c)
             })
         }
         ty::TyExpressionVariant::Array {
@@ -450,11 +460,16 @@ fn const_eval_typed_expr(
                 element_typs.len().try_into().unwrap(),
             )
             .map_or(None, |array_ty| {
-                Some(Constant::new_array(
+                let arr = ConstantContent::new_array(
                     lookup.context,
                     array_ty.get_array_elem_type(lookup.context).unwrap(),
-                    element_vals,
-                ))
+                    element_vals
+                        .iter()
+                        .map(|cv| cv.get_content(lookup.context).clone())
+                        .collect(),
+                );
+                let arr = Constant::unique(lookup.context, arr);
+                Some(arr)
             });
 
             arr
@@ -475,13 +490,13 @@ fn const_eval_typed_expr(
             );
 
             if let Ok(enum_ty) = aggregate {
-                let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
-                let mut fields: Vec<Constant> = vec![tag_value];
+                let tag_value = ConstantContent::new_uint(lookup.context, 64, *tag as u64);
+                let mut fields: Vec<ConstantContent> = vec![tag_value];
 
                 match contents {
-                    None => fields.push(Constant::new_unit(lookup.context)),
+                    None => fields.push(ConstantContent::new_unit(lookup.context)),
                     Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
-                        Some(constant) => fields.push(constant),
+                        Some(constant) => fields.push(constant.get_content(lookup.context).clone()),
                         None => {
                             return Err(ConstEvalError::CannotBeEvaluatedToConst {
                                 span: variant_instantiation_span.clone(),
@@ -491,7 +506,9 @@ fn const_eval_typed_expr(
                 }
 
                 let fields_tys = enum_ty.get_field_types(lookup.context);
-                Some(Constant::new_struct(lookup.context, fields_tys, fields))
+                let c = ConstantContent::new_struct(lookup.context, fields_tys, fields);
+                let c = Constant::unique(lookup.context, c);
+                Some(c)
             } else {
                 return Err(ConstEvalError::CannotBeEvaluatedToConst {
                     span: expr.span.clone(),
@@ -503,8 +520,10 @@ fn const_eval_typed_expr(
             field_to_access,
             resolved_type_of_parent,
             ..
-        } => match const_eval_typed_expr(lookup, known_consts, prefix)? {
-            Some(Constant {
+        } => match const_eval_typed_expr(lookup, known_consts, prefix)?
+            .map(|c| c.get_content(lookup.context).clone())
+        {
+            Some(ConstantContent {
                 value: ConstantValue::Struct(fields),
                 ..
             }) => {
@@ -520,7 +539,12 @@ fn const_eval_typed_expr(
                 .and_then(|(_struct_name, field_idx_and_type_opt)| {
                     field_idx_and_type_opt.map(|(field_idx, _field_type)| field_idx)
                 })
-                .and_then(|field_idx| fields.get(field_idx as usize).cloned())
+                .and_then(|field_idx| {
+                    fields
+                        .get(field_idx as usize)
+                        .cloned()
+                        .map(|c| Constant::unique(lookup.context, c))
+                })
             }
             _ => {
                 return Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -532,11 +556,16 @@ fn const_eval_typed_expr(
             prefix,
             elem_to_access_num,
             ..
-        } => match const_eval_typed_expr(lookup, known_consts, prefix)? {
-            Some(Constant {
+        } => match const_eval_typed_expr(lookup, known_consts, prefix)?
+            .map(|c| c.get_content(lookup.context))
+        {
+            Some(ConstantContent {
                 value: ConstantValue::Struct(fields),
                 ..
-            }) => fields.get(*elem_to_access_num).cloned(),
+            }) => fields
+                .get(*elem_to_access_num)
+                .cloned()
+                .map(|c| Constant::unique(lookup.context, c)),
             _ => {
                 return Err(ConstEvalError::CannotBeEvaluatedToConst {
                     span: expr.span.clone(),
@@ -572,12 +601,14 @@ fn const_eval_typed_expr(
             then,
             r#else,
         } => {
-            match const_eval_typed_expr(lookup, known_consts, condition)? {
-                Some(Constant {
+            match const_eval_typed_expr(lookup, known_consts, condition)?
+                .map(|c| c.get_content(lookup.context))
+            {
+                Some(ConstantContent {
                     value: ConstantValue::Bool(cond),
                     ..
                 }) => {
-                    if cond {
+                    if *cond {
                         const_eval_typed_expr(lookup, known_consts, then)?
                     } else if let Some(r#else) = r#else {
                         const_eval_typed_expr(lookup, known_consts, r#else)?
@@ -599,22 +630,25 @@ fn const_eval_typed_expr(
             const_eval_codeblock(lookup, known_consts, codeblock)?
         }
         ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
-            let prefix = const_eval_typed_expr(lookup, known_consts, prefix)?;
-            let index = const_eval_typed_expr(lookup, known_consts, index)?;
+            let prefix = const_eval_typed_expr(lookup, known_consts, prefix)?
+                .map(|c| c.get_content(lookup.context).clone());
+            let index = const_eval_typed_expr(lookup, known_consts, index)?
+                .map(|c| c.get_content(lookup.context));
             match (prefix, index) {
                 (
-                    Some(Constant {
+                    Some(ConstantContent {
                         value: ConstantValue::Array(items),
                         ..
                     }),
-                    Some(Constant {
+                    Some(ConstantContent {
                         value: ConstantValue::Uint(index),
                         ..
                     }),
                 ) => {
                     let count = items.len() as u64;
-                    if index < count {
-                        Some(items[index as usize].clone())
+                    if *index < count {
+                        let c = Constant::unique(lookup.context, items[*index as usize].clone());
+                        Some(c)
                     } else {
                         return Err(ConstEvalError::CompileError);
                     }
@@ -635,29 +669,35 @@ fn const_eval_typed_expr(
                 .as_intrinsic()
                 .filter(|x| matches!(x.kind, Intrinsic::ElemAt))
                 .ok_or(ConstEvalError::CompileError)
-                .and_then(|kind| const_eval_intrinsic(lookup, known_consts, kind));
-            if let Ok(Some(Constant {
+                .and_then(|kind| {
+                    const_eval_intrinsic(lookup, known_consts, kind)
+                        .map(|c| c.map(|c| c.get_content(lookup.context).clone()))
+                });
+            if let Ok(Some(ConstantContent {
                 value: ConstantValue::Reference(value),
                 ..
             })) = value
             {
-                Some(*value.clone())
+                let c = Constant::unique(lookup.context, *value.clone());
+                Some(c)
             } else {
                 return Err(ConstEvalError::CompileError);
             }
         }
         ty::TyExpressionVariant::EnumTag { exp } => {
-            let value = const_eval_typed_expr(lookup, known_consts, exp)?.map(|x| x.value);
+            let value = const_eval_typed_expr(lookup, known_consts, exp)?
+                .map(|x| x.get_content(lookup.context).value.clone());
             if let Some(ConstantValue::Struct(fields)) = value {
-                Some(fields[0].clone())
+                Some(Constant::unique(lookup.context, fields[0].clone()))
             } else {
                 return Err(ConstEvalError::CompileError);
             }
         }
         ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-            let value = const_eval_typed_expr(lookup, known_consts, exp)?.map(|x| x.value);
+            let value = const_eval_typed_expr(lookup, known_consts, exp)?
+                .map(|x| x.get_content(lookup.context).value.clone());
             if let Some(ConstantValue::Struct(fields)) = value {
-                Some(fields[1].clone())
+                Some(Constant::unique(lookup.context, fields[1].clone()))
             } else {
                 return Err(ConstEvalError::CompileError);
             }
@@ -673,7 +713,7 @@ fn const_eval_typed_expr(
                 limit -= 1;
 
                 let condition = const_eval_typed_expr(lookup, known_consts, condition)?;
-                match condition.map(|x| x.value) {
+                match condition.map(|x| x.get_content(&lookup.context).value.clone()) {
                     Some(ConstantValue::Bool(true)) => {
                         // Break and continue are not implemented, so there is need for flow control here
                         let _ = const_eval_codeblock(lookup, known_consts, body)?;
@@ -812,8 +852,8 @@ fn const_eval_codeblock(
     result
 }
 
-fn as_encode_buffer(buffer: &Constant) -> Option<(&Vec<u8>, u64)> {
-    match &buffer.value {
+fn as_encode_buffer<'a>(context: &'a Context, buffer: &Constant) -> Option<(&'a Vec<u8>, u64)> {
+    match &buffer.get_content(context).value {
         ConstantValue::Struct(fields) => {
             let slice = match &fields[0].value {
                 ConstantValue::RawUntypedSlice(bytes) => bytes,
@@ -830,7 +870,7 @@ fn as_encode_buffer(buffer: &Constant) -> Option<(&Vec<u8>, u64)> {
 }
 
 fn to_encode_buffer(lookup: &mut LookupEnv, bytes: Vec<u8>, len: u64) -> Constant {
-    Constant {
+    let c = ConstantContent {
         ty: Type::new_struct(
             lookup.context,
             vec![
@@ -839,16 +879,17 @@ fn to_encode_buffer(lookup: &mut LookupEnv, bytes: Vec<u8>, len: u64) -> Constan
             ],
         ),
         value: ConstantValue::Struct(vec![
-            Constant {
+            ConstantContent {
                 ty: Type::get_slice(lookup.context),
                 value: ConstantValue::RawUntypedSlice(bytes),
             },
-            Constant {
+            ConstantContent {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(len),
             },
         ]),
-    }
+    };
+    Constant::unique(lookup.context, c)
 }
 
 fn const_eval_intrinsic(
@@ -871,11 +912,16 @@ fn const_eval_intrinsic(
 
     match intrinsic.kind {
         Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div | Intrinsic::Mod => {
-            let ty = args[0].ty;
-            assert!(args.len() == 2 && ty.eq(lookup.context, &args[1].ty));
+            let ty = args[0].get_content(lookup.context).ty;
+            assert!(
+                args.len() == 2 && ty.eq(lookup.context, &args[1].get_content(lookup.context).ty)
+            );
 
             use ConstantValue::*;
-            match (&args[0].value, &args[1].value) {
+            let c = match (
+                &args[0].get_content(&lookup.context).value,
+                &args[1].get_content(lookup.context).value,
+            ) {
                 (Uint(arg1), Uint(ref arg2)) => {
                     // All arithmetic is done as if it were u64
                     let result = match intrinsic.kind {
@@ -888,7 +934,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(result) => Ok(Some(Constant {
+                        Some(result) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::Uint(result),
                         })),
@@ -908,7 +954,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(result) => Ok(Some(Constant {
+                        Some(result) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::U256(result),
                         })),
@@ -920,14 +966,20 @@ fn const_eval_intrinsic(
                 _ => {
                     panic!("Type checker allowed incorrect args to binary op");
                 }
-            }
+            };
+            c.map(|c| c.map(|c| Constant::unique(lookup.context, c)))
         }
         Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
-            let ty = args[0].ty;
-            assert!(args.len() == 2 && ty.eq(lookup.context, &args[1].ty));
+            let ty = args[0].get_content(lookup.context).ty;
+            assert!(
+                args.len() == 2 && ty.eq(lookup.context, &args[1].get_content(lookup.context).ty)
+            );
 
             use ConstantValue::*;
-            match (&args[0].value, &args[1].value) {
+            let c = match (
+                &args[0].get_content(lookup.context).value,
+                &args[1].get_content(&lookup.context).value,
+            ) {
                 (Uint(arg1), Uint(ref arg2)) => {
                     // All arithmetic is done as if it were u64
                     let result = match intrinsic.kind {
@@ -938,7 +990,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(sum) => Ok(Some(Constant {
+                        Some(sum) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::Uint(sum),
                         })),
@@ -956,7 +1008,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(sum) => Ok(Some(Constant {
+                        Some(sum) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::U256(sum),
                         })),
@@ -974,7 +1026,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(result) => Ok(Some(Constant {
+                        Some(result) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::B256(result),
                         })),
@@ -986,17 +1038,33 @@ fn const_eval_intrinsic(
                 _ => {
                     panic!("Type checker allowed incorrect args to binary op");
                 }
-            }
+            };
+            c.map(|c| c.map(|c| Constant::unique(lookup.context, c)))
         }
         Intrinsic::Lsh | Intrinsic::Rsh => {
             assert!(args.len() == 2);
-            assert!(args[0].ty.is_uint(lookup.context) || args[0].ty.is_b256(lookup.context));
-            assert!(args[1].ty.is_uint64(lookup.context));
+            assert!(
+                args[0]
+                    .get_content(lookup.context)
+                    .ty
+                    .is_uint(lookup.context)
+                    || args[0]
+                        .get_content(lookup.context)
+                        .ty
+                        .is_b256(lookup.context)
+            );
+            assert!(args[1]
+                .get_content(lookup.context)
+                .ty
+                .is_uint64(lookup.context));
 
-            let ty = args[0].ty;
+            let ty = args[0].get_content(lookup.context).ty;
 
             use ConstantValue::*;
-            match (&args[0].value, &args[1].value) {
+            let c = match (
+                &args[0].get_content(lookup.context).value,
+                &args[1].get_content(lookup.context).value,
+            ) {
                 (Uint(arg1), Uint(ref arg2)) => {
                     let result = match intrinsic.kind {
                         Intrinsic::Lsh => u32::try_from(*arg2)
@@ -1009,7 +1077,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(sum) => Ok(Some(Constant {
+                        Some(sum) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::Uint(sum),
                         })),
@@ -1026,7 +1094,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(value) => Ok(Some(Constant {
+                        Some(value) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::U256(value),
                         })),
@@ -1043,7 +1111,7 @@ fn const_eval_intrinsic(
                     };
 
                     match result {
-                        Some(result) => Ok(Some(Constant {
+                        Some(result) => Ok(Some(ConstantContent {
                             ty,
                             value: ConstantValue::B256(result),
                         })),
@@ -1055,7 +1123,8 @@ fn const_eval_intrinsic(
                 _ => {
                     panic!("Type checker allowed incorrect args to binary op");
                 }
-            }
+            };
+            c.map(|c| c.map(|c| Constant::unique(lookup.context, c)))
         }
         Intrinsic::SizeOfType => {
             let targ = &intrinsic.type_arguments[0];
@@ -1067,10 +1136,12 @@ fn const_eval_intrinsic(
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
-            Ok(Some(Constant {
+            let c = ConstantContent {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
-            }))
+            };
+
+            Ok(Some(Constant::unique(lookup.context, c)))
         }
         Intrinsic::SizeOfVal => {
             let val = &intrinsic.arguments[0];
@@ -1083,10 +1154,11 @@ fn const_eval_intrinsic(
                 &val.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
-            Ok(Some(Constant {
+            let c = ConstantContent {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
-            }))
+            };
+            Ok(Some(Constant::unique(lookup.context, c)))
         }
         Intrinsic::SizeOfStr => {
             let targ = &intrinsic.type_arguments[0];
@@ -1098,12 +1170,13 @@ fn const_eval_intrinsic(
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
-            Ok(Some(Constant {
+            let c = ConstantContent {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(
                     ir_type.get_string_len(lookup.context).unwrap_or_default(),
                 ),
-            }))
+            };
+            Ok(Some(Constant::unique(lookup.context, c)))
         }
         Intrinsic::AssertIsStrArray => {
             let targ = &intrinsic.type_arguments[0];
@@ -1116,18 +1189,22 @@ fn const_eval_intrinsic(
             )
             .map_err(|_| ConstEvalError::CompileError)?;
             match ir_type.get_content(lookup.context) {
-                TypeContent::StringSlice | TypeContent::StringArray(_) => Ok(Some(Constant {
-                    ty: Type::get_unit(lookup.context),
-                    value: ConstantValue::Unit,
-                })),
+                TypeContent::StringSlice | TypeContent::StringArray(_) => {
+                    let c = ConstantContent {
+                        ty: Type::get_unit(lookup.context),
+                        value: ConstantValue::Unit,
+                    };
+                    Ok(Some(Constant::unique(lookup.context, c)))
+                }
                 _ => Err(ConstEvalError::CompileError),
             }
         }
         Intrinsic::ToStrArray => {
             assert!(args.len() == 1);
-            match &args[0].value {
+            match &args[0].get_content(lookup.context).value {
                 ConstantValue::String(s) => {
-                    Ok(Some(Constant::new_string(lookup.context, s.to_vec())))
+                    let c = ConstantContent::new_string(lookup.context, s.to_vec());
+                    Ok(Some(Constant::unique(lookup.context, c)))
                 }
                 _ => {
                     unreachable!("Type checker allowed non string value for ToStrArray")
@@ -1136,33 +1213,52 @@ fn const_eval_intrinsic(
         }
         Intrinsic::Eq => {
             assert!(args.len() == 2);
-            Ok(Some(Constant {
+            let c = ConstantContent {
                 ty: Type::get_bool(lookup.context),
-                value: ConstantValue::Bool(args[0].eq(lookup.context, &args[1])),
-            }))
+                value: ConstantValue::Bool(args[0] == args[1]),
+            };
+            Ok(Some(Constant::unique(lookup.context, c)))
         }
-        Intrinsic::Gt => match (&args[0].value, &args[1].value) {
-            (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) => Ok(Some(Constant {
-                ty: Type::get_bool(lookup.context),
-                value: ConstantValue::Bool(val1 > val2),
-            })),
-            (ConstantValue::U256(val1), ConstantValue::U256(val2)) => Ok(Some(Constant {
-                ty: Type::get_bool(lookup.context),
-                value: ConstantValue::Bool(val1 > val2),
-            })),
+        Intrinsic::Gt => match (
+            &args[0].get_content(lookup.context).value,
+            &args[1].get_content(lookup.context).value,
+        ) {
+            (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) => {
+                let c = ConstantContent {
+                    ty: Type::get_bool(lookup.context),
+                    value: ConstantValue::Bool(val1 > val2),
+                };
+                Ok(Some(Constant::unique(lookup.context, c)))
+            }
+            (ConstantValue::U256(val1), ConstantValue::U256(val2)) => {
+                let c = ConstantContent {
+                    ty: Type::get_bool(lookup.context),
+                    value: ConstantValue::Bool(val1 > val2),
+                };
+                Ok(Some(Constant::unique(lookup.context, c)))
+            }
             _ => {
                 unreachable!("Type checker allowed non integer value for GreaterThan")
             }
         },
-        Intrinsic::Lt => match (&args[0].value, &args[1].value) {
-            (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) => Ok(Some(Constant {
-                ty: Type::get_bool(lookup.context),
-                value: ConstantValue::Bool(val1 < val2),
-            })),
-            (ConstantValue::U256(val1), ConstantValue::U256(val2)) => Ok(Some(Constant {
-                ty: Type::get_bool(lookup.context),
-                value: ConstantValue::Bool(val1 < val2),
-            })),
+        Intrinsic::Lt => match (
+            &args[0].get_content(lookup.context).value,
+            &args[1].get_content(lookup.context).value,
+        ) {
+            (ConstantValue::Uint(val1), ConstantValue::Uint(val2)) => {
+                let c = ConstantContent {
+                    ty: Type::get_bool(lookup.context),
+                    value: ConstantValue::Bool(val1 < val2),
+                };
+                Ok(Some(Constant::unique(lookup.context, c)))
+            }
+            (ConstantValue::U256(val1), ConstantValue::U256(val2)) => {
+                let c = ConstantContent {
+                    ty: Type::get_bool(lookup.context),
+                    value: ConstantValue::Bool(val1 < val2),
+                };
+                Ok(Some(Constant::unique(lookup.context, c)))
+            }
             _ => {
                 unreachable!("Type checker allowed non integer value for LessThan")
             }
@@ -1189,38 +1285,52 @@ fn const_eval_intrinsic(
             // `bool` ops::Not implementation uses `__eq`.
 
             assert!(args.len() == 1);
-            assert!(args[0].ty.is_uint(lookup.context) || args[0].ty.is_b256(lookup.context));
+            assert!(
+                args[0]
+                    .get_content(lookup.context)
+                    .ty
+                    .is_uint(lookup.context)
+                    || args[0]
+                        .get_content(lookup.context)
+                        .ty
+                        .is_b256(lookup.context)
+            );
 
             let Some(arg) = args.into_iter().next() else {
                 unreachable!("Unexpected 'not' without any arguments");
             };
 
-            match arg.value {
+            let c = match &arg.get_content(lookup.context).value {
                 ConstantValue::Uint(n) => {
-                    let n = match arg.ty.get_uint_width(lookup.context) {
-                        Some(8) => !(n as u8) as u64,
-                        Some(16) => !(n as u16) as u64,
-                        Some(32) => !(n as u32) as u64,
+                    let n = match arg
+                        .get_content(lookup.context)
+                        .ty
+                        .get_uint_width(lookup.context)
+                    {
+                        Some(8) => !(*n as u8) as u64,
+                        Some(16) => !(*n as u16) as u64,
+                        Some(32) => !(*n as u32) as u64,
                         Some(64) => !n,
                         _ => unreachable!("Invalid unsigned integer width"),
                     };
-                    Ok(Some(Constant {
-                        ty: arg.ty,
+                    Ok(Some(ConstantContent {
+                        ty: arg.get_content(lookup.context).ty,
                         value: ConstantValue::Uint(n),
                     }))
                 }
-                ConstantValue::U256(n) => Ok(Some(Constant {
-                    ty: arg.ty,
+                ConstantValue::U256(n) => Ok(Some(ConstantContent {
+                    ty: arg.get_content(lookup.context).ty,
                     value: ConstantValue::U256(n.not()),
                 })),
-                ConstantValue::B256(v) => Ok(Some(Constant {
-                    ty: arg.ty,
+                ConstantValue::B256(v) => Ok(Some(ConstantContent {
+                    ty: arg.get_content(lookup.context).ty,
                     value: ConstantValue::B256(v.not()),
                 })),
                 _ => {
                     unreachable!("Type checker allowed non integer value for Not");
                 }
-            }
+            };
+            c.map(|c| c.map(|c| Constant::unique(lookup.context, c)))
         }
         Intrinsic::ContractCall | Intrinsic::ContractRet => {
             Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -1231,11 +1341,11 @@ fn const_eval_intrinsic(
         Intrinsic::EncodeBufferAppend => {
             assert!(args.len() == 2);
 
-            let (slice, mut len) = as_encode_buffer(&args[0]).unwrap();
+            let (slice, mut len) = as_encode_buffer(lookup.context, &args[0]).unwrap();
             let mut bytes = slice.clone();
 
             use ConstantValue::*;
-            match &args[1].value {
+            match &args[1].get_content(lookup.context).value {
                 Bool(v) => {
                     bytes.extend(if *v { [1] } else { [0] });
                     len += 1;
@@ -1299,31 +1409,41 @@ fn const_eval_intrinsic(
         Intrinsic::EncodeBufferAsRawSlice => {
             assert!(args.len() == 1);
 
-            let (slice, len) = as_encode_buffer(&args[0]).unwrap();
+            let (slice, len) = as_encode_buffer(lookup.context, &args[0]).unwrap();
             let bytes = slice.clone();
 
-            Ok(Some(Constant {
+            let c = ConstantContent {
                 ty: Type::get_slice(lookup.context),
                 value: ConstantValue::RawUntypedSlice(bytes[0..(len as usize)].to_vec()),
-            }))
+            };
+            Ok(Some(Constant::unique(lookup.context, c)))
         }
         Intrinsic::Slice => {
-            let start = args[1].as_uint().expect("Type check allowed non u64") as usize;
-            let end = args[2].as_uint().expect("Type check allowed non u64") as usize;
+            let start = args[1]
+                .get_content(lookup.context)
+                .as_uint()
+                .expect("Type check allowed non u64") as usize;
+            let end = args[2]
+                .get_content(lookup.context)
+                .as_uint()
+                .expect("Type check allowed non u64") as usize;
 
-            match &args[0].value {
+            match &args[0].get_content(lookup.context).value {
                 ConstantValue::Array(elements) => {
                     let slice = elements
                         .get(start..end)
                         .ok_or(ConstEvalError::CompileError)?;
                     let elem_type = args[0]
+                        .get_content(lookup.context)
                         .ty
                         .get_array_elem_type(lookup.context)
                         .expect("unexpected non array");
-                    Ok(Some(Constant {
+                    let s = slice.to_vec();
+                    let c = ConstantContent {
                         ty: Type::get_typed_slice(lookup.context, elem_type),
-                        value: ConstantValue::Slice(slice.to_vec()),
-                    }))
+                        value: ConstantValue::Slice(s),
+                    };
+                    Ok(Some(Constant::unique(lookup.context, c)))
                 }
                 ConstantValue::Reference(r) => match &r.value {
                     ConstantValue::Slice(elements) => {
@@ -1331,13 +1451,16 @@ fn const_eval_intrinsic(
                             .get(start..end)
                             .ok_or(ConstEvalError::CompileError)?;
                         let elem_type = args[0]
+                            .get_content(lookup.context)
                             .ty
                             .get_typed_slice_elem_type(lookup.context)
                             .expect("unexpected non slice");
-                        Ok(Some(Constant {
+                        let s = slice.to_vec();
+                        let c = ConstantContent {
                             ty: Type::get_typed_slice(lookup.context, elem_type),
-                            value: ConstantValue::Slice(slice.to_vec()),
-                        }))
+                            value: ConstantValue::Slice(s),
+                        };
+                        Ok(Some(Constant::unique(lookup.context, c)))
                     }
                     _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: intrinsic.span.clone(),
@@ -1349,16 +1472,20 @@ fn const_eval_intrinsic(
             }
         }
         Intrinsic::ElemAt => {
-            let idx = args[1].as_uint().expect("Type check allowed non u64") as usize;
+            let idx = args[1]
+                .get_content(lookup.context)
+                .as_uint()
+                .expect("Type check allowed non u64") as usize;
 
-            match &args[0].value {
+            match &args[0].get_content(lookup.context).value {
                 ConstantValue::Reference(r) => match &r.value {
                     ConstantValue::Slice(elements) => {
                         let v = elements[idx].clone();
-                        Ok(Some(Constant {
+                        let c = ConstantContent {
                             ty: Type::new_ptr(lookup.context, v.ty),
                             value: ConstantValue::Reference(Box::new(v)),
-                        }))
+                        };
+                        Ok(Some(Constant::unique(lookup.context, c)))
                     }
                     _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: intrinsic.span.clone(),
@@ -1448,12 +1575,12 @@ fn const_eval_intrinsic(
                 ctx: &Context<'_>,
                 bytes: &mut std::io::Cursor<Vec<u8>>,
                 t: &Type,
-            ) -> Result<Constant, ConstEvalError> {
+            ) -> Result<ConstantContent, ConstEvalError> {
                 Ok(match t.get_content(ctx) {
                     TypeContent::Uint(8) => {
                         let mut buffer = [0u8];
                         let _ = bytes.read_exact(&mut buffer);
-                        Constant {
+                        ConstantContent {
                             ty: Type::get_uint8(ctx),
                             value: ConstantValue::Uint(buffer[0] as u64),
                         }
@@ -1462,7 +1589,7 @@ fn const_eval_intrinsic(
                         let mut buffer = [0u8; 8]; // u16 = u64 at runtime
                         let _ = bytes.read_exact(&mut buffer);
                         let buffer = [buffer[6], buffer[7]];
-                        Constant {
+                        ConstantContent {
                             ty: Type::get_uint16(ctx),
                             value: ConstantValue::Uint(u16::from_be_bytes(buffer) as u64),
                         }
@@ -1471,7 +1598,7 @@ fn const_eval_intrinsic(
                         let mut buffer = [0u8; 8]; // u32 = u64 at runtime
                         let _ = bytes.read_exact(&mut buffer);
                         let buffer = [buffer[4], buffer[5], buffer[6], buffer[7]];
-                        Constant {
+                        ConstantContent {
                             ty: Type::get_uint32(ctx),
                             value: ConstantValue::Uint(u32::from_be_bytes(buffer) as u64),
                         }
@@ -1479,7 +1606,7 @@ fn const_eval_intrinsic(
                     TypeContent::Uint(64) => {
                         let mut buffer = [0u8; 8];
                         let _ = bytes.read_exact(&mut buffer);
-                        Constant {
+                        ConstantContent {
                             ty: Type::get_uint64(ctx),
                             value: ConstantValue::Uint(u64::from_be_bytes(buffer)),
                         }
@@ -1493,11 +1620,11 @@ fn const_eval_intrinsic(
                 lookup.context,
                 &mut runtime_bytes,
                 &src_ir_type,
-                &args[0].value,
+                &args[0].get_content(lookup.context).value,
             )?;
             let mut cursor = std::io::Cursor::new(runtime_bytes);
             let c = transmute_bytes(lookup.context, &mut cursor, &dst_ir_type)?;
-            Ok(Some(c))
+            Ok(Some(Constant::unique(lookup.context, c)))
         }
     }
 }
