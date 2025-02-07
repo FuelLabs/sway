@@ -19,6 +19,7 @@ pub enum Identity {
 }
 // ANCHOR_END: docs_identity
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -28,6 +29,18 @@ impl core::ops::Eq for Identity {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Identity {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,
+            (Identity::ContractId(id1), Identity::ContractId(id2)) => id1 == id2,
+            _ => false,
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Identity {}
 
 impl Identity {
     /// Returns the `Address` of the `Identity`.

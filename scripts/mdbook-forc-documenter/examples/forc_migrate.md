@@ -177,9 +177,13 @@ At the end of the `run`, the migration will either guide you to:
 - `Continue` the migration process by performing the manual actions and re-running the `forc migrate run` afterwards,
 - or will mark the migration process as `Finished`. At this point, your project will be compatible with the next breaking change version of Sway.
 
+`forc migrate`, same like `forc fmt`, does its best to preserve the positions of comments in the modified code. This is a challenging task, especially if migration steps remove parts of the code. **It is a good practice to always `diff` the changes done within migration steps and check if the comments are placed where expected.**
+
 ## Migrating workspaces
 
 To migrate a workspace, you will need to migrate each workspace member separately, following the above procedure. The projects should be migrated in order of their dependencies.
+
+> **Note**: There is a know limitation when running `forc migrate` on projects that are listed as workspace members. `forc migrate` will run, but possibly not find all the occurrences in code that need to be migrated. Therefore, **before running migrations on projects that are workspace members, remove them temporarily from the the list of workspace `members`**.
 
 ## Additional after-migration steps
 

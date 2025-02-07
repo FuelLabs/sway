@@ -12,11 +12,20 @@ pub struct B512 {
     bits: [b256; 2],
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for B512 {
     fn eq(self, other: Self) -> bool {
         (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for B512 {
+    fn eq(self, other: Self) -> bool {
+        (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for B512 {}
 
 impl From<(b256, b256)> for B512 {
     /// Converts from a `b256` tuple to a `B512`.

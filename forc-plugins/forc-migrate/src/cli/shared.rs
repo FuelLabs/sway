@@ -248,16 +248,16 @@ pub(crate) fn create_migration_diagnostic(
             })
             .chain(match migration_step.kind {
                 MigrationStepKind::Instruction(_) => vec![],
-                MigrationStepKind::CodeModification(_, []) => vec![],
-                MigrationStepKind::CodeModification(_, manual_migration_actions) => {
+                MigrationStepKind::CodeModification(_, [], _) => vec![],
+                MigrationStepKind::CodeModification(_, manual_migration_actions, _) => {
                     get_manual_migration_actions_help(manual_migration_actions)
                 }
-                MigrationStepKind::Interaction(_, _, []) => vec![
+                MigrationStepKind::Interaction(_, _, [], _) => vec![
                     "This migration step will interactively modify the code, based on your input."
                         .to_string(),
                     Diagnostic::help_empty_line(),
                 ],
-                MigrationStepKind::Interaction(_, _, manual_migration_actions) => vec![
+                MigrationStepKind::Interaction(_, _, manual_migration_actions, _) => vec![
                     "This migration step will interactively modify the code, based on your input."
                         .to_string(),
                     Diagnostic::help_empty_line(),

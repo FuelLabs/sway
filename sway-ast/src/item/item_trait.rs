@@ -67,6 +67,20 @@ pub struct Traits {
     pub suffixes: Vec<(AddToken, PathType)>,
 }
 
+impl Traits {
+    pub fn iter(&self) -> impl Iterator<Item = &PathType> {
+        vec![&self.prefix]
+            .into_iter()
+            .chain(self.suffixes.iter().map(|(_add_token, path)| path))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut PathType> {
+        vec![&mut self.prefix]
+            .into_iter()
+            .chain(self.suffixes.iter_mut().map(|(_add_token, path)| path))
+    }
+}
+
 impl Spanned for Traits {
     fn span(&self) -> Span {
         match self.suffixes.last() {

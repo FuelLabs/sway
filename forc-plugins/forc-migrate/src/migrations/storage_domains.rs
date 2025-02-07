@@ -1,15 +1,15 @@
 use std::collections::HashSet;
 
-use super::{MigrationStep, MigrationStepKind, MutProgramInfo};
+use super::{ContinueMigrationProcess, MigrationStep, MigrationStepKind, MutProgramInfo};
 use crate::{
     internal_error,
     matching::{
-        lexed_match, lexed_storage_field, ty_match,
+        lexed_match_mut, lexed_storage_field, ty_match,
         ty_storage_field::{with_in_keyword, without_in_keyword},
         TyLocate,
     },
-    migrations::ProgramInfo,
-    modifying::Modifier,
+    migrations::{InteractionResponse, ProgramInfo},
+    modifying::*,
     print_single_choice_menu,
 };
 use anyhow::{bail, Ok, Result};
@@ -18,10 +18,10 @@ use num_bigint::BigUint;
 use sha2::{Digest, Sha256};
 use sway_core::language::{
     ty::{TyExpressionVariant, TyStorageField},
-    CallPath, CallPathType, Literal,
+    CallPath, Literal,
 };
 use sway_error::formatting::{self, sequence_to_list};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Span, Spanned};
 
 pub(super) const REVIEW_STORAGE_SLOT_KEYS_STEP: MigrationStep = MigrationStep {
     title: "Review explicitly defined slot keys in storage declarations (`in` keywords)",
@@ -46,6 +46,7 @@ pub(super) const DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP: MigrationSte
         define_backward_compatible_storage_slot_keys_step_instruction,
         define_backward_compatible_storage_slot_keys_step_interaction,
         &[],
+        ContinueMigrationProcess::IfNoManualMigrationActionsNeeded,
     ),
     help: &[
         "If the contract owning this storage is behind a proxy, or for any other reason needs",
@@ -150,10 +151,9 @@ fn define_backward_compatible_storage_slot_keys_step_instruction(
 
 fn define_backward_compatible_storage_slot_keys_step_interaction(
     program_info: &mut MutProgramInfo,
-) -> Result<Vec<Span>> {
-    let mut res = vec![];
+) -> Result<(InteractionResponse, Vec<Span>)> {
     let Some(storage_decl_id) = ty_match::storage_decl(program_info.ty_program) else {
-        return Ok(res);
+        return Ok((InteractionResponse::None, vec![]));
     };
 
     let storage_decl = &*program_info.engines.de().get_storage(&storage_decl_id);
@@ -185,36 +185,40 @@ fn define_backward_compatible_storage_slot_keys_step_interaction(
     if print_single_choice_menu(&[
         "Yes, assign the backward compatible storage slot keys.",
         "No, this contract does not require backwards compatibility.",
-    ]) == 0
+    ]) != 0
     {
-        let Some(storage_declaration) = lexed_match::storage_decl(program_info.lexed_program)
-        else {
-            bail!(internal_error(
-                "Lexical storage declaration cannot be found."
-            ));
-        };
-
-        for lexed_storage_field in lexed_match::storage_fields_deep(
-            storage_declaration,
-            lexed_storage_field::without_in_keyword,
-        ) {
-            let Some(ty_storage_field) = storage_decl.locate(lexed_storage_field) else {
-                bail!(internal_error(format!(
-                    "Typed storage field \"{}\" cannot be found.",
-                    lexed_storage_field.name
-                )));
-            };
-
-            res.push(ty_storage_field.name.span());
-
-            let mut storage_key_modifier = Modifier::new(lexed_storage_field);
-            storage_key_modifier.with_in_key(BigUint::from_bytes_be(
-                get_previous_slot_key(ty_storage_field).as_slice(),
-            ));
-        }
+        return Ok((InteractionResponse::StepNotNeeded, vec![]));
     }
 
-    Ok(res)
+    // Execute the migration step.
+    let mut res = vec![];
+
+    let Some(storage_declaration) = lexed_match_mut::storage_decl(program_info.lexed_program)
+    else {
+        bail!(internal_error(
+            "Lexical storage declaration cannot be found."
+        ));
+    };
+
+    for lexed_storage_field in lexed_match_mut::storage_fields_deep(
+        storage_declaration,
+        lexed_storage_field::without_in_keyword,
+    ) {
+        let Some(ty_storage_field) = storage_decl.locate(lexed_storage_field) else {
+            bail!(internal_error(format!(
+                "Typed storage field \"{}\" cannot be found.",
+                lexed_storage_field.name
+            )));
+        };
+
+        res.push(ty_storage_field.name.span());
+
+        modify(lexed_storage_field).set_in_key(BigUint::from_bytes_be(
+            get_previous_slot_key(ty_storage_field).as_slice(),
+        ));
+    }
+
+    Ok((InteractionResponse::ExecuteStep, res))
 }
 
 /// Returns storage slot keys defined in Sway Standards and Sway Libraries,
@@ -240,18 +244,11 @@ fn get_well_known_slot_keys() -> HashSet<BigUint> {
 fn get_well_known_slot_keys_constants() -> HashSet<CallPath> {
     let slot_keys_constants = vec![
         // For SRC14 well-known slot keys see: https://docs.fuel.network/docs/sway-libs/upgradability/#upgradability-library
-        ("sway_libs", "upgradability", "PROXY_OWNER_STORAGE"),
-        ("standards", "src14", "SRC14_TARGET_STORAGE"),
+        ["sway_libs", "upgradability", "PROXY_OWNER_STORAGE"],
+        ["standards", "src14", "SRC14_TARGET_STORAGE"],
     ]
     .into_iter()
-    .map(|path_parts| CallPath {
-        prefixes: vec![
-            Ident::new_no_span(path_parts.0.into()),
-            Ident::new_no_span(path_parts.1.into()),
-        ],
-        suffix: Ident::new_no_span(path_parts.2.into()),
-        callpath_type: CallPathType::Full,
-    });
+    .map(|path_parts| CallPath::fullpath(&path_parts));
 
     HashSet::from_iter(slot_keys_constants)
 }

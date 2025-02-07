@@ -418,11 +418,34 @@ impl Format for Expr {
                 mut_token,
                 expr,
             } => {
-                write!(formatted_code, "{}", AmpersandToken::AS_STR)?;
-                if mut_token.is_some() {
-                    write!(formatted_code, "{} ", MutToken::AS_STR)?;
+                // TODO: Currently, the parser does not support taking
+                //       references on references without spaces between
+                //       ampersands. E.g., `&&&x` is not supported and must
+                //       be written as `& & &x`.
+                //       See: https://github.com/FuelLabs/sway/issues/6808
+                //       Until this issue is fixed, we need this workaround
+                //       in case of referenced expression `expr` being itself a
+                //       reference.
+                if !matches!(expr.as_ref(), Self::Ref { .. }) {
+                    // TODO: Keep this code once the issue is fixed.
+                    write!(formatted_code, "{}", AmpersandToken::AS_STR)?;
+                    if mut_token.is_some() {
+                        write!(formatted_code, "{} ", MutToken::AS_STR)?;
+                    }
+                    expr.format(formatted_code, formatter)?;
+                } else {
+                    // TODO: This is the workaround if `expr` is a reference.
+                    write!(formatted_code, "{}", AmpersandToken::AS_STR)?;
+                    // If we have the `mut`, we will also
+                    // get a space after it, so the next `&`
+                    // will be separated. Otherwise, insert space.
+                    if mut_token.is_some() {
+                        write!(formatted_code, "{} ", MutToken::AS_STR)?;
+                    } else {
+                        write!(formatted_code, " ")?;
+                    }
+                    expr.format(formatted_code, formatter)?;
                 }
-                expr.format(formatted_code, formatter)?;
             }
             Self::Deref {
                 star_token: _,

@@ -1,0 +1,6 @@
+category = "run"
+expected_result = { action = "return_data", value = "" }
+validate_abi = false
+expected_warnings = 1
+
+experimental = { new_encoding = true, partial_eq = true }

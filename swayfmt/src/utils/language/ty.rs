@@ -132,17 +132,49 @@ fn format_ref(
     mut_token: &Option<MutToken>,
     ty: &Ty,
 ) -> Result<(), FormatterError> {
-    write!(
-        formatted_code,
-        "{}{}",
-        AmpersandToken::AS_STR,
-        if mut_token.is_some() {
-            format!("{} ", MutToken::AS_STR)
-        } else {
-            "".to_string()
-        },
-    )?;
-    ty.format(formatted_code, formatter)?;
+    // TODO: Currently, the parser does not support declaring
+    //       references on references without spaces between
+    //       ampersands. E.g., `&&&T` is not supported and must
+    //       be written as `& & &T`.
+    //       See: https://github.com/FuelLabs/sway/issues/6808
+    //       Until this issue is fixed, we need this workaround
+    //       in case of referenced type `ty` being itself a
+    //       reference.
+    if !matches!(ty, Ty::Ref { .. }) {
+        // TODO: Keep this code once the issue is fixed.
+        write!(
+            formatted_code,
+            "{}{}",
+            AmpersandToken::AS_STR,
+            if mut_token.is_some() {
+                format!("{} ", MutToken::AS_STR)
+            } else {
+                "".to_string()
+            },
+        )?;
+        ty.format(formatted_code, formatter)?;
+    } else {
+        // TODO: This is the workaround if `ty` is a reference.
+        write!(
+            formatted_code,
+            "{}{}{}",
+            AmpersandToken::AS_STR,
+            if mut_token.is_some() {
+                format!("{} ", MutToken::AS_STR)
+            } else {
+                "".to_string()
+            },
+            // If we have the `mut`, we will also
+            // get a space after it, so the next `&`
+            // will be separated. Otherwise, insert space.
+            if mut_token.is_some() {
+                "".to_string()
+            } else {
+                " ".to_string()
+            },
+        )?;
+        ty.format(formatted_code, formatter)?;
+    }
 
     Ok(())
 }

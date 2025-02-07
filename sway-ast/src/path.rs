@@ -72,6 +72,14 @@ impl PathType {
             .last()
             .unwrap_or(&self.prefix)
     }
+
+    pub fn last_segment_mut(&mut self) -> &mut PathTypeSegment {
+        self.suffix
+            .iter_mut()
+            .map(|s| &mut s.1)
+            .last()
+            .unwrap_or(&mut self.prefix)
+    }
 }
 
 impl Spanned for PathType {

@@ -36,32 +36,68 @@ struct S {
     y: u64,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for S {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for S {
+    fn eq(self, other: Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for S {}
 
 #[inline(always)]
 fn assign_struct_value() {
-    let mut x = S { x: true, y: 111 };
+    let mut x = S {
+        x: true,
+        y: 111,
+    };
 
     let mut r_mut_x = &mut x;
     let mut r_mut_r_mut_x = &mut r_mut_x;
     let r_mut_r_mut_r_mut_x = &mut r_mut_r_mut_x;
 
-    *r_mut_x = S { x: false, y: 222 };
-    assert(x == S { x: false, y: 222 });
+    *r_mut_x = S {
+        x: false,
+        y: 222,
+    };
+    assert(x == S {
+        x: false,
+        y: 222,
+    });
 
-    **r_mut_r_mut_x = S { x: true, y: 333 };
-    assert(x == S { x: true, y: 333 });
+    **r_mut_r_mut_x = S {
+        x: true,
+        y: 333,
+    };
+    assert(x == S {
+        x: true,
+        y: 333,
+    });
 
-    ***r_mut_r_mut_r_mut_x = S { x: false, y: 444 };
-    assert(x == S { x: false, y: 444 });
+    ***r_mut_r_mut_r_mut_x = S {
+        x: false,
+        y: 444,
+    };
+    assert(x == S {
+        x: false,
+        y: 444,
+    });
 
     let r = & &mut & &mut x;
-    ****r = S { x: true, y: 111 };
-    assert(x == S { x: true, y: 111 });
+    ****r = S {
+        x: true,
+        y: 111,
+    };
+    assert(x == S {
+        x: true,
+        y: 111,
+    });
 }
 
 #[inline(never)]
@@ -69,11 +105,20 @@ fn assign_struct_value_not_inlined() {
     assign_struct_value()
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for (bool, u64) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for (bool, u64) {
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for (bool, u64) {}
 
 #[inline(always)]
 fn assign_tuple_value() {
@@ -109,6 +154,7 @@ enum E {
     D: u32,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for E {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -120,6 +166,20 @@ impl Eq for E {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for E {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (E::A(l), E::A(r)) => l == r,
+            (E::B(l), E::B(r)) => l == r,
+            (E::C(l), E::C(r)) => l == r,
+            (E::D(l), E::D(r)) => l == r,
+            _ => false,
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for E {}
 
 #[inline(always)]
 fn assign_enum_value() {
@@ -177,7 +237,8 @@ fn assign_array_value_not_inlined() {
 
 #[inline(always)]
 fn assign_value<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     let mut x = T::new();
 
@@ -201,7 +262,8 @@ fn assign_value<T>()
 
 #[inline(never)]
 fn assign_value_not_inlined<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     assign_value::<T>()
 }
@@ -222,8 +284,8 @@ fn test_all_inlined() {
     assign_value::<u64>();
     // TODO: Enable once https://github.com/FuelLabs/sway/issues/5833 get solved.
     // assign_value::<u256>();
-    assign_value::<[u64;2]>();
-    assign_value::<[u64;0]>();
+    assign_value::<[u64; 2]>();
+    assign_value::<[u64; 0]>();
     assign_value::<Struct>();
     assign_value::<EmptyStruct>();
     assign_value::<str>();
@@ -252,8 +314,8 @@ fn test_not_inlined() {
     assign_value_not_inlined::<u64>();
     // TODO: Enable once https://github.com/FuelLabs/sway/issues/5833 get solved.
     // assign_value_not_inlined::<u256>();
-    assign_value_not_inlined::<[u64;2]>();
-    assign_value_not_inlined::<[u64;0]>();
+    assign_value_not_inlined::<[u64; 2]>();
+    assign_value_not_inlined::<[u64; 0]>();
     assign_value_not_inlined::<Struct>();
     assign_value_not_inlined::<EmptyStruct>();
     assign_value_not_inlined::<str>();

@@ -1,0 +1,15 @@
+# TODO: Enable this `partial_eq` test once the compiler stack overflow is fixed.
+#       The migrated code, left as is, causes compiler stack overflow.
+#       The code in `main.sw` uses a weird combination of generic types
+#       having trait constraints on `Eq` and implementing `PartialEq`s
+#       on those types that have `PartialEq` trait constraints on same
+#       generic arguments.
+#       The test could very likely be fixed by types having `PartialEq`
+#       constraints instead of `Eq` (which also semantically makes sense)
+#       but it is worth first exploring and fixing the compiler stack overflow.
+category = "run"
+expected_result = { action = "return_data", value = "000000000000002A" }
+validate_abi = false
+expected_warnings = 2 # TODO-DCA: Set to zero once https://github.com/FuelLabs/sway/issues/5921 is fixed.
+
+experimental = { new_encoding = true, partial_eq = true }

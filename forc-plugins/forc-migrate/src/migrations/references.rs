@@ -1,16 +1,16 @@
 use std::vec;
 
-use crate::migrations::{visit_lexed_modules_mut, MutProgramInfo};
+use crate::migrations::{visit_all_modules_mut, MutProgramInfo};
 use anyhow::{Ok, Result};
 use itertools::Itertools;
 use sway_ast::{
     keywords::{AmpersandToken, Keyword, MutToken, Token},
     Module,
 };
-use sway_core::Engines;
+use sway_core::{language::ty::TyModule, Engines};
 use sway_types::{Span, Spanned};
 
-use super::{DryRun, MigrationStep, MigrationStepKind};
+use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind};
 
 #[allow(dead_code)]
 pub(super) const REPLACE_REF_MUT_FN_PARAMETERS_STEP: MigrationStep = MigrationStep {
@@ -22,6 +22,7 @@ pub(super) const REPLACE_REF_MUT_FN_PARAMETERS_STEP: MigrationStep = MigrationSt
             "change function callers, by adding `&mut` to passed parameters.",
             "change function bodies, by dereferencing (`*`) parameters where needed.",
         ],
+        ContinueMigrationProcess::IfNoManualMigrationActionsNeeded,
     ),
     help: &[
         "Migration will replace `ref mut` function parameters with `&mut`.",
@@ -48,6 +49,7 @@ fn replace_ref_mut_fn_parameters_step(
     fn replace_ref_mut_fn_parameters_step_impl(
         _engines: &Engines,
         module: &mut Module,
+        _ty_module: &TyModule,
         dry_run: DryRun,
     ) -> Result<Vec<Span>> {
         let mut result = vec![];
@@ -99,7 +101,7 @@ fn replace_ref_mut_fn_parameters_step(
                         result.push(result_span);
 
                         // Replace `ref mut` with `&mut` if it is not a dry-run.
-                        if matches!(dry_run, DryRun::No) {
+                        if dry_run == DryRun::No {
                             *ref_opt = None;
                             *mut_opt = None;
 
@@ -126,13 +128,11 @@ fn replace_ref_mut_fn_parameters_step(
         Ok(result)
     }
 
-    let res = visit_lexed_modules_mut(
-        program_info.engines,
-        program_info.lexed_program,
+    let res = visit_all_modules_mut(
+        program_info,
         dry_run,
         replace_ref_mut_fn_parameters_step_impl,
     )?;
 
     Ok(res.into_iter().flatten().collect())
-    // Ok(res)
 }

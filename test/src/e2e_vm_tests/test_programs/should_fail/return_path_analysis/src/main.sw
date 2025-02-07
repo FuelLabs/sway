@@ -522,6 +522,7 @@ fn f() -> bool {
 
 
 // Check that return path analysis is applied to local impl methods.
+#[cfg(experimental_partial_eq = false)]
 fn g() -> bool {
 
     struct X {
@@ -529,6 +530,30 @@ fn g() -> bool {
     }
 
     impl core::ops::Eq for X {
+        fn eq(self, other: Self) -> bool {
+	    if true {
+		return true;
+	    } else {
+		return false;
+	    };
+        }
+    }
+
+    let x = X { y : false };
+    let y = X { y : true } ;
+
+    x == y
+}
+
+// Check that return path analysis is applied to local impl methods.
+#[cfg(experimental_partial_eq = true)]
+fn g() -> bool {
+
+    struct X {
+        y: bool,
+    }
+
+    impl core::ops::PartialEq for X {
         fn eq(self, other: Self) -> bool {
 	    if true {
 		return true;
