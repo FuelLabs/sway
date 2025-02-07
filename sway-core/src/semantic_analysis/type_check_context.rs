@@ -719,14 +719,6 @@ impl<'a> TypeCheckContext<'a> {
             return Err(*err);
         }
 
-        // grab the local module
-        let local_module = self
-            .namespace()
-            .require_module_from_absolute_path(handler, &self.namespace().current_mod_path)?;
-
-        // grab the local items from the local module
-        let local_items = local_module.get_items_for_type(self.engines, type_id);
-
         // resolve the type
         let type_id = resolve_type(
             handler,
@@ -743,16 +735,26 @@ impl<'a> TypeCheckContext<'a> {
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
-        // grab the module where the type itself is declared
-        let type_module = self
+        // grab the local module
+        let local_module = self
             .namespace()
-            .require_module_from_absolute_path(handler, &item_prefix.to_vec())?;
+            .require_module_from_absolute_path(handler, &self.namespace().current_mod_path)?;
 
-        // grab the items from where the type is declared
-        let mut type_items = type_module.get_items_for_type(self.engines, type_id);
+        // grab the local items from the local module
+        let local_items = local_module.get_items_for_type(self.engines, type_id);
 
         let mut items = local_items;
-        items.append(&mut type_items);
+        if item_prefix.to_vec() != self.namespace().current_mod_path {
+            // grab the module where the type itself is declared
+            let type_module = self
+                .namespace()
+                .require_module_from_absolute_path(handler, &item_prefix.to_vec())?;
+
+            // grab the items from where the type is declared
+            let mut type_items = type_module.get_items_for_type(self.engines, type_id);
+
+            items.append(&mut type_items);
+        }
 
         let mut matching_item_decl_refs: Vec<ty::TyTraitItem> = vec![];
 

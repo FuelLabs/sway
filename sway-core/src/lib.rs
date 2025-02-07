@@ -17,6 +17,7 @@ mod debug_generation;
 pub mod decl_engine;
 pub mod ir_generation;
 pub mod language;
+pub mod marker_traits;
 mod metadata;
 pub mod query_engine;
 pub mod semantic_analysis;

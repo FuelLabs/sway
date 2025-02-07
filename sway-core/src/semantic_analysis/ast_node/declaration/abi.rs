@@ -150,6 +150,7 @@ impl ty::TyAbiDecl {
                             new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
                                 ctx.engines.de().insert(method.clone(), Some(&decl_id)),
                             ));
+
                             method.name.clone()
                         }
                         TraitItem::Constant(decl_id) => {

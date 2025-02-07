@@ -188,8 +188,6 @@ pub(crate) async fn select_account(
             let wallet_path = default_wallet_path();
             let accounts = collect_user_accounts(&wallet_path, password)?;
             let account_balances = collect_account_balances(&accounts, provider).await?;
-            let consensus_parameters = provider.consensus_parameters().await?;
-            let base_asset_id = consensus_parameters.base_asset_id();
 
             let total_balance = account_balances
                 .iter()
@@ -213,37 +211,6 @@ pub(crate) async fn select_account(
                 };
                 anyhow::bail!(message)
             }
-            let selections =
-                format_base_asset_account_balances(&accounts, &account_balances, base_asset_id)?;
-
-            let mut account_index;
-            loop {
-                account_index = Select::with_theme(&ColorfulTheme::default())
-                    .with_prompt("Wallet account")
-                    .max_length(5)
-                    .items(&selections[..])
-                    .default(0)
-                    .interact()?;
-
-                if accounts.contains_key(&account_index) {
-                    break;
-                }
-                let options: Vec<String> = accounts
-                    .keys()
-                    .map(|key| {
-                        let raw_addr = format!("0x{key}");
-                        let checksum_addr = checksum_encode(&raw_addr)?;
-                        Ok(checksum_addr)
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                println_warning(&format!(
-                    "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
-                    account_index,
-                    options.join(","),
-                ));
-            }
-
-            let secret_key = secret_key_from_forc_wallet(&wallet_path, account_index, password)?;
 
             // TODO: Do this via forc-wallet once the functionality is exposed.
             // TODO: calculate the number of transactions to sign and ask the user to confirm.
@@ -256,7 +223,7 @@ pub(crate) async fn select_account(
                 anyhow::bail!("User refused to sign");
             }
 
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+            let wallet = select_local_wallet_account(password, provider).await?;
             Ok(ForcClientAccount::Wallet(wallet))
         }
         SignerSelectionMode::Manual => {
@@ -274,6 +241,50 @@ pub(crate) async fn select_account(
             Ok(account)
         }
     }
+}
+
+pub(crate) async fn select_local_wallet_account(
+    password: &str,
+    provider: &Provider,
+) -> Result<WalletUnlocked> {
+    let wallet_path = default_wallet_path();
+    let accounts = collect_user_accounts(&wallet_path, password)?;
+    let account_balances = collect_account_balances(&accounts, provider).await?;
+    let consensus_parameters = provider.consensus_parameters().await?;
+    let base_asset_id = consensus_parameters.base_asset_id();
+    let selections =
+        format_base_asset_account_balances(&accounts, &account_balances, base_asset_id)?;
+
+    let mut account_index;
+    loop {
+        account_index = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Wallet account")
+            .max_length(5)
+            .items(&selections[..])
+            .default(0)
+            .interact()?;
+
+        if accounts.contains_key(&account_index) {
+            break;
+        }
+        let options: Vec<String> = accounts
+            .keys()
+            .map(|key| {
+                let raw_addr = format!("0x{key}");
+                let checksum_addr = checksum_encode(&raw_addr)?;
+                Ok(checksum_addr)
+            })
+            .collect::<Result<Vec<_>>>()?;
+        println_warning(&format!(
+            "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
+            account_index,
+            options.join(","),
+        ));
+    }
+
+    let secret_key = secret_key_from_forc_wallet(&wallet_path, account_index, password)?;
+    let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    Ok(wallet)
 }
 
 pub async fn update_proxy_contract_target(
