@@ -251,10 +251,9 @@ pub fn promote_to_registers(
                                 Some(val) => *val,
                                 None => {
                                     // Nothing on the stack, let's attempt to get the initializer
-                                    let constant = var
+                                    let constant = *var
                                         .get_initializer(context)
-                                        .expect("We're dealing with an uninitialized value")
-                                        .clone();
+                                        .expect("We're dealing with an uninitialized value");
                                     Value::new_constant(context, constant)
                                 }
                             };
@@ -303,10 +302,9 @@ pub fn promote_to_registers(
                         Some(val) => *val,
                         None => {
                             // Nothing on the stack, let's attempt to get the initializer
-                            let constant = ptr
+                            let constant = *ptr
                                 .get_initializer(context)
-                                .expect("We're dealing with an uninitialized value")
-                                .clone();
+                                .expect("We're dealing with an uninitialized value");
                             Value::new_constant(context, constant)
                         }
                     };

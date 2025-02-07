@@ -18,7 +18,7 @@ impl Constant {
         constant.hash(&mut hasher);
         let hash = hasher.finish();
         // Insert a new entry if it doesn't exist.
-        context.constants_map.entry(hash).or_insert_with(Vec::new);
+        context.constants_map.entry(hash).or_default();
         let constants = context.constants_map.get(&hash).unwrap();
         // If the constant already exists, return it.
         for c in constants.iter() {

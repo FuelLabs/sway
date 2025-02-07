@@ -72,7 +72,7 @@ pub(crate) fn compile_const_decl(
         {
             found_local = true;
             if let Some(constant) = local_var.get_initializer(env.context) {
-                return Ok(Some(Value::new_constant(env.context, constant.clone())));
+                return Ok(Some(Value::new_constant(env.context, *constant)));
             }
 
             // Check if a constant was stored to a local variable in the current block.
@@ -99,7 +99,7 @@ pub(crate) fn compile_const_decl(
                 }
             }
             if let Some(constant) = stored_const_opt {
-                return Ok(Some(Value::new_constant(env.context, constant.clone())));
+                return Ok(Some(Value::new_constant(env.context, *constant)));
             }
         }
 
@@ -314,7 +314,7 @@ fn const_eval_typed_expr(
 
             match known_consts.get(name) {
                 // 1. Check if name/call_path is in known_consts.
-                Some(cvs) => Some(cvs.clone()),
+                Some(cvs) => Some(*cvs),
                 None => {
                     // 2. Check if name is a global constant.
                     (lookup.lookup)(lookup, call_path, &Some(*const_decl.clone()))
@@ -331,7 +331,7 @@ fn const_eval_typed_expr(
             name, call_path, ..
         } => match known_consts.get(name) {
             // 1. Check if name/call_path is in known_consts.
-            Some(cvs) => Some(cvs.clone()),
+            Some(cvs) => Some(*cvs),
             None => {
                 let call_path = match call_path {
                     Some(call_path) => call_path.clone(),
@@ -713,7 +713,7 @@ fn const_eval_typed_expr(
                 limit -= 1;
 
                 let condition = const_eval_typed_expr(lookup, known_consts, condition)?;
-                match condition.map(|x| x.get_content(&lookup.context).value.clone()) {
+                match condition.map(|x| x.get_content(lookup.context).value.clone()) {
                     Some(ConstantValue::Bool(true)) => {
                         // Break and continue are not implemented, so there is need for flow control here
                         let _ = const_eval_codeblock(lookup, known_consts, body)?;
@@ -919,7 +919,7 @@ fn const_eval_intrinsic(
 
             use ConstantValue::*;
             let c = match (
-                &args[0].get_content(&lookup.context).value,
+                &args[0].get_content(lookup.context).value,
                 &args[1].get_content(lookup.context).value,
             ) {
                 (Uint(arg1), Uint(ref arg2)) => {
@@ -978,7 +978,7 @@ fn const_eval_intrinsic(
             use ConstantValue::*;
             let c = match (
                 &args[0].get_content(lookup.context).value,
-                &args[1].get_content(&lookup.context).value,
+                &args[1].get_content(lookup.context).value,
             ) {
                 (Uint(arg1), Uint(ref arg2)) => {
                     // All arithmetic is done as if it were u64
