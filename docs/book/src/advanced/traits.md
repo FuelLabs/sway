@@ -134,6 +134,43 @@ trait MyTrait {
 
 Check the `associated types` section on [associated types](./associated_types.md) page.
 
+## Trait Constraints
+
+When writing generic code, you can constraint the choice of types for a generic argument by using the `where` keyword. The `where` keyword specifies which traits the concrete generic parameter must implement. In the below example, the function `expects_some_trait` can be called only if the parameter `t` is of a type that has `SomeTrait` implemented. To call the `expects_both_traits`, parameter `t` must be of a type that implements _both_ `SomeTrait` and `SomeOtherTrait`.
+
+```sway
+trait SomeTrait { }
+trait SomeOtherTrait { }
+
+fn expects_some_trait<T>(t: T) where T: SomeTrait {
+    // ...
+}
+
+fn expects_some_other_trait<T>(t: T) where T: SomeOtherTrait {
+    // ...
+}
+
+fn expects_both_traits<T>(t: T) where T: SomeTrait + SomeOtherTrait {
+    // ...
+}
+```
+
+## Marker Traits
+
+Sway types can be classified in various ways according to their intrinsic properties. These classifications are represented as marker traits. Marker traits are implemented by the compiler and cannot be explicitly implemented in code.
+
+E.g., all types whose instances can be used in the `panic` expression automatically implement the `Error` marker trait. We can use that trait, e.g., to specify that a generic argument must be compatible with the `panic` expression:
+
+```sway
+fn panic_with_error<E>(err: E) where E: Error {
+    panic err;
+}
+```
+
+> **Note** `panic` expression and error types [have not yet been implemented](https://github.com/FuelLabs/sway/issues/6765)
+
+All marker traits are defined in the `core::marker` module.
+
 ## Use Cases
 
 ### Custom Types (structs, enums)
@@ -159,8 +196,6 @@ fn play_game_with_deck<T>(a: Vec<T>) where T: Card {
     // insert some creative card game here
 }
 ```
-
-> **Note** Trait constraints (i.e. using the `where` keyword) [have not yet been implemented](https://github.com/FuelLabs/sway/issues/970)
 
 Now, if you want to use the function `play_game_with_deck` with your struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
 
