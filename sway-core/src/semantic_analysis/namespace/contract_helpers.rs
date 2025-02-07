@@ -10,6 +10,7 @@ use crate::{
     language::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
+        Visibility,
     },
     semantic_analysis::{
         namespace::Root, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
@@ -69,6 +70,7 @@ fn bind_contract_id_in_root_module(
         handler,
         engines,
         const_item,
+        Visibility::Private,
         attributes,
         true,
     )?;
