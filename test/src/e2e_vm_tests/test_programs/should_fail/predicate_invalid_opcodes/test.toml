@@ -17,7 +17,7 @@ category = "fail"
 
 # check: cb r1;
 # nextln: $()The CB opcode cannot be used in a predicate.
-
+ 
 # check: ccp r1 r2 r3 r4;
 # nextln: $()The CCP opcode cannot be used in a predicate.
 
@@ -56,4 +56,5 @@ category = "fail"
 # check: tr r1 r2 r3;
 # nextln: $()The TR opcode cannot be used in a predicate.
 
-
+# check: rvrt r1;
+# nextln: $()The RVRT opcode cannot be used in a predicate.
