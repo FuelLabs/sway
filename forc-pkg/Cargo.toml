@@ -13,6 +13,7 @@ ansiterm.workspace = true
 anyhow.workspace = true
 byte-unit.workspace = true
 cid.workspace = true
+flate2.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
 fuel-abi-types.workspace = true
@@ -42,6 +43,7 @@ walkdir.workspace = true
 
 [dev-dependencies]
 regex = "^1.10.2"
+tempfile.workspace = true
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 sysinfo = "0.29"
