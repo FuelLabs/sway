@@ -5,6 +5,8 @@ use ::alias::SubId;
 use ::contract_id::ContractId;
 use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::ops::Eq;
+use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 
@@ -29,7 +31,7 @@ impl Hash for AssetId {
     }
 }
 
-impl core::ops::Eq for AssetId {
+impl Eq for AssetId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
@@ -83,7 +85,7 @@ impl AssetId {
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
-        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let result_buffer = b256::zero();
         asm(
             asset_id: result_buffer,
             ptr: (contract_id, sub_id),
@@ -122,13 +124,10 @@ impl AssetId {
         let contract_id = asm() {
             fp: b256
         };
-        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let result_buffer = b256::zero();
         asm(
             asset_id: result_buffer,
-            ptr: (
-                contract_id,
-                0x0000000000000000000000000000000000000000000000000000000000000000,
-            ),
+            ptr: (contract_id, b256::zero()),
             bytes: 64,
         ) {
             s256 asset_id ptr bytes;

@@ -6,6 +6,7 @@ use ::alloc::alloc_bytes;
 use ::convert::{From, TryFrom, TryInto};
 use ::option::Option::{self, *};
 use ::hash::*;
+use ::ops::Eq;
 
 /// Normalized (hashed) message authenticated by a signature.
 pub struct Message {
@@ -83,7 +84,7 @@ impl TryInto<b256> for Message {
     }
 }
 
-impl core::ops::Eq for Message {
+impl Eq for Message {
     fn eq(self, other: Self) -> bool {
         if self.bytes.len() != other.bytes.len() {
             return false;

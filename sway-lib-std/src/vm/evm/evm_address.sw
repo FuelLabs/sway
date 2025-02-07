@@ -4,6 +4,8 @@ library;
 use ::intrinsics::size_of_val;
 use ::convert::{From, Into, TryFrom};
 use ::hash::*;
+use ::ops::Eq;
+use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 
@@ -77,7 +79,7 @@ impl EvmAddress {
     }
 }
 
-impl core::ops::Eq for EvmAddress {
+impl Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }

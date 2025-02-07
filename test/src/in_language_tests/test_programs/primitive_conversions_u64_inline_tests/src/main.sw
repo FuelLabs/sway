@@ -139,3 +139,12 @@ fn u64_try_from_u128() {
 
     assert(u64_4.is_none());
 }
+
+#[test]
+fn u64_as_u256() {
+    let val = 2;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
+}

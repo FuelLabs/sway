@@ -7,6 +7,7 @@ use ::constants::ZERO_B256;
 use ::convert::{From, TryFrom, TryInto};
 use ::option::Option::{self, *};
 use ::hash::*;
+use ::ops::Eq;
 
 /// Asymmetric public key, i.e. verifying key, in uncompressed form.
 ///
@@ -172,7 +173,7 @@ impl TryInto<b256> for PublicKey {
     }
 }
 
-impl core::ops::Eq for PublicKey {
+impl Eq for PublicKey {
     fn eq(self, other: Self) -> bool {
         if self.bytes.len() != other.bytes.len() {
             return false;

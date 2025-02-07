@@ -6,7 +6,11 @@ use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
+use ::codec::*;
+use ::ops::Eq;
+use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
+
 
 /// A UTF-8 encoded growable string. It has ownership over its buffer.
 ///

@@ -49,7 +49,6 @@ use sway_core::{
 use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::constants::{CORE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
@@ -1605,7 +1604,6 @@ pub fn dependency_namespace(
     };
 
     // Add direct dependencies.
-    let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
@@ -1635,57 +1633,9 @@ pub fn dependency_namespace(
             }
         };
         root_namespace.add_external(dep_name, dep_namespace);
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            core_added = true;
-        }
-    }
-
-    // Add `core` if not already added.
-    if !core_added {
-        if let Some(core_node) = find_core_dep(graph, node) {
-            let core_namespace = &lib_namespace_map[&core_node];
-            root_namespace.add_external(CORE.to_string(), core_namespace.clone());
-        }
     }
 
     Ok(root_namespace)
-}
-
-/// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
-fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
-    // If we are `core`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == CORE {
-        return None;
-    }
-
-    // If we have `core` as a direct dep, use it.
-    let mut maybe_std = None;
-    for edge in graph.edges_directed(node, Direction::Outgoing) {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        match &dep.name[..] {
-            CORE => return Some(dep_node),
-            STD => maybe_std = Some(dep_node),
-            _ => {}
-        }
-    }
-
-    // If we have `std`, select `core` via `std`.
-    if let Some(std) = maybe_std {
-        return find_core_dep(graph, std);
-    }
-
-    // Otherwise, search from this node.
-    for dep_node in Dfs::new(graph, node).iter(graph) {
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            return Some(dep_node);
-        }
-    }
-
-    None
 }
 
 /// Compiles the given package.

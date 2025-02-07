@@ -3,6 +3,8 @@ library;
 
 use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::ops::Eq;
+use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 
@@ -70,7 +72,7 @@ impl Address {
     }
 }
 
-impl core::ops::Eq for Address {
+impl Eq for Address {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
