@@ -17,6 +17,7 @@ chrono = { workspace = true, features = ["std"] }
 clap = { workspace = true, features = ["derive", "env"] }
 devault.workspace = true
 dialoguer.workspace = true
+either.workspace = true
 forc.workspace = true
 forc-pkg.workspace = true
 forc-tracing.workspace = true
@@ -36,13 +37,18 @@ futures.workspace = true
 hex.workspace = true
 k256.workspace = true
 rand.workspace = true
+regex.workspace = true
+reqwest = { workspace = true }
 rpassword.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sway-ast.workspace = true
 sway-core.workspace = true
 sway-features.workspace = true
+sway-parse.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
+tempfile.workspace = true
 tokio = { workspace = true, features = [
     "macros",
     "process",
@@ -50,12 +56,12 @@ tokio = { workspace = true, features = [
 ] }
 toml_edit.workspace = true
 tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 portpicker = "0.1.1"
 pretty_assertions = "1.4.1"
 rexpect = "0.5"
-tempfile = "3"
 
 [build-dependencies]
 regex = "1.5.4"
@@ -71,6 +77,10 @@ path = "src/bin/run.rs"
 [[bin]]
 name = "forc-submit"
 path = "src/bin/submit.rs"
+
+[[bin]]
+name = "forc-call"
+path = "src/bin/call.rs"
 
 [lib]
 path = "src/lib.rs"

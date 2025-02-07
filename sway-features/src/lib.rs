@@ -157,6 +157,8 @@ features! {
     "https://github.com/FuelLabs/sway/issues/6701",
     references = true,
     "https://github.com/FuelLabs/sway/issues/5063",
+    error_type = false,
+    "https://github.com/FuelLabs/sway/issues/6765",
 }
 
 #[derive(Clone, Debug, Default, Parser)]
