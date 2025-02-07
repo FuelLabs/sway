@@ -106,7 +106,7 @@ fn handle_function_parameters(
                 TyExpressionVariant::Literal(_)
                 | TyExpressionVariant::ConstantExpression { .. }
                 | TyExpressionVariant::Tuple { .. }
-                | TyExpressionVariant::Array { .. }
+                | TyExpressionVariant::ArrayExplicit { .. }
                 | TyExpressionVariant::ArrayIndex { .. }
                 | TyExpressionVariant::FunctionApplication { .. }
                 | TyExpressionVariant::StructFieldAccess { .. }

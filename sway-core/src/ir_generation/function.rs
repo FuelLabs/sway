@@ -545,10 +545,24 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
             } => self.compile_var_expr(context, call_path, name, span_md_idx),
-            ty::TyExpressionVariant::Array {
+            ty::TyExpressionVariant::ArrayExplicit {
                 elem_type,
                 contents,
-            } => self.compile_array_expr(context, md_mgr, *elem_type, contents, span_md_idx),
+            } => {
+                self.compile_array_explicit_expr(context, md_mgr, *elem_type, contents, span_md_idx)
+            }
+            ty::TyExpressionVariant::ArrayRepeat {
+                elem_type,
+                value,
+                length,
+            } => self.compile_array_repeat_expr(
+                context,
+                md_mgr,
+                *elem_type,
+                value,
+                length,
+                span_md_idx,
+            ),
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
                 self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
             }
@@ -3635,7 +3649,67 @@ impl<'eng> FnCompiler<'eng> {
         Ok(TerminatorValue::new(val, context))
     }
 
-    fn compile_array_expr(
+    fn compile_array_repeat_expr(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        elem_type: TypeId,
+        value: &ty::TyExpression,
+        length: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        let elem_type = convert_resolved_typeid_no_span(
+            self.engines.te(),
+            self.engines.de(),
+            context,
+            elem_type,
+        )?;
+
+        let length_as_u64 = length.as_literal_u64().unwrap();
+        let array_type = Type::new_array(context, elem_type, length_as_u64);
+
+        let temp_name = self.lexical_map.insert_anon();
+        let array_local_var = self
+            .function
+            .new_local_var(context, temp_name, array_type, None, false)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let array_value = self
+            .current_block
+            .append(context)
+            .get_local(array_local_var)
+            .add_metadatum(context, span_md_idx);
+
+        let value_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, value)?
+        );
+
+        if length_as_u64 > 5 {
+            self.compile_array_init_loop(
+                context,
+                array_value,
+                elem_type,
+                value_value,
+                length_as_u64,
+                span_md_idx,
+            );
+        } else {
+            for i in 0..length_as_u64 {
+                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
+                    array_value,
+                    elem_type,
+                    i,
+                );
+                self.current_block
+                    .append(context)
+                    .store(gep_val, value_value)
+                    .add_metadatum(context, span_md_idx);
+            }
+        }
+
+        Ok(TerminatorValue::new(array_value, context))
+    }
+
+    fn compile_array_explicit_expr(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -3700,59 +3774,14 @@ impl<'eng> FnCompiler<'eng> {
                 })
             });
             if let Some(const_initializer) = const_initialiser_opt {
-                // Create a loop to insert const_initializer to all array elements.
-                let loop_block = self
-                    .function
-                    .create_block(context, Some("array_init_loop".into()));
-                // The loop begins with 0.
-                let zero = Constant::new_uint(context, 64, 0);
-                let zero = Value::new_constant(context, zero);
-                // Branch to the loop block, passing the initial iteration value.
-                self.current_block
-                    .append(context)
-                    .branch(loop_block, vec![zero]);
-                // Add a block argument (for the IV) to the loop block.
-                let index_var_index = loop_block.new_arg(context, Type::get_uint64(context));
-                let index = loop_block.get_arg(context, index_var_index).unwrap();
-                // Create an exit block.
-                let exit_block = self
-                    .function
-                    .create_block(context, Some("array_init_exit".into()));
-                // Start building the loop block.
-                self.current_block = loop_block;
-                let gep_val = self.current_block.append(context).get_elem_ptr(
+                self.compile_array_init_loop(
+                    context,
                     array_value,
                     elem_type,
-                    vec![index],
+                    *const_initializer,
+                    contents.len() as u64,
+                    span_md_idx,
                 );
-                self.current_block
-                    .append(context)
-                    .store(gep_val, *const_initializer)
-                    .add_metadatum(context, span_md_idx);
-                // Increment index by one.
-                let one = Constant::new_uint(context, 64, 1);
-                let one = Value::new_constant(context, one);
-                let index_inc =
-                    self.current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, index, one);
-                // continue = index_inc < contents.len()
-                let len = Constant::new_uint(context, 64, contents.len() as u64);
-                let len = Value::new_constant(context, len);
-                let r#continue =
-                    self.current_block
-                        .append(context)
-                        .cmp(Predicate::LessThan, index_inc, len);
-                // if continue then loop_block else exit_block.
-                self.current_block.append(context).conditional_branch(
-                    r#continue,
-                    loop_block,
-                    exit_block,
-                    vec![index_inc],
-                    vec![],
-                );
-                // Continue compilation in the exit block.
-                self.current_block = exit_block;
             } else {
                 // Insert each element separately.
                 for (idx, elem_value) in compiled_elems.iter().enumerate() {
@@ -3786,6 +3815,71 @@ impl<'eng> FnCompiler<'eng> {
                 .add_metadatum(context, span_md_idx);
         }
         Ok(TerminatorValue::new(array_value, context))
+    }
+
+    // initialize an array with all elements equals to "init_value",
+    // which should be "Copy", concept that sway still don´t have.
+    fn compile_array_init_loop(
+        &mut self,
+        context: &mut Context,
+        array_value: Value,
+        elem_type: Type,
+        init_value: Value,
+        length: u64,
+        span_md_idx: Option<MetadataIndex>,
+    ) {
+        // Create a loop to insert const_initializer to all array elements.
+        let loop_block = self
+            .function
+            .create_block(context, Some("array_init_loop".into()));
+        // The loop begins with 0.
+        let zero = Constant::new_uint(context, 64, 0);
+        let zero = Value::new_constant(context, zero);
+        // Branch to the loop block, passing the initial iteration value.
+        self.current_block
+            .append(context)
+            .branch(loop_block, vec![zero]);
+        // Add a block argument (for the IV) to the loop block.
+        let index_var_index = loop_block.new_arg(context, Type::get_uint64(context));
+        let index = loop_block.get_arg(context, index_var_index).unwrap();
+        // Create an exit block.
+        let exit_block = self
+            .function
+            .create_block(context, Some("array_init_exit".into()));
+        // Start building the loop block.
+        self.current_block = loop_block;
+        let gep_val =
+            self.current_block
+                .append(context)
+                .get_elem_ptr(array_value, elem_type, vec![index]);
+        self.current_block
+            .append(context)
+            .store(gep_val, init_value)
+            .add_metadatum(context, span_md_idx);
+        // Increment index by one.
+        let one = Constant::new_uint(context, 64, 1);
+        let one = Value::new_constant(context, one);
+        let index_inc = self
+            .current_block
+            .append(context)
+            .binary_op(BinaryOpKind::Add, index, one);
+        // continue = index_inc < contents.len()
+        let len = Constant::new_uint(context, 64, length);
+        let len = Value::new_constant(context, len);
+        let r#continue =
+            self.current_block
+                .append(context)
+                .cmp(Predicate::LessThan, index_inc, len);
+        // if continue then loop_block else exit_block.
+        self.current_block.append(context).conditional_branch(
+            r#continue,
+            loop_block,
+            exit_block,
+            vec![index_inc],
+            vec![],
+        );
+        // Continue compilation in the exit block.
+        self.current_block = exit_block;
     }
 
     fn compile_array_index(

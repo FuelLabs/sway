@@ -79,15 +79,43 @@ impl PartialEqWithEngines for TupleIndexExpression {
 }
 
 #[derive(Debug, Clone)]
-pub struct ArrayExpression {
-    pub contents: Vec<Expression>,
-    pub length_span: Option<Span>,
+pub enum ArrayExpression {
+    Explicit {
+        contents: Vec<Expression>,
+        length_span: Option<Span>,
+    },
+    Repeat {
+        value: Box<Expression>,
+        length: Box<Expression>,
+    },
 }
 
 impl EqWithEngines for ArrayExpression {}
 impl PartialEqWithEngines for ArrayExpression {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.contents.eq(&other.contents, ctx) && self.length_span == other.length_span
+        match (self, other) {
+            (
+                ArrayExpression::Explicit {
+                    contents: self_contents,
+                    length_span: self_length_span,
+                },
+                ArrayExpression::Explicit {
+                    contents: other_contents,
+                    length_span: other_length_span,
+                },
+            ) => self_contents.eq(other_contents, ctx) && self_length_span == other_length_span,
+            (
+                ArrayExpression::Repeat {
+                    value: self_value,
+                    length: self_length,
+                },
+                ArrayExpression::Repeat {
+                    value: other_value,
+                    length: other_length,
+                },
+            ) => self_value.eq(other_value, ctx) && self_length.eq(other_length, ctx),
+            _ => false,
+        }
     }
 }
 

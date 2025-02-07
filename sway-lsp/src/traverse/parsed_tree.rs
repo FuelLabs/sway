@@ -656,16 +656,27 @@ impl Parse for StructExpressionField {
 
 impl Parse for ArrayExpression {
     fn parse(&self, ctx: &ParseContext) {
-        adaptive_iter(&self.contents, |exp| exp.parse(ctx));
-        if let Some(length_span) = &self.length_span {
-            let ident = Ident::new(length_span.clone());
-            ctx.tokens.insert(
-                ctx.ident(&ident),
-                Token::from_parsed(
-                    ParsedAstToken::Ident(ident.clone()),
-                    SymbolKind::NumericLiteral,
-                ),
-            );
+        match self {
+            ArrayExpression::Explicit {
+                contents,
+                length_span,
+            } => {
+                adaptive_iter(contents, |exp| exp.parse(ctx));
+                if let Some(length_span) = &length_span {
+                    let ident = Ident::new(length_span.clone());
+                    ctx.tokens.insert(
+                        ctx.ident(&ident),
+                        Token::from_parsed(
+                            ParsedAstToken::Ident(ident.clone()),
+                            SymbolKind::NumericLiteral,
+                        ),
+                    );
+                }
+            }
+            ArrayExpression::Repeat { value, length } => {
+                value.parse(ctx);
+                length.parse(ctx);
+            }
         }
     }
 }

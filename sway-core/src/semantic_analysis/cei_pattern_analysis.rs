@@ -293,12 +293,22 @@ fn analyze_expression(
             set_union(intr_effs, args_effs)
         }
         Tuple { fields: exprs }
-        | Array {
+        | ArrayExplicit {
             elem_type: _,
             contents: exprs,
         } => {
             // assuming left-to-right fields/elements evaluation
             analyze_expressions(engines, exprs.iter(), block_name, warnings)
+        }
+        ArrayRepeat {
+            elem_type: _,
+            value,
+            length,
+        } => {
+            // assuming left-to-right fields/elements evaluation
+            let mut cond_then_effs = analyze_expression(engines, value, block_name, warnings);
+            cond_then_effs.extend(analyze_expression(engines, length, block_name, warnings));
+            cond_then_effs
         }
         StructExpression { fields, .. } => {
             // assuming left-to-right fields evaluation
@@ -540,10 +550,19 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
             effs
         }
         Tuple { fields: exprs }
-        | Array {
+        | ArrayExplicit {
             elem_type: _,
             contents: exprs,
         } => effects_of_expressions(engines, exprs),
+        ArrayRepeat {
+            elem_type: _,
+            value,
+            length,
+        } => {
+            let mut effs = effects_of_expression(engines, value);
+            effs.extend(effects_of_expression(engines, length));
+            effs
+        }
         StructExpression { fields, .. } => effects_of_struct_expressions(engines, fields),
         CodeBlock(codeblock) => effects_of_codeblock(engines, codeblock),
         MatchExp { desugared, .. } => effects_of_expression(engines, desugared),

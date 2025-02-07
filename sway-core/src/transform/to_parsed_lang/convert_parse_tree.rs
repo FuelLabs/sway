@@ -2093,28 +2093,22 @@ fn expr_to_expression(
                         .into_iter()
                         .map(|expr| expr_to_expression(context, handler, engines, expr))
                         .collect::<Result<_, _>>()?;
-                    let array_expression = ArrayExpression {
-                        contents,
-                        length_span: None,
-                    };
                     Expression {
-                        kind: ExpressionKind::Array(array_expression),
+                        kind: ExpressionKind::Array(ArrayExpression::Explicit {
+                            contents,
+                            length_span: None,
+                        }),
                         span,
                     }
                 }
                 ExprArrayDescriptor::Repeat { value, length, .. } => {
-                    let expression = expr_to_expression(context, handler, engines, *value)?;
-                    let length_span = length.span();
-                    let length = expr_to_usize(context, handler, *length)?;
-                    let contents = iter::repeat_with(|| expression.clone())
-                        .take(length)
-                        .collect();
-                    let array_expression = ArrayExpression {
-                        contents,
-                        length_span: Some(length_span),
-                    };
+                    let value = expr_to_expression(context, handler, engines, *value)?;
+                    let length = expr_to_expression(context, handler, engines, *length)?;
                     Expression {
-                        kind: ExpressionKind::Array(array_expression),
+                        kind: ExpressionKind::Array(ArrayExpression::Repeat {
+                            value: Box::new(value),
+                            length: Box::new(length),
+                        }),
                         span,
                     }
                 }

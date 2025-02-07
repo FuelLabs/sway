@@ -67,7 +67,8 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
         // but we still consider these as non-zero to be on the safe side
         LazyOperator { .. }
         | Tuple { .. }
-        | Array { .. }
+        | ArrayExplicit { .. }
+        | ArrayRepeat { .. }
         | StructExpression { .. }
         | FunctionParameter
         | EnumInstantiation { .. }

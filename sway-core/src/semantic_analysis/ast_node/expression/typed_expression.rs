@@ -188,11 +188,15 @@ impl ty::TyExpression {
             ExpressionKind::TupleIndex(expr) => {
                 Self::collect(handler, engines, ctx, &expr.prefix)?;
             }
-            ExpressionKind::Array(expr) => {
-                expr.contents
+            ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => {
+                contents
                     .iter()
                     .map(|expr| Self::collect(handler, engines, ctx, expr))
                     .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
+                Self::collect(handler, engines, ctx, value)?;
+                Self::collect(handler, engines, ctx, length)?;
             }
             ExpressionKind::Struct(expr) => {
                 expr.fields
@@ -463,8 +467,11 @@ impl ty::TyExpression {
                 let AbiCastExpression { abi_name, address } = &**abi_cast_expression;
                 Self::type_check_abi_cast(handler, ctx.by_ref(), abi_name.clone(), address, span)
             }
-            ExpressionKind::Array(array_expression) => {
-                Self::type_check_array(handler, ctx.by_ref(), &array_expression.contents, span)
+            ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => {
+                Self::type_check_array_explicit(handler, ctx.by_ref(), contents, span)
+            }
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
+                Self::type_check_array_repeat(handler, ctx.by_ref(), value, length, span)
             }
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                 let ctx = ctx
@@ -2003,7 +2010,60 @@ impl ty::TyExpression {
         Ok(exp)
     }
 
-    fn type_check_array(
+    fn type_check_array_repeat(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        value: &Expression,
+        length: &Expression,
+        span: Span,
+    ) -> Result<Self, ErrorEmitted> {
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
+
+        // capture the expected array element type from context,
+        // otherwise, fallback to Unknown.
+        let elem_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
+            TypeInfo::Array(element_type, _) => {
+                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
+                if matches!(element_type, TypeInfo::Never) {
+                    TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
+                } else {
+                    element_type
+                }
+            }
+            _ => TypeInfo::Unknown,
+        };
+        let elem_type = type_engine.insert(engines, elem_type, None);
+
+        let value_ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(elem_type);
+        let value = Self::type_check(handler, value_ctx, value)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
+
+        let length_ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.id_of_u64());
+        let length = Self::type_check(handler, length_ctx, length)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
+        let length_u64 = length.as_literal_u64().unwrap() as usize;
+
+        let return_type =
+            type_engine.insert_array_without_annotations(engines, elem_type, length_u64);
+        Ok(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ArrayRepeat {
+                elem_type,
+                value: Box::new(value),
+                length: Box::new(length),
+            },
+            return_type,
+            span,
+        })
+    }
+
+    fn type_check_array_explicit(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         contents: &[Expression],
@@ -2015,7 +2075,7 @@ impl ty::TyExpression {
         if contents.is_empty() {
             let elem_type = type_engine.new_unknown();
             return Ok(ty::TyExpression {
-                expression: ty::TyExpressionVariant::Array {
+                expression: ty::TyExpressionVariant::ArrayExplicit {
                     elem_type,
                     contents: Vec::new(),
                 },
@@ -2078,7 +2138,7 @@ impl ty::TyExpression {
         let elem_type = type_engine.insert(engines, initial_type.clone(), None);
         let length = typed_contents.len();
         let expr = ty::TyExpression {
-            expression: ty::TyExpressionVariant::Array {
+            expression: ty::TyExpressionVariant::ArrayExplicit {
                 elem_type,
                 contents: typed_contents,
             },
@@ -3153,7 +3213,7 @@ mod tests {
     fn test_array_type_check_non_homogeneous_0() {
         // [true, 0] -- first element is correct, assumes type is [bool; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::Boolean(true)),
@@ -3187,7 +3247,7 @@ mod tests {
     fn test_array_type_check_non_homogeneous_1() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::U64(0)),
@@ -3221,7 +3281,7 @@ mod tests {
     fn test_array_type_check_bad_count() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::Boolean(true)),
@@ -3257,7 +3317,7 @@ mod tests {
     #[test]
     fn test_array_type_check_empty() {
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: Vec::new(),
                 length_span: None,
             }),

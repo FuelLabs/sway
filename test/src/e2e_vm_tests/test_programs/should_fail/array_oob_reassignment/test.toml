@@ -1,9 +1,9 @@
 category = "fail"
 
-# check: $()let mut a = [u64; 0];
+# check: $()let mut a = [0; 0];
 # nextln: $()This declaration is never used.
 
-# check: $()let mut b = [[u64; 1]; 1];
+# check: $()let mut b = [[0; 1]; 1];
 # nextln: $()This declaration is never used.
 
 # check: $()a[0] = 1;
