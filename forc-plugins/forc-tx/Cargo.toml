@@ -22,6 +22,7 @@ devault.workspace = true
 forc-util.workspace = true
 fuel-tx = { workspace = true, features = ["random", "test-helpers"] }
 fuel-types = { workspace = true, features = ["serde"] }
+fuels-core = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
