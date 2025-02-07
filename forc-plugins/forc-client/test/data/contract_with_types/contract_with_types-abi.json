@@ -1,0 +1,720 @@
+{
+  "programType": "contract",
+  "specVersion": "1",
+  "encodingVersion": "1",
+  "concreteTypes": [
+    {
+      "type": "()",
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    },
+    {
+      "type": "(u64, bool)",
+      "concreteTypeId": "5a05acd79ded5b8adc972345c8309f451c54aa0c27b2873554ac4758191aad5f",
+      "metadataTypeId": 1
+    },
+    {
+      "type": "[u64; 10]",
+      "concreteTypeId": "34bdb7bae35dacc4188e2ab32eb559de01ccd4154def797134ebe16b310c33af",
+      "metadataTypeId": 2
+    },
+    {
+      "type": "b256",
+      "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+    },
+    {
+      "type": "enum GenericEnum<struct GenericStruct<u32>>",
+      "concreteTypeId": "e8a118f329c0722601113b0179a2e3f73eae6abc483e97556284a6fc73b07197",
+      "metadataTypeId": 4,
+      "typeArguments": [
+        "7e5af3efc0fd41ec44b9367746ca17af79224954690bed680461173162a62926"
+      ]
+    },
+    {
+      "type": "enum GenericEnum<u32>",
+      "concreteTypeId": "14e956820212553da4f16588c7f10f7857d7e629c70c07e4e1695e093a06a0be",
+      "metadataTypeId": 4,
+      "typeArguments": [
+        "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
+      ]
+    },
+    {
+      "type": "enum Status",
+      "concreteTypeId": "66eef06c10a78bfec7643c7d553d635fc1edc145c4c1037d422dc6f9fc5ea100",
+      "metadataTypeId": 5
+    },
+    {
+      "type": "enum std::identity::Identity",
+      "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335",
+      "metadataTypeId": 6
+    },
+    {
+      "type": "enum std::option::Option<u64>",
+      "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
+      "metadataTypeId": 7,
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "type": "str",
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
+    },
+    {
+      "type": "str[10]",
+      "concreteTypeId": "338a25cb65b9251663dcce6362b744fe10aa849758299590f4efed5dd299bf50"
+    },
+    {
+      "type": "struct ComplexStruct<struct GenericStruct<u32>>",
+      "concreteTypeId": "4ce860126ad9d85fbf993112427156c992765879a44eddbe11eb508498897266",
+      "metadataTypeId": 12,
+      "typeArguments": [
+        "7e5af3efc0fd41ec44b9367746ca17af79224954690bed680461173162a62926"
+      ]
+    },
+    {
+      "type": "struct GenericStruct<u32>",
+      "concreteTypeId": "7e5af3efc0fd41ec44b9367746ca17af79224954690bed680461173162a62926",
+      "metadataTypeId": 13,
+      "typeArguments": [
+        "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
+      ]
+    },
+    {
+      "type": "struct User",
+      "concreteTypeId": "8771e33a50e92b7b9a2b3c66fd99f3c417e4c2d3aef1152b4d64e8df6169f831",
+      "metadataTypeId": 14
+    },
+    {
+      "type": "struct std::asset_id::AssetId",
+      "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
+      "metadataTypeId": 16
+    },
+    {
+      "type": "struct std::bytes::Bytes",
+      "concreteTypeId": "cdd87b7d12fe505416570c294c884bca819364863efe3bf539245fa18515fbbb",
+      "metadataTypeId": 17
+    },
+    {
+      "type": "struct std::u128::U128",
+      "concreteTypeId": "c4a4edf5dbd3026f55a64842d4610751fd4996e511a21367af515102dfb99a1b",
+      "metadataTypeId": 20
+    },
+    {
+      "type": "struct std::vec::Vec<u64>",
+      "concreteTypeId": "d5bfe1d4e1ace20166c9b50cadd47e862020561bde24f5189cfc2723f5ed76f4",
+      "metadataTypeId": 22,
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "type": "u16",
+      "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef"
+    },
+    {
+      "type": "u256",
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e"
+    },
+    {
+      "type": "u32",
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
+    },
+    {
+      "type": "u64",
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    },
+    {
+      "type": "u8",
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b"
+    }
+  ],
+  "metadataTypes": [
+    {
+      "type": "(_, _)",
+      "metadataTypeId": 0,
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 14
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "(_, _)",
+      "metadataTypeId": 1,
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 3
+        }
+      ]
+    },
+    {
+      "type": "[_; 10]",
+      "metadataTypeId": 2,
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "bool",
+      "metadataTypeId": 3
+    },
+    {
+      "type": "enum GenericEnum",
+      "metadataTypeId": 4,
+      "components": [
+        {
+          "name": "container",
+          "typeId": 13,
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 8
+            }
+          ]
+        },
+        {
+          "name": "value",
+          "typeId": 8
+        }
+      ],
+      "typeParameters": [
+        8
+      ]
+    },
+    {
+      "type": "enum Status",
+      "metadataTypeId": 5,
+      "components": [
+        {
+          "name": "Active",
+          "typeId": 3
+        },
+        {
+          "name": "Pending",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "Inactive",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ]
+    },
+    {
+      "type": "enum std::identity::Identity",
+      "metadataTypeId": 6,
+      "components": [
+        {
+          "name": "Address",
+          "typeId": 15
+        },
+        {
+          "name": "ContractId",
+          "typeId": 19
+        }
+      ]
+    },
+    {
+      "type": "enum std::option::Option",
+      "metadataTypeId": 7,
+      "components": [
+        {
+          "name": "None",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        },
+        {
+          "name": "Some",
+          "typeId": 8
+        }
+      ],
+      "typeParameters": [
+        8
+      ]
+    },
+    {
+      "type": "generic T",
+      "metadataTypeId": 8
+    },
+    {
+      "type": "raw untyped ptr",
+      "metadataTypeId": 9
+    },
+    {
+      "type": "str[2]",
+      "metadataTypeId": 10
+    },
+    {
+      "type": "str[4]",
+      "metadataTypeId": 11
+    },
+    {
+      "type": "struct ComplexStruct",
+      "metadataTypeId": 12,
+      "components": [
+        {
+          "name": "info",
+          "typeId": 0
+        },
+        {
+          "name": "status",
+          "typeId": 5
+        },
+        {
+          "name": "data",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "generic",
+          "typeId": 13,
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 8
+            }
+          ]
+        }
+      ],
+      "typeParameters": [
+        8
+      ]
+    },
+    {
+      "type": "struct GenericStruct",
+      "metadataTypeId": 13,
+      "components": [
+        {
+          "name": "value",
+          "typeId": 8
+        },
+        {
+          "name": "description",
+          "typeId": 11
+        }
+      ],
+      "typeParameters": [
+        8
+      ]
+    },
+    {
+      "type": "struct User",
+      "metadataTypeId": 14,
+      "components": [
+        {
+          "name": "name",
+          "typeId": 10
+        },
+        {
+          "name": "id",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "struct std::address::Address",
+      "metadataTypeId": 15,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
+      "type": "struct std::asset_id::AssetId",
+      "metadataTypeId": 16,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
+      "type": "struct std::bytes::Bytes",
+      "metadataTypeId": 17,
+      "components": [
+        {
+          "name": "buf",
+          "typeId": 18
+        },
+        {
+          "name": "len",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "struct std::bytes::RawBytes",
+      "metadataTypeId": 18,
+      "components": [
+        {
+          "name": "ptr",
+          "typeId": 9
+        },
+        {
+          "name": "cap",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "metadataTypeId": 19,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ]
+    },
+    {
+      "type": "struct std::u128::U128",
+      "metadataTypeId": 20,
+      "components": [
+        {
+          "name": "upper",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "lower",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "struct std::vec::RawVec",
+      "metadataTypeId": 21,
+      "components": [
+        {
+          "name": "ptr",
+          "typeId": 9
+        },
+        {
+          "name": "cap",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "typeParameters": [
+        8
+      ]
+    },
+    {
+      "type": "struct std::vec::Vec",
+      "metadataTypeId": 22,
+      "components": [
+        {
+          "name": "buf",
+          "typeId": 21,
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 8
+            }
+          ]
+        },
+        {
+          "name": "len",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "typeParameters": [
+        8
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "34bdb7bae35dacc4188e2ab32eb559de01ccd4154def797134ebe16b310c33af"
+        }
+      ],
+      "name": "test_array",
+      "output": "34bdb7bae35dacc4188e2ab32eb559de01ccd4154def797134ebe16b310c33af",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "name": "test_b256",
+      "output": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "cdd87b7d12fe505416570c294c884bca819364863efe3bf539245fa18515fbbb"
+        }
+      ],
+      "name": "test_bytes",
+      "output": "cdd87b7d12fe505416570c294c884bca819364863efe3bf539245fa18515fbbb",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "4ce860126ad9d85fbf993112427156c992765879a44eddbe11eb508498897266"
+        }
+      ],
+      "name": "test_complex_struct",
+      "output": "4ce860126ad9d85fbf993112427156c992765879a44eddbe11eb508498897266",
+      "attributes": null
+    },
+    {
+      "inputs": [],
+      "name": "test_empty",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": null
+    },
+    {
+      "inputs": [],
+      "name": "test_empty_no_return",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "66eef06c10a78bfec7643c7d553d635fc1edc145c4c1037d422dc6f9fc5ea100"
+        }
+      ],
+      "name": "test_enum",
+      "output": "66eef06c10a78bfec7643c7d553d635fc1edc145c4c1037d422dc6f9fc5ea100",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "e8a118f329c0722601113b0179a2e3f73eae6abc483e97556284a6fc73b07197"
+        }
+      ],
+      "name": "test_enum_with_complex_generic",
+      "output": "e8a118f329c0722601113b0179a2e3f73eae6abc483e97556284a6fc73b07197",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "14e956820212553da4f16588c7f10f7857d7e629c70c07e4e1695e093a06a0be"
+        }
+      ],
+      "name": "test_enum_with_generic",
+      "output": "14e956820212553da4f16588c7f10f7857d7e629c70c07e4e1695e093a06a0be",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d"
+        }
+      ],
+      "name": "test_option",
+      "output": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
+        }
+      ],
+      "name": "test_str",
+      "output": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "338a25cb65b9251663dcce6362b744fe10aa849758299590f4efed5dd299bf50"
+        }
+      ],
+      "name": "test_str_array",
+      "output": "338a25cb65b9251663dcce6362b744fe10aa849758299590f4efed5dd299bf50",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a"
+        }
+      ],
+      "name": "test_str_slice",
+      "output": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "8771e33a50e92b7b9a2b3c66fd99f3c417e4c2d3aef1152b4d64e8df6169f831"
+        }
+      ],
+      "name": "test_struct",
+      "output": "8771e33a50e92b7b9a2b3c66fd99f3c417e4c2d3aef1152b4d64e8df6169f831",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "7e5af3efc0fd41ec44b9367746ca17af79224954690bed680461173162a62926"
+        }
+      ],
+      "name": "test_struct_with_generic",
+      "output": "7e5af3efc0fd41ec44b9367746ca17af79224954690bed680461173162a62926",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "5a05acd79ded5b8adc972345c8309f451c54aa0c27b2873554ac4758191aad5f"
+        }
+      ],
+      "name": "test_tuple",
+      "output": "5a05acd79ded5b8adc972345c8309f451c54aa0c27b2873554ac4758191aad5f",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "c4a4edf5dbd3026f55a64842d4610751fd4996e511a21367af515102dfb99a1b"
+        }
+      ],
+      "name": "test_u128",
+      "output": "c4a4edf5dbd3026f55a64842d4610751fd4996e511a21367af515102dfb99a1b",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef"
+        }
+      ],
+      "name": "test_u16",
+      "output": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e"
+        }
+      ],
+      "name": "test_u256",
+      "output": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
+        }
+      ],
+      "name": "test_u32",
+      "output": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "name": "test_u64",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b"
+        }
+      ],
+      "name": "test_u8",
+      "output": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        }
+      ],
+      "name": "test_unit",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "a",
+          "concreteTypeId": "d5bfe1d4e1ace20166c9b50cadd47e862020561bde24f5189cfc2723f5ed76f4"
+        }
+      ],
+      "name": "test_vector",
+      "output": "d5bfe1d4e1ace20166c9b50cadd47e862020561bde24f5189cfc2723f5ed76f4",
+      "attributes": null
+    },
+    {
+      "inputs": [
+        {
+          "name": "amount_to_transfer",
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "asset_id",
+          "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974"
+        },
+        {
+          "name": "recipient",
+          "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335"
+        }
+      ],
+      "name": "transfer",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "attributes": [
+        {
+          "name": "payable",
+          "arguments": []
+        }
+      ]
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "configurables": []
+}

@@ -4,22 +4,22 @@ category = "fail"
 # check: $()Could not find symbol "A" in this scope.
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "MyEnum": a::MyEnum, b::MyEnum
+# check: $()The following paths are all valid bindings for symbol "MyEnum": "a::MyEnum" and "b::MyEnum".
 
 # check: $()error
 # check: $()Unknown type name "MyEnum".
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "E": c::MyEnumVariants::E, d::MyOtherEnumVariants::E
+# check: $()The following paths are all valid bindings for symbol "E": "c::MyEnumVariants::E" and "d::MyOtherEnumVariants::E".
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "MyStruct": a::MyStruct, b::MyStruct
+# check: $()The following paths are all valid bindings for symbol "MyStruct": "a::MyStruct" and "b::MyStruct".
 
 # check: $()error
 # check: $()Unknown type name "MyStruct".
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "MyStruct": a::MyStruct, b::MyStruct
+# check: $()The following paths are all valid bindings for symbol "MyStruct": "a::MyStruct" and "b::MyStruct".
 
 # check: $()error
 # check: $()Unknown type name "MyStruct".
@@ -34,7 +34,7 @@ category = "fail"
 # check: $()Could not find symbol "A" in this scope.
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "MyEnum": a::MyEnum, b::MyEnum
+# check: $()The following paths are all valid bindings for symbol "MyEnum": "a::MyEnum" and "b::MyEnum".
 
 # check: $()error
 # check: $()Unknown type name "MyEnum".
@@ -43,7 +43,7 @@ category = "fail"
 # check: $()Could not find symbol "B" in this scope.
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "MyEnum": a::MyEnum, b::MyEnum
+# check: $()The following paths are all valid bindings for symbol "MyEnum": "a::MyEnum" and "b::MyEnum".
 
 # check: $()error
 # check: $()Unknown type name "MyEnum".
@@ -57,16 +57,16 @@ category = "fail"
 # nextln: $()found:    MyEnum.
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "C": a::C, b::MyOtherEnum::C
+# check: $()The following paths are all valid bindings for symbol "C": "a::C" and "b::MyOtherEnum::C".
 
 # check: $()error
 # check: $()Unknown type name "C".
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "C": a::C, b::MyOtherEnum::C
+# check: $()The following paths are all valid bindings for symbol "C": "a::C" and "b::MyOtherEnum::C"
 
 # check: $()error
-# check: $()The following paths are all valid bindings for symbol "E": c::MyEnumVariants::E, d::MyOtherEnumVariants::E
+# check: $()The following paths are all valid bindings for symbol "E": "c::MyEnumVariants::E" and "d::MyOtherEnumVariants::E".
 
 # check: $()error
 # check: $()Mismatched types.
