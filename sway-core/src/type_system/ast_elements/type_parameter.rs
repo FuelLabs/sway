@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{ty, CallPath},
-    namespace::{TraitMap, TryInsertingTraitImplOnFailure},
+    namespace::TraitMap,
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
@@ -573,8 +573,6 @@ impl TypeParameter {
                             trait_constraints,
                             access_span,
                             engines,
-                            TryInsertingTraitImplOnFailure::Yes,
-                            code_block_first_pass.into(),
                         ) {
                         Ok(res) => res,
                         Err(_) => continue,

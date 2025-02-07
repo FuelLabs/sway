@@ -339,11 +339,13 @@ fn collect_struct_constructors(
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
                 ResolvedTraitImplItem::Typed(item) => match item {
-                    ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
+                    ty::TyTraitItem::Fn(fn_decl_id) => {
+                        Some(fn_decl_id.get_method_safe_to_unify(engines, struct_type_id))
+                    }
                     _ => None,
                 },
             })
-            .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
+            .map(|fn_decl_id| engines.de().get_function(&fn_decl_id))
             .filter(|fn_decl| {
                 matches!(fn_decl.visibility, Visibility::Public)
                     && fn_decl

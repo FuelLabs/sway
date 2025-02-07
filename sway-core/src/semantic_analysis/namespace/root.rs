@@ -560,11 +560,7 @@ impl Root {
                     src_mod
                         .root_items()
                         .implemented_traits
-                        .filter_by_type_item_import(
-                            type_id,
-                            engines,
-                            super::CodeBlockFirstPass::No,
-                        ),
+                        .filter_by_type_item_import(type_id, engines),
                     engines,
                 );
             }
