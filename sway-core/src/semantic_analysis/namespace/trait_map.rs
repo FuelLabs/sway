@@ -354,24 +354,8 @@ impl TraitMap {
                     && traits_are_subset
                     && matches!(is_impl_self, IsImplSelf::No)
                 {
-                    let trait_name_str = format!(
-                        "{}{}",
-                        trait_name,
-                        if trait_type_args.is_empty() {
-                            String::new()
-                        } else {
-                            format!(
-                                "<{}>",
-                                trait_type_args
-                                    .iter()
-                                    .map(|type_arg| engines.help_out(type_arg).to_string())
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            )
-                        }
-                    );
                     handler.emit_err(CompileError::ConflictingImplsForTraitAndType {
-                        trait_name: trait_name_str,
+                        trait_name: trait_name.to_string_with_args(engines, &trait_type_args),
                         type_implementing_for: engines.help_out(type_id).to_string(),
                         existing_impl_span: existing_impl_span.clone(),
                         second_impl_span: impl_span.clone(),

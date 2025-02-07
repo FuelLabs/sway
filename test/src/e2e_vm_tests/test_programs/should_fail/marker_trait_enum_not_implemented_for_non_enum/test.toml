@@ -1,0 +1,50 @@
+category = "fail"
+experimental = { error_type = true }
+
+#check: $()error
+#check: $()implements_enum(0u64);
+#nextln: $()Trait "Enum" is not implemented for type "u64".
+
+#check: $()error
+#check: $()implements_enum_no_args::<u64>();
+#nextln: $()Trait "Enum" is not implemented for type "u64".
+
+#check: $()error
+#check: $()implements_enum(Struct { x: 0 });
+#nextln: $()Trait "Enum" is not implemented for type "Struct".
+
+#check: $()error
+#check: $()implements_enum_no_args::<Struct>();
+#nextln: $()Trait "Enum" is not implemented for type "Struct".
+
+#check: $()error
+#check: $()implements_enum(EmptyStruct { });
+#nextln: $()Trait "Enum" is not implemented for type "EmptyStruct".
+
+#check: $()error
+#check: $()implements_enum_no_args::<EmptyStruct>();
+#nextln: $()Trait "Enum" is not implemented for type "EmptyStruct".
+
+#check: $()error
+#check: $()implements_enum([0u8, 0, 0]);
+#nextln: $()Trait "Enum" is not implemented for type "[u8; 3]".
+
+#check: $()error
+#check: $()implements_enum_no_args::<[u8;3]>();
+#nextln: $()Trait "Enum" is not implemented for type "[u8; 3]".
+
+#check: $()error
+#check: $()implements_enum((0, 0, 0));
+#nextln: $()Trait "Enum" is not implemented for type "(u64, u64, u64)".
+
+#check: $()error
+#check: $()implements_enum_no_args::<(u64,u64,u64)>();
+#nextln: $()Trait "Enum" is not implemented for type "(u64, u64, u64)".
+
+#check: $()error
+#check: $()implements_enum(());
+#nextln: $()Trait "Enum" is not implemented for type "()".
+
+#check: $()error
+#check: $()implements_enum_no_args::<()>();
+#nextln: $()Trait "Enum" is not implemented for type "()".

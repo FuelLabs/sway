@@ -681,6 +681,8 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
+                        // TODO: Replace with a call to a dedicated `CallPath` method
+                        //       once https://github.com/FuelLabs/sway/issues/6873 is fixed.
                         let full_path = trait_decl
                             .call_path
                             .to_fullpath(ctx.engines(), ctx.namespace());
