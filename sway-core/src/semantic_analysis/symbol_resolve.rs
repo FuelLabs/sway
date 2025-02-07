@@ -545,7 +545,10 @@ impl ResolveSymbols for ExpressionKind {
             ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => contents
                 .iter_mut()
                 .for_each(|e| e.resolve_symbols(handler, ctx.by_ref())),
-            ExpressionKind::Array(ArrayExpression::Repeat { .. }) => todo!(),
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
+                value.resolve_symbols(handler, ctx.by_ref());
+                length.resolve_symbols(handler, ctx.by_ref());
+            }
             ExpressionKind::Struct(expr) => {
                 expr.call_path_binding
                     .resolve_symbols(handler, ctx.by_ref());
