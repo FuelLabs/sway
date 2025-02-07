@@ -77,25 +77,35 @@ pub(crate) fn type_check_method_application(
                     true
                 }
             });
-            handler.append(arg_handler);
+            handler.append(arg_handler.clone());
         }
 
-        args_opt_buf.push_back((arg_opt, needs_second_pass));
+        args_opt_buf.push_back((arg_opt, arg_handler, needs_second_pass));
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let (original_decl_ref, call_path_typeid) = resolve_method_name(
+    let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
         &method_name_binding,
         args_opt_buf
             .iter()
-            .map(|(arg, _has_errors)| match arg {
+            .map(|(arg, _, _has_errors)| match arg {
                 Some(arg) => arg.return_type,
                 None => type_engine.new_unknown(),
             })
             .collect(),
-    )?;
+    );
+
+    // In case resolve_method_name fails throw argument errors.
+    let (original_decl_ref, call_path_typeid) = if let Err(e) = method_result {
+        for (_, arg_handler, _) in args_opt_buf.iter() {
+            handler.append(arg_handler.clone());
+        }
+        return Err(e);
+    } else {
+        method_result.unwrap()
+    };
 
     let mut fn_ref = monomorphize_method(
         handler,
@@ -120,7 +130,7 @@ pub(crate) fn type_check_method_application(
     // type check the function arguments (2nd pass)
     let mut args_buf = VecDeque::new();
     for (arg, index, arg_opt) in izip!(arguments.iter(), 0.., args_opt_buf.iter().cloned()) {
-        if let (Some(arg), false) = arg_opt {
+        if let (Some(arg), _, false) = arg_opt {
             args_buf.push_back(arg);
         } else {
             // We type check the argument expression again this time throwing out the error.

@@ -1,0 +1,31 @@
+category = "fail"
+
+# check: $()let _ = S::associated(x, y, z);
+# nextln:$()Variable "x" does not exist in this scope.
+
+# check: $()let _ = S::associated(x, y, z);
+# nextln:$()Variable "y" does not exist in this scope.
+
+# check: $()let _ = S::associated(x, y, z);
+# nextln:$()Variable "z" does not exist in this scope.
+
+# check: $()let _ = function(x, y, z);
+# nextln:$()Variable "x" does not exist in this scope.
+
+# check: $()let _ = function(x, y, z);
+# nextln:$()Variable "y" does not exist in this scope.
+
+# check: $()let _ = function(x, y, z);
+# nextln:$()Variable "z" does not exist in this scope.
+
+# check: $()let _ = x + y + z;
+# nextln: $()Variable "x" does not exist in this scope.
+
+# check: $()let _ = x + y + z;
+# nextln: $()Variable "y" does not exist in this scope.
+
+# check: $()let _ = x + y + z;
+# nextln: $()No method "add({unknown}, unknown)" found for type "{unknown}".
+
+# check: $()let _ = x + y + z;
+# nextln: $()Variable "z" does not exist in this scope.
