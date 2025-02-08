@@ -105,8 +105,9 @@ pub(crate) struct FnCompiler<'eng> {
 }
 
 fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
-    let needed_size = Constant::new_uint(context, 64, value);
-    Value::new_constant(context, needed_size)
+    let needed_size = ConstantContent::new_uint(context, 64, value);
+    let c = Constant::unique(context, needed_size);
+    Value::new_constant(context, c)
 }
 
 fn save_to_local_return_ptr(
@@ -210,7 +211,9 @@ impl<'eng> FnCompiler<'eng> {
             let v = loop {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
-                    None => break TerminatorValue::new(Constant::get_unit(context), context),
+                    None => {
+                        break TerminatorValue::new(ConstantContent::get_unit(context), context)
+                    }
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
                     // 'Some' indicates an implicit return or a diverging expression, so break.
@@ -400,7 +403,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .ptr_to_int(string_data, int_ty)
             .add_metadatum(context, span_md_idx);
-        let len_val = Constant::get_uint(context, 64, string_len);
+        let len_val = ConstantContent::get_uint(context, 64, string_len);
 
         // a slice is a pointer and a length
         let field_types = vec![int_ty, int_ty];
@@ -477,7 +480,8 @@ impl<'eng> FnCompiler<'eng> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
-                let string_data = Constant::get_string(context, s.as_str().as_bytes().to_vec());
+                let string_data =
+                    ConstantContent::get_string(context, s.as_str().as_bytes().to_vec());
                 let string_len = s.as_str().len() as u64;
                 self.compile_string_slice(context, span_md_idx, string_data, string_len)
             }
@@ -639,7 +643,7 @@ impl<'eng> FnCompiler<'eng> {
             ),
             ty::TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, span);
-                let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
@@ -668,7 +672,9 @@ impl<'eng> FnCompiler<'eng> {
                 ast_expr.return_type,
             ),
             ty::TyExpressionVariant::AbiName(_) => {
-                let val = Value::new_constant(context, Constant::new_unit(context));
+                let c = ConstantContent::new_unit(context);
+                let c = Constant::unique(context, c);
+                let val = Value::new_constant(context, c);
                 Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::UnsafeDowncast {
@@ -924,7 +930,7 @@ impl<'eng> FnCompiler<'eng> {
                     &exp.span,
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
-                let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
+                let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::SizeOfType => {
@@ -936,7 +942,7 @@ impl<'eng> FnCompiler<'eng> {
                     targ.type_id,
                     &targ.span,
                 )?;
-                let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
+                let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::SizeOfStr => {
@@ -948,7 +954,7 @@ impl<'eng> FnCompiler<'eng> {
                     targ.type_id,
                     &targ.span,
                 )?;
-                let val = Constant::get_uint(
+                let val = ConstantContent::get_uint(
                     context,
                     64,
                     ir_type.get_string_len(context).unwrap_or_default(),
@@ -958,7 +964,7 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
                 let is_val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
-                let val = Constant::get_bool(context, is_val);
+                let val = ConstantContent::get_bool(context, is_val);
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::IsStrArray => {
@@ -967,7 +973,7 @@ impl<'eng> FnCompiler<'eng> {
                     &*engines.te().get_unaliased(targ.type_id),
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
-                let val = Constant::get_bool(context, is_val);
+                let val = ConstantContent::get_bool(context, is_val);
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::AssertIsStrArray => {
@@ -981,7 +987,7 @@ impl<'eng> FnCompiler<'eng> {
                 )?;
                 match ir_type.get_content(context) {
                     TypeContent::StringSlice | TypeContent::StringArray(_) => {
-                        let val = Constant::get_unit(context);
+                        let val = ConstantContent::get_unit(context);
                         Ok(TerminatorValue::new(val, context))
                     }
                     _ => Err(CompileError::NonStrGenericType {
@@ -991,7 +997,8 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
                 Some(Literal::String(span)) => {
-                    let val = Constant::get_string(context, span.as_str().as_bytes().to_vec());
+                    let val =
+                        ConstantContent::get_string(context, span.as_str().as_bytes().to_vec());
                     Ok(TerminatorValue::new(val, context))
                 }
                 _ => unreachable!(),
@@ -1037,7 +1044,7 @@ impl<'eng> FnCompiler<'eng> {
                     None,
                     &arguments[1],
                 )?;
-                let tx_field_id = match tx_field_id_constant.value {
+                let tx_field_id = match tx_field_id_constant.get_content(context).value {
                     ConstantValue::Uint(n) => n,
                     _ => {
                         return Err(CompileError::Internal(
@@ -1342,7 +1349,8 @@ impl<'eng> FnCompiler<'eng> {
                     len.type_id,
                     &len.span,
                 )?;
-                let len_value = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
+                let len_value =
+                    ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
@@ -1421,7 +1429,7 @@ impl<'eng> FnCompiler<'eng> {
                 let message_id_val = self
                     .messages_types_map
                     .get(&arguments[1].return_type)
-                    .map(|&msg_id| Constant::get_uint(context, 64, *msg_id as u64))
+                    .map(|&msg_id| ConstantContent::get_uint(context, 64, *msg_id as u64))
                     .ok_or_else(|| {
                         CompileError::Internal(
                             "Unable to determine ID for smo instance.",
@@ -1450,7 +1458,8 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
 
                 /* Third operand: the size of the message data */
-                let user_message_size_val = Constant::get_uint(context, 64, user_message_size);
+                let user_message_size_val =
+                    ConstantContent::get_uint(context, 64, user_message_size);
 
                 /* Fourth operand: the amount of coins to send */
                 let coins = return_on_termination_or_extract!(self.compile_expression_to_value(
@@ -1559,13 +1568,12 @@ impl<'eng> FnCompiler<'eng> {
                 let uint64 = Type::get_uint64(context);
 
                 // let cap = 1024;
-                let cap = Value::new_constant(
-                    context,
-                    Constant {
-                        ty: uint64,
-                        value: ConstantValue::Uint(1024),
-                    },
-                );
+                let c = ConstantContent {
+                    ty: uint64,
+                    value: ConstantValue::Uint(1024),
+                };
+                let c = Constant::unique(context, c);
+                let cap = Value::new_constant(context, c);
 
                 // let ptr = asm(cap: cap) {
                 //  aloc cap;
@@ -1591,8 +1599,9 @@ impl<'eng> FnCompiler<'eng> {
                 let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
                 let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
 
-                let len = Constant::new_uint(context, 64, 0);
-                let len = Value::new_constant(context, len);
+                let len = ConstantContent::new_uint(context, 64, 0);
+                let len_c = Constant::unique(context, len);
+                let len = Value::new_constant(context, len_c);
                 let buffer = self.compile_to_encode_buffer(context, ptr, cap, len)?;
                 Ok(TerminatorValue::new(buffer, context))
             }
@@ -1623,13 +1632,12 @@ impl<'eng> FnCompiler<'eng> {
                     assert!(len.get_type(context).unwrap().is_uint64(context));
 
                     let uint64 = Type::get_uint64(context);
-                    let step = Value::new_constant(
-                        context,
-                        Constant {
-                            ty: uint64,
-                            value: ConstantValue::Uint(step),
-                        },
-                    );
+                    let step = ConstantContent {
+                        ty: uint64,
+                        value: ConstantValue::Uint(step),
+                    };
+                    let step = Constant::unique(context, step);
+                    let step = Value::new_constant(context, step);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1653,13 +1661,12 @@ impl<'eng> FnCompiler<'eng> {
                     let _ = current_block.append(context).store(addr, item);
 
                     let uint64 = Type::get_uint64(context);
-                    let step = Value::new_constant(
-                        context,
-                        Constant {
-                            ty: uint64,
-                            value: ConstantValue::Uint(1),
-                        },
-                    );
+                    let step = ConstantContent {
+                        ty: uint64,
+                        value: ConstantValue::Uint(1),
+                    };
+                    let step = Constant::unique(context, step);
+                    let step = Value::new_constant(context, step);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1685,13 +1692,12 @@ impl<'eng> FnCompiler<'eng> {
 
                     let _ = current_block.append(context).store(addr, item);
 
-                    let step = Value::new_constant(
-                        context,
-                        Constant {
-                            ty: uint64,
-                            value: ConstantValue::Uint(8),
-                        },
-                    );
+                    let step = ConstantContent {
+                        ty: uint64,
+                        value: ConstantValue::Uint(8),
+                    };
+                    let step = Constant::unique(context, step);
+                    let step = Value::new_constant(context, step);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1708,7 +1714,8 @@ impl<'eng> FnCompiler<'eng> {
                     // save to local and offset
                     let item_ptr = save_to_local_return_ptr(s, context, item)?;
 
-                    let offset_value = Constant::new_uint(context, 64, offset);
+                    let offset_value = ConstantContent::new_uint(context, 64, offset);
+                    let offset_value = Constant::unique(context, offset_value);
                     let offset_value = Value::new_constant(context, offset_value);
                     let item_ptr = calc_addr_as_ptr(
                         &mut s.current_block,
@@ -1797,7 +1804,8 @@ impl<'eng> FnCompiler<'eng> {
                     let u8 = Type::get_uint8(context);
                     let ptr_u8 = Type::new_ptr(context, u8);
 
-                    let two = Constant::new_uint(context, 64, 2);
+                    let two = ConstantContent::new_uint(context, 64, 2);
+                    let two = Constant::unique(context, two);
                     let two = Value::new_constant(context, two);
                     let new_cap_part =
                         s.current_block
@@ -2662,7 +2670,7 @@ impl<'eng> FnCompiler<'eng> {
         let u64_ty = Type::get_uint64(context);
 
         let user_args_val = match compiled_args.len() {
-            0 => Constant::get_uint(context, 64, 0),
+            0 => ConstantContent::get_uint(context, 64, 0),
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
@@ -3015,7 +3023,7 @@ impl<'eng> FnCompiler<'eng> {
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
         let false_value = match ast_else {
-            None => TerminatorValue::new(Constant::get_unit(context), context),
+            None => TerminatorValue::new(ConstantContent::get_unit(context), context),
             Some(expr) => self.compile_expression_to_value(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
@@ -3218,7 +3226,7 @@ impl<'eng> FnCompiler<'eng> {
         );
 
         self.current_block = final_block;
-        let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+        let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
         Ok(TerminatorValue::new(val, context))
     }
 
@@ -3563,8 +3571,9 @@ impl<'eng> FnCompiler<'eng> {
                                     }
                                     Some((field_idx, field_type_id)) => {
                                         cur_type_id = field_type_id;
-                                        gep_indices
-                                            .push(Constant::get_uint(context, 64, field_idx));
+                                        gep_indices.push(ConstantContent::get_uint(
+                                            context, 64, field_idx,
+                                        ));
                                     }
                                 }
                             }
@@ -3573,7 +3582,11 @@ impl<'eng> FnCompiler<'eng> {
                                 TypeInfo::Tuple(field_tys),
                             ) => {
                                 cur_type_id = field_tys[*index].type_id;
-                                gep_indices.push(Constant::get_uint(context, 64, *index as u64));
+                                gep_indices.push(ConstantContent::get_uint(
+                                    context,
+                                    64,
+                                    *index as u64,
+                                ));
                             }
                             (
                                 ProjectionKind::ArrayIndex { index, .. },
@@ -3631,7 +3644,7 @@ impl<'eng> FnCompiler<'eng> {
             .store(lhs_ptr, rhs)
             .add_metadatum(context, span_md_idx);
 
-        let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+        let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
         Ok(TerminatorValue::new(val, context))
     }
 
@@ -3692,11 +3705,8 @@ impl<'eng> FnCompiler<'eng> {
                 compiled_elems_iter.all(|elem| {
                     elem.get_constant(context)
                         .expect("Constant expression must evaluate to a constant IR value")
-                        .eq(
-                            context,
-                            c.get_constant(context)
-                                .expect("Constant expression must evaluate to a constant IR value"),
-                        )
+                        == c.get_constant(context)
+                            .expect("Constant expression must evaluate to a constant IR value")
                 })
             });
             if let Some(const_initializer) = const_initialiser_opt {
@@ -3705,7 +3715,8 @@ impl<'eng> FnCompiler<'eng> {
                     .function
                     .create_block(context, Some("array_init_loop".into()));
                 // The loop begins with 0.
-                let zero = Constant::new_uint(context, 64, 0);
+                let zero = ConstantContent::new_uint(context, 64, 0);
+                let zero = Constant::unique(context, zero);
                 let zero = Value::new_constant(context, zero);
                 // Branch to the loop block, passing the initial iteration value.
                 self.current_block
@@ -3730,14 +3741,16 @@ impl<'eng> FnCompiler<'eng> {
                     .store(gep_val, *const_initializer)
                     .add_metadatum(context, span_md_idx);
                 // Increment index by one.
-                let one = Constant::new_uint(context, 64, 1);
+                let one = ConstantContent::new_uint(context, 64, 1);
+                let one = Constant::unique(context, one);
                 let one = Value::new_constant(context, one);
                 let index_inc =
                     self.current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, index, one);
                 // continue = index_inc < contents.len()
-                let len = Constant::new_uint(context, 64, contents.len() as u64);
+                let len = ConstantContent::new_uint(context, 64, contents.len() as u64);
+                let len = Constant::unique(context, len);
                 let len = Value::new_constant(context, len);
                 let r#continue =
                     self.current_block
@@ -3815,7 +3828,7 @@ impl<'eng> FnCompiler<'eng> {
         let index_expr_span = index_expr.span.clone();
 
         // Perform a bounds check if the array index is a constant int.
-        if let Ok(Constant {
+        if let Ok(ConstantContent {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
@@ -3826,11 +3839,13 @@ impl<'eng> FnCompiler<'eng> {
             None,
             Some(self),
             index_expr,
-        ) {
+        )
+        .map(|c| c.get_content(context))
+        {
             let count = array_type.get_array_len(context).unwrap();
-            if constant_value >= count {
+            if *constant_value >= count {
                 return Err(CompileError::ArrayOutOfBounds {
-                    index: constant_value,
+                    index: *constant_value,
                     count,
                     span: index_expr_span,
                 });
@@ -4002,7 +4017,7 @@ impl<'eng> FnCompiler<'eng> {
             &enum_decl.variants,
         )?;
         let tag_value =
-            Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
+            ConstantContent::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
         // Start with a temporary local struct and insert the tag.
         let temp_name = self.lexical_map.insert_anon();
@@ -4124,7 +4139,7 @@ impl<'eng> FnCompiler<'eng> {
         if fields.is_empty() {
             // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
             // the IR or not... it is a special case for now.
-            let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+            let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
             Ok(TerminatorValue::new(val, context))
         } else {
             let mut init_values = Vec::with_capacity(fields.len());
@@ -4424,7 +4439,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the offset as the second field in the `StorageKey` struct
-        let offset_within_slot_val = Constant::get_uint(context, 64, offset_within_slot);
+        let offset_within_slot_val = ConstantContent::get_uint(context, 64, offset_within_slot);
         let gep_1_val =
             self.current_block
                 .append(context)
