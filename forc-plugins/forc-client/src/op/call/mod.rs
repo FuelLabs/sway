@@ -67,8 +67,12 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6893
         Either::Left(path) => std::fs::read_to_string(&path)?,
         Either::Right(url) => {
-            let response = reqwest::get(url).await?.bytes().await?;
-            String::from_utf8(response.to_vec())?
+            if url.as_str() == "registry://default" {
+                fetch_verified_abi(&contract_id.to_string()).await?
+            } else {
+                let response = reqwest::get(url).await?.bytes().await?;
+                String::from_utf8(response.to_vec())?
+            }
         }
     };
     let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
@@ -252,6 +256,18 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     }
 
     Ok(result)
+}
+
+async fn fetch_verified_abi(contract_id: &str) -> Result<String, anyhow::Error> {
+    let registry_url = format!("https://registry.fuel.network/abi/{}", contract_id);
+    let response = reqwest::get(&registry_url).await?;
+    
+    if response.status().is_success() {
+        let abi_str = response.text().await?;
+        Ok(abi_str)
+    } else {
+        Err(anyhow!("Failed to fetch ABI from registry for contract: {}", contract_id))
+    }
 }
 
 /// Get the wallet to use for the call - based on optionally provided signing key and wallet flag.

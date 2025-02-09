@@ -184,7 +184,7 @@ pub struct Command {
     pub contract_id: ContractId,
 
     /// Path or URI to a JSON ABI file.
-    #[clap(long, value_parser = parse_abi_path)]
+    #[clap(long, value_parser = parse_abi_path, default_value = "registry")]
     pub abi: Either<PathBuf, Url>,
 
     /// The function selector to call.
@@ -226,6 +226,9 @@ pub struct Command {
 }
 
 fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {
+    if s == "registry" {
+        return Ok(Either::Right(Url::parse("registry://default").unwrap()));
+    }
     if let Ok(url) = Url::parse(s) {
         match url.scheme() {
             "http" | "https" | "ipfs" => Ok(Either::Right(url)),
