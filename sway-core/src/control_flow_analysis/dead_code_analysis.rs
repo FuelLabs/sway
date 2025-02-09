@@ -48,7 +48,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 _ => false,
             }
         }
-        TreeType::Contract | TreeType::Library { .. } => match node {
+        TreeType::Contract | TreeType::Library => match node {
             TyAstNode {
                 content:
                     TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })),
@@ -140,7 +140,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 ControlFlowGraphNode::FunctionParameter { .. } => {
                     // Consider variables declarations dead when count is not greater than 1
@@ -148,7 +148,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 _ => false,
             }
@@ -192,7 +192,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(true, |count| count > 1)
+                            .is_none_or(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::ProgramNode {
@@ -708,7 +708,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     //
     // this is important because if the struct is public, you want to be able to signal that all
     // fields are accessible by just adding an edge to the struct declaration node
-    if matches!(tree_type, TreeType::Contract | TreeType::Library { .. })
+    if matches!(tree_type, TreeType::Contract | TreeType::Library)
         && *visibility == Visibility::Public
     {
         for (_name, node) in &field_nodes {
@@ -792,7 +792,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                         if let Some(trait_entry) = trait_entry.clone() {
                             matches!(
                                 trait_entry.module_tree_type,
-                                TreeType::Library { .. } | TreeType::Contract
+                                TreeType::Library | TreeType::Contract
                             )
                         } else {
                             // trait_entry not found which means it is an external trait.
@@ -801,7 +801,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                             true
                         }
                     } else {
-                        matches!(tree_type, TreeType::Library { .. } | TreeType::Contract)
+                        matches!(tree_type, TreeType::Library | TreeType::Contract)
                     };
                 if add_edge_to_fn_decl {
                     graph.add_edge(entry_node, fn_decl_entry_node, "".into());

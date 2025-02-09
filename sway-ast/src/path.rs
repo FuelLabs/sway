@@ -69,7 +69,7 @@ impl PathType {
         self.suffix
             .iter()
             .map(|s| &s.1)
-            .last()
+            .next_back()
             .unwrap_or(&self.prefix)
     }
 }

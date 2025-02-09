@@ -33,7 +33,7 @@ fn create_reduced_std_libs(std_lib_src_dir: &str, reduced_libs_dir: &str) -> Res
 
         if !reduced_lib_config.exists() {
             bail!(format!("The config file \"{REDUCED_LIB_CONFIG_FILE_NAME}\" cannot be found for the reduced standard library \"{}\".\nThe config file must be at this location: {}",
-                reduced_lib_dir.components().last().unwrap().as_os_str().to_string_lossy(),
+                reduced_lib_dir.components().next_back().unwrap().as_os_str().to_string_lossy(),
                 reduced_lib_config.as_os_str().to_string_lossy()
             ));
         }
