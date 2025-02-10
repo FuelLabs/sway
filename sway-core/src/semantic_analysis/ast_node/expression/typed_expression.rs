@@ -2363,6 +2363,7 @@ impl ty::TyExpression {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
                             let unknown_decl = ctx.resolve_symbol(handler, &name)?;
+
                             match unknown_decl {
                                 TyDecl::VariableDecl(variable_decl) => {
                                     if !variable_decl.mutability.is_mutable() {
@@ -2373,6 +2374,7 @@ impl ty::TyExpression {
                                             },
                                         ));
                                     }
+
                                     break (name, variable_decl.return_type);
                                 }
                                 TyDecl::ConstantDecl(constant_decl) => {
