@@ -132,7 +132,6 @@ impl fmt::Display for Pinned {
 
 impl Cid {
     fn extract_archive<R: std::io::Read>(&self, reader: R, dst: &Path) -> Result<()> {
-        /*
         let dst_dir = dst.join(self.0.to_string());
         std::fs::create_dir_all(&dst_dir)?;
         let mut archive = Archive::new(reader);
@@ -140,23 +139,6 @@ impl Cid {
         for entry in archive.entries()? {
             let mut entry = entry?;
             entry.unpack_in(&dst_dir)?;
-        }
-
-        Ok(())
-        */
-        let dst_dir = dst.join(self.0.to_string());
-        std::fs::create_dir_all(&dst_dir)?;
-        let mut archive = Archive::new(reader);
-
-        for entry in archive.entries()? {
-            let mut entry = entry?;
-            let path = entry.path()?;
-            let new_path = dst_dir.join(path);
-            // Create parent directories if they don't exist
-            if let Some(parent) = new_path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            entry.unpack(&new_path)?;
         }
 
         Ok(())
