@@ -108,12 +108,12 @@ impl ty::TyCodeBlock {
             })
             .flatten();
         let span = implicit_return_span.unwrap_or_else(|| code_block.whole_block_span.clone());
-
+	
         let block_type = code_block
             .contents
             .iter()
             .find_map(|node| {
-                match node {
+	        match node {
                     // If an ast node of the block returns, breaks, or continues then the whole block should have Never as return type.
                     ty::TyAstNode {
                         content:
@@ -153,6 +153,12 @@ impl ty::TyCodeBlock {
                 }
             })
             .unwrap_or_else(|| ctx.engines.te().id_of_unit());
+
+	let current_mod_path = ctx.namespace.current_mod_path();
+	let problem = current_mod_path.len() == 1 && current_mod_path[0].as_str() == "diverging_exprs";
+	if problem {
+	    dbg!(&ctx.engines.te().get(block_type));
+	}
 
         (block_type, span)
     }

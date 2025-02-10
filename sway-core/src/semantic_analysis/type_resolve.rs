@@ -180,8 +180,19 @@ pub fn resolve_type(
         _ => type_id,
     };
 
+//    let current_mod_path = namespace.current_mod_path();
+//    let problem = current_mod_path.len() == 1 && current_mod_path[0].as_str() == "diverging_exprs";
+
+//    if problem {
+//	dbg!(&*type_engine.get(type_id));
+////	dbg!(&subst_ctx);
+//    }
     let mut type_id = type_id;
     type_id.subst(subst_ctx);
+
+//    if problem {
+//	dbg!(&*type_engine.get(type_id));
+//    }
 
     Ok(type_id)
 }

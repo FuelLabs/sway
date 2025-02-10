@@ -93,6 +93,8 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
+//		dbg!(&var_decl.name);
+//		dbg!(&*type_engine.get(var_decl.return_type));
                 let typed_var_decl = ty::TyDecl::VariableDecl(Box::new(var_decl));
                 ctx.insert_symbol(handler, name, typed_var_decl.clone())?;
                 typed_var_decl

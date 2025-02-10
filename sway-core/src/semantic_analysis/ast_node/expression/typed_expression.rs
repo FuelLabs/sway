@@ -787,6 +787,12 @@ impl ty::TyExpression {
                 Err(_err) => (ty::TyCodeBlock::default(), type_engine.id_of_unit()),
             };
 
+	let current_mod_path = ctx.namespace.current_mod_path();
+	let problem = current_mod_path.len() == 1 && current_mod_path[0].as_str() == "diverging_exprs";
+	if problem {
+	    dbg!(&ctx.engines.te().get(block_return_type));
+	}
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(typed_block),
             return_type: block_return_type,
@@ -880,6 +886,15 @@ impl ty::TyExpression {
         };
         let type_id = typed_value.return_type;
 
+	let current_mod_path = ctx.namespace.current_mod_path();
+	let problem = current_mod_path.len() == 1 && current_mod_path[0].as_str() == "diverging_exprs";
+	if problem {
+	    dbg!(&value);
+	    dbg!(&typed_value);
+	    dbg!(&ctx.engines.te().get(type_id));
+	}
+
+	
         // check to make sure that the type of the value is something that can be matched upon
         type_engine
             .get(type_id)
@@ -2357,6 +2372,7 @@ impl ty::TyExpression {
             ReassignmentTarget::ElementAccess(path) => {
                 let lhs_span = path.span.clone();
                 let mut expr = path;
+//		dbg!(&expr);
                 let mut indices = Vec::new();
                 // Loop through the LHS "backwards" starting from the outermost expression
                 // (the whole LHS) and moving towards the first identifier that must
@@ -2366,7 +2382,9 @@ impl ty::TyExpression {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
                             let unknown_decl = ctx.resolve_symbol(handler, &name)?;
-
+//			    if name.as_str() == "v2" {
+//				dbg!(&unknown_decl);
+//			    }
                             match unknown_decl {
                                 TyDecl::VariableDecl(variable_decl) => {
                                     if !variable_decl.mutability.is_mutable() {
@@ -2377,8 +2395,7 @@ impl ty::TyExpression {
                                             },
                                         ));
                                     }
-
-                                    break (name, variable_decl.body.return_type);
+                                    break (name, variable_decl./*body.*/return_type);
                                 }
                                 TyDecl::ConstantDecl(constant_decl) => {
                                     let constant_decl =
@@ -2457,6 +2474,7 @@ impl ty::TyExpression {
                 };
 
                 let indices = indices.into_iter().rev().collect::<Vec<_>>();
+//		dbg!(&base_type);
                 let (ty_of_field, _ty_of_parent) =
                     ctx.namespace().current_module().read(engines, |m| {
                         Self::find_subfield_type(
@@ -2468,6 +2486,7 @@ impl ty::TyExpression {
                             &indices,
                         )
                     })?;
+//		dbg!(&ty_of_field);
 
                 (
                     TyReassignmentTarget::ElementAccess {
@@ -2480,6 +2499,9 @@ impl ty::TyExpression {
             }
         };
 
+//	dbg!(&lhs);
+//	dbg!(&rhs);
+//	dbg!(&*type_engine.get(expected_rhs_type));
         let ctx = ctx
             .with_type_annotation(expected_rhs_type)
             .with_help_text("");
@@ -2550,6 +2572,9 @@ impl ty::TyExpression {
             ResolvedDeclaration::Parsed(_) => unreachable!(),
             ResolvedDeclaration::Typed(ty_decl) => ty_decl.return_type(handler, engines)?,
         };
+//	if base_name.as_str() == "v2" {
+//	    dbg!(&*type_engine.get(symbol));
+//	}
         let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
         let mut full_span_for_error = base_name.span();
