@@ -319,21 +319,6 @@ impl TestInstance for () {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for () {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl PartialEq for () {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl Eq for () {}
-
 impl TestInstance for [u64; 0] {
     fn new() -> Self {
         []

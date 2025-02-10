@@ -280,15 +280,6 @@ impl TestInstance for raw_ptr {
     }
 }
 
-impl AbiEncode for raw_ptr {
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let v = asm(p: self) {
-            p: u64
-        };
-        v.abi_encode(buffer)
-    }
-}
-
 impl TestInstance for raw_slice {
     fn new() -> Self {
         let null_ptr = asm() {

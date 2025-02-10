@@ -2,6 +2,7 @@ library;
 
 use ::primitives::*;
 use ::slice::*;
+use ::raw_slice::*;
 
 /// Trait for the addition of two values.
 pub trait Add {
@@ -708,6 +709,74 @@ pub trait PartialEq {
 }
 
 #[cfg(experimental_partial_eq = false)]
+impl Eq for () {
+    fn eq(self, other: Self) -> bool {
+        true
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for () {
+    fn eq(self, other: Self) -> bool {
+        true
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for () {}
+
+#[cfg(experimental_partial_eq = false)]
+impl<T> Eq for (T,) where T: Eq {
+   fn eq(self, other: Self) -> bool {
+       self.0 == other.0
+   }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl<T> PartialEq for (T,) where T: PartialEq {
+   fn eq(self, other: Self) -> bool {
+       self.0 == other.0
+   }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl<T> Eq for (T,) where T: Eq {}
+
+#[cfg(experimental_partial_eq = false)]
+impl<T1, T2> Eq for (T1, T2) where T1: Eq, T2: Eq {
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl<T1, T2> PartialEq for (T1, T2) where T1: PartialEq, T2: PartialEq {
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl<T1, T2> Eq for (T1, T2) where T1: Eq, T2: Eq {}
+
+#[cfg(experimental_partial_eq = false)]
+impl<T1, T2, T3> Eq for (T1, T2, T3) where T1: Eq, T2: Eq, T3: Eq {
+   fn eq(self, other: Self) -> bool {
+       self.0 == other.0 && self.1 == other.1 && self.2 == other.2
+   }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl<T1, T2, T3> PartialEq for (T1, T2, T3) where T1: PartialEq, T2: PartialEq, T3: PartialEq {
+   fn eq(self, other: Self) -> bool {
+       self.0 == other.0 && self.1 == other.1 && self.2 == other.2
+   }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl<T1, T2, T3> Eq for (T1, T2, T3) where T1: Eq, T2: Eq, T3: Eq {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for bool {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
@@ -840,8 +909,25 @@ impl PartialEq for raw_ptr {
     }
 }
 
+// #[cfg(experimental_partial_eq = true)]
+// impl Eq for raw_ptr {}
+
+#[cfg(experimental_partial_eq = false)]
+impl Eq for raw_slice {
+    fn eq(self, other: Self) -> bool {
+        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    }
+}
+
 #[cfg(experimental_partial_eq = true)]
-impl Eq for raw_ptr {}
+impl PartialEq for raw_slice {
+    fn eq(self, other: Self) -> bool {
+        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    }
+}
+
+// #[cfg(experimental_partial_eq = true)]
+// impl Eq for raw_slice {}
 
 /// Trait to evaluate if one value is greater or less than another of the same type.
 pub trait Ord {
