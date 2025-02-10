@@ -1,2 +1,2 @@
 category = "compile"
-expected_warnings = 0
+expected_warnings = 1
