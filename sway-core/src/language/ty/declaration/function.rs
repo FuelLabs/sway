@@ -166,10 +166,10 @@ impl DeclRefFunction {
                         })
                         .collect::<Vec<_>>();
                     if !matches.is_empty() {
+                        // Adds type substitution for first match only as we can apply only one.
                         type_id_type_subst_map
                             .insert(impl_type_parameter.type_id, matches[0].0.type_id);
-                    }
-                    if engines
+                    } else if engines
                         .te()
                         .get(impl_self_or_trait.implementing_for.initial_type_id)
                         .eq(
