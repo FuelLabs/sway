@@ -108,7 +108,7 @@ impl ty::TyCodeBlock {
             })
             .flatten();
         let span = implicit_return_span.unwrap_or_else(|| code_block.whole_block_span.clone());
-        
+
         let block_type = code_block
             .contents
             .iter()

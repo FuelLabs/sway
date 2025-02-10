@@ -54,30 +54,30 @@ impl ty::TyVariableDecl {
             .with_type_annotation(type_ascription.type_id)
             .with_help_text(
                 "Variable declaration's type annotation does not match up \
-                        with the assigned expression's type.",
+                 with the assigned expression's type.",
             );
 
-	    let result = ty::TyExpression::type_check(handler, ctx.by_ref(), &var_decl.body);
+	let result = ty::TyExpression::type_check(handler, ctx.by_ref(), &var_decl.body);
         let body = result
             .unwrap_or_else(|err| ty::TyExpression::error(err, var_decl.name.span(), engines));
 
-	    // Determine the type of the variable going forward.  Typically this is the type of the RHS,
-	    // but in some cases we need to use the type ascription instead.
-	    // TODO: We should not have these special cases. The typecheck expressions should be written
-	    // in a way to always use the context provided by the LHS, and use the unified type of LHS
-	    // and RHS as the return type of the RHS.  Remove this special case as a part of the
-	    // initiative of improving type inference.
+	// Determine the type of the variable going forward.  Typically this is the type of the RHS,
+	// but in some cases we need to use the type ascription instead.
+	// TODO: We should not have these special cases. The typecheck expressions should be written
+	// in a way to always use the context provided by the LHS, and use the unified type of LHS
+	// and RHS as the return type of the RHS.  Remove this special case as a part of the
+	// initiative of improving type inference.
         let return_type =
-	        match (&*type_engine.get(type_ascription.type_id), &*type_engine.get(body.return_type)) {
-		        // Integers: We can't rely on the type of the RHS to give us the correct integer
-		        // type, so the type of the variable *has* to follow `type_ascription` if
-		        // `type_ascription` is a concrete integer type that does not conflict with the type
-		        // of `body` (i.e. passes the type checking above).
-		        (TypeInfo::UnsignedInteger(_), _) |
-		        // Never: If the RHS resolves to Never, then any code following the declaration is
-		        // unreachable. If the variable is used later on, then it should be treated as
-		        // having the same type as the type ascription.
-		        (_, TypeInfo::Never) |
+	    match (&*type_engine.get(type_ascription.type_id), &*type_engine.get(body.return_type)) {
+		// Integers: We can't rely on the type of the RHS to give us the correct integer
+		// type, so the type of the variable *has* to follow `type_ascription` if
+		// `type_ascription` is a concrete integer type that does not conflict with the type
+		// of `body` (i.e. passes the type checking above).
+		(TypeInfo::UnsignedInteger(_), _) |
+		// Never: If the RHS resolves to Never, then any code following the declaration is
+		// unreachable. If the variable is used later on, then it should be treated as
+		// having the same type as the type ascription.
+		(_, TypeInfo::Never) |
                 // If RHS type check ends up in an error we want to use the
                 // provided type ascription as the variable type. E.g.:
                 //   let v: Struct<u8> = Struct<u64> { x: 0 }; // `v` should be "Struct<u8>".
@@ -85,8 +85,8 @@ impl ty::TyVariableDecl {
                 //   let v = <some error>; // `v` will remain "{unknown}".
                 // TODO: Refine and improve this further. E.g.,
                 //   let v: Struct { /* MISSING FIELDS */ }; // Despite the error, `v` should be of type "Struct".
-		        (_, TypeInfo::ErrorRecovery(_)) => type_ascription.type_id,
-		        // In all other cases we use the type of the RHS.
+		(_, TypeInfo::ErrorRecovery(_)) => type_ascription.type_id,
+		// In all other cases we use the type of the RHS.
                 _ => body.return_type,
             };
 
