@@ -523,7 +523,7 @@ impl GenericManifestFile for PackageManifestFile {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -591,7 +591,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -609,7 +609,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_string(contents: String) -> Result<Self> {

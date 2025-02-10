@@ -14,6 +14,7 @@ use ::math::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, None, Some};
 use ::ops::*;
+use ::codec::*;
 
 /// The 128-bit unsigned integer type.
 ///

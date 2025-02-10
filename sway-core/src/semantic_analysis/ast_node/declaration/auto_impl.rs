@@ -440,8 +440,13 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.current_package_name().as_str() == "core" {
-            return Some((None, None));
+        if self.ctx.namespace.current_package_name().as_str() == "std" {
+            if matches!(
+                self.ctx.namespace.current_module().name().as_str(),
+                "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
+            ) {
+                return Some((None, None));
+            }
         }
 
         let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
@@ -475,8 +480,13 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.current_package_name().as_str() == "core" {
-            return Some((None, None));
+        if self.ctx.namespace.current_package_name().as_str() == "std" {
+            if matches!(
+                self.ctx.namespace.current_module().name().as_str(),
+                "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
+            ) {
+                return Some((None, None));
+            }
         }
 
         let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
