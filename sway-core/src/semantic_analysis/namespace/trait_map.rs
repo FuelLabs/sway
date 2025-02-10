@@ -1,4 +1,5 @@
 use std::{
+    cell::Cell,
     cmp::Ordering,
     collections::{BTreeSet, HashMap, HashSet},
     fmt,
@@ -6,6 +7,7 @@ use std::{
     sync::Arc,
 };
 
+use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -24,10 +26,10 @@ use crate::{
     },
     type_system::{SubstTypes, TypeId},
     IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
-    TypeSubstMap, UnifyCheck,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
-use super::Module;
+use super::{Module, Root};
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
@@ -102,14 +104,18 @@ type TraitName = Arc<CallPath<TraitSuffix>>;
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
+    impl_type_parameters: Vec<TypeParameter>,
     trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
-        self.name
-            .cmp(&other.name, ctx)
-            .then_with(|| self.type_id.cmp(&other.type_id))
+        self.name.cmp(&other.name, ctx).then_with(|| {
+            self.type_id.cmp(&other.type_id).then_with(|| {
+                self.impl_type_parameters
+                    .cmp(&other.impl_type_parameters, ctx)
+            })
+        })
     }
 }
 
@@ -230,6 +236,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
+        impl_type_parameters: Vec<TypeParameter>,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -276,6 +283,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: _,
+                        impl_type_parameters: _,
                     },
                 value:
                     TraitValue {
@@ -443,6 +451,7 @@ impl TraitMap {
                 impl_span.clone(),
                 trait_decl_span,
                 type_id,
+                impl_type_parameters,
                 trait_items,
                 engines,
             );
@@ -451,12 +460,14 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
+        impl_type_parameters: Vec<TypeParameter>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
@@ -464,6 +475,7 @@ impl TraitMap {
             name: trait_name,
             type_id,
             trait_decl_span,
+            impl_type_parameters,
         };
         let value = TraitValue {
             trait_items: trait_methods,
@@ -512,6 +524,274 @@ impl TraitMap {
                 }
             }
         }
+    }
+
+    fn get_traits_types(
+        &self,
+        traits_types: &mut HashMap<CallPath, Vec<TypeId>>,
+    ) -> Result<(), ErrorEmitted> {
+        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
+        keys.sort();
+        for key in keys {
+            for self_entry in self.trait_impls[key].iter() {
+                let callpath = CallPath {
+                    prefixes: self_entry.key.name.prefixes.clone(),
+                    suffix: self_entry.key.name.suffix.name.clone(),
+                    callpath_type: self_entry.key.name.callpath_type,
+                };
+                if let Some(vec) = traits_types.get_mut(&callpath) {
+                    vec.push(self_entry.key.type_id);
+                } else {
+                    traits_types.insert(callpath, vec![self_entry.key.type_id]);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    // Given an impl of the form impl<P1..=Pn> Trait<T1..=Tn> for T0, the impl is allowed if:
+    //  1. Trait is a local trait
+    //    or
+    //  2. All of
+    //      a) At least one of the types T0..=Tn must be a local type. Let Ti be the first such type.
+    //      b) No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
+    //         This is already checked elsewhere in the compiler so no need to check here.
+    pub(crate) fn check_orphan_rules(
+        handler: &Handler,
+        engines: &Engines,
+        current_package: &Root,
+    ) -> Result<(), ErrorEmitted> {
+        fn is_from_local_package(current_package: &Root, call_path: &CallPath) -> bool {
+            let package_name = call_path.prefixes.first().unwrap();
+            let is_external =
+                current_package
+                    .external_packages()
+                    .iter()
+                    .any(|(external_package_name, _root)| {
+                        external_package_name.as_str() == package_name.as_str()
+                    });
+            if is_external {
+                return false;
+            }
+            assert_eq!(
+                current_package.current_package_name().as_str(),
+                package_name.as_str()
+            );
+            true
+        }
+
+        let trait_map = &current_package
+            .current_package_root_module()
+            .root_lexical_scope()
+            .items
+            .implemented_traits;
+        let mut keys = trait_map.trait_impls.keys().collect::<Vec<_>>();
+        keys.sort();
+
+        for key in keys {
+            for trait_entry in trait_map.trait_impls[key].iter() {
+                // 0. If it's a contract then skip it as it's not relevant to coherence.
+                if engines.te().get(trait_entry.key.type_id).is_contract() {
+                    continue;
+                }
+
+                // 1. Check if trait is local to the current package
+                let package_name = trait_entry.key.name.prefixes.first().unwrap();
+
+                let package_program_id = current_package.program_id();
+                let trait_impl_program_id = trait_entry
+                    .value
+                    .impl_span
+                    .source_id()
+                    .unwrap()
+                    .program_id();
+                if package_program_id != trait_impl_program_id {
+                    continue;
+                }
+
+                if package_name == current_package.current_package_name() {
+                    continue;
+                }
+
+                // 2. Now the trait is necessarily upstream to the current package
+                let mut has_local_type = false;
+                'arg_loop: for arg in &trait_entry.key.name.suffix.args {
+                    // Create a flag to track if a local type was found in this argument.
+                    let found_local = Cell::new(false);
+
+                    arg.type_id
+                        .walk_inner_types(engines, IncludeSelf::Yes, &|inner_type_id| {
+                            // If we've already flagged a local type, no need to do further work.
+                            if found_local.get() {
+                                return;
+                            }
+
+                            let inner_type = engines.te().get(*inner_type_id);
+                            let is_local = match *inner_type {
+                                TypeInfo::Enum(decl_id) => {
+                                    let enum_decl = engines.de().get_enum(&decl_id);
+                                    is_from_local_package(current_package, &enum_decl.call_path)
+                                }
+                                TypeInfo::Struct(decl_id) => {
+                                    let struct_decl = engines.de().get_struct(&decl_id);
+                                    is_from_local_package(current_package, &struct_decl.call_path)
+                                }
+                                _ => false,
+                            };
+
+                            // Mark the flag if a local type is found.
+                            if is_local {
+                                found_local.set(true);
+                            }
+                        });
+
+                    // If a local type was found during the walk, update the overall flag and break.
+                    if found_local.get() {
+                        has_local_type = true;
+                        break 'arg_loop;
+                    }
+                }
+
+                let args = trait_entry
+                    .key
+                    .type_id
+                    .extract_inner_types(engines, IncludeSelf::Yes);
+                for arg_type_id in args {
+                    let arg = engines.te().get(arg_type_id);
+                    let is_local_type = match *arg {
+                        TypeInfo::Enum(decl_id) => {
+                            let enum_decl = engines.de().get_enum(&decl_id);
+                            is_from_local_package(current_package, &enum_decl.call_path)
+                        }
+                        TypeInfo::Struct(decl_id) => {
+                            let struct_decl = engines.de().get_struct(&decl_id);
+                            is_from_local_package(current_package, &struct_decl.call_path)
+                        }
+                        _ => false,
+                    };
+                    has_local_type |= is_local_type;
+                    if has_local_type {
+                        break;
+                    }
+                }
+
+                if !has_local_type {
+                    handler.emit_err(CompileError::IncoherentImplDueToOrphanRule {
+                        span: trait_entry.value.impl_span.clone(),
+                    });
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Given [TraitMap]s `self` and `other`, checks for overlaps between `self` and `other`.
+    /// If no overlaps are found extends `self` with `other`.
+    pub(crate) fn check_overlap_and_extend(
+        &mut self,
+        handler: &Handler,
+        other: TraitMap,
+        engines: &Engines,
+    ) -> Result<(), ErrorEmitted> {
+        let mut overlap_err = None;
+        let unify_check = UnifyCheck::coercion(engines);
+        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
+        keys.sort();
+        let mut traits_types = HashMap::<CallPath, Vec<TypeId>>::new();
+        self.get_traits_types(&mut traits_types)?;
+        other.get_traits_types(&mut traits_types)?;
+
+        for key in keys {
+            for self_entry in self.trait_impls[key].iter() {
+                let self_tcs = self_entry
+                    .key
+                    .impl_type_parameters
+                    .iter()
+                    .flat_map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
+                    .collect::<Vec<_>>();
+
+                for other_entry in other.get_impls(engines, self_entry.key.type_id, true) {
+                    if self_entry.key.name.eq(
+                        &*other_entry.key.name,
+                        &PartialEqWithEnginesContext::new(engines),
+                    ) && self_entry.value.impl_span != other_entry.value.impl_span
+                        && unify_check.check(self_entry.key.type_id, other_entry.key.type_id)
+                    {
+                        let other_tcs = other_entry
+                            .key
+                            .impl_type_parameters
+                            .iter()
+                            .flat_map(|tp| tp.trait_constraints.iter().map(|tc| (tc, tp.clone())))
+                            .collect::<Vec<_>>();
+                        let other_tcs_satisfied = other_tcs.iter().all(|(tc, tp)| {
+                            if let Some(tc_type_ids) = traits_types.get(&tc.trait_name) {
+                                tc_type_ids.iter().any(|tc_type_id| {
+                                    let mut type_mapping = TypeSubstMap::new();
+                                    type_mapping.insert(tp.type_id, *tc_type_id);
+                                    let mut type_id = other_entry.key.type_id;
+                                    type_id.subst(&SubstTypesContext::new(
+                                        engines,
+                                        &type_mapping,
+                                        false,
+                                    ));
+                                    unify_check.check(self_entry.key.type_id, type_id)
+                                })
+                            } else {
+                                false
+                            }
+                        });
+
+                        let self_tcs_satisfied = self_tcs.iter().all(|(tc, tp)| {
+                            if let Some(tc_type_ids) = traits_types.get(&tc.trait_name) {
+                                tc_type_ids.iter().any(|tc_type_id| {
+                                    let mut type_mapping = TypeSubstMap::new();
+                                    type_mapping.insert(tp.type_id, *tc_type_id);
+                                    let mut type_id = self_entry.key.type_id;
+                                    type_id.subst(&SubstTypesContext::new(
+                                        engines,
+                                        &type_mapping,
+                                        false,
+                                    ));
+                                    unify_check.check(other_entry.key.type_id, type_id)
+                                })
+                            } else {
+                                false
+                            }
+                        });
+
+                        if other_tcs_satisfied && self_tcs_satisfied {
+                            let entry_items = self_entry.value.trait_items.keys().sorted();
+                            for trait_item_name1 in entry_items {
+                                let other_entry_items =
+                                    other_entry.value.trait_items.keys().sorted();
+                                for trait_item_name2 in other_entry_items {
+                                    if trait_item_name1 == trait_item_name2 {
+                                        handler.emit_err(CompileError::InternalOwned(
+                                            format!("Overlapped item {}", trait_item_name1),
+                                            self_entry.value.impl_span.clone(),
+                                        ));
+                                        overlap_err =
+                                            Some(handler.emit_err(CompileError::InternalOwned(
+                                                format!("Overlapped item {}", trait_item_name1),
+                                                other_entry.value.impl_span.clone(),
+                                            )));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(overlap_err) = overlap_err {
+            return Err(overlap_err);
+        }
+
+        self.extend(other, engines);
+
+        Ok(())
     }
 
     /// Filters the entries in `self` and return a new [TraitMap] with all of
@@ -643,6 +923,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: map_trait_decl_span,
+                        impl_type_parameters: map_impl_type_parameters,
                     },
                 value:
                     TraitValue {
@@ -658,6 +939,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_impl_type_parameters.clone(),
                         map_trait_items.clone(),
                         engines,
                     );
@@ -667,6 +949,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *map_type_id,
+                        map_impl_type_parameters.clone(),
                         Self::filter_dummy_methods(
                             map_trait_items.clone(),
                             *type_id,
