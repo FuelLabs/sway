@@ -734,7 +734,7 @@ impl TyDecl {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let type_id = match self {
-            TyDecl::VariableDecl(decl) => decl./*body.*/return_type,
+            TyDecl::VariableDecl(decl) => decl.return_type,
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_function(decl_id);
                 decl.return_type.type_id

@@ -74,7 +74,7 @@ pub struct TypeCheckContext<'a> {
     self_type: Option<TypeId>,
     /// While type-checking an expression, this indicates the types to be substituted when a
     /// type is resolved. This is required is to replace associated types, namely TypeInfo::TraitType.
-    pub type_subst: TypeSubstMap,
+    type_subst: TypeSubstMap,
     /// Whether or not we're within an `abi` implementation.
     ///
     /// This is `ImplAbiFn` while checking `abi` implementations whether at their original impl

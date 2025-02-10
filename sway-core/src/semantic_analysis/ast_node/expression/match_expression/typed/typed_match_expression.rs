@@ -88,13 +88,6 @@ impl ty::TyMatchExpression {
             span,
         };
 
-	let current_mod_path = ctx.namespace.current_mod_path();
-	let problem = current_mod_path.len() == 1 && current_mod_path[0].as_str() == "diverging_exprs";
-	if problem {
-	    dbg!(&ctx.engines.te().get(typed_exp.value_type_id));
-	}
-
-	
         Ok((typed_exp, typed_scrutinees))
     }
 
