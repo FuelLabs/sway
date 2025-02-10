@@ -132,6 +132,18 @@ impl fmt::Display for Pinned {
 
 impl Cid {
     fn extract_archive<R: std::io::Read>(&self, reader: R, dst: &Path) -> Result<()> {
+        /*
+        let dst_dir = dst.join(self.0.to_string());
+        std::fs::create_dir_all(&dst_dir)?;
+        let mut archive = Archive::new(reader);
+
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            entry.unpack_in(&dst_dir)?;
+        }
+
+        Ok(())
+        */
         let dst_dir = dst.join(self.0.to_string());
         std::fs::create_dir_all(&dst_dir)?;
         let mut archive = Archive::new(reader);
@@ -343,5 +355,53 @@ mod tests {
         assert_eq!(parsed, expected);
         let serialized = expected.to_string();
         assert_eq!(&serialized, string);
+    }
+
+    #[test]
+    fn test_path_traversal_prevention() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let cid = create_test_cid();
+
+        // Create a known directory structure
+        let target_dir = temp_dir.path().join("target");
+        std::fs::create_dir(&target_dir)?;
+
+        // Create our canary file in a known location
+        let canary_content = "sensitive content";
+        let canary_path = target_dir.join("canary.txt");
+        std::fs::write(&canary_path, canary_content)?;
+
+        // Create tar with malicious path targeting our specific canary file
+        let mut header = tar::Header::new_gnu();
+        let malicious_path = b"../../target/canary.txt";
+        header.as_gnu_mut().unwrap().name[..malicious_path.len()].copy_from_slice(malicious_path);
+        header.set_size(17);
+        header.set_mode(0o644);
+        header.set_cksum();
+
+        let mut ar = tar::Builder::new(Vec::new());
+        ar.append(&header, b"malicious content".as_slice())?;
+
+        // Add safe file
+        let mut safe_header = tar::Header::new_gnu();
+        safe_header.set_path("safe.txt")?;
+        safe_header.set_size(12);
+        safe_header.set_mode(0o644);
+        safe_header.set_cksum();
+        ar.append(&safe_header, b"safe content".as_slice())?;
+
+        // Extract to a subdirectory of temp_dir
+        let tar_content = ar.into_inner()?;
+        let extract_dir = temp_dir.path().join("extract");
+        std::fs::create_dir(&extract_dir)?;
+        cid.extract_archive(Cursor::new(tar_content), &extract_dir)?;
+
+        // Verify canary file was not modified
+        assert_eq!(
+            std::fs::read_to_string(&canary_path)?,
+            canary_content,
+            "Canary file was modified - path traversal protection failed!"
+        );
+        Ok(())
     }
 }

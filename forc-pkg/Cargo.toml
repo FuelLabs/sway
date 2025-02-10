@@ -42,6 +42,7 @@ vec1.workspace = true
 walkdir.workspace = true
 
 [dev-dependencies]
+pathdiff = "0.2.3"
 regex = "^1.10.2"
 tempfile.workspace = true
 
