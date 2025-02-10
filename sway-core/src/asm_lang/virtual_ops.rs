@@ -218,6 +218,18 @@ pub(crate) enum VirtualOp {
     ),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
+    ECOP(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    EPAR(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
 
     /* Other Instructions */
     FLAG(VirtualRegister),
@@ -339,6 +351,8 @@ impl VirtualOp {
             ED19(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
+            ECOP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            EPAR(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Other Instructions */
             FLAG(r1) => vec![r1],
@@ -407,6 +421,7 @@ impl VirtualOp {
             | TIME(_, _)
             |  GM(_, _)
             | GTF(_, _, _)
+            | EPAR(_, _, _, _)
             // Virtual OPs
             | LoadDataId(_, _)
             | AddrDataId(_, _)
@@ -463,6 +478,7 @@ impl VirtualOp {
             | ED19(_, _, _, _)
             | K256(_, _, _)
             | S256(_, _, _)
+            | ECOP(_, _, _, _)
             | FLAG(_)
             // Virtual OPs
             | BLOB(_)
@@ -570,6 +586,8 @@ impl VirtualOp {
             | TRO(_, _, _, _)
             | K256(_, _, _)
             | S256(_, _, _)
+            | ECOP(_, _, _, _)
+            | EPAR(_, _, _, _)
             | GM(_, _)
             | GTF(_, _, _)
             | BLOB(_)
@@ -687,6 +705,8 @@ impl VirtualOp {
             ED19(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
+            ECOP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            EPAR(_r1, r2, r3, r4) => vec![r2, r3, r4],
 
             /* Other Instructions */
             FLAG(r1) => vec![r1],
@@ -809,6 +829,8 @@ impl VirtualOp {
             ED19(_r1, _r2, _r3, _r4) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
+            ECOP(_r1, _r2, _r3, _r4) => vec![],
+            EPAR(r1, _r2, _r3, _r4) => vec![r1],
 
             /* Other Instructions */
             FLAG(_r1) => vec![],
@@ -1255,6 +1277,18 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
+            ),
+            ECOP(r1, r2, r3, r4) => Self::ECOP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            EPAR(r1, r2, r3, r4) => Self::EPAR(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
             ),
 
             /* Other Instructions */
@@ -1736,6 +1770,18 @@ impl VirtualOp {
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
+            ),
+            ECOP(reg1, reg2, reg3, reg4) => AllocatedOpcode::ECOP(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            EPAR(reg1, reg2, reg3, reg4) => AllocatedOpcode::EPAR(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
             ),
 
             /* Other Instructions */

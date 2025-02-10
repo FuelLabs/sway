@@ -741,7 +741,7 @@ impl<'a> UnifyCheck<'a> {
         assert!(
             matches!(left.call_path.callpath_type, CallPathType::Full)
                 && matches!(right.call_path.callpath_type, CallPathType::Full),
-            "The call paths of the enum declarations must always be resolved."
+            "call paths of enum declarations must always be full paths"
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
@@ -802,7 +802,7 @@ impl<'a> UnifyCheck<'a> {
         assert!(
             matches!(left.call_path.callpath_type, CallPathType::Full)
                 && matches!(right.call_path.callpath_type, CallPathType::Full),
-            "The call paths of the enum declarations must always be resolved."
+            "call paths of struct declarations must always be full paths"
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names

@@ -8,6 +8,6 @@ pub enum SignatureError {
     InvalidPublicKey: (),
     /// The error variant used when signature verification fails.
     InvalidSignature: (),
-    /// The error varient used when an invalid operation was performed.
+    /// The error variant used when an invalid operation was performed.
     InvalidOperation: (),
 }

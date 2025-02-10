@@ -75,9 +75,13 @@ async fn msg_sender_from_contract() {
 async fn input_message_msg_sender_from_contract() {
     // Wallet
     let mut wallet = WalletUnlocked::new_random(None);
+    let mut deployer_wallet = WalletUnlocked::new_random(None);
 
     // Setup coins and messages
     let coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
+    let coins_2 = setup_single_asset_coins(deployer_wallet.address(), AssetId::BASE, 100, 1000);
+    let total_coins = [coins, coins_2].concat();
+
     let msg = setup_single_message(
         &Bech32Address {
             hrp: "".to_string(),
@@ -89,10 +93,11 @@ async fn input_message_msg_sender_from_contract() {
         vec![],
     );
 
-    let provider = setup_test_provider(coins.clone(), vec![msg.clone()], None, None)
+    let provider = setup_test_provider(total_coins.clone(), vec![msg.clone()], None, None)
         .await
         .unwrap();
     wallet.set_provider(provider.clone());
+    deployer_wallet.set_provider(provider.clone());
 
     // Setup contract
     let id = Contract::load_from(
@@ -100,7 +105,7 @@ async fn input_message_msg_sender_from_contract() {
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxPolicies::default())
+    .deploy(&deployer_wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = AuthContract::new(id.clone(), wallet.clone());
@@ -109,7 +114,7 @@ async fn input_message_msg_sender_from_contract() {
     let call_handler = instance
         .methods()
         .returns_msg_sender_address(Address::from(*msg.recipient.hash()));
-    let mut tb = call_handler.transaction_builder().await.unwrap();
+    let mut tb = call_handler.transaction_builder().await.unwrap().enable_burn(true);
 
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
@@ -258,7 +263,7 @@ async fn caller_addresses_from_messages() {
     tb.add_signer(wallet3.clone()).unwrap();
 
     let provider = wallet1.provider().unwrap();
-    let tx = tb.build(provider.clone()).await.unwrap();
+    let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
     let tx_id = provider.send_transaction(tx).await.unwrap();
@@ -398,7 +403,7 @@ async fn caller_addresses_from_coins() {
     tb.add_signer(wallet3.clone()).unwrap();
 
     let provider = wallet1.provider().unwrap();
-    let tx = tb.build(provider.clone()).await.unwrap();
+    let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
     let tx_id = provider.send_transaction(tx).await.unwrap();
@@ -539,7 +544,7 @@ async fn caller_addresses_from_coins_and_messages() {
     tb.add_signer(wallet3.clone()).unwrap();
 
     let provider = wallet1.provider().unwrap();
-    let tx = tb.build(provider.clone()).await.unwrap();
+    let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
     let tx_id = provider.send_transaction(tx).await.unwrap();
