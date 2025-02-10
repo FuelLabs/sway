@@ -57,18 +57,17 @@ impl ty::TyVariableDecl {
                  with the assigned expression's type.",
             );
 
-	let result = ty::TyExpression::type_check(handler, ctx.by_ref(), &var_decl.body);
+        let result = ty::TyExpression::type_check(handler, ctx.by_ref(), &var_decl.body);
         let body = result
             .unwrap_or_else(|err| ty::TyExpression::error(err, var_decl.name.span(), engines));
 
-	// Determine the type of the variable going forward.  Typically this is the type of the RHS,
-	// but in some cases we need to use the type ascription instead.
-	// TODO: We should not have these special cases. The typecheck expressions should be written
-	// in a way to always use the context provided by the LHS, and use the unified type of LHS
-	// and RHS as the return type of the RHS.  Remove this special case as a part of the
-	// initiative of improving type inference.
-        let return_type =
-	    match (&*type_engine.get(type_ascription.type_id), &*type_engine.get(body.return_type)) {
+        // Determine the type of the variable going forward.  Typically this is the type of the RHS,
+        // but in some cases we need to use the type ascription instead.
+        // TODO: We should not have these special cases. The typecheck expressions should be written
+        // in a way to always use the context provided by the LHS, and use the unified type of LHS
+        // and RHS as the return type of the RHS.  Remove this special case as a part of the
+        // initiative of improving type inference.
+        let return_type = match (&*type_engine.get(type_ascription.type_id), &*type_engine.get(body.return_type)) {
 		// Integers: We can't rely on the type of the RHS to give us the correct integer
 		// type, so the type of the variable *has* to follow `type_ascription` if
 		// `type_ascription` is a concrete integer type that does not conflict with the type
