@@ -28,23 +28,50 @@ struct Simple {
     w: u64,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for M {
     fn eq(self, other: Self) -> bool {
         self.u == other.u && self.v == other.v
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for M {
+    fn eq(self, other: Self) -> bool {
+        self.u == other.u && self.v == other.v
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for M {}
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for T {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for T {
+    fn eq(self, other: Self) -> bool {
+        self.x == other.x && self.y == other.y && self.z == other.z
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for T {}
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for S {
     fn eq(self, other: Self) -> bool {
         self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for S {
+    fn eq(self, other: Self) -> bool {
+        self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for S {}
 
 struct S2 {
     map0: StorageMap<u64, u64>,

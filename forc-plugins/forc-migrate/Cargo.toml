@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
+duplicate.workspace = true
 forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
