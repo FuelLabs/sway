@@ -4,9 +4,9 @@ pub mod op;
 pub mod util;
 
 use clap::Parser;
+use forc_pkg::manifest::Network;
 use serde::{Deserialize, Serialize};
 use util::target::Target;
-use forc_pkg::manifest::Network;
 
 /// Flags for specifying the node to target.
 #[derive(Debug, Default, Clone, Parser, Deserialize, Serialize)]
