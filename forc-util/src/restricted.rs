@@ -34,7 +34,7 @@ pub fn censor_profanity(name: &str) -> Option<String> {
         )
         .censor();
 
-    match censored != name.to_string() {
+    match censored != *name {
         true => Some(censored),
         false => None,
     }
