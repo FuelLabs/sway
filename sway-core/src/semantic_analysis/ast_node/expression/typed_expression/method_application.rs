@@ -8,7 +8,6 @@ use crate::{
         ty::{self, TyDecl, TyExpression, TyFunctionSig},
         *,
     },
-    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::*,
 };
@@ -36,6 +35,7 @@ pub(crate) fn type_check_method_application(
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
+    let coercion_check = UnifyCheck::coercion(engines);
 
     // type check the function arguments (1st pass)
     // Some arguments may fail on this first pass because they may require the type_annotation to the parameter type.
@@ -130,34 +130,49 @@ pub(crate) fn type_check_method_application(
     // type check the function arguments (2nd pass)
     let mut args_buf = VecDeque::new();
     for (arg, index, arg_opt) in izip!(arguments.iter(), 0.., args_opt_buf.iter().cloned()) {
-        if let (Some(arg), _, false) = arg_opt {
-            args_buf.push_back(arg);
+        let param_index = if method.is_contract_call {
+            if index == 0 {
+                if let (Some(arg), _, _) = arg_opt {
+                    args_buf.push_back(arg);
+                }
+                continue;
+            }
+            index - 1 //contract call methods don't have self parameter.
         } else {
-            // We type check the argument expression again this time throwing out the error.
-            let param_index = if method.is_contract_call {
-                index - 1 //contract call methods don't have self parameter.
-            } else {
-                index
-            };
+            index
+        };
 
-            let ctx = if let Some(param) = method.parameters.get(param_index) {
-                // We now try to type check it again, this time with the type annotation.
-                ctx.by_ref()
-                    .with_help_text(
-                        "Function application argument type must match function parameter type.",
-                    )
-                    .with_type_annotation(param.type_argument.type_id)
+        if let (Some(arg), _, false) = arg_opt {
+            if let Some(param) = method.parameters.get(param_index) {
+                // If argument type is compcoerces to resolved method parameter type skip second type_check.
+                if coercion_check.check(arg.return_type, param.type_argument.type_id) {
+                    args_buf.push_back(arg);
+                    continue;
+                }
             } else {
-                ctx.by_ref()
-                    .with_help_text("")
-                    .with_type_annotation(type_engine.new_unknown())
-            };
-
-            args_buf.push_back(
-                ty::TyExpression::type_check(handler, ctx, arg)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
-            );
+                args_buf.push_back(arg);
+                continue;
+            }
         }
+
+        // We type check the argument expression again this time throwing out the error.
+        let ctx = if let Some(param) = method.parameters.get(param_index) {
+            // We now try to type check it again, this time with the type annotation.
+            ctx.by_ref()
+                .with_help_text(
+                    "Function application argument type must match function parameter type.",
+                )
+                .with_type_annotation(param.type_argument.type_id)
+        } else {
+            ctx.by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.new_unknown())
+        };
+
+        args_buf.push_back(
+            ty::TyExpression::type_check(handler, ctx, arg)
+                .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
+        );
     }
 
     // check the method visibility
@@ -831,7 +846,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -876,7 +890,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -900,7 +913,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -925,7 +937,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 Some(*as_trait),
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
