@@ -3,7 +3,7 @@
 
 use anyhow::{bail, Result};
 use regex::Regex;
-use rustrict::CensorStr;
+use rustrict::{Censor, Type as RustrictType};
 use std::path::Path;
 
 /// Returns `true` if the name contains non-ASCII characters.
@@ -27,8 +27,15 @@ pub fn is_keyword(name: &str) -> bool {
 /// Returns `Some` if the name contains profanity, where the `&str` is the censored name.
 /// Returns `None` if the name is clean.
 pub fn censor_profanity(name: &str) -> Option<String> {
-    match name.is_inappropriate() {
-        true => Some(name.censor()),
+    let censored = Censor::from_str(name)
+        .with_censor_threshold(
+            RustrictType::SEVERE
+                | (RustrictType::MODERATE & (RustrictType::SEXUAL | RustrictType::PROFANE)),
+        )
+        .censor();
+
+    match censored != name.to_string() {
+        true => Some(censored),
         false => None,
     }
 }
