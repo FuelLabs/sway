@@ -224,7 +224,7 @@ fn parse_in_memory(
     let lexed_program = lexed::LexedProgram::new(
         kind,
         lexed::LexedModule {
-            tree: module.value,
+            tree: module,
             submodules: Vec::default(),
         },
     );
@@ -376,7 +376,7 @@ fn parse_module_tree(
         .map(|s| (s.name.clone(), s.lexed.clone()))
         .collect::<Vec<_>>();
     let lexed = lexed::LexedModule {
-        tree: module.value,
+        tree: module,
         submodules: lexed_submodules,
     };
 

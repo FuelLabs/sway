@@ -10,9 +10,10 @@ struct ConfigurableStruct {
 enum ConfigurableEnum {
     A: bool,
     B: u64,
-    C: b256
+    C: b256,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for ConfigurableEnum {
     fn eq(self, other: ConfigurableEnum) -> bool {
         match (self, other) {
@@ -22,6 +23,18 @@ impl core::ops::Eq for ConfigurableEnum {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for ConfigurableEnum {
+    fn eq(self, other: ConfigurableEnum) -> bool {
+        match (self, other) {
+            (ConfigurableEnum::A(inner1), ConfigurableEnum::A(inner2)) => inner1 == inner2,
+            (ConfigurableEnum::B(inner1), ConfigurableEnum::B(inner2)) => inner1 == inner2,
+            _ => false,
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for ConfigurableEnum {}
 
 type AnotherU8 = u8;
 
@@ -41,8 +54,7 @@ configurable {
     ARRAY_U64: [u64; 3] = [9, 8, 7],
     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
     STR_4: str[4] = __to_str_array("abcd"),
-
-    NOT_USED: u8 = 1
+    NOT_USED: u8 = 1,
 }
 
 fn main() {

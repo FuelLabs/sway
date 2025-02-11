@@ -122,7 +122,7 @@ impl TypeCheckAnalysis for TyExpression {
                     }
                 }
             }
-            TyExpressionVariant::Array { .. } => {
+            TyExpressionVariant::ArrayExplicit { .. } => {
                 self.as_array_unify_elements(handler, ctx.engines);
             }
             _ => {}
@@ -236,13 +236,21 @@ impl CollectTypesMetadata for TyExpression {
                 res.append(&mut lhs.collect_types_metadata(handler, ctx)?);
                 res.append(&mut rhs.collect_types_metadata(handler, ctx)?);
             }
-            Array {
+            ArrayExplicit {
                 elem_type: _,
                 contents,
             } => {
                 for content in contents.iter() {
                     res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
+            }
+            ArrayRepeat {
+                elem_type: _,
+                value,
+                length,
+            } => {
+                res.append(&mut value.collect_types_metadata(handler, ctx)?);
+                res.append(&mut length.collect_types_metadata(handler, ctx)?);
             }
             ArrayIndex { prefix, index } => {
                 res.append(&mut (**prefix).collect_types_metadata(handler, ctx)?);
@@ -466,6 +474,23 @@ impl TyExpression {
         }
     }
 
+    pub fn as_array(&self) -> Option<(&TypeId, &[TyExpression])> {
+        match &self.expression {
+            TyExpressionVariant::ArrayExplicit {
+                elem_type,
+                contents,
+            } => Some((elem_type, contents)),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_literal_u64(&self) -> Option<u64> {
+        match &self.expression {
+            TyExpressionVariant::Literal(Literal::U64(v)) => Some(*v),
+            _ => None,
+        }
+    }
+
     pub fn as_intrinsic(&self) -> Option<&TyIntrinsicFunctionKind> {
         match &self.expression {
             TyExpressionVariant::IntrinsicFunction(v) => Some(v),
@@ -476,7 +501,7 @@ impl TyExpression {
     /// Unify elem_type with each element return type.
     /// Must be called on arrays.
     pub fn as_array_unify_elements(&self, handler: &Handler, engines: &Engines) {
-        let TyExpressionVariant::Array {
+        let TyExpressionVariant::ArrayExplicit {
             elem_type,
             contents,
         } = &self.expression

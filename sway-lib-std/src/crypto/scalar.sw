@@ -10,6 +10,7 @@ pub struct Scalar {
     bytes: Bytes,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for Scalar {
     fn eq(self, other: Self) -> bool {
         // All scalars must be of length 32
@@ -29,6 +30,27 @@ impl Eq for Scalar {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for Scalar {
+    fn eq(self, other: Self) -> bool {
+        if self.bytes.len() != 32 || other.bytes.len() != 32 {
+            return false;
+        }
+
+        let mut iter = 0;
+        while iter < 32 {
+            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
+            {
+                return false;
+            }
+
+            iter += 1;
+        }
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for Scalar {}
 
 impl Scalar {
     /// Returns a new, uninitialized Scalar.

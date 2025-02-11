@@ -3,28 +3,33 @@
 //!
 //! Migration steps are defined in the submodules. Every submodule has the name
 //! of the corresponding breaking change Sway feature and contains all the
-//! migration steps needed to migrate that feature.
+//! migration steps needed to migrate to that feature.
 //!
 //! The special [demo] submodule contains demo migrations used for learning and testing
 //! the migration tool.
 
 mod demo;
+mod partial_eq;
 mod references;
 mod storage_domains;
 
 use std::collections::HashSet;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
+use duplicate::duplicate_item;
+use itertools::Itertools;
 use sway_ast::Module;
 use sway_core::{
     language::{
         lexed::{LexedModule, LexedProgram},
-        ty::TyProgram,
+        ty::{TyModule, TyProgram},
     },
     Engines,
 };
 use sway_features::Feature;
 use sway_types::Span;
+
+use crate::internal_error;
 
 pub(crate) struct ProgramInfo<'a> {
     pub lexed_program: LexedProgram,
@@ -38,7 +43,6 @@ pub(crate) struct ProgramInfo<'a> {
 /// that modify the source code by altering the lexed program.
 pub(crate) struct MutProgramInfo<'a> {
     pub lexed_program: &'a mut LexedProgram,
-    #[allow(dead_code)]
     pub ty_program: &'a TyProgram,
     pub engines: &'a Engines,
 }
@@ -103,23 +107,23 @@ impl MigrationStep {
         use MigrationStepExecution::*;
         match self.kind {
             MigrationStepKind::Instruction(_) => Manual,
-            MigrationStepKind::CodeModification(_, manual_migration_actions)
+            MigrationStepKind::CodeModification(_, manual_migration_actions, _)
                 if !manual_migration_actions.is_empty() =>
             {
                 Semiautomatic
             }
-            MigrationStepKind::CodeModification(_, _) => Automatic,
-            MigrationStepKind::Interaction(_, _, _) => Semiautomatic,
+            MigrationStepKind::CodeModification(..) => Automatic,
+            MigrationStepKind::Interaction(..) => Semiautomatic,
         }
     }
 
     pub(crate) fn has_manual_actions(&self) -> bool {
         match self.kind {
             MigrationStepKind::Instruction(_) => true,
-            MigrationStepKind::CodeModification(_, []) => false,
-            MigrationStepKind::CodeModification(_, _) => true,
-            MigrationStepKind::Interaction(_, _, []) => false,
-            MigrationStepKind::Interaction(_, _, _) => true,
+            MigrationStepKind::CodeModification(_, [], _) => false,
+            MigrationStepKind::CodeModification(_, _, _) => true,
+            MigrationStepKind::Interaction(_, _, [], _) => false,
+            MigrationStepKind::Interaction(_, _, _, _) => true,
         }
     }
 }
@@ -127,10 +131,23 @@ impl MigrationStep {
 /// Denotes that a migration step that changes the source code should
 /// be executed in a dry-run mode, means just returning the places in code
 /// to be changed, but without performing the actual change.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DryRun {
     Yes,
     No,
+}
+
+/// Developer's response during an interactive migration step.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InteractionResponse {
+    /// There was no interaction with the developer.
+    None,
+    /// Developer opted for executing the migration step and change the code.
+    ExecuteStep,
+    /// Developer communicated that the code change is not needed.
+    StepNotNeeded,
+    /// Developer opted for postponing the migration step.
+    PostponeStep,
 }
 
 /// A function that analyses a program given by the [ProgramInfo] and returns
@@ -155,14 +172,44 @@ type CodeModificationFn = for<'a> fn(&'a mut MutProgramInfo<'a>, DryRun) -> Resu
 /// will happen or not.
 ///
 /// Returns the [Span]s of all the places in the **original** program code that are
-/// changed during the interaction.
-type InteractionFn = for<'a> fn(&'a mut MutProgramInfo<'a>) -> Result<Vec<Span>>;
+/// changed during the interaction, if any, together with the developer's [InteractionResponse].
+type InteractionFn =
+    for<'a> fn(&'a mut MutProgramInfo<'a>) -> Result<(InteractionResponse, Vec<Span>)>;
 
-/// A function that visits the [Module], potentially alters it, and returns a
-/// [Result] containing related information about the [Module].
+/// A function that visits the [Module] and its corresponding [TyModule],
+/// potentially alters the lexed module, and returns a
+/// [Result] containing related information about the visited module.
 ///
-/// For its usages, see [visit_lexed_modules_mut].
-type ModuleVisitorFn<T> = for<'a> fn(&'a Engines, &'a mut Module, DryRun) -> Result<T>;
+/// For its usages, see [visit_modules_mut].
+type ModuleVisitorMutFn<T> =
+    for<'a> fn(&'a Engines, &'a mut Module, &'a TyModule, DryRun) -> Result<T>;
+
+/// A function that visits the [Module] and its corresponding [TyModule],
+/// and returns a [Result] containing related information about the visited module.
+///
+/// For its usages, see [visit_modules].
+type ModuleVisitorFn<T> = for<'a> fn(&'a Engines, &'a Module, &'a TyModule, DryRun) -> Result<T>;
+
+/// Defines if the migration process can continue after a code modification
+/// migration step.
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub(crate) enum ContinueMigrationProcess {
+    /// Continue if the step has no manual migration actions specified.
+    /// This is the default and most common option.
+    IfNoManualMigrationActionsNeeded,
+    /// Always stop the migration. This is usually needed only after the
+    /// steps that represent intermediate migration to an experimental
+    /// feature for the purpose of early adoption.
+    ///
+    /// E.g., such step will keep the original code marked with
+    /// experimental feature set to false, and insert the new implementation
+    /// marked with experimental feature set to true.
+    ///
+    /// Continuing migration after such a step would be confusing,
+    /// because the next step would usually offer immediate removal of the
+    /// changes done in the step.
+    Never,
+}
 
 pub(crate) enum MigrationStepKind {
     /// A migration step that provides instructions to developers,
@@ -183,8 +230,13 @@ pub(crate) enum MigrationStepKind {
     ///
     /// **If a [MigrationStepKind::CodeModification] does not have
     /// _manual migration actions_ it is considered to be a fully automated migration,
-    /// after witch the migration process can safely continue.**
-    CodeModification(CodeModificationFn, &'static [&'static str]),
+    /// after witch the migration process can safely continue, unless marked as
+    /// [ContinueMigrationProcess::Never].**
+    CodeModification(
+        CodeModificationFn,
+        &'static [&'static str],
+        ContinueMigrationProcess,
+    ),
     /// A migration step that first provides instructions to developers,
     /// and afterwards interacts with them, giving additional instructions
     /// and asking for additional input.
@@ -202,40 +254,118 @@ pub(crate) enum MigrationStepKind {
     ///
     /// **If a [MigrationStepKind::Interaction] does not have
     /// _manual migration actions_ it is considered to be finished after the interaction,
-    /// after witch the migration process can safely continue.**
+    /// after witch the migration process can safely continue, unless marked as
+    /// [ContinueMigrationProcess::Never].**
     ///
     /// Note that in a general case, the [InstructionFn] and the [InteractionFn]
     /// can return different [Span]s. E.g., during the instruction a single
     /// span can be returned pointing to a module in which the change needs
     /// to be done, while the interaction will return the actual places in the
     /// module that were modified.
-    Interaction(InstructionFn, InteractionFn, &'static [&'static str]),
+    Interaction(
+        InstructionFn,
+        InteractionFn,
+        &'static [&'static str],
+        ContinueMigrationProcess,
+    ),
 }
 
-/// A convenient method for visiting all the [LexedModule]s within a [LexedProgram].
+/// A convenient method for visiting all the modules within a program.
 /// The `visitor` will be called for every module, and the method will return the
-/// [Vec] containing the results of all the visitor calls.
-///
-/// The `visitor` can mutate the modules.
-pub(crate) fn visit_lexed_modules_mut<T>(
-    engines: &Engines,
-    lexed_program: &mut LexedProgram,
+/// [Vec] containing the results of all the individual visitor calls.
+pub(crate) fn visit_all_modules<T>(
+    program_info: &ProgramInfo,
     dry_run: DryRun,
     visitor: ModuleVisitorFn<T>,
 ) -> Result<Vec<T>> {
+    visit_modules(
+        program_info.engines,
+        &program_info.lexed_program.root,
+        &program_info.ty_program.root_module,
+        dry_run,
+        visitor,
+    )
+}
+
+/// A convenient method for visiting all the modules within a program.
+/// The `visitor` will be called for every module, and the method will return the
+/// [Vec] containing the results of all the individual visitor calls.
+///
+/// Visitors can mutate the [LexedProgram].
+pub(crate) fn visit_all_modules_mut<T>(
+    program_info: &mut MutProgramInfo,
+    dry_run: DryRun,
+    visitor: ModuleVisitorMutFn<T>,
+) -> Result<Vec<T>> {
+    visit_modules_mut(
+        program_info.engines,
+        &mut program_info.lexed_program.root,
+        &program_info.ty_program.root_module,
+        dry_run,
+        visitor,
+    )
+}
+
+/// A convenient method for visiting the `lexed_module` and its corresponding `ty_module`,
+/// and all their submodules, recursively.
+/// The `visitor` will be called for every module, and the method will return the
+/// [Vec] containing the results of all the individual visitor calls.
+#[duplicate_item(
+    __visit_modules      __ModuleVisitorFn     __ref_type(type)  __ref(value)  __iter;
+    [visit_modules]      [ModuleVisitorFn]     [&type]           [&value]      [iter];
+    [visit_modules_mut]  [ModuleVisitorMutFn]  [&mut type]       [&mut value]  [iter_mut];
+)]
+pub(crate) fn __visit_modules<T>(
+    engines: &Engines,
+    lexed_module: __ref_type([LexedModule]),
+    ty_module: &TyModule,
+    dry_run: DryRun,
+    visitor: __ModuleVisitorFn<T>,
+) -> Result<Vec<T>> {
     fn visit_modules_rec<T>(
         engines: &Engines,
-        lexed_module: &mut LexedModule,
+        lexed_module: __ref_type([LexedModule]),
+        ty_module: &TyModule,
         dry_run: DryRun,
-        visitor: ModuleVisitorFn<T>,
+        visitor: __ModuleVisitorFn<T>,
         result: &mut Vec<T>,
     ) -> Result<()> {
-        let visitor_result = visitor(engines, &mut lexed_module.tree, dry_run)?;
+        let visitor_result = visitor(
+            engines,
+            __ref([lexed_module.tree.value]),
+            ty_module,
+            dry_run,
+        )?;
         result.push(visitor_result);
-        for (_, lexed_submodule) in lexed_module.submodules.iter_mut() {
+        let mut lexed_submodules = lexed_module.submodules.__iter().collect_vec();
+        let mut ty_submodules = ty_module.submodules.iter().collect_vec();
+
+        if lexed_submodules.len() != ty_submodules.len() {
+            bail!(internal_error(format!(
+                "Lexed module has \"{}\" submodules, and typed module has \"{}\" submodules.",
+                lexed_submodules.len(),
+                ty_submodules.len(),
+            )));
+        }
+
+        // The order of submodules is not guaranteed to be the same, hence, sorting by name to
+        // ensure the same ordering.
+        lexed_submodules.sort_by(|a, b| a.0.cmp(&b.0));
+        ty_submodules.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let lexed_submodules = lexed_submodules.__iter();
+        let ty_submodules = ty_submodules.iter();
+        for (lexed_submodule, ty_submodule) in lexed_submodules.zip(ty_submodules) {
+            if lexed_submodule.0 != ty_submodule.0 {
+                bail!(internal_error(format!(
+                    "Lexed module \"{}\" does not match with the typed module \"{}\".",
+                    lexed_submodule.0, ty_submodule.0,
+                )));
+            }
             visit_modules_rec(
                 engines,
-                &mut lexed_submodule.module,
+                __ref([lexed_submodule.1.module]),
+                &ty_submodule.1.module,
                 dry_run,
                 visitor,
                 result,
@@ -247,7 +377,8 @@ pub(crate) fn visit_lexed_modules_mut<T>(
     let mut result = vec![];
     visit_modules_rec(
         engines,
-        &mut lexed_program.root,
+        lexed_module,
+        ty_module,
         dry_run,
         visitor,
         &mut result,
@@ -344,12 +475,21 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
    ones relevant for the next breaking change version.
 */
 
-/// The list of the migration steps, grouped by the Sway features that cause
+/// The list of the migration steps, grouped by the Sway feature that causes
 /// the breaking changes behind the migration steps.
-const MIGRATION_STEPS: MigrationSteps = &[(
-    Feature::StorageDomains,
-    &[
-        self::storage_domains::REVIEW_STORAGE_SLOT_KEYS_STEP,
-        self::storage_domains::DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP,
-    ],
-)];
+const MIGRATION_STEPS: MigrationSteps = &[
+    (
+        Feature::StorageDomains,
+        &[
+            self::storage_domains::REVIEW_STORAGE_SLOT_KEYS_STEP,
+            self::storage_domains::DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP,
+        ],
+    ),
+    (
+        Feature::PartialEq,
+        &[
+            self::partial_eq::IMPLEMENT_EXPERIMENTAL_PARTIAL_EQ_AND_EQ_TRAITS,
+            self::partial_eq::REMOVE_DEPRECATED_EQ_TRAIT_IMPLEMENTATIONS,
+        ],
+    ),
+];
