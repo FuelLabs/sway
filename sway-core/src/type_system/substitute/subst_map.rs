@@ -308,6 +308,10 @@ impl TypeSubstMap {
         self.mapping.extend(subst_map.mapping.iter());
     }
 
+    pub(crate) fn insert(&mut self, source: SourceType, destination: DestinationType) {
+        self.mapping.insert(source, destination);
+    }
+
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
     /// this [TypeSubstMap] and return it, if there is a match. Importantly, this
     /// function is recursive, so any `type_id` it's given will undergo

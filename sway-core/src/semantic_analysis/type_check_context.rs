@@ -12,7 +12,7 @@ use crate::{
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
-        ResolvedTraitImplItem, TraitMap, TryInsertingTraitImplOnFailure,
+        ResolvedTraitImplItem, TraitMap,
     },
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
@@ -784,14 +784,15 @@ impl<'a> TypeCheckContext<'a> {
         Ok(matching_item_decl_refs)
     }
 
-    /// Given a name and a type (plus a `self_type` to potentially
-    /// resolve it), find that method in the namespace. Requires `args_buf`
-    /// because of some special casing for the standard library where we pull
-    /// the type from the arguments buffer.
+    /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
+    /// `annotation_type` is the expected method return type. Requires `argument_types` because:
+    /// - standard operations like +, <=, etc. are called like "core::ops::<operation>" and the
+    ///   actual self type of the trait implementation is determined by the passed argument type.
+    /// - we can have several implementations of generic traits for different types, that can
+    ///   result in a method of a same name, but with different type arguments.
     ///
-    /// This function will generate a missing method error if the method is not
-    /// found.
-    #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
+    /// This function will emit a [CompileError::MethodNotFound] if the method is not found.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn find_method_for_type(
         &mut self,
         handler: &Handler,
@@ -801,13 +802,12 @@ impl<'a> TypeCheckContext<'a> {
         annotation_type: TypeId,
         arguments_types: &VecDeque<TypeId>,
         as_trait: Option<TypeId>,
-        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
 
-        let eq_check = UnifyCheck::non_dynamic_equality(self.engines);
-        let coercion_check = UnifyCheck::coercion(self.engines);
+        let eq_check = UnifyCheck::constraint_subset(self.engines);
+        let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
 
         // default numeric types to u64
         if type_engine.contains_numeric(self.engines, type_id) {
@@ -882,9 +882,7 @@ impl<'a> TypeCheckContext<'a> {
                             &*type_engine.get(method.return_type.type_id),
                             TypeInfo::Never
                         )
-                        || coercion_check
-                            .with_ignore_generic_names(true)
-                            .check(annotation_type, method.return_type.type_id))
+                        || coercion_check.check(annotation_type, method.return_type.type_id))
                 {
                     maybe_method_decl_refs.push(decl_ref);
                 }
@@ -906,6 +904,20 @@ impl<'a> TypeCheckContext<'a> {
                         method.implementing_type.clone()
                     {
                         let trait_decl = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
+
+                        let trait_methods_key = (
+                            trait_decl.trait_name.clone(),
+                            trait_decl
+                                .trait_type_arguments
+                                .iter()
+                                .cloned()
+                                .map(|a| self.engines.help_out(a))
+                                .collect::<Vec<_>>(),
+                            method.implementing_for_typeid.map(|t| {
+                                self.engines.help_out((*self.engines.te().get(t)).clone())
+                            }),
+                        );
+
                         let mut skip_insert = false;
                         if let Some(as_trait) = as_trait {
                             if let TypeInfo::Custom {
@@ -950,56 +962,20 @@ impl<'a> TypeCheckContext<'a> {
                                         }
                                     }
                                     if params_equal {
-                                        trait_methods.insert(
-                                            (
-                                                trait_decl.trait_name.clone(),
-                                                trait_decl
-                                                    .trait_type_arguments
-                                                    .iter()
-                                                    .cloned()
-                                                    .map(|a| self.engines.help_out(a))
-                                                    .collect::<Vec<_>>(),
-                                                method.implementing_for_typeid.map(|t| {
-                                                    self.engines.help_out(
-                                                        (*self.engines.te().get(t)).clone(),
-                                                    )
-                                                }),
-                                            ),
-                                            method_ref.clone(),
-                                        );
+                                        trait_methods
+                                            .insert(trait_methods_key.clone(), method_ref.clone());
                                     }
                                 }
                                 skip_insert = true;
                             }
                         }
 
-                        let trait_methods_key = (
-                            trait_decl.trait_name.clone(),
-                            trait_decl
-                                .trait_type_arguments
-                                .iter()
-                                .cloned()
-                                .map(|a| self.engines.help_out(a))
-                                .collect::<Vec<_>>(),
-                            method.implementing_for_typeid.map(|t| {
-                                self.engines.help_out((*self.engines.te().get(t)).clone())
-                            }),
-                        );
-
-                        // If we have: impl<T> FromBytes for T
-                        // and: impl FromBytes for DataPoint
-                        // We pick the second implementation.
                         if let Some(existing_value) = trait_methods.get(&trait_methods_key) {
                             let existing_method = decl_engine.get_function(existing_value);
-                            if let Some(ty::TyDecl::ImplSelfOrTrait(existing_impl_trait)) =
-                                existing_method.implementing_type.clone()
+                            if existing_method.is_type_check_finalized
+                                && !method.is_type_check_finalized
                             {
-                                let existing_trait_decl = decl_engine
-                                    .get_impl_self_or_trait(&existing_impl_trait.decl_id);
-                                if existing_trait_decl.impl_type_parameters.is_empty() {
-                                    // We already have an impl without type parameters so we skip the others.
-                                    skip_insert = true;
-                                }
+                                skip_insert = true;
                             }
                         }
 
@@ -1012,6 +988,25 @@ impl<'a> TypeCheckContext<'a> {
                     }
                 }
 
+                // If we have: impl<T> FromBytes for T
+                // and: impl FromBytes for DataPoint
+                // We pick the second implementation.
+                let mut non_blanket_impl_exists = false;
+                let mut impls_with_type_params = vec![];
+                let trait_method_clone = trait_methods.clone();
+                let existing_values = trait_method_clone.values().collect::<Vec<_>>();
+                for existing_value in existing_values.iter() {
+                    let existing_method = decl_engine.get_function(*existing_value);
+                    if !existing_method.is_from_blanket_impl(self.engines) {
+                        non_blanket_impl_exists = true;
+                    } else {
+                        impls_with_type_params.push(existing_value.id());
+                    }
+                }
+                if non_blanket_impl_exists {
+                    trait_methods.retain(|_, v| !impls_with_type_params.contains(&v.id()));
+                }
+
                 if trait_methods.len() == 1 {
                     trait_methods.values().next().cloned()
                 } else if trait_methods.len() > 1 {
@@ -1019,51 +1014,75 @@ impl<'a> TypeCheckContext<'a> {
                         // In case we have trait methods and a impl self method we use the impl self method.
                         impl_self_method
                     } else {
-                        fn to_string(
-                            trait_name: CallPath,
-                            trait_type_args: Vec<WithEngines<TypeArgument>>,
-                        ) -> String {
-                            format!(
-                                "{}{}",
-                                trait_name.suffix,
-                                if trait_type_args.is_empty() {
-                                    String::new()
-                                } else {
-                                    format!(
-                                        "<{}>",
-                                        trait_type_args
-                                            .iter()
-                                            .map(|type_arg| type_arg.to_string())
-                                            .collect::<Vec<_>>()
-                                            .join(", ")
-                                    )
-                                },
-                            )
+                        // Avoids following error when we already know the exact type:
+                        // Multiple applicable items in scope.
+                        //   Disambiguate the associated function for candidate #0
+                        //     <&&&u64 as Trait>::val
+                        //   Disambiguate the associated function for candidate #1
+                        //     <&mut &mut &u64 as Trait>::val
+                        // If one method has the exact type an the others don't we can use that method.
+                        let mut exact_matching_methods = vec![];
+                        let trait_method_values = trait_methods.values().collect::<Vec<_>>();
+                        for trait_method_ref in trait_method_values.iter() {
+                            let method = decl_engine.get_function(*trait_method_ref);
+                            if let Some(implementing_for_type) = method.implementing_for_typeid {
+                                if eq_check
+                                    .with_unify_ref_mut(false)
+                                    .check(implementing_for_type, type_id)
+                                {
+                                    exact_matching_methods.push(*trait_method_ref);
+                                }
+                            }
                         }
-                        let mut trait_strings = trait_methods
-                            .keys()
-                            .map(|t| {
-                                (
-                                    to_string(t.0.clone(), t.1.clone()),
-                                    t.2.clone()
-                                        .map(|t| t.to_string())
-                                        .or_else(|| {
-                                            Some(self.engines().help_out(type_id).to_string())
-                                        })
-                                        .unwrap(),
+                        if exact_matching_methods.len() == 1 {
+                            exact_matching_methods.into_iter().next().cloned()
+                        } else {
+                            fn to_string(
+                                trait_name: CallPath,
+                                trait_type_args: Vec<WithEngines<TypeArgument>>,
+                            ) -> String {
+                                format!(
+                                    "{}{}",
+                                    trait_name.suffix,
+                                    if trait_type_args.is_empty() {
+                                        String::new()
+                                    } else {
+                                        format!(
+                                            "<{}>",
+                                            trait_type_args
+                                                .iter()
+                                                .map(|type_arg| type_arg.to_string())
+                                                .collect::<Vec<_>>()
+                                                .join(", ")
+                                        )
+                                    },
                                 )
-                            })
-                            .collect::<Vec<(String, String)>>();
-                        // Sort so the output of the error is always the same.
-                        trait_strings.sort();
-                        return Err(handler.emit_err(
-                            CompileError::MultipleApplicableItemsInScope {
-                                item_name: method_name.as_str().to_string(),
-                                item_kind: "function".to_string(),
-                                as_traits: trait_strings,
-                                span: method_name.span(),
-                            },
-                        ));
+                            }
+                            let mut trait_strings = trait_methods
+                                .keys()
+                                .map(|t| {
+                                    (
+                                        to_string(t.0.clone(), t.1.clone()),
+                                        t.2.clone()
+                                            .map(|t| t.to_string())
+                                            .or_else(|| {
+                                                Some(self.engines().help_out(type_id).to_string())
+                                            })
+                                            .unwrap(),
+                                    )
+                                })
+                                .collect::<Vec<(String, String)>>();
+                            // Sort so the output of the error is always the same.
+                            trait_strings.sort();
+                            return Err(handler.emit_err(
+                                CompileError::MultipleApplicableItemsInScope {
+                                    item_name: method_name.as_str().to_string(),
+                                    item_kind: "function".to_string(),
+                                    as_traits: trait_strings,
+                                    span: method_name.span(),
+                                },
+                            ));
+                        }
                     }
                 } else if qualified_call_path.is_some() {
                     // When we use a qualified path the expected method should be in trait_methods.
@@ -1098,7 +1117,7 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         if let Some(method_decl_ref) = matching_method_decl_ref {
-            return Ok(method_decl_ref);
+            return Ok(method_decl_ref.get_method_safe_to_unify(self.engines, type_id));
         }
 
         if let Some(TypeInfo::ErrorRecovery(err)) = arguments_types
@@ -1107,26 +1126,6 @@ impl<'a> TypeCheckContext<'a> {
         {
             Err(err)
         } else {
-            if matches!(
-                try_inserting_trait_impl_on_failure,
-                TryInsertingTraitImplOnFailure::Yes
-            ) {
-                // Retrieve the implemented traits for the type and insert them in the namespace.
-                // insert_trait_implementation_for_type is done lazily only when required because of a failure.
-                self.insert_trait_implementation_for_type(type_id);
-
-                return self.find_method_for_type(
-                    handler,
-                    type_id,
-                    method_prefix,
-                    method_name,
-                    annotation_type,
-                    arguments_types,
-                    as_trait,
-                    TryInsertingTraitImplOnFailure::No,
-                );
-            }
-
             let type_name = if let Some(call_path) = qualified_call_path {
                 format!(
                     "{} as {}",
@@ -1233,11 +1232,7 @@ impl<'a> TypeCheckContext<'a> {
                 lexical_scope
                     .items
                     .implemented_traits
-                    .filter_by_type_item_import(
-                        type_id,
-                        engines,
-                        self.code_block_first_pass().into(),
-                    ),
+                    .filter_by_type_item_import(type_id, engines),
                 engines,
             );
             Ok(None::<()>)
@@ -1356,17 +1351,6 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
-        let engines = self.engines;
-        let code_block_first_pass = self.code_block_first_pass();
-        TraitMap::insert_for_type(
-            engines,
-            self.namespace_mut().current_module_mut(),
-            type_id,
-            code_block_first_pass.into(),
-        );
-    }
-
     pub fn check_type_impls_traits(
         &mut self,
         type_id: TypeId,
@@ -1374,7 +1358,6 @@ impl<'a> TypeCheckContext<'a> {
     ) -> bool {
         let handler = Handler::default();
         let engines = self.engines;
-        let code_block_first_pass = self.code_block_first_pass();
         TraitMap::check_if_trait_constraints_are_satisfied_for_type(
             &handler,
             self.namespace_mut().current_module_mut(),
@@ -1382,8 +1365,6 @@ impl<'a> TypeCheckContext<'a> {
             constraints,
             &Span::dummy(),
             engines,
-            crate::namespace::TryInsertingTraitImplOnFailure::Yes,
-            code_block_first_pass.into(),
         )
         .is_ok()
     }

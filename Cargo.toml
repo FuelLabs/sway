@@ -135,6 +135,7 @@ devault = "0.2"
 dialoguer = "0.11"
 dirs = "5.0"
 downcast-rs = "1.2"
+duplicate = "2.0"
 either = "1.9"
 ethabi = { package = "fuel-ethabi", version = "18.0" }
 etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev" }

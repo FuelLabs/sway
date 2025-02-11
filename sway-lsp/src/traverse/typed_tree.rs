@@ -331,11 +331,19 @@ impl Parse for ty::TyExpression {
             ty::TyExpressionVariant::Tuple { fields } => {
                 adaptive_iter(fields, |field| field.parse(ctx));
             }
-            ty::TyExpressionVariant::Array {
+            ty::TyExpressionVariant::ArrayExplicit {
                 elem_type: _,
                 contents,
             } => {
                 adaptive_iter(contents, |exp| exp.parse(ctx));
+            }
+            ty::TyExpressionVariant::ArrayRepeat {
+                elem_type: _,
+                value,
+                length,
+            } => {
+                value.parse(ctx);
+                length.parse(ctx);
             }
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
                 prefix.parse(ctx);
