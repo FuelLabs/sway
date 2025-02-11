@@ -2686,10 +2686,10 @@ impl ty::TyExpression {
                         .as_literal()
                         .and_then(|x| x.cast_value_to_u64())
                     {
-                        if index_literal >= array_length.val() as u64 {
+                        if index_literal >= array_length.as_literal_val().unwrap() as u64 {
                             return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
                                 index: index_literal,
-                                count: array_length.val() as u64,
+                                count: array_length.as_literal_val().unwrap() as u64,
                                 span: index.span.clone(),
                             }));
                         }

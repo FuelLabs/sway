@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::length::LengthExpression,
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         ty::{TyEnumDecl, TyStructDecl},
@@ -276,7 +277,23 @@ impl<'a> UnifyCheck<'a> {
             }
 
             (Array(l0, l1), Array(r0, r1)) => {
-                return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
+                let elem_types_unify = self.check_inner(l0.type_id, r0.type_id);
+                return if !elem_types_unify {
+                    false
+                } else {
+                    match (&l1.0, &r1.0) {
+                        (
+                            LengthExpression::Literal { val: l_val, .. },
+                            LengthExpression::Literal { val: r_val, .. },
+                        ) => l_val == r_val,
+                        (
+                            LengthExpression::AmbiguousVariableExpression { inner: l_inner },
+                            LengthExpression::AmbiguousVariableExpression { inner: r_inner },
+                        ) => l_inner.span.as_str() == r_inner.span.as_str(),
+                        // TODO how to unify expressions?
+                        x => false,
+                    }
+                };
             }
 
             (Slice(l0), Slice(r0)) => {

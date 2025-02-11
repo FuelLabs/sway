@@ -102,7 +102,7 @@ fn convert_resolved_type_info(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::StringSlice => Type::get_slice(context),
-        TypeInfo::StringArray(n) => Type::new_string_array(context, n.val() as u64),
+        TypeInfo::StringArray(length) => Type::new_string_array(context, length.val() as u64),
         TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
             type_engine,
             decl_engine,
@@ -129,7 +129,7 @@ fn convert_resolved_type_info(
                 elem_type.type_id,
                 span,
             )?;
-            Type::new_array(context, elem_type, length.val() as u64)
+            Type::new_array(context, elem_type, length.as_literal_val().unwrap() as u64)
         }
 
         TypeInfo::Tuple(fields) => {

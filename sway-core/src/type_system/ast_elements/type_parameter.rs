@@ -710,3 +710,20 @@ fn handle_trait(
         Ok((interface_item_refs, item_refs, impld_item_refs))
     })
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConstGenericParameter {
+    pub name: Ident,
+    pub ty: TypeId,
+    pub is_from_parent: bool,
+    pub span: Span,
+}
+
+impl HashWithEngines for ConstGenericParameter {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let ConstGenericParameter { name, ty, .. } = self;
+        let type_engine = engines.te();
+        type_engine.get(*ty).hash(state, engines);
+        name.hash(state);
+    }
+}

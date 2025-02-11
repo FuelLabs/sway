@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::length::LengthExpression,
     decl_engine::{parsed_id::ParsedDeclId, DeclEngine, DeclEngineGet, DeclId},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
@@ -23,6 +24,8 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span};
+
+use super::ast_elements::length::NumericLength;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AbiName {
@@ -107,7 +110,7 @@ pub enum TypeInfo {
     // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
     TypeParam(usize),
     StringSlice,
-    StringArray(Length),
+    StringArray(NumericLength),
     UnsignedInteger(IntegerBits),
     UntypedEnum(ParsedDeclId<EnumDeclaration>),
     UntypedStruct(ParsedDeclId<StructDeclaration>),
@@ -349,7 +352,7 @@ impl PartialEqWithEngines for TypeInfo {
                     || type_engine
                         .get(l0.type_id)
                         .eq(&type_engine.get(r0.type_id), ctx))
-                    && l1.val() == r1.val()
+                    && l1.as_literal_val().unwrap() == r1.as_literal_val().unwrap()
             }
             (
                 Self::Alias {
@@ -483,7 +486,11 @@ impl OrdWithEngines for TypeInfo {
             (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
                 .get(l0.type_id)
                 .cmp(&type_engine.get(r0.type_id), ctx)
-                .then_with(|| l1.val().cmp(&r1.val())),
+                .then_with(|| {
+                    l1.as_literal_val()
+                        .unwrap()
+                        .cmp(&r1.as_literal_val().unwrap())
+                }),
             (
                 Self::Alias {
                     name: l_name,
@@ -596,8 +603,14 @@ impl DisplayWithEngines for TypeInfo {
                 )
             }
             ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
-            Array(elem_ty, count) => {
-                format!("[{}; {}]", engines.help_out(elem_ty), count.val())
+            Array(elem_ty, length) => {
+                let l = match &length.0 {
+                    LengthExpression::Literal { val, .. } => format!("{val}"),
+                    LengthExpression::AmbiguousVariableExpression { inner } => {
+                        inner.span.as_str().to_string()
+                    }
+                };
+                format!("[{}; {l}]", engines.help_out(elem_ty))
             }
             RawUntypedPtr => "pointer".into(),
             RawUntypedSlice => "slice".into(),
@@ -736,7 +749,11 @@ impl DebugWithEngines for TypeInfo {
                 )
             }
             Array(elem_ty, count) => {
-                format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
+                format!(
+                    "[{:?}; {}]",
+                    engines.help_out(elem_ty),
+                    count.as_literal_val().unwrap()
+                )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
@@ -1010,7 +1027,7 @@ impl TypeInfo {
                     error_msg_span,
                 );
                 let name = name?;
-                format!("a[{};{}]", name, length.val())
+                format!("a[{};{}]", name, length.as_literal_val().unwrap())
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
@@ -1108,7 +1125,7 @@ impl TypeInfo {
                 all_zero_sized
             }
             TypeInfo::Array(elem_ty, length) => {
-                length.val() == 0
+                length.as_literal_val().unwrap() == 0
                     || type_engine
                         .get(elem_ty.type_id)
                         .is_zero_sized(type_engine, decl_engine)
@@ -1128,7 +1145,7 @@ impl TypeInfo {
                     .can_safely_ignore(type_engine, decl_engine)
             }),
             TypeInfo::Array(elem_ty, length) => {
-                length.val() == 0
+                length.as_literal_val().unwrap() == 0
                     || type_engine
                         .get(elem_ty.type_id)
                         .can_safely_ignore(type_engine, decl_engine)
@@ -1550,7 +1567,7 @@ impl TypeInfo {
             TypeInfo::Array(elem, len) => {
                 let elem_type = engines.te().get(elem.type_id);
                 let size_hint = elem_type.abi_encode_size_hint(engines);
-                size_hint * len.val()
+                size_hint * len.as_literal_val().unwrap()
             }
 
             TypeInfo::StringArray(len) => AbiEncodeSizeHint::Exact(len.val()),
@@ -1715,7 +1732,7 @@ impl TypeInfo {
                 format!(
                     "[{}; {}]",
                     elem_ty.type_id.get_type_str(engines),
-                    length.val()
+                    length.as_literal_val().unwrap()
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),

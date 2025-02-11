@@ -388,7 +388,7 @@ fn type_check_slice(
             to_mutable_value,
         } => match &*type_engine.get(referenced_type.type_id) {
             TypeInfo::Array(elem_type_arg, array_len) => {
-                let array_len = array_len.val() as u64;
+                let array_len = array_len.as_literal_val().unwrap() as u64;
 
                 if let Some(v) = start_literal {
                     if v > array_len {
