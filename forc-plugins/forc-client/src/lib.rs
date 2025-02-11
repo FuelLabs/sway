@@ -50,8 +50,8 @@ impl NodeTarget {
     /// Returns the URL to use for connecting to Fuel Core node.
     pub fn get_node_url(&self, manifest_network: &Option<Network>) -> anyhow::Result<String> {
         let options_count = [
-            self.testnet,
             self.mainnet,
+            self.testnet,
             self.devnet,
             self.target.is_some(),
             self.node_url.is_some(),
@@ -62,7 +62,7 @@ impl NodeTarget {
 
         // ensure at most one option is specified
         if options_count > 1 {
-            anyhow::bail!("Only one of `--testnet`, `--mainnet`, `--target`, or `--node-url` should be specified");
+            anyhow::bail!("Only one of `--mainnet`, `--testnet`, `--devnet`, `--target`, or `--node-url` should be specified");
         }
 
         let node_url = match () {
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Only one of `--testnet`, `--mainnet`, `--target`, or `--node-url` should be specified"
+        expected = "Only one of `--mainnet`, `--testnet`, `--devnet`, `--target`, or `--node-url` should be specified"
     )]
     fn test_get_node_url_local_testnet() {
         let node = NodeTarget {
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Only one of `--testnet`, `--mainnet`, `--target`, or `--node-url` should be specified"
+        expected = "Only one of `--mainnet`, `--testnet`, `--devnet`, `--target`, or `--node-url` should be specified"
     )]
     fn test_get_node_url_same_url() {
         let node = NodeTarget {
