@@ -260,6 +260,9 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
     if restricted::is_non_ascii_name(name) {
         bail!("the name `{name}` contains non-ASCII characters which are unsupported");
     }
+    if let Some(censored) = restricted::censor_profanity(name) {
+        bail!("the name `{censored}` contains inappropriate language");
+    }
     Ok(())
 }
 
