@@ -8,10 +8,7 @@ use crate::{
         missing_contracts::get_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
     },
-    util::{
-        node_url::get_node_url,
-        tx::{prompt_forc_wallet_password, select_local_wallet_account},
-    },
+    util::tx::{prompt_forc_wallet_password, select_local_wallet_account},
 };
 use anyhow::{anyhow, bail, Result};
 use either::Either;
@@ -55,7 +52,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         external_contracts,
         output,
     } = cmd;
-    let node_url = get_node_url(&node, &None)?;
+    let node_url = node.get_node_url(&None)?;
     let provider: Provider = Provider::connect(node_url).await?;
 
     let wallet = get_wallet(caller.signing_key, caller.wallet, provider).await?;
