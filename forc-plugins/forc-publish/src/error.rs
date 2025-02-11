@@ -17,6 +17,9 @@ pub enum Error {
     #[error("TOML error")]
     TomlError(#[from] toml::ser::Error),
 
+    #[error("URL error")]
+    UrlError(#[from] url::ParseError),
+
     #[error("Failed to get relative path")]
     RelativePathError(#[from] std::path::StripPrefixError),
 

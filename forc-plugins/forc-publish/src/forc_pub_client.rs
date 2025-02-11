@@ -4,6 +4,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use url::Url;
 use uuid::Uuid;
 
 /// The publish request.
@@ -27,23 +28,25 @@ pub struct UploadResponse {
 
 pub struct ForcPubClient {
     client: reqwest::Client,
-    uri: String,
+    uri: Url,
 }
 
 impl ForcPubClient {
-    pub fn new(uri: String) -> Self {
+    pub fn new(uri: Url) -> Self {
         let client = reqwest::Client::new();
         Self { client, uri }
     }
 
     /// Uploads the given file to the server
     pub async fn upload<P: AsRef<Path>>(&self, file_path: P, forc_version: &str) -> Result<Uuid> {
-        let url = format!("{}/upload_project?forc_version={}", self.uri, forc_version);
+        let url = self
+            .uri
+            .join(&format!("upload_project?forc_version={}", forc_version))?;
         let file_bytes = fs::read(file_path)?;
 
         let response = self
             .client
-            .post(&url)
+            .post(url)
             .header("Content-Type", "application/gzip")
             .body(file_bytes)
             .send()
@@ -62,7 +65,7 @@ impl ForcPubClient {
 
     /// Publishes the given upload_id to the registry
     pub async fn publish(&self, upload_id: Uuid, auth_token: &str) -> Result<PublishResponse> {
-        let url = &format!("{}/publish", self.uri);
+        let url = self.uri.join("publish")?;
         let publish_request = PublishRequest { upload_id };
 
         let response = self
@@ -96,10 +99,16 @@ mod test {
     use wiremock::matchers::{method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    async fn get_mock_client_server() -> (ForcPubClient, MockServer) {
+        let mock_server = MockServer::start().await;
+        let url = Url::parse(&mock_server.uri()).expect("url");
+        let mock_client = ForcPubClient::new(url);
+        (mock_client, mock_server)
+    }
+
     #[tokio::test]
     async fn test_upload_success() {
-        let mock_server = MockServer::start().await;
-
+        let (client, mock_server) = get_mock_client_server().await;
         let upload_id = Uuid::new_v4();
         let success_response = serde_json::json!({ "upload_id": upload_id });
 
@@ -109,8 +118,6 @@ mod test {
             .respond_with(ResponseTemplate::new(200).set_body_json(&success_response))
             .mount(&mock_server)
             .await;
-
-        let client = ForcPubClient::new(mock_server.uri());
 
         // Create a temporary gzip file
         let temp_file = NamedTempFile::new().unwrap();
@@ -124,7 +131,7 @@ mod test {
 
     #[tokio::test]
     async fn test_upload_server_error() {
-        let mock_server = MockServer::start().await;
+        let (client, mock_server) = get_mock_client_server().await;
 
         Mock::given(method("POST"))
             .and(path("/upload_project"))
@@ -134,8 +141,6 @@ mod test {
             )
             .mount(&mock_server)
             .await;
-
-        let client = ForcPubClient::new(mock_server.uri());
 
         let temp_file = NamedTempFile::new().unwrap();
         fs::write(temp_file.path(), b"test content").unwrap();
@@ -154,7 +159,7 @@ mod test {
 
     #[tokio::test]
     async fn test_publish_success() {
-        let mock_server = MockServer::start().await;
+        let (client, mock_server) = get_mock_client_server().await;
 
         let publish_response = json!({
             "name": "test_project",
@@ -167,7 +172,6 @@ mod test {
             .mount(&mock_server)
             .await;
 
-        let client = ForcPubClient::new(mock_server.uri());
         let upload_id = Uuid::new_v4();
 
         let result = client.publish(upload_id, "valid_auth_token").await;
@@ -180,7 +184,7 @@ mod test {
 
     #[tokio::test]
     async fn test_publish_unauthorized() {
-        let mock_server = MockServer::start().await;
+        let (client, mock_server) = get_mock_client_server().await;
 
         Mock::given(method("POST"))
             .and(path("/publish"))
@@ -190,7 +194,6 @@ mod test {
             .mount(&mock_server)
             .await;
 
-        let client = ForcPubClient::new(mock_server.uri());
         let upload_id = Uuid::new_v4();
 
         let result = client.publish(upload_id, "invalid_token").await;
@@ -207,7 +210,7 @@ mod test {
 
     #[tokio::test]
     async fn test_publish_server_error() {
-        let mock_server = MockServer::start().await;
+        let (client, mock_server) = get_mock_client_server().await;
 
         Mock::given(method("POST"))
             .and(path("/publish"))
@@ -217,7 +220,6 @@ mod test {
             .mount(&mock_server)
             .await;
 
-        let client = ForcPubClient::new(mock_server.uri());
         let upload_id = Uuid::new_v4();
 
         let result = client.publish(upload_id, "valid_token").await;

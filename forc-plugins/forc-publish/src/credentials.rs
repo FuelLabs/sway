@@ -71,15 +71,14 @@ where
     let auth_token = auth_token.trim().to_string();
 
     // Save the token to the credentials file
-    let credentials = Credentials {
-        registry: Registry {
-            token: auth_token.clone(),
-        },
-    };
-    let toml_content = toml::to_string(&credentials)?;
     if let Some(parent_path) = credentials_path.parent() {
         fs::create_dir_all(parent_path)?;
-        fs::write(credentials_path, toml_content)?;
+        let credentials = Credentials {
+            registry: Registry {
+                token: auth_token.clone(),
+            },
+        };
+        fs::write(credentials_path, toml::to_string(&credentials)?)?;
         tracing::info!("Auth token saved to {}", credentials_path.display());
     }
     Ok(auth_token)

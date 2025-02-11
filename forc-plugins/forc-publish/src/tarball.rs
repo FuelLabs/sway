@@ -7,6 +7,8 @@ use tar::Builder;
 use tempfile::{tempdir, TempDir};
 use walkdir::WalkDir;
 
+const TARBALL_FILE_NAME: &str = "sway-project.tgz";
+
 /// Creates a .tgz tarball from the current directory in a temporary location.
 /// Returns the path to the created tarball.
 pub fn create_tarball_from_current_dir(temp_tarball_dir: &TempDir) -> Result<PathBuf> {
@@ -23,7 +25,7 @@ pub fn create_tarball_from_current_dir(temp_tarball_dir: &TempDir) -> Result<Pat
     copy_project_excluding_out(temp_project_dir.path())?;
 
     // Pack the temp directory into a tarball
-    let tarball_path = temp_tarball_dir.path().join("sway-project.tgz");
+    let tarball_path = temp_tarball_dir.path().join(TARBALL_FILE_NAME);
     let tar_gz = File::create(&tarball_path)?;
     let enc = GzEncoder::new(tar_gz, Compression::default());
     let mut tar = Builder::new(enc);

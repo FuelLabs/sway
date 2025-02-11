@@ -7,8 +7,8 @@ use forc_tracing::{
     init_tracing_subscriber, println_action_green, println_error, TracingSubscriberOptions,
 };
 use tempfile::tempdir;
+use url::Url;
 
-// For local development, change to: http://localhost:8080
 const FORC_PUB_URL: &str = "https://forc-pub-dev.swayswap.io";
 
 #[derive(Parser, Debug)]
@@ -18,6 +18,10 @@ pub struct Opt {
     /// Token to use when uploading
     #[clap(long)]
     pub token: Option<String>,
+
+    /// The registry URL to use
+    #[clap(long, default_value = FORC_PUB_URL)]
+    pub registry_url: String,
 }
 
 #[tokio::main]
@@ -34,7 +38,7 @@ async fn run() -> Result<()> {
     let config = Opt::parse();
     let auth_token = get_auth_token(config.token, None)?;
     let forc_version = crate_version!();
-    let client = ForcPubClient::new(FORC_PUB_URL.to_string());
+    let client = ForcPubClient::new(Url::parse(&config.registry_url)?);
 
     // Create the compressed tarball
     let temp_dir = tempdir()?;
