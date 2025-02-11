@@ -8,6 +8,7 @@ use fuel_tx::{
     policies::{Policies, PolicyType},
     Buildable, Chargeable, ConsensusParameters,
 };
+use fuels_core::types::transaction::TxPolicies;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -197,7 +198,7 @@ pub struct Script {
 }
 
 /// Flag set for specifying gas price and limit.
-#[derive(Debug, Devault, Parser, Deserialize, Serialize)]
+#[derive(Debug, Devault, Clone, Parser, Deserialize, Serialize)]
 pub struct Gas {
     /// Gas price for the transaction.
     #[clap(long = "gas-price")]
@@ -208,6 +209,9 @@ pub struct Gas {
     /// Max fee for the transaction.
     #[clap(long)]
     pub max_fee: Option<u64>,
+    /// The tip for the transaction.
+    #[clap(long)]
+    pub tip: Option<u64>,
 }
 
 /// Block until which tx cannot be included.
@@ -910,6 +914,22 @@ impl From<Output> for fuel_tx::Output {
                 state_root: contract_created.state_root,
             },
         }
+    }
+}
+
+impl From<&Gas> for TxPolicies {
+    fn from(gas: &Gas) -> Self {
+        let mut policies = TxPolicies::default();
+        if let Some(max_fee) = gas.max_fee {
+            policies = policies.with_max_fee(max_fee);
+        }
+        if let Some(script_gas_limit) = gas.script_gas_limit {
+            policies = policies.with_script_gas_limit(script_gas_limit);
+        }
+        if let Some(tip) = gas.tip {
+            policies = policies.with_tip(tip);
+        }
+        policies
     }
 }
 

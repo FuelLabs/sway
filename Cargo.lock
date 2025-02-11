@@ -2709,6 +2709,7 @@ dependencies = [
  "clap",
  "devault",
  "dialoguer",
+ "either",
  "forc",
  "forc-pkg",
  "forc-tracing 0.66.7",
@@ -2731,18 +2732,22 @@ dependencies = [
  "pretty_assertions",
  "rand",
  "regex",
+ "reqwest",
  "rexpect 0.5.0",
  "rpassword",
  "serde",
  "serde_json",
+ "sway-ast",
  "sway-core",
  "sway-features",
+ "sway-parse",
  "sway-types",
  "sway-utils",
  "tempfile",
  "tokio",
  "toml_edit",
  "tracing",
+ "url",
 ]
 
 [[package]]
@@ -2889,6 +2894,7 @@ dependencies = [
  "anyhow",
  "byte-unit",
  "cid",
+ "flate2",
  "forc-tracing 0.66.7",
  "forc-util",
  "fuel-abi-types",
@@ -2912,6 +2918,7 @@ dependencies = [
  "sway-utils",
  "sysinfo",
  "tar",
+ "tempfile",
  "toml 0.8.19",
  "tracing",
  "url",
@@ -2967,6 +2974,7 @@ dependencies = [
  "forc-util",
  "fuel-tx",
  "fuel-types",
+ "fuels-core",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -5492,7 +5500,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af1844ef2428cc3e1cb900be36181049ef3d3193c63e43026cfe202983b27a56"
 dependencies = [
- "proc-macro-crate 1.1.3",
+ "proc-macro-crate 3.2.0",
  "proc-macro2",
  "quote",
  "syn 2.0.87",

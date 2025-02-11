@@ -140,6 +140,7 @@ etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 extension-trait = "1.0"
 fd-lock = "4.0"
 filecheck = "0.5"
+flate2 = "1.0"
 fs_extra = "1.2"
 futures = { version = "0.3", default-features = false }
 gag = "1.0"

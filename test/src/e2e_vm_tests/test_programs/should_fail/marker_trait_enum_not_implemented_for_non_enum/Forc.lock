@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-A09B728E44881C03"
+
+[[package]]
+name = "marker_trait_enum_not_implemented_for_non_enum"
+source = "member"
+dependencies = ["core"]
