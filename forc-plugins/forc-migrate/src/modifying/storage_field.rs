@@ -34,8 +34,9 @@ impl ToInKey for Expr {
     }
 }
 
-impl Modifier<'_, StorageField> {
-    pub(crate) fn with_in_key<K: ToInKey>(&mut self, key: K) -> &mut Self {
+#[allow(dead_code)]
+impl<'a> Modifier<'a, StorageField> {
+    pub(crate) fn set_in_key<K: ToInKey>(&mut self, key: K) -> &mut Self {
         // If the `in` token already exists, just replace the key and leave the `in`
         // token as is. Place the key after the `in` token.
         let insert_span = if let Some(in_token) = &self.element.in_token {
@@ -54,8 +55,7 @@ impl Modifier<'_, StorageField> {
         self
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn without_in_key(&mut self) -> &mut Self {
+    pub(crate) fn remove_in_key(&mut self) -> &mut Self {
         self.element.in_token = None;
         self.element.key_expr = None;
 
