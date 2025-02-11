@@ -5110,12 +5110,55 @@ where
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 fn assert_encoding_and_decoding<T, SLICE>(
     value: T,
     expected: SLICE,
 )
 where
     T: Eq + AbiEncode + AbiDecode,
+{
+    let len = __size_of::<SLICE>();
+
+    if len == 0 {
+        __revert(0);
+    }
+
+    let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
+    let actual = encode(value);
+
+    if actual.len::<u8>() != expected.len::<u8>() {
+        __revert(0);
+    }
+
+    let result = asm(
+        result,
+        expected: expected.ptr(),
+        actual: actual.ptr(),
+        len: len,
+    ) {
+        meq result expected actual len;
+        result: bool
+    };
+
+    if !result {
+        __revert(0);
+    }
+
+    let decoded = abi_decode::<T>(actual);
+    __log(decoded);
+    if !decoded.eq(value) {
+        __revert(0);
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+fn assert_encoding_and_decoding<T, SLICE>(
+    value: T,
+    expected: SLICE,
+)
+where
+    T: PartialEq + AbiEncode + AbiDecode,
 {
     let len = __size_of::<SLICE>();
 
@@ -5165,6 +5208,7 @@ where
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 fn assert_eq<T>(a: T, b: T, revert_code: u64)
 where
     T: Eq,
@@ -5174,9 +5218,30 @@ where
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+fn assert_eq<T>(a: T, b: T, revert_code: u64)
+where
+    T: PartialEq,
+{
+    if a != b {
+        __revert(revert_code)
+    }
+}
+
+#[cfg(experimental_partial_eq = false)]
 fn assert_neq<T>(a: T, b: T, revert_code: u64)
 where
     T: Eq,
+{
+    if a == b {
+        __revert(revert_code)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+fn assert_neq<T>(a: T, b: T, revert_code: u64)
+where
+    T: PartialEq,
 {
     if a == b {
         __revert(revert_code)
