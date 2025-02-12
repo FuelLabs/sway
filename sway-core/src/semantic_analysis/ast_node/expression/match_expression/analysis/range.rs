@@ -281,11 +281,11 @@ where
     /// 1. Sort the intervals based on increasing order of starting time.
     /// 2. Push the first interval on to a stack.
     /// 3. For each interval do the following
-    ///     3a. If the current interval does not overlap with the stack
-    ///         top, push it.
-    ///     3b. If the current interval overlaps with stack top (or is within ± 1)
-    ///         and ending time of current interval is more than that of stack top,
-    ///         update stack top with the ending time of current interval.
+    ///    3a. If the current interval does not overlap with the stack
+    ///    top, push it.
+    ///    3b. If the current interval overlaps with stack top (or is within ± 1)
+    ///    and ending time of current interval is more than that of stack top,
+    ///    update stack top with the ending time of current interval.
     /// 4. At the end stack contains the merged intervals.
     fn condense_ranges(
         handler: &Handler,

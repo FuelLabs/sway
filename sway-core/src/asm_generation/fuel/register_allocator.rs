@@ -118,9 +118,9 @@ impl RegisterPool {
 /// ===============================================================================================
 /// 1. create a graph node for every virtual register used.
 /// 2. for a MOVE "v <= c" with live_out virtual registers b1, ... bn for v:
-///        add edges (v, b_1), ..., (v, b_n) for any b_i different from c.
+///    add edges (v, b_1), ..., (v, b_n) for any b_i different from c.
 /// 3. for non-MOVE def of virtual register v with live_out virtual registers b_1, ..., b_n:
-///        add edges (v, b_1), ..., (v, b_n)
+///    add edges (v, b_1), ..., (v, b_n)
 ///
 /// ===============================================================================================
 pub(crate) fn create_interference_graph(
@@ -384,8 +384,8 @@ fn compute_def_use_points(ops: &[Op]) -> FxHashMap<VirtualRegister, (Vec<usize>,
 /// 2. Remove node n and all its edges from the graph
 ///    - This may make some new nodes have fewer than k neighbours which is nice.
 /// 3. If some vertex n still has k or more neighbors, then the graph may not be k colorable.
-///     We still add it to the stack as is, as a potential spill. When popping, if we still
-///     can't colour it, then it becomes an actual spill.
+///    We still add it to the stack as is, as a potential spill. When popping, if we still
+///    can't colour it, then it becomes an actual spill.
 ///
 /// ===============================================================================================
 ///

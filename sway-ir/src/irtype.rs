@@ -633,7 +633,7 @@ impl TypeSize {
 
     /// Returns the size of the type in words (aligned to word boundary).
     pub fn in_words(&self) -> u64 {
-        (self.size_in_bytes + 7) / 8
+        self.size_in_bytes.div_ceil(8)
     }
 }
 

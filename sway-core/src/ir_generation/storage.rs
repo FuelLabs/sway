@@ -234,7 +234,7 @@ pub fn serialize_to_storage_slots(
             let mut packed = serialize_to_words(constant, context, ty, InByte8Padding::default());
             packed.extend(vec![
                 Bytes8::new([0; 8]);
-                ((packed.len() + 3) / 4) * 4 - packed.len()
+                packed.len().div_ceil(4) * 4 - packed.len()
             ]);
 
             assert!(packed.len() % 4 == 0);
@@ -257,7 +257,7 @@ pub fn serialize_to_storage_slots(
             );
 
             let storage_key = get_storage_key(storage_field_names, key, experimental);
-            (0..(type_size_in_bytes + 31) / 32)
+            (0..type_size_in_bytes.div_ceil(32))
                 .map(|i| add_to_b256(storage_key, i))
                 .zip((0..packed.len() / 4).map(|i| {
                     Bytes32::new(
@@ -310,7 +310,7 @@ fn serialize_to_words(
         ConstantValue::String(s) if ty.is_string_array(context) => {
             // Turn the bytes into serialized words (Bytes8) and right pad it to the word boundary.
             let mut s = s.clone();
-            s.extend(vec![0; ((s.len() + 7) / 8) * 8 - s.len()]);
+            s.extend(vec![0; s.len().div_ceil(8) * 8 - s.len()]);
 
             assert!(s.len() % 8 == 0);
 

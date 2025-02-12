@@ -239,17 +239,17 @@ pub fn is_small_fn(
     }
 
     move |context: &Context, function: &Function, _call_site: &Value| -> bool {
-        max_blocks.map_or(true, |max_block_count| {
-            function.num_blocks(context) <= max_block_count
-        }) && max_instrs.map_or(true, |max_instrs_count| {
-            function.num_instructions_incl_asm_instructions(context) <= max_instrs_count
-        }) && max_stack_size.map_or(true, |max_stack_size_count| {
-            function
-                .locals_iter(context)
-                .map(|(_name, ptr)| count_type_elements(context, &ptr.get_inner_type(context)))
-                .sum::<usize>()
-                <= max_stack_size_count
-        })
+        max_blocks.is_none_or(|max_block_count| function.num_blocks(context) <= max_block_count)
+            && max_instrs.is_none_or(|max_instrs_count| {
+                function.num_instructions_incl_asm_instructions(context) <= max_instrs_count
+            })
+            && max_stack_size.is_none_or(|max_stack_size_count| {
+                function
+                    .locals_iter(context)
+                    .map(|(_name, ptr)| count_type_elements(context, &ptr.get_inner_type(context)))
+                    .sum::<usize>()
+                    <= max_stack_size_count
+            })
     }
 }
 
