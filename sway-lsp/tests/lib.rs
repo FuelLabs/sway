@@ -315,6 +315,19 @@ fn visualize() {
     });
 }
 
+#[test]
+fn gas_usage_inlay_hints() {
+    run_async!({
+        let server = ServerState::default();
+        let dir = sway_workspace_dir()
+            .join(e2e_unit_dir())
+            .join("contract-multi-contract-calls")
+            .join("contract_multi_test");
+        let _ = open(&server, dir.join("src/main.sw")).await;
+        let _ = server.shutdown_server();
+    });
+}
+
 //------------------- GO TO DEFINITION -------------------//
 
 #[test]
