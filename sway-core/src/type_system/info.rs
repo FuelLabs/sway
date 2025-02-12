@@ -1,5 +1,4 @@
 use crate::{
-    ast_elements::length::LengthExpression,
     decl_engine::{parsed_id::ParsedDeclId, DeclEngine, DeclEngineGet, DeclId},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
@@ -606,11 +605,9 @@ impl DisplayWithEngines for TypeInfo {
             }
             ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
             Array(elem_ty, length) => {
-                let l = match &length.0 {
-                    LengthExpression::Literal { val, .. } => format!("{val}"),
-                    LengthExpression::AmbiguousVariableExpression { ident } => {
-                        ident.as_str().to_string()
-                    }
+                let l = match &length {
+                    Length::Literal { val, .. } => format!("{val}"),
+                    Length::AmbiguousVariableExpression { ident } => ident.as_str().to_string(),
                 };
                 format!("[{}; {l}]", engines.help_out(elem_ty))
             }
@@ -1581,9 +1578,9 @@ impl TypeInfo {
             TypeInfo::Array(elem, len) => {
                 let elem_type = engines.te().get(elem.type_id);
                 let size_hint = elem_type.abi_encode_size_hint(engines);
-                match &len.0 {
-                    LengthExpression::Literal { val, .. } => size_hint * *val,
-                    LengthExpression::AmbiguousVariableExpression { .. } => {
+                match &len {
+                    Length::Literal { val, .. } => size_hint * *val,
+                    Length::AmbiguousVariableExpression { .. } => {
                         AbiEncodeSizeHint::PotentiallyInfinite
                     }
                 }

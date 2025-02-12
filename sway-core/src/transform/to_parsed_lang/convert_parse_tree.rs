@@ -1,8 +1,5 @@
 use crate::{
-    ast_elements::{
-        length::{LengthExpression, NumericLength},
-        type_parameter::ConstGenericParameter,
-    },
+    ast_elements::{length::NumericLength, type_parameter::ConstGenericParameter},
     compiler_generated::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
@@ -13,6 +10,7 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
+use either::Either;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
@@ -1284,9 +1282,19 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .parameters
             .into_inner()
             .into_iter()
-            .flat_map(|param| {
-                let ident = match param {
-                    GenericParam::Trait { ident } => ident.clone(),
+            .partition_map(|param| {
+                match param {
+                    GenericParam::Trait { ident } => {
+                        let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
+                        Either::Left(TypeParameter {
+                            type_id: custom_type,
+                            initial_type_id: custom_type,
+                            name: ident,
+                            trait_constraints: Vec::new(),
+                            trait_constraints_span: Span::dummy(),
+                            is_from_parent,
+                        })
+                    }
                     GenericParam::Const { ident, .. } => {
                         // let the compilation continue,
                         // but error the user for each const generic being used
@@ -1297,42 +1305,41 @@ fn generic_params_opt_to_type_parameters_with_parent(
                                     .error_because_is_disabled(&ident.span()),
                             );
                         }
-                        return None;
+                        Either::Right(ConstGenericParameter {
+                            span: ident.span().clone(),
+                            name: ident,
+                            ty: type_engine.id_of_u64(),
+                            is_from_parent,
+                        })
                     }
-                };
-                let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
-                Some(TypeParameter {
-                    type_id: custom_type,
-                    initial_type_id: custom_type,
-                    name: ident,
-                    trait_constraints: Vec::new(),
-                    trait_constraints_span: Span::dummy(),
-                    is_from_parent,
-                })
-            })
-            .collect::<Vec<_>>(),
-        None => Vec::new(),
+                }
+            }),
+        None => (vec![], vec![]),
     };
 
-    let mut params = generics_to_params(generic_params_opt, false);
-    let parent_params = generics_to_params(parent_generic_params_opt, true);
+    let (mut trait_params, mut const_generic_params) =
+        generics_to_params(generic_params_opt, false);
+    let (trait_parent_params, mut const_generic_parent_params) =
+        generics_to_params(parent_generic_params_opt, true);
+
+    const_generic_params.append(&mut const_generic_parent_params);
 
     let mut errors = Vec::new();
     for (ty_name, bounds) in trait_constraints
         .into_iter()
         .chain(parent_trait_constraints)
     {
-        let param_to_edit = if let Some(o) = params
+        let param_to_edit = if let Some(o) = trait_params
             .iter_mut()
             .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             o
-        } else if let Some(o2) = parent_params
+        } else if let Some(o2) = trait_parent_params
             .iter()
             .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
-            params.push(o2.clone());
-            params.last_mut().unwrap()
+            trait_params.push(o2.clone());
+            trait_params.last_mut().unwrap()
         } else {
             errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
                 ty_name: ty_name.clone(),
@@ -1353,7 +1360,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
         return Err(errors);
     }
 
-    Ok((params, vec![]))
+    Ok((trait_params, const_generic_params))
 }
 
 // fn generic_params_opt_to_type_parameters_with_parent(
@@ -2918,9 +2925,7 @@ fn expr_to_length(
             let expr = expr_to_expression(context, handler, engines, expr)?;
             match expr.kind {
                 ExpressionKind::AmbiguousVariableExpression(ident) => {
-                    Ok(Length(LengthExpression::AmbiguousVariableExpression {
-                        ident,
-                    }))
+                    Ok(Length::AmbiguousVariableExpression { ident })
                 }
                 _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
             }

@@ -13,34 +13,28 @@ use sway_types::{span::Span, Ident, Spanned};
 /// ```ignore
 /// fn copy(a: [u64;3], b: [u64;3])
 /// ```
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct Length(pub LengthExpression);
-
 #[derive(Debug, Clone)]
-pub enum LengthExpression {
+pub enum Length {
     Literal { val: usize, span: Span },
     AmbiguousVariableExpression { ident: Ident },
 }
 
 impl PartialOrd for Length {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (&self.0, &other.0) {
+        match (self, other) {
+            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.partial_cmp(r),
             (
-                LengthExpression::Literal { val: l, .. },
-                LengthExpression::Literal { val: r, .. },
-            ) => l.partial_cmp(r),
-            (
-                LengthExpression::AmbiguousVariableExpression { ident: l },
-                LengthExpression::AmbiguousVariableExpression { ident: r },
+                Self::AmbiguousVariableExpression { ident: l },
+                Self::AmbiguousVariableExpression { ident: r },
             ) => l.partial_cmp(r),
             _ => None,
         }
     }
 }
 
-impl Eq for LengthExpression {}
+impl Eq for Length {}
 
-impl PartialEq for LengthExpression {
+impl PartialEq for Length {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l == r,
@@ -53,35 +47,35 @@ impl PartialEq for LengthExpression {
     }
 }
 
-impl std::hash::Hash for LengthExpression {
+impl std::hash::Hash for Length {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         core::mem::discriminant(self).hash(state);
         match self {
-            LengthExpression::Literal { val, .. } => val.hash(state),
-            LengthExpression::AmbiguousVariableExpression { ident } => ident.hash(state),
+            Self::Literal { val, .. } => val.hash(state),
+            Self::AmbiguousVariableExpression { ident } => ident.hash(state),
         }
     }
 }
 
 impl Length {
     pub fn discriminant_value(&self) -> usize {
-        match &self.0 {
-            LengthExpression::Literal { .. } => 0,
-            LengthExpression::AmbiguousVariableExpression { .. } => 1,
+        match &self {
+            Self::Literal { .. } => 0,
+            Self::AmbiguousVariableExpression { .. } => 1,
         }
     }
 
     /// Creates a new literal [Length] without span annotation.
     pub fn literal(val: usize, span: Option<Span>) -> Self {
-        Length(LengthExpression::Literal {
+        Self::Literal {
             val,
             span: span.unwrap_or(Span::dummy()),
-        })
+        }
     }
 
     pub fn as_literal_val(&self) -> Option<usize> {
-        match self.0 {
-            LengthExpression::Literal { val, .. } => Some(val),
+        match self {
+            Self::Literal { val, .. } => Some(*val),
             _ => None,
         }
     }
@@ -93,18 +87,18 @@ impl Length {
 
 impl Spanned for Length {
     fn span(&self) -> Span {
-        match &self.0 {
-            LengthExpression::Literal { span, .. } => span.clone(),
-            LengthExpression::AmbiguousVariableExpression { ident, .. } => ident.span(),
+        match self {
+            Self::Literal { span, .. } => span.clone(),
+            Self::AmbiguousVariableExpression { ident, .. } => ident.span(),
         }
     }
 }
 
 impl DebugWithEngines for Length {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
-        match &self.0 {
-            LengthExpression::Literal { val, .. } => write!(f, "{val}"),
-            LengthExpression::AmbiguousVariableExpression { ident } => {
+        match self {
+            Self::Literal { val, .. } => write!(f, "{val}"),
+            Self::AmbiguousVariableExpression { ident } => {
                 write!(f, "{}", ident.as_str())
             }
         }

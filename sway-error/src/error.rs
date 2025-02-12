@@ -50,6 +50,8 @@ impl fmt::Display for InterfaceName {
 // provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
+    #[error("\"const generics\" are not supported here.")]
+    ConstGenericNotSupportedHere { span: Span },
     #[error("This expression is not supported as lengths.")]
     LengthExpressionNotSupported { span: Span },
     #[error(
@@ -1071,6 +1073,7 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
+            ConstGenericNotSupportedHere { span } => span.clone(),
             LengthExpressionNotSupported { span } => span.clone(),
             FeatureIsDisabled { span, .. } => span.clone(),
             ModuleDepGraphEvaluationError { .. } => Span::dummy(),

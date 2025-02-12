@@ -110,6 +110,7 @@ impl TyImplSelfOrTrait {
 
         let ImplSelfOrTrait {
             impl_type_parameters,
+            impl_const_generics_parameters,
             trait_name,
             mut trait_type_arguments,
             trait_decl_ref: _,
@@ -138,19 +139,16 @@ impl TyImplSelfOrTrait {
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
-                // for parsed_decl_id in impl_const_generics_parameters {
-                //     let const_generic = engines.pe().get(&parsed_decl_id);
-                //     // Allow type check to continue, but give an error
-                //     // if const_generics is off
-                //     if !ctx.experimental.const_generics {
-                //         return Err(handler.emit_err(
-                //             sway_features::Feature::ConstGenerics
-                //                 .error_because_is_disabled(&const_generic.span),
-                //         ));
-                //     } else {
-                //         todo!()
-                //     }
-                // }
+                // Notify the user that const generic is still not supported here, but let the compilation
+                // continue
+                for const_generic_decl_id in impl_const_generics_parameters {
+                    let decl = engines.pe().get(&const_generic_decl_id);
+                    if ctx.experimental.const_generics {
+                        handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                            span: decl.span.clone(),
+                        });
+                    }
+                }
 
                 // Type check the type parameters
                 let new_impl_type_parameters = TypeParameter::type_check_type_params(

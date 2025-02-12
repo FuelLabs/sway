@@ -1,5 +1,4 @@
 use crate::{
-    ast_elements::length::LengthExpression,
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         ty::{TyEnumDecl, TyStructDecl},
@@ -281,14 +280,11 @@ impl<'a> UnifyCheck<'a> {
                 return if !elem_types_unify {
                     false
                 } else {
-                    match (&l1.0, &r1.0) {
+                    match (&l1, &r1) {
+                        (Length::Literal { val: l, .. }, Length::Literal { val: r, .. }) => l == r,
                         (
-                            LengthExpression::Literal { val: l, .. },
-                            LengthExpression::Literal { val: r, .. },
-                        ) => l == r,
-                        (
-                            LengthExpression::AmbiguousVariableExpression { ident: l },
-                            LengthExpression::AmbiguousVariableExpression { ident: r },
+                            Length::AmbiguousVariableExpression { ident: l },
+                            Length::AmbiguousVariableExpression { ident: r },
                         ) => l == r,
                         _ => false,
                     }
