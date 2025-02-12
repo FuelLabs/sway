@@ -1,5 +1,6 @@
 mod abi;
 mod configurable;
+mod const_generic;
 mod constant;
 mod r#enum;
 pub mod function;
@@ -14,6 +15,7 @@ use std::fmt;
 
 pub use abi::*;
 pub use configurable::*;
+pub use const_generic::*;
 pub use constant::*;
 pub use function::*;
 pub use impl_trait::*;
