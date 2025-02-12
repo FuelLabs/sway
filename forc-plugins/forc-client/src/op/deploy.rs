@@ -3,7 +3,6 @@ use crate::{
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         account::ForcClientAccount,
-        node_url::get_node_url,
         pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
         target::Target,
         tx::{
@@ -635,7 +634,9 @@ pub async fn deploy_contracts(
         let bytecode_size = pkg.bytecode.bytes.len();
         let deployed_contract_id = if bytecode_size > MAX_CONTRACT_SIZE {
             // Deploy chunked
-            let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
+            let node_url = command
+                .node
+                .get_node_url(&pkg.descriptor.manifest_file.network)?;
             let provider = Provider::connect(node_url).await?;
 
             deploy_chunked(
@@ -980,9 +981,14 @@ async fn validate_and_get_node_url(
     command: &cmd::Deploy,
     packages: &[Arc<BuiltPackage>],
 ) -> Result<String> {
-    let node_url = get_node_url(&command.node, &packages[0].descriptor.manifest_file.network)?;
+    let node_url = command
+        .node
+        .get_node_url(&packages[0].descriptor.manifest_file.network)?;
     if !packages.iter().all(|pkg| {
-        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
+        command
+            .node
+            .get_node_url(&pkg.descriptor.manifest_file.network)
+            .ok()
             == Some(node_url.clone())
     }) {
         bail!("All packages in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all packages is the same.");
