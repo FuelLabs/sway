@@ -13,8 +13,6 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
-
-use either::Either;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{

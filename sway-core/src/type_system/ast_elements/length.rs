@@ -42,7 +42,7 @@ impl Length {
     pub fn literal(val: usize, span: Option<Span>) -> Self {
         Length(LengthExpression::Literal {
             val,
-            span: span.unwrap_or_else(|| Span::dummy()),
+            span: span.unwrap_or(Span::dummy()),
         })
     }
 

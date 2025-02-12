@@ -110,7 +110,6 @@ impl TyImplSelfOrTrait {
 
         let ImplSelfOrTrait {
             impl_type_parameters,
-            impl_const_generics_parameters,
             trait_name,
             mut trait_type_arguments,
             trait_decl_ref: _,

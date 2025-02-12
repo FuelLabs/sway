@@ -290,8 +290,7 @@ impl<'a> UnifyCheck<'a> {
                             LengthExpression::AmbiguousVariableExpression { inner: l_inner },
                             LengthExpression::AmbiguousVariableExpression { inner: r_inner },
                         ) => l_inner.span.as_str() == r_inner.span.as_str(),
-                        // TODO how to unify expressions?
-                        x => false,
+                        _ => false,
                     }
                 };
             }
