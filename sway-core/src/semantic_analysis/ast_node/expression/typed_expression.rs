@@ -2676,7 +2676,7 @@ impl ty::TyExpression {
                 (
                     TypeInfo::Array(elem_ty, array_length),
                     ty::ProjectionKind::ArrayIndex { index, index_span },
-                ) => {
+                ) if array_length.as_literal_val().is_some() => {
                     parent_rover = symbol;
                     symbol = elem_ty.type_id;
                     symbol_span = index_span.clone();
@@ -2686,10 +2686,15 @@ impl ty::TyExpression {
                         .as_literal()
                         .and_then(|x| x.cast_value_to_u64())
                     {
-                        if index_literal >= array_length.as_literal_val().unwrap() as u64 {
+                        // SAFETY: safe by the guard above
+                        let array_length = array_length
+                            .as_literal_val()
+                            .expect("unexpected non literal array length")
+                            as u64;
+                        if index_literal >= array_length {
                             return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
                                 index: index_literal,
-                                count: array_length.as_literal_val().unwrap() as u64,
+                                count: array_length,
                                 span: index.span.clone(),
                             }));
                         }

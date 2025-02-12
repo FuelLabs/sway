@@ -45,12 +45,12 @@ fn get_type_str(type_id: &TypeId, engines: &Engines, resolved_type_id: TypeId) -
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            (TypeInfo::Array(_, count), TypeInfo::Array(_, resolved_count)) => {
+            (TypeInfo::Array(_, length), TypeInfo::Array(_, resolved_length)) => {
                 assert_eq!(
-                    count.as_literal_val().unwrap(),
-                    resolved_count.as_literal_val().unwrap()
+                    length.as_literal_val().unwrap(),
+                    resolved_length.as_literal_val().unwrap()
                 );
-                format!("[_; {}]", count.as_literal_val().unwrap())
+                format!("[_; {:?}]", engines.help_out(length))
             }
             (TypeInfo::Slice(_), TypeInfo::Slice(_)) => "__slice[_]".into(),
             (TypeInfo::Custom { .. }, _) => {
@@ -117,9 +117,9 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         }
         Array(elem_ty, length) => {
             format!(
-                "{}[{}]",
+                "{}[{:?}]",
                 abi_str_type_arg(elem_ty, engines),
-                length.as_literal_val().unwrap()
+                engines.help_out(length),
             )
         }
         RawUntypedPtr => "raw untyped ptr".into(),

@@ -352,7 +352,7 @@ impl PartialEqWithEngines for TypeInfo {
                     || type_engine
                         .get(l0.type_id)
                         .eq(&type_engine.get(r0.type_id), ctx))
-                    && l1.as_literal_val().unwrap() == r1.as_literal_val().unwrap()
+                    && l1 == r1
             }
             (
                 Self::Alias {
@@ -487,9 +487,11 @@ impl OrdWithEngines for TypeInfo {
                 .get(l0.type_id)
                 .cmp(&type_engine.get(r0.type_id), ctx)
                 .then_with(|| {
-                    l1.as_literal_val()
-                        .unwrap()
-                        .cmp(&r1.as_literal_val().unwrap())
+                    if let Some(ord) = l1.partial_cmp(r1) {
+                        ord
+                    } else {
+                        l1.discriminant_value().cmp(&r1.discriminant_value())
+                    }
                 }),
             (
                 Self::Alias {
@@ -748,11 +750,11 @@ impl DebugWithEngines for TypeInfo {
                     )
                 )
             }
-            Array(elem_ty, count) => {
+            Array(elem_ty, length) => {
                 format!(
-                    "[{:?}; {}]",
+                    "[{:?}; {:?}]",
                     engines.help_out(elem_ty),
-                    count.as_literal_val().unwrap()
+                    engines.help_out(length),
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
@@ -1020,14 +1022,18 @@ impl TypeInfo {
                     )
                 }
             }
-            Array(elem_ty, length) => {
+            Array(elem_ty, length) if length.as_literal_val().is_some() => {
+                // SAFETY: safe by the guard above
+                let len = length
+                    .as_literal_val()
+                    .expect("unexpected non literal length");
                 let name = type_engine.get(elem_ty.type_id).to_selector_name(
                     handler,
                     engines,
                     error_msg_span,
                 );
                 let name = name?;
-                format!("a[{};{}]", name, length.as_literal_val().unwrap())
+                format!("a[{};{}]", name, len)
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
@@ -1124,8 +1130,12 @@ impl TypeInfo {
                 }
                 all_zero_sized
             }
-            TypeInfo::Array(elem_ty, length) => {
-                length.as_literal_val().unwrap() == 0
+            TypeInfo::Array(elem_ty, length) if length.as_literal_val().is_some() => {
+                // SAFETY: safe by the guard above
+                let len = length
+                    .as_literal_val()
+                    .expect("unexpected non literal length");
+                len == 0
                     || type_engine
                         .get(elem_ty.type_id)
                         .is_zero_sized(type_engine, decl_engine)
@@ -1144,8 +1154,12 @@ impl TypeInfo {
                     .get(type_argument.type_id)
                     .can_safely_ignore(type_engine, decl_engine)
             }),
-            TypeInfo::Array(elem_ty, length) => {
-                length.as_literal_val().unwrap() == 0
+            TypeInfo::Array(elem_ty, length) if length.as_literal_val().is_some() => {
+                // SAFETY: safe by the guard above
+                let len = length
+                    .as_literal_val()
+                    .expect("unexpected non literal length");
+                len == 0
                     || type_engine
                         .get(elem_ty.type_id)
                         .can_safely_ignore(type_engine, decl_engine)
@@ -1567,7 +1581,12 @@ impl TypeInfo {
             TypeInfo::Array(elem, len) => {
                 let elem_type = engines.te().get(elem.type_id);
                 let size_hint = elem_type.abi_encode_size_hint(engines);
-                size_hint * len.as_literal_val().unwrap()
+                match &len.0 {
+                    LengthExpression::Literal { val, .. } => size_hint * *val,
+                    LengthExpression::AmbiguousVariableExpression { .. } => {
+                        AbiEncodeSizeHint::PotentiallyInfinite
+                    }
+                }
             }
 
             TypeInfo::StringArray(len) => AbiEncodeSizeHint::Exact(len.val()),
@@ -1730,9 +1749,9 @@ impl TypeInfo {
             }
             Array(elem_ty, length) => {
                 format!(
-                    "[{}; {}]",
+                    "[{}; {:?}]",
                     elem_ty.type_id.get_type_str(engines),
-                    length.as_literal_val().unwrap()
+                    engines.help_out(length)
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),

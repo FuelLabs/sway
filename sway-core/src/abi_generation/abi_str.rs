@@ -60,7 +60,7 @@ impl TypeId {
                     } else {
                         "_".to_string()
                     };
-                    format!("[{}; {}]", inner_type, length.as_literal_val().unwrap())
+                    format!("[{}; {:?}]", inner_type, engines.help_out(length))
                 }
                 (TypeInfo::Slice(type_arg), TypeInfo::Slice(_)) => {
                     let inner_type = if ctx.abi_with_fully_specified_types {
@@ -177,9 +177,9 @@ impl TypeInfo {
             }
             Array(elem_ty, length) => {
                 format!(
-                    "[{}; {}]",
+                    "[{}; {:?}]",
                     elem_ty.abi_str(ctx, engines, false),
-                    length.as_literal_val().unwrap(),
+                    engines.help_out(length)
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),

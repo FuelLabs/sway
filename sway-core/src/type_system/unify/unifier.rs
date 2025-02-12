@@ -134,8 +134,7 @@ impl<'a> Unifier<'a> {
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
             }
-            (Array(re, rc), Array(ee, ec))
-                if rc.as_literal_val().unwrap() == ec.as_literal_val().unwrap() =>
+            (Array(re, rc), Array(ee, ec)) if matches!((rc.as_literal_val(), ec.as_literal_val()), (Some(a), Some(b)) if a == b) =>
             {
                 self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
             }
