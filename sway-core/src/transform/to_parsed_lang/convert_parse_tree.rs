@@ -2909,18 +2909,23 @@ fn expr_to_length(
     expr: Expr,
 ) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
-    Ok(match &expr {
-        Expr::Literal(..) => Length::literal(expr_to_usize(context, handler, expr)?, Some(span)),
+    match &expr {
+        Expr::Literal(..) => Ok(Length::literal(
+            expr_to_usize(context, handler, expr)?,
+            Some(span),
+        )),
         _ => {
             let expr = expr_to_expression(context, handler, engines, expr)?;
-            Length(match expr.kind {
-                ExpressionKind::AmbiguousVariableExpression(_) => {
-                    LengthExpression::AmbiguousVariableExpression { inner: expr }
+            match expr.kind {
+                ExpressionKind::AmbiguousVariableExpression(ident) => {
+                    Ok(Length(LengthExpression::AmbiguousVariableExpression {
+                        ident,
+                    }))
                 }
-                _ => todo!(),
-            })
+                _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
+            }
         }
-    })
+    }
 }
 
 fn expr_to_numeric_length(

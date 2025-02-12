@@ -50,6 +50,8 @@ impl fmt::Display for InterfaceName {
 // provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
+    #[error("This expression is not supported as lengths.")]
+    LengthExpressionNotSupported { span: Span },
     #[error(
         "This needs \"{feature}\" to be enabled, but it is currently disabled. For more details go to {url}."
     )]
@@ -1069,6 +1071,7 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
+            LengthExpressionNotSupported { span } => span.clone(),
             FeatureIsDisabled { span, .. } => span.clone(),
             ModuleDepGraphEvaluationError { .. } => Span::dummy(),
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),

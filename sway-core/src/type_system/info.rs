@@ -608,8 +608,8 @@ impl DisplayWithEngines for TypeInfo {
             Array(elem_ty, length) => {
                 let l = match &length.0 {
                     LengthExpression::Literal { val, .. } => format!("{val}"),
-                    LengthExpression::AmbiguousVariableExpression { inner } => {
-                        inner.span.as_str().to_string()
+                    LengthExpression::AmbiguousVariableExpression { ident } => {
+                        ident.as_str().to_string()
                     }
                 };
                 format!("[{}; {l}]", engines.help_out(elem_ty))

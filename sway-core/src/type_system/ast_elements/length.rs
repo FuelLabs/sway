@@ -1,8 +1,5 @@
-use crate::{
-    engine_threading::DebugWithEngines,
-    language::parsed::{Expression, ExpressionKind},
-};
-use sway_types::{span::Span, Spanned};
+use crate::engine_threading::DebugWithEngines;
+use sway_types::{span::Span, Ident, Spanned};
 
 /// Describes a fixed length for types that need it, e.g., [crate::TypeInfo::Array].
 ///
@@ -22,26 +19,20 @@ pub struct Length(pub LengthExpression);
 #[derive(Debug, Clone)]
 pub enum LengthExpression {
     Literal { val: usize, span: Span },
-    AmbiguousVariableExpression { inner: Expression },
+    AmbiguousVariableExpression { ident: Ident },
 }
 
 impl PartialOrd for Length {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match (&self.0, &other.0) {
             (
-                LengthExpression::Literal { val: l_val, .. },
-                LengthExpression::Literal { val: r_val, .. },
-            ) => l_val.partial_cmp(r_val),
+                LengthExpression::Literal { val: l, .. },
+                LengthExpression::Literal { val: r, .. },
+            ) => l.partial_cmp(r),
             (
-                LengthExpression::AmbiguousVariableExpression { inner: l_inner },
-                LengthExpression::AmbiguousVariableExpression { inner: r_inner },
-            ) => match (&l_inner.kind, &r_inner.kind) {
-                (
-                    ExpressionKind::AmbiguousVariableExpression(l),
-                    ExpressionKind::AmbiguousVariableExpression(r),
-                ) => l.partial_cmp(r),
-                _ => None,
-            },
+                LengthExpression::AmbiguousVariableExpression { ident: l },
+                LengthExpression::AmbiguousVariableExpression { ident: r },
+            ) => l.partial_cmp(r),
             _ => None,
         }
     }
@@ -52,32 +43,11 @@ impl Eq for LengthExpression {}
 impl PartialEq for LengthExpression {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l == r,
             (
-                Self::Literal {
-                    val: l_val,
-                    span: l_span,
-                },
-                Self::Literal {
-                    val: r_val,
-                    span: r_span,
-                },
-            ) => l_val == r_val && l_span == r_span,
-            (
-                Self::AmbiguousVariableExpression {
-                    inner:
-                        Expression {
-                            kind: ExpressionKind::AmbiguousVariableExpression(l_ident),
-                            ..
-                        },
-                },
-                Self::AmbiguousVariableExpression {
-                    inner:
-                        Expression {
-                            kind: ExpressionKind::AmbiguousVariableExpression(r_ident),
-                            ..
-                        },
-                },
-            ) => l_ident == r_ident,
+                Self::AmbiguousVariableExpression { ident: l },
+                Self::AmbiguousVariableExpression { ident: r },
+            ) => l == r,
             _ => false,
         }
     }
@@ -88,12 +58,7 @@ impl std::hash::Hash for LengthExpression {
         core::mem::discriminant(self).hash(state);
         match self {
             LengthExpression::Literal { val, .. } => val.hash(state),
-            LengthExpression::AmbiguousVariableExpression { inner } => match &inner.kind {
-                crate::language::parsed::ExpressionKind::AmbiguousVariableExpression(
-                    base_ident,
-                ) => base_ident.hash(state),
-                _ => unreachable!(),
-            },
+            LengthExpression::AmbiguousVariableExpression { ident } => ident.hash(state),
         }
     }
 }
@@ -130,7 +95,7 @@ impl Spanned for Length {
     fn span(&self) -> Span {
         match &self.0 {
             LengthExpression::Literal { span, .. } => span.clone(),
-            LengthExpression::AmbiguousVariableExpression { inner, .. } => inner.span(),
+            LengthExpression::AmbiguousVariableExpression { ident, .. } => ident.span(),
         }
     }
 }
@@ -139,12 +104,9 @@ impl DebugWithEngines for Length {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
         match &self.0 {
             LengthExpression::Literal { val, .. } => write!(f, "{val}"),
-            LengthExpression::AmbiguousVariableExpression { inner } => match &inner.kind {
-                ExpressionKind::AmbiguousVariableExpression(base_ident) => {
-                    write!(f, "{}", base_ident.as_str())
-                }
-                _ => unreachable!(),
-            },
+            LengthExpression::AmbiguousVariableExpression { ident } => {
+                write!(f, "{}", ident.as_str())
+            }
         }
     }
 }

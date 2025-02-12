@@ -283,13 +283,13 @@ impl<'a> UnifyCheck<'a> {
                 } else {
                     match (&l1.0, &r1.0) {
                         (
-                            LengthExpression::Literal { val: l_val, .. },
-                            LengthExpression::Literal { val: r_val, .. },
-                        ) => l_val == r_val,
+                            LengthExpression::Literal { val: l, .. },
+                            LengthExpression::Literal { val: r, .. },
+                        ) => l == r,
                         (
-                            LengthExpression::AmbiguousVariableExpression { inner: l_inner },
-                            LengthExpression::AmbiguousVariableExpression { inner: r_inner },
-                        ) => l_inner.span.as_str() == r_inner.span.as_str(),
+                            LengthExpression::AmbiguousVariableExpression { ident: l },
+                            LengthExpression::AmbiguousVariableExpression { ident: r },
+                        ) => l == r,
                         _ => false,
                     }
                 };
