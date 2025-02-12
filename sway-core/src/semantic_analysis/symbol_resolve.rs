@@ -5,12 +5,12 @@ use crate::{
     decl_engine::{parsed_engine::ParsedDeclEngineReplace, parsed_id::ParsedDeclId},
     language::{
         parsed::{
-            AbiDeclaration, AstNode, AstNodeContent, CodeBlock, ConfigurableDeclaration,
-            ConstantDeclaration, Declaration, EnumDeclaration, EnumVariant, Expression,
-            ExpressionKind, FunctionDeclaration, FunctionParameter, ImplItem, ImplSelfOrTrait,
-            ParseModule, ParseProgram, ReassignmentTarget, Scrutinee, StorageDeclaration,
-            StorageEntry, StructDeclaration, StructExpressionField, StructField,
-            StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, TraitItem,
+            AbiDeclaration, ArrayExpression, AstNode, AstNodeContent, CodeBlock,
+            ConfigurableDeclaration, ConstantDeclaration, Declaration, EnumDeclaration,
+            EnumVariant, Expression, ExpressionKind, FunctionDeclaration, FunctionParameter,
+            ImplItem, ImplSelfOrTrait, ParseModule, ParseProgram, ReassignmentTarget, Scrutinee,
+            StorageDeclaration, StorageEntry, StructDeclaration, StructExpressionField,
+            StructField, StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, TraitItem,
             TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
         },
         CallPath, CallPathTree, ResolvedCallPath,
@@ -542,10 +542,13 @@ impl ResolveSymbols for ExpressionKind {
             ExpressionKind::TupleIndex(expr) => {
                 expr.prefix.resolve_symbols(handler, ctx.by_ref());
             }
-            ExpressionKind::Array(expr) => expr
-                .contents
+            ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => contents
                 .iter_mut()
                 .for_each(|e| e.resolve_symbols(handler, ctx.by_ref())),
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
+                value.resolve_symbols(handler, ctx.by_ref());
+                length.resolve_symbols(handler, ctx.by_ref());
+            }
             ExpressionKind::Struct(expr) => {
                 expr.call_path_binding
                     .resolve_symbols(handler, ctx.by_ref());
