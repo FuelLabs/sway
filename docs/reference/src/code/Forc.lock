@@ -75,11 +75,6 @@ name = "core"
 source = "path+from-root-0F28276288D2432C"
 
 [[package]]
-name = "counter"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "empty_storage_init"
 source = "member"
 dependencies = ["std"]
@@ -240,6 +235,11 @@ dependencies = ["std"]
 
 [[package]]
 name = "structs"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "test_fuel"
 source = "member"
 dependencies = ["std"]
 

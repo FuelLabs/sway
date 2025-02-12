@@ -24,20 +24,13 @@ pub fn is_keyword(name: &str) -> bool {
     .contains(&name)
 }
 
-/// Returns `Some` if the name contains profanity, where the `&str` is the censored name.
-/// Returns `None` if the name is clean.
-pub fn censor_profanity(name: &str) -> Option<String> {
-    let censored = Censor::from_str(name)
-        .with_censor_threshold(
-            RustrictType::SEVERE
-                | (RustrictType::MODERATE & (RustrictType::SEXUAL | RustrictType::PROFANE)),
-        )
+/// Returns true if the name contains profanity or offensive language, and false if it does not.
+pub fn is_offensive(name: &str) -> bool {
+    let name_without_underscore_hyphens = name.replace(['-', '_'], " ");
+    let censored = Censor::from_str(&name_without_underscore_hyphens)
+        .with_censor_threshold(RustrictType::MODERATE_OR_HIGHER)
         .censor();
-
-    match censored != *name {
-        true => Some(censored),
-        false => None,
-    }
+    censored != *name_without_underscore_hyphens
 }
 
 /// These names cannot be used on Windows, even with an extension.
