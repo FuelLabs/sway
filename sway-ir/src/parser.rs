@@ -678,7 +678,7 @@ mod ir_builder {
     use crate::{
         asm::{AsmArg, AsmInstruction},
         block::Block,
-        constant::{Constant, ConstantValue},
+        constant::{ConstantContent, ConstantValue},
         context::Context,
         error::IrError,
         function::Function,
@@ -688,7 +688,7 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, ConfigContent, Instruction, UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, ConfigContent, Constant, Instruction, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -838,14 +838,24 @@ mod ir_builder {
                 IrAstConstValue::Array(el_ty, els) => {
                     let els: Vec<_> = els
                         .iter()
-                        .map(|cv| cv.value.as_constant(context, el_ty.clone()))
+                        .map(|cv| {
+                            cv.value
+                                .as_constant(context, el_ty.clone())
+                                .get_content(context)
+                                .clone()
+                        })
                         .collect();
                     ConstantValue::Array(els)
                 }
                 IrAstConstValue::Struct(flds) => {
                     let fields: Vec<_> = flds
                         .iter()
-                        .map(|(ty, cv)| cv.value.as_constant(context, ty.clone()))
+                        .map(|(ty, cv)| {
+                            cv.value
+                                .as_constant(context, ty.clone())
+                                .get_content(context)
+                                .clone()
+                        })
                         .collect::<Vec<_>>();
                     ConstantValue::Struct(fields)
                 }
@@ -853,38 +863,40 @@ mod ir_builder {
         }
 
         fn as_constant(&self, context: &mut Context, val_ty: IrAstTy) -> Constant {
-            Constant {
+            let value = self.as_constant_value(context, val_ty.clone());
+            let constant = ConstantContent {
                 ty: val_ty.to_ir_type(context),
-                value: self.as_constant_value(context, val_ty),
-            }
+                value,
+            };
+            Constant::unique(context, constant)
         }
 
         fn as_value(&self, context: &mut Context, val_ty: IrAstTy) -> Value {
             match self {
                 IrAstConstValue::Undef => unreachable!("Can't convert 'undef' to a value."),
-                IrAstConstValue::Unit => Constant::get_unit(context),
-                IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
+                IrAstConstValue::Unit => ConstantContent::get_unit(context),
+                IrAstConstValue::Bool(b) => ConstantContent::get_bool(context, *b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
                     IrAstTy::U256 => {
                         let n = U256::from_be_bytes(bs);
-                        Constant::get_uint256(context, n)
+                        ConstantContent::get_uint256(context, n)
                     }
-                    IrAstTy::B256 => Constant::get_b256(context, *bs),
+                    IrAstTy::B256 => ConstantContent::get_b256(context, *bs),
                     _ => unreachable!("invalid type for hex number"),
                 },
                 IrAstConstValue::Number(n) => match val_ty {
-                    IrAstTy::U8 => Constant::get_uint(context, 8, *n),
-                    IrAstTy::U64 => Constant::get_uint(context, 64, *n),
+                    IrAstTy::U8 => ConstantContent::get_uint(context, 8, *n),
+                    IrAstTy::U64 => ConstantContent::get_uint(context, 64, *n),
                     _ => unreachable!(),
                 },
-                IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
+                IrAstConstValue::String(s) => ConstantContent::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
                     let array_const = self.as_constant(context, val_ty);
-                    Constant::get_array(context, array_const)
+                    ConstantContent::get_array(context, array_const.get_content(context).clone())
                 }
                 IrAstConstValue::Struct(_) => {
                     let struct_const = self.as_constant(context, val_ty);
-                    Constant::get_struct(context, struct_const)
+                    ConstantContent::get_struct(context, struct_const.get_content(context).clone())
                 }
             }
         }

@@ -795,7 +795,7 @@ impl InstructionVerifier<'_, '_> {
             idx_val
                 .get_constant(self.context)
                 .and_then(|const_ref| {
-                    if let ConstantValue::Uint(n) = const_ref.value {
+                    if let ConstantValue::Uint(n) = const_ref.get_content(self.context).value {
                         Some(n)
                     } else {
                         None
