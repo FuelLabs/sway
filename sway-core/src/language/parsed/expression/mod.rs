@@ -79,15 +79,43 @@ impl PartialEqWithEngines for TupleIndexExpression {
 }
 
 #[derive(Debug, Clone)]
-pub struct ArrayExpression {
-    pub contents: Vec<Expression>,
-    pub length_span: Option<Span>,
+pub enum ArrayExpression {
+    Explicit {
+        contents: Vec<Expression>,
+        length_span: Option<Span>,
+    },
+    Repeat {
+        value: Box<Expression>,
+        length: Box<Expression>,
+    },
 }
 
 impl EqWithEngines for ArrayExpression {}
 impl PartialEqWithEngines for ArrayExpression {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.contents.eq(&other.contents, ctx) && self.length_span == other.length_span
+        match (self, other) {
+            (
+                ArrayExpression::Explicit {
+                    contents: self_contents,
+                    length_span: self_length_span,
+                },
+                ArrayExpression::Explicit {
+                    contents: other_contents,
+                    length_span: other_length_span,
+                },
+            ) => self_contents.eq(other_contents, ctx) && self_length_span == other_length_span,
+            (
+                ArrayExpression::Repeat {
+                    value: self_value,
+                    length: self_length,
+                },
+                ArrayExpression::Repeat {
+                    value: other_value,
+                    length: other_length,
+                },
+            ) => self_value.eq(other_value, ctx) && self_length.eq(other_length, ctx),
+            _ => false,
+        }
     }
 }
 
@@ -627,8 +655,8 @@ pub(crate) struct Op {
 }
 
 impl Op {
-    pub fn to_var_name(&self) -> Ident {
-        Ident::new_with_override(self.op_variant.as_str().to_string(), self.span.clone())
+    pub fn to_method_name(&self) -> Ident {
+        Ident::new_with_override(self.op_variant.method_name().to_string(), self.span.clone())
     }
 }
 
@@ -653,7 +681,14 @@ pub enum OpVariant {
 }
 
 impl OpVariant {
-    fn as_str(&self) -> &'static str {
+    /// For all the operators except [OpVariant::Or] and [OpVariant::And],
+    /// returns the name of the method that can be found on the corresponding
+    /// operator trait. E.g., for `+` that will be the method `add` defined in
+    /// `core::ops::Add::add`.
+    ///
+    /// [OpVariant::Or] and [OpVariant::And] are lazy and must be handled
+    /// internally by the compiler.
+    fn method_name(&self) -> &'static str {
         use OpVariant::*;
         match self {
             Add => "add",

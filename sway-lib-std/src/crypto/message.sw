@@ -83,6 +83,7 @@ impl TryInto<b256> for Message {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for Message {
     fn eq(self, other: Self) -> bool {
         if self.bytes.len() != other.bytes.len() {
@@ -101,6 +102,27 @@ impl core::ops::Eq for Message {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Message {
+    fn eq(self, other: Self) -> bool {
+        if self.bytes.len() != other.bytes.len() {
+            return false;
+        }
+
+        let mut iter = 0;
+        while iter < self.bytes.len() {
+            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
+            {
+                return false;
+            }
+            iter += 1;
+        }
+
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Message {}
 
 impl Hash for Message {
     fn hash(self, ref mut state: Hasher) {

@@ -17,6 +17,7 @@ pub struct Point2D {
     y: Bytes,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for Point2D {
     fn eq(self, other: Self) -> bool {
         // All points must be of length 32
@@ -41,6 +42,32 @@ impl Eq for Point2D {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for Point2D {
+    fn eq(self, other: Self) -> bool {
+        if self.x.len() != 32
+            || self.y.len() != 32
+            || other.x.len() != 32
+            || other.y.len() != 32
+        {
+            return false;
+        }
+
+        let mut iter = 0;
+        while iter < 32 {
+            if self.x.get(iter).unwrap() != other.x.get(iter).unwrap() {
+                return false;
+            } else if self.y.get(iter).unwrap() != other.y.get(iter).unwrap() {
+                return false;
+            }
+
+            iter += 1;
+        }
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for Point2D {}
 
 impl Point2D {
     /// Returns a new, uninitialized Point2D.
