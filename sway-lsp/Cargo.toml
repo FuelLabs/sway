@@ -14,6 +14,7 @@ crossbeam-channel.workspace = true
 dashmap.workspace = true
 fd-lock.workspace = true
 forc-pkg.workspace = true
+forc-test.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
 indexmap = { workspace = true, features = ["rayon"] }

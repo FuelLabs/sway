@@ -321,9 +321,44 @@ fn gas_usage_inlay_hints() {
         let server = ServerState::default();
         let dir = sway_workspace_dir()
             .join(e2e_unit_dir())
-            .join("contract-multi-contract-calls")
-            .join("contract_multi_test");
+            // .join("contract-multi-contract-calls")
+            .join("contract_use_gas");
+        eprintln!("compile");
         let _ = open(&server, dir.join("src/main.sw")).await;
+        eprintln!("compile success");
+
+        eprintln!("build tests");
+        match std::panic::catch_unwind(|| {
+            forc_test::build(forc_test::TestOpts {
+                pkg: forc_pkg::PkgOpts {
+                    path: Some(dir.to_string_lossy().into_owned()),
+                    terse: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+        }) {
+            Ok(Ok(built_tests)) => {
+                eprintln!("build tests success, lets run them");
+                let test_filter = None;
+                let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter).unwrap();
+                let res = match tested {
+                    forc_test::Tested::Package(tested_pkg) => vec![*tested_pkg],
+                    forc_test::Tested::Workspace(tested_pkgs) => tested_pkgs,
+                };
+                eprintln!("run tests success");
+
+                for r in res {
+                    for t in r.tests {
+                        let gas_used = t.gas_used;
+                        let name = t.name;
+                        eprintln!("gas used: {gas_used}, name: {name}");
+                    }
+                }
+            }
+            _ => eprintln!("Compiler panic"),
+        }
+        
         let _ = server.shutdown_server();
     });
 }

@@ -286,10 +286,14 @@ impl TestExecutor {
     }
 
     fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Receipt>)> {
+        dbg!();
         let gas_used = *receipts
             .iter()
             .find_map(|receipt| match receipt {
-                tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
+                tx::Receipt::ScriptResult { gas_used, .. } => {
+                    eprintln!("gas_used: {gas_used}");
+                    Some(gas_used)
+                },
                 _ => None,
             })
             .ok_or_else(|| anyhow::anyhow!("missing used gas information from test execution"))?;

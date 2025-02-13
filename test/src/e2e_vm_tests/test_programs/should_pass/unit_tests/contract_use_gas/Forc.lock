@@ -1,5 +1,5 @@
 [[package]]
-name = "contract_multi_test"
+name = "contract_use_gas"
 source = "member"
 dependencies = ["std"]
 
