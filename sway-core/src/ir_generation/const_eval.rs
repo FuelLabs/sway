@@ -261,6 +261,41 @@ pub(crate) fn compile_constant_expression_to_constant(
     }
 }
 
+fn create_array_from_vec(
+    lookup: &mut LookupEnv,
+    elem_type: crate::TypeId,
+    element_typs: Vec<crate::TypeId>,
+    element_vals: Vec<Constant>,
+) -> Option<Constant> {
+    let te = lookup.engines.te();
+    assert!({
+        let unify_check = UnifyCheck::coercion(lookup.engines);
+        element_typs
+            .iter()
+            .all(|tid| unify_check.check(*tid, elem_type))
+    });
+
+    let arr = create_array_aggregate(
+        te,
+        lookup.engines.de(),
+        lookup.context,
+        elem_type,
+        element_typs.len().try_into().unwrap(),
+    )
+    .map_or(None, |array_ty| {
+        Some(ConstantContent::new_array(
+            lookup.context,
+            array_ty.get_array_elem_type(lookup.context).unwrap(),
+            element_vals
+                .iter()
+                .map(|f| f.get_content(lookup.context).clone())
+                .collect(),
+        ))
+    });
+
+    arr.map(|c| Constant::unique(lookup.context, c))
+}
+
 /// Given an environment mapping names to constants,
 /// attempt to evaluate a typed expression to a constant.
 fn const_eval_typed_expr(
@@ -437,7 +472,7 @@ fn const_eval_typed_expr(
                 Some(c)
             })
         }
-        ty::TyExpressionVariant::Array {
+        ty::TyExpressionVariant::ArrayExplicit {
             elem_type,
             contents,
         } => {
@@ -458,35 +493,26 @@ fn const_eval_typed_expr(
             assert!(element_typs.len() == contents.len());
             assert!(element_vals.len() == contents.len());
 
-            let te = lookup.engines.te();
-            assert!({
-                let unify_check = UnifyCheck::coercion(lookup.engines);
-                element_typs
-                    .iter()
-                    .all(|tid| unify_check.check(*tid, *elem_type))
-            });
+            create_array_from_vec(lookup, *elem_type, element_typs, element_vals)
+        }
+        ty::TyExpressionVariant::ArrayRepeat {
+            elem_type,
+            value,
+            length,
+        } => {
+            let constant = const_eval_typed_expr(lookup, known_consts, value)?.unwrap();
+            let length = const_eval_typed_expr(lookup, known_consts, length)?
+                .unwrap()
+                .get_content(lookup.context)
+                .as_uint()
+                .unwrap() as usize;
+            let element_vals = (0..length).map(|_| constant).collect::<Vec<_>>();
+            let element_typs = (0..length).map(|_| value.return_type).collect::<Vec<_>>();
 
-            let arr = create_array_aggregate(
-                te,
-                lookup.engines.de(),
-                lookup.context,
-                *elem_type,
-                element_typs.len().try_into().unwrap(),
-            )
-            .map_or(None, |array_ty| {
-                let arr = ConstantContent::new_array(
-                    lookup.context,
-                    array_ty.get_array_elem_type(lookup.context).unwrap(),
-                    element_vals
-                        .iter()
-                        .map(|cv| cv.get_content(lookup.context).clone())
-                        .collect(),
-                );
-                let arr = Constant::unique(lookup.context, arr);
-                Some(arr)
-            });
+            assert!(element_typs.len() == length);
+            assert!(element_vals.len() == length);
 
-            arr
+            create_array_from_vec(lookup, *elem_type, element_typs, element_vals)
         }
         ty::TyExpressionVariant::EnumInstantiation {
             enum_ref,

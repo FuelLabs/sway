@@ -10,6 +10,7 @@ members = [
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
     "forc-plugins/forc-migrate",
+    "forc-plugins/forc-publish",
     "forc-plugins/forc-tx",
     "forc-test",
     "forc-tracing",
@@ -57,8 +58,9 @@ forc-debug = { path = "forc-plugins/forc-debug/", version = "0.66.7" }
 forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.7" }
 forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.7" }
 forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.7" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.7" }
 forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.66.7" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.66.7" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.7" }
 
 sway-ast = { path = "sway-ast/", version = "0.66.7" }
 sway-core = { path = "sway-core/", version = "0.66.7" }
@@ -133,6 +135,7 @@ devault = "0.2"
 dialoguer = "0.11"
 dirs = "5.0"
 downcast-rs = "1.2"
+duplicate = "2.0"
 either = "1.9"
 ethabi = { package = "fuel-ethabi", version = "18.0" }
 etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev" }
@@ -140,6 +143,7 @@ etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 extension-trait = "1.0"
 fd-lock = "4.0"
 filecheck = "0.5"
+flate2 = "1.0"
 fs_extra = "1.2"
 futures = { version = "0.3", default-features = false }
 gag = "1.0"
@@ -229,6 +233,7 @@ unicode-bidi = "0.3"
 unicode-xid = "0.2"
 url = "2.2"
 urlencoding = "2.1"
+uuid = "1.13"
 vec1 = "1.8"
 vte = "0.13"
 walkdir = "2.3"

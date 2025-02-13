@@ -317,11 +317,20 @@ impl From<String> for raw_slice {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for String {
     fn eq(self, other: Self) -> bool {
         self.bytes == other.as_bytes()
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for String {
+    fn eq(self, other: Self) -> bool {
+        self.bytes == other.as_bytes()
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for String {}
 
 impl Hash for String {
     fn hash(self, ref mut state: Hasher) {

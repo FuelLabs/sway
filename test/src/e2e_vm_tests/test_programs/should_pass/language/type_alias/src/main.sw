@@ -35,11 +35,20 @@ impl MyTypeAlias3 {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for MyTypeAlias2 {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for MyTypeAlias2 {
+    fn eq(self, other: Self) -> bool {
+        self.x == other.x
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for MyTypeAlias2 {}
 
 struct GenericStruct<T> {
     x: T,
@@ -122,6 +131,7 @@ impl MyEnumTypeAlias3 {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for MyEnumTypeAlias2 {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -129,6 +139,16 @@ impl core::ops::Eq for MyEnumTypeAlias2 {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for MyEnumTypeAlias2 {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (MyEnumType::X(value1), MyEnumType::X(value2)) => value1 == value2,
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for MyEnumTypeAlias2 {}
 
 fn enum_tests() {
     let x = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);

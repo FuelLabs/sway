@@ -20,13 +20,23 @@ pub struct U128Duplicate {
 pub trait AltFrom {
     fn from(h: u64, l: u64) -> Self;
 } {
+
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for U128Duplicate {
     fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for U128Duplicate {
+    fn eq(self, other: Self) -> bool {
+        self.lower == other.lower && self.upper == other.upper
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for U128Duplicate {}
 
 /// Function for creating U128 from its u64 components
 impl AltFrom for U128Duplicate {
@@ -94,9 +104,11 @@ impl U128Duplicate {
 // Multiply two u64 values, producing a U128
 pub fn mul64(a: u64, b: u64) -> U128Duplicate {
     // Split a and b into 32-bit lo and hi components
-    let a_lo = (a & 0x00000000ffffffff).try_as_u32().unwrap();
+    let a_lo = (a
+    & 0x00000000ffffffff).try_as_u32().unwrap();
     let a_hi = (a >> 32).try_as_u32().unwrap();
-    let b_lo = (b & 0x00000000ffffffff).try_as_u32().unwrap();
+    let b_lo = (b
+    & 0x00000000ffffffff).try_as_u32().unwrap();
     let b_hi = (b >> 32).try_as_u32().unwrap();
 
     // Calculate low, high, and mid multiplications
@@ -106,13 +118,7 @@ pub fn mul64(a: u64, b: u64) -> U128Duplicate {
     let ab_lo = (a_lo * b_lo).as_u64();
 
     // Calculate the carry bit
-    let carry_bit = (
-        (
-            ab_mid.try_as_u32().unwrap() +
-            ba_mid.try_as_u32().unwrap() +
-            (ab_lo >> 32).try_as_u32().unwrap()
-        ) >> 32
-    ).as_u64();
+    let carry_bit = ((ab_mid.try_as_u32().unwrap() + ba_mid.try_as_u32().unwrap() + (ab_lo >> 32).try_as_u32().unwrap()) >> 32).as_u64();
 
     // low result is what's left after the (overflowing) multiplication of a and b
     let result_lo: u64 = a * b;
