@@ -228,6 +228,7 @@ tower = { version = "0.5", default-features = false }
 tower-lsp = "0.20"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+twox-hash = "1.6.3"
 uint = "0.9"
 unicode-bidi = "0.3"
 unicode-xid = "0.2"
