@@ -24,7 +24,7 @@ use crate::{
     },
     type_system::{SubstTypes, TypeId},
     IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
-    TypeSubstMap, UnifyCheck,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
 use super::Module;
@@ -102,6 +102,7 @@ type TraitName = Arc<CallPath<TraitSuffix>>;
 struct TraitKey {
     name: TraitName,
     type_id: TypeId,
+    type_id_type_parameters: Vec<TypeParameter>,
     trait_decl_span: Option<Span>,
 }
 
@@ -110,6 +111,10 @@ impl OrdWithEngines for TraitKey {
         self.name
             .cmp(&other.name, ctx)
             .then_with(|| self.type_id.cmp(&other.type_id))
+            .then_with(|| {
+                self.type_id_type_parameters
+                    .cmp(&other.type_id_type_parameters, ctx)
+            })
     }
 }
 
@@ -225,10 +230,11 @@ impl TraitMap {
     /// declarations for the key `(trait_name, type_id)` whenever possible.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert(
-        &mut self,
         handler: &Handler,
+        module: &mut Module,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
+        impl_type_parameters: Vec<TypeParameter>,
         type_id: TypeId,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
@@ -238,6 +244,25 @@ impl TraitMap {
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
         let type_id = engines.te().get_unaliased_type_id(type_id);
+
+        let mut type_id_type_parameters = match &*engines.te().get(type_id) {
+            TypeInfo::Enum(decl_id) => engines.de().get_enum(decl_id).type_parameters.clone(),
+            TypeInfo::Struct(decl_id) => engines.de().get_struct(decl_id).type_parameters.clone(),
+            _ => vec![],
+        };
+
+        // Copy impl type parameter trait constraint to type_id_type_parameters
+        for type_id_type_parameter in type_id_type_parameters.iter_mut() {
+            let impl_type_parameter = impl_type_parameters
+                .iter()
+                .filter(|t| t.type_id == type_id_type_parameter.type_id)
+                .last();
+            if let Some(impl_type_parameter) = impl_type_parameter {
+                type_id_type_parameter
+                    .trait_constraints
+                    .clone_from(&impl_type_parameter.trait_constraints);
+            }
+        }
 
         handler.scope(|handler| {
             let mut trait_items: TraitItems = HashMap::new();
@@ -267,7 +292,11 @@ impl TraitMap {
                 }
             }
 
-            let trait_impls = self.get_impls_mut(engines, type_id);
+            let trait_impls = module
+                .current_items_mut()
+                .implemented_traits
+                .get_impls_mut(engines, type_id)
+                .clone();
 
             // check to see if adding this trait will produce a conflicting definition
             for TraitEntry {
@@ -275,6 +304,7 @@ impl TraitMap {
                     TraitKey {
                         name: map_trait_name,
                         type_id: map_type_id,
+                        type_id_type_parameters: map_type_id_type_parameters,
                         trait_decl_span: _,
                     },
                 value:
@@ -360,6 +390,34 @@ impl TraitMap {
                     }
                 }
 
+                let mut trait_constraints_safified = true;
+                for (map_type_id_type_parameter, type_id_type_parameter) in
+                    map_type_id_type_parameters
+                        .iter()
+                        .zip(type_id_type_parameters.iter())
+                {
+                    // Check that type_id_type_parameter satisfies all trait constraints in map_type_id_type_parameter.
+                    if type_id_type_parameter
+                        .type_id
+                        .is_concrete(engines, crate::TreatNumericAs::Abstract)
+                        && Self::check_if_trait_constraints_are_satisfied_for_type(
+                            &Handler::default(),
+                            module,
+                            type_id_type_parameter.type_id,
+                            &map_type_id_type_parameter.trait_constraints,
+                            impl_span,
+                            engines,
+                        )
+                        .is_err()
+                    {
+                        trait_constraints_safified = false;
+                    }
+                }
+
+                if !trait_constraints_safified {
+                    continue;
+                }
+
                 if matches!(is_extending_existing_impl, IsExtendingExistingImpl::No)
                     && types_are_subset
                     && traits_are_subset
@@ -438,11 +496,12 @@ impl TraitMap {
             });
 
             // even if there is a conflicting definition, add the trait anyway
-            self.insert_inner(
+            module.current_items_mut().implemented_traits.insert_inner(
                 trait_name,
                 impl_span.clone(),
                 trait_decl_span,
                 type_id,
+                type_id_type_parameters,
                 trait_items,
                 engines,
             );
@@ -451,24 +510,28 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
+        type_id_type_parameters: Vec<TypeParameter>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
         let key = TraitKey {
-            name: trait_name,
+            name: trait_name.clone(),
             type_id,
+            type_id_type_parameters,
             trait_decl_span,
         };
         let value = TraitValue {
-            trait_items: trait_methods,
+            trait_items: trait_methods.clone(),
             impl_span,
         };
+
         let entry = TraitEntry { key, value };
         let mut trait_impls: TraitImpls = HashMap::<TypeRootFilter, Vec<TraitEntry>>::new();
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
@@ -504,10 +567,47 @@ impl TraitMap {
                 });
 
                 match pos {
-                    Ok(pos) => self_vec[pos]
-                        .value
-                        .trait_items
-                        .extend(oe.value.trait_items.clone()),
+                    Ok(pos) => {
+                        let mut skip_insert = false;
+
+                        // If we have the same method in: impl<T> FromBytes for T
+                        // and: impl FromBytes for DataPoint
+                        // We keep the second implementation.
+                        // We don't care for the order this is checked
+                        #[allow(clippy::iter_over_hash_type)]
+                        for (name, item) in oe.value.trait_items.iter() {
+                            #[allow(clippy::iter_over_hash_type)]
+                            for (existing_name, existing_item) in
+                                self_vec[pos].value.trait_items.iter()
+                            {
+                                if name == existing_name {
+                                    if let (
+                                        TyTraitItem::Fn(fn_ref),
+                                        TyTraitItem::Fn(existing_fn_ref),
+                                    ) = (
+                                        item.clone().expect_typed(),
+                                        existing_item.clone().expect_typed(),
+                                    ) {
+                                        let method = engines.de().get_function(fn_ref.id());
+                                        let existing_method =
+                                            engines.de().get_function(existing_fn_ref.id());
+                                        if !existing_method.is_from_blanket_impl(engines)
+                                            && method.is_from_blanket_impl(engines)
+                                        {
+                                            skip_insert = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !skip_insert {
+                            self_vec[pos]
+                                .value
+                                .trait_items
+                                .extend(oe.value.trait_items.clone())
+                        }
+                    }
                     Err(pos) => self_vec.insert(pos, oe.clone()),
                 }
             }
@@ -642,6 +742,7 @@ impl TraitMap {
                     TraitKey {
                         name: map_trait_name,
                         type_id: map_type_id,
+                        type_id_type_parameters: map_type_id_constraints,
                         trait_decl_span: map_trait_decl_span,
                     },
                 value:
@@ -658,6 +759,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_type_id_constraints.clone(),
                         map_trait_items.clone(),
                         engines,
                     );
@@ -667,6 +769,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *map_type_id,
+                        map_type_id_constraints.clone(),
                         Self::filter_dummy_methods(
                             map_trait_items.clone(),
                             *type_id,
@@ -1190,6 +1293,10 @@ impl TraitMap {
                             )
                         })
                         .collect::<Vec<_>>(),
+                    item_paths: candidates
+                        .values()
+                        .filter_map(|i| i.span(engines).to_string_path_with_line_col(engines.se()))
+                        .collect::<Vec<String>>(),
                     span: symbol.span(),
                 },
             )),
