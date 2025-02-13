@@ -3308,11 +3308,16 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(val, context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
             Ok(TerminatorValue::new(val, context))
-        } else if let Some(const_val) = self
+        } else if let Some(global_val) = self
             .module
-            .get_global_constant(context, &call_path.as_vec_string())
+            .get_global_variable(context, &call_path.as_vec_string())
         {
-            Ok(TerminatorValue::new(const_val, context))
+            let val = self
+                .current_block
+                .append(context)
+                .get_global(global_val)
+                .add_metadatum(context, span_md_idx);
+            Ok(TerminatorValue::new(val, context))
         } else if self
             .module
             .get_config(context, &call_path.suffix.to_string())

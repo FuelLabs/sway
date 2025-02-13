@@ -959,6 +959,21 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
             }
+            InstOp::GetGlobal(global_var) => {
+                let name = block
+                    .get_function(context)
+                    .get_module(context)
+                    .lookup_global_variable_name(context, global_var)
+                    .unwrap();
+                Doc::line(
+                    Doc::text(format!(
+                        "{} = get_global {}, {name}",
+                        namer.name(context, ins_value),
+                        global_var.get_type(context).as_string(context),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )
+            }
             InstOp::GetConfig(_, name) => Doc::line(
                 match block.get_module(context).get_config(context, name).unwrap() {
                     ConfigContent::V0 { name, ptr_ty, .. }

@@ -684,10 +684,10 @@ mod ir_builder {
         function::Function,
         instruction::{InstOp, Predicate, Register},
         irtype::Type,
-        local_var::LocalVar,
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
+        variable::LocalVar,
         BinaryOpKind, BlockArgument, ConfigContent, Constant, Instruction, UnaryOpKind, B256,
     };
 

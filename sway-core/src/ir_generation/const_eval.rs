@@ -27,7 +27,7 @@ use sway_ir::{
     context::Context,
     module::Module,
     value::Value,
-    Constant, InstOp, Instruction, Type, TypeContent,
+    Constant, GlobalVar, InstOp, Instruction, Type, TypeContent,
 };
 use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Named, Span};
 use sway_utils::mapped_stack::MappedStack;
@@ -118,10 +118,15 @@ pub(crate) fn compile_const_decl(
     // Check if it's a processed global constant.
     match (
         env.module
-            .get_global_constant(env.context, &call_path.as_vec_string()),
+            .get_global_variable(env.context, &call_path.as_vec_string()),
         env.module_ns,
     ) {
-        (Some(const_val), _) => Ok(Some(const_val)),
+        (Some(global_var), _) => {
+            if let Some(constant) = global_var.get_initializer(env.context) {
+                return Ok(Some(Value::new_constant(env.context, *constant)));
+            }
+            Ok(None)
+        }
         (None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.root_items().check_symbol(&call_path.suffix);
@@ -161,10 +166,19 @@ pub(crate) fn compile_const_decl(
                         &value,
                     )?;
 
-                    env.module.add_global_constant(
+                    let const_val_c = *const_val
+                        .get_constant(env.context)
+                        .expect("Must have been compiled to a constant");
+
+                    let c_ty = const_val_c.get_content(env.context).ty;
+                    let c_ty_ptr = Type::new_ptr(env.context, c_ty);
+                    let const_global =
+                        GlobalVar::new(env.context, c_ty_ptr, Some(const_val_c), false);
+
+                    env.module.add_global_variable(
                         env.context,
                         call_path.as_vec_string().to_vec(),
-                        const_val,
+                        const_global,
                     );
 
                     Ok(Some(const_val))

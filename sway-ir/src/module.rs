@@ -10,8 +10,7 @@ use std::{
 use crate::{
     context::Context,
     function::{Function, FunctionIterator},
-    value::Value,
-    Constant, MetadataIndex, Type,
+    Constant, GlobalVar, MetadataIndex, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -23,7 +22,7 @@ pub struct Module(pub slotmap::DefaultKey);
 pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
-    pub global_constants: HashMap<Vec<String>, Value>,
+    pub global_variables: HashMap<Vec<String>, GlobalVar>,
     pub configs: BTreeMap<String, ConfigContent>,
 }
 
@@ -61,7 +60,7 @@ impl Module {
         let content = ModuleContent {
             kind,
             functions: Vec::new(),
-            global_constants: HashMap::new(),
+            global_variables: HashMap::new(),
             configs: BTreeMap::new(),
         };
         Module(context.modules.insert(content))
@@ -77,24 +76,41 @@ impl Module {
         FunctionIterator::new(context, self)
     }
 
-    /// Add a global constant value to this module.
-    pub fn add_global_constant(
+    /// Add a global variable value to this module.
+    pub fn add_global_variable(
         &self,
         context: &mut Context,
         call_path: Vec<String>,
-        const_val: Value,
+        const_val: GlobalVar,
     ) {
         context.modules[self.0]
-            .global_constants
+            .global_variables
             .insert(call_path, const_val);
     }
 
-    /// Get a named global constant value from this module, if found.
-    pub fn get_global_constant(&self, context: &Context, call_path: &Vec<String>) -> Option<Value> {
+    /// Get a named global variable from this module, if found.
+    pub fn get_global_variable(
+        &self,
+        context: &Context,
+        call_path: &Vec<String>,
+    ) -> Option<GlobalVar> {
         context.modules[self.0]
-            .global_constants
+            .global_variables
             .get(call_path)
             .copied()
+    }
+
+    /// Lookup global variable name
+    pub fn lookup_global_variable_name(
+        &self,
+        context: &Context,
+        global: &GlobalVar,
+    ) -> Option<String> {
+        context.modules[self.0]
+            .global_variables
+            .iter()
+            .find(|(_key, val)| *val == global)
+            .map(|(key, _)| key.join("::"))
     }
 
     /// Add a config value to this module.
