@@ -8,7 +8,9 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program, namespace,
+    compile_ir_context_to_finalized_asm, compile_to_ast,
+    ir_generation::compile_program,
+    namespace::{self, Root},
     BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
@@ -18,6 +20,7 @@ use sway_ir::{
     create_fn_inline_pass, register_known_passes, PassGroup, PassManager, ARG_DEMOTION_NAME,
     CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
 };
+use sway_types::ProgramId;
 
 use crate::RunConfig;
 
@@ -241,7 +244,7 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-		let mut initial_namespace = namespace::namespace_without_contract_id(core_lib_name.clone());
+		let mut initial_namespace = Root::new(core_lib_name.clone(), None, ProgramId::new(0), false);
 		initial_namespace.add_external("core".to_owned(), core_root.clone());
                 let compile_res = compile_to_ast(
                     &handler,

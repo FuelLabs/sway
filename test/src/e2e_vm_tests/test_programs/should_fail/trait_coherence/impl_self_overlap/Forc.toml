@@ -1,0 +1,9 @@
+[project]
+name = "impl_self_overlap"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[dependencies]
+impl_self_overlap_lib = { path = "../impl_self_overlap_lib" }
