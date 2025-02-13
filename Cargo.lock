@@ -7883,6 +7883,7 @@ dependencies = [
  "dirs 4.0.0",
  "fd-lock",
  "forc-pkg",
+ "forc-test",
  "forc-tracing 0.66.7",
  "forc-util",
  "futures",
