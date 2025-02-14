@@ -764,8 +764,6 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-
-
 #[test]
 fn ok_vec_push() {
     use ::assert::*;
