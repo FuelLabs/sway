@@ -562,12 +562,12 @@ fn compile_fn(
         )]);
     }
 
-    // if !*is_type_check_finalized {
-    //     return Err(vec![CompileError::InternalOwned(
-    //         format!("Method {name} did not finalize type checking phase."),
-    //         span.clone(),
-    //     )]);
-    // }
+    if !*is_type_check_finalized {
+        return Err(vec![CompileError::InternalOwned(
+            format!("Method {name} did not finalize type checking phase."),
+            span.clone(),
+        )]);
+    }
 
     let args = ast_fn_decl
         .parameters
