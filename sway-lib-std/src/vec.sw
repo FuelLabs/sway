@@ -665,22 +665,33 @@ impl<T> Vec<T> {
 
 impl<T> AsRawSlice for Vec<T> {
     fn as_raw_slice(self) -> raw_slice {
-        self.buf.as_raw_slice()
+        raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
     }
 }
 
 impl<T> From<raw_slice> for Vec<T> {
     fn from(slice: raw_slice) -> Self {
-        Self {
-            buf: slice.into::<T>(),
-            len: slice.len::<T>(),
-        }
+        let len = slice.len::<T>();
+        let buf = alloc_slice::<T>(len);
+        slice.ptr().copy_to::<T>(buf.ptr(), len);
+        Self { buf, len }
     }
 }
 
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
-        vec.buf.as_raw_slice()
+        asm(ptr: (vec.ptr(), vec.len())) {
+            ptr: raw_slice
+        }
+    }
+}
+
+impl<T> Clone for Vec<T> {
+    fn clone(self) -> Self {
+        let len = self.len();
+        let buf = alloc_slice::<T>(len);
+        self.ptr().copy_to::<T>(buf.ptr(), len);
+        Self { buf, len }
     }
 }
 
@@ -753,15 +764,7 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-impl<T> Clone for Vec<T> {
-    fn clone(self) -> Self {
-        let buf = self.buf.clone();
-        Self {
-            buf,
-            len: self.len,
-        }
-    }
-}
+
 
 #[test]
 fn ok_vec_push() {
