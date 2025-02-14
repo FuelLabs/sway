@@ -10,13 +10,12 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     block::BlockArgument,
-    constant::Constant,
     context::Context,
     instruction::InstOp,
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
-    Block, Instruction,
+    Block, Constant, Instruction,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -185,7 +184,7 @@ impl Value {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match &context.values[self.0].value {
             ValueDatum::Argument(BlockArgument { ty, .. }) => Some(*ty),
-            ValueDatum::Constant(c) => Some(c.ty),
+            ValueDatum::Constant(c) => Some(c.get_content(context).ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
     }

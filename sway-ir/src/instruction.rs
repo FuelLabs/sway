@@ -16,10 +16,10 @@ use crate::{
     context::Context,
     function::Function,
     irtype::Type,
-    local_var::LocalVar,
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
-    AsmInstruction, Constant, Module,
+    variable::LocalVar,
+    AsmInstruction, ConstantContent, GlobalVar, Module,
 };
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -85,6 +85,8 @@ pub enum InstOp {
     FuelVm(FuelVmInstruction),
     /// Return a local variable.
     GetLocal(LocalVar),
+    /// Return a global variable.
+    GetGlobal(GlobalVar),
     /// Return a ptr to a config
     GetConfig(Module, String),
     /// Translate a pointer from a base to a nested element in an aggregate type.
@@ -288,7 +290,9 @@ impl InstOp {
             // Load needs to strip the pointer from the source type.
             InstOp::Load(ptr_val) => match &context.values[ptr_val.0].value {
                 ValueDatum::Argument(arg) => arg.ty.get_pointee_type(context),
-                ValueDatum::Constant(cons) => cons.ty.get_pointee_type(context),
+                ValueDatum::Constant(cons) => {
+                    cons.get_content(context).ty.get_pointee_type(context)
+                }
                 ValueDatum::Instruction(ins) => ins
                     .get_type(context)
                     .and_then(|ty| ty.get_pointee_type(context)),
@@ -297,6 +301,7 @@ impl InstOp {
             // These return pointer types.
             InstOp::GetElemPtr { elem_ptr_ty, .. } => Some(*elem_ptr_ty),
             InstOp::GetLocal(local_var) => Some(local_var.get_type(context)),
+            InstOp::GetGlobal(global_var) => Some(global_var.get_type(context)),
             InstOp::GetConfig(module, name) => Some(match module.get_config(context, name)? {
                 crate::ConfigContent::V0 { ptr_ty, .. } => *ptr_ty,
                 crate::ConfigContent::V1 { ptr_ty, .. } => *ptr_ty,
@@ -386,6 +391,10 @@ impl InstOp {
             }
             InstOp::GetLocal(_local_var) => {
                 // `GetLocal` returns an SSA `Value` but does not take any as an operand.
+                vec![]
+            }
+            InstOp::GetGlobal(_global_var) => {
+                // `GetGlobal` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::GetConfig(_, _) => {
@@ -521,6 +530,7 @@ impl InstOp {
                 replace(gas);
             }
             InstOp::GetLocal(_) => (),
+            InstOp::GetGlobal(_) => (),
             InstOp::GetConfig(_, _) => (),
             InstOp::GetElemPtr {
                 base,
@@ -682,6 +692,7 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(_))
             | InstOp::GetElemPtr { .. }
             | InstOp::GetLocal(_)
+            | InstOp::GetGlobal(_)
             | InstOp::GetConfig(_, _)
             | InstOp::IntToPtr(..)
             | InstOp::Load(_)
@@ -1024,20 +1035,24 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     }
 
     pub fn get_elem_ptr_with_idx(self, base: Value, elem_ty: Type, index: u64) -> Value {
-        let idx_val = Constant::get_uint(self.context, 64, index);
+        let idx_val = ConstantContent::get_uint(self.context, 64, index);
         self.get_elem_ptr(base, elem_ty, vec![idx_val])
     }
 
     pub fn get_elem_ptr_with_idcs(self, base: Value, elem_ty: Type, indices: &[u64]) -> Value {
         let idx_vals = indices
             .iter()
-            .map(|idx| Constant::get_uint(self.context, 64, *idx))
+            .map(|idx| ConstantContent::get_uint(self.context, 64, *idx))
             .collect();
         self.get_elem_ptr(base, elem_ty, idx_vals)
     }
 
     pub fn get_local(self, local_var: LocalVar) -> Value {
         insert_instruction!(self, InstOp::GetLocal(local_var))
+    }
+
+    pub fn get_global(self, global_var: GlobalVar) -> Value {
+        insert_instruction!(self, InstOp::GetGlobal(global_var))
     }
 
     pub fn get_config(self, module: Module, name: String) -> Value {

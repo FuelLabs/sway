@@ -15,9 +15,9 @@ use crate::{
     function::Function,
     instruction::{FuelVmInstruction, InstOp},
     irtype::Type,
-    local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
+    variable::LocalVar,
     AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
 };
 
@@ -602,6 +602,7 @@ fn inline_instruction(
             InstOp::GetLocal(local_var) => {
                 new_block.append(context).get_local(map_local(local_var))
             }
+            InstOp::GetGlobal(global_var) => new_block.append(context).get_global(global_var),
             InstOp::GetConfig(module, name) => new_block.append(context).get_config(module, name),
             InstOp::IntToPtr(value, ty) => {
                 new_block.append(context).int_to_ptr(map_value(value), ty)

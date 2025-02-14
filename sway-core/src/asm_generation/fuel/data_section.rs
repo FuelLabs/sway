@@ -1,5 +1,7 @@
 use rustc_hash::FxHashMap;
-use sway_ir::{size_bytes_round_up_to_word_alignment, Constant, ConstantValue, Context, Padding};
+use sway_ir::{
+    size_bytes_round_up_to_word_alignment, ConstantContent, ConstantValue, Context, Padding,
+};
 
 use std::{fmt, iter::repeat};
 
@@ -89,7 +91,7 @@ impl Entry {
 
     pub(crate) fn from_constant(
         context: &Context,
-        constant: &Constant,
+        constant: &ConstantContent,
         name: EntryName,
         padding: Option<Padding>,
     ) -> Entry {

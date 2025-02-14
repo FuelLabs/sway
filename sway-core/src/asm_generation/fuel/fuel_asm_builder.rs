@@ -102,7 +102,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             ConfigContent::V0 { name, constant, .. } => {
                 let entry = Entry::from_constant(
                     self.context,
-                    constant,
+                    constant.get_content(self.context),
                     EntryName::Configurable(name.clone()),
                     None,
                 );
@@ -484,6 +484,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
+                InstOp::GetGlobal(global_var) => self.compile_get_global(instr_val, global_var),
                 InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
                 InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
@@ -1130,7 +1131,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             idx_val
                 .get_constant(self.context)
                 .and_then(|idx_const| {
-                    if let ConstantValue::Uint(idx) = idx_const.value {
+                    if let ConstantValue::Uint(idx) = idx_const.get_content(self.context).value {
                         Some(idx as usize)
                     } else {
                         None
@@ -1246,6 +1247,40 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.reg_map.insert(*instr_val, instr_reg);
         }
 
+        Ok(())
+    }
+
+    fn compile_get_global(
+        &mut self,
+        instr_val: &Value,
+        local_var: &GlobalVar,
+    ) -> Result<(), CompileError> {
+        let span = self
+            .md_mgr
+            .val_to_span(self.context, *instr_val)
+            .unwrap_or_else(Span::dummy);
+        let Some(constant) = local_var.get_initializer(self.context) else {
+            return Err(CompileError::Internal(
+                "Global variable must have an initializer.",
+                span,
+            ));
+        };
+        let entry = Entry::from_constant(
+            self.context,
+            constant.get_content(self.context),
+            EntryName::NonConfigurable,
+            None,
+        );
+        let data_id = self.data_section.insert_data_value(entry);
+
+        // Allocate a register for it, and an address_of instruction.
+        let reg = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
+            comment: "constant address in data section".into(),
+            owning_span: Some(span),
+        });
+        self.reg_map.insert(*instr_val, reg);
         Ok(())
     }
 
@@ -2072,7 +2107,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         config_name: Option<String>,
         span: Option<Span>,
     ) -> (VirtualRegister, Option<DataId>) {
-        match &constant.value {
+        match &constant.get_content(self.context).value {
             // Use cheaper $zero or $one registers if possible.
             ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0)
                 if config_name.is_none() =>
@@ -2091,7 +2126,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 } else {
                     EntryName::NonConfigurable
                 };
-                let entry = Entry::from_constant(self.context, constant, config_name, None);
+                let entry = Entry::from_constant(
+                    self.context,
+                    constant.get_content(self.context),
+                    config_name,
+                    None,
+                );
                 let data_id = self.data_section.insert_data_value(entry);
 
                 // Allocate a register for it, and a load instruction.
@@ -2137,7 +2177,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .or_else(|| {
                 value.get_constant(self.context).map(|constant| {
                     let span = self.md_mgr.val_to_span(self.context, *value);
-                    match constant.value {
+                    match constant.get_content(self.context).value {
                         // If it's a small enough constant, just initialize using an IMM value.
                         // (exceptions for zero and one as they have special registers).
                         ConstantValue::Uint(c)
