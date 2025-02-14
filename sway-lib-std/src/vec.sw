@@ -767,8 +767,6 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-
-
 impl<T> PartialEq for Vec<T>
 where
     T: Eq,
