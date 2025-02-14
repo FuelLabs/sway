@@ -58,14 +58,14 @@ pub(crate) async fn run(cmd: TestnetCmd, dry_run: bool) -> anyhow::Result<Option
     ));
 
     if dry_run {
-        Ok(None)
-    } else {
-        // Spawn the process with proper error handling
-        let handle = fuel_core_command
-            .spawn()
-            .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
-        Ok(Some(handle))
+        return Ok(None);
     }
+
+    // Spawn the process with proper error handling
+    let handle = fuel_core_command
+        .spawn()
+        .with_context(|| "Failed to spawn fuel-core process:".to_string())?;
+    Ok(Some(handle))
 }
 
 #[derive(Debug)]
