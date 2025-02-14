@@ -759,7 +759,10 @@ impl<T> Iterator for VecIter<T> {
 impl<T> Clone for Vec<T> {
     fn clone(self) -> Self {
         let buf = self.buf.clone();
-        Self { buf, len: self.len }
+        Self {
+            buf,
+            len: self.len,
+        }
     }
 }
 
