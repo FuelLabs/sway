@@ -74,7 +74,7 @@ impl NativeAsset for Contract {
     /// Mint and send this contracts native asset to a destination contract.
     fn get_msg_asset_id() {
         // ANCHOR: msg_asset_id
-        let amount = msg_asset_id();
+        let native_asset_id = msg_asset_id();
         // ANCHOR_END: msg_asset_id
     }
 }
