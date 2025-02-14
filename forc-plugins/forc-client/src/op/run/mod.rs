@@ -3,7 +3,6 @@ use crate::{
     cmd,
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
-        node_url::get_node_url,
         pkg::built_pkgs,
         tx::{prompt_forc_wallet_password, select_account, SignerSelectionMode},
     },
@@ -101,7 +100,7 @@ pub async fn run_pkg(
     compiled: &BuiltPackage,
     signer_mode: &SignerSelectionMode,
 ) -> Result<RanScript> {
-    let node_url = get_node_url(&command.node, &manifest.network)?;
+    let node_url = command.node.get_node_url(&manifest.network)?;
     let provider = Provider::connect(node_url.clone()).await?;
     let tx_count = 1;
     let account = select_account(
