@@ -302,7 +302,7 @@ impl<T> Vec<T> {
                 let source: &mut T = __elem_at(self.buf, index + 1);
                 let target: &mut T = __elem_at(self.buf, index);
                 *target = *source;
-                
+
                 index += 1;
             }
         }
@@ -620,11 +620,11 @@ impl<T> Vec<T> {
 
         // If we don't have enough capacity, alloc more
         if self.capacity() < new_len {
-            self.buf = realloc_slice(self.buf, new_len);            
+            self.buf = realloc_slice(self.buf, new_len);
         }
 
         // Fill the new length with `value`
-        let mut i = self.len;        
+        let mut i = self.len;
         while i < new_len {
             let item: &mut T = __elem_at(self.buf, i);
             *item = value;
@@ -756,7 +756,10 @@ impl<T> Iterator for VecIter<T> {
 impl<T> Clone for Vec<T> {
     fn clone(self) -> Self {
         let buf = self.buf.clone();
-        Self { buf, len: self.len }
+        Self {
+            buf,
+            len: self.len,
+        }
     }
 }
 
@@ -765,7 +768,7 @@ fn ok_vec_push() {
     use ::assert::*;
 
     let mut v: Vec<u8> = Vec::new();
-    
+
     v.push(1u8);
     assert_eq(v.len(), 1);
     assert_eq(v.capacity(), 1);
