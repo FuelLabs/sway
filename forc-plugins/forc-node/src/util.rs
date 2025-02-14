@@ -1,4 +1,6 @@
-use crate::consts::DB_FOLDER;
+use crate::consts::{
+    DB_FOLDER, IGNITION_CONFIG_FOLDER_NAME, LOCAL_CONFIG_FOLDER_NAME, TESTNET_CONFIG_FOLDER_NAME,
+};
 use anyhow::{anyhow, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password};
 use forc_util::user_forc_directory;
@@ -50,9 +52,9 @@ impl From<DbConfig> for PathBuf {
     fn from(value: DbConfig) -> Self {
         let user_db_dir = user_forc_directory().join(DB_FOLDER);
         match value {
-            DbConfig::Local => user_db_dir.join("local"),
-            DbConfig::Testnet => user_db_dir.join("ignition-testnet"),
-            DbConfig::Ignition => user_db_dir.join("ignition"),
+            DbConfig::Local => user_db_dir.join(LOCAL_CONFIG_FOLDER_NAME),
+            DbConfig::Testnet => user_db_dir.join(TESTNET_CONFIG_FOLDER_NAME),
+            DbConfig::Ignition => user_db_dir.join(IGNITION_CONFIG_FOLDER_NAME),
         }
     }
 }

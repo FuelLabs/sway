@@ -18,11 +18,14 @@ pub const MAINNET_RELAYER_LOG_PAGE_SIZE: u32 = 100;
 
 /// Name of the folder for testnet at the configuration repo:
 /// https://github.com/fuelLabs/chain-configuration/
+/// And name of the db path if persistent db is used.
 pub const TESTNET_CONFIG_FOLDER_NAME: &str = "ignition-test";
 /// Name of the folder for ignition mainnet at the configuration repo:
 /// https://github.com/fuelLabs/chain-configuration/
+/// And name of the db path if persistent db is used.
 pub const IGNITION_CONFIG_FOLDER_NAME: &str = "ignition";
 /// Name of the folder for local configuration repo:
+/// And name of the db path if persistent db is used.
 pub const LOCAL_CONFIG_FOLDER_NAME: &str = "local";
 /// Name of the github repository that hosts chain-configurations.
 pub const CHAIN_CONFIG_REPO_NAME: &str = "chain-configuration";
