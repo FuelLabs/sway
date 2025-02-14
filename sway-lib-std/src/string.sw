@@ -6,6 +6,7 @@ use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
+use ::clone::Clone;
 
 /// A UTF-8 encoded growable string. It has ownership over its buffer.
 ///
@@ -316,11 +317,20 @@ impl From<String> for raw_slice {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for String {
     fn eq(self, other: Self) -> bool {
         self.bytes == other.as_bytes()
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for String {
+    fn eq(self, other: Self) -> bool {
+        self.bytes == other.as_bytes()
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for String {}
 
 impl Hash for String {
     fn hash(self, ref mut state: Hasher) {
@@ -338,6 +348,14 @@ impl AbiDecode for String {
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         String {
             bytes: Bytes::abi_decode(buffer),
+        }
+    }
+}
+
+impl Clone for String {
+    fn clone(self) -> Self {
+        Self {
+            bytes: self.bytes.clone(),
         }
     }
 }

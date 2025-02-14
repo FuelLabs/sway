@@ -816,8 +816,64 @@ impl Bytes {
 
         spliced
     }
+
+    /// Resizes the `Bytes` in-place so that `len` is equal to `new_len`.
+    ///
+    /// # Additional Information
+    ///
+    /// If `new_len` is greater than `len`, the `Bytes` is extended by the difference, with each additional slot filled with `value`. If `new_len` is less than `len`, the `Bytes` is simply truncated.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_len`: [u64] - The new length of the `Bytes`.
+    /// * `value`: [u8] - The value to fill the new length.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.resize(1, 7u8);
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///
+    ///     bytes.resize(2, 9u8);
+    ///     assert(bytes.len() == 2);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///     assert(bytes.get(1).unwrap() == 9u8);
+    ///
+    ///     bytes.resize(1, 0);
+    ///     assert(bytes.len() == 1);
+    ///     assert(bytes.get(0).unwrap() == 7u8);
+    ///     assert(bytes.get(1) == None);
+    /// }
+    /// ```
+    pub fn resize(ref mut self, new_len: u64, value: u8) {
+        // If the `new_len` is less then truncate
+        if self.len >= new_len {
+            self.len = new_len;
+            return;
+        }
+
+        // If we don't have enough capacity, alloc more
+        if self.buf.cap < new_len {
+            self.buf.ptr = realloc_bytes(self.buf.ptr, self.buf.cap, new_len);
+            self.buf.cap = new_len;
+        }
+
+        // Fill the new length with value
+        let mut i = 0;
+        let start_ptr = self.buf.ptr.add_uint_offset(self.len);
+        while i + self.len < new_len {
+            start_ptr.add_uint_offset(i).write_byte(value);
+            i += 1;
+        }
+
+        self.len = new_len;
+    }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
@@ -830,6 +886,21 @@ impl core::ops::Eq for Bytes {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Bytes {
+    fn eq(self, other: Self) -> bool {
+        if self.len != other.len {
+            return false;
+        }
+
+        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
+            meq result r2 r3 r4;
+            result: bool
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Bytes {}
 
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
@@ -1019,58 +1090,4 @@ impl AbiDecode for Bytes {
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
         raw_slice::abi_decode(buffer).into()
     }
-}
-
-#[test]
-fn ok_bytes_buffer_ownership() {
-    let mut original_array = [1u8, 2u8, 3u8, 4u8];
-    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
-
-    // Check Bytes duplicates the original slice
-    let mut bytes = Bytes::from(slice);
-    bytes.set(0, 5);
-    assert(original_array[0] == 1);
-
-    // At this point, slice equals [5, 2, 3, 4]
-    let encoded_slice = encode(bytes);
-
-    // `Bytes` should duplicate the underlying buffer,
-    // so when we write to it, it should not change
-    // `encoded_slice` 
-    let mut bytes = abi_decode::<Bytes>(encoded_slice);
-    bytes.set(0, 6);
-    assert(bytes.get(0) == Some(6));
-
-    let mut bytes = abi_decode::<Bytes>(encoded_slice);
-    assert(bytes.get(0) == Some(5));
-}
-
-#[test]
-fn ok_bytes_bigger_than_3064() {
-    let mut v: Bytes = Bytes::new();
-
-    // We allocate 1024 bytes initially, this is throw away because 
-    // it is not big enough for the buffer.
-    // Then we used to double the buffer to 2048.
-    // Then we write an `u64` with the length of the buffer.
-    // Then we write the buffer itself.
-    // (1024 + 2048) - 8 = 3064
-    // Thus, we need a buffer with 3065 bytes to write into the red zone
-    let mut a = 3065;
-    while a > 0 {
-        v.push(1u8);
-        a -= 1;
-    }
-
-    // This red zone should not be overwritten
-    let red_zone = asm(size: 1024) {
-        aloc size;
-        hp: raw_ptr
-    };
-    red_zone.write(0xFFFFFFFFFFFFFFFF);
-    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
-
-    let _ = encode(v);
-
-    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
 }

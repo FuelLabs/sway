@@ -4,7 +4,7 @@ use crate::{
         ty::{TyEnumDecl, TyStructDecl},
         CallPathType,
     },
-    type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
+    type_system::priv_prelude::*,
 };
 
 #[derive(Debug, Clone)]
@@ -271,6 +271,11 @@ impl<'a> UnifyCheck<'a> {
 
         // common recursion patterns
         match (&*left_info, &*right_info) {
+            // when a type alias is encountered, defer the decision to the type it contains (i.e. the
+            // type it aliases with)
+            (Alias { ty, .. }, _) => return self.check_inner(ty.type_id, right),
+            (_, Alias { ty, .. }) => return self.check_inner(left, ty.type_id),
+
             (Never, Never) => {
                 return true;
             }
@@ -448,10 +453,6 @@ impl<'a> UnifyCheck<'a> {
                     // any type can be coerced into the placeholder type
                     (_, Placeholder(_)) => true,
 
-                    // Type aliases and the types they encapsulate coerce to each other.
-                    (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
-                    (_, Alias { ty, .. }) => self.check_inner(left, ty.type_id),
-
                     (Unknown, _) => true,
                     (_, Unknown) => true,
 
@@ -508,23 +509,15 @@ impl<'a> UnifyCheck<'a> {
                     }
 
                     // any type can be coerced into a generic,
-                    // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {
-                        !OccursCheck::new(self.engines).check(right, left)
+                        // Perform this check otherwise &T and T would return true
+                        !matches!(&*left_info, TypeInfo::Ref { .. })
                     }
 
-                    (Alias { ty: l_ty, .. }, Alias { ty: r_ty, .. }) => {
-                        self.check_inner(l_ty.type_id, r_ty.type_id)
-                    }
                     (a, b) => a.eq(b, &PartialEqWithEnginesContext::new(self.engines)),
                 }
             }
             NonDynamicEquality => match (&*left_info, &*right_info) {
-                // when a type alias is encountered, defer the decision to the type it contains (i.e. the
-                // type it aliases with)
-                (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
-                (_, Alias { ty, .. }) => self.check_inner(left, ty.type_id),
-
                 // these cases are false because, unless left and right have the same
                 // TypeId, they may later resolve to be different types in the type
                 // engine
@@ -740,7 +733,7 @@ impl<'a> UnifyCheck<'a> {
         assert!(
             matches!(left.call_path.callpath_type, CallPathType::Full)
                 && matches!(right.call_path.callpath_type, CallPathType::Full),
-            "The call paths of the enum declarations must always be resolved."
+            "call paths of enum declarations must always be full paths"
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
@@ -801,7 +794,7 @@ impl<'a> UnifyCheck<'a> {
         assert!(
             matches!(left.call_path.callpath_type, CallPathType::Full)
                 && matches!(right.call_path.callpath_type, CallPathType::Full),
-            "The call paths of the enum declarations must always be resolved."
+            "call paths of struct declarations must always be full paths"
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names

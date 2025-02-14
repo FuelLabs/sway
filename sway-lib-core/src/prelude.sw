@@ -12,3 +12,5 @@ pub use ::ops::*;
 pub use ::storage::*;
 pub use ::str::*;
 pub use ::codec::*;
+#[cfg(experimental_error_type = true)]
+pub use ::marker::*;

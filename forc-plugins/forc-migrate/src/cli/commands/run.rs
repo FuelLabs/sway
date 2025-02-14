@@ -8,7 +8,7 @@ use clap::Parser;
 use forc_tracing::{println_action_green, println_action_yellow, println_yellow_bold};
 use forc_util::{format_diagnostic, fs_locking::is_file_dirty};
 use itertools::Itertools;
-use sway_ast::{attribute::Annotated, Module};
+use sway_ast::Module;
 use sway_core::{
     language::lexed::{LexedModule, LexedProgram},
     Engines,
@@ -27,7 +27,10 @@ use crate::{
         },
     },
     get_migration_steps_or_return, instructive_error,
-    migrations::{DryRun, MigrationStep, MigrationStepKind, MigrationSteps, ProgramInfo},
+    migrations::{
+        ContinueMigrationProcess, DryRun, InteractionResponse, MigrationStep, MigrationStepKind,
+        MigrationSteps, ProgramInfo,
+    },
 };
 
 forc_util::cli_examples! {
@@ -127,6 +130,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         )
         .0;
     let mut current_feature_migration_has_code_changes = false;
+    let mut num_of_postponed_steps = 0;
     for (feature, migration_steps) in migration_steps.iter() {
         for migration_step in migration_steps.iter() {
             match migration_step.kind {
@@ -145,7 +149,11 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                         println_yellow_bold("If you've already reviewed the above points, you can ignore this info.");
                     }
                 }
-                MigrationStepKind::CodeModification(modification, manual_migration_actions) => {
+                MigrationStepKind::CodeModification(
+                    modification,
+                    manual_migration_actions,
+                    continue_migration_process,
+                ) => {
                     let occurrences_spans = modification(&mut program_info.as_mut(), DryRun::No)?;
 
                     output_modified_modules(
@@ -159,7 +167,9 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                         feature,
                         migration_step,
                         manual_migration_actions,
+                        continue_migration_process,
                         &occurrences_spans,
+                        InteractionResponse::None,
                         &mut current_feature_migration_has_code_changes,
                     );
                     if stop_migration_process == StopMigrationProcess::Yes {
@@ -170,6 +180,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                     instruction,
                     interaction,
                     manual_migration_actions,
+                    continue_migration_process,
                 ) => {
                     let instruction_occurrences_spans = instruction(&program_info)?;
 
@@ -183,8 +194,12 @@ pub(crate) fn exec(command: Command) -> Result<()> {
 
                     // We have occurrences, let's continue with the interaction.
                     if !instruction_occurrences_spans.is_empty() {
-                        let interaction_occurrences_spans =
+                        let (interaction_response, interaction_occurrences_spans) =
                             interaction(&mut program_info.as_mut())?;
+
+                        if interaction_response == InteractionResponse::PostponeStep {
+                            num_of_postponed_steps += 1;
+                        }
 
                         output_modified_modules(
                             &build_instructions.manifest_dir()?,
@@ -197,7 +212,9 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                             feature,
                             migration_step,
                             manual_migration_actions,
+                            continue_migration_process,
                             &interaction_occurrences_spans,
+                            interaction_response,
                             &mut current_feature_migration_has_code_changes,
                         );
                         if stop_migration_process == StopMigrationProcess::Yes {
@@ -212,7 +229,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         // stop for a review before continuing with the next feature.
         if current_feature_migration_has_code_changes {
             if *feature == last_migration_feature {
-                print_migration_finished_action();
+                print_migration_finished_action(num_of_postponed_steps);
             } else {
                 print_continue_migration_action("Review the changed code");
             }
@@ -224,7 +241,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     // We've run through all the migration steps.
     // Print the confirmation message, even if there were maybe infos
     // displayed for manual reviews.
-    print_migration_finished_action();
+    print_migration_finished_action(num_of_postponed_steps);
 
     Ok(())
 }
@@ -235,16 +252,23 @@ enum StopMigrationProcess {
     No,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn print_modification_result(
     max_len: usize,
     feature: &Feature,
     migration_step: &MigrationStep,
     manual_migration_actions: &[&str],
+    continue_migration_process: ContinueMigrationProcess,
     occurrences_spans: &[Span],
+    interaction_response: InteractionResponse,
     current_feature_migration_has_code_changes: &mut bool,
 ) -> StopMigrationProcess {
     if occurrences_spans.is_empty() {
-        print_checked_action(max_len, feature, migration_step);
+        if interaction_response == InteractionResponse::PostponeStep {
+            print_postponed_action(max_len, feature, migration_step);
+        } else {
+            print_checked_action(max_len, feature, migration_step);
+        }
         StopMigrationProcess::No
     } else {
         print_changing_code_action(max_len, feature, migration_step);
@@ -256,25 +280,35 @@ fn print_modification_result(
             plural_s(occurrences_spans.len())
         );
 
-        // Check if we can proceed with the next migration step or break for manual action.
-        if !migration_step.has_manual_actions() {
-            // Mark the feature as having made code changes in the migration, and proceed with the
-            // next migration step *within the same feature*, if any.
-            *current_feature_migration_has_code_changes = true;
+        // Check if we can proceed with the next migration step,
+        // or we have a mandatory stop, or a stop for completing manual actions.
+        match continue_migration_process {
+            ContinueMigrationProcess::Never => {
+                print_continue_migration_action("Review the changed code");
 
-            StopMigrationProcess::No
-        } else {
-            // Display the manual migration actions and stop the further execution of the migration steps.
-            println!();
-            println!("You still need to manually:");
-            manual_migration_actions
-                .iter()
-                .for_each(|help| println!("- {help}"));
-            println!();
-            println!("{}", detailed_migration_guide_msg(feature));
-            print_continue_migration_action("Do the above manual changes");
+                StopMigrationProcess::Yes
+            }
+            ContinueMigrationProcess::IfNoManualMigrationActionsNeeded => {
+                if !migration_step.has_manual_actions() {
+                    // Mark the feature as having made code changes in the migration, and proceed with the
+                    // next migration step *within the same feature*, if any.
+                    *current_feature_migration_has_code_changes = true;
 
-            StopMigrationProcess::Yes
+                    StopMigrationProcess::No
+                } else {
+                    // Display the manual migration actions and stop the further execution of the migration steps.
+                    println!();
+                    println!("You still need to manually:");
+                    manual_migration_actions
+                        .iter()
+                        .for_each(|help| println!("- {help}"));
+                    println!();
+                    println!("{}", detailed_migration_guide_msg(feature));
+                    print_continue_migration_action("Do the above manual changes");
+
+                    StopMigrationProcess::Yes
+                }
+            }
         }
     }
 }
@@ -347,17 +381,10 @@ fn output_changed_lexed_program(
         modified_modules: &ModifiedModules,
         lexed_module: &LexedModule,
     ) -> Result<()> {
-        if let Some(path) = modified_modules.get_path_if_modified(&lexed_module.tree) {
+        if let Some(path) = modified_modules.get_path_if_modified(&lexed_module.tree.value) {
             let mut formatter = Formatter::from_dir(manifest_dir)?;
 
-            let annotated_module = Annotated {
-                // TODO: Handle annotations instead of stripping them.
-                //       See: https://github.com/FuelLabs/sway/issues/6802
-                attribute_list: vec![],
-                value: lexed_module.tree.clone(),
-            };
-
-            let code = formatter.format_module(&annotated_module)?;
+            let code = formatter.format_module(&lexed_module.tree.clone())?;
 
             std::fs::write(path, code)?;
         }
@@ -411,8 +438,26 @@ fn print_review_action(max_len: usize, feature: &Feature, migration_step: &Migra
     );
 }
 
-fn print_migration_finished_action() {
-    println_action_green("Finished", PROJECT_IS_COMPATIBLE);
+fn print_postponed_action(max_len: usize, feature: &Feature, migration_step: &MigrationStep) {
+    println_action_yellow(
+        "Postponed",
+        &full_migration_step_title(max_len, feature, migration_step),
+    );
+}
+
+fn print_migration_finished_action(num_of_postponed_steps: usize) {
+    if num_of_postponed_steps > 0 {
+        println_action_green(
+            "Finished",
+            &format!(
+                "Run `forc migrate` at a later point to resolve {} postponed migration step{}",
+                number_to_str(num_of_postponed_steps),
+                plural_s(num_of_postponed_steps),
+            ),
+        )
+    } else {
+        println_action_green("Finished", PROJECT_IS_COMPATIBLE);
+    }
 }
 
 fn print_continue_migration_action(txt: &str) {

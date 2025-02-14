@@ -1024,10 +1024,64 @@ fn bytes_clone() {
     assert(cloned_bytes.ptr() != bytes.ptr());
     assert(cloned_bytes.len() == bytes.len());
     // Capacity is not cloned
-    // assert(cloned_bytes.capacity() == bytes.capacity());
+    assert(cloned_bytes.capacity() != bytes.capacity());
     assert(cloned_bytes.get(0).unwrap() == bytes.get(0).unwrap());
     assert(cloned_bytes.get(1).unwrap() == bytes.get(1).unwrap());
     assert(cloned_bytes.get(2).unwrap() == bytes.get(2).unwrap());
+}
+
+#[test]
+fn bytes_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+
+    // Check Bytes duplicates the original slice
+    let mut bytes = Bytes::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
+
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
+
+    // `Bytes` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
+
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
+}
+
+#[test]
+fn bytes_bigger_than_3064() {
+    let mut v: Bytes = Bytes::new();
+
+    // We allocate 1024 bytes initially, this is throw away because 
+    // it is not big enough for the buffer.
+    // Then we used to double the buffer to 2048.
+    // Then we write an `u64` with the length of the buffer.
+    // Then we write the buffer itself.
+    // (1024 + 2048) - 8 = 3064
+    // Thus, we need a buffer with 3065 bytes to write into the red zone
+    let mut a = 3065;
+    while a > 0 {
+        v.push(1u8);
+        a -= 1;
+    }
+
+    // This red zone should not be overwritten
+    let red_zone = asm(size: 1024) {
+        aloc size;
+        hp: raw_ptr
+    };
+    red_zone.write(0xFFFFFFFFFFFFFFFF);
+    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
+
+    let _ = encode(v);
+
+    assert(red_zone.read::<u64>() == 0xFFFFFFFFFFFFFFFF);
 }
 
 #[test]
@@ -1077,4 +1131,68 @@ fn bytes_test_u8_limits() {
     assert(bytes.get(3).unwrap() == min);
     assert(bytes.get(4).unwrap() == max);
     assert(bytes.get(5).unwrap() == min);
+}
+
+#[test]
+fn bytes_resize() {
+    let (mut bytes_1, a, b, c) = setup();
+    assert(bytes_1.len() == 3);
+    assert(bytes_1.capacity() == 4);
+
+    // Resize to same size, no effect
+    bytes_1.resize(3, 0);
+    assert(bytes_1.len() == 3);
+    assert(bytes_1.capacity() == 4);
+
+    // Resize to capacity size doesn't impact capacity
+    bytes_1.resize(4, 1);
+    assert(bytes_1.len() == 4);
+    assert(bytes_1.capacity() == 4);
+    assert(bytes_1.get(0) == Some(5));
+    assert(bytes_1.get(1) == Some(7));
+    assert(bytes_1.get(2) == Some(9));
+    assert(bytes_1.get(3) == Some(1));
+
+    // Resize increases size and capacity
+    bytes_1.resize(10, 2);
+    assert(bytes_1.len() == 10);
+    assert(bytes_1.capacity() == 10);
+    assert(bytes_1.get(0) == Some(5));
+    assert(bytes_1.get(1) == Some(7));
+    assert(bytes_1.get(2) == Some(9));
+    assert(bytes_1.get(3) == Some(1));
+    assert(bytes_1.get(4) == Some(2));
+    assert(bytes_1.get(5) == Some(2));
+    assert(bytes_1.get(6) == Some(2));
+    assert(bytes_1.get(7) == Some(2));
+    assert(bytes_1.get(8) == Some(2));
+    assert(bytes_1.get(9) == Some(2));
+
+    // Resize to less doesn't impact capacity or order
+    bytes_1.resize(1, 0);
+    assert(bytes_1.len() == 1);
+    assert(bytes_1.capacity() == 10);
+    assert(bytes_1.get(0) == Some(5));
+    assert(bytes_1.get(1) == None);
+
+    // Resize to zero doesn't impact capacity and returns None
+    bytes_1.resize(0, 0);
+    assert(bytes_1.len() == 0);
+    assert(bytes_1.capacity() == 10);
+    assert(bytes_1.get(0) == None);
+
+    let mut bytes_2 = Bytes::new();
+
+    // Resize to zero on empty vec doesn't impact
+    bytes_2.resize(0, 0);
+    assert(bytes_2.len() == 0);
+    assert(bytes_2.capacity() == 0);
+
+    // Resize on empty vec fills and sets capacity
+    bytes_2.resize(3, 1);
+    assert(bytes_2.len() == 3);
+    assert(bytes_2.capacity() == 3);
+    assert(bytes_2.get(0) == Some(1));
+    assert(bytes_2.get(1) == Some(1));
+    assert(bytes_2.get(2) == Some(1));
 }

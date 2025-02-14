@@ -224,7 +224,7 @@ pub fn lex_commented(
             let not_is_single_underscore = character != '_'
                 || l.stream
                     .peek()
-                    .map_or(false, |(_, next)| next.is_xid_continue());
+                    .is_some_and(|(_, next)| next.is_xid_continue());
             if not_is_single_underscore {
                 // Consume until we hit other than `XID_CONTINUE`.
                 while l.stream.next_if(|(_, c)| c.is_xid_continue()).is_some() {}

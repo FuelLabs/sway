@@ -116,6 +116,7 @@ impl TestInstance for str {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for str[6] {
     fn eq(self, other: Self) -> bool {
         let mut i = 0;
@@ -129,10 +130,30 @@ impl Eq for str[6] {
 
             i = i + 1;
         };
-        
+
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for str[6] {
+    fn eq(self, other: Self) -> bool {
+        let mut i = 0;
+        while i < 6 {
+            let ptr_self = __addr_of(self).add::<u8>(i);
+            let ptr_other = __addr_of(other).add::<u8>(i);
+
+            if ptr_self.read::<u8>() != ptr_other.read::<u8>() {
+                return false;
+            }
+
+            i = i + 1;
+        };
+
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for str[6] {}
 
 impl TestInstance for str[6] {
     fn elements(len: u64) -> Vec<Self> {
@@ -152,13 +173,22 @@ impl TestInstance for str[6] {
     }
 }
 
-impl Eq for [u64;2] {
+#[cfg(experimental_partial_eq = false)]
+impl Eq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1] 
+        self[0] == other[0] && self[1] == other[1]
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for [u64; 2] {
+    fn eq(self, other: Self) -> bool {
+        self[0] == other[0] && self[1] == other[1]
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for [u64; 2] {}
 
-impl TestInstance for [u64;2] {
+impl TestInstance for [u64; 2] {
     fn elements(len: u64) -> Vec<Self> {
         let mut res = Vec::new();
         res.push([1, 1]);
@@ -179,11 +209,20 @@ pub struct Struct {
     x: u64,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for Struct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for Struct {
+    fn eq(self, other: Self) -> bool {
+        self.x == other.x
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for Struct {}
 
 impl TestInstance for Struct {
     fn elements(len: u64) -> Vec<Self> {
@@ -200,13 +239,22 @@ impl TestInstance for Struct {
     }
 }
 
-pub struct EmptyStruct { }
+pub struct EmptyStruct {}
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for EmptyStruct {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for EmptyStruct {
+    fn eq(self, other: Self) -> bool {
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for EmptyStruct {}
 
 impl TestInstance for EmptyStruct {
     fn elements(len: u64) -> Vec<Self> {
@@ -224,6 +272,7 @@ pub enum Enum {
     A: u64,
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for Enum {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -231,6 +280,16 @@ impl Eq for Enum {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for Enum {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Enum::A(l), Enum::A(r)) => l == r,
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for Enum {}
 
 impl TestInstance for Enum {
     fn elements(len: u64) -> Vec<Self> {
@@ -245,11 +304,20 @@ impl TestInstance for Enum {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for (u8, u32) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for (u8, u32) {
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for (u8, u32) {}
 
 impl TestInstance for (u8, u32) {
     fn elements(len: u64) -> Vec<Self> {
@@ -268,7 +336,10 @@ impl TestInstance for (u8, u32) {
 impl TestInstance for b256 {
     fn elements(len: u64) -> Vec<Self> {
         let mut res = Vec::new();
-        res.push(0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20u256.as_b256());
+        res.push(
+            0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20u256
+                .as_b256(),
+        );
         let mut i = 1;
         while i < len {
             res.push((res.get(i - 1).unwrap().as_u256() / i.into()).as_b256());
@@ -280,7 +351,9 @@ impl TestInstance for b256 {
 
 impl AbiEncode for raw_ptr {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let ptr_as_u64 = asm(p: self) { p: u64 };
+        let ptr_as_u64 = asm(p: self) {
+            p: u64
+        };
         ptr_as_u64.abi_encode(buffer)
     }
 }
@@ -291,7 +364,9 @@ impl TestInstance for raw_ptr {
         let mut res = Vec::new();
         let mut i = 0;
         while i < len {
-            let null_ptr = asm() { zero: raw_ptr };
+            let null_ptr = asm() {
+                zero: raw_ptr
+            };
             res.push(null_ptr.add::<u64>(values.get(i).unwrap().as_u64()));
             i += 1;
         }
@@ -307,8 +382,13 @@ impl TestInstance for raw_slice {
         let mut i = 0;
         while i < len {
             res.push(std::raw_slice::from_parts::<u64>(
-                ptr_values.get(i).unwrap(),
-                len_values.get(i).unwrap().as_u64(),
+                ptr_values
+                    .get(i)
+                    .unwrap(),
+                len_values
+                    .get(i)
+                    .unwrap()
+                    .as_u64(),
             ));
             i += 1;
         }
@@ -316,11 +396,20 @@ impl TestInstance for raw_slice {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for raw_slice {
     fn eq(self, other: Self) -> bool {
         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for raw_slice {
+    fn eq(self, other: Self) -> bool {
+        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for raw_slice {}
 
 impl TestInstance for () {
     fn elements(len: u64) -> Vec<Self> {
@@ -334,13 +423,22 @@ impl TestInstance for () {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for () {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for () {
+    fn eq(self, other: Self) -> bool {
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for () {}
 
-impl TestInstance for [u64;0] {
+impl TestInstance for [u64; 0] {
     fn elements(len: u64) -> Vec<Self> {
         let mut res = Vec::new();
         let mut i = 0;
@@ -352,8 +450,17 @@ impl TestInstance for [u64;0] {
     }
 }
 
-impl Eq for [u64;0] {
+#[cfg(experimental_partial_eq = false)]
+impl Eq for [u64; 0] {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for [u64; 0] {
+    fn eq(self, other: Self) -> bool {
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for [u64; 0] {}
