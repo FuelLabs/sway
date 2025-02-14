@@ -171,9 +171,7 @@ pub(crate) fn compile_const_decl(
                         .expect("Must have been compiled to a constant");
 
                     let c_ty = const_val_c.get_content(env.context).ty;
-                    let c_ty_ptr = Type::new_ptr(env.context, c_ty);
-                    let const_global =
-                        GlobalVar::new(env.context, c_ty_ptr, Some(const_val_c), false);
+                    let const_global = GlobalVar::new(env.context, c_ty, Some(const_val_c), false);
 
                     env.module.add_global_variable(
                         env.context,

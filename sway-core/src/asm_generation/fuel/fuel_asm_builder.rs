@@ -1273,11 +1273,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         );
         let data_id = self.data_section.insert_data_value(entry);
 
-        // Allocate a register for it, and a load instruction.
+        // Allocate a register for it, and an address_of instruction.
         let reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::LoadDataId(reg.clone(), data_id.clone())),
-            comment: "load constant from data section".into(),
+            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
+            comment: "constant address in data section".into(),
             owning_span: Some(span),
         });
         self.reg_map.insert(*instr_val, reg);
