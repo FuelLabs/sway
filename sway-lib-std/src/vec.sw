@@ -866,7 +866,7 @@ fn ok_vec_push() {
     assert_eq(v.last(), Some(4));
 
     // resize
-    let item = v.resize(10, 7);
+    v.resize(10, 7);
     assert_eq(v.len(), 10);
     assert_eq(v.capacity(), 10);
     assert_eq(v.get(0), Some(1u8));
@@ -881,8 +881,8 @@ fn ok_vec_push() {
     assert_eq(v.get(9), Some(7u8));
     assert_eq(v.get(10), None);
 
-    // resize
-    let item = v.set(0, 7);
+    // set
+    v.set(0, 7);
     assert_eq(v.len(), 10);
     assert_eq(v.capacity(), 10);
     assert_eq(v.get(0), Some(7u8));
@@ -897,8 +897,8 @@ fn ok_vec_push() {
     assert_eq(v.get(9), Some(7u8));
     assert_eq(v.get(10), None);
 
-    // resize
-    let item = v.swap(1, 3);
+    // swap
+    v.swap(1, 3);
     assert_eq(v.len(), 10);
     assert_eq(v.capacity(), 10);
     assert_eq(v.get(0), Some(7u8));
