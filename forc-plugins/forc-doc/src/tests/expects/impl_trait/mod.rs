@@ -50,12 +50,26 @@ fn test_impl_traits_default() {
             "ops/trait.Subtract.html",
             "ops/all.html",
             "impl_traits/bar/struct.Bar.html",
+<<<<<<< HEAD
             "impl_traits/bar/index.html",
             "ops/trait.Add.html",
             "search.js",
             "impl_traits/index.html",
             "ops/index.html",
             "impl_traits/foo/trait.Baz.html",
+=======
+            "core/primitive.str[63].html",
+            "core/primitive.str[21].html",
+            "core/codec/fn.contract_call.html",
+            "core/ops/trait.BitwiseXor.html",
+            "core/primitive.str[61].html",
+            "core/primitive.str[45].html",
+            "core/ops/trait.BitwiseOr.html",
+            "core/primitive.str[6].html",
+            "core/slice/fn.alloc_slice.html",
+            "core/slice/fn.realloc_slice.html",
+            "core/slice/index.html",
+>>>>>>> f9a35c323 (update tests)
         ],
     );
 }
