@@ -55,13 +55,11 @@ fn test_impl_traits_default() {
             "search.js",
             "impl_traits/index.html",
             "ops/index.html",
-            "impl_traits/foo/trait.Baz.html",
-        ],
-    );
-}
-
-#[test]
-fn test_impl_traits_no_deps() {
+            "core/primitive.str[63].html",
+            "core/primitive.str[21].html",
+            "core/codec/fn.contract_call.html",
+            "core/ops/trait.BitwiseXor.html",
+            "core/primitive.str[61].html",
     let doc_dir_name: &str = "impl_traits_no_deps";
     let project_name: &str = "impl_traits_generic";
     let command = Command {
