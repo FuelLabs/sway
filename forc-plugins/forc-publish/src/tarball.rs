@@ -168,6 +168,7 @@ mod test {
         for entry in archive.entries().unwrap() {
             let entry = entry.unwrap();
             let path = entry.path().unwrap().to_path_buf();
+            dbg!(&path);
             if path.starts_with("out") {
                 contains_out_dir = true;
             } else if path.ends_with("Forc.toml") {
