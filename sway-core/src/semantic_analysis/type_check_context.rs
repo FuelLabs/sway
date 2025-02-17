@@ -2,10 +2,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
-    decl_engine::{
-        DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
-        DeclRefFunction,
-    },
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
