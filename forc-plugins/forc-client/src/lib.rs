@@ -4,6 +4,7 @@ pub mod op;
 pub mod util;
 
 use clap::Parser;
+use forc_pkg::manifest::Network;
 use serde::{Deserialize, Serialize};
 use util::target::Target;
 
@@ -46,6 +47,40 @@ pub struct NodeTarget {
 }
 
 impl NodeTarget {
+    /// Returns the URL to use for connecting to Fuel Core node.
+    pub fn get_node_url(&self, manifest_network: &Option<Network>) -> anyhow::Result<String> {
+        let options_count = [
+            self.mainnet,
+            self.testnet,
+            self.devnet,
+            self.target.is_some(),
+            self.node_url.is_some(),
+        ]
+        .iter()
+        .filter(|&&x| x)
+        .count();
+
+        // ensure at most one option is specified
+        if options_count > 1 {
+            anyhow::bail!("Only one of `--mainnet`, `--testnet`, `--devnet`, `--target`, or `--node-url` should be specified");
+        }
+
+        let node_url = match () {
+            _ if self.mainnet => Target::mainnet().target_url(),
+            _ if self.testnet => Target::testnet().target_url(),
+            _ if self.devnet => Target::devnet().target_url(),
+            _ if self.target.is_some() => self.target.as_ref().unwrap().target_url(),
+            _ if self.node_url.is_some() => self.node_url.as_ref().unwrap().clone(),
+            _ => manifest_network
+                .as_ref()
+                .map(|nw| &nw.url[..])
+                .unwrap_or(crate::constants::NODE_URL)
+                .to_string(),
+        };
+
+        Ok(node_url)
+    }
+
     /// Returns the URL for explorer
     pub fn get_explorer_url(&self) -> Option<String> {
         match (
@@ -117,5 +152,117 @@ mod tests {
         };
         let actual = node.get_explorer_url();
         assert_eq!(None, actual);
+    }
+
+    #[test]
+    fn test_get_node_url_testnet() {
+        let node = NodeTarget {
+            target: None,
+            node_url: None,
+            mainnet: false,
+            testnet: true,
+            devnet: false,
+        };
+
+        let actual = node.get_node_url(&None).unwrap();
+        assert_eq!("https://testnet.fuel.network", actual);
+    }
+
+    #[test]
+    fn test_get_node_url_mainnet() {
+        let node = NodeTarget {
+            target: None,
+            node_url: None,
+            mainnet: true,
+            testnet: false,
+            devnet: false,
+        };
+
+        let actual = node.get_node_url(&None).unwrap();
+        assert_eq!("https://mainnet.fuel.network", actual);
+    }
+
+    #[test]
+    fn test_get_node_url_target_mainnet() {
+        let node = NodeTarget {
+            target: Some(Target::Mainnet),
+            node_url: None,
+            mainnet: false,
+            testnet: false,
+            devnet: false,
+        };
+        let actual = node.get_node_url(&None).unwrap();
+        assert_eq!("https://mainnet.fuel.network", actual);
+    }
+
+    #[test]
+    fn test_get_node_url_target_testnet() {
+        let node = NodeTarget {
+            target: Some(Target::Testnet),
+            node_url: None,
+            mainnet: false,
+            testnet: false,
+            devnet: false,
+        };
+
+        let actual = node.get_node_url(&None).unwrap();
+        assert_eq!("https://testnet.fuel.network", actual);
+    }
+
+    #[test]
+    fn test_get_node_url_default() {
+        let node = NodeTarget {
+            target: None,
+            node_url: None,
+            mainnet: false,
+            testnet: false,
+            devnet: false,
+        };
+
+        let actual = node.get_node_url(&None).unwrap();
+        assert_eq!("http://127.0.0.1:4000", actual);
+    }
+
+    #[test]
+    fn test_get_node_url_local() {
+        let node = NodeTarget {
+            target: Some(Target::Local),
+            node_url: None,
+            mainnet: false,
+            testnet: false,
+            devnet: false,
+        };
+        let actual = node.get_node_url(&None).unwrap();
+        assert_eq!("http://127.0.0.1:4000", actual);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Only one of `--mainnet`, `--testnet`, `--devnet`, `--target`, or `--node-url` should be specified"
+    )]
+    fn test_get_node_url_local_testnet() {
+        let node = NodeTarget {
+            target: Some(Target::Local),
+            node_url: None,
+            mainnet: false,
+            testnet: true,
+            devnet: false,
+        };
+        node.get_node_url(&None).unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Only one of `--mainnet`, `--testnet`, `--devnet`, `--target`, or `--node-url` should be specified"
+    )]
+    fn test_get_node_url_same_url() {
+        let node = NodeTarget {
+            target: Some(Target::Testnet),
+            node_url: Some("testnet.fuel.network".to_string()),
+            mainnet: false,
+            testnet: false,
+            devnet: false,
+        };
+        node.get_node_url(&None).unwrap();
     }
 }
