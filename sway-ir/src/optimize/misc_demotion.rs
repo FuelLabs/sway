@@ -12,9 +12,9 @@ use std::ops::Not;
 ///   values.
 /// - Fuel Wide binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
-    asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
-    InstOp, InstructionInserter, IrError, Pass, PassMutability, Predicate, ScopedPass, Type,
-    UnaryOpKind, Value,
+    asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, ConstantContent, Context,
+    FuelVmInstruction, Function, InstOp, InstructionInserter, IrError, Pass, PassMutability,
+    Predicate, ScopedPass, Type, UnaryOpKind, Value,
 };
 
 use rustc_hash::FxHashMap;
@@ -477,7 +477,8 @@ fn wide_binary_op_demotion(context: &mut Context, function: Function) -> Result<
         // For MOD we need a local zero as RHS of the add operation
         let (wide_op, get_local_zero) = match op {
             BinaryOpKind::Mod => {
-                let initializer = Constant::new_uint(context, 256, 0);
+                let initializer = ConstantContent::new_uint(context, 256, 0);
+                let initializer = Constant::unique(context, initializer);
                 let local_zero = function.new_unique_local_var(
                     context,
                     "__wide_zero".to_owned(),

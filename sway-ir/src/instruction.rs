@@ -19,7 +19,7 @@ use crate::{
     local_var::LocalVar,
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
-    AsmInstruction, Constant, Module,
+    AsmInstruction, ConstantContent, Module,
 };
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -288,7 +288,9 @@ impl InstOp {
             // Load needs to strip the pointer from the source type.
             InstOp::Load(ptr_val) => match &context.values[ptr_val.0].value {
                 ValueDatum::Argument(arg) => arg.ty.get_pointee_type(context),
-                ValueDatum::Constant(cons) => cons.ty.get_pointee_type(context),
+                ValueDatum::Constant(cons) => {
+                    cons.get_content(context).ty.get_pointee_type(context)
+                }
                 ValueDatum::Instruction(ins) => ins
                     .get_type(context)
                     .and_then(|ty| ty.get_pointee_type(context)),
@@ -1024,14 +1026,14 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     }
 
     pub fn get_elem_ptr_with_idx(self, base: Value, elem_ty: Type, index: u64) -> Value {
-        let idx_val = Constant::get_uint(self.context, 64, index);
+        let idx_val = ConstantContent::get_uint(self.context, 64, index);
         self.get_elem_ptr(base, elem_ty, vec![idx_val])
     }
 
     pub fn get_elem_ptr_with_idcs(self, base: Value, elem_ty: Type, indices: &[u64]) -> Value {
         let idx_vals = indices
             .iter()
-            .map(|idx| Constant::get_uint(self.context, 64, *idx))
+            .map(|idx| ConstantContent::get_uint(self.context, 64, *idx))
             .collect();
         self.get_elem_ptr(base, elem_ty, idx_vals)
     }

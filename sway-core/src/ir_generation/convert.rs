@@ -8,7 +8,7 @@ use crate::{
 use super::types::{create_tagged_union_type, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
-use sway_ir::{Constant, Context, Type, Value};
+use sway_ir::{Constant, ConstantContent, Context, Type, Value};
 use sway_types::{integer_bits::IntegerBits, span::Span};
 
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
@@ -22,15 +22,15 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         //
         // XXX The above isn't true for other targets.  We need to improved this.
         // FIXME
-        Literal::U8(n) => Constant::get_uint(context, 8, *n as u64),
-        Literal::U16(n) => Constant::get_uint(context, 64, *n as u64),
-        Literal::U32(n) => Constant::get_uint(context, 64, *n as u64),
-        Literal::U64(n) => Constant::get_uint(context, 64, *n),
-        Literal::U256(n) => Constant::get_uint256(context, n.clone()),
+        Literal::U8(n) => ConstantContent::get_uint(context, 8, *n as u64),
+        Literal::U16(n) => ConstantContent::get_uint(context, 64, *n as u64),
+        Literal::U32(n) => ConstantContent::get_uint(context, 64, *n as u64),
+        Literal::U64(n) => ConstantContent::get_uint(context, 64, *n),
+        Literal::U256(n) => ConstantContent::get_uint256(context, n.clone()),
         Literal::Numeric(_) => unreachable!(),
-        Literal::String(s) => Constant::get_string(context, s.as_str().as_bytes().to_vec()),
-        Literal::Boolean(b) => Constant::get_bool(context, *b),
-        Literal::B256(bs) => Constant::get_b256(context, *bs),
+        Literal::String(s) => ConstantContent::get_string(context, s.as_str().as_bytes().to_vec()),
+        Literal::Boolean(b) => ConstantContent::get_bool(context, *b),
+        Literal::B256(bs) => ConstantContent::get_b256(context, *bs),
     }
 }
 
@@ -38,18 +38,19 @@ pub(super) fn convert_literal_to_constant(
     context: &mut Context,
     ast_literal: &Literal,
 ) -> Constant {
-    match ast_literal {
+    let c = match ast_literal {
         // All integers are `u64`.  See comment above.
-        Literal::U8(n) => Constant::new_uint(context, 8, *n as u64),
-        Literal::U16(n) => Constant::new_uint(context, 64, *n as u64),
-        Literal::U32(n) => Constant::new_uint(context, 64, *n as u64),
-        Literal::U64(n) => Constant::new_uint(context, 64, *n),
-        Literal::U256(n) => Constant::new_uint256(context, n.clone()),
+        Literal::U8(n) => ConstantContent::new_uint(context, 8, *n as u64),
+        Literal::U16(n) => ConstantContent::new_uint(context, 64, *n as u64),
+        Literal::U32(n) => ConstantContent::new_uint(context, 64, *n as u64),
+        Literal::U64(n) => ConstantContent::new_uint(context, 64, *n),
+        Literal::U256(n) => ConstantContent::new_uint256(context, n.clone()),
         Literal::Numeric(_) => unreachable!(),
-        Literal::String(s) => Constant::new_string(context, s.as_str().as_bytes().to_vec()),
-        Literal::Boolean(b) => Constant::new_bool(context, *b),
-        Literal::B256(bs) => Constant::new_b256(context, *bs),
-    }
+        Literal::String(s) => ConstantContent::new_string(context, s.as_str().as_bytes().to_vec()),
+        Literal::Boolean(b) => ConstantContent::new_bool(context, *b),
+        Literal::B256(bs) => ConstantContent::new_b256(context, *bs),
+    };
+    Constant::unique(context, c)
 }
 
 pub(super) fn convert_resolved_type_id(

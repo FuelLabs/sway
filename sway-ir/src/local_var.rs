@@ -1,10 +1,10 @@
 //! A value representing a function-local variable.
 
 use crate::{
-    constant::Constant,
     context::Context,
     irtype::{Type, TypeContent},
     pretty::DebugWithContext,
+    Constant,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
