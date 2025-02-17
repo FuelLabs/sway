@@ -36,7 +36,7 @@ pub fn ccp(
         if let InstOp::ConditionalBranch {
             cond_value,
             true_block,
-            false_block: _,
+            false_block,
         } = &term.op
         {
             if let Some(Instruction {
@@ -44,7 +44,8 @@ pub fn ccp(
                 op: InstOp::Cmp(pred, v1, v2),
             }) = cond_value.get_instruction(context)
             {
-                if matches!(pred, Predicate::Equal)
+                if true_block.block != false_block.block
+                    && matches!(pred, Predicate::Equal)
                     && (v1.is_constant(context) ^ v2.is_constant(context)
                         && true_block.block.num_predecessors(context) == 1)
                 {
