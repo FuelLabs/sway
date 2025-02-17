@@ -964,7 +964,7 @@ pub enum CompileError {
     },
     #[error("Configurable constants are not allowed in libraries.")]
     ConfigurableInLibrary { span: Span },
-    #[error("Multiple applicable items in scope. {}", {
+    #[error("Multiple applicable items in scope. {}\nItems locations:\n  {}", {
         let mut candidates = "".to_string();
         let mut as_traits = as_traits.clone();
         // Make order deterministic
@@ -973,12 +973,20 @@ pub enum CompileError {
             candidates = format!("{candidates}\n  Disambiguate the associated {item_kind} for candidate #{index}\n    <{} as {}>::{item_name}", as_trait.1, as_trait.0);
         }
         candidates
-    })]
+    },
+    {
+        let mut item_paths = item_paths.clone();
+        // Make order deterministic
+        item_paths.sort_by_key(|a| a.to_lowercase());
+        item_paths.join("\n  ")
+    }
+)]
     MultipleApplicableItemsInScope {
         span: Span,
         item_name: String,
         item_kind: String,
         as_traits: Vec<(String, String)>,
+        item_paths: Vec<String>,
     },
     #[error("Provided generic type is not of type str.")]
     NonStrGenericType { span: Span },
