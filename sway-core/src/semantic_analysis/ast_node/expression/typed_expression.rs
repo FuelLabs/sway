@@ -2427,7 +2427,7 @@ impl ty::TyExpression {
                                         ));
                                     }
 
-                                    break (name, variable_decl.body.return_type);
+                                    break (name, variable_decl.return_type);
                                 }
                                 TyDecl::ConstantDecl(constant_decl) => {
                                     let constant_decl =

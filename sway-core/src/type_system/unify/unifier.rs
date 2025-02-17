@@ -5,7 +5,7 @@ use sway_types::Span;
 
 use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
-    language::{ty, CallPath},
+    language::CallPath,
     type_system::{engine::Unification, priv_prelude::*},
 };
 
@@ -150,16 +150,8 @@ impl<'a> Unifier<'a> {
                     received,
                     expected,
                     span,
-                    (
-                        r_decl.call_path.clone(),
-                        r_decl.type_parameters.clone(),
-                        r_decl.fields.clone(),
-                    ),
-                    (
-                        e_decl.call_path.clone(),
-                        e_decl.type_parameters.clone(),
-                        e_decl.fields.clone(),
-                    ),
+                    (r_decl.call_path.clone(), r_decl.type_parameters.clone()),
+                    (e_decl.call_path.clone(), e_decl.type_parameters.clone()),
                 );
             }
             // When we don't know anything about either term, assume that
@@ -251,16 +243,8 @@ impl<'a> Unifier<'a> {
                     received,
                     expected,
                     span,
-                    (
-                        r_decl.call_path.clone(),
-                        r_decl.type_parameters.clone(),
-                        r_decl.variants.clone(),
-                    ),
-                    (
-                        e_decl.call_path.clone(),
-                        e_decl.type_parameters.clone(),
-                        e_decl.variants.clone(),
-                    ),
+                    (r_decl.call_path.clone(), r_decl.type_parameters.clone()),
+                    (e_decl.call_path.clone(), e_decl.type_parameters.clone()),
                 );
             }
 
@@ -388,21 +372,12 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
-        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        r: (CallPath, Vec<TypeParameter>),
+        e: (CallPath, Vec<TypeParameter>),
     ) {
-        let (rn, rtps, rfs) = r;
-        let (en, etps, efs) = e;
-        if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
-            rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
-                self.unify(
-                    handler,
-                    rf.type_argument.type_id,
-                    ef.type_argument.type_id,
-                    span,
-                    false,
-                );
-            });
+        let (rn, rtps) = r;
+        let (en, etps) = e;
+        if rn == en && rtps.len() == etps.len() {
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
                 self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });
@@ -426,21 +401,12 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
-        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        r: (CallPath, Vec<TypeParameter>),
+        e: (CallPath, Vec<TypeParameter>),
     ) {
-        let (rn, rtps, rvs) = r;
-        let (en, etps, evs) = e;
-        if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
-            rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
-                self.unify(
-                    handler,
-                    rv.type_argument.type_id,
-                    ev.type_argument.type_id,
-                    span,
-                    false,
-                );
-            });
+        let (rn, rtps) = r;
+        let (en, etps) = e;
+        if rn == en && rtps.len() == etps.len() {
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
                 self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });

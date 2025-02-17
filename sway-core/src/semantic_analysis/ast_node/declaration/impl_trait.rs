@@ -22,7 +22,7 @@ use crate::{
         },
         *,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap, TryInsertingTraitImplOnFailure},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, AbiMode, ConstShadowingMode,
         TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -751,7 +751,6 @@ fn type_check_trait_implementation(
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
-    let code_block_first_pass = ctx.code_block_first_pass();
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
@@ -768,8 +767,6 @@ fn type_check_trait_implementation(
                     .collect::<Vec<_>>(),
                 block_span,
                 engines,
-                TryInsertingTraitImplOnFailure::Yes,
-                code_block_first_pass.into(),
             )
         })?;
 
