@@ -1,0 +1,11 @@
+category = "fail"
+experimental = { new_encoding = false }
+
+# check: $()Methods way and fpeu have clashing function selectors.
+# check: $()fn way() -> bool
+# check: $()fn fpeu() -> bool
+# nextln: $()The declaration of fpeu is here
+# check: $()The methods of a contract must have distinct function selectors, which are computed from the method hash.
+# nextln: $()Renaming one of the methods should solve the problem
+# check: $()Aborting due to 1 error.
+

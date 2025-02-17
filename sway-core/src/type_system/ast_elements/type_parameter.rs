@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{ty, CallPath},
-    namespace::{TraitMap, TryInsertingTraitImplOnFailure},
+    namespace::TraitMap,
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
@@ -573,8 +573,6 @@ impl TypeParameter {
                             trait_constraints,
                             access_span,
                             engines,
-                            TryInsertingTraitImplOnFailure::Yes,
-                            code_block_first_pass.into(),
                         ) {
                         Ok(res) => res,
                         Err(_) => continue,
@@ -681,6 +679,8 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
+                        // TODO: Replace with a call to a dedicated `CallPath` method
+                        //       once https://github.com/FuelLabs/sway/issues/6873 is fixed.
                         let full_path = trait_decl
                             .call_path
                             .to_fullpath(ctx.engines(), ctx.namespace());

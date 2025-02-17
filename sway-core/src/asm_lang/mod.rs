@@ -674,6 +674,14 @@ impl Op {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::S256(r1, r2, r3)
             }
+            "ecop" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ECOP(r1, r2, r3, r4)
+            }
+            "epar" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::EPAR(r1, r2, r3, r4)
+            }
 
             /* Other Instructions */
             "flag" => {
@@ -1228,6 +1236,8 @@ impl fmt::Display for VirtualOp {
             ED19(a, b, c, d) => write!(fmtr, "ed19 {a} {b} {c} {d}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
+            ECOP(a, b, c, d) => write!(fmtr, "ecop {a} {b} {c} {d}"),
+            EPAR(a, b, c, d) => write!(fmtr, "epar {a} {b} {c} {d}"),
 
             /* Other Instructions */
             FLAG(a) => write!(fmtr, "flag {a}"),

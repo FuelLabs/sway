@@ -10,30 +10,39 @@ impl T1 for u64 {
     }
 }
 
-impl<A> T1 for (A, ) 
+impl<A> T1 for (A, )
 where
-    A: T1
+    A: T1,
 {
     fn trait_fn() -> (A, ) {
         (A::trait_fn(), )
     }
 }
 
-fn f<T> () -> T
+fn f<T>() -> T
 where
-    T: T1
+    T: T1,
 {
     T::trait_fn()
 }
 
-impl Eq for (u64,) {
+#[cfg(experimental_partial_eq = false)]
+impl Eq for (u64, ) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for (u64, ) {
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl Eq for (u64, ) {}
 
 fn main() -> bool {
-    assert_eq(f::<(u64, )>(), (42,));
+    assert_eq(f::<(u64, )>(), (42, ));
 
     true
 }

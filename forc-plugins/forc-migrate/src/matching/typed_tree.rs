@@ -4,7 +4,10 @@ use super::{any, TyElementsMatcher, TyElementsMatcherDeep, TyLocate};
 use sway_ast::StorageField;
 use sway_core::{
     decl_engine::id::DeclId,
-    language::ty::{TyAstNodeContent, TyDecl, TyModule, TyProgram, TyStorageDecl, TyStorageField},
+    language::ty::{
+        TyAstNodeContent, TyDecl, TyImplSelfOrTrait, TyModule, TyProgram, TyStorageDecl,
+        TyStorageField,
+    },
 };
 use sway_types::Spanned;
 
@@ -66,6 +69,25 @@ impl TyElementsMatcherDeep<TyStorageField> for TyStorageDecl {
     }
 }
 
+impl TyElementsMatcher<DeclId<TyImplSelfOrTrait>> for TyModule {
+    fn match_elems<'a, F>(
+        &'a self,
+        predicate: F,
+    ) -> impl Iterator<Item = &'a DeclId<TyImplSelfOrTrait>>
+    where
+        F: Fn(&&'a DeclId<TyImplSelfOrTrait>) -> bool + Clone + 'a,
+        DeclId<TyImplSelfOrTrait>: 'a,
+    {
+        self.all_nodes
+            .iter()
+            .filter_map(|node| match &node.content {
+                TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(decl)) => Some(&decl.decl_id),
+                _ => None,
+            })
+            .filter(predicate)
+    }
+}
+
 impl TyLocate<StorageField, TyStorageField> for TyStorageDecl {
     fn locate(&self, lexed_element: &StorageField) -> Option<&TyStorageField> {
         self.fields
@@ -105,6 +127,15 @@ pub mod matchers {
         S: TyElementsMatcherDeep<TyStorageField>,
     {
         scope.match_elems_deep(predicate)
+    }
+
+    pub(crate) fn impl_self_or_trait_decls<S>(
+        scope: &S,
+    ) -> impl Iterator<Item = &'_ DeclId<TyImplSelfOrTrait>>
+    where
+        S: TyElementsMatcher<DeclId<TyImplSelfOrTrait>>,
+    {
+        scope.match_elems(any)
     }
 }
 

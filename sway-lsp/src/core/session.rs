@@ -382,7 +382,7 @@ pub fn traverse(
 
         // Convert the source_id to a path so we can use the manifest path to get the program_id.
         // This is used to store the metrics for the module.
-        if let Some(source_id) = lexed.root.tree.span().source_id() {
+        if let Some(source_id) = lexed.root.tree.value.span().source_id() {
             let path = engines.se().get_path(source_id);
             let program_id = program_id_from_path(&path, engines)?;
             session.metrics.insert(program_id, metrics);
@@ -527,7 +527,7 @@ pub fn parse_lexed_program(
             .map(|path| {
                 item.span()
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -535,13 +535,14 @@ pub fn parse_lexed_program(
     lexed_program
         .root
         .tree
+        .value
         .items
         .iter()
         .chain(
             lexed_program
                 .root
                 .submodules_recursive()
-                .flat_map(|(_, submodule)| &submodule.module.tree.items),
+                .flat_map(|(_, submodule)| &submodule.module.tree.value.items),
         )
         .filter(should_process)
         .collect::<Vec<_>>()
@@ -562,7 +563,7 @@ fn parse_ast_to_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -597,7 +598,7 @@ fn parse_ast_to_typed_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };

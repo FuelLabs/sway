@@ -2,7 +2,14 @@
   "configurables": [],
   "functions": [
     {
-      "attributes": null,
+      "attributes": [
+        {
+          "arguments": [
+            "experimental_partial_eq"
+          ],
+          "name": "cfg"
+        }
+      ],
       "inputs": [],
       "name": "main",
       "output": {

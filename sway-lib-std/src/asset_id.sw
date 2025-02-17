@@ -29,11 +29,20 @@ impl Hash for AssetId {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for AssetId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for AssetId {
+    fn eq(self, other: Self) -> bool {
+        self.bits == other.bits
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for AssetId {}
 
 impl From<b256> for AssetId {
     /// Casts raw `b256` data to an `AssetId`.
