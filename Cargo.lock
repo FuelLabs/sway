@@ -8145,6 +8145,8 @@ version = "0.66.7"
 dependencies = [
  "clap",
  "paste",
+ "sway-error",
+ "sway-types",
 ]
 
 [[package]]

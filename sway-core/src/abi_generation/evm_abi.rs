@@ -45,9 +45,12 @@ fn get_type_str(type_id: &TypeId, engines: &Engines, resolved_type_id: TypeId) -
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            (TypeInfo::Array(_, count), TypeInfo::Array(_, resolved_count)) => {
-                assert_eq!(count.val(), resolved_count.val());
-                format!("[_; {}]", count.val())
+            (TypeInfo::Array(_, length), TypeInfo::Array(_, resolved_length)) => {
+                assert_eq!(
+                    length.as_literal_val().unwrap(),
+                    resolved_length.as_literal_val().unwrap()
+                );
+                format!("[_; {:?}]", engines.help_out(length))
             }
             (TypeInfo::Slice(_), TypeInfo::Slice(_)) => "__slice[_]".into(),
             (TypeInfo::Custom { .. }, _) => {
@@ -113,7 +116,11 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
             format!("contract caller {abi_name}")
         }
         Array(elem_ty, length) => {
-            format!("{}[{}]", abi_str_type_arg(elem_ty, engines), length.val())
+            format!(
+                "{}[{:?}]",
+                abi_str_type_arg(elem_ty, engines),
+                engines.help_out(length),
+            )
         }
         RawUntypedPtr => "raw untyped ptr".into(),
         RawUntypedSlice => "raw untyped slice".into(),

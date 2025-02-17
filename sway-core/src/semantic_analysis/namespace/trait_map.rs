@@ -187,7 +187,7 @@ enum TypeRootFilter {
     Enum(ParsedDeclId<EnumDeclaration>),
     Struct(ParsedDeclId<StructDeclaration>),
     ContractCaller(String),
-    Array(usize),
+    Array,
     RawUntypedPtr,
     RawUntypedSlice,
     Ptr,
@@ -1509,7 +1509,7 @@ impl TraitMap {
                 TypeRootFilter::Struct(engines.de().get_parsed_decl_id(decl_id).unwrap())
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
-            Array(_, length) => TypeRootFilter::Array(length.val()),
+            Array(_, _) => TypeRootFilter::Array,
             RawUntypedPtr => TypeRootFilter::RawUntypedPtr,
             RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
             Ptr(_) => TypeRootFilter::Ptr,

@@ -50,6 +50,18 @@ impl fmt::Display for InterfaceName {
 // provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
+    #[error("\"const generics\" are not supported here.")]
+    ConstGenericNotSupportedHere { span: Span },
+    #[error("This expression is not supported as lengths.")]
+    LengthExpressionNotSupported { span: Span },
+    #[error(
+        "This needs \"{feature}\" to be enabled, but it is currently disabled. For more details go to {url}."
+    )]
+    FeatureIsDisabled {
+        feature: String,
+        url: String,
+        span: Span,
+    },
     #[error(
         "There was an error while evaluating the evaluation order for the module dependency graph."
     )]
@@ -1061,6 +1073,9 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
+            ConstGenericNotSupportedHere { span } => span.clone(),
+            LengthExpressionNotSupported { span } => span.clone(),
+            FeatureIsDisabled { span, .. } => span.clone(),
             ModuleDepGraphEvaluationError { .. } => Span::dummy(),
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),

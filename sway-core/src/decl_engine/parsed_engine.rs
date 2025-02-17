@@ -1,9 +1,10 @@
 use crate::{
     concurrent_slab::ConcurrentSlab,
     language::parsed::{
-        AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration, EnumVariant,
-        FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration, StructDeclaration,
-        TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
+        AbiDeclaration, ConfigurableDeclaration, ConstGenericDeclaration, ConstantDeclaration,
+        EnumDeclaration, EnumVariant, FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration,
+        StructDeclaration, TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration,
+        VariableDeclaration,
     },
 };
 
@@ -26,6 +27,7 @@ pub struct ParsedDeclEngine {
     abi_slab: ConcurrentSlab<AbiDeclaration>,
     constant_slab: ConcurrentSlab<ConstantDeclaration>,
     configurable_slab: ConcurrentSlab<ConfigurableDeclaration>,
+    const_generic_slab: ConcurrentSlab<ConstGenericDeclaration>,
     enum_slab: ConcurrentSlab<EnumDeclaration>,
     enum_variant_slab: ConcurrentSlab<EnumVariant>,
     type_alias_slab: ConcurrentSlab<TypeAliasDeclaration>,
@@ -70,6 +72,7 @@ decl_engine_get!(storage_slab, StorageDeclaration);
 decl_engine_get!(abi_slab, AbiDeclaration);
 decl_engine_get!(constant_slab, ConstantDeclaration);
 decl_engine_get!(configurable_slab, ConfigurableDeclaration);
+decl_engine_get!(const_generic_slab, ConstGenericDeclaration);
 decl_engine_get!(enum_slab, EnumDeclaration);
 decl_engine_get!(enum_variant_slab, EnumVariant);
 decl_engine_get!(type_alias_slab, TypeAliasDeclaration);
@@ -95,6 +98,7 @@ decl_engine_insert!(storage_slab, StorageDeclaration);
 decl_engine_insert!(abi_slab, AbiDeclaration);
 decl_engine_insert!(constant_slab, ConstantDeclaration);
 decl_engine_insert!(configurable_slab, ConfigurableDeclaration);
+decl_engine_insert!(const_generic_slab, ConstGenericDeclaration);
 decl_engine_insert!(enum_slab, EnumDeclaration);
 decl_engine_insert!(enum_variant_slab, EnumVariant);
 decl_engine_insert!(type_alias_slab, TypeAliasDeclaration);
