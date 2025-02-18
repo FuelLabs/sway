@@ -215,20 +215,14 @@ fn type_check_transmute(
         None,
     );
 
+    let mut final_type_arguments = type_arguments.to_vec();
+    final_type_arguments[0].type_id = src_type;
+    final_type_arguments[1].type_id = return_type;
     Ok((
         TyIntrinsicFunctionKind {
             kind,
             arguments: vec![first_argument_typed_expr],
-            type_arguments: vec![
-                TypeArgument {
-                    type_id: src_type,
-                    ..type_arguments[0].clone()
-                },
-                TypeArgument {
-                    type_id: return_type,
-                    ..type_arguments[1].clone()
-                },
-            ],
+            type_arguments: final_type_arguments,
             span,
         },
         return_type,
