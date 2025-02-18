@@ -43,11 +43,12 @@ mod ir_builder {
                 }
 
             rule script_or_predicate() -> IrAstModule
-                = kind:module_kind() "{" _ configs:init_config()* _ fn_decls:fn_decl()* "}" _
+                = kind:module_kind() "{" _ configs:init_config()* _ global_consts:global_const()* _ fn_decls:fn_decl()* "}" _
                   metadata:metadata_decls() {
                     IrAstModule {
                         kind,
                         configs,
+                        global_consts,
                         fn_decls,
                         metadata
                     }
@@ -59,13 +60,23 @@ mod ir_builder {
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _
-                  configs:init_config()* fn_decls:fn_decl()* "}" _
+                  configs:init_config()* _ global_consts:global_const()* _ fn_decls:fn_decl()* "}" _
                   metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
                         configs,
+                        global_consts,
                         fn_decls,
                         metadata
+                    }
+                }
+
+            rule global_const() -> IrAstGlobalConst
+                = "global" _ name:path() _ ":" _ ty:ast_ty() _ "=" _ init:op_const() {
+                    IrAstGlobalConst {
+                        name,
+                        ty,
+                        init
                     }
                 }
 
@@ -216,6 +227,7 @@ mod ir_builder {
                 / op_contract_call()
                 / op_get_elem_ptr()
                 / op_get_local()
+                / op_get_global()
                 / op_get_config()
                 / op_gtf()
                 / op_int_to_ptr()
@@ -332,7 +344,10 @@ mod ir_builder {
                 = "get_local" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetLocal(name)
                 }
-
+            rule op_get_global() -> IrAstOperation
+                = "get_global" _ ast_ty() comma() name:path() {
+                    IrAstOperation::GetGlobal(name)
+                }
             rule op_get_config() -> IrAstOperation
                 = "get_config" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetConfig(name)
@@ -589,6 +604,9 @@ mod ir_builder {
                     Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
+            rule path() -> Vec<String>
+                = (id() ** "::")
+
             // Metadata decls are sensitive to the newlines since the assignee idx could belong to
             // the previous decl otherwise.  e.g.,
             //
@@ -688,15 +706,24 @@ mod ir_builder {
         module::{Kind, Module},
         value::Value,
         variable::LocalVar,
-        BinaryOpKind, BlockArgument, ConfigContent, Constant, Instruction, UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction, UnaryOpKind,
+        B256,
     };
 
     #[derive(Debug)]
     pub(super) struct IrAstModule {
         kind: Kind,
         configs: Vec<IrAstConfig>,
+        global_consts: Vec<IrAstGlobalConst>,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
+    }
+
+    #[derive(Debug)]
+    pub(super) struct IrAstGlobalConst {
+        name: Vec<String>,
+        ty: IrAstTy,
+        init: IrAstOperation,
     }
 
     #[derive(Debug)]
@@ -749,6 +776,7 @@ mod ir_builder {
         ContractCall(IrAstTy, String, String, String, String, String),
         GetElemPtr(String, IrAstTy, Vec<String>),
         GetLocal(String),
+        GetGlobal(Vec<String>),
         GetConfig(String),
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
@@ -982,6 +1010,7 @@ mod ir_builder {
         let mut builder = IrBuilder {
             module,
             configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
+            global_map: build_global_consts_map(&mut ctx, &module, ir_ast_mod.global_consts),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -998,6 +1027,7 @@ mod ir_builder {
     struct IrBuilder {
         module: Module,
         configs_map: BTreeMap<String, String>,
+        global_map: BTreeMap<Vec<String>, GlobalVar>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -1322,6 +1352,10 @@ mod ir_builder {
                         .append(context)
                         .get_local(*local_map.get(&local_name).unwrap())
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetGlobal(global_name) => block
+                        .append(context)
+                        .get_global(*self.global_map.get(&global_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::GetConfig(name) => block
                         .append(context)
                         .get_config(self.module, name)
@@ -1511,6 +1545,26 @@ mod ir_builder {
             }
             Ok(())
         }
+    }
+
+    fn build_global_consts_map(
+        context: &mut Context,
+        module: &Module,
+        global_consts: Vec<IrAstGlobalConst>,
+    ) -> BTreeMap<Vec<String>, GlobalVar> {
+        global_consts
+            .into_iter()
+            .map(|global_const| {
+                let ty = global_const.ty.to_ir_type(context);
+                let init = match global_const.init {
+                    IrAstOperation::Const(ty, val) => val.value.as_constant(context, ty),
+                    _ => unreachable!("Global const initializer must be a const value."),
+                };
+                let global_var = GlobalVar::new(context, ty, Some(init), false);
+                module.add_global_variable(context, global_const.name.clone(), global_var);
+                (global_const.name, global_var)
+            })
+            .collect()
     }
 
     fn build_configs_map(

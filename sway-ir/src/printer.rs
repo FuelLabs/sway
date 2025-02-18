@@ -218,6 +218,34 @@ fn module_to_doc<'a>(
         4,
         Doc::list_sep(
             module
+                .global_variables
+                .iter()
+                .map(|(name, var)| {
+                    let var_content = &context.global_vars[var.0];
+                    let init_doc = match &var_content.initializer {
+                        Some(const_val) => Doc::text(format!(
+                            " = const {}",
+                            const_val.get_content(context).as_lit_string(context)
+                        )),
+                        None => Doc::Empty,
+                    };
+                    Doc::line(
+                        Doc::text(format!(
+                            "global {} : {}",
+                            name.join("::"),
+                            var.get_inner_type(context).as_string(context),
+                        ))
+                        .append(init_doc),
+                    )
+                })
+                .collect(),
+            Doc::line(Doc::Empty),
+        ),
+    ))
+    .append(Doc::indent(
+        4,
+        Doc::list_sep(
+            module
                 .functions
                 .iter()
                 .map(|function| {
