@@ -1,10 +1,7 @@
 library;
 
 use ::primitives::*;
-use ::primitive_conversions::*;
 use ::slice::*;
-use ::raw_ptr::*;
-use ::raw_slice::*;
 
 const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
 const MAX_U16_U64: u64 = __transmute::<u16, u64>(u16::max());
@@ -104,14 +101,21 @@ impl Add for u16 {
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        let res_u64 = __add(self.as_u64(), other.as_u64());
-        if __gt(res_u64, Self::max().as_u64())
-            && panic_on_overflow_is_enabled()
-        {
-            __revert(0)
-        }
+        let res_u64 = __add(u8_as_u64(self), u8_as_u64(other));
 
-        read_first_be_byte(res_u64)
+        let max_u8_u64 = u8_as_u64(Self::max());
+
+        if __gt(res_u64, max_u8_u64) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
+            }
+        } else {
+            u64_as_u8(res_u64)
+        }
     }
 }
 
@@ -209,14 +213,21 @@ impl Subtract for u16 {
 
 impl Subtract for u8 {
     fn subtract(self, other: Self) -> Self {
-        let res_u64 = __sub(self.as_u64(), other.as_u64());
-        if __gt(res_u64, Self::max().as_u64())
-            && panic_on_overflow_is_enabled()
-        {
-            __revert(0)
-        }
+        let res_u64 = __sub(u8_as_u64(self), u8_as_u64(other));
 
-        read_first_be_byte(res_u64)
+        let max_u8_u64 = u8_as_u64(Self::max());
+
+        if __gt(res_u64, max_u8_u64) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
+            }
+        } else {
+            u64_as_u8(res_u64)
+        }
     }
 }
 
@@ -315,14 +326,21 @@ impl Multiply for u16 {
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        let res_u64 = __mul(self.as_u64(), other.as_u64());
-        if __gt(res_u64, Self::max().as_u64())
-            && panic_on_overflow_is_enabled()
-        {
-            __revert(0)
-        }
+        let res_u64 = __mul(u8_as_u64(self), u8_as_u64(other));
 
-        read_first_be_byte(res_u64)
+        let max_u8_u64 = u8_as_u64(Self::max());
+
+        if __gt(res_u64, max_u8_u64) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
+            }
+        } else {
+            u64_as_u8(res_u64)
+        }
     }
 }
 
@@ -1757,71 +1775,14 @@ fn panic_on_overflow_is_enabled() -> bool {
     )
 }
 
+fn u8_as_u64(val: u8) -> u64 {
+    asm(input: val) {
+        input: u64
+    }
+}
 
-fn read_first_be_byte(val: u64) -> u8 {
-    // Convert to raw slice of be bytes
-    let ptr = asm(
-        input: val,
-        off: 0xFF,
-        i: 0x8,
-        j: 0x10,
-        k: 0x18,
-        l: 0x20,
-        m: 0x28,
-        n: 0x30,
-        o: 0x38,
-        size: 8,
-        ptr,
-        r1,
-    ) {
-        aloc size;
-        move ptr hp;
-
-        and r1 input off;
-        sb ptr r1 i7;
-
-        srl r1 input i;
-        and r1 r1 off;
-        sb ptr r1 i6;
-
-        srl r1 input j;
-        and r1 r1 off;
-        sb ptr r1 i5;
-
-        srl r1 input k;
-        and r1 r1 off;
-        sb ptr r1 i4;
-
-        srl r1 input l;
-        and r1 r1 off;
-        sb ptr r1 i3;
-
-        srl r1 input m;
-        and r1 r1 off;
-        sb ptr r1 i2;
-
-        srl r1 input n;
-        and r1 r1 off;
-        sb ptr r1 i1;
-
-        srl r1 input o;
-        and r1 r1 off;
-        sb ptr r1 i0;
-
-        ptr: raw_ptr
-    };
-
-    let rs = asm(parts: (ptr, 8)) {
-        parts: raw_slice
-    };
-
-    // Create ptr to be Bytes of the raw slice `rs`
-    let ptr = asm(size: 8) {
-            aloc size;
-            hp: raw_ptr
-        };
-    rs.ptr().copy_to::<u8>(ptr, 8);
-    
-    // Read first byte
-    ptr.read_byte()
+fn u64_as_u8(val: u64) -> u8 {
+    asm(input: val) {
+        input: u8
+    }
 }
