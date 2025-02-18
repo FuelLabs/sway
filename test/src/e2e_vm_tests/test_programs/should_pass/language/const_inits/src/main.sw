@@ -167,6 +167,8 @@ fn main() -> u64 {
 
     test_not();
 
+    assert(WithSelfValue == 1);
+
     1
 }
 
