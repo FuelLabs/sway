@@ -196,24 +196,39 @@ fn type_check_transmute(
     forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span)?;
 
     // check first argument
-    let arg_type = engines.te().get(src_type);
+    let arg_type = engines.te().new_unknown();
     let first_argument_typed_expr = {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(engines.te().insert(
-                engines,
-                (*arg_type).clone(),
-                type_arguments[0].span.source_id(),
-            ));
+            .with_type_annotation(arg_type);
         ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
     };
+
+    engines.te().unify(
+        handler,
+        engines,
+        first_argument_typed_expr.return_type,
+        src_type,
+        &first_argument_typed_expr.span,
+        "",
+        None,
+    );
 
     Ok((
         TyIntrinsicFunctionKind {
             kind,
             arguments: vec![first_argument_typed_expr],
-            type_arguments: type_arguments.to_vec(),
+            type_arguments: vec![
+                TypeArgument {
+                    type_id: src_type,
+                    ..type_arguments[0].clone()
+                },
+                TypeArgument {
+                    type_id: return_type,
+                    ..type_arguments[1].clone()
+                },
+            ],
             span,
         },
         return_type,
