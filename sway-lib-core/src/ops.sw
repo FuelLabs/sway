@@ -1,8 +1,10 @@
 library;
 
 use ::primitives::*;
-use ::primitive_conversions::u8::as_u64;
+use ::primitive_conversions::*;
 use ::slice::*;
+use ::raw_ptr::*;
+use ::raw_slice::*;
 
 const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
 const MAX_U16_U64: u64 = __transmute::<u16, u64>(u16::max());
@@ -109,7 +111,7 @@ impl Add for u8 {
             __revert(0)
         }
 
-        res_u64.to_be_bytes()[0]
+        res_u64.read_first_be_byte()
     }
 }
 
@@ -214,7 +216,7 @@ impl Subtract for u8 {
             __revert(0)
         }
 
-        res_u64.to_be_bytes()[0]
+        res_u64.read_first_be_byte()
     }
 }
 
@@ -320,7 +322,7 @@ impl Multiply for u8 {
             __revert(0)
         }
 
-        res_u64.to_be_bytes()[0]
+        res_u64.read_first_be_byte()
     }
 }
 
@@ -1753,4 +1755,74 @@ fn panic_on_overflow_is_enabled() -> bool {
         ),
         0,
     )
+}
+
+impl u64 {
+    fn read_first_be_byte(self) -> u8 {
+        // Convert to raw slice of be bytes
+        let ptr = asm(
+            input: self,
+            off: 0xFF,
+            i: 0x8,
+            j: 0x10,
+            k: 0x18,
+            l: 0x20,
+            m: 0x28,
+            n: 0x30,
+            o: 0x38,
+            size: 8,
+            ptr,
+            r1,
+        ) {
+            aloc size;
+            move ptr hp;
+
+            and r1 input off;
+            sb ptr r1 i7;
+
+            srl r1 input i;
+            and r1 r1 off;
+            sb ptr r1 i6;
+
+            srl r1 input j;
+            and r1 r1 off;
+            sb ptr r1 i5;
+
+            srl r1 input k;
+            and r1 r1 off;
+            sb ptr r1 i4;
+
+            srl r1 input l;
+            and r1 r1 off;
+            sb ptr r1 i3;
+
+            srl r1 input m;
+            and r1 r1 off;
+            sb ptr r1 i2;
+
+            srl r1 input n;
+            and r1 r1 off;
+            sb ptr r1 i1;
+
+            srl r1 input o;
+            and r1 r1 off;
+            sb ptr r1 i0;
+
+            ptr: raw_ptr
+        };
+
+        let rs = asm(parts: (ptr, 8)) {
+            parts: raw_slice
+        };
+
+        // Create ptr to be Bytes of the raw slice `rs`
+        let ptr = asm(size: 8) {
+                aloc size;
+                hp: raw_ptr
+            };
+        rs.ptr().copy_to::<u8>(ptr, 8);
+        
+        // Read first byte
+        ptr.read_byte()
+    }
 }
