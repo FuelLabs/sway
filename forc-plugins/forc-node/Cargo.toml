@@ -1,0 +1,39 @@
+[package]
+name = "forc-node"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies] 
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive", "string"] }
+dialoguer.workspace = true
+forc-tracing.workspace = true
+forc-util.workspace = true
+fuel-crypto = { workspace = true, features = ["random"] }
+libp2p-identity = { workspace = true, features = ["secp256k1", "peerid"] }
+reqwest = { workspace = true, features = ["json"] }
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha1.workspace = true
+termion.workspace = true
+tokio = { workspace = true, features = ["macros", "signal", "rt-multi-thread"] }
+
+[dev-dependencies]
+portpicker = "0.1.1"
+reqwest = { workspace = true, features = ["json"] }
+serde_json.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["full"] }
+wiremock = "0.5"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "forc-node"
+path = "src/main.rs"

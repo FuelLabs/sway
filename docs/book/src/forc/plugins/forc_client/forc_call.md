@@ -10,13 +10,27 @@ Here are a few examples of what you can do with `forc call`:
 
 Call a simple addition function on a deployed contract (in dry-run mode):
 
+```sway
+contract;
+
+abi ContractABI {
+  fn add(a: u64, b: u64) -> u64;
+}
+
+impl ContractABI for Contract {
+  fn add(a: u64, b: u64) -> u64 {
+    a + b
+  }
+}
+```
+
 ```bash
 forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
   --abi ./out/debug/counter-contract-abi.json \
   add 1 2
 ```
 
-Query the owner of a deployed DEX contract on testnet:
+Query the owner of a deployed [DEX contract](https://github.com/mira-amm/mira-v1-core) on testnet:
 
 ```bash
 forc call \
@@ -236,7 +250,7 @@ forc call <CONTRACT_ID> --abi <PATH> <FUNCTION> --max-fee 5000
 
 ### Common Use Cases
 
-- 1. Contract State Queries
+#### Contract State Queries
 
 ```sh
 # Read contract state
@@ -246,7 +260,7 @@ forc call <CONTRACT_ID> --abi <PATH> get_balance
 forc call <CONTRACT_ID> --abi <PATH> get_user_info 0x1234...
 ```
 
-- 2. Token Operations
+#### Token Operations
 
 ```sh
 # Check token balance
@@ -256,7 +270,7 @@ forc call <CONTRACT_ID> --abi <PATH> balance_of 0x1234...
 forc call <CONTRACT_ID> --abi <PATH> transfer 0x1234... 100 --live
 ```
 
-- 3. Contract Administration
+#### Contract Administration
 
 ```sh
 # Check contract owner
