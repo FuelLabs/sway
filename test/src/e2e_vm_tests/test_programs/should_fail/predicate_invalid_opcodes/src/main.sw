@@ -73,7 +73,10 @@ fn main() -> bool {
   }
 
   // retd: There is no way of testing
-  // rvrt: It is allowed and used to abort predicates.
+  
+  asm(r1) {
+    rvrt r1;
+  }
 
   asm(r1: 0, r2: 0, r3: 0, r4: 0) {
     smo r1 r2 r3 r4;
