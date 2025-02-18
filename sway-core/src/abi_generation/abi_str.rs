@@ -48,8 +48,11 @@ impl TypeId {
                         .collect::<Vec<String>>();
                     format!("({})", field_strs.join(", "))
                 }
-                (TypeInfo::Array(_, count), TypeInfo::Array(type_arg, resolved_count)) => {
-                    assert_eq!(count.val(), resolved_count.val());
+                (TypeInfo::Array(_, length), TypeInfo::Array(type_arg, resolved_length)) => {
+                    assert_eq!(
+                        length.as_literal_val().unwrap(),
+                        resolved_length.as_literal_val().unwrap()
+                    );
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine
                             .get(type_arg.type_id)
@@ -57,7 +60,7 @@ impl TypeId {
                     } else {
                         "_".to_string()
                     };
-                    format!("[{}; {}]", inner_type, count.val())
+                    format!("[{}; {:?}]", inner_type, engines.help_out(length))
                 }
                 (TypeInfo::Slice(type_arg), TypeInfo::Slice(_)) => {
                     let inner_type = if ctx.abi_with_fully_specified_types {
@@ -92,7 +95,7 @@ impl TypeInfo {
             Placeholder(_) => "_".to_string(),
             TypeParam(n) => format!("typeparam({n})"),
             StringSlice => "str".into(),
-            StringArray(x) => format!("str[{}]", x.val()),
+            StringArray(length) => format!("str[{}]", length.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -174,9 +177,9 @@ impl TypeInfo {
             }
             Array(elem_ty, length) => {
                 format!(
-                    "[{}; {}]",
+                    "[{}; {:?}]",
                     elem_ty.abi_str(ctx, engines, false),
-                    length.val()
+                    engines.help_out(length)
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),

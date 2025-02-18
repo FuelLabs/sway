@@ -103,7 +103,7 @@ fn convert_resolved_type_info(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::StringSlice => Type::get_slice(context),
-        TypeInfo::StringArray(n) => Type::new_string_array(context, n.val() as u64),
+        TypeInfo::StringArray(length) => Type::new_string_array(context, length.val() as u64),
         TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
             type_engine,
             decl_engine,
@@ -122,7 +122,12 @@ fn convert_resolved_type_info(
             context,
             &decl_engine.get_enum(decl_ref).variants,
         )?,
-        TypeInfo::Array(elem_type, length) => {
+        TypeInfo::Array(elem_type, length) if length.as_literal_val().is_some() => {
+            // SAFETY: Safe by the guard above
+            let len = length
+                .as_literal_val()
+                .expect("unexpected non literal array length");
+
             let elem_type = convert_resolved_type_id(
                 type_engine,
                 decl_engine,
@@ -130,7 +135,7 @@ fn convert_resolved_type_info(
                 elem_type.type_id,
                 span,
             )?;
-            Type::new_array(context, elem_type, length.val() as u64)
+            Type::new_array(context, elem_type, len as u64)
         }
 
         TypeInfo::Tuple(fields) => {
@@ -186,5 +191,6 @@ fn convert_resolved_type_info(
         TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
+        TypeInfo::Array(..) => reject_type!("Array with non literal length"),
     })
 }
