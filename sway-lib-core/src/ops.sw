@@ -5,8 +5,6 @@ use ::slice::*;
 
 const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
 const MAX_U16_U64: u64 = __transmute::<u16, u64>(u16::max());
-// TODO: investigate as causing error: Could not evaluate initializer to a const declaration.
-// const MAX_U8_U64: u64 = __transmute::<u8, u64>(u8::max());
 
 /// Trait for the addition of two values.
 pub trait Add {
@@ -103,25 +101,14 @@ impl Add for u16 {
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        let res_u64 = __add(
-            __transmute::<Self, u64>(self),
-            __transmute::<Self, u64>(other),
-        );
-
-        let max_u8_u64: u64 = __transmute::<Self, u64>(Self::max());
-
-        if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_is_enabled() {
-                __revert(0)
-            } else {
-                // overflow enabled
-                // res % (Self::max() + 1)
-                // TODO: investigate as causing ICE: Types size do not match
-                __transmute::<u64, Self>(__mod(res_u64, __add(max_u8_u64, 1)))
-            }
-        } else {
-            __transmute::<u64, Self>(res_u64)
+        let res_u64 = __add(self.as_u64(), other.as_u64());
+        if __gt(res_u64, Self::max().as_u64())
+            && panic_on_overflow_is_enabled()
+        {
+            __revert(0)
         }
+
+        res_u64.to_be_bytes()[0]
     }
 }
 
@@ -219,24 +206,14 @@ impl Subtract for u16 {
 
 impl Subtract for u8 {
     fn subtract(self, other: Self) -> Self {
-        let res_u64 = __sub(
-            __transmute::<Self, u64>(self),
-            __transmute::<Self, u64>(other),
-        );
-
-        let max_u8_u64: u64 = __transmute::<Self, u64>(Self::max());
-
-        if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_is_enabled() {
-                __revert(0)
-            } else {
-                // overflow enabled
-                // res % (Self::max() + 1)
-                __transmute::<u64, Self>(__mod(res_u64, __add(max_u8_u64, 1)))
-            }
-        } else {
-            __transmute::<u64, Self>(res_u64)
+        let res_u64 = __sub(self.as_u64(), other.as_u64());
+        if __gt(res_u64, Self::max().as_u64())
+            && panic_on_overflow_is_enabled()
+        {
+            __revert(0)
         }
+
+        res_u64.to_be_bytes()[0]
     }
 }
 
@@ -335,24 +312,14 @@ impl Multiply for u16 {
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        let res_u64 = __mul(
-            __transmute::<Self, u64>(self),
-            __transmute::<Self, u64>(other),
-        );
-
-        let max_u8_u64: u64 = __transmute::<Self, u64>(Self::max());
-
-        if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_is_enabled() {
-                __revert(0)
-            } else {
-                // overflow enabled
-                // res % (Self::max() + 1)
-                __transmute::<u64, Self>(__mod(res_u64, __add(max_u8_u64, 1)))
-            }
-        } else {
-            __transmute::<u64, Self>(res_u64)
+        let res_u64 = __mul(self.as_u64(), other.as_u64());
+        if __gt(res_u64, Self::max().as_u64())
+            && panic_on_overflow_is_enabled()
+        {
+            __revert(0)
         }
+
+        res_u64.to_be_bytes()[0]
     }
 }
 
