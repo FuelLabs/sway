@@ -1,6 +1,7 @@
 library;
 
 use ::primitives::*;
+use ::primitive_conversions::u8::as_u64;
 use ::slice::*;
 
 const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
