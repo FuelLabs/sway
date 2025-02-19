@@ -731,7 +731,7 @@ fn const_eval_typed_expr(
                         });
                     }
                 }
-                ty::TyReassignmentTarget::Deref(_) => {
+                ty::TyReassignmentTarget::DerefAccess { .. } => {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
                     });

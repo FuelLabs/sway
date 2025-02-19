@@ -42,6 +42,12 @@ pub enum ElementAccess {
         field: BigUint,
         field_span: Span,
     },
+    Deref {
+        target: Box<ElementAccess>,
+        star_token: StarToken,
+        /// Multiple Derefs can be nested, this is true for the outer most Deref.
+        is_root_element: bool,
+    },
 }
 
 impl Spanned for Assignable {
@@ -64,6 +70,11 @@ impl Spanned for ElementAccess {
             ElementAccess::TupleFieldProjection {
                 target, field_span, ..
             } => Span::join(target.span(), field_span),
+            ElementAccess::Deref {
+                target,
+                star_token,
+                is_root_element: _,
+            } => Span::join(target.span(), &star_token.span()),
         }
     }
 }
