@@ -909,10 +909,16 @@ impl Root {
             ignored_prefixes += 1;
         }
 
+        println!("{:?}", ignored_prefixes);
+        println!("prefixes {:?}", iter_prefixes(src).collect::<Vec<_>>());
         // Check visibility of remaining submodules in the source path
-        for prefix in iter_prefixes(src).skip(ignored_prefixes) {
-            if let Some(module) = self.module_from_absolute_path(&prefix.to_vec()) {
+        for prefix in iter_prefixes(src) {
+            let prefix = prefix.iter().skip(ignored_prefixes).cloned().collect::<Vec<_>>();
+            println!("prefix {:?}", prefix);
+            if let Some(module) = self.module_from_absolute_path(&prefix) {
                 if module.visibility().is_private() {
+                    println!("src {:?}", src);
+                    println!("dst {:?}", dst);
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
                         span: prefix_last.span(),

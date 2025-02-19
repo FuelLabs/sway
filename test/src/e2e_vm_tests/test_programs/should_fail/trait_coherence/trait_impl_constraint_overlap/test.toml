@@ -1,3 +1,8 @@
 category = "fail"
 
-#check: $()Internal compiler error: Overlapped item foo
+#check: $()Duplicate definitions for the method "foo" for type "S<u32>".
+#check: $()Trait is already implemented for type
+
+#check: $()This is the already existing implementation of "foo" for "S<Z>".
+#check: $()Trait "foo" is already implemented for type "S<Z>".
+#check: $()Trait is already implemented for type

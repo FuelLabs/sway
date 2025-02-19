@@ -4,7 +4,7 @@ use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity, Visibility},
-    namespace::TraitMap,
+    namespace::{check_impls_for_overlap, check_orphan_rules_for_impls},
     semantic_analysis::namespace,
     transform::AllowDeprecatedState,
     type_system::*,
@@ -427,7 +427,7 @@ impl TyProgram {
         }
 
         // check orphan rules for all traits
-        TraitMap::check_orphan_rules(handler, engines, root_namespace.root_ref())?;
+        check_orphan_rules_for_impls(handler, engines, root_namespace.root_ref())?;
 
         // check trait overlap
         let mut unified_trait_map = root_namespace
@@ -437,7 +437,14 @@ impl TyProgram {
             .items
             .implemented_traits
             .clone();
-        unified_trait_map.check_overlap_and_extend(handler, unified_trait_map.clone(), engines)?;
+
+        let other_trait_map = unified_trait_map.clone();
+        check_impls_for_overlap(
+            &mut unified_trait_map,
+            handler,
+            other_trait_map,
+            engines,
+        )?;
 
         for (submod_name, submodule) in root.submodules.iter() {
             root_namespace.push_submodule(
@@ -448,7 +455,8 @@ impl TyProgram {
                 submodule.mod_name_span.clone(),
             )?;
 
-            unified_trait_map.check_overlap_and_extend(
+            check_impls_for_overlap(
+                &mut unified_trait_map,
                 handler,
                 root_namespace
                     .current_module()

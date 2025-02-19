@@ -1,3 +1,5 @@
 category = "fail"
 
-#check: $()Internal compiler error: Overlapped item do_something
+#check: $()Trait is already implemented for type
+#check: $()This is the already existing implementation of "do_something" for "MyType"
+#check: $()Trait "do_something" is already implemented for type "MyType".
