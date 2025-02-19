@@ -356,7 +356,7 @@ pub(crate) fn compile_configurables(
             let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 
             if context.experimental.new_encoding {
-                let mut encoded_bytes = match constant.value {
+                let mut encoded_bytes = match constant.get_content(context).value.clone() {
                     ConstantValue::RawUntypedSlice(bytes) => bytes,
                     _ => unreachable!(),
                 };
@@ -651,11 +651,12 @@ fn compile_fn(
     // Special case: sometimes the returned value at the end of the function block is hacked
     // together and is invalid.  This can happen with diverging control flow or with implicit
     // returns.  We can double check here and make sure the return value type is correct.
+    let undef = Constant::unique(context, ConstantContent::get_undef(ret_type));
     ret_val = match ret_val.get_type(context) {
         Some(ret_val_type) if ret_type.eq(context, &ret_val_type) => ret_val,
 
         // Mismatched or unavailable type.  Set ret_val to a correctly typed Undef.
-        _otherwise => Value::new_constant(context, Constant::get_undef(ret_type)),
+        _otherwise => Value::new_constant(context, undef),
     };
 
     // Another special case: if the last expression in a function is a return then we don't want to
@@ -676,7 +677,7 @@ fn compile_fn(
             || compiler.current_block.num_predecessors(context) > 0)
     {
         if ret_type.is_unit(context) {
-            ret_val = Constant::get_unit(context);
+            ret_val = ConstantContent::get_unit(context);
         }
         compiler
             .current_block
