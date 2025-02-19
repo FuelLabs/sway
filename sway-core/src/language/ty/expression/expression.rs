@@ -698,8 +698,21 @@ impl TyExpression {
             TyExpressionVariant::Break => {}
             TyExpressionVariant::Continue => {}
             TyExpressionVariant::Reassignment(reass) => {
-                if let TyReassignmentTarget::Deref(expr) = &reass.lhs {
-                    expr.check_deprecated(engines, handler, allow_deprecated);
+                if let TyReassignmentTarget::DerefAccess { exp, indices } = &reass.lhs {
+                    exp.check_deprecated(engines, handler, allow_deprecated);
+                    for indice in indices {
+                        match indice {
+                            ProjectionKind::StructField { name: _ } => {}
+                            ProjectionKind::TupleField {
+                                index: _,
+                                index_span: _,
+                            } => {}
+                            ProjectionKind::ArrayIndex {
+                                index,
+                                index_span: _,
+                            } => index.check_deprecated(engines, handler, allow_deprecated),
+                        }
+                    }
                 }
                 reass
                     .rhs

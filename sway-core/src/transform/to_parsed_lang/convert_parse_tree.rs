@@ -4615,6 +4615,16 @@ fn assignable_to_expression(
                     span,
                 }
             }
+            ElementAccess::Deref { target, .. } => Expression {
+                kind: ExpressionKind::Deref(Box::new(element_access_to_expression(
+                    context,
+                    handler,
+                    engines,
+                    *target,
+                    span.clone(),
+                )?)),
+                span,
+            },
         };
 
         Ok(expression)
