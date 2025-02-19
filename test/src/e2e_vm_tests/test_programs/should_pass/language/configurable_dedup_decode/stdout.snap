@@ -1,5 +1,6 @@
 ---
 source: test/tests/tests.rs
+assertion_line: 115
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
@@ -9,6 +10,153 @@ output:
    Compiling library std (sway-lib-std)
 // IR: Final
 library {
+    global std::call_frames::FIRST_PARAMETER_OFFSET : u64 = const u64 73
+
+    global std::call_frames::PREV_FRAME_POINTER_OFFSET : u64 = const u64 6
+
+    global std::call_frames::SAVED_REGISTERS_OFFSET : u64 = const u64 8
+
+    global std::call_frames::SECOND_PARAMETER_OFFSET : u64 = const u64 74
+
+    global std::constants::DEFAULT_SUB_ID : b256 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+    global std::constants::ZERO_B256 : b256 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+    global std::constants::ZERO_U256 : u256 = const u256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+    global std::error_signals::FAILED_ASSERT_EQ_SIGNAL : u64 = const u64 18446744073709486083
+
+    global std::error_signals::FAILED_ASSERT_NE_SIGNAL : u64 = const u64 18446744073709486085
+
+    global std::error_signals::FAILED_ASSERT_SIGNAL : u64 = const u64 18446744073709486084
+
+    global std::error_signals::FAILED_REQUIRE_SIGNAL : u64 = const u64 18446744073709486080
+
+    global std::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL : u64 = const u64 18446744073709486081
+
+    global std::error_signals::REVERT_WITH_LOG_SIGNAL : u64 = const u64 18446744073709486086
+
+    global std::flags::F_UNSAFEMATH_DISABLE_MASK : u64 = const u64 1
+
+    global std::flags::F_UNSAFEMATH_ENABLE_MASK : u64 = const u64 18446744073709551614
+
+    global std::flags::F_WRAPPING_DISABLE_MASK : u64 = const u64 2
+
+    global std::flags::F_WRAPPING_ENABLE_MASK : u64 = const u64 18446744073709551613
+
+    global std::inputs::GTF_INPUT_COIN_AMOUNT : u64 = const u64 516
+
+    global std::inputs::GTF_INPUT_COIN_ASSET_ID : u64 = const u64 517
+
+    global std::inputs::GTF_INPUT_COIN_OWNER : u64 = const u64 515
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE : u64 = const u64 523
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE_DATA : u64 = const u64 524
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE_DATA_LENGTH : u64 = const u64 522
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE_LENGTH : u64 = const u64 521
+
+    global std::inputs::GTF_INPUT_COIN_WITNESS_INDEX : u64 = const u64 519
+
+    global std::inputs::GTF_INPUT_MESSAGE_AMOUNT : u64 = const u64 578
+
+    global std::inputs::GTF_INPUT_MESSAGE_DATA : u64 = const u64 584
+
+    global std::inputs::GTF_INPUT_MESSAGE_DATA_LENGTH : u64 = const u64 581
+
+    global std::inputs::GTF_INPUT_MESSAGE_NONCE : u64 = const u64 579
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE : u64 = const u64 585
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE_DATA : u64 = const u64 586
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH : u64 = const u64 583
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE_LENGTH : u64 = const u64 582
+
+    global std::inputs::GTF_INPUT_MESSAGE_RECIPIENT : u64 = const u64 577
+
+    global std::inputs::GTF_INPUT_MESSAGE_SENDER : u64 = const u64 576
+
+    global std::inputs::GTF_INPUT_MESSAGE_WITNESS_INDEX : u64 = const u64 580
+
+    global std::inputs::GTF_INPUT_TYPE : u64 = const u64 512
+
+    global std::outputs::GTF_OUTPUT_COIN_AMOUNT : u64 = const u64 770
+
+    global std::outputs::GTF_OUTPUT_COIN_ASSET_ID : u64 = const u64 771
+
+    global std::outputs::GTF_OUTPUT_COIN_TO : u64 = const u64 769
+
+    global std::outputs::GTF_OUTPUT_TYPE : u64 = const u64 768
+
+    global std::outputs::OUTPUT_VARIABLE_ASSET_ID_OFFSET : u64 = const u64 48
+
+    global std::outputs::OUTPUT_VARIABLE_TO_OFFSET : u64 = const u64 8
+
+    global std::tx::GTF_CREATE_INPUTS_COUNT : u64 = const u64 259
+
+    global std::tx::GTF_CREATE_INPUT_AT_INDEX : u64 = const u64 264
+
+    global std::tx::GTF_CREATE_OUTPUTS_COUNT : u64 = const u64 260
+
+    global std::tx::GTF_CREATE_OUTPUT_AT_INDEX : u64 = const u64 265
+
+    global std::tx::GTF_CREATE_WITNESSES_COUNT : u64 = const u64 261
+
+    global std::tx::GTF_CREATE_WITNESS_AT_INDEX : u64 = const u64 266
+
+    global std::tx::GTF_POLICY_MATURITY : u64 = const u64 1283
+
+    global std::tx::GTF_POLICY_MAX_FEE : u64 = const u64 1284
+
+    global std::tx::GTF_POLICY_TIP : u64 = const u64 1281
+
+    global std::tx::GTF_POLICY_TYPES : u64 = const u64 1280
+
+    global std::tx::GTF_POLICY_WITNESS_LIMIT : u64 = const u64 1282
+
+    global std::tx::GTF_SCRIPT_GAS_LIMIT : u64 = const u64 2
+
+    global std::tx::GTF_SCRIPT_INPUTS_COUNT : u64 = const u64 5
+
+    global std::tx::GTF_SCRIPT_INPUT_AT_INDEX : u64 = const u64 11
+
+    global std::tx::GTF_SCRIPT_OUTPUTS_COUNT : u64 = const u64 6
+
+    global std::tx::GTF_SCRIPT_OUTPUT_AT_INDEX : u64 = const u64 12
+
+    global std::tx::GTF_SCRIPT_SCRIPT : u64 = const u64 9
+
+    global std::tx::GTF_SCRIPT_SCRIPT_DATA : u64 = const u64 10
+
+    global std::tx::GTF_SCRIPT_SCRIPT_DATA_LENGTH : u64 = const u64 4
+
+    global std::tx::GTF_SCRIPT_SCRIPT_LENGTH : u64 = const u64 3
+
+    global std::tx::GTF_SCRIPT_WITNESSES_COUNT : u64 = const u64 7
+
+    global std::tx::GTF_SCRIPT_WITNESS_AT_INDEX : u64 = const u64 13
+
+    global std::tx::GTF_TX_LENGTH : u64 = const u64 14
+
+    global std::tx::GTF_TYPE : u64 = const u64 1
+
+    global std::tx::GTF_WITNESS_DATA : u64 = const u64 1025
+
+    global std::tx::GTF_WITNESS_DATA_LENGTH : u64 = const u64 1024
+
+    global std::tx::MATURITY_POLICY : u64 = const u64 4
+
+    global std::tx::MAX_FEE_POLICY : u64 = const u64 8
+
+    global std::tx::TIP_POLICY : u64 = const u64 1
+
+    global std::tx::TX_ID_OFFSET : u64 = const u64 0
+
+    global std::tx::WITNESS_LIMIT_POLICY : u64 = const u64 2
 }
 
    Compiling script configurable_dedup_decode (test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode)
@@ -17,6 +165,153 @@ script {
     TUPLE = config { u64 }, abi_decode_in_place_0, 0x0000000000000002, !1
     WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, !2
 
+    global std::call_frames::FIRST_PARAMETER_OFFSET : u64 = const u64 73
+
+    global std::call_frames::PREV_FRAME_POINTER_OFFSET : u64 = const u64 6
+
+    global std::call_frames::SAVED_REGISTERS_OFFSET : u64 = const u64 8
+
+    global std::call_frames::SECOND_PARAMETER_OFFSET : u64 = const u64 74
+
+    global std::constants::DEFAULT_SUB_ID : b256 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+    global std::constants::ZERO_B256 : b256 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+    global std::constants::ZERO_U256 : u256 = const u256 0x0000000000000000000000000000000000000000000000000000000000000000
+
+    global std::error_signals::FAILED_ASSERT_EQ_SIGNAL : u64 = const u64 18446744073709486083
+
+    global std::error_signals::FAILED_ASSERT_NE_SIGNAL : u64 = const u64 18446744073709486085
+
+    global std::error_signals::FAILED_ASSERT_SIGNAL : u64 = const u64 18446744073709486084
+
+    global std::error_signals::FAILED_REQUIRE_SIGNAL : u64 = const u64 18446744073709486080
+
+    global std::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL : u64 = const u64 18446744073709486081
+
+    global std::error_signals::REVERT_WITH_LOG_SIGNAL : u64 = const u64 18446744073709486086
+
+    global std::flags::F_UNSAFEMATH_DISABLE_MASK : u64 = const u64 1
+
+    global std::flags::F_UNSAFEMATH_ENABLE_MASK : u64 = const u64 18446744073709551614
+
+    global std::flags::F_WRAPPING_DISABLE_MASK : u64 = const u64 2
+
+    global std::flags::F_WRAPPING_ENABLE_MASK : u64 = const u64 18446744073709551613
+
+    global std::inputs::GTF_INPUT_COIN_AMOUNT : u64 = const u64 516
+
+    global std::inputs::GTF_INPUT_COIN_ASSET_ID : u64 = const u64 517
+
+    global std::inputs::GTF_INPUT_COIN_OWNER : u64 = const u64 515
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE : u64 = const u64 523
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE_DATA : u64 = const u64 524
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE_DATA_LENGTH : u64 = const u64 522
+
+    global std::inputs::GTF_INPUT_COIN_PREDICATE_LENGTH : u64 = const u64 521
+
+    global std::inputs::GTF_INPUT_COIN_WITNESS_INDEX : u64 = const u64 519
+
+    global std::inputs::GTF_INPUT_MESSAGE_AMOUNT : u64 = const u64 578
+
+    global std::inputs::GTF_INPUT_MESSAGE_DATA : u64 = const u64 584
+
+    global std::inputs::GTF_INPUT_MESSAGE_DATA_LENGTH : u64 = const u64 581
+
+    global std::inputs::GTF_INPUT_MESSAGE_NONCE : u64 = const u64 579
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE : u64 = const u64 585
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE_DATA : u64 = const u64 586
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH : u64 = const u64 583
+
+    global std::inputs::GTF_INPUT_MESSAGE_PREDICATE_LENGTH : u64 = const u64 582
+
+    global std::inputs::GTF_INPUT_MESSAGE_RECIPIENT : u64 = const u64 577
+
+    global std::inputs::GTF_INPUT_MESSAGE_SENDER : u64 = const u64 576
+
+    global std::inputs::GTF_INPUT_MESSAGE_WITNESS_INDEX : u64 = const u64 580
+
+    global std::inputs::GTF_INPUT_TYPE : u64 = const u64 512
+
+    global std::outputs::GTF_OUTPUT_COIN_AMOUNT : u64 = const u64 770
+
+    global std::outputs::GTF_OUTPUT_COIN_ASSET_ID : u64 = const u64 771
+
+    global std::outputs::GTF_OUTPUT_COIN_TO : u64 = const u64 769
+
+    global std::outputs::GTF_OUTPUT_TYPE : u64 = const u64 768
+
+    global std::outputs::OUTPUT_VARIABLE_ASSET_ID_OFFSET : u64 = const u64 48
+
+    global std::outputs::OUTPUT_VARIABLE_TO_OFFSET : u64 = const u64 8
+
+    global std::tx::GTF_CREATE_INPUTS_COUNT : u64 = const u64 259
+
+    global std::tx::GTF_CREATE_INPUT_AT_INDEX : u64 = const u64 264
+
+    global std::tx::GTF_CREATE_OUTPUTS_COUNT : u64 = const u64 260
+
+    global std::tx::GTF_CREATE_OUTPUT_AT_INDEX : u64 = const u64 265
+
+    global std::tx::GTF_CREATE_WITNESSES_COUNT : u64 = const u64 261
+
+    global std::tx::GTF_CREATE_WITNESS_AT_INDEX : u64 = const u64 266
+
+    global std::tx::GTF_POLICY_MATURITY : u64 = const u64 1283
+
+    global std::tx::GTF_POLICY_MAX_FEE : u64 = const u64 1284
+
+    global std::tx::GTF_POLICY_TIP : u64 = const u64 1281
+
+    global std::tx::GTF_POLICY_TYPES : u64 = const u64 1280
+
+    global std::tx::GTF_POLICY_WITNESS_LIMIT : u64 = const u64 1282
+
+    global std::tx::GTF_SCRIPT_GAS_LIMIT : u64 = const u64 2
+
+    global std::tx::GTF_SCRIPT_INPUTS_COUNT : u64 = const u64 5
+
+    global std::tx::GTF_SCRIPT_INPUT_AT_INDEX : u64 = const u64 11
+
+    global std::tx::GTF_SCRIPT_OUTPUTS_COUNT : u64 = const u64 6
+
+    global std::tx::GTF_SCRIPT_OUTPUT_AT_INDEX : u64 = const u64 12
+
+    global std::tx::GTF_SCRIPT_SCRIPT : u64 = const u64 9
+
+    global std::tx::GTF_SCRIPT_SCRIPT_DATA : u64 = const u64 10
+
+    global std::tx::GTF_SCRIPT_SCRIPT_DATA_LENGTH : u64 = const u64 4
+
+    global std::tx::GTF_SCRIPT_SCRIPT_LENGTH : u64 = const u64 3
+
+    global std::tx::GTF_SCRIPT_WITNESSES_COUNT : u64 = const u64 7
+
+    global std::tx::GTF_SCRIPT_WITNESS_AT_INDEX : u64 = const u64 13
+
+    global std::tx::GTF_TX_LENGTH : u64 = const u64 14
+
+    global std::tx::GTF_TYPE : u64 = const u64 1
+
+    global std::tx::GTF_WITNESS_DATA : u64 = const u64 1025
+
+    global std::tx::GTF_WITNESS_DATA_LENGTH : u64 = const u64 1024
+
+    global std::tx::MATURITY_POLICY : u64 = const u64 4
+
+    global std::tx::MAX_FEE_POLICY : u64 = const u64 8
+
+    global std::tx::TIP_POLICY : u64 = const u64 1
+
+    global std::tx::TX_ID_OFFSET : u64 = const u64 0
+
+    global std::tx::WITNESS_LIMIT_POLICY : u64 = const u64 2
     pub fn abi_decode_in_place_0(ptr !4: u64, len !5: u64, target !6: u64) -> (), !10 {
         local { u64 } __ret_val
         local mut { u64 } buffer

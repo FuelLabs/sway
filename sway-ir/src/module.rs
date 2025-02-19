@@ -2,10 +2,7 @@
 //!
 //! A module also has a 'kind' corresponding to the different Sway module types.
 
-use std::{
-    cell::Cell,
-    collections::{BTreeMap, HashMap},
-};
+use std::{cell::Cell, collections::BTreeMap};
 
 use crate::{
     context::Context,
@@ -22,7 +19,7 @@ pub struct Module(pub slotmap::DefaultKey);
 pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
-    pub global_variables: HashMap<Vec<String>, GlobalVar>,
+    pub global_variables: BTreeMap<Vec<String>, GlobalVar>,
     pub configs: BTreeMap<String, ConfigContent>,
 }
 
@@ -60,7 +57,7 @@ impl Module {
         let content = ModuleContent {
             kind,
             functions: Vec::new(),
-            global_variables: HashMap::new(),
+            global_variables: BTreeMap::new(),
             configs: BTreeMap::new(),
         };
         Module(context.modules.insert(content))
