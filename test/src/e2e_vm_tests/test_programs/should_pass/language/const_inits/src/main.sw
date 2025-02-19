@@ -95,6 +95,15 @@ const CARR1 = [X_SIZE - Y_SIZE + 1; 4];
 // and the type checker needs to know the size of the array.
 // const CARR2 = [1; X_SIZE - Y_SIZE + 1];
 
+// Const init with Self
+struct WithSelf { value: u64 }
+impl WithSelf {
+    pub fn size() -> u64 {
+        __transmute::<Self, u64>(Self { value: 1u64 })
+    }
+}
+const WithSelfValue: u64 =  WithSelf::size();
+
 fn main() -> u64 {
     const int1 = 1;
     assert(int1 == INT1 && ZERO_B256 == KEY);
@@ -157,6 +166,8 @@ fn main() -> u64 {
     assert(OPS == 23);
 
     test_not();
+
+    assert(WithSelfValue == 1);
 
     1
 }
