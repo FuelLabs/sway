@@ -1,6 +1,8 @@
-use crate::SourceId;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+
+use crate::{SourceEngine, SourceId};
+
 use std::{
     cmp,
     fmt::{self, Display},
@@ -228,6 +230,20 @@ impl Span {
 
     pub fn is_dummy(&self) -> bool {
         self.eq(&DUMMY_SPAN)
+    }
+
+    pub fn to_string_path_with_line_col(&self, source_engine: &SourceEngine) -> Option<String> {
+        let path_buf = self
+            .source_id()
+            .cloned()
+            .map(|id| source_engine.get_path(&id));
+        path_buf
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string())
+            .map(|p| {
+                let start_line_col = self.start_pos().line_col();
+                format!("{}:{}:{}", p, start_line_col.line, start_line_col.col)
+            })
     }
 
     pub fn is_empty(&self) -> bool {
