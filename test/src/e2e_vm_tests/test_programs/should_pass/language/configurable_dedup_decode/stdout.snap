@@ -11,6 +11,43 @@ output:
 library {
 }
 
+warning
+   --> sway-lib-std/src/ecr.sw:221:26
+    |
+219 | #[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+220 | pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
+221 |     let pub_key_result = ec_recover(signature, msg_hash);
+    |                          ---------- deprecated function: std::ecr has been replaced by std::crypto, and is no longer maintained
+222 | 
+223 |     if let Err(e) = pub_key_result {
+    |
+____
+
+warning
+   --> sway-lib-std/src/ecr.sw:267:26
+    |
+265 | #[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+266 | pub fn ec_recover_address_r1(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
+267 |     let pub_key_result = ec_recover_r1(signature, msg_hash);
+    |                          ------------- deprecated function: std::ecr has been replaced by std::crypto, and is no longer maintained
+268 | 
+269 |     if let Err(e) = pub_key_result {
+    |
+____
+
+warning
+  --> sway-lib-std/src/vm/evm/ecr.sw:43:26
+   |
+41 |     msg_hash: b256,
+42 | ) -> Result<EvmAddress, EcRecoverError> {
+43 |     let pub_key_result = ec_recover(signature, msg_hash);
+   |                          ---------- deprecated function: std::ecr has been replaced by std::crypto, and is no longer maintained
+44 | 
+45 |     match pub_key_result {
+   |
+____
+
+  Compiled library "std" with 3 warnings.
    Compiling script configurable_dedup_decode (test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode)
 // IR: Final
 script {
