@@ -2,7 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     engine_threading::Engines,
-    language::ty::{self, TyDecl},
+    language::ty::{self, TyDecl, TyExpression},
     semantic_analysis::TypeCheckContext,
 };
 
@@ -36,4 +36,10 @@ pub(crate) trait ReplaceFunctionImplementingType {
 
 pub(crate) trait UpdateConstantExpression {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl);
+}
+
+// Iterate the tree searching for references to a const generic,
+// and initialize its value with the passed value
+pub(crate) trait MaterializeConstGenerics {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression);
 }

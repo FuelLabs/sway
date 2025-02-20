@@ -22,6 +22,7 @@ pub enum TyDecl {
     VariableDecl(Box<TyVariableDecl>),
     ConstantDecl(ConstantDecl),
     ConfigurableDecl(ConfigurableDecl),
+    ConstGenericDecl(ConstGenericDecl),
     TraitTypeDecl(TraitTypeDecl),
     FunctionDecl(FunctionDecl),
     TraitDecl(TraitDecl),
@@ -44,6 +45,11 @@ pub enum TyDecl {
 /// typed to parsed node maps.
 pub trait TyDeclParsedType {
     type ParsedType;
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConstGenericDecl {
+    pub decl_id: DeclId<TyConstGenericDecl>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -205,6 +211,9 @@ impl HashWithEngines for TyDecl {
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
+            }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
@@ -284,6 +293,7 @@ impl SubstTypes for TyDecl {
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
             | TyDecl::ErrorRecovery(..) => HasChanges::No,
+            TyDecl::ConstGenericDecl(_) => todo!(),
         }
     }
 }
@@ -298,6 +308,9 @@ impl SpannedWithEngines for TyDecl {
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
                 let decl = engines.de().get(decl_id);
                 decl.span.clone()
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
                 engines.de().get_type(decl_id).span.clone()
@@ -435,6 +448,9 @@ impl CollectTypesMetadata for TyDecl {
                     return Ok(vec![]);
                 }
             }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
+            }
             TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)
             | TyDecl::TraitDecl(_)
@@ -459,6 +475,9 @@ impl GetDeclIdent for TyDecl {
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id }) => {
                 Some(engines.de().get_configurable(decl_id).name().clone())
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
                 Some(engines.de().get_type(decl_id).name().clone())
@@ -501,6 +520,7 @@ impl TyDecl {
             TyDecl::VariableDecl(_decl) => None,
             TyDecl::ConstantDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::ConfigurableDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::ConstGenericDecl(_) => todo!(),
             TyDecl::TraitTypeDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::FunctionDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::TraitDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
@@ -764,6 +784,7 @@ impl TyDecl {
             VariableDecl(_) => "variable",
             ConstantDecl(_) => "constant",
             ConfigurableDecl(_) => "configurable",
+            ConstGenericDecl(_) => "const generic",
             TraitTypeDecl(_) => "type",
             FunctionDecl(_) => "function",
             TraitDecl(_) => "trait",
@@ -831,6 +852,9 @@ impl TyDecl {
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
                 decl_engine.get_configurable(decl_id).visibility
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::StructDecl(StructDecl { decl_id, .. }) => {
                 decl_engine.get_struct(decl_id).visibility
