@@ -40,7 +40,7 @@ use either::Either;
 use indexmap::IndexMap;
 use namespace::{LexicalScope, Module, ResolvedDeclaration};
 use rustc_hash::FxHashSet;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -116,6 +116,7 @@ impl ty::TyExpression {
             ctx,
             decl_ref.clone(),
             method_name_binding.type_arguments.to_vec_mut(),
+            BTreeMap::new(),
         )?;
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
@@ -691,6 +692,22 @@ impl ty::TyExpression {
                         call_path: Some(
                             CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
                         ),
+                    },
+                    span,
+                }
+            }
+            Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
+                let decl = (*decl_engine.get(&decl_id)).clone();
+                ty::TyExpression {
+                    return_type: decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstGenericExpression {
+                        decl: Box::new(decl),
+                        span: name.span(),
+                        call_path: Some(CallPath {
+                            prefixes: vec![],
+                            suffix: name.clone(),
+                            callpath_type: CallPathType::Full,
+                        }),
                     },
                     span,
                 }
@@ -1278,6 +1295,7 @@ impl ty::TyExpression {
             handler,
             &mut storage_key_struct_decl,
             &mut type_arguments,
+            BTreeMap::new(),
             EnforceTypeArguments::Yes,
             span,
         )?;

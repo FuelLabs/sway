@@ -260,6 +260,9 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
                     unreachable!()
                 }
+                ty::TyDecl::ConstGenericDecl(_) => {
+                    todo!()
+                }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
                     create_tagged_union_type(
@@ -546,6 +549,10 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
+            ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                let value = decl.value.as_ref().unwrap();
+                self.compile_expression(context, md_mgr, value)
+            }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
             } => self.compile_var_expr(context, call_path, name, span_md_idx),

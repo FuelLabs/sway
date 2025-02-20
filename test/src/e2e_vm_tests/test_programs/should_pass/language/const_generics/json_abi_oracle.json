@@ -1,0 +1,48 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "45be427ab483055f9d6dbec4a5b53de3cc0b7e74b88f02ba5f57d103494d142a",
+      "metadataTypeId": 0,
+      "type": "[u64; 1]"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "45be427ab483055f9d6dbec4a5b53de3cc0b7e74b88f02ba5f57d103494d142a",
+          "name": "a"
+        }
+      ],
+      "name": "main",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": 1
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "[_; 1]"
+    },
+    {
+      "metadataTypeId": 1,
+      "type": "u64"
+    }
+  ],
+  "programType": "script",
+  "specVersion": "1"
+}

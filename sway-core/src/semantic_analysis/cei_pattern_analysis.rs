@@ -220,6 +220,7 @@ fn analyze_expression(
     use crate::ty::TyExpressionVariant::*;
     let decl_engine = engines.de();
     match &expr.expression {
+        ConstGenericExpression { .. } => todo!(),
         // base cases: no warnings can be emitted
         Literal(_)
         | ConstantExpression { .. }
@@ -511,6 +512,7 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match &expr.expression {
+        ConstGenericExpression { .. } => todo!(),
         Literal(_)
         | ConstantExpression { .. }
         | ConfigurableExpression { .. }

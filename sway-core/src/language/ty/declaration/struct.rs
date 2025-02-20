@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
@@ -92,6 +93,16 @@ impl MonomorphizeHelper for TyStructDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
+    }
+}
+
+impl MaterializeConstGenerics for TyStructDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) {
     }
 }
 

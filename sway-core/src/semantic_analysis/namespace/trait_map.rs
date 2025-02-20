@@ -766,6 +766,7 @@ impl TraitMap {
                         &type_mapping,
                         matches!(code_block_first_pass, CodeBlockFirstPass::No),
                     ));
+
                     let new_ref = decl_engine
                         .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
                         .with_parent(decl_engine, decl_ref.id().into());
@@ -996,6 +997,7 @@ impl TraitMap {
                         .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
                 {
                     let type_mapping = TypeSubstMap::from_superset_and_subset(
+                        engines,
                         engines.te(),
                         engines.de(),
                         e.key.type_id,
