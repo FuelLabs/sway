@@ -1569,6 +1569,14 @@ fn const_eval_intrinsic(
                 value: &ConstantValue,
             ) -> Result<(), ConstEvalError> {
                 match t.get_content(ctx) {
+                    TypeContent::Struct(fields) => match value {
+                        ConstantValue::Struct(constants) => {
+                            for (field_type, field) in fields.iter().zip(constants.iter()) {
+                                append_bytes(ctx, bytes, field_type, &field.value)?;
+                            }
+                        }
+                        _ => unreachable!(),
+                    },
                     TypeContent::Array(item_type, size) => match value {
                         ConstantValue::Array(items) => {
                             assert!(*size as usize == items.len());
