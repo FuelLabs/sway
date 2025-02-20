@@ -344,18 +344,23 @@ impl Parse for ItemTrait {
 
 impl Parse for ItemImpl {
     fn parse(&self, ctx: &ParseContext) {
+        dbg!();
         insert_keyword(ctx, self.impl_token.span());
 
+        dbg!();
         if let Some((.., for_token)) = &self.trait_opt {
             insert_keyword(ctx, for_token.span());
         }
 
+        dbg!();
         self.ty.parse(ctx);
 
+        dbg!();
         if let Some(where_clause_opt) = &self.where_clause_opt {
             insert_keyword(ctx, where_clause_opt.where_token.span());
         }
 
+        dbg!();
         adaptive_iter(self.contents.get(), |item| match &item.value {
             ItemImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ItemImplItem::Const(const_decl) => const_decl.parse(ctx),
