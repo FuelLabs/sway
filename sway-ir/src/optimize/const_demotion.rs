@@ -36,8 +36,8 @@ pub fn const_demotion(
         let operands = inst.get_instruction(context).unwrap().op.get_operands();
         for val in operands.iter() {
             if let Some(c) = val.get_constant(context) {
-                if super::target_fuel::is_demotable_type(context, &c.ty) {
-                    let dem = (*val, c.clone());
+                if super::target_fuel::is_demotable_type(context, &c.get_content(context).ty) {
+                    let dem = (*val, *c);
                     match candidate_values.entry(block) {
                         indexmap::map::Entry::Occupied(mut occ) => {
                             occ.get_mut().push(dem);
@@ -64,8 +64,8 @@ pub fn const_demotion(
             let var = function.new_unique_local_var(
                 context,
                 "__const".to_owned(),
-                c.ty,
-                Some(c.clone()),
+                c.get_content(context).ty,
+                Some(c),
                 false,
             );
             let var_val = Value::new_instruction(context, block, InstOp::GetLocal(var));
