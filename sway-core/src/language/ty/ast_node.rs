@@ -139,6 +139,19 @@ impl GetDeclIdent for TyAstNode {
     }
 }
 
+impl MaterializeConstGenerics for TyAstNode {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        match self.content {
+            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.materialize_const_generics(engines, name, value)
+            }
+            TyAstNodeContent::SideEffect(_) => (),
+            TyAstNodeContent::Error(_, _) => (),
+        }
+    }
+}
+
 impl TyAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> bool {
@@ -226,6 +239,9 @@ impl TyAstNode {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
+                TyDecl::ConstGenericDecl(_) => {
+                    todo!()
+                }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
@@ -285,6 +301,9 @@ impl TyAstNode {
                     TyDecl::VariableDecl(_decl) => {}
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
+                    TyDecl::ConstGenericDecl(_decl) => {
+                        todo!()
+                    }
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {
                         let fn_decl_id = decl.decl_id;

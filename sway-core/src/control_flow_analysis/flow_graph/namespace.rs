@@ -2,7 +2,10 @@ use super::{EntryPoint, ExitPoint};
 use crate::{
     language::{
         parsed::TreeType,
-        ty::{self, TyConfigurableDecl, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
+        ty::{
+            self, TyConfigurableDecl, TyConstGenericDecl, TyConstantDecl, TyFunctionDecl,
+            TyFunctionSig,
+        },
         CallPath,
     },
     type_system::TypeInfo,
@@ -58,6 +61,7 @@ pub struct ControlFlowNamespace {
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) configurable_namespace: HashMap<Ident, NodeIndex>,
+    pub(crate) const_generic_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
     pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
     pub(crate) alias: HashMap<IdentUnique, NodeIndex>,
@@ -91,6 +95,10 @@ impl ControlFlowNamespace {
 
     pub(crate) fn get_configurable(&self, decl: &TyConfigurableDecl) -> Option<&NodeIndex> {
         self.configurable_namespace.get(&decl.name().clone())
+    }
+
+    pub(crate) fn get_const_generic(&self, decl: &TyConstGenericDecl) -> Option<&NodeIndex> {
+        self.const_generic_namespace.get(&decl.name().clone())
     }
 
     #[allow(dead_code)]

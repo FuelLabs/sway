@@ -49,6 +49,11 @@ pub enum TyExpressionVariant {
         decl: Box<TyConfigurableDecl>,
         call_path: Option<CallPath>,
     },
+    ConstGenericExpression {
+        span: Span,
+        decl: Box<TyConstGenericDecl>,
+        call_path: Option<CallPath>,
+    },
     VariableExpression {
         name: Ident,
         span: Span,
@@ -485,6 +490,13 @@ impl HashWithEngines for TyExpressionVariant {
             } => {
                 const_decl.hash(state, engines);
             }
+            Self::ConstGenericExpression {
+                decl: const_generic_decl,
+                span: _,
+                call_path: _,
+            } => {
+                const_generic_decl.name().hash(state);
+            }
             Self::VariableExpression {
                 name,
                 mutability,
@@ -688,6 +700,7 @@ impl SubstTypes for TyExpressionVariant {
             },
             ConstantExpression { decl, .. } => decl.subst(ctx),
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
+            ConstGenericExpression { decl, .. } => decl.subst(ctx),
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
             ArrayExplicit {
@@ -817,6 +830,7 @@ impl ReplaceDecls for TyExpressionVariant {
         handler.scope(|handler| {
             use TyExpressionVariant::*;
             match self {
+                ConstGenericExpression { .. } => todo!(),
                 Literal(..) => Ok(false),
                 FunctionApplication {
                     ref mut fn_ref,
@@ -1079,6 +1093,9 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::ConfigurableExpression { decl, .. } => {
                 decl.type_check_analyze(handler, ctx)?
             }
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                decl.type_check_analyze(handler, ctx)?
+            }
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
                 for field in fields.iter() {
@@ -1179,6 +1196,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             match self {
+                TyExpressionVariant::ConstGenericExpression { .. } => todo!(),
                 TyExpressionVariant::Literal(_) => {}
                 TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
@@ -1319,6 +1337,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
             ConfigurableExpression { .. } => {
                 unreachable!()
             }
+            ConstGenericExpression { .. } => {}
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
@@ -1414,6 +1433,44 @@ impl UpdateConstantExpression for TyExpressionVariant {
     }
 }
 
+impl MaterializeConstGenerics for TyExpressionVariant {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        match self {
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                decl.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::ImplicitReturn(expr) => {
+                expr.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::FunctionApplication { arguments, .. } => {
+                for (_, expr) in arguments {
+                    expr.materialize_const_generics(engines, name, value);
+                }
+            }
+            TyExpressionVariant::WhileLoop { condition, body } => {
+                condition.materialize_const_generics(engines, name, value);
+                body.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::Reassignment(expr) => {
+                expr.rhs.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.materialize_const_generics(engines, name, value);
+                index.materialize_const_generics(engines, name, value);
+            }
+            TyExpressionVariant::IntrinsicFunction(kind) => {
+                for expr in kind.arguments.iter_mut() {
+                    expr.materialize_const_generics(engines, name, value);
+                }
+            }
+            TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {}
+            x => {
+                todo!("{x:?}");
+            }
+        }
+    }
+}
+
 fn find_const_decl_from_impl(
     implementing_type: &TyDecl,
     decl_engine: &DeclEngine,
@@ -1455,6 +1512,7 @@ impl DisplayWithEngines for TyExpressionVariant {
 impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
+            TyExpressionVariant::ConstGenericExpression { .. } => todo!(),
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
                 call_path: name, ..
