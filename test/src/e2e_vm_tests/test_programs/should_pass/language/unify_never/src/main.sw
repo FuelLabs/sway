@@ -13,7 +13,22 @@ fn test_2(){
 }
 
 
-fn main() {
+impl [u32;0] {
+    fn foo(self) -> u64 {
+        32
+    }
+}
+
+impl [!;0] {
+    fn foo(self) -> u64{
+        64
+    }
+}
+
+fn main() -> u64 {
     test_1();
     test_2();
+
+    let x:[u32;0] = [];
+    x.foo() // should return 32
 }
