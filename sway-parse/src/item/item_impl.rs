@@ -4,7 +4,7 @@ use sway_ast::attribute::Annotated;
 use sway_ast::keywords::{
     ConstToken, FnToken, OpenAngleBracketToken, SemicolonToken, TypeToken, WhereToken,
 };
-use sway_ast::{Braces, ItemImpl, ItemImplItem, PubToken, Ty};
+use sway_ast::{Braces, GenericParams, ItemImpl, ItemImplItem, PubToken, Ty};
 use sway_error::parser_error::ParseErrorKind;
 
 impl Parse for ItemImplItem {
@@ -29,7 +29,7 @@ impl Parse for ItemImplItem {
 impl Parse for ItemImpl {
     fn parse(parser: &mut Parser) -> ParseResult<ItemImpl> {
         let impl_token = parser.parse()?;
-        let generic_params_opt = parser.guarded_parse::<OpenAngleBracketToken, _>()?;
+        let generic_params_opt = parser.guarded_parse::<OpenAngleBracketToken, GenericParams>()?;
         let ty = parser.parse()?;
         let (trait_opt, ty) = match parser.take() {
             Some(for_token) => match ty {
