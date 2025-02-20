@@ -70,6 +70,7 @@ impl TyDecl {
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
                 TyTypeAliasDecl::collect(handler, engines, ctx, decl_id)?
             }
+            parsed::Declaration::ConstGenericDeclaration(_) => todo!(),
         };
 
         Ok(())
@@ -538,6 +539,7 @@ impl TyDecl {
             parsed::Declaration::TraitFnDeclaration(_decl_id) => {
                 unreachable!();
             }
+            parsed::Declaration::ConstGenericDeclaration(_) => todo!(),
         };
 
         Ok(decl)
@@ -561,6 +563,9 @@ impl TypeCheckAnalysis for TyDecl {
             TyDecl::ConfigurableDecl(node) => {
                 let const_decl = ctx.engines.de().get_configurable(&node.decl_id);
                 const_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::FunctionDecl(node) => {
                 let fn_decl = ctx.engines.de().get_function(&node.decl_id);
@@ -618,6 +623,9 @@ impl TypeCheckFinalization for TyDecl {
             TyDecl::ConfigurableDecl(node) => {
                 let mut config_decl = (*ctx.engines.de().get_configurable(&node.decl_id)).clone();
                 config_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!()
             }
             TyDecl::FunctionDecl(node) => {
                 let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();

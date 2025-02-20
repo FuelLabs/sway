@@ -357,6 +357,7 @@ impl CollectTypesMetadata for TyExpression {
             VariableExpression { .. }
             | ConstantExpression { .. }
             | ConfigurableExpression { .. }
+            | ConstGenericExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
@@ -368,6 +369,15 @@ impl CollectTypesMetadata for TyExpression {
             }
         }
         Ok(res)
+    }
+}
+
+impl MaterializeConstGenerics for TyExpression {
+    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+        self.return_type
+            .materialize_const_generics(engines, name, value);
+        self.expression
+            .materialize_const_generics(engines, name, value)
     }
 }
 

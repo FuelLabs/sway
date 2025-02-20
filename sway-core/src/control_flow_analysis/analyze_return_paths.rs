@@ -218,6 +218,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             }
             Ok(Some(entry_node))
         }
+        ty::TyDecl::ConstGenericDecl(_) => {
+            todo!()
+        }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
