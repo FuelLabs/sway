@@ -11,12 +11,13 @@ use crate::{
     function::Function,
     instruction::{FuelVmInstruction, InstOp, Predicate},
     irtype::Type,
-    local_var::LocalVar,
     metadata::{MetadataIndex, Metadatum},
     printer,
     value::{Value, ValueDatum},
+    variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
+    BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, TypeOption,
+    UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -327,6 +328,7 @@ impl InstructionVerifier<'_, '_> {
                     indices,
                 } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
                 InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                InstOp::GetGlobal(global_var) => self.verify_get_global(global_var)?,
                 InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                 InstOp::Load(ptr) => self.verify_load(ptr)?,
@@ -824,6 +826,18 @@ impl InstructionVerifier<'_, '_> {
             .local_storage
             .values()
             .any(|var| var == local_var)
+        {
+            Err(IrError::VerifyGetNonExistentPointer)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_get_global(&self, global_var: &GlobalVar) -> Result<(), IrError> {
+        if !self.context.modules[self.cur_module.0]
+            .global_variables
+            .values()
+            .any(|var| var == global_var)
         {
             Err(IrError::VerifyGetNonExistentPointer)
         } else {

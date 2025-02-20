@@ -11,8 +11,8 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     get_gep_referred_symbols, get_referred_symbols, memory_utils, AnalysisResults, Context,
-    EscapedSymbols, Function, InstOp, Instruction, IrError, LocalVar, Module, Pass, PassMutability,
-    ReferredSymbols, ScopedPass, Symbol, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    EscapedSymbols, Function, GlobalVar, InstOp, Instruction, IrError, LocalVar, Module, Pass,
+    PassMutability, ReferredSymbols, ScopedPass, Symbol, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -35,7 +35,7 @@ pub fn create_fn_dce_pass() -> Pass {
         name: FN_DCE_NAME,
         descr: "Dead function elimination",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(fn_dce)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(globals_dce)),
     }
 }
 
@@ -349,18 +349,28 @@ pub fn dce(
     Ok(modified)
 }
 
-/// Remove entire functions from a module based on whether they are called or not, using a list of
-/// root 'entry' functions to perform a search.
+/// Remove entire functions and globals from a module based on whether they are called / used or not,
+/// using a list of root 'entry' functions to perform a search.
 ///
 /// Functions which are `pub` will not be removed and only functions within the passed [`Module`]
 /// are considered for removal.
-pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Result<bool, IrError> {
+pub fn globals_dce(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
     let mut called_fns: HashSet<Function> = HashSet::new();
+    let mut used_globals: HashSet<GlobalVar> = HashSet::new();
 
     // config decode fns
     for config in context.modules[module.0].configs.iter() {
         if let crate::ConfigContent::V1 { decode_fn, .. } = config.1 {
-            grow_called_function_set(context, decode_fn.get(), &mut called_fns);
+            grow_called_function_used_globals_set(
+                context,
+                decode_fn.get(),
+                &mut called_fns,
+                &mut used_globals,
+            );
         }
     }
 
@@ -372,7 +382,12 @@ pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Res
 
     // expand all called fns
     for entry_fn in entry_fns {
-        grow_called_function_set(context, entry_fn, &mut called_fns);
+        grow_called_function_used_globals_set(
+            context,
+            entry_fn,
+            &mut called_fns,
+            &mut used_globals,
+        );
     }
 
     // Gather the functions in the module which aren't called.  It's better to collect them
@@ -382,7 +397,12 @@ pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Res
         .filter(|f| !called_fns.contains(f))
         .collect::<Vec<_>>();
 
-    let modified = !dead_fns.is_empty();
+    let m = &mut context.modules[module.0];
+    let cur_num_globals = m.global_variables.len();
+    m.global_variables.retain(|_, g| used_globals.contains(g));
+
+    let mut modified = !dead_fns.is_empty();
+    modified |= cur_num_globals != m.global_variables.len();
     for dead_fn in dead_fns {
         module.remove_function(context, &dead_fn);
     }
@@ -391,25 +411,29 @@ pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Res
 }
 
 // Recursively find all the functions called by an entry function.
-fn grow_called_function_set(
+fn grow_called_function_used_globals_set(
     context: &Context,
     caller: Function,
     called_set: &mut HashSet<Function>,
+    used_globals: &mut HashSet<GlobalVar>,
 ) {
     if called_set.insert(caller) {
         // We haven't seen caller before.  Iterate for all that it calls.
-        for func in caller
-            .instruction_iter(context)
-            .filter_map(|(_block, ins_value)| {
-                ins_value
-                    .get_instruction(context)
-                    .and_then(|ins| match &ins.op {
-                        InstOp::Call(f, _args) => Some(f),
-                        _otherwise => None,
-                    })
-            })
-        {
-            grow_called_function_set(context, *func, called_set);
+        let mut callees = HashSet::new();
+        for (_block, value) in caller.instruction_iter(context) {
+            let inst = value.get_instruction(context).unwrap();
+            match &inst.op {
+                InstOp::Call(f, _args) => {
+                    callees.insert(*f);
+                }
+                InstOp::GetGlobal(g) => {
+                    used_globals.insert(*g);
+                }
+                _otherwise => (),
+            }
         }
+        callees.into_iter().for_each(|func| {
+            grow_called_function_used_globals_set(context, func, called_set, used_globals);
+        });
     }
 }
