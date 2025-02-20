@@ -1,0 +1,9 @@
+category = "fail"
+
+#check: $()error
+#check: $()Mismatched types
+#nextln: $()expected: [!; 0]
+#nextln: $()found:    [u32; 0].
+#nextln: $()help: Variable declaration's type annotation does not match up with the assigned expression's type
+
+#check: $()Aborting due to 1 error
