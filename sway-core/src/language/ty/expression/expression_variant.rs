@@ -830,7 +830,6 @@ impl ReplaceDecls for TyExpressionVariant {
         handler.scope(|handler| {
             use TyExpressionVariant::*;
             match self {
-                ConstGenericExpression { .. } => todo!(),
                 Literal(..) => Ok(false),
                 FunctionApplication {
                     ref mut fn_ref,
@@ -902,6 +901,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 ConfigurableExpression { decl, .. } => {
                     decl.replace_decls(decl_mapping, handler, ctx)
                 }
+                ConstGenericExpression { .. } => Ok(false),
                 VariableExpression { .. } => Ok(false),
                 Tuple { fields } => {
                     let mut has_changes = false;
