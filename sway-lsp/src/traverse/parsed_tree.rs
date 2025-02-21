@@ -21,8 +21,8 @@ use sway_core::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
             ArrayIndexExpression, AstNode, AstNodeContent, ConfigurableDeclaration,
-            ConstantDeclaration, Declaration, DelineatedPathExpression, EnumDeclaration,
-            EnumVariant, Expression, ExpressionKind, ForLoopExpression,
+            ConstGenericDeclaration, ConstantDeclaration, Declaration, DelineatedPathExpression,
+            EnumDeclaration, EnumVariant, Expression, ExpressionKind, ForLoopExpression,
             FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
             ImplItem, ImplSelfOrTrait, ImportType, IncludeStatement, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
@@ -131,6 +131,7 @@ impl Parse for Declaration {
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::ConstGenericDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.parse(ctx),
@@ -923,6 +924,19 @@ impl Parse for ParsedDeclId<ConfigurableDeclaration> {
             value.parse(ctx);
         }
         const_decl.attributes.parse(ctx);
+    }
+}
+
+impl Parse for ParsedDeclId<ConstGenericDeclaration> {
+    fn parse(&self, ctx: &ParseContext) {
+        let const_decl = ctx.engines.pe().get_const_generic(self);
+        ctx.tokens.insert(
+            ctx.ident(&const_decl.name),
+            Token::from_parsed(
+                ParsedAstToken::Declaration(Declaration::ConstGenericDeclaration(*self)),
+                SymbolKind::Const,
+            ),
+        );
     }
 }
 
