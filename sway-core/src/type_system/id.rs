@@ -116,9 +116,10 @@ impl MaterializeConstGenerics for TypeId {
     fn materialize_const_generics(
         &mut self,
         engines: &Engines,
+        _handler: &Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
-    ) {
+    ) -> Result<(), ErrorEmitted> {
         match &*engines.te().get(*self) {
             TypeInfo::Array(type_argument, Length::AmbiguousVariableExpression { ident })
                 if ident.as_str() == name =>
@@ -127,7 +128,9 @@ impl MaterializeConstGenerics for TypeId {
                     crate::language::ty::TyExpressionVariant::Literal(literal) => {
                         literal.cast_value_to_u64().unwrap()
                     }
-                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                    _ => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
                 };
 
                 let new_array = engines.te().insert_array(
@@ -149,6 +152,8 @@ impl MaterializeConstGenerics for TypeId {
             }
             _ => {}
         }
+
+        Ok(())
     }
 }
 

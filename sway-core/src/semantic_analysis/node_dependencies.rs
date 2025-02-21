@@ -449,7 +449,9 @@ impl Dependencies {
                 let TypeAliasDeclaration { ty, .. } = &*engines.pe().get_type_alias(decl_id);
                 self.gather_from_type_argument(engines, ty)
             }
-            Declaration::ConstGenericDeclaration(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 
@@ -988,7 +990,9 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                 None
             }
         }
-        Declaration::ConstGenericDeclaration(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+        Declaration::ConstGenericDeclaration(_) => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        }
 
         // These don't have declaration dependencies.
         Declaration::VariableDeclaration(_) => None,
