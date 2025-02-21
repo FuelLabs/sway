@@ -137,6 +137,7 @@ define_op_codes!(
         (ret, curve, groups_of_points, addr)
     ),
     /* Other Instructions */
+    (Ecal, EcalOpcode, "ecal", (reg_a, reg_b, reg_c, reg_d)),
     (Flag, FlagOpcode, "flag", (value)),
     (Gm, GmOpcode, "gm", (ret, op)),
     (Gtf, GtfOpcode, "gtf", (ret, index, tx_field_id)),

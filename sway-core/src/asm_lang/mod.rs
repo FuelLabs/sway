@@ -684,6 +684,10 @@ impl Op {
             }
 
             /* Other Instructions */
+            "ecal" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ECAL(r1, r2, r3, r4)
+            }
             "flag" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
                 VirtualOp::FLAG(r1)
@@ -1240,6 +1244,7 @@ impl fmt::Display for VirtualOp {
             EPAR(a, b, c, d) => write!(fmtr, "epar {a} {b} {c} {d}"),
 
             /* Other Instructions */
+            ECAL(a, b, c, d) => write!(fmtr, "ecal {a} {b} {c} {d}"),
             FLAG(a) => write!(fmtr, "flag {a}"),
             GM(a, b) => write!(fmtr, "gm {a} {b}"),
             GTF(a, b, c) => write!(fmtr, "gtf {a} {b} {c}"),
