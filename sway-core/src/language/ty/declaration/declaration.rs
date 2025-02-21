@@ -212,7 +212,7 @@ impl HashWithEngines for TyDecl {
                 decl_engine.get(decl_id).hash(state, engines);
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!()
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
@@ -293,7 +293,7 @@ impl SubstTypes for TyDecl {
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
             | TyDecl::ErrorRecovery(..) => HasChanges::No,
-            TyDecl::ConstGenericDecl(_) => todo!(),
+            TyDecl::ConstGenericDecl(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
         }
     }
 }
@@ -310,7 +310,7 @@ impl SpannedWithEngines for TyDecl {
                 decl.span.clone()
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!()
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
                 engines.de().get_type(decl_id).span.clone()
@@ -449,7 +449,7 @@ impl CollectTypesMetadata for TyDecl {
                 }
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!()
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)
@@ -477,7 +477,7 @@ impl GetDeclIdent for TyDecl {
                 Some(engines.de().get_configurable(decl_id).name().clone())
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!()
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
                 Some(engines.de().get_type(decl_id).name().clone())
@@ -520,7 +520,7 @@ impl TyDecl {
             TyDecl::VariableDecl(_decl) => None,
             TyDecl::ConstantDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::ConfigurableDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
-            TyDecl::ConstGenericDecl(_) => todo!(),
+            TyDecl::ConstGenericDecl(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
             TyDecl::TraitTypeDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::FunctionDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::TraitDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
@@ -854,7 +854,7 @@ impl TyDecl {
                 decl_engine.get_configurable(decl_id).visibility
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!()
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::StructDecl(StructDecl { decl_id, .. }) => {
                 decl_engine.get_struct(decl_id).visibility
