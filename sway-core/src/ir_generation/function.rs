@@ -261,7 +261,7 @@ impl<'eng> FnCompiler<'eng> {
                     unreachable!()
                 }
                 ty::TyDecl::ConstGenericDecl(_) => {
-                    todo!()
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
