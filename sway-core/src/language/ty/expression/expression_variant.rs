@@ -1196,7 +1196,9 @@ impl TypeCheckFinalization for TyExpressionVariant {
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             match self {
-                TyExpressionVariant::ConstGenericExpression { .. } => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                TyExpressionVariant::ConstGenericExpression { .. } => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                }
                 TyExpressionVariant::Literal(_) => {}
                 TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
@@ -1277,7 +1279,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     address.type_check_finalize(handler, ctx)?;
                 }
                 TyExpressionVariant::StorageAccess(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    todo!("")
                 }
                 TyExpressionVariant::IntrinsicFunction(kind) => {
                     for expr in kind.arguments.iter_mut() {
@@ -1285,7 +1287,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     }
                 }
                 TyExpressionVariant::AbiName(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    todo!("")
                 }
                 TyExpressionVariant::EnumTag { exp } => {
                     exp.type_check_finalize(handler, ctx)?;
@@ -1433,44 +1435,6 @@ impl UpdateConstantExpression for TyExpressionVariant {
     }
 }
 
-impl MaterializeConstGenerics for TyExpressionVariant {
-    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
-        match self {
-            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
-                decl.materialize_const_generics(engines, name, value);
-            }
-            TyExpressionVariant::ImplicitReturn(expr) => {
-                expr.materialize_const_generics(engines, name, value);
-            }
-            TyExpressionVariant::FunctionApplication { arguments, .. } => {
-                for (_, expr) in arguments {
-                    expr.materialize_const_generics(engines, name, value);
-                }
-            }
-            TyExpressionVariant::WhileLoop { condition, body } => {
-                condition.materialize_const_generics(engines, name, value);
-                body.materialize_const_generics(engines, name, value);
-            }
-            TyExpressionVariant::Reassignment(expr) => {
-                expr.rhs.materialize_const_generics(engines, name, value);
-            }
-            TyExpressionVariant::ArrayIndex { prefix, index } => {
-                prefix.materialize_const_generics(engines, name, value);
-                index.materialize_const_generics(engines, name, value);
-            }
-            TyExpressionVariant::IntrinsicFunction(kind) => {
-                for expr in kind.arguments.iter_mut() {
-                    expr.materialize_const_generics(engines, name, value);
-                }
-            }
-            TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {}
-            x => {
-                todo!("{x:?}");
-            }
-        }
-    }
-}
-
 fn find_const_decl_from_impl(
     implementing_type: &TyDecl,
     decl_engine: &DeclEngine,
@@ -1497,7 +1461,7 @@ fn find_const_decl_from_impl(
         }
         TyDecl::AbiDecl(AbiDecl {
             decl_id: _decl_id, ..
-        }) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+        }) => todo!(""),
         _ => unreachable!(),
     }
 }
@@ -1512,7 +1476,9 @@ impl DisplayWithEngines for TyExpressionVariant {
 impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
-            TyExpressionVariant::ConstGenericExpression { .. } => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            TyExpressionVariant::ConstGenericExpression { .. } => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
                 call_path: name, ..

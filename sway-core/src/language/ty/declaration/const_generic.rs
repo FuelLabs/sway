@@ -30,12 +30,14 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
     fn materialize_const_generics(
         &mut self,
         _engines: &crate::Engines,
+        _handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) {
+    ) -> Result<(), ErrorEmitted> {
         if self.call_path.suffix.as_str() == name {
             self.value = Some(value.clone());
         }
+        Ok(())
     }
 }
 

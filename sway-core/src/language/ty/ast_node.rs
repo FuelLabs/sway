@@ -140,14 +140,20 @@ impl GetDeclIdent for TyAstNode {
 }
 
 impl MaterializeConstGenerics for TyAstNode {
-    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
         match self.content {
-            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Declaration(_) => Ok(()),
             TyAstNodeContent::Expression(ref mut expr) => {
-                expr.materialize_const_generics(engines, name, value)
+                expr.materialize_const_generics(engines, handler, name, value)
             }
-            TyAstNodeContent::SideEffect(_) => (),
-            TyAstNodeContent::Error(_, _) => (),
+            TyAstNodeContent::SideEffect(_) => Ok(()),
+            TyAstNodeContent::Error(_, _) => Ok(()),
         }
     }
 }
