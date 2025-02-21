@@ -137,15 +137,22 @@ impl DisplayWithEngines for TyFunctionDecl {
 }
 
 impl MaterializeConstGenerics for TyFunctionDecl {
-    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression) {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
         for param in self.parameters.iter_mut() {
             param
                 .type_argument
                 .type_id
-                .materialize_const_generics(engines, name, value);
+                .materialize_const_generics(engines, handler, name, value)?;
         }
 
-        self.body.materialize_const_generics(engines, name, value);
+        self.body
+            .materialize_const_generics(engines, handler, name, value)
     }
 }
 
@@ -322,8 +329,9 @@ impl SubstTypes for TyFunctionDecl {
         };
 
         if let Some(map) = ctx.type_subst_map.as_ref() {
+            let handler = Handler::default();
             for (name, value) in &map.const_generics_materialization {
-                self.materialize_const_generics(ctx.engines, name, value);
+                let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
             }
             HasChanges::Yes
         } else {

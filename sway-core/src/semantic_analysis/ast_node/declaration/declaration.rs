@@ -70,7 +70,9 @@ impl TyDecl {
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
                 TyTypeAliasDecl::collect(handler, engines, ctx, decl_id)?
             }
-            parsed::Declaration::ConstGenericDeclaration(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            parsed::Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         };
 
         Ok(())
@@ -539,7 +541,9 @@ impl TyDecl {
             parsed::Declaration::TraitFnDeclaration(_decl_id) => {
                 unreachable!();
             }
-            parsed::Declaration::ConstGenericDeclaration(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            parsed::Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         };
 
         Ok(decl)
