@@ -183,21 +183,6 @@ fn struct_parameter_not_inlined(p: S) {
     struct_parameter(p)
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for (u64, u64) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl PartialEq for (u64, u64) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl Eq for (u64, u64) {}
-
 #[inline(always)]
 fn tuple_parameter(p: (u64, u64)) {
     let r_p_1 = &p;

@@ -1983,6 +1983,7 @@ impl ty::TyExpression {
             abi_name.clone(),
             vec![],
             return_type,
+            vec![],
             &abi_items,
             span,
             Some(span.clone()),
@@ -2554,7 +2555,7 @@ impl ty::TyExpression {
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
-        let ret = module.walk_scope_chain(|lexical_scope| {
+        let ret = module.walk_scope_chain_early_return(|lexical_scope| {
             Self::find_subfield_type_helper(
                 lexical_scope,
                 handler,
@@ -3167,6 +3168,7 @@ mod tests {
     use super::*;
     use crate::{Engines, ExperimentalFeatures};
     use sway_error::type_error::TypeError;
+    use sway_types::ProgramId;
     use symbol_collection_context::SymbolCollectionContext;
 
     fn do_type_check(
@@ -3177,7 +3179,7 @@ mod tests {
         experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
-        let root_module = namespace::Root::new(root_module_name, None, false);
+        let root_module = namespace::Root::new(root_module_name, None, ProgramId::new(0), false);
         let collection_ctx_ns = Namespace::new(handler, engines, root_module.clone(), true)?;
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
 

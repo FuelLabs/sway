@@ -1,0 +1,9 @@
+category = "fail"
+
+#check: $()Duplicate definitions for the method "foo" for type "S<S<u32>>".
+#check: $()Trait is already implemented for type
+#check: $()This is the already existing implementation of "foo" for "S<S<Z>>".
+
+#check: $()Trait is already implemented for type
+#check: $()Trait "foo" is already implemented for type "S<S<u32>>".
+#check: $()This is the already existing implementation of "foo" for "S<S<u32>>".

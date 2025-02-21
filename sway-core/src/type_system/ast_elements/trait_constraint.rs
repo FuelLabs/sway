@@ -159,6 +159,10 @@ impl TraitConstraint {
             }));
         }
 
+        self.trait_name = self
+            .trait_name
+            .to_canonical_path(ctx.engines(), ctx.namespace());
+
         // Type check the type arguments.
         for type_argument in &mut self.type_arguments {
             type_argument.type_id = ctx

@@ -14,6 +14,25 @@
     "configurations": [
         {
             "type": "lldb",
+            "request": "launch",
+            "name": "Cargo launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin",
+                    "forc",
+                ]
+            },
+            "args": [
+                "build",
+                "--path",
+                "test/src/e2e_vm_tests/test_programs/should_fail/return_path_analysis",
+                "--experimental",
+                "partial_eq"
+            ]
+        },
+        {
+            "type": "lldb",
             "request": "attach",
             "name": "Attach to forc-lsp",
             "pid": "${command:pickProcess}",

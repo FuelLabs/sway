@@ -18,7 +18,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, ProgramId, Spanned};
 use sway_utils::iter_prefixes;
 
 #[derive(Clone, Debug)]
@@ -163,6 +163,8 @@ impl ResolvedDeclaration {
 pub struct Root {
     // The contents of the package being compiled.
     current_package: Module,
+    // Program id for the package.
+    program_id: ProgramId,
     // True if the current package is a contract, false otherwise.
     is_contract_package: bool,
     // The external dependencies of the current package. Note that an external package is
@@ -179,11 +181,17 @@ impl Root {
     // and `package_root_with_contract_id` are supplied in `contract_helpers`.
     //
     // External packages must be added afterwards by calling `add_external`
-    pub(crate) fn new(package_name: Ident, span: Option<Span>, is_contract_package: bool) -> Self {
+    pub fn new(
+        package_name: Ident,
+        span: Option<Span>,
+        program_id: ProgramId,
+        is_contract_package: bool,
+    ) -> Self {
         // The root module must be public
         let module = Module::new(package_name, Visibility::Public, span, &vec![]);
         Self {
             current_package: module,
+            program_id,
             is_contract_package,
             external_packages: Default::default(),
         }
@@ -223,6 +231,10 @@ impl Root {
 
     pub fn current_package_name(&self) -> &Ident {
         self.current_package.name()
+    }
+
+    pub fn program_id(&self) -> ProgramId {
+        self.program_id
     }
 
     fn check_path_is_in_current_package(&self, mod_path: &ModulePathBuf) -> bool {
@@ -897,10 +909,16 @@ impl Root {
             ignored_prefixes += 1;
         }
 
+        println!("{:?}", ignored_prefixes);
+        println!("prefixes {:?}", iter_prefixes(src).collect::<Vec<_>>());
         // Check visibility of remaining submodules in the source path
-        for prefix in iter_prefixes(src).skip(ignored_prefixes) {
-            if let Some(module) = self.module_from_absolute_path(&prefix.to_vec()) {
+        for prefix in iter_prefixes(src) {
+            let prefix = prefix.iter().skip(ignored_prefixes).cloned().collect::<Vec<_>>();
+            println!("prefix {:?}", prefix);
+            if let Some(module) = self.module_from_absolute_path(&prefix) {
                 if module.visibility().is_private() {
+                    println!("src {:?}", src);
+                    println!("dst {:?}", dst);
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
                         span: prefix_last.span(),
