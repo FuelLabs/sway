@@ -41,5 +41,11 @@ pub(crate) trait UpdateConstantExpression {
 // Iterate the tree searching for references to a const generic,
 // and initialize its value with the passed value
 pub(crate) trait MaterializeConstGenerics {
-    fn materialize_const_generics(&mut self, engines: &Engines, name: &str, value: &TyExpression);
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted>;
 }

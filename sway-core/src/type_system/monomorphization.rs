@@ -213,7 +213,7 @@ where
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
 
     for (name, expr) in const_generics.iter() {
-        value.materialize_const_generics(engines, name, expr);
+        let _ = value.materialize_const_generics(engines, handler, name, expr);
     }
 
     Ok(())

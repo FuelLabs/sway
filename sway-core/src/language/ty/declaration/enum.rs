@@ -108,9 +108,11 @@ impl MaterializeConstGenerics for TyEnumDecl {
     fn materialize_const_generics(
         &mut self,
         _engines: &Engines,
+        _handler: &Handler,
         _name: &str,
         _value: &crate::language::ty::TyExpression,
-    ) {
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 
