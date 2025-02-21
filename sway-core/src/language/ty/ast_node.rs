@@ -240,7 +240,7 @@ impl TyAstNode {
                     }
                 }
                 TyDecl::ConstGenericDecl(_) => {
-                    todo!()
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
@@ -302,7 +302,7 @@ impl TyAstNode {
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
                     TyDecl::ConstGenericDecl(_decl) => {
-                        todo!()
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                     }
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {

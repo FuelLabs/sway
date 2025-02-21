@@ -87,7 +87,7 @@ impl ResolveSymbols for Declaration {
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::TraitFnDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
-            Declaration::ConstGenericDeclaration(_) => todo!(),
+            Declaration::ConstGenericDeclaration(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
         }
     }
 }

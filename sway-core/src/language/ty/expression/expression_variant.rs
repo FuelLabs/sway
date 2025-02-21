@@ -1196,7 +1196,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             match self {
-                TyExpressionVariant::ConstGenericExpression { .. } => todo!(),
+                TyExpressionVariant::ConstGenericExpression { .. } => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                 TyExpressionVariant::Literal(_) => {}
                 TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
@@ -1277,7 +1277,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     address.type_check_finalize(handler, ctx)?;
                 }
                 TyExpressionVariant::StorageAccess(_) => {
-                    todo!();
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 TyExpressionVariant::IntrinsicFunction(kind) => {
                     for expr in kind.arguments.iter_mut() {
@@ -1285,7 +1285,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     }
                 }
                 TyExpressionVariant::AbiName(_) => {
-                    todo!();
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 TyExpressionVariant::EnumTag { exp } => {
                     exp.type_check_finalize(handler, ctx)?;
@@ -1497,7 +1497,7 @@ fn find_const_decl_from_impl(
         }
         TyDecl::AbiDecl(AbiDecl {
             decl_id: _decl_id, ..
-        }) => todo!(),
+        }) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
         _ => unreachable!(),
     }
 }
@@ -1512,7 +1512,7 @@ impl DisplayWithEngines for TyExpressionVariant {
 impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
-            TyExpressionVariant::ConstGenericExpression { .. } => todo!(),
+            TyExpressionVariant::ConstGenericExpression { .. } => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
                 call_path: name, ..

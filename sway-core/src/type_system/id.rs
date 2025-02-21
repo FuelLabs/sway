@@ -127,7 +127,7 @@ impl MaterializeConstGenerics for TypeId {
                     crate::language::ty::TyExpressionVariant::Literal(literal) => {
                         literal.cast_value_to_u64().unwrap()
                     }
-                    _ => todo!(),
+                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                 };
 
                 let new_array = engines.te().insert_array(

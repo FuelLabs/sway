@@ -219,7 +219,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(Some(entry_node))
         }
         ty::TyDecl::ConstGenericDecl(_) => {
-            todo!()
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
