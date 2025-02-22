@@ -697,6 +697,25 @@ impl AbiEncode for raw_slice {
     }
 }
 
+#[cfg(experimental_const_generics = true)]
+impl<T, const N:u64> AbiEncode for [T; N]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let mut buffer = buffer;
+        let mut i = 0;
+
+        while i < N {
+            buffer = self[i].abi_encode(buffer);
+            i += 1;
+        };
+
+        buffer
+    }
+}
+
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 0]
 where
     T: AbiEncode,
@@ -707,6 +726,7 @@ where
 }
 
 // BEGIN ARRAY_ENCODE
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 1]
 where
     T: AbiEncode,
@@ -721,6 +741,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 2]
 where
     T: AbiEncode,
@@ -735,6 +756,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 3]
 where
     T: AbiEncode,
@@ -749,6 +771,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 4]
 where
     T: AbiEncode,
@@ -763,6 +786,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 5]
 where
     T: AbiEncode,
@@ -777,6 +801,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 6]
 where
     T: AbiEncode,
@@ -791,6 +816,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 7]
 where
     T: AbiEncode,
@@ -805,6 +831,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 8]
 where
     T: AbiEncode,
@@ -819,6 +846,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 9]
 where
     T: AbiEncode,
@@ -833,6 +861,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 10]
 where
     T: AbiEncode,
@@ -847,6 +876,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 11]
 where
     T: AbiEncode,
@@ -861,6 +891,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 12]
 where
     T: AbiEncode,
@@ -875,6 +906,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 13]
 where
     T: AbiEncode,
@@ -889,6 +921,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 14]
 where
     T: AbiEncode,
@@ -903,6 +936,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 15]
 where
     T: AbiEncode,
@@ -917,6 +951,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 16]
 where
     T: AbiEncode,
@@ -931,6 +966,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 17]
 where
     T: AbiEncode,
@@ -945,6 +981,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 18]
 where
     T: AbiEncode,
@@ -959,6 +996,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 19]
 where
     T: AbiEncode,
@@ -973,6 +1011,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 20]
 where
     T: AbiEncode,
@@ -987,6 +1026,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 21]
 where
     T: AbiEncode,
@@ -1001,6 +1041,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 22]
 where
     T: AbiEncode,
@@ -1015,6 +1056,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 23]
 where
     T: AbiEncode,
@@ -1029,6 +1071,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 24]
 where
     T: AbiEncode,
@@ -1043,6 +1086,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 25]
 where
     T: AbiEncode,
@@ -1057,6 +1101,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 26]
 where
     T: AbiEncode,
@@ -1071,6 +1116,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 27]
 where
     T: AbiEncode,
@@ -1085,6 +1131,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 28]
 where
     T: AbiEncode,
@@ -1099,6 +1146,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 29]
 where
     T: AbiEncode,
@@ -1113,6 +1161,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 30]
 where
     T: AbiEncode,
@@ -1127,6 +1176,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 31]
 where
     T: AbiEncode,
@@ -1141,6 +1191,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 32]
 where
     T: AbiEncode,
@@ -1155,6 +1206,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 33]
 where
     T: AbiEncode,
@@ -1169,6 +1221,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 34]
 where
     T: AbiEncode,
@@ -1183,6 +1236,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 35]
 where
     T: AbiEncode,
@@ -1197,6 +1251,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 36]
 where
     T: AbiEncode,
@@ -1211,6 +1266,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 37]
 where
     T: AbiEncode,
@@ -1225,6 +1281,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 38]
 where
     T: AbiEncode,
@@ -1239,6 +1296,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 39]
 where
     T: AbiEncode,
@@ -1253,6 +1311,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 40]
 where
     T: AbiEncode,
@@ -1267,6 +1326,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 41]
 where
     T: AbiEncode,
@@ -1281,6 +1341,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 42]
 where
     T: AbiEncode,
@@ -1295,6 +1356,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 43]
 where
     T: AbiEncode,
@@ -1309,6 +1371,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 44]
 where
     T: AbiEncode,
@@ -1323,6 +1386,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 45]
 where
     T: AbiEncode,
@@ -1337,6 +1401,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 46]
 where
     T: AbiEncode,
@@ -1351,6 +1416,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 47]
 where
     T: AbiEncode,
@@ -1365,6 +1431,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 48]
 where
     T: AbiEncode,
@@ -1379,6 +1446,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 49]
 where
     T: AbiEncode,
@@ -1393,6 +1461,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 50]
 where
     T: AbiEncode,
@@ -1407,6 +1476,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 51]
 where
     T: AbiEncode,
@@ -1421,6 +1491,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 52]
 where
     T: AbiEncode,
@@ -1435,6 +1506,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 53]
 where
     T: AbiEncode,
@@ -1449,6 +1521,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 54]
 where
     T: AbiEncode,
@@ -1463,6 +1536,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 55]
 where
     T: AbiEncode,
@@ -1477,6 +1551,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 56]
 where
     T: AbiEncode,
@@ -1491,6 +1566,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 57]
 where
     T: AbiEncode,
@@ -1505,6 +1581,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 58]
 where
     T: AbiEncode,
@@ -1519,6 +1596,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 59]
 where
     T: AbiEncode,
@@ -1533,6 +1611,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 60]
 where
     T: AbiEncode,
@@ -1547,6 +1626,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 61]
 where
     T: AbiEncode,
@@ -1561,6 +1641,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 62]
 where
     T: AbiEncode,
@@ -1575,6 +1656,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 63]
 where
     T: AbiEncode,
@@ -1589,6 +1671,7 @@ where
         buffer
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiEncode for [T; 64]
 where
     T: AbiEncode,

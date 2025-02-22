@@ -367,6 +367,18 @@ impl ParsedDeclEngine {
     ///
     /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
+    pub fn get_const_generic<I>(&self, index: &I) -> Arc<ConstGenericDeclaration>
+    where
+        ParsedDeclEngine: ParsedDeclEngineGet<I, ConstGenericDeclaration>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
+    ///
+    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
     pub fn get_trait_type<I>(&self, index: &I) -> Arc<TraitTypeDeclaration>
     where
         ParsedDeclEngine: ParsedDeclEngineGet<I, TraitTypeDeclaration>,

@@ -24,23 +24,10 @@ ____
 error: Failed to compile const_generics
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics --experimental const_generics
-exit status: 1
+exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
    Compiling library core (sway-lib-core)
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
-error
- --> test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics/src/main.sw:7:15
-  |
-5 | }
-6 | 
-7 | impl<T, const N: u64> A for [T; N] {
-  |               ^ "const generics" are not supported here.
-8 |     #[allow(dead_code)]
-9 |     fn f(self) -> u64 {
-  |
-____
-
-  Aborting due to 1 error.
-error: Failed to compile const_generics
+    Finished debug [unoptimized + fuel] target(s) [272 B] in ???
