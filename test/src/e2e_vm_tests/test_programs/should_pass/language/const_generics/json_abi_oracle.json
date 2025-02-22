@@ -5,9 +5,9 @@
       "type": "()"
     },
     {
-      "concreteTypeId": "45be427ab483055f9d6dbec4a5b53de3cc0b7e74b88f02ba5f57d103494d142a",
+      "concreteTypeId": "4936d108619f9cd75cdeea2f3fe11241b06d22b856d4b61fa3ae412370b10a6a",
       "metadataTypeId": 0,
-      "type": "[u64; 1]"
+      "type": "[u64; 2]"
     }
   ],
   "configurables": [],
@@ -17,7 +17,7 @@
       "attributes": null,
       "inputs": [
         {
-          "concreteTypeId": "45be427ab483055f9d6dbec4a5b53de3cc0b7e74b88f02ba5f57d103494d142a",
+          "concreteTypeId": "4936d108619f9cd75cdeea2f3fe11241b06d22b856d4b61fa3ae412370b10a6a",
           "name": "a"
         }
       ],
@@ -25,7 +25,12 @@
       "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
     }
   ],
-  "loggedTypes": [],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "4936d108619f9cd75cdeea2f3fe11241b06d22b856d4b61fa3ae412370b10a6a",
+      "logId": "5275633847438908631"
+    }
+  ],
   "messagesTypes": [],
   "metadataTypes": [
     {
@@ -36,7 +41,7 @@
         }
       ],
       "metadataTypeId": 0,
-      "type": "[_; 1]"
+      "type": "[_; 2]"
     },
     {
       "metadataTypeId": 1,

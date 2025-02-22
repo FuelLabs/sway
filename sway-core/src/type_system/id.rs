@@ -142,13 +142,7 @@ impl MaterializeConstGenerics for TypeId {
                     },
                 );
 
-                let mut type_subst_map = TypeSubstMap::new();
-                type_subst_map.insert(*self, new_array);
-                self.subst(&SubstTypesContext {
-                    engines,
-                    type_subst_map: Some(&type_subst_map),
-                    subst_function_body: false,
-                });
+                *self = new_array;
             }
             _ => {}
         }

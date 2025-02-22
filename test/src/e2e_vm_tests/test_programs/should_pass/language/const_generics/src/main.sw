@@ -12,7 +12,9 @@ impl<T, const N: u64> A for [T; N] {
     }
 }
 
-fn main(a: [u64; 1]) {
+fn main(a: [u64; 2]) {
+    __log(a);
+
     let a = [C {}].my_len();
     assert(a == 1);
 
