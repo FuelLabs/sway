@@ -10,7 +10,7 @@
     },
     {
       "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
-      "metadataTypeId": 0,
+      "metadataTypeId": 1,
       "type": "enum std::option::Option<u64>",
       "typeArguments": [
         "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
@@ -23,7 +23,7 @@
     },
     {
       "concreteTypeId": "7880d311d30802b48bd6a100a31adb5af17f94bff12daee556d4f02c1ac5b2ff",
-      "metadataTypeId": 5,
+      "metadataTypeId": 4,
       "type": "struct std::vec::Vec<struct basic_storage_abi::Quad>",
       "typeArguments": [
         "6906df92e2e485dde893b7d719d621b8910422e7c468f99caa5920e6ac19d9c6"
@@ -197,6 +197,10 @@
   "messagesTypes": [],
   "metadataTypes": [
     {
+      "metadataTypeId": 0,
+      "type": "__ref mut __slice struct basic_storage_abi::Quad"
+    },
+    {
       "components": [
         {
           "name": "None",
@@ -204,22 +208,18 @@
         },
         {
           "name": "Some",
-          "typeId": 1
+          "typeId": 2
         }
       ],
-      "metadataTypeId": 0,
+      "metadataTypeId": 1,
       "type": "enum std::option::Option",
       "typeParameters": [
-        1
+        2
       ]
     },
     {
-      "metadataTypeId": 1,
-      "type": "generic T"
-    },
-    {
       "metadataTypeId": 2,
-      "type": "raw untyped ptr"
+      "type": "generic T"
     },
     {
       "components": [
@@ -246,41 +246,18 @@
     {
       "components": [
         {
-          "name": "ptr",
-          "typeId": 2
-        },
-        {
-          "name": "cap",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 4,
-      "type": "struct std::vec::RawVec",
-      "typeParameters": [
-        1
-      ]
-    },
-    {
-      "components": [
-        {
           "name": "buf",
-          "typeArguments": [
-            {
-              "name": "",
-              "typeId": 1
-            }
-          ],
-          "typeId": 4
+          "typeId": 0
         },
         {
           "name": "len",
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "metadataTypeId": 5,
+      "metadataTypeId": 4,
       "type": "struct std::vec::Vec",
       "typeParameters": [
-        1
+        2
       ]
     }
   ],
