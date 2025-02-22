@@ -51,6 +51,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         gas,
         external_contracts,
         output,
+        print_functions
     } = cmd;
     let node_url = node.get_node_url(&None)?;
     let provider: Provider = Provider::connect(node_url).await?;
@@ -69,6 +70,15 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         }
     };
     let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
+    if print_functions {
+        for func in parsed_abi.functions {
+            println!("Function: {}", func.name);
+            println!("Inputs: {:?}", func.inputs);
+            println!("Outputs: {:?}", func.outputs);
+            println!();
+        }
+        return Ok("".to_string());
+    }
 
     let type_lookup = parsed_abi
         .types
