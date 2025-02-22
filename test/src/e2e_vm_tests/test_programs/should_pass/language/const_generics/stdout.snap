@@ -12,18 +12,6 @@ library {
 }
 
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:15:9
-   |
-13 | }
-14 | 
-15 | fn main(a: [u64; 1]) {
-   |         - This declaration is never used.
-16 |     let a = [C {}].my_len();
-17 |     assert(a == 1);
-   |
-____
-
 error
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:9:15
    |
