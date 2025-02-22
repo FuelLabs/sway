@@ -292,10 +292,10 @@ impl<'a> UnifyCheck<'a> {
                             Length::AmbiguousVariableExpression { ident: l },
                             Length::AmbiguousVariableExpression { ident: r },
                         ) => l == r,
-                        (Length::Literal { .. }, Length::AmbiguousVariableExpression { .. })
-                        | (Length::AmbiguousVariableExpression { .. }, Length::Literal { .. }) => {
+                        (Length::Literal { .. }, Length::AmbiguousVariableExpression { .. }) => {
                             true
                         }
+                        _ => false,
                     }
                 };
             }
