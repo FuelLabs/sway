@@ -255,7 +255,7 @@ impl String {
     /// }
     /// ```
     pub fn len(self) -> u64 {
-        self.bytes.len
+        self.bytes.len()
     }
 }
 
