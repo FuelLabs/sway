@@ -189,8 +189,8 @@ mod tests {
     fn parse_annotated_fn() {
         assert_ron_snapshot!(parse::<Annotated<ItemFn>>(r#"
             // I will be ignored.
-            //! I will be ignored.
-            /// This is a doc comment.
+            //! This is a misplaced inner doc comment.
+            /// This is an outer doc comment.
             #[storage(read)]
             fn main() {
                 ()
@@ -199,11 +199,11 @@ mod tests {
         Annotated(
           attribute_list: [
             AttributeDecl(
-              hash_kind: Outer(HashToken(
+              hash_kind: Inner(HashBangToken(
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 82,
-                  end: 108,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 47,
+                  end: 89,
                   source_id: None,
                 ),
               )),
@@ -214,9 +214,9 @@ mod tests {
                     name: BaseIdent(
                       name_override_opt: Some("doc-comment"),
                       span: Span(
-                        src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                        start: 82,
-                        end: 108,
+                        src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                        start: 47,
+                        end: 89,
                         source_id: None,
                       ),
                       is_raw_ident: false,
@@ -228,9 +228,9 @@ mod tests {
                           name: BaseIdent(
                             name_override_opt: None,
                             span: Span(
-                              src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                              start: 85,
-                              end: 108,
+                              src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                              start: 50,
+                              end: 89,
                               source_id: None,
                             ),
                             is_raw_ident: false,
@@ -239,18 +239,18 @@ mod tests {
                         )),
                       ),
                       span: Span(
-                        src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                        start: 85,
-                        end: 108,
+                        src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                        start: 50,
+                        end: 89,
                         source_id: None,
                       ),
                     )),
                   )),
                 ),
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 82,
-                  end: 108,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 47,
+                  end: 89,
                   source_id: None,
                 ),
               ),
@@ -258,9 +258,66 @@ mod tests {
             AttributeDecl(
               hash_kind: Outer(HashToken(
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 121,
-                  end: 122,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 102,
+                  end: 135,
+                  source_id: None,
+                ),
+              )),
+              attribute: SquareBrackets(
+                inner: Punctuated(
+                  value_separator_pairs: [],
+                  final_value_opt: Some(Attribute(
+                    name: BaseIdent(
+                      name_override_opt: Some("doc-comment"),
+                      span: Span(
+                        src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                        start: 102,
+                        end: 135,
+                        source_id: None,
+                      ),
+                      is_raw_ident: false,
+                    ),
+                    args: Some(Parens(
+                      inner: Punctuated(
+                        value_separator_pairs: [],
+                        final_value_opt: Some(AttributeArg(
+                          name: BaseIdent(
+                            name_override_opt: None,
+                            span: Span(
+                              src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                              start: 105,
+                              end: 135,
+                              source_id: None,
+                            ),
+                            is_raw_ident: false,
+                          ),
+                          value: None,
+                        )),
+                      ),
+                      span: Span(
+                        src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                        start: 105,
+                        end: 135,
+                        source_id: None,
+                      ),
+                    )),
+                  )),
+                ),
+                span: Span(
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 102,
+                  end: 135,
+                  source_id: None,
+                ),
+              ),
+            ),
+            AttributeDecl(
+              hash_kind: Outer(HashToken(
+                span: Span(
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 148,
+                  end: 149,
                   source_id: None,
                 ),
               )),
@@ -271,9 +328,9 @@ mod tests {
                     name: BaseIdent(
                       name_override_opt: None,
                       span: Span(
-                        src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                        start: 123,
-                        end: 130,
+                        src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                        start: 150,
+                        end: 157,
                         source_id: None,
                       ),
                       is_raw_ident: false,
@@ -285,9 +342,9 @@ mod tests {
                           name: BaseIdent(
                             name_override_opt: None,
                             span: Span(
-                              src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                              start: 131,
-                              end: 135,
+                              src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                              start: 158,
+                              end: 162,
                               source_id: None,
                             ),
                             is_raw_ident: false,
@@ -296,18 +353,18 @@ mod tests {
                         )),
                       ),
                       span: Span(
-                        src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                        start: 130,
-                        end: 136,
+                        src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                        start: 157,
+                        end: 163,
                         source_id: None,
                       ),
                     )),
                   )),
                 ),
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 122,
-                  end: 137,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 149,
+                  end: 164,
                   source_id: None,
                 ),
               ),
@@ -318,18 +375,18 @@ mod tests {
               visibility: None,
               fn_token: FnToken(
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 150,
-                  end: 152,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 177,
+                  end: 179,
                   source_id: None,
                 ),
               ),
               name: BaseIdent(
                 name_override_opt: None,
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 153,
-                  end: 157,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 180,
+                  end: 184,
                   source_id: None,
                 ),
                 is_raw_ident: false,
@@ -341,9 +398,9 @@ mod tests {
                   final_value_opt: None,
                 )),
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 157,
-                  end: 159,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 184,
+                  end: 186,
                   source_id: None,
                 ),
               ),
@@ -356,23 +413,23 @@ mod tests {
                 final_expr_opt: Some(Tuple(Parens(
                   inner: Nil,
                   span: Span(
-                    src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                    start: 178,
-                    end: 180,
+                    src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                    start: 205,
+                    end: 207,
                     source_id: None,
                   ),
                 ))),
                 span: Span(
-                  src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                  start: 161,
-                  end: 193,
+                  src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                  start: 188,
+                  end: 220,
                   source_id: None,
                 ),
               ),
               span: Span(
-                src: "\n            // I will be ignored.\n            //! I will be ignored.\n            /// This is a doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
-                start: 160,
-                end: 194,
+                src: "\n            // I will be ignored.\n            //! This is a misplaced inner doc comment.\n            /// This is an outer doc comment.\n            #[storage(read)]\n            fn main() {\n                ()\n            }\n        ",
+                start: 187,
+                end: 221,
                 source_id: None,
               ),
             ),

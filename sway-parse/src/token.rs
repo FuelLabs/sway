@@ -1050,17 +1050,19 @@ mod tests {
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Comment(Comment {
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Inner,
                 span,
-                comment_kind: CommentKind::Newlined,
-            })) if span.as_str() ==  "//!inner"
+                content_span
+            }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Comment(Comment {
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Inner,
                 span,
-                comment_kind: CommentKind::Newlined,
-            })) if span.as_str() ==  "//! inner"
+                content_span
+            }))) if span.as_str() ==  "//! inner" && content_span.as_str() == " inner"
         );
         assert_matches!(
             tts.next(),

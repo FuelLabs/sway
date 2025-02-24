@@ -244,9 +244,11 @@ mod tests {
         let item = parse::<Item>(
             r#"
             // I will be ignored.
-            //! I will be ignored.
-            /// This is a doc comment.
-            //! I will be ignored.
+            //! This is a misplaced inner doc comment.
+            /// This is an outer doc comment.
+            //! This is a misplaced inner doc comment.
+            // I will be ignored.
+            /// This is an outer doc comment.
             // I will be ignored.
             fn f() -> bool {
                 false
@@ -256,7 +258,12 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            vec![
+                [("doc-comment", Some(vec![" This is a misplaced inner doc comment."]))],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+                [("doc-comment", Some(vec![" This is a misplaced inner doc comment."]))],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+            ]
         );
     }
 
@@ -265,15 +272,19 @@ mod tests {
         let item = parse::<Item>(
             r#"
             // I will be ignored.
-            //! I will be ignored. 
-            /// This is a doc comment.
-            //! I will be ignored.
+            //! This is a misplaced inner doc comment.
+            /// This is an outer doc comment.
+            //! This is a misplaced inner doc comment.
+            // I will be ignored.
+            /// This is an outer doc comment.
             // I will be ignored.
             struct MyStruct {
                 // I will be ignored.
-                //! I will be ignored.
-                /// This is a doc comment.
-                //! I will be ignored.
+                //! This is a misplaced inner doc comment.
+                /// This is an outer doc comment.
+                //! This is a misplaced inner doc comment.
+                // I will be ignored.
+                /// This is an outer doc comment.
                 // I will be ignored.
                 a: bool,
             }
@@ -284,7 +295,12 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Struct(_)));
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            vec![
+                [("doc-comment", Some(vec![" This is a misplaced inner doc comment."]))],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+                [("doc-comment", Some(vec![" This is a misplaced inner doc comment."]))],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+            ]
         );
 
         /* struct field annotations */
@@ -295,7 +311,12 @@ mod tests {
 
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            vec![
+                [("doc-comment", Some(vec![" This is a misplaced inner doc comment."]))],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+                [("doc-comment", Some(vec![" This is a misplaced inner doc comment."]))],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+            ]
         );
     }
 
