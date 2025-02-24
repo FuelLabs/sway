@@ -1191,7 +1191,7 @@ fn u128_unsafemath_log2() {
 
 #[test]
 fn u128_as_u256() {
-    let vals = [0, 1, 2, u64::max() - 1, u64::max()];
+    let vals = Vec::from([0, 1, 2, u64::max() - 1, u64::max()]);
     for val in vals {
         // Ensure parity with u256::from(val)
         let u128_val = U128::from(val);
