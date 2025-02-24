@@ -3,7 +3,7 @@
 //!
 //! E.g.,
 //!
-//! ```
+//! ```ignore
 //! #[foo(bar)]
 //! #[foo(baz, xyzzy)]
 //! ```
@@ -66,9 +66,6 @@ pub const INLINE_ATTRIBUTE_NAME: &str = "inline";
 pub const INLINE_NEVER_ARG_NAME: &str = "never";
 pub const INLINE_ALWAYS_ARG_NAME: &str = "always";
 
-// The valid attribute strings related to documentation control.
-pub const DOC_ATTRIBUTE_NAME: &str = "doc";
-
 // The valid attribute strings related to documentation comments.
 // Note that because "doc-comment" is not a valid identifier,
 // doc-comment attributes cannot be declared in code.
@@ -102,7 +99,6 @@ pub const FALLBACK_ATTRIBUTE_NAME: &str = "fallback";
 // The list of known attributes.
 pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
-    DOC_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,
     TEST_ATTRIBUTE_NAME,
     INLINE_ATTRIBUTE_NAME,
@@ -280,8 +276,6 @@ pub enum AttributeKind {
     /// utilized proprietary attributes and inspect them
     /// in the typed tree.
     Unknown,
-    // TODO-IG!: Remove `doc` attribute.
-    Doc,
     DocComment,
     Storage,
     Inline,
@@ -310,7 +304,6 @@ pub enum StructOrEnumField {
 impl AttributeKind {
     pub fn from_attribute_name(name: &str) -> Self {
         match name {
-            DOC_ATTRIBUTE_NAME => AttributeKind::Doc,
             DOC_COMMENT_ATTRIBUTE_NAME => AttributeKind::DocComment,
             STORAGE_ATTRIBUTE_NAME => AttributeKind::Storage,
             INLINE_ATTRIBUTE_NAME => AttributeKind::Inline,
@@ -337,7 +330,6 @@ impl AttributeKind {
         use AttributeKind::*;
         match self {
             Unknown => true,
-            Doc => true,
             DocComment => true,
             Storage => false,
             Inline => false,
@@ -369,7 +361,6 @@ impl Attribute {
         use ArgsMultiplicity as Multiplicity;
         match self.kind {
             Unknown => Multiplicity::arbitrary(),
-            Doc => Multiplicity::exactly(1),
             // Each `doc-comment` attribute contains exactly one argument
             // whose name is the actual documentation text and whose value is `None`.
             // Thus, we expect exactly one argument.
@@ -399,7 +390,6 @@ impl Attribute {
         use ExpectedArgs::*;
         match self.kind {
             Unknown => Any,
-            Doc => Any,
             DocComment => Any,
             Storage => MustBeIn(vec![STORAGE_READ_ARG_NAME, STORAGE_WRITE_ARG_NAME]),
             Inline => MustBeIn(vec![INLINE_ALWAYS_ARG_NAME, INLINE_NEVER_ARG_NAME]),
@@ -425,7 +415,6 @@ impl Attribute {
         use ArgsExpectValues::*;
         match self.kind {
             Unknown => Maybe,
-            Doc => No,
             // The actual documentation line is in the name of the attribute.
             DocComment => No,
             Storage => No,
@@ -445,7 +434,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => false,
-            Doc => false,
             DocComment => self.direction == AttributeDirection::Inner,
             Storage => false,
             Inline => false,
@@ -478,7 +466,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => !matches!(item_kind, ItemKind::Submodule(_)),
-            Doc => false,
             // We allow doc comments on all items including `storage` and `configurable`.
             DocComment => self.direction == AttributeDirection::Outer && !matches!(item_kind, ItemKind::Submodule(_)),
             Storage => matches!(item_kind, ItemKind::Fn(_)),
@@ -497,7 +484,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
-            Doc => false,
             DocComment => self.direction == AttributeDirection::Outer,
             Storage => false,
             Inline => false,
@@ -515,7 +501,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
-            Doc => false,
             DocComment => self.direction == AttributeDirection::Outer,
             Storage => matches!(item, ItemTraitItem::Fn(..)),
             // Functions in the trait or ABI interface surface cannot be marked as inlined
@@ -535,7 +520,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
-            Doc => false,
             DocComment => self.direction == AttributeDirection::Outer,
             Storage => matches!(item, ItemImplItem::Fn(..)),
             Inline => matches!(item, ItemImplItem::Fn(..)),
@@ -553,7 +537,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
-            Doc => false,
             DocComment => self.direction == AttributeDirection::Outer,
             Storage => true,
             Inline => true,
@@ -571,7 +554,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
-            Doc => false,
             DocComment => self.direction == AttributeDirection::Outer,
             Storage => false,
             Inline => false,
@@ -589,7 +571,6 @@ impl Attribute {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
-            Doc => false,
             DocComment => self.direction == AttributeDirection::Outer,
             Storage => false,
             Inline => false,
@@ -610,7 +591,6 @@ impl Attribute {
         use AttributeKind::*;
         let help = match self.kind {
             Unknown => vec![],
-            Doc => vec![],
             DocComment => match self.direction {
                 AttributeDirection::Inner => vec![
                     "Inner doc comments (`//!`) can only document modules and must be",
