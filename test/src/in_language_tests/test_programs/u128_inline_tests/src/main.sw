@@ -1191,7 +1191,7 @@ fn u128_unsafemath_log2() {
 
 #[test]
 fn u128_as_u256() {
-    let mut vals = Vec::from();
+    let mut vals = Vec::new();
     vals.push(0);
     vals.push(1);
     vals.push(2);
