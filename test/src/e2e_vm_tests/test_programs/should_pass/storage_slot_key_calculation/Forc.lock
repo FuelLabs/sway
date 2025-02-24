@@ -1,11 +1,6 @@
 [[package]]
-name = "core"
-source = "path+from-root-90F1067CD9AC8A94"
-
-[[package]]
 name = "std"
 source = "path+from-root-90F1067CD9AC8A94"
-dependencies = ["core"]
 
 [[package]]
 name = "storage_slot_key_calculation"

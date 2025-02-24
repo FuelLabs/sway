@@ -1,7 +1,8 @@
 library;
 
-use core::ops::Eq;
+use std::ops::Eq;
 use std::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+use std::raw_slice::*;
 
 pub trait TestInstance {
     /// Returns a [Vec] of `len` quasi-random elements
@@ -313,7 +314,7 @@ impl TestInstance for raw_slice {
         let mut res = Vec::new();
         let mut i = 0;
         while i < len {
-            res.push(std::raw_slice::from_parts::<u64>(
+            res.push(raw_slice::from_parts::<u64>(
                 ptr_values
                     .get(i)
                     .unwrap(),
