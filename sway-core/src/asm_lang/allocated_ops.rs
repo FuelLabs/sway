@@ -281,6 +281,12 @@ pub(crate) enum AllocatedOpcode {
     ),
 
     /* Other Instructions */
+    ECAL(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     FLAG(AllocatedRegister),
     GM(AllocatedRegister, VirtualImmediate18),
     GTF(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
@@ -408,6 +414,7 @@ impl AllocatedOpcode {
             EPAR(r1, _r2, _r3, _r4) => vec![r1],
 
             /* Other Instructions */
+            ECAL(_r1, _r2, _r3, _r4) => vec![],
             FLAG(_r1) => vec![],
             GM(r1, _imm) => vec![r1],
             GTF(r1, _r2, _i) => vec![r1],
@@ -539,6 +546,7 @@ impl fmt::Display for AllocatedOpcode {
             EPAR(a, b, c, d) => write!(fmtr, "epar {a} {b} {c} {d}"),
 
             /* Other Instructions */
+            ECAL(a, b, c, d) => write!(fmtr, "ecal {a} {b} {c} {d}"),
             FLAG(a) => write!(fmtr, "flag {a}"),
             GM(a, b) => write!(fmtr, "gm   {a} {b}"),
             GTF(a, b, c) => write!(fmtr, "gtf  {a} {b} {c}"),
@@ -775,6 +783,9 @@ impl AllocatedOp {
             }
 
             /* Other Instructions */
+            ECAL(a, b, c, d) => {
+                op::ECAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             FLAG(a) => op::FLAG::new(a.to_reg_id()).into(),
             GM(a, b) => op::GM::new(a.to_reg_id(), b.value().into()).into(),
             GTF(a, b, c) => op::GTF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
