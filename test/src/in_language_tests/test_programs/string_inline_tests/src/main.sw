@@ -393,3 +393,21 @@ fn string_clone() {
     assert(cloned_string.as_bytes().get(1).unwrap() == string.as_bytes().get(1).unwrap());
     assert(cloned_string.as_bytes().get(2).unwrap() == string.as_bytes().get(2).unwrap());
 }
+
+#[test]
+fn test_string_len() {
+    let string = String::from_ascii_str("fuel");
+    assert(string.len() == 4);
+
+    let string = String::new();
+    assert(string.len() == 0);
+
+    let string = String::from_ascii_str("ABCDEF");
+    assert(string.len() == 6);
+
+    let string = String::from_ascii_str("1234");
+    assert(string.len() == 4);
+
+    let string = String::from_ascii_str("");
+    assert(string.len() == 0);
+}

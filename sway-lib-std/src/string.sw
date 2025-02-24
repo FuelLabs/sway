@@ -235,6 +235,28 @@ impl String {
     pub fn ptr(self) -> raw_ptr {
         self.bytes.ptr()
     }
+
+    /// Gets the length of the `String`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The length of the `String`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let string = String::new();
+    ///     assrt(string.len() == 0);
+    ///     let string = String::from_ascii_str("ABCDEF");
+    ///     assert(string.len() == 6);
+    /// }
+    /// ```
+    pub fn len(self) -> u64 {
+        self.bytes.len
+    }
 }
 
 impl From<Bytes> for String {
