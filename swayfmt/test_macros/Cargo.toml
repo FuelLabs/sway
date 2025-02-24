@@ -14,8 +14,8 @@ repository.workspace = true
 [dependencies]
 
 [dev-dependencies]
-paste = "1.0"
-prettydiff = "0.7"
+paste = { workspace = true }
+prettydiff = { workspace = true }
 
 [package.metadata.cargo-udeps.ignore]
 development = ["paste", "prettydiff"]

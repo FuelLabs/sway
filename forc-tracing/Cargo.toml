@@ -14,4 +14,4 @@ tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["ansi", "env-filter", "json"] }
 
 [dev-dependencies]
-tracing-test = "0.2"
+tracing-test = { workspace = true }
