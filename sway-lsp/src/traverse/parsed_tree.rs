@@ -36,7 +36,7 @@ use sway_core::{
         },
         CallPathTree, HasSubmodules, Literal,
     },
-    transform::{AttributeKind, AttributesMap},
+    transform::AttributesMap,
     type_system::{TypeArgument, TypeParameter},
     TraitConstraint, TypeInfo,
 };
@@ -89,14 +89,11 @@ impl<'a> ParsedTree<'a> {
 
 impl Parse for AttributesMap {
     fn parse(&self, ctx: &ParseContext) {
-        // TODO-IG!: Return parallel iteration.
-        // Note that in practice, most of the time attributes are empty,
-        // or have a very few elements. Therefore, using parallel iteration
-        // does not pay off.
         self
-            .all()
+            .all_as_slice()
+            .par_iter()
             .filter(|attribute| !attribute.is_doc_comment())
-            .for_each(|attribute| {
+            .for_each_with(ctx, |ctx, attribute| {
                 ctx.tokens.insert(
                     ctx.ident(&attribute.name),
                     Token::from_parsed(

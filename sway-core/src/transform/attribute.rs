@@ -722,6 +722,10 @@ impl AttributesMap {
         self.0.iter()
     }
 
+    pub fn all_as_slice(&self) -> &[Attribute] {
+        self.0.as_slice()
+    }
+
     pub fn all_by_kind<F>(&self, predicate: F) -> IndexMap<AttributeKind, Vec<&Attribute>>
     where
         F: Fn(&&Attribute) -> bool
