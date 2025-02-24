@@ -877,23 +877,23 @@ impl Bytes {
     ///
     /// # Returns
     ///
-    /// * [BytesIter<V>] - The struct which can be iterated over.
+    /// * [BytesIter] - The struct which can be iterated over.
     ///
     /// # Examples
     ///
     /// ```sway
     /// fn foo() {
     ///     let mut bytes = Bytes::new();
-    ///     bytes.push(5);
-    ///     bytes.push(10);
-    ///     bytes.push(15);
+    ///     bytes.push(5_u8);
+    ///     bytes.push(10_u8);
+    ///     bytes.push(15_u8);
     ///
     ///     // Get the iterator
     ///     let iter = bytes.iter();
     ///
-    ///     assert_eq(5, iter.next().unwrap());
-    ///     assert_eq(10, iter.next().unwrap());
-    ///     assert_eq(15, iter.next().unwrap());
+    ///     assert_eq(5_u8, iter.next().unwrap());
+    ///     assert_eq(10_u8, iter.next().unwrap());
+    ///     assert_eq(15_u8, iter.next().unwrap());
     ///
     ///     for elem in bytes.iter() {
     ///         log(elem);
@@ -908,12 +908,12 @@ impl Bytes {
     /// ```sway
     /// fn foo() {
     ///     let mut bytes = Bytes::new();
-    ///     bytes.push(5);
-    ///     bytes.push(10);
-    ///     bytes.push(15);
+    ///     bytes.push(5_u8);
+    ///     bytes.push(10_u8);
+    ///     bytes.push(15_u8);
     ///
     ///     for elem in bytes.iter() {
-    ///         bytes.push(20); // Modification causes undefined behavior.
+    ///         bytes.push(20_u8); // Modification causes undefined behavior.
     ///     }
     /// }
     /// ```
@@ -923,7 +923,7 @@ impl Bytes {
         //          `Iterator` for other types.
         //
         //          Due to the Sway's copy semantics, the `values` will
-        //          actually contain **a copy of the original vector
+        //          actually contain **a copy of the original bytes
         //          `self`**. This is contrary to the iterator semantics
         //          which should iterate over the collection itself.
         //
@@ -939,7 +939,7 @@ impl Bytes {
         //          desired behavior for the iterator.
         //
         //          This fact makes the implementation of `next` very
-        //          misleading in the part where the vector length is
+        //          misleading in the part where the bytes length is
         //          checked (see comment in the `next` implementation
         //          below).
         //
