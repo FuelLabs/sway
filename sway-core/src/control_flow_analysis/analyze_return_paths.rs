@@ -136,7 +136,11 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 enum NodeConnection {
     /// This represents a node that steps on to the next node.
     NextStep(Option<NodeIndex>),
-    /// This represents a return or implicit return node, which aborts the stepwise flow.
+    /// This represents a node which aborts the stepwise flow.
+    /// Such nodes are:
+    /// - return expressions,
+    /// - implicit returns,
+    /// - panic expressions.
     Return(NodeIndex),
 }
 
@@ -153,6 +157,10 @@ fn connect_node<'eng: 'cfg, 'cfg>(
         })
         | ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: ty::TyExpressionVariant::ImplicitReturn(..),
+            ..
+        })
+        | ty::TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::Panic(..),
             ..
         }) => {
             let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));

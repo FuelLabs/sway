@@ -17,6 +17,7 @@ pub use resolved_declaration::ResolvedDeclaration;
 pub(crate) use trait_map::IsExtendingExistingImpl;
 pub(crate) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
+pub(crate) use trait_map::TraitEntry;
 pub use trait_map::TraitMap;
 pub use trait_map::TryInsertingTraitImplOnFailure;
 

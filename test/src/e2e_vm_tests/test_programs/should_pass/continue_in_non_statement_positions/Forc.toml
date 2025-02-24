@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "continue_in_non_statement_positions"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }

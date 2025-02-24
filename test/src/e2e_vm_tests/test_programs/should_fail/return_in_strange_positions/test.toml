@@ -108,7 +108,7 @@ category = "disabled"
 # check: $()error
 # check: return_in_strange_positions/src/main.sw:88:5
 # check: $()else {
-# nextln: $()Identifiers cannot be a reserved keyword.
+# nextln: $()Identifier cannot be a reserved keyword.
 
 # check: $()error
 # check: return_in_strange_positions/src/main.sw:90:6

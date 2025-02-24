@@ -30,6 +30,10 @@ pub enum Expr {
         return_token: ReturnToken,
         expr_opt: Option<Box<Expr>>,
     },
+    Panic {
+        panic_token: PanicToken,
+        expr_opt: Option<Box<Expr>>,
+    },
     If(IfExpr),
     Match {
         match_token: MatchToken,
@@ -220,6 +224,17 @@ impl Spanned for Expr {
                 let end = match expr_opt {
                     Some(expr) => expr.span(),
                     None => return_token.span(),
+                };
+                Span::join(start, &end)
+            }
+            Expr::Panic {
+                panic_token,
+                expr_opt,
+            } => {
+                let start = panic_token.span();
+                let end = match expr_opt {
+                    Some(expr) => expr.span(),
+                    None => panic_token.span(),
                 };
                 Span::join(start, &end)
             }
@@ -566,6 +581,7 @@ impl Expr {
             | Expr::Parens(..)
             | Expr::Array(..)
             | Expr::Return { .. }
+            | Expr::Panic { .. }
             | Expr::FuncApp { .. }
             | Expr::Index { .. }
             | Expr::MethodCall { .. }
@@ -613,6 +629,7 @@ impl Expr {
             Expr::Array(_) => "array",
             Expr::Asm(_) => "assembly block",
             Expr::Return { .. } => "return",
+            Expr::Panic { .. } => "panic",
             Expr::If(_) => "if expression",
             Expr::Match { .. } => "match expression",
             Expr::While { .. } => "while loop",

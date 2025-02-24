@@ -3,4 +3,4 @@ category = "fail"
 # check: $()error
 # nextln: ref_and_deref_expressions/src/main.sw:9:13
 # check: $()foo(ref Vec::new());
-# nextln: $()Identifiers cannot be a reserved keyword.
+# nextln: $()Identifier cannot be a reserved keyword.

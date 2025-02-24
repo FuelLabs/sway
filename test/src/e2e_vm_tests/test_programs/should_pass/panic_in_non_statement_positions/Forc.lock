@@ -1,0 +1,8 @@
+[[package]]
+name = "panic_in_non_statement_positions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-B1D7D9A1AD93CD41"

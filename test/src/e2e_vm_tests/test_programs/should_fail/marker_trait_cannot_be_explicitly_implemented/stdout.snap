@@ -1,0 +1,173 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented --experimental error_type
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling library marker_trait_cannot_be_explicitly_implemented (test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented)
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:6:5
+  |
+4 | 
+5 | struct Struct {
+6 |     x: u8,
+  |     - This struct field is never accessed.
+7 | }
+8 | 
+  |
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:16:6
+   |
+...
+16 | impl Enum for MyEnum { }
+   |      ^^^^ Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Enum" marker trait is automatically implemented by the compiler for all enum types.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:18:6
+   |
+...
+18 | impl Enum for EmptyEnum { }
+   |      ^^^^ Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Enum" marker trait is automatically implemented by the compiler for all enum types.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:20:6
+   |
+...
+20 | impl Enum for Struct { }
+   |      ^^^^ Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Enum" marker trait is automatically implemented by the compiler for all enum types.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:22:6
+   |
+...
+22 | impl Enum for EmptyStruct {
+   |      ^^^^ Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Enum" marker trait is automatically implemented by the compiler for all enum types.
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:23:8
+   |
+21 | 
+22 | impl Enum for EmptyStruct {
+23 |     fn non_existing() {}
+   |        ^^^^^^^^^^^^ Function "non_existing" is not a part of trait "Enum"'s interface surface.
+24 | }
+25 | 
+   |
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:26:6
+   |
+...
+26 | impl Enum for [u64;0] { }
+   |      ^^^^ Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Enum" marker trait is automatically implemented by the compiler for all enum types.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:28:6
+   |
+...
+28 | impl std::marker::Enum for (u8, u16, u32, u64, u256) { }
+   |      ^^^^^^^^^^^^^^^^^ Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Enum" marker trait is automatically implemented by the compiler for all enum types.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:31:6
+   |
+...
+31 | impl Error for MyEnum { }
+   |      ^^^^^ Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Error" marker trait is automatically implemented by the compiler for the unit type `()`,
+   = help: string slices, and enums annotated with the `#[error_type]` attribute.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:33:6
+   |
+...
+33 | impl Error for EmptyEnum { }
+   |      ^^^^^ Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Error" marker trait is automatically implemented by the compiler for the unit type `()`,
+   = help: string slices, and enums annotated with the `#[error_type]` attribute.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:35:6
+   |
+...
+35 | impl Error for Struct { }
+   |      ^^^^^ Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Error" marker trait is automatically implemented by the compiler for the unit type `()`,
+   = help: string slices, and enums annotated with the `#[error_type]` attribute.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:37:6
+   |
+...
+37 | impl Error for EmptyStruct {
+   |      ^^^^^ Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Error" marker trait is automatically implemented by the compiler for the unit type `()`,
+   = help: string slices, and enums annotated with the `#[error_type]` attribute.
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:38:8
+   |
+36 | 
+37 | impl Error for EmptyStruct {
+38 |     fn non_existing() {}
+   |        ^^^^^^^^^^^^ Function "non_existing" is not a part of trait "Error"'s interface surface.
+39 | }
+40 | 
+   |
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:41:6
+   |
+...
+41 | impl Error for [u64;0] { }
+   |      ^^^^^ Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Error" marker trait is automatically implemented by the compiler for the unit type `()`,
+   = help: string slices, and enums annotated with the `#[error_type]` attribute.
+____
+
+error: Marker traits cannot be explicitly implemented
+  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:43:6
+   |
+...
+43 | impl std::marker::Error for (u8, u16, u32, u64, u256) { }
+   |      ^^^^^^^^^^^^^^^^^^ Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
+   |
+   = help: "Error" marker trait is automatically implemented by the compiler for the unit type `()`,
+   = help: string slices, and enums annotated with the `#[error_type]` attribute.
+____
+
+  Aborting due to 14 errors.
+error: Failed to compile marker_trait_cannot_be_explicitly_implemented

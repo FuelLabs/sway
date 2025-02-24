@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: $()let = 1;
-# check: $()Identifiers cannot be a reserved keyword.
+# check: $()Identifier cannot be a reserved keyword.
 
 # check: $()let = 1;
 # check: $()Expected an pattern.
@@ -10,7 +10,7 @@ category = "fail"
 # check: $()Expected `=`
 
 # check: $()let c = 1
-# check: $()Identifiers cannot be a reserved keyword.
+# check: $()Identifier cannot be a reserved keyword.
 
 # check: $()let d = 1;
 # check: $()Expected `;`

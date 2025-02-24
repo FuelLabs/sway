@@ -224,6 +224,16 @@ impl Format for Expr {
                     expr.format(formatted_code, formatter)?;
                 }
             }
+            Self::Panic {
+                panic_token: _,
+                expr_opt,
+            } => {
+                write!(formatted_code, "{}", PanicToken::AS_STR)?;
+                if let Some(expr) = &expr_opt {
+                    write!(formatted_code, " ")?;
+                    expr.format(formatted_code, formatter)?;
+                }
+            }
             Self::If(if_expr) => if_expr.format(formatted_code, formatter)?,
             Self::Match {
                 match_token: _,
@@ -993,7 +1003,7 @@ impl LeafSpans for Expr {
     }
 }
 
-/// Collects various expr field's ByteSpans.
+/// Collects various [Expr] field's [ByteSpan]s.
 fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
     match expr {
         Expr::Error(_, _) => vec![expr.span().into()],
@@ -1019,6 +1029,16 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
             expr_opt,
         } => {
             let mut collected_spans = vec![ByteSpan::from(return_token.span())];
+            if let Some(expr) = expr_opt {
+                collected_spans.append(&mut expr.leaf_spans());
+            }
+            collected_spans
+        }
+        Expr::Panic {
+            panic_token,
+            expr_opt,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(panic_token.span())];
             if let Some(expr) = expr_opt {
                 collected_spans.append(&mut expr.leaf_spans());
             }

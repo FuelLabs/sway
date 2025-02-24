@@ -15,7 +15,7 @@ fn referencing_references() {
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
-    // TODO-IG: Remove space once parsing supports `&&&..&&x`.
+    // TODO: (REFERENCES) Remove space once parsing supports `&&&..&&x`.
     let r_r_x_chain = & &x;
     let r_r_r_x_chain = & & &x;
 

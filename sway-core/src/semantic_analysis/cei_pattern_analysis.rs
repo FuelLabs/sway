@@ -326,6 +326,7 @@ fn analyze_expression(
         | TupleElemAccess { prefix: expr, .. }
         | ImplicitReturn(expr)
         | Return(expr)
+        | Panic(expr)
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
         | AbiCast { address: expr, .. }
@@ -592,6 +593,7 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | UnsafeDowncast { exp: expr, .. }
         | ImplicitReturn(expr)
         | Return(expr)
+        | Panic(expr)
         | Ref(expr)
         | Deref(expr) => effects_of_expression(engines, expr),
         EnumInstantiation { contents, .. } => match contents {

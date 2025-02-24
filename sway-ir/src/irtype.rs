@@ -333,7 +333,7 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Slice)
     }
 
-    // TODO-IG: Check all the usages of `is_ptr`.
+    // TODO: (REFERENCES) Check all the usages of `is_ptr`.
     /// Returns true if `self` is a pointer type.
     pub fn is_ptr(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Pointer(_))

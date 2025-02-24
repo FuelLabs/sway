@@ -73,7 +73,8 @@ keyword_impls! {
     ConfigurableToken,
     TypeToken,
     PtrToken,
-    SliceToken
+    SliceToken,
+    PanicToken
 }
 
 fn peek_token<T: Token>(peeker: Peeker<'_>) -> Option<T> {
@@ -191,4 +192,5 @@ pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "continue",
     "configurable",
     "type",
+    "panic",
 };

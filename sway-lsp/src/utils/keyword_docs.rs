@@ -755,6 +755,11 @@ impl KeywordDocs {
             mod type_keyword {}
         };
 
+        // TODO
+        let panic_keyword: ItemMod = parse_quote! {
+            mod panic_keyword {}
+        };
+
         let mut keyword_docs = HashMap::new();
 
         let keywords = vec![
@@ -794,6 +799,7 @@ impl KeywordDocs {
             deref_keyword,
             configurable_keyword,
             type_keyword,
+            panic_keyword,
         ];
 
         for keyword in &keywords {

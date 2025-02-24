@@ -150,6 +150,15 @@ impl Parse for Expr {
                     expr.parse(ctx);
                 }
             }
+            Expr::Panic {
+                panic_token,
+                expr_opt,
+            } => {
+                insert_keyword(ctx, panic_token.span());
+                if let Some(expr) = expr_opt {
+                    expr.parse(ctx);
+                }
+            }
             Expr::If(if_expr) => {
                 if_expr.parse(ctx);
             }

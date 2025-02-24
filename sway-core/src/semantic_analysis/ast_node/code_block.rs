@@ -114,12 +114,13 @@ impl ty::TyCodeBlock {
             .iter()
             .find_map(|node| {
                 match node {
-                    // If an ast node of the block returns, breaks, or continues then the whole block should have Never as return type.
+                    // If an ast node of the block returns, panics, breaks, or continues then the whole block should have `Never` as return type.
                     ty::TyAstNode {
                         content:
                             ty::TyAstNodeContent::Expression(ty::TyExpression {
                                 expression:
                                     ty::TyExpressionVariant::Return(_)
+                                    | ty::TyExpressionVariant::Panic(_)
                                     | ty::TyExpressionVariant::Break
                                     | ty::TyExpressionVariant::Continue,
                                 ..
