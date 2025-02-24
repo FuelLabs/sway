@@ -596,6 +596,10 @@ impl Op {
                 let (r1, r2, r3, i0) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
                 VirtualOp::LDC(r1, r2, r3, i0)
             }
+            "bldd" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BLDD(r1, r2, r3, r4)
+            }
             "log" => {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::LOG(r1, r2, r3, r4)
