@@ -36,6 +36,7 @@ use ::vm::evm::evm_address::EvmAddress;
 /// }
 /// ```
 #[deprecated(note = "std:vm::evm:ecr has been replaced by std::crypto, and is no longer maintained")]
+#[allow(deprecated)]
 pub fn ec_recover_evm_address(
     signature: B512,
     msg_hash: b256,
