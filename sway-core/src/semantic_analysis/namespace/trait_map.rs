@@ -15,11 +15,16 @@ use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
-    }, engine_threading::*, language::{
+    },
+    engine_threading::*,
+    language::{
         parsed::{EnumDeclaration, ImplItem, StructDeclaration},
         ty::{self, TyDecl, TyImplItem, TyTraitItem},
         CallPath,
-    }, type_system::{SubstTypes, TypeId}, IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeParameter, TypeSubstMap, UnifyCheck
+    },
+    type_system::{SubstTypes, TypeId},
+    IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
 use super::Module;
@@ -97,14 +102,18 @@ type TraitName = Arc<CallPath<TraitSuffix>>;
 pub(crate) struct TraitKey {
     pub(crate) name: TraitName,
     pub(crate) type_id: TypeId,
+    pub(crate) impl_type_parameters: Vec<TypeParameter>,
     pub(crate) trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
-        self.name
-            .cmp(&other.name, ctx)
-            .then_with(|| self.type_id.cmp(&other.type_id))
+        self.name.cmp(&other.name, ctx).then_with(|| {
+            self.type_id.cmp(&other.type_id).then_with(|| {
+                self.impl_type_parameters
+                    .cmp(&other.impl_type_parameters, ctx)
+            })
+        })
     }
 }
 
@@ -225,7 +234,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        _impl_type_parameters: Vec<TypeParameter>,
+        impl_type_parameters: Vec<TypeParameter>,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -272,6 +281,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: _,
+                        impl_type_parameters: _,
                     },
                 value:
                     TraitValue {
@@ -439,6 +449,7 @@ impl TraitMap {
                 impl_span.clone(),
                 trait_decl_span,
                 type_id,
+                impl_type_parameters,
                 trait_items,
                 engines,
             );
@@ -447,12 +458,14 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
+        impl_type_parameters: Vec<TypeParameter>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
@@ -460,6 +473,7 @@ impl TraitMap {
             name: trait_name,
             type_id,
             trait_decl_span,
+            impl_type_parameters,
         };
         let value = TraitValue {
             trait_items: trait_methods,
@@ -639,6 +653,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: map_trait_decl_span,
+                        impl_type_parameters: map_impl_type_parameters,
                     },
                 value:
                     TraitValue {
@@ -654,6 +669,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_impl_type_parameters.clone(),
                         map_trait_items.clone(),
                         engines,
                     );
@@ -663,6 +679,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *map_type_id,
+                        map_impl_type_parameters.clone(),
                         Self::filter_dummy_methods(
                             map_trait_items.clone(),
                             *type_id,
