@@ -19,7 +19,10 @@ use crate::{
         parsed::{EnumDeclaration, ImplItem, StructDeclaration},
         ty::{self, TyDecl, TyImplItem, TyTraitItem},
         CallPath,
-    }, type_system::{SubstTypes, TypeId}, IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeParameter, TypeSubstMap, UnifyCheck
+    },
+    type_system::{SubstTypes, TypeId},
+    IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
 use super::Module;
@@ -809,7 +812,7 @@ impl TraitMap {
             return items;
         }
 
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             let impls = lexical_scope
                 .items
                 .implemented_traits
@@ -859,7 +862,7 @@ impl TraitMap {
         if matches!(&*type_engine.get(*type_id), TypeInfo::ErrorRecovery(_)) {
             return spans;
         }
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             let impls = lexical_scope
                 .items
                 .implemented_traits
@@ -892,7 +895,7 @@ impl TraitMap {
     /// spans of the impls.
     pub fn get_impl_spans_for_trait_name(module: &Module, trait_name: &CallPath) -> Vec<Span> {
         let mut spans = vec![];
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             spans.push(
                 lexical_scope
                     .items
@@ -951,7 +954,7 @@ impl TraitMap {
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             let impls = lexical_scope
                 .items
                 .implemented_traits
@@ -1047,7 +1050,7 @@ impl TraitMap {
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return trait_names;
         }
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             let impls = lexical_scope
                 .items
                 .implemented_traits
@@ -1260,7 +1263,7 @@ impl TraitMap {
         engines: &Engines,
     ) -> BTreeSet<(Ident, TypeId)> {
         let mut all_impld_traits: BTreeSet<(Ident, TypeId)> = Default::default();
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             all_impld_traits.extend(
                 lexical_scope
                     .items
@@ -1388,7 +1391,7 @@ impl TraitMap {
         let unify_check_equality = UnifyCheck::constraint_subset(engines);
 
         let mut impld_traits_type_ids: Vec<Vec<(TypeId, String)>> = vec![];
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             let impls = lexical_scope
                 .items
                 .implemented_traits
