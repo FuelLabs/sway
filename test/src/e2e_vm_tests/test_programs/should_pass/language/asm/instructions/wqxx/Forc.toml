@@ -1,9 +1,8 @@
 [project]
-name = "ecall_basic"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
-implicit-std = false
 license = "Apache-2.0"
+name = "wqxx"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../reduced_std_libs/sway-lib-std-assert" }
