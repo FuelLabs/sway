@@ -863,7 +863,7 @@ fn bytes_from_b256() {
 }
 
 #[test]
-fn bytes_into_b256() {
+fn bytes_try_into_b256() {
     let mut initial_bytes = Bytes::with_capacity(32);
 
     let mut i = 0;
@@ -873,14 +873,33 @@ fn bytes_into_b256() {
         i += 1;
     }
 
-    let value: b256 = initial_bytes.into();
+    let value: b256 = initial_bytes.try_into().unwrap();
     let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
     assert(value == expected);
+
+    let empty_bytes = Bytes::new();
+    let empty_result: Option<b256> = empty_bytes.try_into();
+    assert(empty_result.is_none());
+
+    let mut small_bytes = Bytes::new();
+    small_bytes.push(1u8);
+    let small_result: Option<b256> = small_bytes.try_into();
+    assert(small_result.is_none());
+
+    let mut large_bytes = Bytes::new();
+        let mut i = 0;
+    while i < 33 {
+        // 0x33 is 51 in decimal
+        large_bytes.push(51u8);
+        i += 1;
+    }
+    let large_result: Option<b256> = large_bytes.try_into();
+    assert(large_result.is_none());
 }
 
 #[test]
-fn bytes_b256_from() {
+fn bytes_b256_try_from() {
     let control = 0x3333333333333333333333333333333333333333333333333333333333333333;
     let mut bytes = Bytes::with_capacity(32);
 
@@ -891,9 +910,27 @@ fn bytes_b256_from() {
         i += 1;
     }
 
-    let result_b256: b256 = b256::from(bytes);
-
+    let result_b256: b256 = b256::try_from(bytes).unwrap();
     assert(result_b256 == control);
+
+    let empty_bytes = Bytes::new();
+    let empty_result = b256::try_from(empty_bytes);
+    assert(empty_result.is_none());
+
+    let mut small_bytes = Bytes::new();
+    small_bytes.push(1u8);
+    let small_result = b256::try_from(small_bytes);
+    assert(small_result.is_none());
+
+    let mut large_bytes = Bytes::new();
+        let mut i = 0;
+    while i < 33 {
+        // 0x33 is 51 in decimal
+        large_bytes.push(51u8);
+        i += 1;
+    }
+    let large_result = b256::try_from(large_bytes);
+    assert(large_result.is_none());
 }
 
 #[test]
