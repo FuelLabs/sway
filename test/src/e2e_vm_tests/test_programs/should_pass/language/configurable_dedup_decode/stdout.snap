@@ -6,6 +6,10 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode
    Compiling library core (sway-lib-core)
+// IR: Final
+library {
+}
+
    Compiling library std (sway-lib-std)
 // IR: Final
 library {
