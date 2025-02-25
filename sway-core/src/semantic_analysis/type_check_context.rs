@@ -2,17 +2,25 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclRefFunction}, engine_threading::*, language::{
+    decl_engine::{DeclEngineGet, DeclRefFunction},
+    engine_threading::*,
+    language::{
         parsed::TreeType,
         ty::{self, TyDecl},
         CallPath, QualifiedCallPath, Visibility,
-    }, monomorphization::{monomorphize_with_modpath, MonomorphizeHelper}, namespace::{
+    },
+    monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
+    namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
         ResolvedTraitImplItem, TraitMap,
-    }, semantic_analysis::{
+    },
+    semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
         Namespace,
-    }, type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo}, EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap, UnifyCheck
+    },
+    type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
+    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
+    UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
