@@ -49,9 +49,9 @@ impl From<bool> for CodeBlockFirstPass {
 }
 
 #[derive(Clone, Debug)]
-struct TraitSuffix {
-    name: Ident,
-    args: Vec<TypeArgument>,
+pub(crate) struct TraitSuffix {
+    pub(crate) name: Ident,
+    pub(crate) args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
@@ -94,10 +94,10 @@ impl DebugWithEngines for TraitSuffix {
 type TraitName = Arc<CallPath<TraitSuffix>>;
 
 #[derive(Clone, Debug)]
-struct TraitKey {
-    name: TraitName,
-    type_id: TypeId,
-    trait_decl_span: Option<Span>,
+pub(crate) struct TraitKey {
+    pub(crate) name: TraitName,
+    pub(crate) type_id: TypeId,
+    pub(crate) trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
@@ -143,25 +143,25 @@ impl ResolvedTraitImplItem {
 type TraitItems = HashMap<String, ResolvedTraitImplItem>;
 
 #[derive(Clone, Debug)]
-struct TraitValue {
-    trait_items: TraitItems,
+pub(crate) struct TraitValue {
+    pub(crate) trait_items: TraitItems,
     /// The span of the entire impl block.
-    impl_span: Span,
+    pub(crate) impl_span: Span,
 }
 
 #[derive(Clone, Debug)]
-struct TraitEntry {
-    key: TraitKey,
-    value: TraitValue,
+pub(crate) struct TraitEntry {
+    pub(crate) key: TraitKey,
+    pub(crate) value: TraitValue,
 }
 
 /// Map of string of type entry id and vec of [TraitEntry].
 /// We are using the HashMap as a wrapper to the vec so the TraitMap algorithms
 /// don't need to traverse every TraitEntry.
-type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
+pub(crate) type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
 
 #[derive(Clone, Hash, Eq, PartialOrd, Ord, PartialEq, Debug)]
-enum TypeRootFilter {
+pub(crate) enum TypeRootFilter {
     Unknown,
     Never,
     Placeholder,
@@ -196,7 +196,7 @@ enum TypeRootFilter {
 /// [TraitMap].
 #[derive(Clone, Debug, Default)]
 pub struct TraitMap {
-    trait_impls: TraitImpls,
+    pub(crate) trait_impls: TraitImpls,
     satisfied_cache: HashSet<u64>,
 }
 
