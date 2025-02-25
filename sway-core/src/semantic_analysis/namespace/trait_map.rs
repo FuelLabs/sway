@@ -15,16 +15,11 @@ use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
-    },
-    engine_threading::*,
-    language::{
+    }, engine_threading::*, language::{
         parsed::{EnumDeclaration, ImplItem, StructDeclaration},
         ty::{self, TyDecl, TyImplItem, TyTraitItem},
         CallPath,
-    },
-    type_system::{SubstTypes, TypeId},
-    IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
-    TypeSubstMap, UnifyCheck,
+    }, type_system::{SubstTypes, TypeId}, IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeParameter, TypeSubstMap, UnifyCheck
 };
 
 use super::Module;
@@ -230,6 +225,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
+        _impl_type_parameters: Vec<TypeParameter>,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
