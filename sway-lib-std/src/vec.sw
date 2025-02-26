@@ -883,15 +883,3 @@ impl<T> Clone for Vec<T> {
         Self { buf, len }
     }
 }
-
-fn assert_vec(v: Vec<u8>, items: &[u8]) {
-    use ::assert::*;
-    assert(v.len() == items.len());
-}
-
-#[test]
-fn ok_vec_push() {
-    let mut v: Vec<u8> = Vec::new();
-    v.push(1u8);
-    assert_vec(v, __slice(&[1u8], 0, 1));
-}
