@@ -232,6 +232,12 @@ pub(crate) enum VirtualOp {
     ),
 
     /* Other Instructions */
+    ECAL(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
     FLAG(VirtualRegister),
     GM(VirtualRegister, VirtualImmediate18),
     GTF(VirtualRegister, VirtualRegister, VirtualImmediate12),
@@ -355,6 +361,7 @@ impl VirtualOp {
             EPAR(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Other Instructions */
+            ECAL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             FLAG(r1) => vec![r1],
             GM(r1, _imm) => vec![r1],
             GTF(r1, r2, _i) => vec![r1, r2],
@@ -479,6 +486,8 @@ impl VirtualOp {
             | K256(_, _, _)
             | S256(_, _, _)
             | ECOP(_, _, _, _)
+            // Other instructions
+            | ECAL(_, _, _, _)
             | FLAG(_)
             // Virtual OPs
             | BLOB(_)
@@ -588,6 +597,7 @@ impl VirtualOp {
             | S256(_, _, _)
             | ECOP(_, _, _, _)
             | EPAR(_, _, _, _)
+            | ECAL(_, _, _, _)
             | GM(_, _)
             | GTF(_, _, _)
             | BLOB(_)
@@ -709,6 +719,7 @@ impl VirtualOp {
             EPAR(_r1, r2, r3, r4) => vec![r2, r3, r4],
 
             /* Other Instructions */
+            ECAL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             FLAG(r1) => vec![r1],
             GM(_r1, _imm) => vec![],
             GTF(_r1, r2, _i) => vec![r2],
@@ -833,6 +844,7 @@ impl VirtualOp {
             EPAR(r1, _r2, _r3, _r4) => vec![r1],
 
             /* Other Instructions */
+            ECAL(_r1, _r2, _r3, _r4) => vec![],
             FLAG(_r1) => vec![],
             GM(r1, _imm) => vec![r1],
             GTF(r1, _r2, _i) => vec![r1],
@@ -1292,6 +1304,12 @@ impl VirtualOp {
             ),
 
             /* Other Instructions */
+            ECAL(r1, r2, r3, r4) => Self::ECAL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
             FLAG(r1) => Self::FLAG(update_reg(reg_to_reg_map, r1)),
             GM(r1, i) => Self::GM(update_reg(reg_to_reg_map, r1), i.clone()),
             GTF(r1, r2, i) => Self::GTF(
@@ -1785,6 +1803,12 @@ impl VirtualOp {
             ),
 
             /* Other Instructions */
+            ECAL(reg1, reg2, reg3, reg4) => AllocatedOpcode::ECAL(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),
             GTF(reg1, reg2, imm) => AllocatedOpcode::GTF(
