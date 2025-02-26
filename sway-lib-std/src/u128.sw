@@ -299,6 +299,7 @@ impl U128 {
         }
     }
 
+    // TODO: Rename to `try_as_u64` to be consistent with all other downcasts
     /// Safely downcast to `u64` without loss of precision.
     ///
     /// # Additional Information
@@ -330,6 +331,27 @@ impl U128 {
         match self.upper {
             0 => Ok(self.lower),
             _ => Err(U128Error::LossOfPrecision),
+        }
+    }
+
+    /// Upcasts a `U128` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The `u256` representation of the `U128` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let u128_value = U128::from(0u64);
+    ///     let u256_value = u128_value.as_u256();
+    /// }
+    pub fn as_u256(self) -> u256 {
+        asm(nums: (0, 0, self.upper, self.lower)) {
+            nums: u256
         }
     }
 
