@@ -2,6 +2,7 @@ library;
 
 pub mod utils;
 pub mod splice;
+pub mod iter;
 
 use utils::setup;
 use std::bytes::Bytes;
