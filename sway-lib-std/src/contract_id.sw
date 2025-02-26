@@ -215,9 +215,3 @@ impl ContractId {
         self.bits == b256::zero()
     }
 }
-
-impl AbiEncode for ContractId {
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        self.bits.abi_encode(buffer)
-    }
-}
