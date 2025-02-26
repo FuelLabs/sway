@@ -9,7 +9,7 @@ use ::ops::Eq;
 use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
-
+use ::codec::*;
 /// An AssetId is used for interacting with an asset on the network.
 ///
 /// # Additional Information

@@ -1,6 +1,6 @@
 library;
 
-use std::{primitive_conversions::u16::*, u128::U128};
+use std::{primitive_conversions::u16::*, u128::*};
 
 #[test]
 fn u16_from_u8() {

@@ -57,7 +57,7 @@ library;
 
 use ::logging::log;
 use ::revert::revert;
-use ::codec::AbiEncode;
+use ::codec::*;
 use ::ops::*;
 
 // ANCHOR: docs_result

@@ -1,6 +1,6 @@
 library;
 
-use std::{b512::B512, bytes::Bytes, primitive_conversions::b256::*, u128::U128};
+use std::{b512::B512, bytes::Bytes, primitive_conversions::b256::*, u128::*};
 
 #[test]
 fn b256_try_from_bytes() {
