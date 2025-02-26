@@ -195,10 +195,12 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.current_package_name().as_str() == "std" && matches!(
-            self.ctx.namespace.current_module().name().as_str(),
-            "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
-        ) {
+        if self.ctx.namespace.current_package_name().as_str() == "std"
+            && matches!(
+                self.ctx.namespace.current_module().name().as_str(),
+                "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
+            )
+        {
             return Some((None, None));
         }
 
@@ -233,10 +235,12 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.current_package_name().as_str() == "std" && matches!(
-            self.ctx.namespace.current_module().name().as_str(),
-            "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
-        ) {
+        if self.ctx.namespace.current_package_name().as_str() == "std"
+            && matches!(
+                self.ctx.namespace.current_module().name().as_str(),
+                "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
+            )
+        {
             return Some((None, None));
         }
 
