@@ -1,0 +1,4 @@
+category = "run"
+expected_result = { action = "return_data", value = "000000000000000A" }
+validate_abi = true
+experimental = { new_encoding = true, partial_eq = true }

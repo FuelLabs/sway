@@ -876,6 +876,7 @@ impl Bytes {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
@@ -888,6 +889,21 @@ impl Eq for Bytes {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Bytes {
+    fn eq(self, other: Self) -> bool {
+        if self.len != other.len {
+            return false;
+        }
+
+        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
+            meq result r2 r3 r4;
+            result: bool
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Bytes {}
 
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.

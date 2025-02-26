@@ -362,8 +362,8 @@ impl InstructionVerifier<'_, '_> {
         let val_ty = value
             .get_type(self.context)
             .ok_or(IrError::VerifyBitcastUnknownSourceType)?;
-        if self.type_bit_size(&val_ty).map_or(false, |sz| sz > 64)
-            || self.type_bit_size(ty).map_or(false, |sz| sz > 64)
+        if self.type_bit_size(&val_ty).is_some_and(|sz| sz > 64)
+            || self.type_bit_size(ty).is_some_and(|sz| sz > 64)
         {
             Err(IrError::VerifyBitcastBetweenInvalidTypes(
                 val_ty.as_string(self.context),
@@ -795,7 +795,7 @@ impl InstructionVerifier<'_, '_> {
             idx_val
                 .get_constant(self.context)
                 .and_then(|const_ref| {
-                    if let ConstantValue::Uint(n) = const_ref.value {
+                    if let ConstantValue::Uint(n) = const_ref.get_content(self.context).value {
                         Some(n)
                     } else {
                         None

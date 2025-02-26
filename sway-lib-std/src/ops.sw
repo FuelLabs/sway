@@ -530,6 +530,7 @@ impl Not for u8 {
 }
 
 /// Trait to evaluate if two types are equal.
+#[cfg(experimental_partial_eq = false)]
 pub trait Eq {
     /// Evaluates if two values of the same type are equal.
     ///
@@ -602,53 +603,246 @@ pub trait Eq {
     }
 }
 
+/// Trait for comparing type instances corresponding to equivalence relations.
+///
+/// The difference between [Eq] and [PartialEq] is the additional requirement for reflexivity.
+/// [PartialEq] guarantees symmetry and transitivity, but not reflexivity.
+///
+/// E.g., a type that implements [PartialEq] guarantees that for all `a`, `b`, and `c`:
+/// - `a == b` implies `b == a` (symmetry)
+/// - `a == b` and `b == c` implies `a == c` (transitivity)
+///
+/// [Eq], additionally implies:
+/// - `a == a` for every `a` (reflexivity)
+///
+/// Reflexivity property cannot be checked by the compiler, and therefore `Eq`
+/// does not have any methods, but only [PartialEq] as a supertrait.
+///
+/// **Implementing [Eq] for a type that does not have reflexivity property is a logic error**.
+#[cfg(experimental_partial_eq = true)]
+pub trait Eq: PartialEq {
+}
+
+/// Trait for comparing type instances using the equality operator.
+///
+/// Implementing this trait provides `==` and `!=` operators on a type.
+///
+/// This trait allows comparisons for types that do not have a full equivalence relation.
+/// In other words, it is not required that each instance of the type must be
+/// equal to itself. While most of the types used in blockchain development do have this
+/// property, called reflexivity, we can encounter types that are not reflexive.
+///
+/// A typical example of a type supporting partial equivalence, but not equivalence,
+/// is a floating point number, where `NaN` is different from any other number,
+/// including itself: `NaN != NaN`.
+#[cfg(experimental_partial_eq = true)]
+pub trait PartialEq {
+    /// Evaluates if two values of the same type are equal.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if the values are equal, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl PartialEq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///         self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 2 };
+    ///     let struct2 = MyStruct { val: 2 };
+    ///     let result = struct1 == struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn eq(self, other: Self) -> bool;
+} {
+    /// Evaluates if two values of the same type are not equal.
+    ///
+    /// # Additional Information
+    ///
+    /// This function is inherited when `eq()` is implemented.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if the two values are not equal, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl PartialEq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///          self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 10 };
+    ///     let struct2 = MyStruct { val: 2 };
+    ///     let result = struct1 != struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn neq(self, other: Self) -> bool {
+        (self.eq(other)).not()
+    }
+}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for bool {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for bool {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for bool {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for u256 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for u256 {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for u256 {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for b256 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for b256 {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for b256 {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for u64 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for u64 {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for u64 {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for u32 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for u32 {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for u32 {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for u16 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for u16 {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for u16 {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for u8 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
 
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for u8 {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for u8 {}
+
+#[cfg(experimental_partial_eq = false)]
 impl Eq for raw_ptr {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
     }
 }
+
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for raw_ptr {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for raw_ptr {}
 
 /// Trait to evaluate if one value is greater or less than another of the same type.
 pub trait Ord {
@@ -996,7 +1190,103 @@ impl BitwiseXor for u8 {
 }
 
 /// Trait to evaluate if one value is greater than or equal, or less than or equal to another of the same type.
+#[cfg(experimental_partial_eq = false)]
 pub trait OrdEq: Ord + Eq {
+} {
+    /// Evaluates if one value of the same type is greater or equal to than another.
+    ///
+    /// # Additional Information
+    ///
+    /// This trait requires that the `Ord` and `Eq` traits are implemented.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if `self` is greater than or equal to `other`, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl Eq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///         self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// impl Ord for MyStruct {
+    ///     fn gt(self, other: Self) -> bool {
+    ///         self.val > other.val
+    ///     }
+    /// }
+    ///
+    /// impl OrdEq for MyStruct {}
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 10 };
+    ///     let struct2 = MyStruct { val: 10 };
+    ///     let result = struct1 >= struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn ge(self, other: Self) -> bool {
+        self.gt(other) || self.eq(other)
+    }
+    /// Evaluates if one value of the same type is less or equal to than another.
+    ///
+    /// # Additional Information
+    ///
+    /// This trait requires that the `Ord` and `Eq` traits are implemented.
+    ///
+    /// # Arguments
+    ///
+    /// * `other`: [Self] - The value of the same type.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if `self` is less than or equal to `other`, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// struct MyStruct {
+    ///     val: u64,
+    /// }
+    ///
+    /// impl Eq for MyStruct {
+    ///     fn eq(self, other: Self) -> bool {
+    ///         self.val == other.val
+    ///     }
+    /// }
+    ///
+    /// impl Ord for MyStruct {
+    ///     fn lt(self, other: Self) -> bool {
+    ///         self.val < other.val
+    ///     }
+    /// }
+    ///
+    /// impl OrdEq for MyStruct {}
+    ///
+    /// fn foo() {
+    ///     let struct1 = MyStruct { val: 10 };
+    ///     let struct2 = MyStruct { val: 10 };
+    ///     let result = struct1 <= struct2;
+    ///     assert(result);
+    /// }
+    /// ```
+    fn le(self, other: Self) -> bool {
+        self.lt(other) || self.eq(other)
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+pub trait OrdEq: Ord + PartialEq {
 } {
     /// Evaluates if one value of the same type is greater or equal to than another.
     ///
@@ -1384,6 +1674,7 @@ fn test_decompose() {
 
 use ::str::*;
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for str {
     fn eq(self, other: Self) -> bool {
         if self.len() != other.len() {
@@ -1399,6 +1690,46 @@ impl Eq for str {
         }
     }
 }
+
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for str {
+    fn eq(self, other: Self) -> bool {
+        if self.len() != other.len() {
+            false
+        } else {
+            let self_ptr = self.as_ptr();
+            let other_ptr = other.as_ptr();
+            let l = self.len();
+            asm(r1: self_ptr, r2: other_ptr, r3: l, r4) {
+                meq r4 r1 r2 r3;
+                r4: bool
+            }
+        }
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for str {}
+
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for str {
+    fn eq(self, other: Self) -> bool {
+        if self.len() != other.len() {
+            false
+        } else {
+            let self_ptr = self.as_ptr();
+            let other_ptr = other.as_ptr();
+            let l = self.len();
+            asm(r1: self_ptr, r2: other_ptr, r3: l, r4) {
+                meq r4 r1 r2 r3;
+                r4: bool
+            }
+        }
+    }
+}
+
+#[cfg(experimental_partial_eq = true)]
+impl Eq for str {}
 
 impl u8 {
     /// Returns whether a `u8` is set to zero.

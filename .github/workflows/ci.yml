@@ -51,6 +51,7 @@ jobs:
       - cargo-run-e2e-test-release
       - cargo-test-forc-debug
       - cargo-test-forc-client
+      - cargo-test-forc-node
       - notify-slack-on-failure
     runs-on: ubuntu-latest
     steps:
@@ -239,6 +240,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-tx
           cargo install --locked --debug --path ./forc-plugins/forc-crypto
+          cargo install --locked --debug --path ./forc-plugins/forc-node
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
@@ -475,6 +477,14 @@ jobs:
         run: cargo run --locked --release -p forc -- build --experimental storage_domains --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std - Experimental Feature 'storage_domains'
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Tests - Experimental Feature 'error_type'
+        run: cargo run --locked --release -p forc -- build --experimental error_type --release --locked --path ./test/src/sdk-harness
+      - name: Cargo Test sway-lib-std - Experimental Feature 'error_type'
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Tests - Experimental Feature 'partial_eq'
+        run: cargo run --locked --release -p forc -- build --experimental partial_eq --release --locked --path ./test/src/sdk-harness
+      - name: Cargo Test sway-lib-std - Experimental Feature 'partial_eq'
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -541,14 +551,26 @@ jobs:
         run: forc build --path sway-lib-core && forc test --path sway-lib-core
       - name: Run Core Unit Tests - Experimental feature 'storage_domains'
         run: forc build --experimental storage_domains --path sway-lib-core && forc test --experimental storage_domains --path sway-lib-core
+      - name: Run Core Unit Tests - Experimental feature 'error_type'
+        run: forc build --experimental error_type --path sway-lib-core && forc test --experimental error_type --path sway-lib-core
+      - name: Run Core Unit Tests - Experimental feature 'partial_eq'
+        run: forc build --experimental partial_eq --path sway-lib-core && forc test --experimental partial_eq --path sway-lib-core
       - name: Run Std Unit Tests
         run: forc build --path sway-lib-std && forc test --path sway-lib-std
       - name: Run Std Unit Tests - Experimental feature 'storage_domains'
         run: forc build --experimental storage_domains --path sway-lib-std && forc test --experimental storage_domains --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'error_type'
+        run: forc build --experimental error_type --path sway-lib-std && forc test --experimental error_type --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'partial_eq'
+        run: forc build --experimental partial_eq --path sway-lib-std && forc test --experimental partial_eq --path sway-lib-std
       - name: Run In Language Unit Tests
         run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
       - name: Run In Language Unit Tests - Experimental feature 'storage_domains'
         run: forc build --experimental storage_domains --path test/src/in_language_tests && forc test --experimental storage_domains --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'error_type'
+        run: forc build --experimental error_type --path test/src/in_language_tests && forc test --experimental error_type --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'partial_eq'
+        run: forc build --experimental partial_eq --path test/src/in_language_tests && forc test --experimental partial_eq --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -625,6 +647,27 @@ jobs:
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Run tests
         run: cargo test --locked --release -p forc-client -- --test-threads 1
+  cargo-test-forc-node:
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    needs: get-fuel-core-version
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-provider: "buildjet"
+      - name: Install fuel-core for tests
+        run: |
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
+      - name: Run tests
+        run: cargo test --locked --release -p forc-node -- --test-threads 1
   cargo-test-sway-lsp:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
@@ -666,7 +709,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client --exclude forc
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client --exclude forc --exclude forc-node
   cargo-unused-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:

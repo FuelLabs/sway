@@ -9,7 +9,9 @@ members = [
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
+    "forc-plugins/forc-node",
     "forc-plugins/forc-migrate",
+    "forc-plugins/forc-publish",
     "forc-plugins/forc-tx",
     "forc-test",
     "forc-tracing",
@@ -32,7 +34,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.66.6"
+version = "0.66.7"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -43,36 +45,37 @@ repository = "https://github.com/FuelLabs/sway"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.66.6" }
-forc-pkg = { path = "forc-pkg/", version = "0.66.6" }
-forc-test = { path = "forc-test/", version = "0.66.6" }
-forc-tracing = { path = "forc-tracing/", version = "0.66.6" }
-forc-util = { path = "forc-util/", version = "0.66.6" }
+forc = { path = "forc/", version = "0.66.7" }
+forc-pkg = { path = "forc-pkg/", version = "0.66.7" }
+forc-test = { path = "forc-test/", version = "0.66.7" }
+forc-tracing = { path = "forc-tracing/", version = "0.66.7" }
+forc-util = { path = "forc-util/", version = "0.66.7" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.66.6" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.66.6" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.66.6" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.66.6" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.6" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.6" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.6" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.6" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.66.6" }
+forc-plugins = { path = "forc-plugins/", version = "0.66.7" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.66.7" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.66.7" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.66.7" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.66.7" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.66.7" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.66.7" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.66.7" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.66.7" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.66.7" }
 
-sway-ast = { path = "sway-ast/", version = "0.66.6" }
-sway-core = { path = "sway-core/", version = "0.66.6" }
-sway-error = { path = "sway-error/", version = "0.66.6" }
-sway-features = { path = "sway-features/", version = "0.66.6" }
-sway-lsp = { path = "sway-lsp/", version = "0.66.6" }
-sway-parse = { path = "sway-parse/", version = "0.66.6" }
-sway-types = { path = "sway-types/", version = "0.66.6" }
-sway-utils = { path = "sway-utils/", version = "0.66.6" }
-swayfmt = { path = "swayfmt/", version = "0.66.6" }
+sway-ast = { path = "sway-ast/", version = "0.66.7" }
+sway-core = { path = "sway-core/", version = "0.66.7" }
+sway-error = { path = "sway-error/", version = "0.66.7" }
+sway-features = { path = "sway-features/", version = "0.66.7" }
+sway-lsp = { path = "sway-lsp/", version = "0.66.7" }
+sway-parse = { path = "sway-parse/", version = "0.66.7" }
+sway-types = { path = "sway-types/", version = "0.66.7" }
+sway-utils = { path = "sway-utils/", version = "0.66.7" }
+swayfmt = { path = "swayfmt/", version = "0.66.7" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.66.6" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.6" }
+sway-ir = { path = "sway-ir/", version = "0.66.7" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.66.7" }
 
 #
 # External Fuel dependencies
@@ -133,6 +136,7 @@ devault = "0.2"
 dialoguer = "0.11"
 dirs = "5.0"
 downcast-rs = "1.2"
+duplicate = "2.0"
 either = "1.9"
 ethabi = { package = "fuel-ethabi", version = "18.0" }
 etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev" }
@@ -140,6 +144,7 @@ etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 extension-trait = "1.0"
 fd-lock = "4.0"
 filecheck = "0.5"
+flate2 = "1.0"
 fs_extra = "1.2"
 futures = { version = "0.3", default-features = false }
 gag = "1.0"
@@ -202,6 +207,7 @@ serde_json = "1.0"
 serde_with = "3.3"
 serde_yaml = "0.9"
 serial_test = "3.0"
+sha1 = "0.10"
 sha2 = "0.10"
 sha3 = "0.10"
 slotmap = "1.0"
@@ -229,6 +235,7 @@ unicode-bidi = "0.3"
 unicode-xid = "0.2"
 url = "2.2"
 urlencoding = "2.1"
+uuid = "1.13"
 vec1 = "1.8"
 vte = "0.13"
 walkdir = "2.3"

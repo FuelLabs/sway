@@ -174,7 +174,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(false, |count| count > 1)
+                            .is_some_and(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::FunctionParameter {
@@ -216,7 +216,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(false, |count| count > 0)
+                        .is_some_and(|count| count > 0)
                 }
                 _ => false,
             }
@@ -1791,7 +1791,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             address.span.clone(),
             options,
         ),
-        Array {
+        ArrayExplicit {
             elem_type: _,
             contents,
         } => {
@@ -1817,6 +1817,35 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             Ok(last)
+        }
+        ArrayRepeat {
+            elem_type: _,
+            value,
+            length,
+        } => {
+            let value_idx = connect_expression(
+                engines,
+                &value.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                value.span.clone(),
+                options,
+            )?;
+            let length_idx = connect_expression(
+                engines,
+                &length.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                length.span.clone(),
+                options,
+            )?;
+            Ok([value_idx, length_idx].concat())
         }
         ArrayIndex { prefix, index } => {
             let prefix_idx = connect_expression(

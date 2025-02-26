@@ -1,0 +1,6 @@
+category = "compile"
+validate_abi = true
+validate_storage_slots = true
+expected_warnings = 2
+
+experimental = { new_encoding = true, partial_eq = true }

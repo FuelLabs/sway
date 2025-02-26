@@ -102,7 +102,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             ConfigContent::V0 { name, constant, .. } => {
                 let entry = Entry::from_constant(
                     self.context,
-                    constant,
+                    constant.get_content(self.context),
                     EntryName::Configurable(name.clone()),
                     None,
                 );
@@ -1130,7 +1130,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             idx_val
                 .get_constant(self.context)
                 .and_then(|idx_const| {
-                    if let ConstantValue::Uint(idx) = idx_const.value {
+                    if let ConstantValue::Uint(idx) = idx_const.get_content(self.context).value {
                         Some(idx as usize)
                     } else {
                         None
@@ -1868,7 +1868,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         if !val
             .get_type(self.context)
             .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
-            .map_or(false, |(val_ty, key_ty)| {
+            .is_some_and(|(val_ty, key_ty)| {
                 val_ty.is_ptr(self.context) && key_ty.is_ptr(self.context)
             })
         {
@@ -1958,7 +1958,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         if !store_val
             .get_type(self.context)
             .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
-            .map_or(false, |(val_ty, key_ty)| {
+            .is_some_and(|(val_ty, key_ty)| {
                 val_ty.is_uint64(self.context) && key_ty.is_ptr(self.context)
             })
         {
@@ -2072,7 +2072,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         config_name: Option<String>,
         span: Option<Span>,
     ) -> (VirtualRegister, Option<DataId>) {
-        match &constant.value {
+        match &constant.get_content(self.context).value {
             // Use cheaper $zero or $one registers if possible.
             ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0)
                 if config_name.is_none() =>
@@ -2091,7 +2091,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 } else {
                     EntryName::NonConfigurable
                 };
-                let entry = Entry::from_constant(self.context, constant, config_name, None);
+                let entry = Entry::from_constant(
+                    self.context,
+                    constant.get_content(self.context),
+                    config_name,
+                    None,
+                );
                 let data_id = self.data_section.insert_data_value(entry);
 
                 // Allocate a register for it, and a load instruction.
@@ -2137,7 +2142,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .or_else(|| {
                 value.get_constant(self.context).map(|constant| {
                     let span = self.md_mgr.val_to_span(self.context, *value);
-                    match constant.value {
+                    match constant.get_content(self.context).value {
                         // If it's a small enough constant, just initialize using an IMM value.
                         // (exceptions for zero and one as they have special registers).
                         ConstantValue::Uint(c)

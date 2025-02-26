@@ -90,6 +90,7 @@ pub enum Option<T> {
 }
 // ANCHOR_END: docs_option
 
+#[cfg(experimental_partial_eq = false)]
 impl<T> Eq for Option<T>
 where
     T: Eq,
@@ -102,6 +103,24 @@ where
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl<T> core::ops::PartialEq for Option<T>
+where
+    T: PartialEq,
+{
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Option::Some(a), Option::Some(b)) => a == b,
+            (Option::None, Option::None) => true,
+            _ => false,
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl<T> core::ops::Eq for Option<T>
+where
+    T: Eq,
+{}
 
 // Type implementation
 //

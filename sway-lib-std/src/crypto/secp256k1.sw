@@ -424,6 +424,7 @@ impl Into<Bytes> for Secp256k1 {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for Secp256k1 {
     fn eq(self, other: Self) -> bool {
         let mut iter = 0;
@@ -437,6 +438,22 @@ impl Eq for Secp256k1 {
         true
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Secp256k1 {
+    fn eq(self, other: Self) -> bool {
+        let mut iter = 0;
+        while iter < 64 {
+            if self.bits[iter] != other.bits[iter] {
+                return false;
+            }
+            iter += 1;
+        }
+
+        true
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Secp256k1 {}
 
 impl Hash for Secp256k1 {
     fn hash(self, ref mut state: Hasher) {

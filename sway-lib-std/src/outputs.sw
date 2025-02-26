@@ -278,6 +278,7 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl Eq for Output {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -290,3 +291,18 @@ impl Eq for Output {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Output {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Output::Coin, Output::Coin) => true,
+            (Output::Contract, Output::Contract) => true,
+            (Output::Change, Output::Change) => true,
+            (Output::Variable, Output::Variable) => true,
+            (Output::ContractCreated, Output::ContractCreated) => true,
+            _ => false,
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Output {}

@@ -99,6 +99,7 @@
       - [forc deploy](./forc/plugins/forc_client/forc_deploy.md)
       - [forc run](./forc/plugins/forc_client/forc_run.md)
       - [forc submit](./forc/plugins/forc_client/forc_submit.md)
+      - [forc call](./forc/plugins/forc_client/forc_call.md)
     - [forc crypto](./forc/plugins/forc_crypto.md)
     - [forc debug](./forc/plugins/forc_debug.md)
     - [forc doc](./forc/plugins/forc_doc.md)
@@ -106,3 +107,4 @@
     - [forc fmt](./forc/plugins/forc_fmt.md)
     - [forc lsp](./forc/plugins/forc_lsp.md)
     - [forc migrate](./forc/plugins/forc_migrate.md)
+    - [forc node](./forc/plugins/forc_node.md)

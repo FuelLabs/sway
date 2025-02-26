@@ -11,7 +11,7 @@ use sway_types::SourceEngine;
 use crate::{
     asm::*,
     block::Block,
-    constant::{Constant, ConstantValue},
+    constant::{ConstantContent, ConstantValue},
     context::Context,
     function::{Function, FunctionContent},
     instruction::{FuelVmInstruction, InstOp, Predicate, Register},
@@ -251,7 +251,7 @@ fn config_to_doc(
             Doc::text(format!(
                 "{} = config {}",
                 name,
-                constant.as_lit_string(context)
+                constant.get_content(context).as_lit_string(context)
             ))
             .append(md_namer.md_idx_to_doc(context, opt_metadata)),
         ),
@@ -374,7 +374,7 @@ fn function_to_doc<'a>(
                             let init_doc = match &var_content.initializer {
                                 Some(const_val) => Doc::text(format!(
                                     " = const {}",
-                                    const_val.as_lit_string(context)
+                                    const_val.get_content(context).as_lit_string(context)
                                 )),
                                 None => Doc::Empty,
                             };
@@ -455,7 +455,7 @@ fn constant_to_doc(
             Doc::text(format!(
                 "{} = const {}",
                 namer.name(context, const_val),
-                constant.as_lit_string(context)
+                constant.get_content(context).as_lit_string(context)
             ))
             .append(md_namer.md_idx_to_doc(context, metadata)),
         )
@@ -1137,7 +1137,7 @@ fn asm_block_to_doc(
         .append(Doc::text_line("}"))
 }
 
-impl Constant {
+impl ConstantContent {
     fn as_lit_string(&self, context: &Context) -> String {
         match &self.value {
             ConstantValue::Undef => format!("{} undef", self.ty.as_string(context)),

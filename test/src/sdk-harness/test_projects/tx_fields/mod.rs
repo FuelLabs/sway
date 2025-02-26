@@ -1630,8 +1630,6 @@ mod outputs {
     use super::*;
 
     mod success {
-        use fuel_core_client::client::schema::schema::__fields::GasCosts::exp;
-
         use super::*;
 
         #[tokio::test]
