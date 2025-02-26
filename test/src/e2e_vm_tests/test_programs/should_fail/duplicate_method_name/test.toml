@@ -1,0 +1,12 @@
+category = "fail"
+
+# check: $()let s = S::<u32> { x: 1 };
+# nextln: $()This declaration is never used.
+# nextln: $()s.foo();
+
+
+# check: $()s.foo();
+# nextln: $()Multiple applicable items in scope. 
+# nextln: $()Items locations:
+# nextln: $()test/src/e2e_vm_tests/test_programs/should_fail/duplicate_method_name/src/main.sw:15:5
+# nextln: $()test/src/e2e_vm_tests/test_programs/should_fail/duplicate_method_name/src/main.sw:22:5
