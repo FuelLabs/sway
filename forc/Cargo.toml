@@ -54,5 +54,5 @@ util = []
 profile = []
 
 [dev-dependencies]
-completest-pty = "0.5.0"
-rexpect = "0.5"
+completest-pty.workspace = true
+rexpect.workspace = true
