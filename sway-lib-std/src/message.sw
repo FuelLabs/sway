@@ -5,6 +5,7 @@ use ::alloc::alloc_bytes;
 use ::bytes::Bytes;
 use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
+use ::ops::*;
 
 /// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset.
 ///

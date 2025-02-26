@@ -6,7 +6,6 @@ license = "Apache-2.0"
 name = "caller"
 
 [dependencies]
-core = { path = "../../../sway-lib-core" }
 std = { path = "../../../sway-lib-std/" }
 
 [contract-dependencies]

@@ -165,7 +165,7 @@ impl Instantiate {
         lhs: ty::TyExpression,
         rhs: ty::TyExpression,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        ty::TyExpression::core_ops_eq(handler, ctx, vec![lhs, rhs], self.dummy_span())
+        ty::TyExpression::std_ops_eq(handler, ctx, vec![lhs, rhs], self.dummy_span())
     }
 
     /// Instantiates an expression equivalent to `<lhs> != <rhs>`.
@@ -176,7 +176,7 @@ impl Instantiate {
         lhs: ty::TyExpression,
         rhs: ty::TyExpression,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        ty::TyExpression::core_ops_neq(handler, ctx, vec![lhs, rhs], self.dummy_span())
+        ty::TyExpression::std_ops_neq(handler, ctx, vec![lhs, rhs], self.dummy_span())
     }
 
     /// Instantiates an expression equivalent to `<lhs> == <rhs>`. The method expects that
@@ -187,8 +187,8 @@ impl Instantiate {
         lhs: ty::TyExpression,
         rhs: ty::TyExpression,
     ) -> ty::TyExpression {
-        ty::TyExpression::core_ops_eq(&Handler::default(), ctx, vec![lhs, rhs], self.dummy_span())
-            .expect("Instantiating `core::ops::eq` is expected to always work.")
+        ty::TyExpression::std_ops_eq(&Handler::default(), ctx, vec![lhs, rhs], self.dummy_span())
+            .expect("Instantiating `std::ops::eq` is expected to always work.")
     }
 
     /// Instantiates a [ty::TyExpressionVariant::TupleElemAccess] `<tuple_variable>.<index>`. The method expects that

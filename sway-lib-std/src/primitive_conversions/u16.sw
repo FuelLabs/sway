@@ -2,9 +2,74 @@ library;
 
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
-use ::u128::U128;
+use ::ops::*;
+use ::primitive_conversions::u8::*;
 
 impl u16 {
+    /// Extends a `u16` to a `u32`.
+    ///
+    /// # Returns
+    ///
+    /// * [u32] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 10u16;
+    ///     let result = val.as_u32();
+    ///     assert(result == 10u32);
+    /// }
+    /// ```
+    pub fn as_u32(self) -> u32 {
+        asm(input: self) {
+            input: u32
+        }
+    }
+
+    /// Extends a `u16` to a `u64`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 10u16;
+    ///     let result = val.as_u64();
+    ///     assert(result == 10);
+    /// }
+    /// ```
+    pub fn as_u64(self) -> u64 {
+        asm(input: self) {
+            input: u64
+        }
+    }
+
+    /// Extends a `u16` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2u16;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self.as_u64());
+        asm(input: input) {
+            input: u256
+        }
+    }
+
     /// Attempts to convert the u16 value into a u8 value.
     ///
     /// # Additional Information
@@ -100,16 +165,6 @@ impl TryFrom<u256> for u16 {
             Some(asm(r1: parts.3) {
                 r1: u16
             })
-        }
-    }
-}
-
-impl TryFrom<U128> for u16 {
-    fn try_from(u: U128) -> Option<Self> {
-        if u.upper() == 0 {
-            <u16 as TryFrom<u64>>::try_from(u.lower())
-        } else {
-            None
         }
     }
 }

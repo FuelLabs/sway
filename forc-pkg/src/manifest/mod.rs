@@ -524,7 +524,7 @@ impl GenericManifestFile for PackageManifestFile {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -592,7 +592,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -610,7 +610,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_string(contents: String) -> Result<Self> {
@@ -736,14 +736,12 @@ impl PackageManifest {
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
     fn implicitly_include_std_if_missing(&mut self) {
-        use sway_types::constants::{CORE, STD};
+        use sway_types::constants::STD;
         // Don't include `std` if:
-        // - this *is* `core` or `std`.
-        // - either `core` or `std` packages are already specified.
+        // - this *is* `std`.
+        // - `std` package is already specified.
         // - a dependency already exists with the name "std".
-        if self.project.name == CORE
-            || self.project.name == STD
-            || self.pkg_dep(CORE).is_some()
+        if self.project.name == STD
             || self.pkg_dep(STD).is_some()
             || self.dep(STD).is_some()
             || !self.project.implicit_std.unwrap_or(true)

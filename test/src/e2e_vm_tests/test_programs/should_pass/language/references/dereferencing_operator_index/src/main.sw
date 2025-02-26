@@ -2,7 +2,7 @@ script;
 
 mod impls;
 use impls::*;
-use core::ops::Eq;
+use Eq;
 
 #[inline(always)]
 fn dereference_array<T>()

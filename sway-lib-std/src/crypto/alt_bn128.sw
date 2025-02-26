@@ -5,6 +5,7 @@ use ::bytes::{Bytes, *};
 use ::revert::require;
 use ::crypto::{point2d::*, scalar::*};
 use ::alloc::alloc;
+use ::codec::*;
 
 /// The error type used when performing elliptic curve operations for the Alt BN128 curve.
 pub enum AltBn128Error {

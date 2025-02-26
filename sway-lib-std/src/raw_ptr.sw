@@ -1,5 +1,7 @@
 library;
 
+use ::ops::*;
+
 impl raw_ptr {
     /// Returns `true` if the pointer is null.
     ///
@@ -21,7 +23,7 @@ impl raw_ptr {
         let null_ptr = asm() {
             zero: raw_ptr
         };
-        __eq(self, null_ptr)
+        self == null_ptr
     }
 
     /// Calculates the offset from the pointer.
@@ -97,7 +99,7 @@ impl raw_ptr {
             asm(ptr: self) {
                 ptr: T
             }
-        } else if __eq(__size_of::<T>(), 1) {
+        } else if __size_of::<T>() == 1 {
             asm(ptr: self, val) {
                 lb val ptr i0;
                 val: T
@@ -131,7 +133,7 @@ impl raw_ptr {
     /// }
     /// ```
     pub fn copy_to<T>(self, dst: Self, count: u64) {
-        let len = __mul(count, __size_of::<T>());
+        let len = count * __size_of::<T>();
         asm(dst: dst, src: self, len: len) {
             mcp dst src len;
         };
@@ -157,7 +159,7 @@ impl raw_ptr {
             asm(dst: self, src: val, count: __size_of_val(val)) {
                 mcp dst src count;
             };
-        } else if __eq(__size_of::<T>(), 1) {
+        } else if __size_of::<T>() == 1 {
             asm(ptr: self, val: val) {
                 sb ptr val i0;
             };

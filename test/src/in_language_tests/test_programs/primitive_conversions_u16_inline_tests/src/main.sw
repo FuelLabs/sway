@@ -1,6 +1,6 @@
 library;
 
-use std::{primitive_conversions::u16::*, u128::U128};
+use std::{primitive_conversions::u16::*, u128::*};
 
 #[test]
 fn u16_from_u8() {
@@ -126,4 +126,27 @@ fn u16_try_from_u128() {
     assert(u16_3.unwrap() == u16::max());
 
     assert(u16_4.is_none());
+}
+
+#[test]
+fn test_u16_as_u64() {
+    let val = 2u16;
+    let result = val.as_u64();
+    assert(result == 2);
+}
+
+#[test]
+fn test_u16_as_u32() {
+    let val = 2u16;
+    let result = val.as_u32();
+    assert(result == 2u32);
+}
+
+#[test]
+fn test_u16_as_u256() {
+    let val = 2u16;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }

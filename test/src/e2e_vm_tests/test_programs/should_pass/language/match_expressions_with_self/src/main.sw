@@ -1,6 +1,6 @@
 script;
 
-use core::ops::Eq;
+use Eq;
 use std::assert::*;
 
 enum Initialized {

@@ -1,8 +1,4 @@
 [[package]]
-name = "core"
-source = "path+from-root-A1A671B3B44F9A9A"
-
-[[package]]
 name = "lib_log_decode"
 source = "member"
 dependencies = ["std"]
@@ -10,4 +6,3 @@ dependencies = ["std"]
 [[package]]
 name = "std"
 source = "path+from-root-A1A671B3B44F9A9A"
-dependencies = ["core"]
