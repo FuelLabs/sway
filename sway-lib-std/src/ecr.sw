@@ -219,8 +219,8 @@ pub fn ed_verify(public_key: b256, signature: B512, msg: Bytes) -> Result<bool, 
 ///     assert(result_address == address);
 /// }
 /// ```
-// TODO: Uncomment the `deprecated` attribute once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-// #[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[allow(deprecated)]
 pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let pub_key_result = ec_recover(signature, msg_hash);
 
@@ -266,8 +266,8 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
 ///     assert(result_address == address);
 /// }
 /// ```
-// TODO: Uncomment the `deprecated` attribute once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-// #[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[allow(deprecated)]
 pub fn ec_recover_address_r1(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let pub_key_result = ec_recover_r1(signature, msg_hash);
 

@@ -35,8 +35,8 @@ use ::vm::evm::evm_address::EvmAddress;
 ///     assert(result_address == evm_address);
 /// }
 /// ```
-// TODO: Uncomment the `deprecated` attribute once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-// #[deprecated(note = "std:vm::evm:ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "std:vm::evm:ecr has been replaced by std::crypto, and is no longer maintained")]
+#[allow(deprecated)]
 pub fn ec_recover_evm_address(
     signature: B512,
     msg_hash: b256,
