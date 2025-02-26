@@ -1,7 +1,6 @@
 ---
 source: test/tests/tests.rs
 assertion_line: 115
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract
 exit status: 1
@@ -69,7 +68,7 @@ error: Attribute cannot annotate item
 12 | #[deprecated(invalid)]
    |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an ABI or trait implementation.
    |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -107,21 +106,11 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:17:7
    |
 ...
-17 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a contract method.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:18:7
-   |
-...
-18 |     #[fallback(invalid)]
+17 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate a contract method.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
 ____
 
-  Aborting due to 11 errors.
+  Aborting due to 10 errors.
 error: Failed to compile attributes_invalid_target_contract

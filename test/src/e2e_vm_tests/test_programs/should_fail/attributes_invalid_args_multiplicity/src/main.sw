@@ -10,7 +10,8 @@ mod inline_attr;
 mod test_attr;
 mod payable_attr;
 mod allow_attr;
-mod cfg_attr;
+mod cfg_attr_no_args;
+mod cfg_attr_two_args;
 mod deprecated_attr;
 mod fallback_attr;
 

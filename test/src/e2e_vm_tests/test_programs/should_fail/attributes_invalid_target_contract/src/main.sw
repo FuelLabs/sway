@@ -14,7 +14,6 @@ abi Abi {
 impl Abi for Contract {
     #[test(invalid)]
     //! Invalid inner comment.
-    #[deprecated(invalid)]
     #[fallback(invalid)]
     fn abi_function() {
         let _ = 0;

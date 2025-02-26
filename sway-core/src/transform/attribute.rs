@@ -48,66 +48,13 @@
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use sway_error::{convert_parse_tree_error::ConvertParseTreeError, handler::{ErrorEmitted, Handler}};
+use sway_features::Feature;
 use std::{hash::Hash, sync::Arc};
-use sway_ast::{attribute::AttributeHashKind, AttributeDecl, ImplItemParent, ItemImplItem, ItemKind, ItemTraitItem, Literal};
+use sway_ast::{attribute::*, AttributeDecl, ImplItemParent, ItemImplItem, ItemKind, ItemTraitItem, Literal};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::language::{Inline, Purity};
-
-// TODO-IG!: Move these constants on the most appropriate place and remove pub. Review all this code below.
-// The valid attribute strings related to storage and purity.
-// pub const STORAGE_ATTRIBUTE_NAME: &str = "storage";
-pub const STORAGE_ATTRIBUTE_NAME: &str = sway_types::constants::STORAGE_ATTRIBUTE_NAME;
-pub const STORAGE_READ_ARG_NAME: &str = "read";
-pub const STORAGE_WRITE_ARG_NAME: &str = "write";
-
-// The valid attribute strings related to inline.
-pub const INLINE_ATTRIBUTE_NAME: &str = "inline";
-pub const INLINE_NEVER_ARG_NAME: &str = "never";
-pub const INLINE_ALWAYS_ARG_NAME: &str = "always";
-
-// The valid attribute strings related to documentation comments.
-// Note that because "doc-comment" is not a valid identifier,
-// doc-comment attributes cannot be declared in code.
-// They are exclusively created by the compiler to denote
-// doc comments, `///` and `//!`.
-// pub const DOC_COMMENT_ATTRIBUTE_NAME: &str = "doc-comment";
-pub const DOC_COMMENT_ATTRIBUTE_NAME: &str = sway_ast::attribute::DOC_COMMENT_ATTRIBUTE_NAME;
-
-// The attribute used for Sway in-language unit tests.
-pub const TEST_ATTRIBUTE_NAME: &str = "test";
-pub const TEST_SHOULD_REVERT_ARG_NAME: &str = "should_revert";
-
-// The valid attribute string used for payable functions.
-pub const PAYABLE_ATTRIBUTE_NAME: &str = "payable";
-
-// The valid attribute strings related to allow.
-pub const ALLOW_ATTRIBUTE_NAME: &str = "allow";
-pub const ALLOW_DEAD_CODE_ARG_NAME: &str = "dead_code";
-pub const ALLOW_DEPRECATED_ARG_NAME: &str = "deprecated";
-
-// The valid attribute strings related to conditional compilation.
-pub const CFG_ATTRIBUTE_NAME: &str = "cfg";
-pub const CFG_TARGET_ARG_NAME: &str = "target";
-pub const CFG_PROGRAM_TYPE_ARG_NAME: &str = "program_type";
-
-pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
-pub const DEPRECATED_NOTE_ARG_NAME: &str = "note";
-
-pub const FALLBACK_ATTRIBUTE_NAME: &str = "fallback";
-
-// The list of known attributes.
-pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
-    STORAGE_ATTRIBUTE_NAME,
-    DOC_COMMENT_ATTRIBUTE_NAME,
-    TEST_ATTRIBUTE_NAME,
-    INLINE_ATTRIBUTE_NAME,
-    PAYABLE_ATTRIBUTE_NAME,
-    ALLOW_ATTRIBUTE_NAME,
-    CFG_ATTRIBUTE_NAME,
-    DEPRECATED_ATTRIBUTE_NAME,
-    FALLBACK_ATTRIBUTE_NAME,
-];
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AttributeArg {
@@ -117,11 +64,95 @@ pub struct AttributeArg {
 }
 
 impl AttributeArg {
+    /// Returns a mandatory [String] value from `self`,
+    /// or an error if the value does not exist or is not of type [String].
+    ///
+    /// `attribute` is the the parent [Attribute] of `self`.
+    pub fn get_string(&self, handler: &Handler, attribute: &Attribute) -> Result<&String, ErrorEmitted> {
+        match &self.value {
+            Some(literal) => match literal {
+                Literal::String(lit_string) => Ok(&lit_string.parsed),
+                _ => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgValueType {
+                        span: literal.span(),
+                        arg: self.name.clone(),
+                        expected_type: "str",
+                        received_type: literal.friendly_type_name(),
+                    }.into())),
+            },
+            None => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                attribute: attribute.name.clone(),
+                arg: (&self.name).into(),
+                value_span: None,
+            }.into())),
+        }
+    }
+
+    /// Returns an optional [String] value from `self`,
+    /// or an error if the value exists but is not of type [String].
+    pub fn get_string_opt(&self, handler: &Handler) -> Result<Option<&String>, ErrorEmitted> {
+        match &self.value {
+            Some(literal) => match literal {
+                Literal::String(lit_string) => Ok(Some(&lit_string.parsed)),
+                _ => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgValueType {
+                        span: literal.span(),
+                        arg: self.name.clone(),
+                        expected_type: "str",
+                        received_type: literal.friendly_type_name(),
+                    }.into())),
+            },
+            None => Ok(None),
+        }
+    }
+
+    /// Returns a mandatory `bool` value from `self`,
+    /// or an error if the value does not exist or is not of type `bool`.
+    ///
+    /// `attribute` is the the parent [Attribute] of `self`.
+    pub fn get_bool(&self, handler: &Handler, attribute: &Attribute) -> Result<bool, ErrorEmitted> {
+        match &self.value {
+        Some(literal) => match literal {
+                Literal::Bool(lit_bool) => Ok(lit_bool.kind.into()),
+                _ => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgValueType {
+                        span: literal.span(),
+                        arg: self.name.clone(),
+                        expected_type: "bool",
+                        received_type: literal.friendly_type_name(),
+                    }.into())),
+            },
+            None => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                attribute: attribute.name.clone(),
+                arg: (&self.name).into(),
+                value_span: None,
+            }.into())),
+        }
+    }
+
     pub fn is_allow_dead_code(&self) -> bool {
         self.name.as_str() == ALLOW_DEAD_CODE_ARG_NAME
     }
+
     pub fn is_allow_deprecated(&self) -> bool {
         self.name.as_str() == ALLOW_DEPRECATED_ARG_NAME
+    }
+
+    pub fn is_cfg_target(&self) -> bool {
+        self.name.as_str() == CFG_TARGET_ARG_NAME
+    }
+
+    pub fn is_cfg_program_type(&self) -> bool {
+        self.name.as_str() == CFG_PROGRAM_TYPE_ARG_NAME
+    }
+
+    pub fn is_cfg_experimental(&self) -> bool {
+        Feature::CFG.contains(&self.name.as_str())
+    }
+
+    pub fn is_deprecated_note(&self) -> bool {
+        self.name.as_str() == DEPRECATED_NOTE_ARG_NAME
+    }
+
+    pub fn is_test_should_revert(&self) -> bool {
+        self.name.as_str() == TEST_SHOULD_REVERT_ARG_NAME
     }
 }
 
@@ -242,11 +273,10 @@ impl ExpectedArgs {
 ///
 /// We consider the expected types of individual values not to be
 /// the part of the [AttributeArg]'s metadata. Final consumers of
-/// the attribute must always check for the expected type and
-/// emit an error if a wrong type is provided.
-/// TODO-IG! Refer to exact error.
+/// the attribute will check for the expected type and emit an error
+/// if a wrong type is provided.
 ///
-/// E.g., `#[cfg(target = 42)]` must emit an error during the
+/// E.g., `#[cfg(target = 42)]` will emit an error during the
 /// cfg-evaluation.
 pub enum ArgsExpectValues {
     /// Each argument, if any, must have a value specified.
@@ -380,6 +410,23 @@ impl Attribute {
         }
     }
 
+    pub(crate) fn check_args_multiplicity(&self, handler: &Handler) -> Result<(), ErrorEmitted> {
+        if !self.args_multiplicity().contains(self.args.len()) {
+            Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgsMultiplicity {
+                span: if self.args.is_empty() {
+                    self.name.span()
+                } else {
+                    Span::join(self.args.first().unwrap().span(), &self.args.last().unwrap().span)
+                },
+                attribute: self.name.clone(),
+                args_multiplicity: (&self.args_multiplicity()).into(),
+                num_of_args: self.args.len(),
+            }.into()))
+        } else {
+            Ok(())
+        }
+    }
+
     pub(crate) fn can_have_arguments(&self) -> bool {
         let args_multiplicity = self.args_multiplicity();
         args_multiplicity.min != 0 || args_multiplicity.max != 0
@@ -402,7 +449,7 @@ impl Attribute {
                     CFG_PROGRAM_TYPE_ARG_NAME,
                     CFG_TARGET_ARG_NAME,
                 ];
-                args.extend(sway_features::CFG.iter().sorted());
+                args.extend(Feature::CFG.iter().sorted());
                 MustBeIn(args)
             },
             Deprecated => MustBeIn(vec![DEPRECATED_NOTE_ARG_NAME]),
@@ -441,17 +488,17 @@ impl Attribute {
             Payable => false,
             Allow => false,
             Cfg => false,
+            // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+            //       Deprecating the module kind will mean deprecating all its items.
             Deprecated => false,
             Fallback => false,
         }
     }
 
     pub(crate) fn can_annotate_item_kind(&self, item_kind: &ItemKind) -> bool {
-        // TODO-IG!: Check the comments for inner/outer.
-        // TODO: We assume outer annotation here. A separate check that emits not-implemented
-        //       error will be done for all inner attributes, as well as the check that
-        //       inner doc comments are properly placed. Until we fully support inner
-        //       attributes, this approach is sufficient.
+        // TODO: Except for `DocComment`, we assume outer annotation here.
+        //       A separate check emits not-implemented error for all inner attributes.
+        //       Until we fully support inner attributes, this approach is sufficient.
         //       See: https://github.com/FuelLabs/sway/issues/6924
 
         // TODO: Currently we do not support any attributes on `mod`s, including doc comments.
@@ -474,11 +521,31 @@ impl Attribute {
             Payable => false,
             Allow => !matches!(item_kind, ItemKind::Submodule(_)),
             Cfg => !matches!(item_kind, ItemKind::Submodule(_)),
-            // `deprecated` is currently implemented only for structs.
-            Deprecated => matches!(item_kind, ItemKind::Struct(_)),
+            // TODO: Adapt once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+            Deprecated => match item_kind {
+                ItemKind::Submodule(_) => false,
+                ItemKind::Use(_) => false,
+                ItemKind::Struct(_) => true,
+                ItemKind::Enum(_) => true,
+                ItemKind::Fn(_) => true,
+                ItemKind::Trait(_) => false,
+                ItemKind::Impl(_) => false,
+                ItemKind::Abi(_) => false,
+                ItemKind::Const(_) => true,
+                ItemKind::Storage(_) => false,
+                // TODO: Currently, only single configurables can be deprecated.
+                //       Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+                ItemKind::Configurable(_) => false,
+                ItemKind::TypeAlias(_) => false,
+                ItemKind::Error(_, _) => true,
+            },
             Fallback => matches!(item_kind, ItemKind::Fn(_)),
         }
     }
+
+    // TODO: Add `can_annotated_nested_item_kind`, once we properly support nested items.
+    //       E.g., the `#[test]` attribute can annotate module functions (`ItemKind::Fn`),
+    //       but will not be allowed on nested functions.
 
     pub(crate) fn can_annotate_struct_or_enum_field(&self, _struct_or_enum_field: StructOrEnumField) -> bool {
         use AttributeKind::*;
@@ -491,8 +558,7 @@ impl Attribute {
             Payable => false,
             Allow => true,
             Cfg => true,
-            // `deprecated` is currently implemented only for structs.
-            Deprecated => false,
+            Deprecated => true,
             Fallback => false,
         }
     }
@@ -510,7 +576,7 @@ impl Attribute {
             Payable => parent == TraitItemParent::Abi && matches!(item, ItemTraitItem::Fn(..)),
             Allow => true,
             Cfg => true,
-            // `deprecated` is currently implemented only for structs.
+            // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
             Deprecated => false,
             Fallback => false,
         }
@@ -527,8 +593,7 @@ impl Attribute {
             Payable => parent == ImplItemParent::Contract,
             Allow => true,
             Cfg => true,
-            // `deprecated` is currently implemented only for structs.
-            Deprecated => false,
+            Deprecated => !matches!(item, ItemImplItem::Type(_)),
             Fallback => false,
         }
     }
@@ -544,8 +609,7 @@ impl Attribute {
             Payable => abi_or_trait_item == TraitItemParent::Abi,
             Allow => true,
             Cfg => true,
-            // `deprecated` is currently implemented only for structs.
-            Deprecated => false,
+            Deprecated => true,
             Fallback => false,
         }
     }
@@ -561,7 +625,7 @@ impl Attribute {
             Payable => false,
             Allow => true,
             Cfg => true,
-            // `deprecated` is currently implemented only for structs.
+            // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
             Deprecated => false,
             Fallback => false,
         }
@@ -578,13 +642,11 @@ impl Attribute {
             Payable => false,
             Allow => true,
             Cfg => true,
-            // `deprecated` is currently implemented only for structs.
-            Deprecated => false,
+            Deprecated => true,
             Fallback => false,
         }
     }
 
-    // TODO-IG!: Comment.
     pub(crate) fn can_only_annotate_help(&self, target_friendly_name: &str) -> Vec<&'static str> {
         // Using strings to identify targets is not ideal, but there
         // is no real need for a more complex and type-safe identification here.
@@ -626,7 +688,10 @@ impl Attribute {
             ],
             Allow => vec![],
             Cfg => vec![],
-            Deprecated => vec!["\"deprecated\" attribute is currently implemented only for struct declarations."],
+            // TODO: Remove this help lines once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+            Deprecated => vec![
+                "\"deprecated\" attribute is currently not implemented for all elements that could be deprecated.",
+            ],
             Fallback => vec!["\"fallback\" attribute can only annotate module functions in a contract module."],
         };
 
@@ -638,13 +703,35 @@ impl Attribute {
     }
 }
 
-// TODO-IG!: Rename to Attributes and document. Losing the info about enclosing [AttributeDecl].
-/// Stores the attributes associated with the type.
-// TODO-IG!: Comment why not map.
-// TODO-IG!: Fast access to deprecated.
-// TODO-IG!: Comment only once for last-wins approach.
+// TODO-IG!: Rename to Attributes.
+/// Stores the [Attribute]s that annotate an element.
+///
+/// Note that once stored in the [AttributesMap], the [Attribute]s lose
+/// the information about their enclosing [AttributeDecl].
+///
+/// The map can contain erroneous attributes. A typical example s containing
+/// several attributes of an [AttributeKind] that allows only a single attribute
+/// to be applied, like, e.g., `#[deprecated]`, or `#[test]`.
+///
+/// When retrieving such attributes, we follow the last-wins approach
+/// and return the last attribute in the order of declaration.
 #[derive(Default, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AttributesMap(Arc<Vec<Attribute>>);
+pub struct AttributesMap {
+    // Note that we don't need a map here, to store attributes because:
+    //  - Attributes will mostly be empty.
+    //  - Per `AttributeKind` there will usually be just one element.
+    //  - The only exception are comments, that anyhow need to be traversed sequentially
+    //    and will dominate in the list of attributes or mostly be the only attributes.
+    //  - Most of the analysis requires traversing all attributes regardless of the `AttributeKind`.
+    //  - Analysis that is interested in `AttributeKind` anyhow needs to apply a filter first.
+    //  - Attributes are accessed only once, when checking the declaration of the annotated element.
+    /// [Attribute]s, in the order of their declaration.
+    attributes: Arc<Vec<Attribute>>,
+    // `#[deprecated]` is the only attribute requested on call sites,
+    // and we provide a O(1) access to it.
+    /// The index of the last `#[deprecated]` attribute, if any.
+    deprecated_attr_index: Option<usize>,
+}
 
 impl AttributesMap {
     /// Creates a new [AttributesMap].
@@ -682,16 +769,20 @@ impl AttributesMap {
                 attributes.push(attribute);
             }
         }
-        AttributesMap(Arc::new(attributes))
+
+        AttributesMap {
+            deprecated_attr_index: attributes.iter().rposition(|attr| attr.kind == AttributeKind::Deprecated),
+            attributes: Arc::new(attributes)
+        }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.attributes.is_empty()
     }
 
     /// Returns the first attribute, ordered by span, or None if there are no attributes.
     pub fn first(&self) -> Option<&Attribute> {
-        self.0.first()
+        self.attributes.first()
     }
 
     pub fn known_attribute_names(&self) -> &'static [&'static str] {
@@ -699,11 +790,11 @@ impl AttributesMap {
     }
 
     pub fn all(&self) -> impl Iterator<Item = &Attribute> {
-        self.0.iter()
+        self.attributes.iter()
     }
 
     pub fn all_as_slice(&self) -> &[Attribute] {
-        self.0.as_slice()
+        self.attributes.as_slice()
     }
 
     pub fn all_by_kind<F>(&self, predicate: F) -> IndexMap<AttributeKind, Vec<&Attribute>>
@@ -711,14 +802,14 @@ impl AttributesMap {
         F: Fn(&&Attribute) -> bool
     {
         let mut result = IndexMap::<_, Vec<&Attribute>>::new();
-        for attr in self.0.iter().filter(predicate) {
+        for attr in self.attributes.iter().filter(predicate) {
             result.entry(attr.kind).or_default().push(attr);
         }
         result
     }
 
     pub fn of_kind(&self, kind: AttributeKind) -> impl Iterator<Item = &Attribute> {
-        self.0.iter().filter(move |attr| attr.kind == kind)
+        self.attributes.iter().filter(move |attr| attr.kind == kind)
     }
 
     pub fn has_any_of_kind(&self, kind: AttributeKind) -> bool {
@@ -726,7 +817,7 @@ impl AttributesMap {
     }
 
     pub fn unknown(&self) -> impl Iterator<Item = &Attribute> {
-        self.0.iter().filter(|attr| attr.kind == AttributeKind::Unknown)
+        self.attributes.iter().filter(|attr| attr.kind == AttributeKind::Unknown)
     }
 
     /// Returns true if the [AttributesMap] contains any `#[allow]` [Attribute]
@@ -800,9 +891,17 @@ impl AttributesMap {
     /// Returns the `#[deprecated]` [Attribute], or `None` if the
     /// [AttributesMap] does not contain any `#[deprecated]` attributes.
     pub fn deprecated(&self) -> Option<&Attribute> {
+        self
+            .deprecated_attr_index
+            .map(|index| &self.attributes[index])
+    }
+
+    /// Returns the `#[test]` [Attribute], or `None` if the
+    /// [AttributesMap] does not contain any `#[test]` attributes.
+    pub fn test(&self) -> Option<&Attribute> {
         // Last-wins approach.
         self
-            .of_kind(AttributeKind::Deprecated)
+            .of_kind(AttributeKind::Test)
             .last()
     }
 }

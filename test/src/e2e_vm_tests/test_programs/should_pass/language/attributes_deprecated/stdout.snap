@@ -1,0 +1,177 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated --release
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated
+   Compiling library core (sway-lib-core)
+   Compiling contract attributes_deprecated (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated)
+warning: Struct is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:83:14
+   |
+...
+83 |     let ds = DeprecatedStruct { a: 0 };
+   |              ---------------- Struct "DeprecatedStruct" is deprecated.
+   |              ---------------- help: Use "NonDeprecatedStruct" instead.
+   |
+____
+
+warning: Struct field is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:86:17
+   |
+...
+86 |     let _ = nds.deprecated_field;
+   |                 ---------------- Struct field "deprecated_field" is deprecated.
+   |
+____
+
+warning: Function is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:87:9
+   |
+...
+87 |     nds.deprecated_method();
+   |         ----------------- Function "deprecated_method" is deprecated.
+   |
+____
+
+warning: Function is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:88:9
+   |
+...
+88 |     nds.deprecated_assoc_fun();
+   |         -------------------- Function "deprecated_assoc_fun" is deprecated.
+   |
+____
+
+warning: Constant is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:89:34
+   |
+...
+89 |     let _ = NonDeprecatedStruct::DEPRECATED_ASSOC_CONST;
+   |                                  ---------------------- Constant "DEPRECATED_ASSOC_CONST" is deprecated.
+   |
+____
+
+warning: Enum is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:91:13
+   |
+...
+91 |     let _ = DeprecatedEnum::A(0);
+   |             ----------------- Enum "DeprecatedEnum" is deprecated.
+   |             ----------------- help: Use "NonDeprecatedEnum" instead.
+   |
+____
+
+warning: Enum variant is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:92:34
+   |
+...
+92 |     let nde = NonDeprecatedEnum::DeprecatedVariant(0);
+   |                                  ----------------- Enum variant "DeprecatedVariant" is deprecated.
+   |
+____
+
+warning: Function is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:93:9
+   |
+...
+93 |     nde.deprecated_method();
+   |         ----------------- Function "deprecated_method" is deprecated.
+   |
+____
+
+warning: Function is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:94:9
+   |
+...
+94 |     nde.deprecated_assoc_fun();
+   |         -------------------- Function "deprecated_assoc_fun" is deprecated.
+   |
+____
+
+warning: Function is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:98:5
+   |
+...
+98 |     deprecated(ds);
+   |     ---------- Function "deprecated" is deprecated.
+   |     ---------- help: Use "non_deprecated" instead.
+   |
+____
+
+warning: Configurable is deprecated
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:100:13
+    |
+...
+100 |     let _ = DEPRECATED;
+    |             ---------- Configurable "DEPRECATED" is deprecated.
+    |
+____
+
+warning: Function is deprecated
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:106:9
+    |
+...
+106 |     nds.deprecated_to_be_trait_method();
+    |         ----------------------------- Function "deprecated_to_be_trait_method" is deprecated.
+    |
+____
+
+warning: Function is deprecated
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:107:9
+    |
+...
+107 |     nds.deprecated_trait_provided_method();
+    |         -------------------------------- Function "deprecated_trait_provided_method" is deprecated.
+    |
+____
+
+warning: Function is deprecated
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:108:5
+    |
+...
+108 |     NonDeprecatedStruct::deprecated_to_be_trait_assoc_fun();
+    |     ----------------------------------------------------- Function "deprecated_to_be_trait_assoc_fun" is deprecated.
+    |
+____
+
+warning: Function is deprecated
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:109:5
+    |
+...
+109 |     NonDeprecatedStruct::deprecated_trait_provided_assoc_fun();
+    |     -------------------------------------------------------- Function "deprecated_trait_provided_assoc_fun" is deprecated.
+    |
+____
+
+warning: Struct field is deprecated
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:116:31
+    |
+...
+116 |         NonDeprecatedStruct { deprecated_field, .. } => {
+    |                               ---------------- Struct field "deprecated_field" is deprecated.
+    |
+____
+
+warning: Function is deprecated
+ --> <autogenerated>:5:15
+  |
+...
+5 | let _result = __contract_entry_deprecated_to_be_abi_method();
+  |               -------------------------------------------- Function "deprecated_to_be_abi_method" is deprecated.
+  |
+____
+
+warning: Function is deprecated
+ --> <autogenerated>:9:15
+  |
+...
+9 | let _result = __contract_entry_deprecated_abi_provided_method();
+  |               ----------------------------------------------- Function "deprecated_abi_provided_method" is deprecated.
+  |
+____
+
+  Compiled contract "attributes_deprecated" with 18 warnings.
+    Finished release [optimized + fuel] target(s) [1.152 KB] in ???

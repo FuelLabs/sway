@@ -1,125 +1,36 @@
 ---
 source: test/tests/tests.rs
 assertion_line: 115
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values
    Compiling library attributes_invalid_args_values (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values)
-warning: Attribute is unknown
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/unknown_attr.sw:3:3
+error: Attribute argument value is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/cfg_attr_program_type.sw:3:22
   |
 ...
-3 | #[unknown(arg_1, arg_2 = "text", arg_3 = true, arg_4 = 112233)]
-  |   ------- "unknown" attribute is unknown.
-  |
-  = help: Unknown attributes are allowed and can be used by third-party tools,
-  = help: but the compiler ignores them.
-____
-
-warning: Attribute argument is unknown
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/allow_attr.sw:3:48
-  |
-...
-3 | #[allow(dead_code = true, deprecated = "text", unknown_arg_2 = 112233)]
-  |                                                ------------- "unknown_arg_2" is an unknown argument for attribute "allow".
-  |                                                ------------- help: Known arguments are "dead_code" and "deprecated".
-  |
-  = help: Unknown attribute arguments are allowed for some attributes like "allow".
-  = help: They can be used by third-party tools, but the compiler ignores them.
-____
-
-error: Attribute argument must not have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/storage_attr.sw:6:15
-  |
-...
-6 |     #[storage(read = true, write = false)]
-  |               ^^^^ "read" argument of the attribute "storage" must not have a value.
-  |                      ---- help: Remove the value: `= true`.
+3 | #[cfg(program_type = "pedicate")]
+  |                      ^^^^^^^^^^ ""pedicate"" is an invalid value for argument "program_type".
+  |                      ---------- help: Did you mean "predicate"?
+  |                      ---------- help: Valid argument values are:
+  |                      ---------- help:   - contract
+  |                      ---------- help:   - library
+  |                      ---------- help:   - predicate
+  |                      ---------- help:   - script
   |
 ____
 
-error: Attribute argument must not have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/storage_attr.sw:6:28
+error: Attribute argument value is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/cfg_attr_target.sw:3:16
   |
 ...
-6 |     #[storage(read = true, write = false)]
-  |                            ^^^^^ "write" argument of the attribute "storage" must not have a value.
-  |                                    ----- help: Remove the value: `= false`.
+3 | #[cfg(target = "efm")]
+  |                ^^^^^ ""efm"" is an invalid value for argument "target".
+  |                ----- help: Valid argument values are "evm" and "fuel".
   |
 ____
 
-error: Attribute argument must not have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/inline_attr.sw:6:14
-  |
-...
-6 |     #[inline(always = false)]
-  |              ^^^^^^ "always" argument of the attribute "inline" must not have a value.
-  |                       ----- help: Remove the value: `= false`.
-  |
-____
-
-error: Attribute argument must not have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/allow_attr.sw:3:9
-  |
-...
-3 | #[allow(dead_code = true, deprecated = "text", unknown_arg_2 = 112233)]
-  |         ^^^^^^^^^ "dead_code" argument of the attribute "allow" must not have a value.
-  |                     ---- help: Remove the value: `= true`.
-  |
-____
-
-error: Attribute argument must not have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/allow_attr.sw:3:27
-  |
-...
-3 | #[allow(dead_code = true, deprecated = "text", unknown_arg_2 = 112233)]
-  |                           ^^^^^^^^^^ "deprecated" argument of the attribute "allow" must not have a value.
-  |                                        ------ help: Remove the value: `= "text"`.
-  |
-____
-
-error: Attribute argument must not have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/allow_attr.sw:3:48
-  |
-...
-3 | #[allow(dead_code = true, deprecated = "text", unknown_arg_2 = 112233)]
-  |                                                ^^^^^^^^^^^^^ "unknown_arg_2" argument of the attribute "allow" must not have a value.
-  |                                                                ------ help: Remove the value: `= 112233`.
-  |
-____
-
-error: Attribute argument must have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/cfg_attr_program_type.sw:4:7
-  |
-...
-4 | #[cfg(program_type)]
-  |       ^^^^^^^^^^^^ "program_type" argument of the attribute "cfg" must have a value.
-  |       ------------ help: To set the value, use the `=` operator: `program_type = <value>`.
-  |
-____
-
-error: Attribute argument must have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/cfg_attr_target.sw:3:7
-  |
-...
-3 | #[cfg(target)]
-  |       ^^^^^^ "target" argument of the attribute "cfg" must have a value.
-  |       ------ help: To set the value, use the `=` operator: `target = <value>`.
-  |
-____
-
-error: Attribute argument must have a value
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/deprecated_attr.sw:3:14
-  |
-...
-3 | #[deprecated(note)]
-  |              ^^^^ "note" argument of the attribute "deprecated" must have a value.
-  |              ---- help: To set the value, use the `=` operator: `note = <value>`.
-  |
-____
-
-  Aborting due to 9 errors.
+  Aborting due to 2 errors.
 error: Failed to compile attributes_invalid_args_values

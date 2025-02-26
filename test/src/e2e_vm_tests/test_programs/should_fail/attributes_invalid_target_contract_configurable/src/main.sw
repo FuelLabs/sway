@@ -13,7 +13,6 @@ configurable {
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]
-    #[deprecated(invalid)]
     #[fallback(invalid)]
     X: u8 = 0,
 }

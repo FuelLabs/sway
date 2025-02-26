@@ -17,7 +17,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
     type_error::TypeError,
-    warning::{CompileWarning, Warning},
+    warning::{CompileWarning, DeprecatedElement, Warning},
 };
 use sway_types::{Span, Spanned};
 
@@ -406,35 +406,39 @@ impl TyExpression {
             attributes: &AttributesMap,
             span: &Span,
             handler: &Handler,
-            message: &str,
+            deprecated_element: DeprecatedElement,
+            deprecated_element_name: &str,
             allow_deprecated: &mut AllowDeprecatedState,
         ) {
             if allow_deprecated.is_allowed() {
                 return;
             }
 
-            if let Some(v) = attributes.deprecated()
-            {
-                let mut message = message.to_string();
+            let Some(deprecated_attr) = attributes.deprecated() else {
+                return;
+            };
 
-                if let Some(sway_ast::Literal::String(s)) = v
-                    .args
-                    .iter()
-                    // TODO-IG!: Use constant.
-                    // TODO-IG!: Check for attribute type.
-                    // TODO-IG!: Create diagnostics for UsingDeprecated. Show where is declared as deprecated.
-                    .find(|x| x.name.as_str() == "note")
-                    .and_then(|x| x.value.as_ref())
-                {
-                    message.push_str(": ");
-                    message.push_str(s.parsed.as_str());
-                }
-
-                handler.emit_warn(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::UsingDeprecated { message },
+            let help = deprecated_attr
+                .args
+                .iter()
+                // Last "note" argument wins ;-)
+                .rfind(|arg| arg.is_deprecated_note())
+                .map(|note_arg| match note_arg.get_string_opt(handler) {
+                    Ok(note) => note.map(|note| note.clone()),
+                    // We treat invalid values here as not having the "note" provided.
+                    // Attribute checking will emit errors.
+                    Err(_) => None, 
                 })
-            }
+                .flatten();
+
+            handler.emit_warn(CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::UsingDeprecated {
+                    deprecated_element,
+                    deprecated_element_name: deprecated_element_name.to_string(),
+                    help,
+                },
+            })
         }
 
         match &self.expression {
@@ -445,7 +449,7 @@ impl TyExpression {
                 arguments,
                 ..
             } => {
-                for (_, expr) in arguments.iter() {
+                for (_, expr) in arguments {
                     expr.check_deprecated(engines, handler, allow_deprecated);
                 }
 
@@ -458,7 +462,8 @@ impl TyExpression {
                             &s.attributes,
                             &call_path.span(),
                             handler,
-                            "deprecated struct",
+                            DeprecatedElement::Struct,
+                            s.call_path.suffix.as_str(),
                             allow_deprecated,
                         );
                     }
@@ -468,7 +473,8 @@ impl TyExpression {
                     &fn_ty.attributes,
                     &call_path.span(),
                     handler,
-                    "deprecated function",
+                    DeprecatedElement::Function,
+                    fn_ty.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
@@ -481,7 +487,8 @@ impl TyExpression {
                     &decl.attributes,
                     span,
                     handler,
-                    "deprecated constant",
+                    DeprecatedElement::Const,
+                    decl.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
@@ -490,18 +497,19 @@ impl TyExpression {
                     &decl.attributes,
                     span,
                     handler,
-                    "deprecated configurable",
+                    DeprecatedElement::Configurable,
+                    decl.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
-                for e in fields.iter() {
+                for e in fields {
                     e.check_deprecated(engines, handler, allow_deprecated);
                 }
             }
             TyExpressionVariant::ArrayExplicit { contents, .. } => {
-                for e in contents.iter() {
+                for e in contents {
                     e.check_deprecated(engines, handler, allow_deprecated);
                 }
             }
@@ -523,7 +531,8 @@ impl TyExpression {
                     &struct_decl.attributes,
                     instantiation_span,
                     handler,
-                    "deprecated struct",
+                    DeprecatedElement::Struct,
+                    struct_decl.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
@@ -533,11 +542,10 @@ impl TyExpression {
             TyExpressionVariant::FunctionParameter => {}
             TyExpressionVariant::MatchExp {
                 desugared,
-                //scrutinees,
+                // TODO: We must also check scrutinees.
                 ..
             } => {
                 desugared.check_deprecated(engines, handler, allow_deprecated);
-                // TODO: check scrutinees if necessary
             }
             TyExpressionVariant::IfExp {
                 condition,
@@ -562,7 +570,8 @@ impl TyExpression {
                     &field_to_access.attributes,
                     field_instantiation_span,
                     handler,
-                    "deprecated struct field",
+                    DeprecatedElement::StructField,
+                    field_to_access.name.as_str(),
                     allow_deprecated,
                 );
             }
@@ -574,14 +583,17 @@ impl TyExpression {
                 tag,
                 contents,
                 variant_instantiation_span,
+                call_path_binding,
                 ..
             } => {
                 let enum_ty = engines.de().get(enum_ref);
                 emit_warning_if_deprecated(
                     &enum_ty.attributes,
-                    variant_instantiation_span,
+                    // variant_instantiation_span,
+                    &call_path_binding.span,
                     handler,
-                    "deprecated enum",
+                    DeprecatedElement::Enum,
+                    enum_ty.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
                 if let Some(variant_decl) = enum_ty.variants.get(*tag) {
@@ -589,7 +601,8 @@ impl TyExpression {
                         &variant_decl.attributes,
                         variant_instantiation_span,
                         handler,
-                        "deprecated enum variant",
+                        DeprecatedElement::EnumVariant,
+                        variant_decl.name.as_str(),
                         allow_deprecated,
                     );
                 }

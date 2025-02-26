@@ -62,6 +62,7 @@ trait T {
     #[allow(dead_code, deprecated)]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
+    #[deprecated(note = "note")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
     fn trait_provided_fn() {}
     /// Comment.
@@ -70,6 +71,7 @@ trait T {
     #[inline(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated()]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -91,6 +93,7 @@ struct S {
     /// Comment.
     /// Comment.
     #[allow(dead_code, deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -108,6 +111,7 @@ impl S {
     /// Comment.
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -118,6 +122,7 @@ impl S {
     #[inline(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -128,6 +133,7 @@ impl S {
     #[inline(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -154,6 +160,7 @@ impl T for S {
     /// Comment.
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -164,6 +171,7 @@ impl T for S {
     #[inline(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -174,6 +182,7 @@ impl T for S {
     #[inline(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -184,6 +193,7 @@ impl T for S {
 /// Comment.
 #[allow(dead_code)]
 #[allow(deprecated)]
+#[deprecated(note = "note")]
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -192,6 +202,7 @@ enum E {
     /// Comment.
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -210,6 +221,7 @@ impl E {
     /// Comment.
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -220,6 +232,7 @@ impl E {
     #[inline(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -230,6 +243,7 @@ impl E {
     #[inline(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -256,6 +270,7 @@ impl T for E {
     /// Comment.
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -266,6 +281,7 @@ impl T for E {
     #[inline(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -276,6 +292,7 @@ impl T for E {
     #[inline(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]

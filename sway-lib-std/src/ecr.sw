@@ -51,8 +51,7 @@ pub enum EcRecoverError {
 ///     assert(public_key.bits()[1] == pub_lo);
 /// }
 /// ```
-// TODO: Uncomment the `deprecated` attribute once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-// #[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "`std::ecr` has been replaced by `std::crypto`, and is no longer maintained.")]
 pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
     let was_error = asm(
@@ -106,8 +105,7 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 ///     assert(public_key.bits()[1] == pub_lo);
 /// }
 /// ```
-// TODO: Uncomment the `deprecated` attribute once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-// #[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "`std::ecr` has been replaced by `std::crypto`, and is no longer maintained.")]
 pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
     let was_error = asm(
@@ -161,8 +159,7 @@ pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverE
 ///     assert(verified);
 /// }
 /// ```
-// TODO: Uncomment the `deprecated` attribute once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-// #[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "`std::ecr` has been replaced by `std::crypto`, and is no longer maintained.")]
 pub fn ed_verify(public_key: b256, signature: B512, msg: Bytes) -> Result<bool, EcRecoverError> {
     let len = msg.len();
 
@@ -219,7 +216,7 @@ pub fn ed_verify(public_key: b256, signature: B512, msg: Bytes) -> Result<bool, 
 ///     assert(result_address == address);
 /// }
 /// ```
-#[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "`std::ecr` has been replaced by `std::crypto`, and is no longer maintained.")]
 #[allow(deprecated)]
 pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let pub_key_result = ec_recover(signature, msg_hash);
@@ -266,7 +263,7 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
 ///     assert(result_address == address);
 /// }
 /// ```
-#[deprecated(note = "std::ecr has been replaced by std::crypto, and is no longer maintained")]
+#[deprecated(note = "`std::ecr` has been replaced by `std::crypto`, and is no longer maintained.")]
 #[allow(deprecated)]
 pub fn ec_recover_address_r1(signature: B512, msg_hash: b256) -> Result<Address, EcRecoverError> {
     let pub_key_result = ec_recover_r1(signature, msg_hash);

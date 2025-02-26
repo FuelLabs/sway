@@ -17,7 +17,6 @@ impl S {
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]
-    #[deprecated(invalid)]
     #[fallback(invalid)]
     const ASSOC_CONST: u8 = 0;
 }

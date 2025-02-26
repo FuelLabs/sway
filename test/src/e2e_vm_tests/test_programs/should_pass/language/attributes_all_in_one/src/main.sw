@@ -83,6 +83,7 @@ configurable {
     /// Comment.
     #[allow(dead_code)]
     #[allow(deprecated)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     /// Comment.
     #[cfg(program_type = "contract")]
@@ -127,6 +128,7 @@ abi Abi {
     #[payable]
     #[allow(deprecated)]
     #[allow(dead_code)]
+    #[deprecated(note = "note")]
     /// Comment.
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
@@ -152,6 +154,7 @@ impl Abi for Contract {
     #[payable]
     /// Comment.
     #[allow(deprecated, dead_code)]
+    #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -161,6 +164,7 @@ impl Abi for Contract {
     /// Comment.
     /// Comment.
     #[allow(deprecated, dead_code)]
+    #[deprecated(note = "note")]
     /// Comment.
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
@@ -173,6 +177,7 @@ impl Abi for Contract {
 #[storage(read)]
 #[inline(always)]
 #[allow(deprecated, dead_code)]
+#[deprecated(note = "note")]
 /// Comment.
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
@@ -186,6 +191,7 @@ fn fallback() {}
 #[inline(never)]
 #[allow(deprecated)]
 #[allow(dead_code)]
+#[deprecated(note = "note")]
 /// Comment.
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
@@ -199,6 +205,7 @@ fn module_function() {}
 #[test]
 #[allow(deprecated)]
 #[allow(dead_code)]
+#[deprecated(note = "note")]
 /// Comment.
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
@@ -212,6 +219,7 @@ fn test_function() {}
 #[test(should_revert)]
 #[allow(deprecated)]
 #[allow(dead_code)]
+#[deprecated(note = "note")]
 /// Comment.
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
@@ -226,6 +234,7 @@ fn test_function_should_revert() {}
 /// Comment.
 #[allow(deprecated)]
 #[allow(dead_code)]
+#[deprecated(note = "note")]
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
@@ -235,6 +244,7 @@ fn test_function_should_revert_with_code() {}
 /// Comment.
 /// Comment.
 #[allow(deprecated, dead_code)]
+#[deprecated(note = "note")]
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]

@@ -8,7 +8,6 @@ use crate::type_error::TypeError;
 use core::fmt;
 use std::fmt::Formatter;
 use std::usize;
-use sway_types::constants::STORAGE_ATTRIBUTE_NAME;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
@@ -809,9 +808,9 @@ pub enum CompileError {
     },
     #[error(
         "The function \"{fn_name}\" in {interface_name} is pure, but this \
-        implementation is not.  The \"{STORAGE_ATTRIBUTE_NAME}\" annotation must be \
+        implementation is not.  The \"storage\" annotation must be \
         removed, or the trait declaration must be changed to \
-        \"#[{STORAGE_ATTRIBUTE_NAME}({attrs})]\"."
+        \"#[storage({attrs})]\"."
     )]
     TraitDeclPureImplImpure {
         fn_name: Ident,
@@ -821,7 +820,7 @@ pub enum CompileError {
     },
     #[error(
         "Storage attribute access mismatch. The function \"{fn_name}\" in \
-        {interface_name} requires the storage attribute(s) #[{STORAGE_ATTRIBUTE_NAME}({attrs})]."
+        {interface_name} requires the storage attribute(s) #[storage({attrs})]."
     )]
     TraitImplPurityMismatch {
         fn_name: Ident,
@@ -833,7 +832,7 @@ pub enum CompileError {
     ImpureInNonContract { span: Span },
     #[error(
         "This function performs storage access but does not have the required storage \
-        attribute(s). Try adding \"#[{STORAGE_ATTRIBUTE_NAME}({suggested_attributes})]\" to the function \
+        attribute(s). Try adding \"#[storage({suggested_attributes})]\" to the function \
         declaration."
     )]
     StorageAccessMismatched {
@@ -2822,6 +2821,43 @@ impl ToDiagnostic for CompileError {
                         ],
                         help: vec![],
                     },
+                    ConvertParseTreeError::InvalidAttributeArgValueType { span, arg, expected_type, received_type } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Attribute argument value has a wrong type".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{arg}\" argument must have a value of type \"{expected_type}\".")
+                        ),
+                        hints: vec![
+                            Hint::help(
+                                source_engine,
+                                span.clone(),
+                                format!("This value has type \"{received_type}\"."),
+                            )
+                        ],
+                        help: vec![],
+                    },
+                    ConvertParseTreeError::InvalidAttributeArgValue { span, arg, expected_values } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Attribute argument value is invalid".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{}\" is an invalid value for argument \"{arg}\".", span.as_str())
+                        ),
+                        hints: {
+                            let mut hints = vec![did_you_mean_help(source_engine, span.clone(), expected_values, 2, Enclosing::DoubleQuote)];
+                            if expected_values.len() == 1 {
+                                hints.push(Hint::help(source_engine, span.clone(), format!("The only valid argument value is \"{}\".", expected_values[0])));
+                            } else if expected_values.len() <= 3 {
+                                hints.push(Hint::help(source_engine, span.clone(), format!("Valid argument values are {}.", sequence_to_str(&expected_values, Enclosing::DoubleQuote, usize::MAX))));
+                            } else {
+                                hints.push(Hint::help(source_engine, span.clone(), "Valid argument values are:".to_string()));
+                                hints.append(&mut Hint::multi_help(source_engine, span, sequence_to_list(&expected_values, Indent::Single, usize::MAX)))
+                            }
+                            hints
+                        },
+                        help: vec![],
+                    },
                     _ => Diagnostic {
                                 // TODO: Temporary we use `self` here to achieve backward compatibility.
                                 //       In general, `self` must not be used. All the values for the formatting
@@ -2886,7 +2922,7 @@ impl ToDiagnostic for CompileError {
                     ))
                     .collect(),
                 help: vec![
-                    format!("Consider declaring the function \"{}\" as `#[{STORAGE_ATTRIBUTE_NAME}({suggested_attributes})]`,",
+                    format!("Consider declaring the function \"{}\" as `#[storage({suggested_attributes})]`,",
                         span.as_str()
                     ),
                     format!("or removing the {} from the function body.",

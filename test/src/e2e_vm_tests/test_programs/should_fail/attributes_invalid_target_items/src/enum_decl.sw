@@ -5,7 +5,6 @@ library;
 #[test(invalid)]
 //! Invalid inner comment.
 #[payable(invalid)]
-#[deprecated(invalid)]
 #[fallback(invalid)]
 enum E {
     #[storage(invalid)]
@@ -13,7 +12,6 @@ enum E {
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]
-    #[deprecated(invalid)]
     #[fallback(invalid)]
     A: (),
 }

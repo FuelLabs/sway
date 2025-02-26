@@ -1,7 +1,6 @@
 ---
 source: test/tests/tests.rs
 assertion_line: 115
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_cfg_arg_with_invalid_item
 exit status: 1
@@ -26,6 +25,7 @@ error: Attribute argument is invalid
   |       - help: Valid arguments are:
   |       - help:   - program_type
   |       - help:   - target
+  |       - help:   - experimental_const_generics
   |       - help:   - experimental_error_type
   |       - help:   - experimental_new_encoding
   |       - help:   - experimental_partial_eq

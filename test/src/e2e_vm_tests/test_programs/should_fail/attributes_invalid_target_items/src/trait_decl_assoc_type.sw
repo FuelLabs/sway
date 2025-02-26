@@ -10,4 +10,3 @@ trait T {
     #[fallback(invalid)]
     type Type;
 } 
-

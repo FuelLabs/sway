@@ -491,7 +491,6 @@ impl TyFunctionDecl {
 
     /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
     pub fn is_test(&self) -> bool {
-        // TODO-IG!: Check this and replace with TyFunctionDeclKind::Test.
         //TODO match kind to Test
         self.attributes.has_any_of_kind(AttributeKind::Test)
     }

@@ -50,7 +50,7 @@ pub struct LitBool {
     pub kind: LitBoolType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum LitBoolType {
     True,
     False,
@@ -71,6 +71,35 @@ pub enum Literal {
     Char(LitChar),
     Int(LitInt),
     Bool(LitBool),
+}
+
+impl Literal {
+    /// Friendly type name string of the [Literal] used for various reportings.
+    pub fn friendly_type_name(&self) -> &'static str {
+        use Literal::*;
+        match self {
+            String(_) => "str",
+            Char(_) => "char",
+            Int(lit_int) => {
+                if lit_int.is_generated_b256 {
+                    "b256"
+                } else {
+                    lit_int.ty_opt.as_ref().map_or("numeric", |(ty, _)| match ty {
+                        LitIntType::U8 => "u8",
+                        LitIntType::U16 => "u16",
+                        LitIntType::U32 => "u32",
+                        LitIntType::U64 => "u64",
+                        LitIntType::U256 => "u256",
+                        LitIntType::I8 => "i8",
+                        LitIntType::I16 => "i16",
+                        LitIntType::I32 => "i32",
+                        LitIntType::I64 => "i64",
+                    })
+                }
+            },
+            Bool(_) => "bool",
+        }
+    }
 }
 
 impl Spanned for LitString {

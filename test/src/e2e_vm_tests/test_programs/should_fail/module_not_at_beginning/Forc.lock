@@ -1,13 +1,3 @@
 [[package]]
-name = "core"
-source = "path+from-root-3265AAAF89F22298"
-
-[[package]]
 name = "module_not_at_beginning"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-3265AAAF89F22298"
-dependencies = ["core"]

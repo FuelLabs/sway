@@ -90,7 +90,6 @@ impl Spanned for Comment {
     }
 }
 
-// TODO-IG!: Comment.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum DocStyle {
     Outer,

@@ -1,7 +1,6 @@
 ---
 source: test/tests/tests.rs
 assertion_line: 115
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity
 exit status: 1
@@ -169,7 +168,7 @@ error: Number of attribute arguments is invalid
 ____
 
 error: Number of attribute arguments is invalid
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/cfg_attr.sw:6:3
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/cfg_attr_no_args.sw:6:3
   |
 ...
 6 | #[cfg]
@@ -178,19 +177,10 @@ error: Number of attribute arguments is invalid
 ____
 
 error: Number of attribute arguments is invalid
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/cfg_attr.sw:7:3
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/cfg_attr_two_args.sw:6:7
   |
 ...
-7 | #[cfg()]
-  |   ^^^ "cfg" attribute must have exactly one argument, but has none.
-  |
-____
-
-error: Number of attribute arguments is invalid
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/cfg_attr.sw:8:7
-  |
-...
-8 | #[cfg(target = "fuel", program_type = "library")]
+6 | #[cfg(target = "fuel", program_type = "library")]
   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "cfg" attribute must have exactly one argument, but has two.
   |
 ____
@@ -213,5 +203,5 @@ error: Number of attribute arguments is invalid
   |
 ____
 
-  Aborting due to 17 errors.
+  Aborting due to 16 errors.
 error: Failed to compile attributes_invalid_args_multiplicity

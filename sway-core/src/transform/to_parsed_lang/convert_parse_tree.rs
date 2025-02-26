@@ -9,7 +9,6 @@ use either::Either;
 use itertools::Itertools;
 use sway_ast::{
     assignable::ElementAccess,
-    attribute::Annotated,
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
     generics::GenericParam,
     ty::TyTupleDescriptor,
@@ -25,7 +24,6 @@ use sway_ast::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
 use sway_features::ExperimentalFeatures;
-use sway_ir::value;
 use sway_types::{
     integer_bits::IntegerBits,
     BaseIdent,
@@ -67,33 +65,23 @@ pub fn module_to_sway_parse_tree(
     let span = module.span();
     let root_nodes = {
         let mut root_nodes: Vec<AstNode> = vec![];
-        let mut prev_item: Option<Annotated<ItemKind>> = None;
+        let mut item_can_be_submodule = true;
         for item in module.items {
+            let previous_item_is_submodule = matches!(item.value, ItemKind::Submodule(_));
             let ast_nodes = item_to_ast_nodes(
                 context,
                 handler,
                 engines,
-                item.clone(),
-                true,
-                prev_item,
+                item,
+                item_can_be_submodule,
                 None,
             )?;
             root_nodes.extend(ast_nodes);
-            prev_item = Some(item);
+            item_can_be_submodule = previous_item_is_submodule;
         }
         root_nodes
     };
     Ok(ParseTree { span, root_nodes })
-}
-
-fn ast_node_is_test_fn(engines: &Engines, node: &AstNode) -> bool {
-    if let AstNodeContent::Declaration(Declaration::FunctionDeclaration(decl_id)) = node.content {
-        let decl = engines.pe().get_function(&decl_id);
-        if decl.attributes.has_any_of_kind(AttributeKind::Test) {
-            return true;
-        }
-    }
-    false
 }
 
 pub fn item_to_ast_nodes(
@@ -101,9 +89,11 @@ pub fn item_to_ast_nodes(
     handler: &Handler,
     engines: &Engines,
     item: Item,
-    // TODO-IG!: Remove `is_root` and `prev_item`. Replace with: `item_can_be_submodule`.
-    is_root: bool,
-    prev_item: Option<Annotated<ItemKind>>,
+    // Submodules (`mod`) must be at the beginning of a file before any other items.
+    // If an other non-`mod` item already appeared before this `item`,
+    // or if the `item` is not a module item at all, but a nested one,
+    // this parameter will be false.
+    item_can_be_submodule: bool,
     override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item.attribute_list, |attr| attr.can_annotate_item_kind(&item.value), item.value.friendly_name_with_acronym());
@@ -120,24 +110,12 @@ pub fn item_to_ast_nodes(
     let span = item.span();
     let contents = match item.value {
         ItemKind::Submodule(submodule) => {
-            // Check that `mod` comes after only other `mod`s
-            let emit_expected_dep_at_beginning = || {
-                let error = ConvertParseTreeError::ExpectedModuleAtBeginning {
+            if !item_can_be_submodule {
+                return Err(handler.emit_err((ConvertParseTreeError::ExpectedModuleAtBeginning {
                     span: submodule.span(),
-                };
-                handler.emit_err(error.into());
-            };
-            match prev_item {
-                Some(Annotated {
-                    value: ItemKind::Submodule(_),
-                    ..
-                }) => (),
-                Some(_) => emit_expected_dep_at_beginning(),
-                None => (),
+                }).into()));
             }
-            if !is_root {
-                emit_expected_dep_at_beginning();
-            }
+
             let incl_stmt = submodule_to_include_statement(&submodule);
             vec![AstNodeContent::IncludeStatement(incl_stmt)]
         }
@@ -366,7 +344,8 @@ fn use_tree_to_use_statements(
     }
 }
 
-// TODO-IG!: Change all usages and remove `emit_all`.
+// TODO: Remove all usages of `emit_all` and replace the manual collection of errors with
+//       the `Handler::scope`.
 fn emit_all(handler: &Handler, errors: Vec<ConvertParseTreeError>) -> Option<ErrorEmitted> {
     errors
         .into_iter()
@@ -380,8 +359,6 @@ fn item_struct_to_struct_declaration(
     item_struct: ItemStruct,
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
-    // TODO-IG!: Use handler.scope() and remove `errors`.
-    // FIXME(Centril): We shouldn't be collecting into a temporary  `errors` here. Recover instead!
     let span = item_struct.span();
     let fields = item_struct
         .fields
@@ -564,7 +541,7 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let (type_parameters, _) = generic_params_opt_to_type_parameters_with_parent(
+let (type_parameters, _) = generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
         engines,
@@ -574,7 +551,7 @@ pub fn item_fn_to_function_declaration(
         parent_where_clause_opt,
     )?;
     let fn_decl = FunctionDeclaration {
-        purity: get_attributed_purity(context, handler, &attributes)?,
+        purity: attributes.purity(),
         attributes,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
@@ -601,15 +578,6 @@ pub fn item_fn_to_function_declaration(
     };
     let decl_id = engines.pe().insert(fn_decl);
     Ok(decl_id)
-}
-
-// TODO-IG!: Remove whole function.
-fn get_attributed_purity(
-    _context: &mut Context,
-    handler: &Handler,
-    attributes: &AttributesMap,
-) -> Result<Purity, ErrorEmitted> {
-    Ok(attributes.purity())
 }
 
 fn where_clause_to_trait_constraints(
@@ -1708,7 +1676,7 @@ fn fn_signature_to_trait_fn(
     let trait_fn = TraitFn {
         name: fn_signature.name.clone(),
         span: fn_signature.span(),
-        purity: get_attributed_purity(context, handler, &attributes)?,
+        purity: attributes.purity(),
         attributes,
         parameters: fn_args_to_function_parameters(
             context,
@@ -2753,17 +2721,7 @@ fn statement_to_ast_nodes(
             statement_let_to_ast_nodes(context, handler, engines, statement_let)?
         }
         Statement::Item(item) => {
-            let nodes = item_to_ast_nodes(context, handler, engines, item, false, None, None)?;
-            nodes.iter().try_fold((), |res, node| {
-                if ast_node_is_test_fn(engines, node) {
-                    let span = node.span.clone();
-                    let error = ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span };
-                    Err(handler.emit_err(error.into()))
-                } else {
-                    Ok(res)
-                }
-            })?;
-            nodes
+            item_to_ast_nodes(context, handler, engines, item, false, None)?
         }
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
@@ -4843,116 +4801,74 @@ fn error_if_self_param_is_not_allowed(
     Ok(())
 }
 
-// TODO-IG!: Comment that all the node is excluded incl. attributes.
-/// Walks all the cfg attributes in a map, evaluating them
+/// Walks all the `#[cfg]` attributes in `attributes`, evaluating them
 /// and returning false if any evaluated to false.
+///
+/// If the cfg-evaluation returns false, the annotated elements are excluded
+/// from the tree, including their annotations. This is important, because, if
+/// any `#[cfg]` evaluates to false, any error in the annotations will be ignored.
+///
+/// This also implies that all `#[cfg]` attributes must be valid. The evaluation
+/// returns error if that's not the case.
 pub fn cfg_eval(
     context: &Context,
     handler: &Handler,
-    attrs_map: &AttributesMap,
+    attributes: &AttributesMap,
     experimental: ExperimentalFeatures,
 ) -> Result<bool, ErrorEmitted> {
-    // TODO-IG!: Rewrite `cfg_eval`.
-    for cfg_attr in attrs_map.of_kind(AttributeKind::Cfg) {
-        for arg in &cfg_attr.args {
-            match arg.name.as_str() {
-                CFG_TARGET_ARG_NAME => {
-                    if let Some(value) = &arg.value {
-                        if let sway_ast::Literal::String(value_str) = value {
-                            if let Ok(target) = BuildTarget::from_str(value_str.parsed.as_str())
-                            {
-                                if target != context.build_target() {
-                                    return Ok(false);
-                                }
-                            } else {
-                                let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
-                                    span: value.span(),
-                                    value: value.span().str(),
-                                };
-                                return Err(handler.emit_err(error.into()));
-                            }
-                        } else {
-                            let error = ConvertParseTreeError::InvalidCfgTargetArgValue {
-                                span: value.span(),
-                                value: value.span().str(),
-                            };
-                            return Err(handler.emit_err(error.into()));
-                        }
-                    } else {
-                        let error = ConvertParseTreeError::InvalidAttributeArgExpectsValue {
-                            attribute: cfg_attr.name.clone(),
-                            arg: (&arg.name).into(),
-                            value_span: arg.value.as_ref().map(|literal| literal.span())
-                        };
-                        return Err(handler.emit_err(error.into()));
-                    }
+    for cfg_attr in attributes.of_kind(AttributeKind::Cfg) {
+
+        cfg_attr.check_args_multiplicity(handler)?;
+        assert_eq!(
+            (1usize, 1usize), (&cfg_attr.args_multiplicity()).into(),
+            "`#[cfg]` attribute must have argument multiplicity of exactly one"
+        );
+
+        let arg = &cfg_attr.args[0];
+        if arg.is_cfg_target() {
+            let cfg_target_val = arg.get_string(handler, cfg_attr)?;
+            if let Ok(cfg_target) = BuildTarget::from_str(cfg_target_val) {
+                if cfg_target != context.build_target() {
+                    return Ok(false);
                 }
-                CFG_PROGRAM_TYPE_ARG_NAME => {
-                    if let Some(value) = &arg.value {
-                        if let sway_ast::Literal::String(value_str) = value {
-                            if let Ok(program_type) =
-                                TreeType::from_str(value_str.parsed.as_str())
-                            {
-                                if program_type != context.program_type().unwrap() {
-                                    return Ok(false);
-                                }
-                            } else {
-                                let error =
-                                    ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
-                                        span: value.span(),
-                                        value: value.span().str(),
-                                    };
-                                return Err(handler.emit_err(error.into()));
-                            }
-                        } else {
-                            let error = ConvertParseTreeError::InvalidCfgProgramTypeArgValue {
-                                span: value.span(),
-                                value: value.span().str(),
-                            };
-                            return Err(handler.emit_err(error.into()));
-                        }
-                    } else {
-                        let error = ConvertParseTreeError::InvalidAttributeArgExpectsValue {
-                            attribute: cfg_attr.name.clone(),
-                            arg: (&arg.name).into(),
-                            value_span: arg.value.as_ref().map(|literal| literal.span())
-                        };
-                        return Err(handler.emit_err(error.into()));
-                    }
-                }
-                // Check if this is a known experimental feature
-                cfg_experimental
-                    if sway_features::CFG.iter().any(|x| *x == cfg_experimental) =>
-                {
-                    match &arg.value {
-                        Some(sway_ast::Literal::Bool(v)) => {
-                            let is_true =
-                                matches!(v.kind, sway_ast::literal::LitBoolType::True);
-                            return Ok(experimental
-                                .is_enabled_for_cfg(cfg_experimental)
-                                .unwrap()
-                                == is_true);
-                        }
-                        _ => {
-                            let error =
-                                ConvertParseTreeError::UnexpectedValueForCfgExperimental {
-                                    span: arg.span(),
-                                };
-                            return Err(handler.emit_err(error.into()));
-                        }
-                    }
-                }
-                _ => {
-                    return Err(handler.emit_err(
-                        ConvertParseTreeError::InvalidAttributeArg {
-                            attribute: cfg_attr.name.clone(),
-                            arg: (&arg.name).into(),
-                            expected_args: cfg_attr.expected_args().args_names(),
-                        }
-                        .into(),
-                    ));
-                }
+            } else {
+                return Err(handler.emit_err((ConvertParseTreeError::InvalidAttributeArgValue {
+                    span: arg.value.as_ref().expect("`cfg_target` is the value of `arg`").span(),
+                    arg: arg.name.clone(),
+                    expected_values: BuildTarget::CFG.iter().map(|cfg| *cfg).collect(),
+                }).into()));
             }
+        } else if arg.is_cfg_program_type() {
+            let cfg_program_type_val = arg.get_string(handler, cfg_attr)?;
+            if let Ok(cfg_program_type) = TreeType::from_str(cfg_program_type_val)
+            {
+                if cfg_program_type != context.program_type().expect("at this compilation stage the `program_type` is defined") {
+                    return Ok(false);
+                }
+            } else {
+                return Err(handler.emit_err((ConvertParseTreeError::InvalidAttributeArgValue {
+                    span: arg.value.as_ref().expect("`cfg_target` is the value of `arg`").span(),
+                    arg: arg.name.clone(),
+                    expected_values: TreeType::CFG.iter().map(|cfg| *cfg).collect(),
+                }).into()));
+            }
+        } else if arg.is_cfg_experimental() {
+            let cfg_experimental_val = arg.get_bool(handler, cfg_attr)?;
+            let experimental_enabled = experimental
+                .is_enabled_for_cfg(arg.name.as_str())
+                .expect("`arg` is a known `cfg` experimental argument");
+            if cfg_experimental_val != experimental_enabled {
+                return Ok(false);
+            }
+        } else {
+            return Err(handler.emit_err(
+                ConvertParseTreeError::InvalidAttributeArg {
+                    attribute: cfg_attr.name.clone(),
+                    arg: (&arg.name).into(),
+                    expected_args: cfg_attr.expected_args().args_names(),
+                }
+                .into(),
+            ));
         }
     }
 

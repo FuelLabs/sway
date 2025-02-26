@@ -97,29 +97,14 @@ pub enum ConvertParseTreeError {
     DuplicateParameterIdentifier { name: Ident, span: Span },
     #[error("self parameter is not allowed for {fn_kind}")]
     SelfParameterNotAllowedForFn { fn_kind: String, span: Span },
-    // TODO-IG!: Remove.
-    #[error("test functions are only allowed at module level")]
-    TestFnOnlyAllowedAtModuleLevel { span: Span },
     #[error("`impl Self` for contracts is not supported")]
     SelfImplForContract { span: Span },
-    // TODO-IG!: Remove.
     #[error("Expected module at the beginning before any other items.")]
     ExpectedModuleAtBeginning { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
     #[error("Constant requires type ascription.")]
     ConstantRequiresTypeAscription { span: Span },
-    // TODO-IG!: Remove all Cfg specific errors.
-    #[error("Invalid value \"{value}\"")]
-    InvalidCfgTargetArgValue { span: Span, value: String },
-    #[error("Expected a value for the target argument")]
-    ExpectedCfgTargetArgValue { span: Span },
-    #[error("Invalid value \"{value}\"")]
-    InvalidCfgProgramTypeArgValue { span: Span, value: String },
-    #[error("Expected a value for the program_type argument")]
-    ExpectedCfgProgramTypeArgValue { span: Span },
-    #[error("Expected \"true\" or \"false\" for experimental conditional compilation")]
-    UnexpectedValueForCfgExperimental { span: Span },
     #[error("Unknown type name \"self\". A self type with a similar name exists (notice the capitalization): `Self`")]
     UnknownTypeNameSelf { span: Span },
     #[error("{}", match get_attribute_type(attribute) {
@@ -141,6 +126,10 @@ pub enum ConvertParseTreeError {
         }
     )]
     InvalidAttributeArgExpectsValue { attribute: Ident, arg: IdentUnique, value_span: Option<Span> },
+    #[error("\"{arg}\" argument must have a value of type \"{expected_type}\".")]
+    InvalidAttributeArgValueType { span: Span, arg: Ident, expected_type: &'static str, received_type: &'static str },
+    #[error("{} is an invalid value for argument \"{arg}\". Valid values are: {}.", span.as_str(), sequence_to_str(&expected_values, Enclosing::DoubleQuote, usize::MAX))]
+    InvalidAttributeArgValue { span: Span, arg: Ident, expected_values: Vec<&'static str> },
 }
 
 pub(crate) enum AttributeType {
@@ -229,22 +218,18 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
-            ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedModuleAtBeginning { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
-            ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
-            ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
-            ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
-            ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
-            ConvertParseTreeError::UnexpectedValueForCfgExperimental { span } => span.clone(),
             ConvertParseTreeError::UnknownTypeNameSelf { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeTarget { span, .. } => span.clone(),
             ConvertParseTreeError::InvalidAttributeMultiplicity { last_occurrence: last_attribute, .. } => last_attribute.span(),
             ConvertParseTreeError::InvalidAttributeArgsMultiplicity { span, .. } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArg { arg, .. } => arg.span(),
             ConvertParseTreeError::InvalidAttributeArgExpectsValue { arg, .. } => arg.span(),
+            ConvertParseTreeError::InvalidAttributeArgValueType { span, .. } => span.clone(),
+            ConvertParseTreeError::InvalidAttributeArgValue { span, .. } => span.clone(),
         }
     }
 }

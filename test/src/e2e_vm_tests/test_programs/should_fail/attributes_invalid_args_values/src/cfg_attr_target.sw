@@ -1,4 +1,4 @@
 library;
 
-#[cfg(target)]
+#[cfg(target = "efm")]
 pub fn not_ok() {}

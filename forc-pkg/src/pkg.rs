@@ -18,6 +18,7 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
+use sway_core::transform::AttributeArg;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
@@ -43,7 +44,6 @@ use sway_core::{
     language::parsed::TreeType,
     semantic_analysis::namespace,
     source_map::SourceMap,
-    transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
@@ -2048,46 +2048,41 @@ impl PkgEntryKind {
 
 impl PkgTestEntry {
     fn from_decl(decl_ref: &DeclRefFunction, engines: &Engines) -> Result<Self> {
+        fn get_invalid_revert_code_error_msg(test_function_name: &Ident, should_revert_arg: &AttributeArg) -> String {
+            format!("Invalid revert code for test \"{}\".\nA revert code must be a string containing a \"u64\", e.g.: \"42\".\nThe invalid revert code was: {}.",
+                test_function_name,
+                should_revert_arg.value.as_ref().expect("`get_string_opt` returned either a value or an error, which means that the invalid value must exist").span().as_str(),
+            )
+        }
+
         let span = decl_ref.span();
         let test_function_decl = engines.de().get_function(decl_ref);
 
-        const FAILING_TEST_KEYWORD: &str = "should_revert";
+        let Some(test_attr) = test_function_decl.attributes.test() else {
+            unreachable!("`test_function_decl` is guaranteed to be a test function and it must have a `#[test]` attribute");
+        };
 
-        // TODO-IG!: Simplify and move to attributes. `AttributeArg::value`.
-        let test_args: HashMap<String, Option<String>> = test_function_decl
-            .attributes
-            .of_kind(AttributeKind::Test)
-            .flat_map(|attr| attr.args.iter())
-            .map(|arg| {
-                (
-                    arg.name.to_string(),
-                    arg.value
-                        .as_ref()
-                        .map(|val| val.span().as_str().to_string()),
-                )
-            })
-            .collect();
-
-        let pass_condition = if test_args.is_empty() {
-            anyhow::Ok(TestPassCondition::ShouldNotRevert)
-        } else if let Some(args) = test_args.get(FAILING_TEST_KEYWORD) {
-            let expected_revert_code = args
-                .as_ref()
-                .map(|arg| {
-                    let arg_str = arg.replace('"', "");
-                    arg_str.parse::<u64>()
-                })
-                .transpose()?;
-            anyhow::Ok(TestPassCondition::ShouldRevert(expected_revert_code))
-        } else {
-            let test_name = &test_function_decl.name;
-            bail!("Invalid test argument(s) for test: {test_name}.")
-        }?;
+        let pass_condition = match test_attr
+            .args
+            .iter()
+            // Last "should_revert" argument wins ;-)
+            .rfind(|arg| arg.is_test_should_revert()) {
+                Some(should_revert_arg) => match should_revert_arg
+                    .get_string_opt(&Handler::default()) {
+                        Ok(should_revert_arg_value) => TestPassCondition::ShouldRevert(should_revert_arg_value
+                            .map(|val| val.parse::<u64>())
+                            .transpose()
+                            .map_err(|_| anyhow!(get_invalid_revert_code_error_msg(&test_function_decl.name, should_revert_arg)))?
+                        ),
+                        Err(_) => bail!(get_invalid_revert_code_error_msg(&test_function_decl.name, should_revert_arg)),
+                    },
+                None => TestPassCondition::ShouldNotRevert,
+            };
 
         let file_path = Arc::new(
             engines.se().get_path(
                 span.source_id()
-                    .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?,
+                    .ok_or_else(|| anyhow!("Missing span for test \"{}\".", test_function_decl.name))?,
             ),
         );
         Ok(Self {

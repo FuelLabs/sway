@@ -1,7 +1,6 @@
 ---
 source: test/tests/tests.rs
 assertion_line: 115
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items
 exit status: 1
@@ -110,7 +109,7 @@ error: Attribute cannot annotate item
 8 | #[deprecated(invalid)]
   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a module kind (library).
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -183,7 +182,7 @@ error: Attribute cannot annotate item
 8 | #[deprecated(invalid)]
   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a type alias declaration.
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -316,17 +315,7 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:15:7
    |
 ...
-15 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a struct field.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:16:7
-   |
-...
-16 |     #[fallback(invalid)]
+15 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate a struct field.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -392,7 +381,7 @@ error: Attribute cannot annotate item
 12 | #[deprecated(invalid)]
    |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an inherent implementation.
    |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -462,17 +451,7 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:20:7
    |
 ...
-20 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated constant.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:21:7
-   |
-...
-21 |     #[fallback(invalid)]
+20 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate an associated constant.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -515,17 +494,7 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_fn.sw:11:7
    |
 ...
-11 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated function.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_fn.sw:12:7
-   |
-...
-12 |     #[fallback(invalid)]
+11 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate an associated function.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -568,17 +537,7 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_method.sw:11:7
    |
 ...
-11 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a method.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_method.sw:12:7
-   |
-...
-12 |     #[fallback(invalid)]
+11 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate a method.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -641,57 +600,47 @@ error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:8:3
   |
 ...
-8 | #[deprecated(invalid)]
-  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an enum declaration.
-  |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:9:3
-  |
-...
-9 | #[fallback(invalid)]
+8 | #[fallback(invalid)]
   |   ^^^^^^^^ "fallback" attribute cannot annotate an enum declaration.
   |
   = help: "fallback" attribute can only annotate module functions in a contract module.
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:11:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:10:7
    |
 ...
-11 |     #[storage(invalid)]
+10 |     #[storage(invalid)]
    |       ^^^^^^^ "storage" attribute cannot annotate an enum variant.
    |
    = help: "storage" attribute can only annotate functions.
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:12:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:11:7
    |
 ...
-12 |     #[inline(invalid)]
+11 |     #[inline(invalid)]
    |       ^^^^^^ "inline" attribute cannot annotate an enum variant.
    |
    = help: "inline" attribute can only annotate functions.
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:13:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:12:7
    |
 ...
-13 |     #[test(invalid)]
+12 |     #[test(invalid)]
    |       ^^^^ "test" attribute cannot annotate an enum variant.
    |
    = help: "test" attribute can only annotate module functions.
 ____
 
 error: Inner doc comment (`//!`) cannot document item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:14:5
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:13:5
    |
 ...
-14 |     //! Invalid inner comment.
+13 |     //! Invalid inner comment.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an enum variant.
    |
    = help: Inner doc comments (`//!`) can only document modules and must be
@@ -699,10 +648,10 @@ error: Inner doc comment (`//!`) cannot document item
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:15:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:14:7
    |
 ...
-15 |     #[payable(invalid)]
+14 |     #[payable(invalid)]
    |       ^^^^^^^ "payable" attribute cannot annotate an enum variant.
    |
    = help: "payable" attribute can only annotate:
@@ -711,20 +660,10 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:16:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:15:7
    |
 ...
-16 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an enum variant.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:17:7
-   |
-...
-17 |     #[fallback(invalid)]
+15 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate an enum variant.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -767,17 +706,7 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_assoc_fn.sw:11:7
    |
 ...
-11 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated function.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_assoc_fn.sw:12:7
-   |
-...
-12 |     #[fallback(invalid)]
+11 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate an associated function.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -820,17 +749,7 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_method.sw:11:7
    |
 ...
-11 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a method.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_method.sw:12:7
-   |
-...
-12 |     #[fallback(invalid)]
+11 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate a method.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -896,7 +815,7 @@ error: Attribute cannot annotate item
 8 | #[deprecated(invalid)]
   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a trait declaration.
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -969,7 +888,7 @@ error: Attribute cannot annotate item
 16 |     #[deprecated(invalid)]
    |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated constant.
    |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1032,7 +951,7 @@ error: Attribute cannot annotate item
 8 |     #[deprecated(invalid)]
   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a function signature.
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1105,7 +1024,7 @@ error: Attribute cannot annotate item
 9 |     #[deprecated(invalid)]
   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated type.
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1168,7 +1087,7 @@ error: Attribute cannot annotate item
 8 |     #[deprecated(invalid)]
   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a function signature.
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1218,17 +1137,7 @@ error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:8:7
   |
 ...
-8 |     #[deprecated(invalid)]
-  |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a provided trait function.
-  |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:9:7
-  |
-...
-9 |     #[fallback(invalid)]
+8 |     #[fallback(invalid)]
   |       ^^^^^^^^ "fallback" attribute cannot annotate a provided trait function.
   |
   = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -1271,17 +1180,7 @@ error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:8:7
   |
 ...
-8 |     #[deprecated(invalid)]
-  |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a provided trait function.
-  |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:9:7
-  |
-...
-9 |     #[fallback(invalid)]
+8 |     #[fallback(invalid)]
   |       ^^^^^^^^ "fallback" attribute cannot annotate a provided trait function.
   |
   = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -1347,7 +1246,7 @@ error: Attribute cannot annotate item
 16 | #[deprecated(invalid)]
    |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an ABI or trait implementation.
    |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1417,17 +1316,7 @@ error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:24:7
    |
 ...
-24 |     #[deprecated(invalid)]
-   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated type.
-   |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:25:7
-   |
-...
-25 |     #[fallback(invalid)]
+24 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate an associated type.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -1493,7 +1382,7 @@ error: Attribute cannot annotate item
 16 | #[deprecated(invalid)]
    |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an ABI or trait implementation.
    |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1566,7 +1455,7 @@ error: Attribute cannot annotate item
 24 |     #[deprecated(invalid)]
    |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated type.
    |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1639,7 +1528,7 @@ error: Attribute cannot annotate item
 9 | #[deprecated(invalid)]
   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an import (`use`).
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -1709,17 +1598,7 @@ error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:8:3
   |
 ...
-8 | #[deprecated(invalid)]
-  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a constant declaration.
-  |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
-____
-
-error: Attribute cannot annotate item
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:9:3
-  |
-...
-9 | #[fallback(invalid)]
+8 | #[fallback(invalid)]
   |   ^^^^^^^^ "fallback" attribute cannot annotate a constant declaration.
   |
   = help: "fallback" attribute can only annotate module functions in a contract module.
@@ -1746,16 +1625,6 @@ error: Inner doc comment (`//!`) cannot document item
   |
   = help: Inner doc comments (`//!`) can only document modules and must be
   = help: at the beginning of the module file, before the module kind.
-____
-
-error: Attribute cannot annotate item
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_fn.sw:5:3
-  |
-...
-5 | #[deprecated(invalid)]
-  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a function declaration.
-  |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
 ____
 
 error: Outer doc comment (`///`) cannot document item
@@ -1893,7 +1762,7 @@ error: Attribute cannot annotate item
 8 | #[deprecated(invalid)]
   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a module kind (library).
   |
-  = help: "deprecated" attribute is currently implemented only for struct declarations.
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -2052,7 +1921,7 @@ error: Attribute cannot annotate item
 34 | #[deprecated(invalid)]
    |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a submodule (`mod`).
    |
-   = help: "deprecated" attribute is currently implemented only for struct declarations.
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
@@ -2085,5 +1954,5 @@ error: Outer doc comment (`///`) cannot document item
    |
 ____
 
-  Aborting due to 197 errors.
+  Aborting due to 184 errors.
 error: Failed to compile attributes_invalid_target_items

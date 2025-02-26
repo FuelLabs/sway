@@ -1,5 +1,4 @@
-// TODO-IG!: Comment: This test proves that TODO is fixed.
 library;
 
-#[cfg(program_type)]
+#[cfg(program_type = "pedicate")]
 pub fn not_ok() {}

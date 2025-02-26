@@ -7,9 +7,58 @@ pub struct Annotated<T> {
     pub value: T,
 }
 
-// TODO-IG!: Check if this is the best place to put all the constants.
+// Storage access and purity.
+pub const STORAGE_ATTRIBUTE_NAME: &str = "storage";
+pub const STORAGE_READ_ARG_NAME: &str = "read";
+pub const STORAGE_WRITE_ARG_NAME: &str = "write";
+
+// Function inlining.
+pub const INLINE_ATTRIBUTE_NAME: &str = "inline";
+pub const INLINE_NEVER_ARG_NAME: &str = "never";
+pub const INLINE_ALWAYS_ARG_NAME: &str = "always";
+
+// Payable functions.
+pub const PAYABLE_ATTRIBUTE_NAME: &str = "payable";
+
+// Fallback functions.
+pub const FALLBACK_ATTRIBUTE_NAME: &str = "fallback";
+
+// Documentation comments.
+// Note that because "doc-comment" is not a valid identifier,
+// doc-comment attributes cannot be declared in code.
+// They are exclusively created by the compiler to denote
+// doc comments, `///` and `//!`.
 pub const DOC_COMMENT_ATTRIBUTE_NAME: &str = "doc-comment";
+
+// In-language unit testing.
+pub const TEST_ATTRIBUTE_NAME: &str = "test";
+pub const TEST_SHOULD_REVERT_ARG_NAME: &str = "should_revert";
+
+// Allow warnings.
+pub const ALLOW_ATTRIBUTE_NAME: &str = "allow";
+pub const ALLOW_DEAD_CODE_ARG_NAME: &str = "dead_code";
+pub const ALLOW_DEPRECATED_ARG_NAME: &str = "deprecated";
+
+// Conditional compilation.
 pub const CFG_ATTRIBUTE_NAME: &str = "cfg";
+pub const CFG_TARGET_ARG_NAME: &str = "target";
+pub const CFG_PROGRAM_TYPE_ARG_NAME: &str = "program_type";
+
+// Deprecation.
+pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
+pub const DEPRECATED_NOTE_ARG_NAME: &str = "note";
+
+pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
+    STORAGE_ATTRIBUTE_NAME,
+    DOC_COMMENT_ATTRIBUTE_NAME,
+    TEST_ATTRIBUTE_NAME,
+    INLINE_ATTRIBUTE_NAME,
+    PAYABLE_ATTRIBUTE_NAME,
+    ALLOW_ATTRIBUTE_NAME,
+    CFG_ATTRIBUTE_NAME,
+    DEPRECATED_ATTRIBUTE_NAME,
+    FALLBACK_ATTRIBUTE_NAME,
+];
 
 /// An attribute declaration. Attribute declaration
 /// can potentially have an arbitrary number of [Attribute]s.

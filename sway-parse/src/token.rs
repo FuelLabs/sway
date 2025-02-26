@@ -5,7 +5,7 @@ use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
     Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, DocComment,
-    DocStyle, GenericTokenTree, Punct, Spacing, TokenStream,
+    DocStyle, Punct, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -123,8 +123,6 @@ pub fn lex_commented(
         source_id,
         stream,
     };
-    // TODO-IG!: Remove `gather_module_docs`.
-    let mut gather_module_docs = false;
     let mut file_start_offset: usize = 0;
 
     let mut parent_token_trees = Vec::new();
@@ -176,16 +174,7 @@ pub fn lex_commented(
                         end,
                         index,
                         comment_kind,
-                        file_start_offset,
-                        gather_module_docs,
                     );
-                    if let CommentedTokenTree::Tree(GenericTokenTree::DocComment(DocComment {
-                        doc_style: DocStyle::Inner,
-                        ..
-                    })) = &ctt
-                    {
-                        gather_module_docs = true;
-                    }
                     token_trees.push(ctt);
                     continue;
                 }
@@ -197,8 +186,6 @@ pub fn lex_commented(
                 }
                 Some(_) | None => {}
             }
-        } else {
-            gather_module_docs = false;
         }
 
         if character.is_xid_start() || character == '_' {
@@ -359,8 +346,6 @@ fn lex_line_comment(
     end: usize,
     index: usize,
     comment_kind: CommentKind,
-    offset: usize,
-    gather_module_docs: bool,
 ) -> CommentedTokenTree {
     let _ = l.stream.next();
 
@@ -373,17 +358,7 @@ fn lex_line_comment(
 
     let doc_style = match (sp.as_str().chars().nth(2), sp.as_str().chars().nth(3)) {
         // `//!` is an inner line doc comment.
-        (Some('!'), _) => {
-            Some(DocStyle::Inner)
-            // TODO-IG!: Remove `gather_module_docs`.
-            // if index - offset == 0 || gather_module_docs {
-            //     // TODO(#4112): remove this conditional block to enable
-            //     // inner doc comment attributes for all items
-            //     Some(DocStyle::Inner)
-            // } else {
-            //     None
-            // }
-        }
+        (Some('!'), _) => Some(DocStyle::Inner),
         // `////` (more than 3 slashes) is not considered a doc comment.
         (Some('/'), Some('/')) => None,
         // `///` is an outer line doc comment.

@@ -1,6 +1,6 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
-implicit-std = false
 license = "Apache-2.0"
-name = "mismatching_program_type"
+name = "attributes_invalid_args_expect_values"
+implicit-std = false

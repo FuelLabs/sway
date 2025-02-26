@@ -21,7 +21,6 @@ impl T for E {
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]
-    #[deprecated(invalid)]
     #[fallback(invalid)]
     type Type = u8;
 }

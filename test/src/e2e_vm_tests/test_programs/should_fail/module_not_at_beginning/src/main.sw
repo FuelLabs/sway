@@ -1,15 +1,5 @@
-script;
-// This tests importing other files.
+library;
 
-use foo::Foo;
-
-fn main() -> bool {
-  let foo = Foo {
-    foo: "foo",
-  };
-
-  false
-}
+fn main() { }
 
 mod a_module;
-

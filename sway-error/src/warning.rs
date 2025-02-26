@@ -33,7 +33,6 @@ impl CompileWarning {
     }
 }
 
-// TODO-IG!: Double check and remove all warnings related to attributes.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Warning {
     NonClassCaseStructName {
@@ -124,7 +123,9 @@ pub enum Warning {
         block_name: Ident,
     },
     UsingDeprecated {
-        message: String,
+        deprecated_element: DeprecatedElement,
+        deprecated_element_name: String,
+        help: Option<String>,
     },
     DuplicatedStorageKey {
         first_field: IdentUnique,
@@ -137,6 +138,32 @@ pub enum Warning {
         // True if the experimental feature `storage_domains` is used.
         experimental_storage_domains: bool,
     },
+}
+
+/// Elements that can be deprecated.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DeprecatedElement {
+    Struct,
+    StructField,
+    Enum,
+    EnumVariant,
+    Function,
+    Const,
+    Configurable,
+}
+
+impl fmt::Display for DeprecatedElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Struct => write!(f, "Struct"),
+            Self::StructField => write!(f, "Struct field"),
+            Self::Enum => write!(f, "Enum"),
+            Self::EnumVariant => write!(f, "Enum variant"),
+            Self::Function => write!(f, "Function"),
+            Self::Const => write!(f, "Constant"),
+            Self::Configurable => write!(f, "Configurable"),
+        }
+    }
 }
 
 impl fmt::Display for Warning {
@@ -266,7 +293,8 @@ impl fmt::Display for Warning {
             EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
                 write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
                           Consider {effect_in_suggestion} before calling another contract"),
-            UsingDeprecated { message } => write!(f, "{}", message),
+            UsingDeprecated { deprecated_element_name, deprecated_element, help } =>
+                write!(f, "{deprecated_element} \"{deprecated_element_name}\" is deprecated. {}", help.as_ref().unwrap_or(&"".into())),
             DuplicatedStorageKey { first_field_full_name, second_field_full_name, key, .. } =>
                 write!(f, "Two storage fields have the same storage key.\nFirst field: {first_field_full_name}\nSecond field: {second_field_full_name}\nKey: {key}"),
         }
@@ -489,6 +517,22 @@ impl ToDiagnostic for CompileWarning {
                     format!("Unknown attribute arguments are allowed for some attributes like \"{attribute}\"."),
                     "They can be used by third-party tools, but the compiler ignores them.".to_string(),
                 ],
+            },
+            UsingDeprecated { deprecated_element, deprecated_element_name, help } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("{deprecated_element} is deprecated"))),
+                issue: Issue::warning(
+                    source_engine,
+                    self.span(),
+                    format!("{deprecated_element} \"{deprecated_element_name}\" is deprecated."),
+                ),
+                hints: help.as_ref().map_or(vec![], |help| vec![
+                    Hint::help(
+                        source_engine,
+                        self.span(),
+                        help.clone(),
+                    ),
+                ]),
+                help: vec![],
             },
             // "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX)
            _ => Diagnostic {

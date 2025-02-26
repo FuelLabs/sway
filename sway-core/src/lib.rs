@@ -34,7 +34,6 @@ pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
-use indexmap::IndexMap;
 use itertools::Itertools;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
@@ -57,7 +56,7 @@ use sway_ir::{
 };
 use sway_types::{SourceEngine, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
-use transform::{ArgsExpectValues, Attribute, AttributeArg, AttributeKind, AttributesMap, ExpectedArgs};
+use transform::{ArgsExpectValues, Attribute, AttributeKind, AttributesMap, ExpectedArgs};
 use types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
@@ -142,9 +141,16 @@ pub fn parse_tree_type(
     sway_parse::parse_module_kind(handler, input, None).map(|kind| convert_module_kind(&kind))
 }
 
-// TODO-IG!: Comment. Remove Result. Always returns but emits errors and warnings through the handler? cfg eval turns off everything including the errors in attributes.
+/// Converts `attribute_decls` to an [AttributesMap].
+///
+/// This function always returns an [AttributesMap], even if the attributes are erroneous.
+/// Errors and warnings are returned via [Handler]. The callers should ignore eventual errors
+/// in attributes and proceed with the compilation. [AttributesMap] is tolerant to erroneous
+/// attributes and follows the last-wins principle, which allows annotated elements to
+/// proceed with compilation. After their successful compilation, callers need to inspect
+/// the [Handler] and still emit errors if there were any.
 pub(crate) fn attr_decls_to_attributes(
-    attribute_list: &[AttributeDecl],
+    attribute_decls: &[AttributeDecl],
     can_annotate: impl Fn(&Attribute) -> bool,
     target_friendly_name: &'static str,
 ) -> (Handler, AttributesMap) {
@@ -157,7 +163,7 @@ pub(crate) fn attr_decls_to_attributes(
     // having complete list of attributes is needed.
     // In the below analysis, though, we will be ignoring inner attributes,
     // means not checking their content.
-    for attr_decl in attribute_list.iter().filter(|attr| !attr.is_doc_comment() && attr.is_inner()) {
+    for attr_decl in attribute_decls.iter().filter(|attr| !attr.is_doc_comment() && attr.is_inner()) {
         handler.emit_err(CompileError::Unimplemented {
             span: attr_decl.hash_kind.span(),
             feature: "Using inner attributes (`#!`)".to_string(),
@@ -165,7 +171,7 @@ pub(crate) fn attr_decls_to_attributes(
         });
     }
 
-    let attributes = AttributesMap::new(attribute_list);
+    let attributes = AttributesMap::new(attribute_decls);
 
     // Check for unknown attributes.
     for attribute in attributes.unknown().filter(|attr| attr.is_outer()) {
@@ -180,31 +186,21 @@ pub(crate) fn attr_decls_to_attributes(
 
     // Check for attributes annotating invalid targets.
     for ((attribute_kind, _attribute_direction), mut attributes) in &attributes.all().filter(|attr| attr.is_doc_comment() || attr.is_outer()).chunk_by(|attr| (attr.kind, attr.direction)) {
-        // TODO: We currently have code in `core` and `std` that wrongly
-        //       uses attributes.
+        // TODO: We currently have a misplaced inner comments (`//!`) in the `core` library.
         //
         //       If we emit errors for those, we force every project in the wild
-        //       to move to the latest `core` and`std` version, if it wants to
+        //       to move to the latest `core` version, if it wants to
         //       use the newest **non-breaking change** version of the compiler.
         //       We also need to temporary pin LSP tests to the repository version
-        //       of `core` which might bring additional effort in adjusting the tests.
+        //       of `core` which might bring additional efforts in adjusting the tests.
         //
-        //       All in all a price too high to pay for these issues.
+        //       All in all, a price too high to pay for this simple issue.
+        //       Those misplaced inner comments were until now treated as code comments
+        //       and they were not visible anywhere in the docs.
         //       So we will simply ignore them until the next breaking change version
-        //       of Sway, when this TODO will be removed.
+        //       of Sway, when this workaround will be removed.
         fn is_core_lib_documentation_bug(doc_comment: &Attribute) -> bool {
-            // Sway `core` lib had a misplaced inner doc comment.
             doc_comment.span.as_str() == "//! Defines the Sway core library prelude." 
-        }
-
-        fn is_std_lib_deprecated_attribute_on_non_struct(deprecated_attr: &Attribute) -> bool {
-            // Sway `std` lib uses `deprecated` attribute on items that are not struct decls.
-            vec![
-                "#[deprecated(note = \"Please use `b256::zero()`\")]",
-                "#[deprecated(note = \"Please use `u256::zero()`\")]",
-                "#[deprecated(note = \"std::ecr has been replaced by std::crypto, and is no longer maintained\")]",
-                "#[deprecated(note = \"std:vm::evm:ecr has been replaced by std::crypto, and is no longer maintained\")]",
-            ].contains(&deprecated_attr.span.as_str())
         }
 
         // For doc comments, we want to show the error on a complete doc comment,
@@ -233,11 +229,6 @@ pub(crate) fn attr_decls_to_attributes(
             // For other attributes, the error is shown for every individual attribute.
             for attribute in attributes {
                 if !can_annotate(attribute) {
-                    // TODO: Remove this when moving to the next breaking change version of Sway.
-                    if is_std_lib_deprecated_attribute_on_non_struct(attribute) {
-                        continue;
-                    }
-
                     handler.emit_err(ConvertParseTreeError::InvalidAttributeTarget {
                         span: attribute.name.span(),
                         attribute: attribute.name.clone(),
@@ -265,21 +256,10 @@ pub(crate) fn attr_decls_to_attributes(
     }
 
     // Check for arguments multiplicity.
-    // For attributes that can be applied only once but are applied more times
-    // we will check every attribute occurrence.
+    // For attributes that can be applied only once but are applied several times
+    // we will still check arguments in every attribute occurrence.
     for attribute in attributes.all().filter(|attr| should_be_checked(attr)) {
-        if !attribute.args_multiplicity().contains(attribute.args.len()) {
-            handler.emit_err(ConvertParseTreeError::InvalidAttributeArgsMultiplicity {
-                span: if attribute.args.is_empty() {
-                    attribute.name.span()
-                } else {
-                    Span::join(attribute.args.first().unwrap().span(), &attribute.args.last().unwrap().span)
-                },
-                attribute: attribute.name.clone(),
-                args_multiplicity: (&attribute.args_multiplicity()).into(),
-                num_of_args: attribute.args.len(),
-            }.into());
-        }
+        let _ = attribute.check_args_multiplicity(&handler);
     }
 
     // Check for expected arguments.

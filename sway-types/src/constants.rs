@@ -22,6 +22,3 @@ pub const CORE: &str = "core";
 pub const STD: &str = "std";
 pub const PRELUDE: &str = "prelude";
 pub const CONTRACT_ID: &str = "CONTRACT_ID";
-
-// TODO-IG!: Comment or remove.
-pub const STORAGE_ATTRIBUTE_NAME: &str = "storage";

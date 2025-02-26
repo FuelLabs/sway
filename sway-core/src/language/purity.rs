@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::transform::{STORAGE_READ_ARG_NAME, STORAGE_WRITE_ARG_NAME};
+use sway_ast::attribute::{STORAGE_READ_ARG_NAME, STORAGE_WRITE_ARG_NAME};
 
 /// The purity of a function is related to its access of contract storage. If a function accesses
 /// or could potentially access contract storage, it is [Purity::Impure]. If a function does not utilize any

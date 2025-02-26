@@ -10,7 +10,7 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
-    keywords::{HashToken, Token},
+    keywords::{HashBangToken, HashToken, Token},
     CommaToken,
 };
 use sway_types::{ast::Delimiter, Spanned};
@@ -116,8 +116,9 @@ impl Format for AttributeDecl {
         // invariant: attribute lists cannot be empty
         // `#`
         match &self.hash_kind {
-            // TODO-IG! Implement this without throwing error.
-            AttributeHashKind::Inner(_) => return Err(FormatterError::HashBangAttributeError),
+            AttributeHashKind::Inner(_hash_bang_token) => {
+                write!(formatted_code, "{}", HashBangToken::AS_STR)?;
+            },
             AttributeHashKind::Outer(_hash_token) => {
                 write!(formatted_code, "{}", HashToken::AS_STR)?;
             }
