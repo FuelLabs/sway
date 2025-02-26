@@ -102,6 +102,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         InstOp::ContractCall { .. } => None,
         InstOp::FuelVm(_) => None,
         InstOp::GetLocal(_) => None,
+        InstOp::GetGlobal(_) => None,
         InstOp::GetConfig(_, _) => None,
         InstOp::GetElemPtr {
             base,
