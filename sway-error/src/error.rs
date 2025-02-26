@@ -621,10 +621,11 @@ pub enum CompileError {
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
-    #[error("Conflicting implementations of trait \"{trait_name}\" for type \"{type_implementing_for}\".")]
+    #[error("Conflicting implementations of trait \"{trait_name}\" for type \"{type_implementing_for_alias}\".")]
     ConflictingImplsForTraitAndType {
         trait_name: String,
         type_implementing_for: String,
+        type_implementing_for_alias: String,
         existing_impl_span: Span,
         second_impl_span: Span,
     },
@@ -2317,20 +2318,30 @@ impl ToDiagnostic for CompileError {
                     format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
                 ],
             },
-            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, existing_impl_span, second_impl_span } => Diagnostic {
+            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, type_implementing_for_alias, existing_impl_span, second_impl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Trait is already implemented for type".to_string())),
                 issue: Issue::error(
                     source_engine,
                     second_impl_span.clone(),
-                    format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                    if type_implementing_for == type_implementing_for_alias {
+                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                    } else {
+                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for_alias}\", possibly using an alias (the unaliased type name is \"{type_implementing_for}\").")
+                    }
                 ),
                 hints: vec![
                     Hint::info(
                         source_engine,
                         existing_impl_span.clone(),
-                        format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
-                            call_path_suffix_with_args(trait_name)
-                        )
+                        if type_implementing_for == type_implementing_for_alias {
+                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
+                                    call_path_suffix_with_args(trait_name)
+                            )
+                        } else {
+                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for_alias}\", possibly using an alias (the unaliased type name is \"{type_implementing_for}\").",
+                                    call_path_suffix_with_args(trait_name)
+                            )
+                        }
                     ),
                 ],
                 help: vec![

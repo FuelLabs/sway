@@ -237,7 +237,7 @@ impl TraitMap {
         is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
-        let type_id = engines.te().get_unaliased_type_id(type_id);
+        let unaliased_type_id = engines.te().get_unaliased_type_id(type_id);
 
         handler.scope(|handler| {
             let mut trait_items: TraitItems = HashMap::new();
@@ -267,7 +267,7 @@ impl TraitMap {
                 }
             }
 
-            let trait_impls = self.get_impls_mut(engines, type_id);
+            let trait_impls = self.get_impls_mut(engines, unaliased_type_id);
 
             // check to see if adding this trait will produce a conflicting definition
             for TraitEntry {
@@ -295,11 +295,11 @@ impl TraitMap {
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
 
-                // Types are subset if the `type_id` that we want to insert can unify with the
+                // Types are subset if the `unaliased_type_id` that we want to insert can unify with the
                 // existing `map_type_id`. In addition we need to additionally check for the case of
                 // `&mut <type>` and `&<type>`.
-                let types_are_subset = unify_checker.check(type_id, *map_type_id)
-                    && is_unified_type_subset(engines.te(), type_id, *map_type_id);
+                let types_are_subset = unify_checker.check(unaliased_type_id, *map_type_id)
+                    && is_unified_type_subset(engines.te(), unaliased_type_id, *map_type_id);
 
                 /// `left` can unify into `right`. Additionally we need to check subset condition in case of
                 /// [TypeInfo::Ref] types.  Although `&mut <type>` can unify with `&<type>`
@@ -367,7 +367,8 @@ impl TraitMap {
                 {
                     handler.emit_err(CompileError::ConflictingImplsForTraitAndType {
                         trait_name: trait_name.to_string_with_args(engines, &trait_type_args),
-                        type_implementing_for: engines.help_out(type_id).to_string(),
+                        type_implementing_for: engines.help_out(unaliased_type_id).to_string(),
+                        type_implementing_for_alias: engines.help_out(type_id).to_string(),
                         existing_impl_span: existing_impl_span.clone(),
                         second_impl_span: impl_span.clone(),
                     });
@@ -442,7 +443,7 @@ impl TraitMap {
                 trait_name,
                 impl_span.clone(),
                 trait_decl_span,
-                type_id,
+                unaliased_type_id,
                 trait_items,
                 engines,
             );
