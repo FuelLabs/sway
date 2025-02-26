@@ -104,7 +104,6 @@ pub(crate) fn check_predicate_opcodes(
                         span: get_op_span(op),
                     });
                 }
-                LDC(..) => invalid_opcode("LDC"),
                 LOG(..) => invalid_opcode("LOG"),
                 LOGD(..) => invalid_opcode("LOGD"),
                 MINT(..) => invalid_opcode("MINT"),
