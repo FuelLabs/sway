@@ -43,12 +43,12 @@ mod ir_builder {
                 }
 
             rule script_or_predicate() -> IrAstModule
-                = kind:module_kind() "{" _ configs:init_config()* _ global_consts:global_const()* _ fn_decls:fn_decl()* "}" _
+                = kind:module_kind() "{" _ configs:init_config()* _ global_vars:global_var()* _ fn_decls:fn_decl()* "}" _
                   metadata:metadata_decls() {
                     IrAstModule {
                         kind,
                         configs,
-                        global_consts,
+                        global_vars,
                         fn_decls,
                         metadata
                     }
@@ -60,20 +60,20 @@ mod ir_builder {
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _
-                  configs:init_config()* _ global_consts:global_const()* _ fn_decls:fn_decl()* "}" _
+                  configs:init_config()* _ global_vars:global_var()* _ fn_decls:fn_decl()* "}" _
                   metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
                         configs,
-                        global_consts,
+                        global_vars,
                         fn_decls,
                         metadata
                     }
                 }
 
-            rule global_const() -> IrAstGlobalConst
+            rule global_var() -> IrAstGlobalVar
                 = "global" _ name:path() _ ":" _ ty:ast_ty() _ "=" _ init:op_const() {
-                    IrAstGlobalConst {
+                    IrAstGlobalVar {
                         name,
                         ty,
                         init
@@ -714,13 +714,13 @@ mod ir_builder {
     pub(super) struct IrAstModule {
         kind: Kind,
         configs: Vec<IrAstConfig>,
-        global_consts: Vec<IrAstGlobalConst>,
+        global_vars: Vec<IrAstGlobalVar>,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
     }
 
     #[derive(Debug)]
-    pub(super) struct IrAstGlobalConst {
+    pub(super) struct IrAstGlobalVar {
         name: Vec<String>,
         ty: IrAstTy,
         init: IrAstOperation,
@@ -1010,7 +1010,7 @@ mod ir_builder {
         let mut builder = IrBuilder {
             module,
             configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
-            global_map: build_global_consts_map(&mut ctx, &module, ir_ast_mod.global_consts),
+            globals_map: build_global_vars_map(&mut ctx, &module, ir_ast_mod.global_vars),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -1027,7 +1027,7 @@ mod ir_builder {
     struct IrBuilder {
         module: Module,
         configs_map: BTreeMap<String, String>,
-        global_map: BTreeMap<Vec<String>, GlobalVar>,
+        globals_map: BTreeMap<Vec<String>, GlobalVar>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -1354,7 +1354,7 @@ mod ir_builder {
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::GetGlobal(global_name) => block
                         .append(context)
-                        .get_global(*self.global_map.get(&global_name).unwrap())
+                        .get_global(*self.globals_map.get(&global_name).unwrap())
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::GetConfig(name) => block
                         .append(context)
@@ -1547,22 +1547,22 @@ mod ir_builder {
         }
     }
 
-    fn build_global_consts_map(
+    fn build_global_vars_map(
         context: &mut Context,
         module: &Module,
-        global_consts: Vec<IrAstGlobalConst>,
+        global_vars: Vec<IrAstGlobalVar>,
     ) -> BTreeMap<Vec<String>, GlobalVar> {
-        global_consts
+        global_vars
             .into_iter()
-            .map(|global_const| {
-                let ty = global_const.ty.to_ir_type(context);
-                let init = match global_const.init {
+            .map(|global_var_node| {
+                let ty = global_var_node.ty.to_ir_type(context);
+                let init = match global_var_node.init {
                     IrAstOperation::Const(ty, val) => val.value.as_constant(context, ty),
                     _ => unreachable!("Global const initializer must be a const value."),
                 };
                 let global_var = GlobalVar::new(context, ty, Some(init), false);
-                module.add_global_variable(context, global_const.name.clone(), global_var);
-                (global_const.name, global_var)
+                module.add_global_variable(context, global_var_node.name.clone(), global_var);
+                (global_var_node.name, global_var)
             })
             .collect()
     }

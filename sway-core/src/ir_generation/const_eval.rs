@@ -122,10 +122,10 @@ pub(crate) fn compile_const_decl(
         env.module_ns,
     ) {
         (Some(global_var), _) => {
-            if let Some(constant) = global_var.get_initializer(env.context) {
-                return Ok(Some(Value::new_constant(env.context, *constant)));
-            }
-            Ok(None)
+            let constant = global_var
+                .get_initializer(env.context)
+                .expect("const decl without initializer, should've been detected way early");
+            return Ok(Some(Value::new_constant(env.context, *constant)));
         }
         (None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
