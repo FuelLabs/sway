@@ -11,7 +11,6 @@ use ::ops::Eq;
 use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
 
-
 /// A UTF-8 encoded growable string. It has ownership over its buffer.
 ///
 /// # Additional Information
