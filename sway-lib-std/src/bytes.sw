@@ -890,7 +890,7 @@ impl Eq for Bytes {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Bytes {
+impl PartialEq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
             return false;
@@ -903,7 +903,7 @@ impl core::ops::PartialEq for Bytes {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Bytes {}
+impl Eq for Bytes {}
 
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.

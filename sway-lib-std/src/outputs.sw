@@ -292,7 +292,7 @@ impl Eq for Output {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Output {
+impl PartialEq for Output {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Output::Coin, Output::Coin) => true,
@@ -305,4 +305,4 @@ impl core::ops::PartialEq for Output {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Output {}
+impl Eq for Output {}

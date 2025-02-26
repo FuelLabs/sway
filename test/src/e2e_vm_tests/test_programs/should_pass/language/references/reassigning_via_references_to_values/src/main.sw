@@ -2,7 +2,7 @@ script;
 
 mod impls;
 use impls::*;
-use core::ops::Eq;
+use Eq;
 
 #[inline(always)]
 fn assign_built_in_value_u8() {

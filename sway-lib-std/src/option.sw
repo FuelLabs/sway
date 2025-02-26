@@ -104,7 +104,7 @@ where
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl<T> core::ops::PartialEq for Option<T>
+impl<T> PartialEq for Option<T>
 where
     T: PartialEq,
 {
@@ -117,7 +117,7 @@ where
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl<T> core::ops::Eq for Option<T>
+impl<T> Eq for Option<T>
 where
     T: Eq,
 {}

@@ -1,5 +1,6 @@
 library;
 
+pub mod marker;
 pub mod registers;
 pub mod flags;
 pub mod r#str;

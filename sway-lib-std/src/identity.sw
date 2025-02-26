@@ -31,7 +31,7 @@ impl Eq for Identity {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Identity {
+impl PartialEq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,
@@ -41,7 +41,7 @@ impl core::ops::PartialEq for Identity {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Identity {}
+impl Eq for Identity {}
 
 impl Identity {
     /// Returns the `Address` of the `Identity`.

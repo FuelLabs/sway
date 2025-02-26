@@ -151,7 +151,7 @@ fn nested_match(input: TopLevel) -> u64 {
 // ANCHOR_END: nested_enum_match
 
 // ANCHOR: complex_multi_arg_enum_match
-use core::ops::Eq;
+use Eq;
 
 enum Binary {
     True: (),

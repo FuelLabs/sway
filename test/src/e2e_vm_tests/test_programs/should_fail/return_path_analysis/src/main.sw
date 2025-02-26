@@ -529,7 +529,7 @@ fn g() -> bool {
         y: bool,
     }
 
-    impl core::ops::Eq for X {
+    impl Eq for X {
         fn eq(self, other: Self) -> bool {
 	    if true {
 		return true;
@@ -553,7 +553,7 @@ fn g() -> bool {
         y: bool,
     }
 
-    impl core::ops::PartialEq for X {
+    impl PartialEq for X {
         fn eq(self, other: Self) -> bool {
 	    if true {
 		return true;

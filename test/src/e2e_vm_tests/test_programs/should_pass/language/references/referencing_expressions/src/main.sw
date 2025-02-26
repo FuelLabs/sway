@@ -1,6 +1,6 @@
 script;
 
-use core::ops::Eq;
+use Eq;
 
 struct Struct {
     x: u64,

@@ -1,7 +1,7 @@
 library;
 
 use ::data_structures::{SomeEnum, SomeStruct};
-use core::ops::Eq;
+use Eq;
 
 #[cfg(experimental_partial_eq = false)]
 impl Eq for SomeEnum<u32> {
