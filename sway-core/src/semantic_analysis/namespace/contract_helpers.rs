@@ -4,7 +4,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_parse::{lex, Parser};
-use sway_types::{constants::CONTRACT_ID, Spanned};
+use sway_types::{constants::CONTRACT_ID, ProgramId, Spanned};
 
 use crate::{
     language::{
@@ -19,18 +19,14 @@ use crate::{
 };
 
 /// Factory function for contracts
-pub fn namespace_without_contract_id(package_name: Ident) -> Root {
-    Root::new(package_name, None, false)
-}
-
-/// Factory function for contracts
 pub fn namespace_with_contract_id(
     engines: &Engines,
     package_name: Ident,
+    program_id: ProgramId,
     contract_id_value: String,
     experimental: crate::ExperimentalFeatures,
 ) -> Result<Root, vec1::Vec1<CompileError>> {
-    let root = Root::new(package_name, None, true);
+    let root = Root::new(package_name, None, program_id, true);
     let handler = <_>::default();
     bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental)
         .map_err(|_| {

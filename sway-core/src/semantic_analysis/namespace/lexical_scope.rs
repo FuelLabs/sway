@@ -678,7 +678,7 @@ impl Items {
                 }
             };
 
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             if let Some((ident, decl)) = lexical_scope.items.symbols.get_key_value(&name) {
                 append_shadowing_error(
                     ident,
