@@ -547,6 +547,9 @@ impl TyExpression {
                     allow_deprecated,
                 );
             }
+            TyExpressionVariant::ConstGenericExpression { .. } => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
                 for e in fields.iter() {
