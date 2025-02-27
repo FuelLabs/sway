@@ -547,8 +547,16 @@ impl TyExpression {
                     allow_deprecated,
                 );
             }
-            TyExpressionVariant::ConstGenericExpression { .. } => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            TyExpressionVariant::ConstGenericExpression { span, .. } => {
+                // Const generics don´t have attributes,
+                // so deprecation warnings cannot be turned off
+                emit_warning_if_deprecated(
+                    &AttributesMap::default(),
+                    span,
+                    handler,
+                    "deprecated configurable",
+                    allow_deprecated,
+                );
             }
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
