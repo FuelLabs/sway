@@ -5,5 +5,4 @@ license = "Apache-2.0"
 name = "methods_and_associated_functions"
 
 [dependencies]
-
 std = { path = "../../sway-lib-std" }

@@ -727,14 +727,11 @@ impl PackageManifest {
         self.proxy.as_ref()
     }
 
-    /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
+    /// Check for the `std` package under `[dependencies]`. If it is missing, add
     /// `std` implicitly.
     ///
     /// This makes the common case of depending on `std` a lot smoother for most users, while still
-    /// allowing for the uncommon case of custom `core`/`std` deps.
-    ///
-    /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
-    /// guarantee that the user's `core` is compatible with the implicit `std`.
+    /// allowing for the uncommon case of custom `std` deps.
     fn implicitly_include_std_if_missing(&mut self) {
         use sway_types::constants::STD;
         // Don't include `std` if:
