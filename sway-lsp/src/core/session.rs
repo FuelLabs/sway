@@ -134,7 +134,7 @@ impl Session {
     ) -> Result<(), LanguageServerError> {
         let _p = tracing::trace_span!("garbage_collect").entered();
         let path = self.sync.temp_dir()?;
-        let program_id = { engines.se().get_program_id(&path) };
+        let program_id = { engines.se().get_program_id_from_manifest_path(&path) };
         if let Some(program_id) = program_id {
             engines.clear_program(&program_id);
         }
@@ -669,7 +669,11 @@ pub(crate) fn program_id_from_path(
     engines: &Engines,
 ) -> Result<ProgramId, DirectoryError> {
     let program_id = sway_utils::find_parent_manifest_dir(path)
-        .and_then(|manifest_path| engines.se().get_program_id(&manifest_path))
+        .and_then(|manifest_path| {
+            engines
+                .se()
+                .get_program_id_from_manifest_path(&manifest_path)
+        })
         .ok_or_else(|| DirectoryError::ProgramIdNotFound {
             path: path.to_string_lossy().to_string(),
         })?;
