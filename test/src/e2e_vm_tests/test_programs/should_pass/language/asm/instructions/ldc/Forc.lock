@@ -1,8 +1,8 @@
 [[package]]
 name = "core"
-source = "path+from-root-02C557D3012ABF18"
+source = "path+from-root-441B0FE8436A0A54"
 
 [[package]]
-name = "ecall_basic"
+name = "ldc"
 source = "member"
 dependencies = ["core"]

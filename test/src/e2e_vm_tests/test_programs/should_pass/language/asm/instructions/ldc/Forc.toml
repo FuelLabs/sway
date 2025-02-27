@@ -1,9 +1,10 @@
 [project]
-name = "ecall_basic"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
-implicit-std = false
 license = "Apache-2.0"
+name = "ldc"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+core = { path = "../../../../../../../../../sway-lib-core" }
+
+
