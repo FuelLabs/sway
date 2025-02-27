@@ -77,7 +77,7 @@ library;
 use ::logging::log;
 use ::result::Result;
 use ::revert::revert;
-use ::codec::AbiEncode;
+use ::codec::*;
 use ::ops::*;
 
 // ANCHOR: docs_option

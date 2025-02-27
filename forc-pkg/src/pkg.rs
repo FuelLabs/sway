@@ -50,7 +50,6 @@ use sway_core::{
 use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::constants::{CORE, STD};
 use sway_types::{Ident, ProgramId, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
