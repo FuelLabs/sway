@@ -1183,7 +1183,9 @@ impl Spanned for CompileError {
                 second_impl_span, ..
             } => second_impl_span.clone(),
             MarkerTraitExplicitlyImplemented { span, .. } => span.clone(),
-            DuplicateDeclDefinedForType { second_impl_span, .. } => second_impl_span.clone(),
+            DuplicateDeclDefinedForType {
+                second_impl_span, ..
+            } => second_impl_span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
@@ -2358,7 +2360,7 @@ impl ToDiagnostic for CompileError {
                     second_impl_span.clone(),
                     if type_implementing_for == type_implementing_for_unaliased {
                         format!("{decl_kind} \"{decl_name}\" already declared in type \"{type_implementing_for}\".")
-                    } else { 
+                    } else {
                         format!("{decl_kind} \"{decl_name}\" already declared in type \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").")
                     }
                 ),

@@ -368,7 +368,9 @@ impl TraitMap {
                     handler.emit_err(CompileError::ConflictingImplsForTraitAndType {
                         trait_name: trait_name.to_string_with_args(engines, &trait_type_args),
                         type_implementing_for: engines.help_out(type_id).to_string(),
-                        type_implementing_for_unaliased: engines.help_out(unaliased_type_id).to_string(),
+                        type_implementing_for_unaliased: engines
+                            .help_out(unaliased_type_id)
+                            .to_string(),
                         existing_impl_span: existing_impl_span.clone(),
                         second_impl_span: impl_span.clone(),
                     });
@@ -390,8 +392,13 @@ impl TraitMap {
                                                 decl_name: decl_ref.name().to_string(),
                                                 type_implementing_for: engines
                                                     .help_out(type_id)
-                                                    .to_string(), 
-                                                type_implementing_for_unaliased: engines.help_out(unaliased_type_id).to_string(),                                               existing_impl_span: existing_item.span(engines).clone(),
+                                                    .to_string(),
+                                                type_implementing_for_unaliased: engines
+                                                    .help_out(unaliased_type_id)
+                                                    .to_string(),
+                                                existing_impl_span: existing_item
+                                                    .span(engines)
+                                                    .clone(),
                                                 second_impl_span: decl_ref.name().span(),
                                             },
                                         );
@@ -406,7 +413,12 @@ impl TraitMap {
                                                 type_implementing_for: engines
                                                     .help_out(type_id)
                                                     .to_string(),
-                                                type_implementing_for_unaliased: engines.help_out(unaliased_type_id).to_string(),                                               existing_impl_span: existing_item.span(engines).clone(),
+                                                type_implementing_for_unaliased: engines
+                                                    .help_out(unaliased_type_id)
+                                                    .to_string(),
+                                                existing_impl_span: existing_item
+                                                    .span(engines)
+                                                    .clone(),
                                                 second_impl_span: decl_ref.name().span(),
                                             },
                                         );
@@ -421,7 +433,12 @@ impl TraitMap {
                                                 type_implementing_for: engines
                                                     .help_out(type_id)
                                                     .to_string(),
-                                                type_implementing_for_unaliased: engines.help_out(unaliased_type_id).to_string(),                                               existing_impl_span: existing_item.span(engines).clone(),
+                                                type_implementing_for_unaliased: engines
+                                                    .help_out(unaliased_type_id)
+                                                    .to_string(),
+                                                existing_impl_span: existing_item
+                                                    .span(engines)
+                                                    .clone(),
                                                 second_impl_span: decl_ref.name().span(),
                                             },
                                         );
