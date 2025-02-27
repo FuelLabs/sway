@@ -28,6 +28,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::namespace::Root;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -49,7 +50,8 @@ use sway_core::{
 use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::constants::{CORE, STD};
+use sway_types::{Ident, ProgramId, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
 
@@ -1580,6 +1582,7 @@ pub fn sway_build_config(
 ///
 /// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
+#[allow(clippy::too_many_arguments)]
 pub fn dependency_namespace(
     lib_namespace_map: &HashMap<NodeIx, namespace::Root>,
     compiled_contract_deps: &CompiledContractDeps,
@@ -1587,6 +1590,7 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
+    program_id: ProgramId,
     experimental: ExperimentalFeatures,
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
@@ -1596,11 +1600,12 @@ pub fn dependency_namespace(
         namespace::namespace_with_contract_id(
             engines,
             name.clone(),
+            program_id,
             contract_id_value,
             experimental,
         )?
     } else {
-        namespace::namespace_without_contract_id(name.clone())
+        Root::new(name.clone(), None, program_id, false)
     };
 
     // Add direct dependencies.
@@ -1627,6 +1632,7 @@ pub fn dependency_namespace(
                 namespace::namespace_with_contract_id(
                     engines,
                     name.clone(),
+                    program_id,
                     contract_id_value,
                     experimental,
                 )?
@@ -2394,6 +2400,10 @@ pub fn build(
                 ..profile.clone()
             };
 
+            let program_id = engines
+                .se()
+                .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
             let dep_namespace = match dependency_namespace(
@@ -2403,6 +2413,7 @@ pub fn build(
                 node,
                 &engines,
                 None,
+                program_id,
                 experimental,
             ) {
                 Ok(o) => o,
@@ -2460,6 +2471,10 @@ pub fn build(
             profile.clone()
         };
 
+        let program_id = engines
+            .se()
+            .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+
         // Note that the contract ID value here is only Some if tests are enabled.
         let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
@@ -2468,6 +2483,7 @@ pub fn build(
             node,
             &engines,
             contract_id_value.clone(),
+            program_id,
             experimental,
         ) {
             Ok(o) => o,
@@ -2567,6 +2583,10 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
+        let program_id = engines
+            .se()
+            .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+
         let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
@@ -2574,6 +2594,7 @@ pub fn check(
             node,
             engines,
             contract_id_value,
+            program_id,
             experimental,
         )
         .expect("failed to create dependency namespace");
