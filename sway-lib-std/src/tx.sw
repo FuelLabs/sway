@@ -4,6 +4,7 @@ library;
 use ::revert::revert;
 use ::option::Option::{self, *};
 use ::alloc::alloc_bytes;
+use ::ops::*;
 
 // GTF Opcode const selectors
 //
@@ -63,7 +64,7 @@ pub enum Transaction {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Transaction {
+impl Eq for Transaction {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Transaction::Script, Transaction::Script) => true,

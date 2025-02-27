@@ -295,7 +295,7 @@ pub enum ReassignmentOpVariant {
 }
 
 impl ReassignmentOpVariant {
-    pub fn core_name(&self) -> &'static str {
+    pub fn std_name(&self) -> &'static str {
         match self {
             ReassignmentOpVariant::Equals => "eq",
             ReassignmentOpVariant::AddEquals => "add",

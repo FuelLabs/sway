@@ -451,7 +451,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
                     .implemented_trait_decl_id()
                     .expect("impl is a trait impl"),
             );
-            // Further inspect only `core::ops::Eq` impls.
+            // Further inspect only `Eq` impls.
             if implemented_trait.call_path != core_ops_eq_call_path {
                 continue;
             }
@@ -578,7 +578,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
                 .insert_annotated_item_after(annotated_impl_partial_eq_trait);
 
             // Note that we do not need to adjust the `use` statements to include `PartialEq`.
-            // All `core::ops` are a part of the core's prelude. If there was a `use core::ops::Eq`
+            // All `core::ops` are a part of the core's prelude. If there was a `use Eq`
             // in a modified file, it was actually not needed.
         }
 

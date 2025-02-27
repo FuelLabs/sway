@@ -1,8 +1,4 @@
 [[package]]
-name = "core"
-source = "path+from-root-43D7B7046829C73F"
-
-[[package]]
 name = "ext_1_items"
 source = "member"
 
@@ -73,4 +69,3 @@ dependencies = [
 [[package]]
 name = "std"
 source = "path+from-root-43D7B7046829C73F"
-dependencies = ["core"]

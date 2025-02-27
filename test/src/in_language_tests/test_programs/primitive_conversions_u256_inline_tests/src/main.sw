@@ -1,6 +1,6 @@
 library;
 
-use std::{b512::B512, primitive_conversions::u256::*, u128::U128};
+use std::{b512::B512, primitive_conversions::u256::*, u128::*};
 
 #[test]
 fn u256_from_u8() {

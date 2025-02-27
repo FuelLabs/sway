@@ -1,7 +1,8 @@
 library;
 
 use ::primitives::*;
-use ::slice::*;
+use ::registers::flags;
+use ::flags::panic_on_overflow_enabled;
 
 /// Trait for the addition of two values.
 pub trait Add {
@@ -61,7 +62,7 @@ impl Add for u32 {
         let res = __add(self, other);
         // integer overflow
         if __gt(res, Self::max()) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -79,7 +80,7 @@ impl Add for u16 {
     fn add(self, other: Self) -> Self {
         let res = __add(self, other);
         if __gt(res, Self::max()) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -105,7 +106,7 @@ impl Add for u8 {
             input: u64
         };
         if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -250,7 +251,7 @@ impl Multiply for u32 {
         // constants (like Self::max() below) are also automatically promoted to u64
         let res = __mul(self, other);
         if __gt(res, Self::max()) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 // integer overflow
                 __revert(0)
             } else {
@@ -269,7 +270,7 @@ impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
         let res = __mul(self, other);
         if __gt(res, Self::max()) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 __mod(res, __add(Self::max(), 1))
@@ -293,7 +294,7 @@ impl Multiply for u8 {
             input: u64
         };
         if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -1710,34 +1711,142 @@ impl PartialEq for str {
 #[cfg(experimental_partial_eq = true)]
 impl Eq for str {}
 
-fn assert(v: bool) {
-    if !v {
-        __revert(0)
+#[cfg(experimental_partial_eq = true)]
+impl PartialEq for str {
+    fn eq(self, other: Self) -> bool {
+        if self.len() != other.len() {
+            false
+        } else {
+            let self_ptr = self.as_ptr();
+            let other_ptr = other.as_ptr();
+            let l = self.len();
+            asm(r1: self_ptr, r2: other_ptr, r3: l, r4) {
+                meq r4 r1 r2 r3;
+                r4: bool
+            }
+        }
     }
 }
 
-#[test]
-pub fn ok_str_eq() {
-    assert("" == "");
-    assert("a" == "a");
+#[cfg(experimental_partial_eq = true)]
+impl Eq for str {}
 
-    assert("a" != "");
-    assert("" != "a");
-    assert("a" != "b");
-}
-
-fn flags() -> u64 {
-    asm() {
-        flag
+impl u8 {
+    /// Returns whether a `u8` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u8` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u8 = u8::zero();
+    ///     assert(zero_u8.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u8
     }
 }
 
-fn panic_on_overflow_is_enabled() -> bool {
-    __eq(
-        __and(
-            flags(),
-            0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010,
-        ),
-        0,
-    )
+impl u16 {
+    /// Returns whether a `u16` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u16` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u16 = u16::zero();
+    ///     assert(zero_u16.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u16
+    }
+}
+
+impl u32 {
+    /// Returns whether a `u32` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u32` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u32 = u32::zero();
+    ///     assert(zero_u32.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u32
+    }
+}
+
+impl u64 {
+    /// Returns whether a `u64` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u64` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u64 = u64::zero();
+    ///     assert(zero_u64.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0u64
+    }
+}
+
+impl u256 {
+    /// Returns whether a `u256` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `u256` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_u256 = u256::zero();
+    ///     assert(zero_u256.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0x00u256
+    }
+}
+
+impl b256 {
+    /// Returns whether a `b256` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `b256` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_b256 = b256::zero();
+    ///     assert(zero_b256.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self == 0x0000000000000000000000000000000000000000000000000000000000000000
+    }
 }

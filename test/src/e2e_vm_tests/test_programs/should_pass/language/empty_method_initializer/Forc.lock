@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-5A54E336CA715EAA'
+name = "empty_method_initializer"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'empty_method_initializer'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-5A54E336CA715EAA'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-5A54E336CA715EAA"

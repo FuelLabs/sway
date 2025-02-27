@@ -7,6 +7,9 @@ use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
+use ::codec::*;
+use ::raw_slice::*;
+use ::ops::*;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -874,7 +877,7 @@ impl Bytes {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Bytes {
+impl Eq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
             return false;
@@ -887,7 +890,7 @@ impl core::ops::Eq for Bytes {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Bytes {
+impl PartialEq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
             return false;
@@ -900,7 +903,7 @@ impl core::ops::PartialEq for Bytes {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Bytes {}
+impl Eq for Bytes {}
 
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
