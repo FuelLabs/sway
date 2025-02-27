@@ -1,7 +1,7 @@
 use crate::{
     error::AdapterError,
     server::{
-        AdditionalData, DapServer, HandlerResult, INSTRUCTIONS_VARIABLE_REF,
+        AdditionalData, DapServer, HandlerResult, LOCALS_VARIABLE_REF, INSTRUCTIONS_VARIABLE_REF,
         REGISTERS_VARIABLE_REF, THREAD_ID,
     },
 };
@@ -113,6 +113,12 @@ impl DapServer {
                     name: "Registers".into(),
                     presentation_hint: Some(types::ScopePresentationhint::Registers),
                     variables_reference: REGISTERS_VARIABLE_REF,
+                    ..Default::default()
+                },
+                Scope {
+                    name: "Local Variables".into(),
+                    presentation_hint: Some(types::ScopePresentationhint::Locals),
+                    variables_reference: LOCALS_VARIABLE_REF,
                     ..Default::default()
                 },
             ],

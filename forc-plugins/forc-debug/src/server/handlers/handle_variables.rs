@@ -1,7 +1,7 @@
 use crate::{
     names::register_name,
     server::{
-        AdapterError, DapServer, HandlerResult, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF,
+        AdapterError, DapServer, HandlerResult, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF, LOCALS_VARIABLE_REF,
     },
 };
 use dap::{requests::VariablesArguments, responses::ResponseBody, types::Variable};
@@ -70,9 +70,12 @@ impl DapServer {
             Err(_) => vec![],
         };
 
+        let local_variables = vec![];
+
         match args.variables_reference {
             REGISTERS_VARIABLE_REF => Ok(register_variables),
             INSTRUCTIONS_VARIABLE_REF => Ok(instruction_variables),
+            LOCALS_VARIABLE_REF => Ok(local_variables),
             _ => Ok(vec![]),
         }
     }

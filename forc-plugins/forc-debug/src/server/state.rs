@@ -6,7 +6,7 @@ use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
 use forc_test::{execute::TestExecutor, setup::TestSetup, TestResult};
 use std::path::PathBuf;
-use sway_core::source_map::SourceMap;
+use sway_core::{asm_generation::ProgramABI, source_map::SourceMap};
 
 #[derive(Default, Debug, Clone)]
 /// The state of the DAP server.
@@ -24,6 +24,7 @@ pub struct ServerState {
     // Build state
     pub source_map: SourceMap,
     pub built_package: Option<BuiltPackage>,
+    pub program_abi: Option<ProgramABI>,
 
     // Test state
     pub test_setup: Option<TestSetup>,

@@ -33,6 +33,7 @@ use sway_core::BuildTarget;
 pub const THREAD_ID: i64 = 0;
 pub const REGISTERS_VARIABLE_REF: i64 = 1;
 pub const INSTRUCTIONS_VARIABLE_REF: i64 = 2;
+pub const LOCALS_VARIABLE_REF: i64 = 3;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AdditionalData {
@@ -356,6 +357,7 @@ impl DapServer {
         let test_setup = pkg_tests.setup().map_err(|err| AdapterError::BuildFailed {
             reason: format!("test setup: {err:?}"),
         })?;
+        self.state.program_abi = Some(pkg_to_debug.program_abi.clone());
         self.state.built_package = Some(pkg_to_debug.clone());
         self.state.test_setup = Some(test_setup.clone());
         Ok((pkg_to_debug.clone(), test_setup))
