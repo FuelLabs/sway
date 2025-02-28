@@ -1,13 +1,13 @@
 use crate::{
     engine_threading::*,
-    language::{parsed::Supertrait, ty, CallPath},
+    language::{parsed::Supertrait, ty, CallPath, CallPathDisplayType},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
         TypeCheckContext,
     },
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
-    EnforceTypeArguments,
+    EnforceTypeArguments, Namespace,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -159,6 +159,10 @@ impl TraitConstraint {
             }));
         }
 
+        self.trait_name = self
+            .trait_name
+            .to_canonical_path(ctx.engines(), ctx.namespace());
+
         // Type check the type arguments.
         for type_argument in &mut self.type_arguments {
             type_argument.type_id = ctx
@@ -258,5 +262,12 @@ impl TraitConstraint {
         }
 
         Ok(())
+    }
+
+    pub fn to_display_name(&self, engines: &Engines, namespace: &Namespace) -> String {
+        let display_path = self
+            .trait_name
+            .to_display_path(CallPathDisplayType::StripPackagePrefix, namespace);
+        display_path.to_string_with_args(engines, &self.type_arguments)
     }
 }

@@ -15,7 +15,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Named, Span, Spanned};
+use sway_types::{BaseIdent, Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyDecl {
@@ -664,6 +664,66 @@ impl TyDecl {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(engines),
             })),
+        }
+    }
+
+    pub fn get_name(&self, engines: &Engines) -> BaseIdent {
+        match self {
+            TyDecl::VariableDecl(ty_variable_decl) => ty_variable_decl.name.clone(),
+            TyDecl::ConstantDecl(constant_decl) => engines
+                .de()
+                .get_constant(&constant_decl.decl_id)
+                .call_path
+                .suffix
+                .clone(),
+            TyDecl::ConfigurableDecl(configurable_decl) => engines
+                .de()
+                .get_configurable(&configurable_decl.decl_id)
+                .call_path
+                .suffix
+                .clone(),
+            TyDecl::TraitTypeDecl(trait_type_decl) => {
+                engines.de().get_type(&trait_type_decl.decl_id).name.clone()
+            }
+            TyDecl::FunctionDecl(function_decl) => engines
+                .de()
+                .get_function(&function_decl.decl_id)
+                .name
+                .clone(),
+            TyDecl::TraitDecl(trait_decl) => {
+                engines.de().get_trait(&trait_decl.decl_id).name.clone()
+            }
+            TyDecl::StructDecl(struct_decl) => engines
+                .de()
+                .get_struct(&struct_decl.decl_id)
+                .call_path
+                .suffix
+                .clone(),
+            TyDecl::EnumDecl(enum_decl) => engines
+                .de()
+                .get_enum(&enum_decl.decl_id)
+                .call_path
+                .suffix
+                .clone(),
+            TyDecl::EnumVariantDecl(_enum_variant_decl) => {
+                unreachable!()
+            }
+            TyDecl::ImplSelfOrTrait(impl_self_or_trait) => engines
+                .de()
+                .get_impl_self_or_trait(&impl_self_or_trait.decl_id)
+                .trait_name
+                .suffix
+                .clone(),
+            TyDecl::AbiDecl(abi_decl) => engines.de().get_abi(&abi_decl.decl_id).name.clone(),
+            TyDecl::GenericTypeForFunctionScope(_generic_type_for_function_scope) => unreachable!(),
+            TyDecl::ErrorRecovery(_span, _error_emitted) => unreachable!(),
+            TyDecl::StorageDecl(_storage_decl) => unreachable!(),
+            TyDecl::TypeAliasDecl(type_alias_decl) => engines
+                .de()
+                .get_type_alias(&type_alias_decl.decl_id)
+                .call_path
+                .suffix
+                .clone(),
         }
     }
 
