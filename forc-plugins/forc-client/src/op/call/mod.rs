@@ -51,6 +51,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         gas,
         external_contracts,
         output,
+        print_functions
     } = cmd;
     let node_url = node.get_node_url(&None)?;
     let provider: Provider = Provider::connect(node_url).await?;
@@ -69,6 +70,18 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         }
     };
     let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
+    if print_functions {
+        println!("Contract Functions:");
+        for func in parsed_abi.functions {
+            let inputs = func.inputs.iter()
+                .map(|input| format!("{}({})", input.name, input.kind.name))
+                .collect::<Vec<_>>().join(", ");
+            println!("{}({})", func.name, inputs);
+            println!("> forc call --abi <ABI_PATH> <CONTRACT-ID> {} {}", func.name, inputs);
+            println!();
+        }
+        return Ok("".to_string());
+    }
 
     let type_lookup = parsed_abi
         .types
@@ -250,7 +263,27 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
 
     Ok(result)
 }
+pub async fn print_callable_functions(cmd: cmd::Call) -> anyhow::Result<()> {
+    let abi_str = match cmd.abi {
+        Either::Left(path) => std::fs::read_to_string(&path)?,
+        Either::Right(url) => {
+            let response = reqwest::get(url).await?.bytes().await?;
+            String::from_utf8(response.to_vec())?
+        }
+    };
+    let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
 
+    println!("Contract Functions:");
+    for func in parsed_abi.functions {
+        let inputs = func.inputs.iter()
+            .map(|input| format!("{}({})", input.name, input.kind.name))
+            .collect::<Vec<_>>().join(", ");
+        println!("{}({})", func.name, inputs);
+        println!("> forc call --abi <ABI_PATH> <CONTRACT-ID> {} {}", func.name, inputs);
+        println!();
+    }
+    Ok(())
+}
 /// Get the wallet to use for the call - based on optionally provided signing key and wallet flag.
 async fn get_wallet(
     signing_key: Option<SecretKey>,
