@@ -243,10 +243,10 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     // display transaction url if live mode
     if cmd::call::ExecutionMode::Live == mode {
         if let Some(explorer_url) = node.get_explorer_url() {
-            forc_tracing::println_action_green(
-                "\nView transaction:",
-                &format!("{}/tx/0x{}", explorer_url, tx_hash),
-            );
+            forc_tracing::println_yellow(&format!(
+                "\nView transaction: {}/tx/0x{}",
+                explorer_url, tx_hash
+            ));
         }
     }
 
