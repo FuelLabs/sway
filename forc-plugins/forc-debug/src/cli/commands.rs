@@ -460,7 +460,7 @@ fn pretty_print_run_result(rr: &RunResult, state: &mut State) {
             // If the ABI is available, decode the log data
             if let Some(abi) = state.contract_abis.get_or_fetch_abi(&id) {
                 if let Ok(decoded_log_data) =
-                    forc_util::decode_log_data(&rb.to_string(), &data, abi)
+                    forc_util::tx_utils::decode_log_data(&rb.to_string(), &data, abi)
                 {
                     println!(
                         "Decoded log value: {}, from contract: {}",
