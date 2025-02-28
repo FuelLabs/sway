@@ -97,7 +97,7 @@ pub struct Items {
     pub(crate) implemented_traits: TraitMap,
     /// Contains symbols imported from the standard library preludes.
     ///
-    /// The import are asserted to never have a name clash. The improted names are always private
+    /// The import are asserted to never have a name clash. The imported names are always private
     /// rather than public (`use ...` rather than `pub use ...`), since the bindings cannot be
     /// accessed from outside the importing module. The preludes are asserted to not contain name
     /// clashes.
