@@ -142,7 +142,7 @@ macro_rules! forc_result_bail {
     };
 }
 
-#[cfg(feature = "fuel-tx")]
+#[cfg(feature = "tx")]
 pub mod tx_utils {
 
     use anyhow::Result;

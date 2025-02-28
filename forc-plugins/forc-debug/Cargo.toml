@@ -16,7 +16,7 @@ dirs.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
 forc-tracing.workspace = true
-forc-util = { workspace = true, features = ["fuel-tx"] }
+forc-util = { workspace = true, features = ["tx"] }
 fuel-abi-types.workspace = true
 fuel-core-client.workspace = true
 fuel-tx.workspace = true
