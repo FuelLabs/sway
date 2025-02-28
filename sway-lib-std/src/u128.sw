@@ -45,7 +45,7 @@ impl From<u8> for U128 {
     fn from(val: u8) -> Self {
         Self {
             upper: 0,
-            lower: val.as_u64(),
+            lower: val.try_as_u64().expect("Conversion should never fail for u8"),
         }
     }
 }
@@ -69,7 +69,7 @@ impl From<u16> for U128 {
     fn from(val: u16) -> Self {
         Self {
             upper: 0,
-            lower: val.as_u64(),
+            lower: val.try_as_u64().expect("Conversion should never fail for u16"),
         }
     }
 }
@@ -93,7 +93,7 @@ impl From<u32> for U128 {
     fn from(val: u32) -> Self {
         Self {
             upper: 0,
-            lower: val.as_u64(),
+            lower: val.as_u64().expect("Conversion should never fail for u32"),
         }
     }
 }
@@ -327,12 +327,21 @@ impl U128 {
     ///     assert(result.is_err()));
     /// }
     /// ```
+   #[deprecated(note = "Use `try_as_u64` instead")]
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => Ok(self.lower),
             _ => Err(U128Error::LossOfPrecision),
         }
     }
+
+    pub fn try_as_u64(self) -> Result<u64, U128Error> {
+    match self.upper {
+        0 => Ok(self.lower),
+        _ => Err(U128Error::LossOfPrecision),
+        }
+    }
+
 
     /// Upcasts a `U128` to a `u256`.
     ///
