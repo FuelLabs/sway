@@ -2815,6 +2815,7 @@ dependencies = [
  "either",
  "forc",
  "forc-pkg",
+ "forc-test",
  "forc-tracing 0.66.7",
  "forc-tx",
  "forc-util",
