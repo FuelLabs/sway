@@ -69,16 +69,17 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             String::from_utf8(response.to_vec())?
         }
     };
-    let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
+    let parsed_abi: ProgramABI = serde_json::from_str(&abi_str)?;
+    let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi)?;
 
-    let type_lookup = parsed_abi
+    let type_lookup = unified_program_abi
         .types
         .into_iter()
         .map(|decl| (decl.type_id, decl))
         .collect::<HashMap<_, _>>();
 
     // get the function selector from the abi
-    let abi_func = parsed_abi
+    let abi_func = unified_program_abi
         .functions
         .iter()
         .find(|abi_func| abi_func.name == selector)
@@ -118,8 +119,6 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     };
 
     let provider = wallet.provider().unwrap();
-    // TODO: add support for decoding logs and viewing them in output (verbose mode)
-    // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6887
     let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
 
     let tx_policies = gas
@@ -239,6 +238,36 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     if show_receipts {
         forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
     }
+
+    // decode logs
+    let program_abi = sway_core::asm_generation::ProgramABI::Fuel(parsed_abi);
+    let logs = receipts
+        .iter()
+        .filter_map(|receipt| {
+            if let Receipt::LogData {
+                rb,
+                data: Some(data),
+                ..
+            } = receipt
+            {
+                return forc_test::decode_log_data(&rb.to_string(), data, &program_abi)
+                    .ok()
+                    .map(|decoded| decoded.value);
+            }
+            None
+        })
+        .collect::<Vec<_>>();
+
+    // print logs
+    if !logs.is_empty() {
+        forc_tracing::println_green_bold("logs:");
+        logs.iter()
+            .for_each(|log| forc_tracing::println_yellow(&format!("  {:#}", log)));
+    }
+
+    // print tx hash and result
+    forc_tracing::println_green_bold(&format!("tx hash: {}", tx_hash));
+    forc_tracing::println_green_bold(&format!("result: {}", result));
 
     // display transaction url if live mode
     if cmd::call::ExecutionMode::Live == mode {
