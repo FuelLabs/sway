@@ -42,9 +42,9 @@ vec1.workspace = true
 walkdir.workspace = true
 
 [dev-dependencies]
-regex = "^1.10.2"
+regex.workspace = true
 tempfile.workspace = true
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
-sysinfo = "0.29"
+sysinfo.workspace = true
 

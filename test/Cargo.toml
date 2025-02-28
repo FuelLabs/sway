@@ -10,7 +10,7 @@ anyhow.workspace = true
 bytes.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 colored.workspace = true
-duct = "0.13.7"
+duct.workspace = true
 filecheck.workspace = true
 forc = { workspace = true, features = ["test"] }
 forc-client.workspace = true
