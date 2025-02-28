@@ -51,6 +51,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         gas,
         external_contracts,
         output,
+        show_receipts,
     } = cmd;
     let node_url = node.get_node_url(&None)?;
     let provider: Provider = Provider::connect(node_url).await?;
@@ -234,9 +235,10 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         }
     };
 
-    forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
-    forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
-    forc_tracing::println_action_green("result:", &result);
+    // print receipts
+    if show_receipts {
+        forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
+    }
 
     // display transaction url if live mode
     if cmd::call::ExecutionMode::Live == mode {
