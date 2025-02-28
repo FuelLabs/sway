@@ -71,96 +71,99 @@ Usage: forc call [OPTIONS] --abi <ABI> <CONTRACT_ID> <FUNCTION> [FUNCTION_ARGS].
 
 Arguments:
   <CONTRACT_ID>
-    The contract ID to call
+          The contract ID to call
 
   <FUNCTION>
-    The function signature to call. When ABI is provided, this should be a selector (e.g. "transfer") When no ABI is provided, this should be the full function signature (e.g. "transfer(address,u64)")
+          The function selector to call. The function selector is the name of the function to call (e.g. "transfer"). It must be a valid selector present in the ABI file
 
   [FUNCTION_ARGS]...
-    Arguments to pass into the function to be called
+          Arguments to pass into the function to be called
 
 Options:
-  --abi <ABI>
-    Path or URI to a JSON ABI file
+      --abi <ABI>
+          Path or URI to a JSON ABI file
 
-  --node-url <NODE_URL>
-    The URL of the Fuel node to which we're submitting the transaction. If unspecified, checks the manifest's `network` table, then falls back to `http://127.0.0.1:4000`
-    
-    You can also use `--target`, `--testnet`, or `--mainnet` to specify the Fuel node.
-    
-    [env: FUEL_NODE_URL=]
+      --node-url <NODE_URL>
+          The URL of the Fuel node to which we're submitting the transaction. If unspecified, checks the manifest's `network` table, then falls back to `http://127.0.0.1:4000`
+          
+          You can also use `--target`, `--devnet`, `--testnet`, or `--mainnet` to specify the Fuel node.
+          
+          [env: FUEL_NODE_URL=]
 
-  --target <TARGET>
-    Preset configurations for using a specific target.
-    
-    You can also use `--node-url`, `--testnet`, or `--mainnet` to specify the Fuel node.
-    
-    Possible values are: [local, testnet, mainnet]
+      --target <TARGET>
+          Preset configurations for using a specific target.
+          
+          You can also use `--node-url`, `--devnet`, `--testnet`, or `--mainnet` to specify the Fuel node.
+          
+          Possible values are: [local, testnet, mainnet]
 
-  --mainnet
-    Use preset configuration for mainnet.
-    
-    You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
+      --mainnet
+          Use preset configuration for mainnet.
+          
+          You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
 
-  --testnet
-    Use preset configuration for testnet.
-    
-    You can also use `--node-url`, `--target`, or `--mainnet` to specify the Fuel node.
+      --testnet
+          Use preset configuration for testnet.
+          
+          You can also use `--node-url`, `--target`, or `--mainnet` to specify the Fuel node.
 
-  --devnet
-    Use preset configuration for devnet.
-    
-    You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
+      --devnet
+          Use preset configuration for devnet.
+          
+          You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
 
-  --signing-key <SIGNING_KEY>
-    Derive an account from a secret key to make the call
-    
-    [env: SIGNING_KEY=]
+      --signing-key <SIGNING_KEY>
+          Derive an account from a secret key to make the call
+          
+          [env: SIGNING_KEY=]
 
-  --wallet
-    Use forc-wallet to make the call
+      --wallet
+          Use forc-wallet to make the call
 
-  --amount <AMOUNT>
-    Amount of native assets to forward with the call
-    
-    [default: 0]
+      --amount <AMOUNT>
+          Amount of native assets to forward with the call
+          
+          [default: 0]
 
-  --asset-id <ASSET_ID>
-    Asset ID to forward with the call
+      --asset-id <ASSET_ID>
+          Asset ID to forward with the call
 
-  --gas-forwarded <GAS_FORWARDED>
-    Amount of gas to forward with the call
+      --gas-forwarded <GAS_FORWARDED>
+          Amount of gas to forward with the call
 
-  --mode <MODE>
-    The execution mode to use for the call; defaults to dry-run; possible values: dry-run, simulate, live
-    
-    [default: dry-run]
+      --mode <MODE>
+          The execution mode to use for the call; defaults to dry-run; possible values: dry-run, simulate, live
+          
+          [default: dry-run]
 
-  --gas-price <PRICE>
-    Gas price for the transaction
+      --gas-price <PRICE>
+          Gas price for the transaction
 
-  --script-gas-limit <SCRIPT_GAS_LIMIT>
-    Gas limit for the transaction
+      --script-gas-limit <SCRIPT_GAS_LIMIT>
+          Gas limit for the transaction
 
-  --max-fee <MAX_FEE>
-    Max fee for the transaction
+      --max-fee <MAX_FEE>
+          Max fee for the transaction
 
-  --tip <TIP>
-    The tip for the transaction
+      --tip <TIP>
+          The tip for the transaction
 
-  --external-contracts <EXTERNAL_CONTRACTS>
-    The external contract addresses to use for the call If none are provided, the call will automatically populate external contracts by making a dry-run calls to the node, and extract the contract addresses based on the revert reason
+      --external-contracts <EXTERNAL_CONTRACTS>
+          The external contract addresses to use for the call If none are provided, the call will automatically populate external contracts by making a dry-run calls to the node, and extract the contract addresses based on the revert reason
 
-  --output <OUTPUT>
-    The output format to use; possible values: default, raw
+      --output <OUTPUT>
+          The output format to use; possible values: default, raw
+          
+          [default: default]
 
-    [default: default]
+      --show-receipts
+          Output call receipts
 
   -h, --help
-    Print help (see a summary with '-h')
+          Print help (see a summary with '-h')
 
   -V, --version
-    Print version
+          Print version
 ```
 
 </details>
@@ -313,7 +316,6 @@ forc call <CONTRACT_ID> --abi <PATH> update_params 42 --live
 
 The following features are planned for future releases:
 
-- Decode and display logs for contract calls
 - Support direct transfer of asset(s) to addresses
 - Function signature based calls without ABI
 - Raw calldata input support
