@@ -369,8 +369,8 @@ impl Root {
 
         let mut imports = vec![];
 
-	// A prelude should not declare its own items
-	assert!(src_mod.root_items().symbols.is_empty());
+        // A prelude should not declare its own items
+        assert!(src_mod.root_items().symbols.is_empty());
 
         // Collect those item-imported items that the source module reexports
         let mut symbols = src_mod
@@ -382,14 +382,14 @@ impl Root {
         symbols.sort();
         for symbol in symbols {
             let (_, path, decl, src_visibility) = &src_mod.root_items().use_item_synonyms[symbol];
-	    // Preludes reexport all their imports
-	    assert!(matches!(src_visibility, Visibility::Public));
+            // Preludes reexport all their imports
+            assert!(matches!(src_visibility, Visibility::Public));
             imports.push((symbol.clone(), decl.clone(), path.clone()))
         }
 
         // Collect those glob-imported items that the source module reexports.  There should be no
-	// name clashes in a prelude, so item reexports and glob reexports can be treated the same
-	// way.
+        // name clashes in a prelude, so item reexports and glob reexports can be treated the same
+        // way.
         let mut symbols = src_mod
             .root_items()
             .use_glob_synonyms
@@ -400,8 +400,8 @@ impl Root {
         for symbol in symbols {
             let bindings = &src_mod.root_items().use_glob_synonyms[symbol];
             for (path, decl, src_visibility) in bindings.iter() {
-		// Preludes reexport all their imports
-		assert!(matches!(src_visibility, Visibility::Public));
+                // Preludes reexport all their imports
+                assert!(matches!(src_visibility, Visibility::Public));
                 imports.push((symbol.clone(), decl.clone(), path.clone()))
             }
         }
@@ -414,18 +414,12 @@ impl Root {
             .implemented_traits
             .extend(implemented_traits, engines);
 
-	let dst_prelude_synonyms = &mut dst_mod.current_items_mut().prelude_synonyms;
-        imports
-            .iter()
-            .for_each(|(symbol, decl, path)| {
-		// Preludes should not contain name clashes
-		assert!(!dst_prelude_synonyms.contains_key(symbol));
-                dst_prelude_synonyms.insert(
-                    symbol.clone(),
-                    (path.clone(),
-                    decl.clone())
-                );
-            });
+        let dst_prelude_synonyms = &mut dst_mod.current_items_mut().prelude_synonyms;
+        imports.iter().for_each(|(symbol, decl, path)| {
+            // Preludes should not contain name clashes
+            assert!(!dst_prelude_synonyms.contains_key(symbol));
+            dst_prelude_synonyms.insert(symbol.clone(), (path.clone(), decl.clone()));
+        });
 
         Ok(())
     }

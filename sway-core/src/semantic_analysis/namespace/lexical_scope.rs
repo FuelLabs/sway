@@ -43,13 +43,7 @@ pub(super) type SymbolUniqueMap = HashMap<IdentUnique, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
-pub(super) type PreludeSynonyms = HashMap<
-    Ident,
-    (
-        ModulePathBuf,
-        ResolvedDeclaration,
-    ),
->;
+pub(super) type PreludeSynonyms = HashMap<Ident, (ModulePathBuf, ResolvedDeclaration)>;
 pub(super) type GlobSynonyms =
     HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
 pub(super) type ItemSynonyms = HashMap<
