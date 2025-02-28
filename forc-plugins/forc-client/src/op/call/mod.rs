@@ -269,8 +269,9 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
     // print logs
     if !logs.is_empty() {
         forc_tracing::println_green_bold("logs:");
-        logs.iter()
-            .for_each(|log| forc_tracing::println_yellow(&format!("  {:#}", log)));
+        for log in &logs {
+            println!("  {:#}", log);
+        }
     }
 
     // print tx hash and result
