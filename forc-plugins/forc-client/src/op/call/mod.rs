@@ -245,7 +245,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
     // print receipts
     if show_receipts {
         let formatted_receipts = forc_util::tx_utils::format_log_receipts(&receipts, true)?;
-        forc_tracing::println_action_green("receipts:", &formatted_receipts);
+        forc_tracing::println_label_green("receipts:", &formatted_receipts);
     }
 
     // decode logs
@@ -276,16 +276,16 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
     }
 
     // print tx hash and result
-    forc_tracing::println_green_bold(&format!("tx hash: {}", tx_hash));
-    forc_tracing::println_green_bold(&format!("result: {}", result));
+    forc_tracing::println_label_green("tx hash:", &tx_hash.to_string());
+    forc_tracing::println_label_green("result:", &result);
 
     // display transaction url if live mode
     if cmd::call::ExecutionMode::Live == mode {
         if let Some(explorer_url) = node.get_explorer_url() {
-            forc_tracing::println_yellow(&format!(
-                "\nView transaction: {}/tx/0x{}",
-                explorer_url, tx_hash
-            ));
+            forc_tracing::println_label_green(
+                "\nView transaction:",
+                &format!("{}/tx/0x{}\n", explorer_url, tx_hash),
+            );
         }
     }
 
