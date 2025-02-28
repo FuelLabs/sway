@@ -37,8 +37,15 @@ use fuels_core::{
 };
 use std::{collections::HashMap, str::FromStr};
 
+#[derive(Debug)]
+pub struct CallResponse {
+    pub tx_hash: String,
+    pub result: String,
+    pub logs: Vec<String>,
+}
+
 /// A command for calling a contract function.
-pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
+pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
     let cmd::Call {
         contract_id,
         abi,
@@ -279,7 +286,11 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         }
     }
 
-    Ok(result)
+    Ok(CallResponse {
+        tx_hash: tx_hash.to_string(),
+        result,
+        logs,
+    })
 }
 
 /// Get the wallet to use for the call - based on optionally provided signing key and wallet flag.
