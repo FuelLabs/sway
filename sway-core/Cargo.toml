@@ -49,7 +49,7 @@ uint.workspace = true
 vec1.workspace = true
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
-sysinfo = "0.29.0"
+sysinfo.workspace = true
 
 [lints.clippy]
 iter_over_hash_type = "deny"

@@ -59,12 +59,12 @@ tracing.workspace = true
 url.workspace = true
 
 [dev-dependencies]
-portpicker = "0.1.1"
-pretty_assertions = "1.4.1"
-rexpect = "0.5"
+portpicker.workspace = true
+pretty_assertions.workspace = true
+rexpect.workspace = true
 
 [build-dependencies]
-regex = "1.5.4"
+regex.workspace = true
 
 [[bin]]
 name = "forc-deploy"

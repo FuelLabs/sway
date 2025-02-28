@@ -29,5 +29,5 @@ sway-types.workspace = true
 swayfmt.workspace = true
 
 [dev-dependencies]
-dir_indexer = "0.0.2"
-expect-test = "1.4.1"
+dir_indexer.workspace = true
+expect-test.workspace = true
