@@ -2,9 +2,9 @@ use crate::cli;
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
+use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
-use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
+use forc_util::{decode_log_data, tx_utils::format_log_receipts, ForcError, ForcResult};
 use sway_core::fuel_prelude::fuel_tx::Receipt;
 use tracing::info;
 

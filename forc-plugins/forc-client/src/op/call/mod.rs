@@ -258,7 +258,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
                 ..
             } = receipt
             {
-                return forc_test::decode_log_data(&rb.to_string(), data, &program_abi)
+                return forc_util::decode_log_data(&rb.to_string(), data, &program_abi)
                     .ok()
                     .map(|decoded| decoded.value);
             }

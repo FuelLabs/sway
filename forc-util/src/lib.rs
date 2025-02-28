@@ -5,8 +5,9 @@ use annotate_snippets::{
 };
 use anyhow::{bail, Context, Result};
 use forc_tracing::{println_action_green, println_error, println_red_err, println_yellow_err};
+use fuels_core::{codec::ABIDecoder, types::param_types::ParamType};
 use std::{
-    collections::{hash_map, HashSet},
+    collections::{hash_map, HashMap, HashSet},
     fmt::Display,
     fs::File,
     hash::{Hash, Hasher},
@@ -14,7 +15,7 @@ use std::{
     process::Termination,
     str,
 };
-use sway_core::language::parsed::TreeType;
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType};
 use sway_error::{
     diagnostic::{Diagnostic, Issue, Label, LabelType, Level, ToDiagnostic},
     error::CompileError,
@@ -198,6 +199,49 @@ pub mod tx_utils {
             Ok(serde_json::to_string(&receipt_to_json_array)?)
         }
     }
+}
+
+/// A `LogData` decoded into a human readable format with its type information.
+pub struct DecodedLog {
+    pub value: String,
+}
+
+pub fn decode_log_data(
+    log_id: &str,
+    log_data: &[u8],
+    program_abi: &ProgramABI,
+) -> anyhow::Result<DecodedLog> {
+    let program_abi = match program_abi {
+        ProgramABI::Fuel(fuel_abi) => Some(
+            fuel_abi_types::abi::unified_program::UnifiedProgramABI::from_counterpart(fuel_abi)?,
+        ),
+        _ => None,
+    }
+    .ok_or_else(|| anyhow::anyhow!("only fuelvm is supported for log decoding"))?;
+    // Create type lookup (id, TypeDeclaration)
+    let type_lookup = program_abi
+        .types
+        .iter()
+        .map(|decl| (decl.type_id, decl.clone()))
+        .collect::<HashMap<_, _>>();
+
+    let logged_type_lookup: HashMap<_, _> = program_abi
+        .logged_types
+        .iter()
+        .flatten()
+        .map(|logged_type| (logged_type.log_id.as_str(), logged_type.application.clone()))
+        .collect();
+
+    let type_application = logged_type_lookup
+        .get(&log_id)
+        .ok_or_else(|| anyhow::anyhow!("log id is missing"))?;
+
+    let abi_decoder = ABIDecoder::default();
+    let param_type = ParamType::try_from_type_application(type_application, &type_lookup)?;
+    let decoded_str = abi_decoder.decode_as_debug_str(&param_type, log_data)?;
+    let decoded_log = DecodedLog { value: decoded_str };
+
+    Ok(decoded_log)
 }
 
 pub fn find_file_name<'sc>(manifest_dir: &Path, entry_path: &'sc Path) -> Result<&'sc Path> {

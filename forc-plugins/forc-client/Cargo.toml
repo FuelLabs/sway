@@ -20,7 +20,6 @@ dialoguer.workspace = true
 either.workspace = true
 forc.workspace = true
 forc-pkg.workspace = true
-forc-test.workspace = true
 forc-tracing.workspace = true
 forc-tx.workspace = true
 forc-util.workspace = true
