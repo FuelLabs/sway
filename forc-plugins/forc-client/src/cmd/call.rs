@@ -225,7 +225,7 @@ pub struct Command {
     pub output: OutputFormat,
 
     /// Output call receipts
-    #[clap(long, alias = "r")]
+    #[clap(long, short = 'r', alias = "receipts")]
     pub show_receipts: bool,
 }
 
