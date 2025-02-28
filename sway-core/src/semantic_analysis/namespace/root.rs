@@ -355,7 +355,7 @@ impl Root {
     /// `dst` module.
     ///
     /// This is used when a new module is created in order to pupulate the module with implicit
-    /// imports fromt the standard library preludes.
+    /// imports from the standard library preludes.
     ///
     /// Paths are assumed to be absolute.
     pub(super) fn prelude_import(
