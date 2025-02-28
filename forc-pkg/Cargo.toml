@@ -15,7 +15,7 @@ byte-unit.workspace = true
 cid.workspace = true
 flate2.workspace = true
 forc-tracing.workspace = true
-forc-util = { workspace = true, features = ["tx"] }
+forc-util = { workspace = true }
 fuel-abi-types.workspace = true
 futures.workspace = true
 git2 = { workspace = true, features = ["vendored-libgit2", "vendored-openssl"] }
