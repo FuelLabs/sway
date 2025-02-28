@@ -244,7 +244,8 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
 
     // print receipts
     if show_receipts {
-        forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
+        let formatted_receipts = forc_util::tx_utils::format_log_receipts(&receipts, true)?;
+        forc_tracing::println_action_green("receipts:", &formatted_receipts);
     }
 
     // decode logs
