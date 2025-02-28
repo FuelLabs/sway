@@ -43,6 +43,13 @@ pub(super) type SymbolUniqueMap = HashMap<IdentUnique, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
+pub(super) type PreludeSynonyms = HashMap<
+    Ident,
+    (
+        ModulePathBuf,
+        ResolvedDeclaration,
+    ),
+>;
 pub(super) type GlobSynonyms =
     HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
 pub(super) type ItemSynonyms = HashMap<
@@ -94,6 +101,13 @@ pub struct Items {
     pub(crate) symbols_unique_while_collecting_unifications: Arc<RwLock<SymbolUniqueMap>>,
 
     pub(crate) implemented_traits: TraitMap,
+    /// Contains symbols imported from the standard library preludes.
+    ///
+    /// The import are asserted to never have a name clash. The improted names are always private
+    /// rather than public (`use ...` rather than `pub use ...`), since the bindings cannot be
+    /// accessed from outside the importing module. The preludes are asserted to not contain name
+    /// clashes.
+    pub(crate) prelude_synonyms: PreludeSynonyms,
     /// Contains symbols imported using star imports (`use foo::*`.).
     ///
     /// When star importing from multiple modules the same name may be imported more than once. This
@@ -204,6 +218,11 @@ impl Items {
                     span: symbol.span(),
                 }));
             }
+        }
+
+        // Check prelude imports
+        if let Some((decl_path, decl)) = self.prelude_synonyms.get(symbol) {
+            return Ok(Some((decl.clone(), decl_path.clone())));
         }
 
         Ok(None)
