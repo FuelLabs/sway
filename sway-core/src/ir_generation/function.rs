@@ -189,12 +189,32 @@ impl<'eng> FnCompiler<'eng> {
         result
     }
 
-    pub(super) fn compile_code_block_to_value(
+    pub(super) fn compile_fn_to_value(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, Vec<CompileError>> {
+        // Function arguments, like all locals need to be in memory, so that their addresses
+        // can be taken. So we create locals for each argument and store the value there.
+        let entry = self.function.get_entry_block(context);
+        for (arg_name, arg_value) in self
+            .function
+            .args_iter(context)
+            .cloned()
+            .collect::<Vec<_>>()
+        {
+            let local_name = self.lexical_map.insert(arg_name.as_str().to_owned());
+            let local_var = self.function.new_unique_local_var(
+                context,
+                local_name,
+                arg_value.get_type(context).unwrap(),
+                None,
+                false,
+            );
+            let local_val = entry.append(context).get_local(local_var);
+            entry.append(context).store(local_val, arg_value);
+        }
         Ok(self.compile_code_block(context, md_mgr, ast_block)?.value)
     }
 
@@ -3322,11 +3342,16 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(val, context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
             Ok(TerminatorValue::new(val, context))
-        } else if let Some(const_val) = self
+        } else if let Some(global_val) = self
             .module
-            .get_global_constant(context, &call_path.as_vec_string())
+            .get_global_variable(context, &call_path.as_vec_string())
         {
-            Ok(TerminatorValue::new(const_val, context))
+            let val = self
+                .current_block
+                .append(context)
+                .get_global(global_val)
+                .add_metadatum(context, span_md_idx);
+            Ok(TerminatorValue::new(val, context))
         } else if self
             .module
             .get_config(context, &call_path.suffix.to_string())
