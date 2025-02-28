@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{
         DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        ReplaceFunctionImplementingType,
+        MaterializeConstGenerics, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     has_changes,
@@ -163,6 +163,18 @@ impl HashWithEngines for TyTraitDecl {
         items.hash(state, engines);
         supertraits.hash(state, engines);
         visibility.hash(state);
+    }
+}
+
+impl MaterializeConstGenerics for TyTraitDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 

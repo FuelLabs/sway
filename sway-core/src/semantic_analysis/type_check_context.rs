@@ -1,12 +1,12 @@
 #![allow(clippy::mutable_key_type)]
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
     engine_threading::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyExpression},
         CallPath, QualifiedCallPath, Visibility,
     },
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
@@ -531,11 +531,12 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
+        const_generics: BTreeMap<String, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> Result<(), ErrorEmitted>
     where
-        T: MonomorphizeHelper + SubstTypes,
+        T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
     {
         let mod_path = self.namespace().current_mod_path().clone();
         monomorphize_with_modpath(
@@ -544,6 +545,7 @@ impl<'a> TypeCheckContext<'a> {
             self.namespace(),
             value,
             type_arguments,
+            const_generics,
             enforce_type_arguments,
             call_site_span,
             &mod_path,

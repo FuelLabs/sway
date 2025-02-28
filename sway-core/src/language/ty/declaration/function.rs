@@ -1,11 +1,12 @@
 use crate::{
+    ast_elements::type_parameter::ConstGenericParameter,
     decl_engine::*,
     engine_threading::*,
     has_changes,
-    language::{parsed, ty::*, Inline, Purity, Visibility},
     language::{
-        parsed::{FunctionDeclaration, FunctionDeclarationKind},
-        CallPath,
+        parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
+        ty::*,
+        CallPath, Inline, Purity, Visibility,
     },
     semantic_analysis::TypeCheckContext,
     transform::{self, AttributeKind},
@@ -44,6 +45,7 @@ pub struct TyFunctionDecl {
     pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
+    pub const_generic_parameters: Vec<ConstGenericParameter>,
     pub return_type: TypeArgument,
     pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
@@ -89,9 +91,10 @@ impl DebugWithEngines for TyFunctionDecl {
             self.parameters
                 .iter()
                 .map(|p| format!(
-                    "{}:{}",
+                    "{}:{} -> {}",
                     p.name.as_str(),
-                    engines.help_out(p.type_argument.initial_type_id)
+                    engines.help_out(p.type_argument.initial_type_id),
+                    engines.help_out(p.type_argument.type_id)
                 ))
                 .collect::<Vec<_>>()
                 .join(", "),
@@ -130,6 +133,26 @@ impl DisplayWithEngines for TyFunctionDecl {
                 .join(", "),
             engines.help_out(self.return_type.initial_type_id),
         )
+    }
+}
+
+impl MaterializeConstGenerics for TyFunctionDecl {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        for param in self.parameters.iter_mut() {
+            param
+                .type_argument
+                .type_id
+                .materialize_const_generics(engines, handler, name, value)?;
+        }
+
+        self.body
+            .materialize_const_generics(engines, handler, name, value)
     }
 }
 
@@ -258,6 +281,7 @@ impl HashWithEngines for TyFunctionDecl {
             parameters,
             return_type,
             type_parameters,
+            const_generic_parameters,
             visibility,
             is_contract_call,
             purity,
@@ -278,6 +302,7 @@ impl HashWithEngines for TyFunctionDecl {
         parameters.hash(state, engines);
         return_type.hash(state, engines);
         type_parameters.hash(state, engines);
+        const_generic_parameters.hash(state, engines);
         visibility.hash(state);
         is_contract_call.hash(state);
         purity.hash(state);
@@ -286,7 +311,7 @@ impl HashWithEngines for TyFunctionDecl {
 
 impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        if ctx.subst_function_body {
+        let changes = if ctx.subst_function_body {
             has_changes! {
                 self.type_parameters.subst(ctx);
                 self.parameters.subst(ctx);
@@ -301,6 +326,16 @@ impl SubstTypes for TyFunctionDecl {
                 self.return_type.subst(ctx);
                 self.implementing_for_typeid.subst(ctx);
             }
+        };
+
+        if let Some(map) = ctx.type_subst_map.as_ref() {
+            let handler = Handler::default();
+            for (name, value) in &map.const_generics_materialization {
+                let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
+            }
+            HasChanges::Yes
+        } else {
+            changes
         }
     }
 }
@@ -401,6 +436,7 @@ impl TyFunctionDecl {
             visibility: *visibility,
             return_type: return_type.clone(),
             type_parameters: Default::default(),
+            const_generic_parameters: vec![],
             where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
             is_type_check_finalized: true,

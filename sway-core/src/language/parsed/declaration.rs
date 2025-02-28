@@ -61,6 +61,7 @@ pub enum Declaration {
     TypeAliasDeclaration(ParsedDeclId<TypeAliasDeclaration>),
     TraitTypeDeclaration(ParsedDeclId<TraitTypeDeclaration>),
     TraitFnDeclaration(ParsedDeclId<TraitFn>),
+    ConstGenericDeclaration(ParsedDeclId<ConstGenericDeclaration>),
 }
 
 #[derive(Debug, Clone)]
@@ -100,6 +101,7 @@ impl Declaration {
             AbiDeclaration(_) => "abi",
             StorageDeclaration(_) => "contract storage",
             TypeAliasDeclaration(_) => "type alias",
+            ConstGenericDeclaration(_) => "const generic",
         }
     }
 
@@ -121,6 +123,9 @@ impl Declaration {
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
             TraitFnDeclaration(decl_id) => pe.get_trait_fn(decl_id).span(),
+            ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 
@@ -195,6 +200,9 @@ impl Declaration {
             | Declaration::AbiDeclaration(_)
             | Declaration::TraitTypeDeclaration(_)
             | Declaration::TraitFnDeclaration(_) => Visibility::Public,
+            Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }

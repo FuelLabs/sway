@@ -17,6 +17,7 @@ type DestinationType = TypeId;
 #[derive(Clone, Default)]
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
+    pub const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
 }
 
 impl DebugWithEngines for TypeSubstMap {
@@ -63,6 +64,7 @@ impl TypeSubstMap {
     pub(crate) fn new() -> TypeSubstMap {
         TypeSubstMap {
             mapping: BTreeMap::<SourceType, DestinationType>::new(),
+            const_generics_materialization: BTreeMap::new(),
         }
     }
 
@@ -97,7 +99,10 @@ impl TypeSubstMap {
                 )
             })
             .collect();
-        TypeSubstMap { mapping }
+        TypeSubstMap {
+            mapping,
+            const_generics_materialization: BTreeMap::new(),
+        }
     }
 
     /// Constructs a new [TypeSubstMap] from a superset [TypeId] and a subset
@@ -148,6 +153,7 @@ impl TypeSubstMap {
     /// methods, etc, that are implemented for the type of `superset` so that
     /// they can be used for `subset`.
     pub(crate) fn from_superset_and_subset(
+        engines: &Engines,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         superset: TypeId,
@@ -156,6 +162,7 @@ impl TypeSubstMap {
         match (&*type_engine.get(superset), &*type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
+                const_generics_materialization: BTreeMap::new(),
             },
             (
                 TypeInfo::Custom {
@@ -177,6 +184,7 @@ impl TypeSubstMap {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
+                    engines,
                     type_engine,
                     decl_engine,
                     type_parameters,
@@ -197,6 +205,7 @@ impl TypeSubstMap {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
+                    engines,
                     type_engine,
                     decl_engine,
                     type_parameters,
@@ -218,6 +227,7 @@ impl TypeSubstMap {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
+                    engines,
                     type_engine,
                     decl_engine,
                     type_parameters,
@@ -226,6 +236,7 @@ impl TypeSubstMap {
             }
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
+                    engines,
                     type_engine,
                     decl_engine,
                     type_parameters
@@ -235,16 +246,37 @@ impl TypeSubstMap {
                     type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
                 )
             }
-            (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
-                TypeSubstMap::from_superset_and_subset_helper(
+            (TypeInfo::Array(type_parameter, l), TypeInfo::Array(type_argument, r)) => {
+                let mut map = TypeSubstMap::from_superset_and_subset_helper(
+                    engines,
                     type_engine,
                     decl_engine,
                     vec![type_parameter.type_id],
                     vec![type_argument.type_id],
-                )
+                );
+                match (&l, &r) {
+                    (
+                        Length::AmbiguousVariableExpression { ident },
+                        Length::Literal { val, .. },
+                    ) => {
+                        map.const_generics_materialization.insert(
+                            ident.as_str().into(),
+                            crate::language::ty::TyExpression {
+                                expression: crate::language::ty::TyExpressionVariant::Literal(
+                                    crate::language::Literal::U64(*val as u64),
+                                ),
+                                return_type: type_engine.id_of_u64(),
+                                span: sway_types::Span::dummy(),
+                            },
+                        );
+                        map
+                    }
+                    _ => map,
+                }
             }
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
+                    engines,
                     type_engine,
                     decl_engine,
                     vec![type_parameter.type_id],
@@ -262,9 +294,11 @@ impl TypeSubstMap {
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
+                const_generics_materialization: BTreeMap::new(),
             },
             _ => TypeSubstMap {
                 mapping: BTreeMap::new(),
+                const_generics_materialization: BTreeMap::new(),
             },
         }
     }
@@ -274,6 +308,7 @@ impl TypeSubstMap {
     /// is extended with the result from calling `from_superset_and_subset`
     /// with each [SourceType]s and [DestinationType]s in the original [TypeSubstMap].
     fn from_superset_and_subset_helper(
+        engines: &Engines,
         type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         type_parameters: Vec<SourceType>,
@@ -284,7 +319,7 @@ impl TypeSubstMap {
 
         for (s, d) in type_mapping.mapping.clone().iter() {
             type_mapping.mapping.extend(
-                TypeSubstMap::from_superset_and_subset(type_engine, decl_engine, *s, *d)
+                TypeSubstMap::from_superset_and_subset(engines, type_engine, decl_engine, *s, *d)
                     .mapping
                     .iter(),
             );
@@ -301,7 +336,10 @@ impl TypeSubstMap {
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
         let mapping = type_parameters.into_iter().zip(type_arguments).collect();
-        TypeSubstMap { mapping }
+        TypeSubstMap {
+            mapping,
+            const_generics_materialization: BTreeMap::new(),
+        }
     }
 
     pub(crate) fn extend(&mut self, subst_map: &TypeSubstMap) {

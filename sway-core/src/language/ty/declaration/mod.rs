@@ -1,5 +1,6 @@
 mod abi;
 mod configurable;
+mod const_generic;
 mod constant;
 #[allow(clippy::module_inception)]
 mod declaration;
@@ -16,6 +17,7 @@ mod variable;
 
 pub use abi::*;
 pub use configurable::*;
+pub use const_generic::*;
 pub use constant::*;
 pub use declaration::*;
 pub use function::*;
