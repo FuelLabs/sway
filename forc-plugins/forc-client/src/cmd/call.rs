@@ -223,6 +223,10 @@ pub struct Command {
     /// The output format to use; possible values: default, raw
     #[clap(long, default_value = "default")]
     pub output: OutputFormat,
+
+    /// Output call receipts
+    #[clap(long, short = 'r', alias = "receipts")]
+    pub show_receipts: bool,
 }
 
 fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {

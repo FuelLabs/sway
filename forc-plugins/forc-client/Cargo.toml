@@ -22,7 +22,7 @@ forc.workspace = true
 forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-tx.workspace = true
-forc-util.workspace = true
+forc-util = { workspace = true, features = ["tx"] }
 forc-wallet.workspace = true
 fuel-abi-types.workspace = true
 fuel-core-client = { workspace = true, features = ["subscriptions"] }

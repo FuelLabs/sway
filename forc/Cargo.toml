@@ -26,7 +26,7 @@ clap_complete_fig.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
 forc-tracing.workspace = true
-forc-util.workspace = true
+forc-util = { workspace = true, features = ["tx"] }
 fs_extra.workspace = true
 fuel-asm.workspace = true
 hex.workspace = true
