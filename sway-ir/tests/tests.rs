@@ -402,6 +402,20 @@ fn sroa() {
 
 #[allow(clippy::needless_collect)]
 #[test]
+fn globals_dce() {
+    run_tests("globals_dce", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        register_known_passes(&mut pass_mgr);
+        pass_group.append_pass(GLOBALS_DCE_NAME);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
 fn fndedup_debug() {
     run_tests("fn_dedup/debug", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
