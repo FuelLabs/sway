@@ -1681,6 +1681,7 @@ mod tests {
     use sway_error::handler::Handler;
     use sway_features::ExperimentalFeatures;
     use sway_ir::Kind;
+    use sway_types::ProgramId;
 
     /// This function validates if an expression can be converted to [Constant].
     ///
@@ -1703,6 +1704,7 @@ mod tests {
         let core_lib = namespace::Root::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
             None,
+            ProgramId::new(0),
             false,
         );
 
