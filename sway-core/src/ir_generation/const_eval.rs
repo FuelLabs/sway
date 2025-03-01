@@ -262,13 +262,13 @@ pub(crate) fn compile_constant_expression_to_constant(
 fn create_array_from_vec(
     lookup: &mut LookupEnv,
     elem_type: crate::TypeId,
-    element_typs: Vec<crate::TypeId>,
+    element_tys: Vec<crate::TypeId>,
     element_vals: Vec<Constant>,
 ) -> Option<Constant> {
     let te = lookup.engines.te();
     assert!({
         let unify_check = UnifyCheck::coercion(lookup.engines);
-        element_typs
+        element_tys
             .iter()
             .all(|tid| unify_check.check(*tid, elem_type))
     });
@@ -278,7 +278,7 @@ fn create_array_from_vec(
         lookup.engines.de(),
         lookup.context,
         elem_type,
-        element_typs.len().try_into().unwrap(),
+        element_tys.len().try_into().unwrap(),
     )
     .map_or(None, |array_ty| {
         Some(ConstantContent::new_array(
