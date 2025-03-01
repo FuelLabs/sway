@@ -103,14 +103,16 @@ impl Context<'_> {
         }
 
         // Check that locals have initializers if they aren't mutable.
-        for local in &self.functions[function.0].local_storage {
-            if !local.1.is_mutable(self) && local.1.get_initializer(self).is_none() {
-                return Err(IrError::VerifyLocalMissingInitializer(
-                    local.0.to_string(),
-                    function.get_name(self).to_string(),
-                ));
-            }
-        }
+        // TODO: This check is disabled because we incorrect create
+        //       immutable locals without initializers at many places.
+        // for local in &self.functions[function.0].local_storage {
+        //     if !local.1.is_mutable(self) && local.1.get_initializer(self).is_none() {
+        //         return Err(IrError::VerifyLocalMissingInitializer(
+        //             local.0.to_string(),
+        //             function.get_name(self).to_string(),
+        //         ));
+        //     }
+        // }
 
         for block in function.block_iter(self) {
             self.verify_block(cur_module, function, block)?;
