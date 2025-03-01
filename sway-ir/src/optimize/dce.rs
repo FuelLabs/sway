@@ -28,12 +28,12 @@ pub fn create_dce_pass() -> Pass {
     }
 }
 
-pub const FN_DCE_NAME: &str = "fn-dce";
+pub const GLOBALS_DCE_NAME: &str = "globals-dce";
 
-pub fn create_fn_dce_pass() -> Pass {
+pub fn create_globals_dce_pass() -> Pass {
     Pass {
-        name: FN_DCE_NAME,
-        descr: "Dead function elimination",
+        name: GLOBALS_DCE_NAME,
+        descr: "Dead globals (functions and variables) elimination",
         deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Transform(globals_dce)),
     }
@@ -374,14 +374,11 @@ pub fn globals_dce(
         }
     }
 
-    // entry fns and fallback
-    let entry_fns = module
+    // expand all called fns
+    for entry_fn in module
         .function_iter(context)
         .filter(|func| func.is_entry(context) || func.is_fallback(context))
-        .collect::<Vec<_>>();
-
-    // expand all called fns
-    for entry_fn in entry_fns {
+    {
         grow_called_function_used_globals_set(
             context,
             entry_fn,
@@ -390,22 +387,25 @@ pub fn globals_dce(
         );
     }
 
+    let mut modified = false;
+
+    // Remove dead globals
+    let m = &mut context.modules[module.0];
+    let cur_num_globals = m.global_variables.len();
+    m.global_variables.retain(|_, g| used_globals.contains(g));
+    modified |= cur_num_globals != m.global_variables.len();
+
     // Gather the functions in the module which aren't called.  It's better to collect them
     // separately first so as to avoid any issues with invalidating the function iterator.
     let dead_fns = module
         .function_iter(context)
         .filter(|f| !called_fns.contains(f))
         .collect::<Vec<_>>();
-
-    let m = &mut context.modules[module.0];
-    let cur_num_globals = m.global_variables.len();
-    m.global_variables.retain(|_, g| used_globals.contains(g));
-
-    let mut modified = !dead_fns.is_empty();
-    modified |= cur_num_globals != m.global_variables.len();
-    for dead_fn in dead_fns {
-        module.remove_function(context, &dead_fn);
+    for dead_fn in &dead_fns {
+        module.remove_function(context, dead_fn);
     }
+
+    modified |= !dead_fns.is_empty();
 
     Ok(modified)
 }

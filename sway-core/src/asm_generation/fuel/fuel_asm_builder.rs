@@ -1253,15 +1253,19 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     fn compile_get_global(
         &mut self,
         instr_val: &Value,
-        local_var: &GlobalVar,
+        global_var: &GlobalVar,
     ) -> Result<(), CompileError> {
+        if global_var.is_mutable(self.context) {
+            todo!("Implement mutable global variables");
+        }
+
         let span = self
             .md_mgr
             .val_to_span(self.context, *instr_val)
             .unwrap_or_else(Span::dummy);
-        let Some(constant) = local_var.get_initializer(self.context) else {
+        let Some(constant) = global_var.get_initializer(self.context) else {
             return Err(CompileError::Internal(
-                "Global variable must have an initializer.",
+                "Global constants (immutable variables) must have an initializer.",
                 span,
             ));
         };

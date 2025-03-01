@@ -72,11 +72,12 @@ mod ir_builder {
                 }
 
             rule global_var() -> IrAstGlobalVar
-                = "global" _ name:path() _ ":" _ ty:ast_ty() _ "=" _ init:op_const() {
+                = m:("mut" _)? _ "global" _ name:path() _ ":" _ ty:ast_ty() _ "=" _ init:(op_const())? {
                     IrAstGlobalVar {
                         name,
                         ty,
-                        init
+                        init,
+                        mutable: m.is_some(),
                     }
                 }
 
@@ -723,7 +724,8 @@ mod ir_builder {
     pub(super) struct IrAstGlobalVar {
         name: Vec<String>,
         ty: IrAstTy,
-        init: IrAstOperation,
+        init: Option<IrAstOperation>,
+        mutable: bool,
     }
 
     #[derive(Debug)]
@@ -1556,11 +1558,11 @@ mod ir_builder {
             .into_iter()
             .map(|global_var_node| {
                 let ty = global_var_node.ty.to_ir_type(context);
-                let init = match global_var_node.init {
+                let init = global_var_node.init.map(|init| match init {
                     IrAstOperation::Const(ty, val) => val.value.as_constant(context, ty),
                     _ => unreachable!("Global const initializer must be a const value."),
-                };
-                let global_var = GlobalVar::new(context, ty, Some(init), false);
+                });
+                let global_var = GlobalVar::new(context, ty, init, global_var_node.mutable);
                 module.add_global_variable(context, global_var_node.name.clone(), global_var);
                 (global_var_node.name, global_var)
             })

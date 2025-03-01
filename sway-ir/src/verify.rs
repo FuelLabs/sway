@@ -58,6 +58,16 @@ impl Context<'_> {
         for function in module.function_iter(self) {
             self.verify_function(module, function)?;
         }
+
+        // Check that globals have initializers if they are not mutable.
+        for global in &self.modules[module.0].global_variables {
+            if !global.1.is_mutable(self) && global.1.get_initializer(self).is_none() {
+                let global_name = module.lookup_global_variable_name(self, global.1);
+                return Err(IrError::VerifyGlobalMissingInitializer(
+                    global_name.unwrap_or_else(|| "<unknown>".to_owned()),
+                ));
+            }
+        }
         Ok(())
     }
 
@@ -89,6 +99,16 @@ impl Context<'_> {
         for ((_, func_arg), block_arg) in function.args_iter(self).zip(entry_block.arg_iter(self)) {
             if func_arg != block_arg {
                 return Err(IrError::VerifyBlockArgMalformed);
+            }
+        }
+
+        // Check that locals have initializers if they aren't mutable.
+        for local in &self.functions[function.0].local_storage {
+            if !local.1.is_mutable(self) && local.1.get_initializer(self).is_none() {
+                return Err(IrError::VerifyLocalMissingInitializer(
+                    local.0.to_string(),
+                    function.get_name(self).to_string(),
+                ));
             }
         }
 

@@ -19,7 +19,7 @@ pub const MEM2REG_NAME: &str = "mem2reg";
 pub fn create_mem2reg_pass() -> Pass {
     Pass {
         name: MEM2REG_NAME,
-        descr: "Promotion of local / global memory to SSA registers",
+        descr: "Promotion of memory to SSA registers",
         deps: vec![POSTORDER_NAME, DOMINATORS_NAME, DOM_FRONTS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(promote_to_registers)),
     }
@@ -151,7 +151,8 @@ pub fn compute_livein(
     result
 }
 
-// Promote loads of globals constants to SSA registers
+/// Promote loads of globals constants to SSA registers
+/// We promote only non-mutable globals of non-copy types
 fn promote_globals(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut replacements = FxHashMap::<Value, Constant>::default();
     for (_, inst) in function.instruction_iter(context) {
@@ -170,7 +171,7 @@ fn promote_globals(context: &mut Context, function: &Function) -> Result<bool, I
                 {
                     let constant = *global_var
                         .get_initializer(context)
-                        .expect("We're dealing with an uninitialized value");
+                        .expect("`global_var` is not mutable so it must be initialized");
                     replacements.insert(inst, constant);
                 }
             }
@@ -192,20 +193,28 @@ fn promote_globals(context: &mut Context, function: &Function) -> Result<bool, I
 }
 
 /// Promote memory values that are accessed via load/store to SSA registers.
-/// Globals: We promote only non-mutable globals of non-copy types
-/// Locals: We promote only locals of non-copy type, whose every use is in a `get_local`
-/// without offsets, and the result of such a `get_local` is used only in a load
-/// or a store.
 pub fn promote_to_registers(
     context: &mut Context,
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    let promoted_globals = promote_globals(context, &function)?;
+    let mut modified = false;
+    modified |= promote_globals(context, &function)?;
+    modified |= promote_locals(context, analyses, function)?;
+    Ok(modified)
+}
 
+/// Promote locals to registers. We promote only locals of copy type,
+/// whose every use is in a `get_local` without offsets, and the result of
+/// such a `get_local` is used only in a load or a store.
+pub fn promote_locals(
+    context: &mut Context,
+    analyses: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     let safe_locals = filter_usable_locals(context, &function);
     if safe_locals.is_empty() {
-        return Ok(promoted_globals);
+        return Ok(false);
     }
 
     let po: &PostOrder = analyses.get_analysis_result(function);
