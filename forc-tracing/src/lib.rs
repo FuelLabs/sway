@@ -21,9 +21,23 @@ fn get_action_indentation(action: &str) -> String {
     }
 }
 
+/// Prints a label with a green-bold label prefix like "Compiling ".
+pub fn println_label_green(label: &str, txt: &str) {
+    println_label(label, txt, Colour::Green);
+}
+
 /// Prints an action message with a green-bold prefix like "   Compiling ".
 pub fn println_action_green(action: &str, txt: &str) {
     println_action(action, txt, Colour::Green);
+}
+
+/// Prints a label with a red-bold label prefix like "error: ".
+pub fn println_label_red(label: &str, txt: &str) {
+    println_action(label, txt, Colour::Red);
+}
+
+fn println_label(label: &str, txt: &str, color: Colour) {
+    tracing::info!("{} {}", color.bold().paint(label), txt);
 }
 
 /// Prints an action message with a red-bold prefix like "   Removing ".
@@ -200,6 +214,26 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 mod tests {
     use super::*;
     use tracing_test::traced_test;
+
+    #[traced_test]
+    #[test]
+    fn test_println_label_green() {
+        let txt = "main.sw";
+        println_label_green("Compiling", txt);
+
+        let expected_action = "\x1b[1;32mCompiling\x1b[0m";
+        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_println_label_red() {
+        let txt = "main.sw";
+        println_label_red("Error", txt);
+
+        let expected_action = "\x1b[1;31mError\x1b[0m";
+        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+    }
 
     #[traced_test]
     #[test]

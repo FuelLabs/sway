@@ -17,6 +17,7 @@ forc-client.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
 forc-tracing.workspace = true
+forc-util = { workspace = true, features = ["tx"] }
 fuel-vm = { workspace = true, features = ["random"] }
 futures.workspace = true
 gag.workspace = true
