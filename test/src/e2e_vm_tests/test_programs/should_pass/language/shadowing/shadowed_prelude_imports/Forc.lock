@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-7DEA20360A1FC734"
+
+[[package]]
+name = "shadowed_prelude_imports"
+source = "member"
+dependencies = ["core"]
