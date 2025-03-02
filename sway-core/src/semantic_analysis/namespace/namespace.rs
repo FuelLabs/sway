@@ -222,34 +222,31 @@ impl Namespace {
         } else if package_name == STD {
             // Import core::prelude::*
             assert!(self.root.exists_as_external(&core_string));
-            self.root.star_import(
+            self.root.prelude_import(
                 handler,
                 engines,
                 &[core_ident, prelude_ident],
                 &self.current_mod_path,
-                Visibility::Private,
             )?
         } else {
             // Import core::prelude::* and std::prelude::*
             if self.root.exists_as_external(&core_string) {
-                self.root.star_import(
+                self.root.prelude_import(
                     handler,
                     engines,
                     &[core_ident, prelude_ident.clone()],
                     &self.current_mod_path,
-                    Visibility::Private,
                 )?;
             }
 
             let std_string = STD.to_string();
             // Only import std::prelude::* if std exists as a dependency
             if self.root.exists_as_external(&std_string) {
-                self.root.star_import(
+                self.root.prelude_import(
                     handler,
                     engines,
                     &[Ident::new_no_span(std_string), prelude_ident],
                     &self.current_mod_path,
-                    Visibility::Private,
                 )?
             }
         }
