@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: $()for _n in vector
-# nextln: $()No method "next(Vec<numeric>)" found for type "Vec<numeric>".
+# nextln: $()No method "next(Vec<u64>)" found for type "Vec<u64>".
