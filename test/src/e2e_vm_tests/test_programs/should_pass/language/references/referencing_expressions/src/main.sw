@@ -1,7 +1,5 @@
 script;
 
-use Eq;
-
 struct Struct {
     x: u64,
 }

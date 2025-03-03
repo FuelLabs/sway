@@ -2,7 +2,6 @@ script;
 
 mod impls;
 use impls::*;
-use Eq;
 
 #[inline(always)]
 fn dereference<T>()

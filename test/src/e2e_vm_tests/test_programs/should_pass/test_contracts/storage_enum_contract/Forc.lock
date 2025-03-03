@@ -1,21 +1,16 @@
 [[package]]
-name = "core"
-source = "path+from-root-46AEB03027C9D04C"
-
-[[package]]
 name = "std"
 source = "path+from-root-46AEB03027C9D04C"
-dependencies = ["core"]
 
 [[package]]
 name = "storage_enum_abi"
 source = "path+from-root-46AEB03027C9D04C"
-dependencies = ["core"]
+dependencies = ["std path+from-root-46AEB03027C9D04C"]
 
 [[package]]
 name = "storage_enum_contract"
 source = "member"
 dependencies = [
-    "std",
+    "std path+from-root-46AEB03027C9D04C",
     "storage_enum_abi",
 ]

@@ -1,7 +1,5 @@
 library;
 
-use Eq;
-
 pub trait TestInstance {
     fn new() -> Self;
     fn different() -> Self;

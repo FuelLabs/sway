@@ -1,7 +1,5 @@
 library;
 
-use Eq;
-
 pub struct Asset {
     pub value: u64,
 }

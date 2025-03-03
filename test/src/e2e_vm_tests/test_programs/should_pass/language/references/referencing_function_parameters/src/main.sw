@@ -1,7 +1,5 @@
 script;
 
-use Eq;
-
 struct S {
     x: u8,
 }

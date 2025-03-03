@@ -2,7 +2,6 @@ script;
 
 mod impls;
 use impls::*;
-use Eq;
 
 // TODO-IG: Add tests for other expressions.
 

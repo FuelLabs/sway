@@ -1035,8 +1035,8 @@ pub enum CompileError {
     FallbackFnsCannotHaveParameters { span: Span },
     #[error("Could not generate the entry method. See errors above for more details.")]
     CouldNotGenerateEntry { span: Span },
-    #[error("Missing `core` in dependencies.")]
-    CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Missing `std` in dependencies.")]
+    CouldNotGenerateEntryMissingStd { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
     #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
@@ -1276,7 +1276,7 @@ impl Spanned for CompileError {
             FallbackFnsAreContractOnly { span } => span.clone(),
             FallbackFnsCannotHaveParameters { span } => span.clone(),
             CouldNotGenerateEntry { span } => span.clone(),
-            CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingStd { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
@@ -2758,8 +2758,8 @@ impl ToDiagnostic for CompileError {
                 ),
                 hints: vec![],
                 help: vec![
-                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"core::codec\".".into(),
-                    "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
+                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"std::codec\".".into(),
+                    "Verify that you are using a version of the \"std\" standard library that contains this function.".into(),
                 ],
             },
             StorageAccessMismatched { span, is_pure, suggested_attributes, storage_access_violations } => Diagnostic {
@@ -2996,16 +2996,16 @@ impl fmt::Display for StorageAccess {
 
 /// Extracts only the suffix part of the `marker_trait_full_name`, without the arguments.
 /// E.g.:
-/// - `core::marker::Error` => `Error`
-/// - `core::marker::SomeMarkerTrait::<T>` => `SomeMarkerTrait`
-/// - `core::marker::SomeMarkerTrait<T>` => `SomeMarkerTrait`
+/// - `std::marker::Error` => `Error`
+/// - `std::marker::SomeMarkerTrait::<T>` => `SomeMarkerTrait`
+/// - `std::marker::SomeMarkerTrait<T>` => `SomeMarkerTrait`
 ///
-/// Panics if the `marker_trait_full_name` does not start with "core::marker::".
+/// Panics if the `marker_trait_full_name` does not start with "std::marker::".
 fn marker_trait_name(marker_trait_full_name: &str) -> &str {
-    const MARKER_TRAITS_MODULE: &str = "core::marker::";
+    const MARKER_TRAITS_MODULE: &str = "std::marker::";
     assert!(
         marker_trait_full_name.starts_with(MARKER_TRAITS_MODULE),
-        "`marker_trait_full_name` must start with \"core::marker::\", but it was \"{}\"",
+        "`marker_trait_full_name` must start with \"std::marker::\", but it was \"{}\"",
         marker_trait_full_name
     );
 

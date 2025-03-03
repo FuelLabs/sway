@@ -1,7 +1,5 @@
 library;
 
-use Eq;
-
 pub trait New {
     fn new() -> Self;
 }

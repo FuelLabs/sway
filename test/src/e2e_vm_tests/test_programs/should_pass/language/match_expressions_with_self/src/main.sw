@@ -1,6 +1,5 @@
 script;
 
-use Eq;
 use std::assert::*;
 
 enum Initialized {

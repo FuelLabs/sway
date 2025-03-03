@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "storage_enum_abi"
 
 [dependencies]
-std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

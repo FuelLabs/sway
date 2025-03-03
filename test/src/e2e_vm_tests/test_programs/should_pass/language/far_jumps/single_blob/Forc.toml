@@ -6,4 +6,4 @@ name = "single_blob"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-core" }
