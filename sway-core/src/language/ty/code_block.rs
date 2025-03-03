@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
-    type_system::*,
+    transform::AllowDeprecatedState, type_system::*,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::Hasher;
@@ -11,6 +11,19 @@ use sway_types::Span;
 pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
     pub(crate) whole_block_span: Span,
+}
+
+impl TyCodeBlock {
+    pub(crate) fn check_deprecated(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+        allow_deprecated: &mut AllowDeprecatedState,
+    ) {
+        for n in self.contents.iter() {
+            n.check_deprecated(engines, handler, allow_deprecated);
+        }
+    }
 }
 
 impl Default for TyCodeBlock {

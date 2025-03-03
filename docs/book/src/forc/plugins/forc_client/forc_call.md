@@ -10,13 +10,27 @@ Here are a few examples of what you can do with `forc call`:
 
 Call a simple addition function on a deployed contract (in dry-run mode):
 
+```sway
+contract;
+
+abi ContractABI {
+  fn add(a: u64, b: u64) -> u64;
+}
+
+impl ContractABI for Contract {
+  fn add(a: u64, b: u64) -> u64 {
+    a + b
+  }
+}
+```
+
 ```bash
 forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
   --abi ./out/debug/counter-contract-abi.json \
   add 1 2
 ```
 
-Query the owner of a deployed DEX contract on testnet:
+Query the owner of a deployed [DEX contract](https://github.com/mira-amm/mira-v1-core) on testnet:
 
 ```bash
 forc call \
@@ -40,116 +54,6 @@ Where the following arguments are required:
 - `ABI-PATH/URL` is the path or URL to the contract's JSON ABI file
 - `SELECTOR` is the function name (selector) you want to call
 - `ARGS` are the arguments to pass to the function
-
-## CLI Reference
-
-<details>
-  <summary><b>Forc Call CLI reference</b></summary>
-
-```sh
-forc call --help
-```
-
-```output
-Perform Fuel RPC calls from the comfort of your command line
-
-Usage: forc call [OPTIONS] --abi <ABI> <CONTRACT_ID> <FUNCTION> [FUNCTION_ARGS]...
-
-Arguments:
-  <CONTRACT_ID>
-    The contract ID to call
-
-  <FUNCTION>
-    The function signature to call. When ABI is provided, this should be a selector (e.g. "transfer") When no ABI is provided, this should be the full function signature (e.g. "transfer(address,u64)")
-
-  [FUNCTION_ARGS]...
-    Arguments to pass into the function to be called
-
-Options:
-  --abi <ABI>
-    Path or URI to a JSON ABI file
-
-  --node-url <NODE_URL>
-    The URL of the Fuel node to which we're submitting the transaction. If unspecified, checks the manifest's `network` table, then falls back to `http://127.0.0.1:4000`
-    
-    You can also use `--target`, `--testnet`, or `--mainnet` to specify the Fuel node.
-    
-    [env: FUEL_NODE_URL=]
-
-  --target <TARGET>
-    Preset configurations for using a specific target.
-    
-    You can also use `--node-url`, `--testnet`, or `--mainnet` to specify the Fuel node.
-    
-    Possible values are: [local, testnet, mainnet]
-
-  --mainnet
-    Use preset configuration for mainnet.
-    
-    You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
-
-  --testnet
-    Use preset configuration for testnet.
-    
-    You can also use `--node-url`, `--target`, or `--mainnet` to specify the Fuel node.
-
-  --devnet
-    Use preset configuration for devnet.
-    
-    You can also use `--node-url`, `--target`, or `--testnet` to specify the Fuel node.
-
-  --signing-key <SIGNING_KEY>
-    Derive an account from a secret key to make the call
-    
-    [env: SIGNING_KEY=]
-
-  --wallet
-    Use forc-wallet to make the call
-
-  --amount <AMOUNT>
-    Amount of native assets to forward with the call
-    
-    [default: 0]
-
-  --asset-id <ASSET_ID>
-    Asset ID to forward with the call
-
-  --gas-forwarded <GAS_FORWARDED>
-    Amount of gas to forward with the call
-
-  --mode <MODE>
-    The execution mode to use for the call; defaults to dry-run; possible values: dry-run, simulate, live
-    
-    [default: dry-run]
-
-  --gas-price <PRICE>
-    Gas price for the transaction
-
-  --script-gas-limit <SCRIPT_GAS_LIMIT>
-    Gas limit for the transaction
-
-  --max-fee <MAX_FEE>
-    Max fee for the transaction
-
-  --tip <TIP>
-    The tip for the transaction
-
-  --external-contracts <EXTERNAL_CONTRACTS>
-    The external contract addresses to use for the call If none are provided, the call will automatically populate external contracts by making a dry-run calls to the node, and extract the contract addresses based on the revert reason
-
-  --output <OUTPUT>
-    The output format to use; possible values: default, raw
-
-    [default: default]
-
-  -h, --help
-    Print help (see a summary with '-h')
-
-  -V, --version
-    Print version
-```
-
-</details>
 
 ## Type Encoding
 
@@ -236,7 +140,7 @@ forc call <CONTRACT_ID> --abi <PATH> <FUNCTION> --max-fee 5000
 
 ### Common Use Cases
 
-- 1. Contract State Queries
+#### Contract State Queries
 
 ```sh
 # Read contract state
@@ -246,7 +150,7 @@ forc call <CONTRACT_ID> --abi <PATH> get_balance
 forc call <CONTRACT_ID> --abi <PATH> get_user_info 0x1234...
 ```
 
-- 2. Token Operations
+#### Token Operations
 
 ```sh
 # Check token balance
@@ -256,7 +160,7 @@ forc call <CONTRACT_ID> --abi <PATH> balance_of 0x1234...
 forc call <CONTRACT_ID> --abi <PATH> transfer 0x1234... 100 --live
 ```
 
-- 3. Contract Administration
+#### Contract Administration
 
 ```sh
 # Check contract owner
@@ -299,7 +203,6 @@ forc call <CONTRACT_ID> --abi <PATH> update_params 42 --live
 
 The following features are planned for future releases:
 
-- Decode and display logs for contract calls
 - Support direct transfer of asset(s) to addresses
 - Function signature based calls without ABI
 - Raw calldata input support

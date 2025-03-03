@@ -196,24 +196,33 @@ fn type_check_transmute(
     forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span)?;
 
     // check first argument
-    let arg_type = engines.te().get(src_type);
+    let arg_type = engines.te().new_unknown();
     let first_argument_typed_expr = {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(engines.te().insert(
-                engines,
-                (*arg_type).clone(),
-                type_arguments[0].span.source_id(),
-            ));
+            .with_type_annotation(arg_type);
         ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
     };
 
+    engines.te().unify(
+        handler,
+        engines,
+        first_argument_typed_expr.return_type,
+        src_type,
+        &first_argument_typed_expr.span,
+        "",
+        None,
+    );
+
+    let mut final_type_arguments = type_arguments.to_vec();
+    final_type_arguments[0].type_id = src_type;
+    final_type_arguments[1].type_id = return_type;
     Ok((
         TyIntrinsicFunctionKind {
             kind,
             arguments: vec![first_argument_typed_expr],
-            type_arguments: type_arguments.to_vec(),
+            type_arguments: final_type_arguments,
             span,
         },
         return_type,
@@ -387,8 +396,12 @@ fn type_check_slice(
             referenced_type,
             to_mutable_value,
         } => match &*type_engine.get(referenced_type.type_id) {
-            TypeInfo::Array(elem_type_arg, array_len) => {
-                let array_len = array_len.val() as u64;
+            TypeInfo::Array(elem_type_arg, array_len) if array_len.as_literal_val().is_some() => {
+                // SAFETY: safe by the guard above
+                let array_len = array_len
+                    .as_literal_val()
+                    .expect("unexpected non literal array length")
+                    as u64;
 
                 if let Some(v) = start_literal {
                     if v > array_len {

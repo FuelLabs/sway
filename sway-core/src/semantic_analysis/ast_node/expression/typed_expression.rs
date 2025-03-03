@@ -2676,7 +2676,7 @@ impl ty::TyExpression {
                 (
                     TypeInfo::Array(elem_ty, array_length),
                     ty::ProjectionKind::ArrayIndex { index, index_span },
-                ) => {
+                ) if array_length.as_literal_val().is_some() => {
                     parent_rover = symbol;
                     symbol = elem_ty.type_id;
                     symbol_span = index_span.clone();
@@ -2686,10 +2686,15 @@ impl ty::TyExpression {
                         .as_literal()
                         .and_then(|x| x.cast_value_to_u64())
                     {
-                        if index_literal >= array_length.val() as u64 {
+                        // SAFETY: safe by the guard above
+                        let array_length = array_length
+                            .as_literal_val()
+                            .expect("unexpected non literal array length")
+                            as u64;
+                        if index_literal >= array_length {
                             return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
                                 index: index_literal,
-                                count: array_length.val() as u64,
+                                count: array_length,
                                 span: index.span.clone(),
                             }));
                         }
@@ -3162,6 +3167,7 @@ mod tests {
     use super::*;
     use crate::{Engines, ExperimentalFeatures};
     use sway_error::type_error::TypeError;
+    use sway_types::ProgramId;
     use symbol_collection_context::SymbolCollectionContext;
 
     fn do_type_check(
@@ -3172,10 +3178,9 @@ mod tests {
         experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
-        let root_module = namespace::Root::new(root_module_name, None, false);
+        let root_module = namespace::Root::new(root_module_name, None, ProgramId::new(0), false);
         let collection_ctx_ns = Namespace::new(handler, engines, root_module.clone(), true)?;
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
-
         let mut namespace = Namespace::new(handler, engines, root_module, true)?;
         let ctx =
             TypeCheckContext::from_root(&mut namespace, &mut collection_ctx, engines, experimental)
