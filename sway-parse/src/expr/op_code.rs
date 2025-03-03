@@ -124,7 +124,20 @@ define_op_codes!(
     (Ed19, Ed19Opcode, "ed19", (addr, sig, hash, len)),
     (K256, K256Opcode, "k256", (addr, data, size)),
     (S256, S256Opcode, "s256", (addr, data, size)),
+    (
+        ECOP,
+        ECOPOpcode,
+        "ecop",
+        (dst_addr, curve, operation, src_addr)
+    ),
+    (
+        EPAR,
+        EPAROpcode,
+        "epar",
+        (ret, curve, groups_of_points, addr)
+    ),
     /* Other Instructions */
+    (Ecal, EcalOpcode, "ecal", (reg_a, reg_b, reg_c, reg_d)),
     (Flag, FlagOpcode, "flag", (value)),
     (Gm, GmOpcode, "gm", (ret, op)),
     (Gtf, GtfOpcode, "gtf", (ret, index, tx_field_id)),

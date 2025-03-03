@@ -4,9 +4,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, compute_escaped_symbols, get_gep_referred_symbols, get_loaded_ptr_values,
-    get_stored_ptr_values, pointee_size, AnalysisResults, Constant, ConstantValue, Context,
-    EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
-    Type, Value,
+    get_stored_ptr_values, pointee_size, AnalysisResults, Constant, ConstantContent, ConstantValue,
+    Context, EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass,
+    Symbol, Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -47,12 +47,14 @@ fn split_aggregate(
         initializer: Option<Constant>,
         base_off: &mut u32,
     ) {
-        fn constant_index(c: &Constant, idx: usize) -> Constant {
-            match &c.value {
-                ConstantValue::Array(cs) | ConstantValue::Struct(cs) => cs
-                    .get(idx)
-                    .expect("Malformed initializer. Cannot index into sub-initializer")
-                    .clone(),
+        fn constant_index(context: &mut Context, c: &Constant, idx: usize) -> Constant {
+            match &c.get_content(context).value {
+                ConstantValue::Array(cs) | ConstantValue::Struct(cs) => Constant::unique(
+                    context,
+                    cs.get(idx)
+                        .expect("Malformed initializer. Cannot index into sub-initializer")
+                        .clone(),
+                ),
                 _ => panic!("Expected only array or struct const initializers"),
             }
         }
@@ -67,13 +69,16 @@ fn split_aggregate(
         } else {
             let mut i = 0;
             while let Some(member_ty) = ty.get_indexed_type(context, &[i]) {
+                let initializer = initializer
+                    .as_ref()
+                    .map(|c| constant_index(context, c, i as usize));
                 split_type(
                     context,
                     function,
                     aggr_base_name,
                     map,
                     member_ty,
-                    initializer.as_ref().map(|c| constant_index(c, i as usize)),
+                    initializer,
                     base_off,
                 );
 
@@ -247,7 +252,8 @@ pub fn sroa(
                         let elm_index_values = indices
                             .iter()
                             .map(|&index| {
-                                let c = Constant::new_uint(context, 64, index.into());
+                                let c = ConstantContent::new_uint(context, 64, index.into());
+                                let c = Constant::unique(context, c);
                                 Value::new_constant(context, c)
                             })
                             .collect();
@@ -317,7 +323,8 @@ pub fn sroa(
                         let elm_index_values = indices
                             .iter()
                             .map(|&index| {
-                                let c = Constant::new_uint(context, 64, index.into());
+                                let c = ConstantContent::new_uint(context, 64, index.into());
+                                let c = Constant::unique(context, c);
                                 Value::new_constant(context, c)
                             })
                             .collect();
@@ -479,12 +486,13 @@ fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol>
                 }
                 continue;
             }
-            if combine_indices(context, *ptr).map_or(false, |indices| {
-                indices.iter().any(|idx| !idx.is_constant(context))
-            }) || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
-                super::target_fuel::is_demotable_type(context, &pointee_ty)
-                    && !matches!(inst.op, InstOp::MemCopyVal { .. })
-            }) {
+            if combine_indices(context, *ptr)
+                .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)))
+                || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
+                    super::target_fuel::is_demotable_type(context, &pointee_ty)
+                        && !matches!(inst.op, InstOp::MemCopyVal { .. })
+                })
+            {
                 candidates.remove(syms.iter().next().unwrap());
             }
         }

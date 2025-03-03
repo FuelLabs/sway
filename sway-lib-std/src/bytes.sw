@@ -7,6 +7,7 @@ use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
+use ::iterator::*;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -871,8 +872,89 @@ impl Bytes {
 
         self.len = new_len;
     }
+
+    /// Returns an [Iterator] to iterate over this `Bytes`.
+    ///
+    /// # Returns
+    ///
+    /// * [BytesIter] - The struct which can be iterated over.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(10_u8);
+    ///     bytes.push(15_u8);
+    ///
+    ///     // Get the iterator
+    ///     let iter = bytes.iter();
+    ///
+    ///     assert_eq(5_u8, iter.next().unwrap());
+    ///     assert_eq(10_u8, iter.next().unwrap());
+    ///     assert_eq(15_u8, iter.next().unwrap());
+    ///
+    ///     for elem in bytes.iter() {
+    ///         log(elem);
+    ///     }
+    /// }
+    ///
+    /// # Undefined Behavior
+    ///
+    /// Modifying vector during iteration is a logical error and
+    /// results in undefined behavior. E.g.:
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(10_u8);
+    ///     bytes.push(15_u8);
+    ///
+    ///     for elem in bytes.iter() {
+    ///         bytes.push(20_u8); // Modification causes undefined behavior.
+    ///     }
+    /// }
+    /// ```
+    pub fn iter(self) -> BytesIter {
+        // WARNING: Be aware of caveats of this implementation
+        //          if you take it as an example for implementing
+        //          `Iterator` for other types.
+        //
+        //          Due to the Sway's copy semantics, the `values` will
+        //          actually contain **a copy of the original bytes
+        //          `self`**. This is contrary to the iterator semantics
+        //          which should iterate over the collection itself.
+        //
+        //          Strictly speaking, we should take a reference to
+        //          `self` here, but references as for now an experimental
+        //          feature.
+        //
+        //          However, this issue of copying gets compensated by
+        //          another issue, which is the broken copy semantics
+        //          for heap types like `Bytes`. Essentially, the original
+        //          `self` and it's copy `values` will both point to
+        //          the same elements on the heap, which gives us the
+        //          desired behavior for the iterator.
+        //
+        //          This fact makes the implementation of `next` very
+        //          misleading in the part where the bytes length is
+        //          checked (see comment in the `next` implementation
+        //          below).
+        //
+        //          Once we fix and formalize the copying of heap types
+        //          this implementation will be changed, but for
+        //          the time being, it is the most pragmatic one we can
+        //          have now.
+        BytesIter {
+            values: self,
+            index: 0,
+        }
+    }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
@@ -885,6 +967,21 @@ impl core::ops::Eq for Bytes {
         }
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for Bytes {
+    fn eq(self, other: Self) -> bool {
+        if self.len != other.len {
+            return false;
+        }
+
+        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
+            meq result r2 r3 r4;
+            result: bool
+        }
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for Bytes {}
 
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
@@ -1073,5 +1170,35 @@ impl AbiEncode for Bytes {
 impl AbiDecode for Bytes {
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
         raw_slice::abi_decode(buffer).into()
+    }
+}
+
+pub struct BytesIter {
+    values: Bytes,
+    index: u64,
+}
+
+impl Iterator for BytesIter {
+    type Item = u8;
+    fn next(ref mut self) -> Option<Self::Item> {
+        // BEWARE: `self.values` keeps **the copy** of the `Bytes`
+        //         we iterate over. The below check checks against
+        //         the length of that copy, taken when the iterator
+        //         was created, and not the original vector.
+        //
+        //         If the original vector gets modified during the iteration
+        //         (e.g., elements are removed), this modification will not
+        //         be reflected in `self.values.len()`.
+        //
+        //         But since modifying the vector during iteration is
+        //         considered undefined behavior, this implementation,
+        //         that always checks against the length at the time
+        //         the iterator got created is perfectly valid.
+        if self.index >= self.values.len() {
+            return None
+        }
+
+        self.index += 1;
+        self.values.get(self.index - 1)
     }
 }

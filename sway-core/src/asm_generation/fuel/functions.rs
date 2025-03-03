@@ -474,7 +474,7 @@ impl FuelAsmBuilder<'_, '_> {
                         // XXX val.get_type() should be a pointer if it's not meant to be loaded.
                         if val
                             .get_type(self.context)
-                            .map_or(false, |t| self.is_copy_type(&t))
+                            .is_some_and(|t| self.is_copy_type(&t))
                         {
                             self.cur_bytecode.push(Op {
                                 opcode: either::Either::Left(VirtualOp::LW(
@@ -834,7 +834,7 @@ impl FuelAsmBuilder<'_, '_> {
                     ptr.is_mutable(self.context),
                     ptr.get_initializer(self.context),
                 ) {
-                    match constant.value {
+                    match constant.get_content(self.context).value {
                         ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
                             self.ptr_map.insert(
                                 *ptr,
@@ -848,7 +848,7 @@ impl FuelAsmBuilder<'_, '_> {
                             let data_id =
                                 self.data_section.insert_data_value(Entry::from_constant(
                                     self.context,
-                                    constant,
+                                    constant.get_content(self.context),
                                     EntryName::NonConfigurable,
                                     None,
                                 ));
@@ -863,7 +863,7 @@ impl FuelAsmBuilder<'_, '_> {
                     let var_size = ptr_ty.size(self.context);
 
                     if let Some(constant) = ptr.get_initializer(self.context) {
-                        match constant.value {
+                        match constant.get_content(self.context).value {
                             ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
                                 let imm = VirtualImmediate18::new_unchecked(
                                     c,
@@ -879,7 +879,7 @@ impl FuelAsmBuilder<'_, '_> {
                                 let data_id =
                                     self.data_section.insert_data_value(Entry::from_constant(
                                         self.context,
-                                        constant,
+                                        constant.get_content(self.context),
                                         EntryName::NonConfigurable,
                                         None,
                                     ));

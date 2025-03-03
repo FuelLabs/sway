@@ -9,7 +9,7 @@
 //! [`Aggregate`] is an abstract collection of [`Type`]s used for structs, unions and arrays,
 //! though see below for future improvements around splitting arrays into a different construct.
 
-use crate::{context::Context, pretty::DebugWithContext, Constant, ConstantValue, Value};
+use crate::{context::Context, pretty::DebugWithContext, ConstantContent, ConstantValue, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Type(pub slotmap::DefaultKey);
@@ -426,10 +426,10 @@ impl Type {
         let const_indices: Vec<_> = indices
             .iter()
             .map_while(|idx| {
-                if let Some(Constant {
+                if let Some(ConstantContent {
                     value: ConstantValue::Uint(idx),
                     ty: _,
-                }) = idx.get_constant(context)
+                }) = idx.get_constant(context).map(|c| c.get_content(context))
                 {
                     Some(*idx)
                 } else {

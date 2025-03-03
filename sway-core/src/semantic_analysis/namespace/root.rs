@@ -18,7 +18,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, ProgramId, Spanned};
 use sway_utils::iter_prefixes;
 
 #[derive(Clone, Debug)]
@@ -163,6 +163,8 @@ impl ResolvedDeclaration {
 pub struct Root {
     // The contents of the package being compiled.
     current_package: Module,
+    // Program id for the package.
+    program_id: ProgramId,
     // True if the current package is a contract, false otherwise.
     is_contract_package: bool,
     // The external dependencies of the current package. Note that an external package is
@@ -179,11 +181,17 @@ impl Root {
     // and `package_root_with_contract_id` are supplied in `contract_helpers`.
     //
     // External packages must be added afterwards by calling `add_external`
-    pub(crate) fn new(package_name: Ident, span: Option<Span>, is_contract_package: bool) -> Self {
+    pub fn new(
+        package_name: Ident,
+        span: Option<Span>,
+        program_id: ProgramId,
+        is_contract_package: bool,
+    ) -> Self {
         // The root module must be public
         let module = Module::new(package_name, Visibility::Public, span, &vec![]);
         Self {
             current_package: module,
+            program_id,
             is_contract_package,
             external_packages: Default::default(),
         }
@@ -223,6 +231,10 @@ impl Root {
 
     pub fn current_package_name(&self) -> &Ident {
         self.current_package.name()
+    }
+
+    pub fn program_id(&self) -> ProgramId {
+        self.program_id
     }
 
     fn check_path_is_in_current_package(&self, mod_path: &ModulePathBuf) -> bool {
@@ -560,11 +572,7 @@ impl Root {
                     src_mod
                         .root_items()
                         .implemented_traits
-                        .filter_by_type_item_import(
-                            type_id,
-                            engines,
-                            super::CodeBlockFirstPass::No,
-                        ),
+                        .filter_by_type_item_import(type_id, engines),
                     engines,
                 );
             }

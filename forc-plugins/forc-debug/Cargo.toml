@@ -16,7 +16,10 @@ dirs.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
 forc-tracing.workspace = true
+forc-util = { workspace = true, features = ["tx"] }
+fuel-abi-types.workspace = true
 fuel-core-client.workspace = true
+fuel-tx.workspace = true
 fuel-types = { workspace = true, features = ["serde"] }
 fuel-vm = { workspace = true, features = ["serde"] }
 rayon.workspace = true
@@ -38,6 +41,6 @@ walkdir.workspace = true
 
 [dev-dependencies]
 dap = { version = "0.4.1-alpha1", features = ["client"] }
-escargot = "0.5.7"
-portpicker = "0.1.1"
-rexpect = "0.4"
+escargot.workspace = true
+portpicker.workspace = true
+rexpect.workspace = true

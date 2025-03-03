@@ -1,0 +1,31 @@
+[package]
+name = "forc-publish"
+version.workspace = true
+description = "Forc subcommand for uploading a package to the registry."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clap = { workspace = true, features = ["derive", "env"] }
+flate2.workspace = true
+forc-tracing.workspace = true
+forc-util.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+semver = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tar.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+toml = { workspace = true, features = ["parse"] }
+tracing.workspace = true
+url.workspace = true
+uuid = { workspace = true, features = ["v4", "serde"] }
+walkdir.workspace = true
+
+[dev-dependencies]
+wiremock.workspace = true

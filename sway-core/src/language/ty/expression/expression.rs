@@ -122,7 +122,7 @@ impl TypeCheckAnalysis for TyExpression {
                     }
                 }
             }
-            TyExpressionVariant::Array { .. } => {
+            TyExpressionVariant::ArrayExplicit { .. } => {
                 self.as_array_unify_elements(handler, ctx.engines);
             }
             _ => {}
@@ -236,13 +236,21 @@ impl CollectTypesMetadata for TyExpression {
                 res.append(&mut lhs.collect_types_metadata(handler, ctx)?);
                 res.append(&mut rhs.collect_types_metadata(handler, ctx)?);
             }
-            Array {
+            ArrayExplicit {
                 elem_type: _,
                 contents,
             } => {
                 for content in contents.iter() {
                     res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
+            }
+            ArrayRepeat {
+                elem_type: _,
+                value,
+                length,
+            } => {
+                res.append(&mut value.collect_types_metadata(handler, ctx)?);
+                res.append(&mut length.collect_types_metadata(handler, ctx)?);
             }
             ArrayIndex { prefix, index } => {
                 res.append(&mut (**prefix).collect_types_metadata(handler, ctx)?);
@@ -429,6 +437,81 @@ impl TyExpression {
         }
 
         match &self.expression {
+            TyExpressionVariant::Literal(..) => {}
+            TyExpressionVariant::FunctionApplication {
+                call_path,
+                fn_ref,
+                arguments,
+                ..
+            } => {
+                for (_, expr) in arguments.iter() {
+                    expr.check_deprecated(engines, handler, allow_deprecated);
+                }
+
+                let fn_ty = engines.de().get(fn_ref);
+                if let Some(TyDecl::ImplSelfOrTrait(t)) = &fn_ty.implementing_type {
+                    let t = &engines.de().get(&t.decl_id).implementing_for;
+                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
+                        let s = engines.de().get(struct_id);
+                        emit_warning_if_deprecated(
+                            &s.attributes,
+                            &call_path.span(),
+                            handler,
+                            "deprecated struct",
+                            allow_deprecated,
+                        );
+                    }
+                }
+
+                emit_warning_if_deprecated(
+                    &fn_ty.attributes,
+                    &call_path.span(),
+                    handler,
+                    "deprecated function",
+                    allow_deprecated,
+                );
+            }
+            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                lhs.check_deprecated(engines, handler, allow_deprecated);
+                rhs.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::ConstantExpression { span, decl, .. } => {
+                emit_warning_if_deprecated(
+                    &decl.attributes,
+                    span,
+                    handler,
+                    "deprecated constant",
+                    allow_deprecated,
+                );
+            }
+            TyExpressionVariant::ConfigurableExpression { span, decl, .. } => {
+                emit_warning_if_deprecated(
+                    &decl.attributes,
+                    span,
+                    handler,
+                    "deprecated configurable",
+                    allow_deprecated,
+                );
+            }
+            TyExpressionVariant::VariableExpression { .. } => {}
+            TyExpressionVariant::Tuple { fields } => {
+                for e in fields.iter() {
+                    e.check_deprecated(engines, handler, allow_deprecated);
+                }
+            }
+            TyExpressionVariant::ArrayExplicit { contents, .. } => {
+                for e in contents.iter() {
+                    e.check_deprecated(engines, handler, allow_deprecated);
+                }
+            }
+            TyExpressionVariant::ArrayRepeat { value, length, .. } => {
+                value.check_deprecated(engines, handler, allow_deprecated);
+                length.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.check_deprecated(engines, handler, allow_deprecated);
+                index.check_deprecated(engines, handler, allow_deprecated);
+            }
             TyExpressionVariant::StructExpression {
                 struct_id,
                 instantiation_span,
@@ -443,26 +526,149 @@ impl TyExpression {
                     allow_deprecated,
                 );
             }
-            TyExpressionVariant::FunctionApplication {
-                call_path, fn_ref, ..
+            TyExpressionVariant::CodeBlock(block) => {
+                block.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::FunctionParameter => {}
+            TyExpressionVariant::MatchExp {
+                desugared,
+                //scrutinees,
+                ..
             } => {
-                if let Some(TyDecl::ImplSelfOrTrait(t)) =
-                    &engines.de().get(fn_ref).implementing_type
-                {
-                    let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
-                        let s = engines.de().get(struct_id);
-                        emit_warning_if_deprecated(
-                            &s.attributes,
-                            &call_path.span(),
-                            handler,
-                            "deprecated struct",
-                            allow_deprecated,
-                        );
-                    }
+                desugared.check_deprecated(engines, handler, allow_deprecated);
+                // TODO: check scrutinees if necessary
+            }
+            TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.check_deprecated(engines, handler, allow_deprecated);
+                then.check_deprecated(engines, handler, allow_deprecated);
+                if let Some(e) = r#else {
+                    e.check_deprecated(engines, handler, allow_deprecated);
                 }
             }
-            _ => {}
+            TyExpressionVariant::AsmExpression { .. } => {}
+            TyExpressionVariant::StructFieldAccess {
+                prefix,
+                field_to_access,
+                field_instantiation_span,
+                ..
+            } => {
+                prefix.check_deprecated(engines, handler, allow_deprecated);
+                emit_warning_if_deprecated(
+                    &field_to_access.attributes,
+                    field_instantiation_span,
+                    handler,
+                    "deprecated struct field",
+                    allow_deprecated,
+                );
+            }
+            TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+                prefix.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::EnumInstantiation {
+                enum_ref,
+                tag,
+                contents,
+                variant_instantiation_span,
+                ..
+            } => {
+                let enum_ty = engines.de().get(enum_ref);
+                emit_warning_if_deprecated(
+                    &enum_ty.attributes,
+                    variant_instantiation_span,
+                    handler,
+                    "deprecated enum",
+                    allow_deprecated,
+                );
+                if let Some(variant_decl) = enum_ty.variants.get(*tag) {
+                    emit_warning_if_deprecated(
+                        &variant_decl.attributes,
+                        variant_instantiation_span,
+                        handler,
+                        "deprecated enum variant",
+                        allow_deprecated,
+                    );
+                }
+                if let Some(expr) = contents {
+                    expr.check_deprecated(engines, handler, allow_deprecated);
+                }
+            }
+            TyExpressionVariant::AbiCast { address, .. } => {
+                // TODO: check abi name?
+                address.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::StorageAccess(access) => {
+                // TODO: check storage access?
+                if let Some(expr) = &access.key_expression {
+                    expr.check_deprecated(engines, handler, allow_deprecated);
+                }
+            }
+            TyExpressionVariant::IntrinsicFunction(kind) => {
+                for arg in kind.arguments.iter() {
+                    arg.check_deprecated(engines, handler, allow_deprecated);
+                }
+            }
+            TyExpressionVariant::AbiName(..) => {}
+            TyExpressionVariant::EnumTag { exp } => {
+                exp.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::UnsafeDowncast {
+                exp,
+                //variant,
+                ..
+            } => {
+                exp.check_deprecated(engines, handler, allow_deprecated);
+                // TODO: maybe check variant?
+            }
+            TyExpressionVariant::WhileLoop { condition, body } => {
+                condition.check_deprecated(engines, handler, allow_deprecated);
+                body.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::ForLoop { desugared } => {
+                desugared.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::Break => {}
+            TyExpressionVariant::Continue => {}
+            TyExpressionVariant::Reassignment(reass) => {
+                if let TyReassignmentTarget::Deref(expr) = &reass.lhs {
+                    expr.check_deprecated(engines, handler, allow_deprecated);
+                }
+                reass
+                    .rhs
+                    .check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::ImplicitReturn(expr) => {
+                expr.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::Return(expr) => {
+                expr.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::Ref(expr) => {
+                expr.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::Deref(expr) => {
+                expr.check_deprecated(engines, handler, allow_deprecated);
+            }
+        }
+    }
+
+    pub fn as_array(&self) -> Option<(&TypeId, &[TyExpression])> {
+        match &self.expression {
+            TyExpressionVariant::ArrayExplicit {
+                elem_type,
+                contents,
+            } => Some((elem_type, contents)),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn as_literal_u64(&self) -> Option<u64> {
+        match &self.expression {
+            TyExpressionVariant::Literal(Literal::U64(v)) => Some(*v),
+            _ => None,
         }
     }
 
@@ -476,7 +682,7 @@ impl TyExpression {
     /// Unify elem_type with each element return type.
     /// Must be called on arrays.
     pub fn as_array_unify_elements(&self, handler: &Handler, engines: &Engines) {
-        let TyExpressionVariant::Array {
+        let TyExpressionVariant::ArrayExplicit {
             elem_type,
             contents,
         } = &self.expression

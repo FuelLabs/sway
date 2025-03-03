@@ -134,7 +134,7 @@ impl Session {
     ) -> Result<(), LanguageServerError> {
         let _p = tracing::trace_span!("garbage_collect").entered();
         let path = self.sync.temp_dir()?;
-        let program_id = { engines.se().get_program_id(&path) };
+        let program_id = { engines.se().get_program_id_from_manifest_path(&path) };
         if let Some(program_id) = program_id {
             engines.clear_program(&program_id);
         }
@@ -382,7 +382,7 @@ pub fn traverse(
 
         // Convert the source_id to a path so we can use the manifest path to get the program_id.
         // This is used to store the metrics for the module.
-        if let Some(source_id) = lexed.root.tree.span().source_id() {
+        if let Some(source_id) = lexed.root.tree.value.span().source_id() {
             let path = engines.se().get_path(source_id);
             let program_id = program_id_from_path(&path, engines)?;
             session.metrics.insert(program_id, metrics);
@@ -527,7 +527,7 @@ pub fn parse_lexed_program(
             .map(|path| {
                 item.span()
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -535,13 +535,14 @@ pub fn parse_lexed_program(
     lexed_program
         .root
         .tree
+        .value
         .items
         .iter()
         .chain(
             lexed_program
                 .root
                 .submodules_recursive()
-                .flat_map(|(_, submodule)| &submodule.module.tree.items),
+                .flat_map(|(_, submodule)| &submodule.module.tree.value.items),
         )
         .filter(should_process)
         .collect::<Vec<_>>()
@@ -562,7 +563,7 @@ fn parse_ast_to_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -597,7 +598,7 @@ fn parse_ast_to_typed_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .map_or(false, |id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -668,7 +669,11 @@ pub(crate) fn program_id_from_path(
     engines: &Engines,
 ) -> Result<ProgramId, DirectoryError> {
     let program_id = sway_utils::find_parent_manifest_dir(path)
-        .and_then(|manifest_path| engines.se().get_program_id(&manifest_path))
+        .and_then(|manifest_path| {
+            engines
+                .se()
+                .get_program_id_from_manifest_path(&manifest_path)
+        })
         .ok_or_else(|| DirectoryError::ProgramIdNotFound {
             path: path.to_string_lossy().to_string(),
         })?;

@@ -4,7 +4,7 @@ use crate::{
         OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     parsed::QualifiedPathType,
-    Engines, Ident, Namespace,
+    Engines, Ident, Namespace, TypeArgument,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -284,23 +284,37 @@ impl<T: Spanned> Spanned for CallPath<T> {
         if self.prefixes.is_empty() {
             self.suffix.span()
         } else {
+            let suffix_span = self.suffix.span();
             let mut prefixes_spans = self
                 .prefixes
                 .iter()
                 .map(|x| x.span())
-                //LOC below should be removed when #21 goes in
+                // Depending on how the call path is constructed, we
+                // might have a situation that the parts do not belong
+                // to the same source and do not have the same source id.
+                // In that case, we will take only the suffix' span, as
+                // the span for the whole call path. Otherwise, we join
+                // the spans of all the parts.
                 .filter(|x| {
-                    Arc::ptr_eq(x.src(), self.suffix.span().src())
-                        && x.source_id() == self.suffix.span().source_id()
+                    Arc::ptr_eq(x.src(), suffix_span.src())
+                        && x.source_id() == suffix_span.source_id()
                 })
                 .peekable();
             if prefixes_spans.peek().is_some() {
-                Span::join(Span::join_all(prefixes_spans), &self.suffix.span())
+                Span::join(Span::join_all(prefixes_spans), &suffix_span)
             } else {
-                self.suffix.span()
+                suffix_span
             }
         }
     }
+}
+
+/// This controls the type of display type for call path display string conversions.
+pub enum CallPathDisplayType {
+    /// Prints the regular call path as exists internally.
+    Regular,
+    /// Strips the current root package if it exists as prefix.
+    StripPackagePrefix,
 }
 
 impl CallPath {
@@ -390,6 +404,54 @@ impl CallPath {
             }
         }
         converted
+    }
+
+    pub fn to_display_path(
+        &self,
+        display_type: CallPathDisplayType,
+        namespace: &Namespace,
+    ) -> CallPath {
+        let mut display_path = self.clone();
+
+        match display_type {
+            CallPathDisplayType::Regular => {}
+            CallPathDisplayType::StripPackagePrefix => {
+                if let Some(first) = self.prefixes.first() {
+                    if namespace.root_ref().current_package_root_module().name() == first {
+                        display_path = display_path.lshift();
+                    }
+                }
+            }
+        };
+
+        display_path
+    }
+
+    /// Create a string form of the given [CallPath] and zero or more [TypeArgument]s.
+    /// The returned string is convenient for displaying full names, including generic arguments, in help messages.
+    /// E.g.:
+    /// - `some::module::SomeType`
+    /// - `some::module::SomeGenericType<T, u64>`
+    ///
+    /// Note that the trailing arguments are never separated by `::` from the suffix.
+    pub(crate) fn to_string_with_args(&self, engines: &Engines, args: &[TypeArgument]) -> String {
+        let args = args
+            .iter()
+            .map(|type_arg| engines.help_out(type_arg).to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!(
+            "{}{}",
+            // TODO: Replace with a context aware string representation of the path
+            //       once https://github.com/FuelLabs/sway/issues/6873 is fixed.
+            &self,
+            if args.is_empty() {
+                String::new()
+            } else {
+                format!("<{args}>")
+            }
+        )
     }
 }
 
@@ -520,11 +582,17 @@ impl CallPath {
             Some(module) => {
                 // Resolve the path suffix in the found module
                 match module.resolve_symbol(&Handler::default(), engines, &full_path.suffix) {
-                    Ok((_, decl_path)) => {
+                    Ok((decl, decl_path)) => {
+                        let name = decl.expect_typed().get_name(engines);
+                        let suffix = if name.as_str() != full_path.suffix.as_str() {
+                            name
+                        } else {
+                            full_path.suffix
+                        };
                         // Replace the resolvable path with the declaration's path
                         CallPath {
                             prefixes: decl_path,
-                            suffix: full_path.suffix.clone(),
+                            suffix,
                             callpath_type: full_path.callpath_type,
                         }
                     }

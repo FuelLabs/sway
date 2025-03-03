@@ -88,6 +88,7 @@ fn diverge_in_match_condition() -> u64 {
         return 5;
         true
     } {
+        _ => 42,
     }
 }
 
