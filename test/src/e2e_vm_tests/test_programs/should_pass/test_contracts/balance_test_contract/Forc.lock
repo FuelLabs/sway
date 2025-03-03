@@ -6,7 +6,10 @@ dependencies = ["std"]
 [[package]]
 name = "balance_test_contract"
 source = "member"
-dependencies = ["balance_test_abi"]
+dependencies = [
+    "balance_test_abi",
+    "std",
+]
 
 [[package]]
 name = "std"

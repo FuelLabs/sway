@@ -294,14 +294,14 @@ impl TestInstance for raw_slice {
             zero: raw_ptr
         };
 
-        std::raw_slice::from_parts::<u64>(null_ptr, 42)
+        raw_slice::from_parts::<u64>(null_ptr, 42)
     }
     fn different() -> Self {
         let null_ptr = asm() {
             zero: raw_ptr
         };
 
-        std::raw_slice::from_parts::<u64>(null_ptr, 42 * 2)
+        raw_slice::from_parts::<u64>(null_ptr, 42 * 2)
     }
 }
 

@@ -1,8 +1,16 @@
 [[package]]
 name = "dependency_package_field"
 source = "member"
-dependencies = ["(std-alt) std"]
+dependencies = [
+    "(utils-alt) utils",
+    "std",
+]
 
 [[package]]
 name = "std"
 source = "path+from-root-0CE46803927952E6"
+
+[[package]]
+name = "utils"
+source = "path+from-root-0CE46803927952E6"
+dependencies = ["std"]

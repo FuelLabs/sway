@@ -249,7 +249,7 @@ impl New for raw_slice {
             zero: raw_ptr
         };
 
-        std::raw_slice::from_parts::<u64>(null_ptr, 42)
+        raw_slice::from_parts::<u64>(null_ptr, 42)
     }
 }
 

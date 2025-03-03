@@ -2746,7 +2746,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
-    0 \[ label = "core" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    0 \[ label = "std" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
     2 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
     3 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]

@@ -1,14 +1,14 @@
 [[package]]
 name = "auth_testing_abi"
 source = "path+from-root-26340C23417C943C"
-dependencies = ["std path+from-root-26340C23417C943C"]
+dependencies = ["std"]
 
 [[package]]
 name = "auth_testing_contract"
 source = "member"
 dependencies = [
     "auth_testing_abi",
-    "std path+from-root-26340C23417C943C",
+    "std",
 ]
 
 [[package]]

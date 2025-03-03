@@ -7,3 +7,4 @@ implicit-std = false
 
 [dependencies]
 array_of_structs_abi = { path = "../../test_abis/array_of_structs_abi" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
