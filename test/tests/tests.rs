@@ -183,7 +183,8 @@ fn clean_output(output: &str) -> String {
     let result = raw.replace(&format!("{}/", parent.display()), "");
 
     // Remove compilation time
-    let r = Regex::new("(Finished release \\[.*?\\] target\\(s\\) \\[.*?\\] in )(.*?s)").unwrap();
+    let r = Regex::new("(Finished (debug|release) \\[.*?\\] target\\(s\\) \\[.*?\\] in )(.*?s)")
+        .unwrap();
     let result = r.replace(&result, "$1???");
 
     result.to_string()

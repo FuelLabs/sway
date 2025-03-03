@@ -598,6 +598,7 @@ impl TypeParameter {
                             Ok(res) => res,
                             Err(_) => continue,
                         };
+
                     interface_item_refs.extend(trait_interface_item_refs);
                     item_refs.extend(trait_item_refs);
                     impld_item_refs.extend(trait_impld_item_refs);
