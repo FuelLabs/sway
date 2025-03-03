@@ -72,13 +72,18 @@ mod ir_builder {
                 }
 
             rule global_var() -> IrAstGlobalVar
-                = m:("mut" _)? _ "global" _ name:path() _ ":" _ ty:ast_ty() _ "=" _ init:(op_const())? {
+                = "global" _ m:("mut" _)? name:path() _ ":" _ ty:ast_ty() init:global_init()? {
                     IrAstGlobalVar {
                         name,
                         ty,
                         init,
                         mutable: m.is_some(),
                     }
+                }
+
+            rule global_init() -> IrAstOperation
+                = "=" _ cv:op_const() {
+                    cv
                 }
 
             rule config_encoded_bytes() -> Vec<u8>

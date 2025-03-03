@@ -152,7 +152,7 @@ pub fn compute_livein(
 }
 
 /// Promote loads of globals constants to SSA registers
-/// We promote only non-mutable globals of non-copy types
+/// We promote only non-mutable globals of copy types
 fn promote_globals(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut replacements = FxHashMap::<Value, Constant>::default();
     for (_, inst) in function.instruction_iter(context) {
@@ -204,7 +204,7 @@ pub fn promote_to_registers(
     Ok(modified)
 }
 
-/// Promote locals to registers. We promote only locals of copy type,
+/// Promote locals to registers. We promote only locals of copy types,
 /// whose every use is in a `get_local` without offsets, and the result of
 /// such a `get_local` is used only in a load or a store.
 pub fn promote_locals(
