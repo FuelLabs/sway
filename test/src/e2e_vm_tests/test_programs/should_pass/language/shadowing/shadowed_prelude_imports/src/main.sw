@@ -19,6 +19,9 @@ impl Add for S {
 fn main() -> u64 {
     let x = S { a : 42 };
     let y = S { a : 64 };
+
+    // lib::log shadows std::logging::log
+    let overridden_log_value = log(x);
     
-    y.add(x)
+    y.add(x) + overridden_log_value
 }
