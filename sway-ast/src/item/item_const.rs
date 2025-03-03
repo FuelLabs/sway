@@ -2,7 +2,7 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ItemConst {
-    pub visibility: Option<PubToken>,
+    pub pub_token: Option<PubToken>,
     pub const_token: ConstToken,
     pub name: Ident,
     pub ty_opt: Option<(ColonToken, Ty)>,
@@ -13,7 +13,7 @@ pub struct ItemConst {
 
 impl Spanned for ItemConst {
     fn span(&self) -> Span {
-        let start = match &self.visibility {
+        let start = match &self.pub_token {
             Some(pub_token) => pub_token.span(),
             None => self.const_token.span(),
         };
