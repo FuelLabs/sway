@@ -6,4 +6,12 @@ extend-ignore-identifiers-re = [
     "tro",
     "Tro",
     "Nam",
+    "typ",
+]
+
+[files]
+extend-exclude = [
+    "docs/book/theme/highlight.js",
+    "docs/reference/theme/highlight.js",
+    "forc-plugins/forc-doc/src/static.files/highlight.js"
 ]

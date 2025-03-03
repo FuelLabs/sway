@@ -309,6 +309,14 @@ impl<T: Spanned> Spanned for CallPath<T> {
     }
 }
 
+/// This controls the type of display type for call path display string conversions.
+pub enum CallPathDisplayType {
+    /// Prints the regular call path as exists internally.
+    Regular,
+    /// Strips the current root package if it exists as prefix.
+    StripPackagePrefix,
+}
+
 impl CallPath {
     pub fn fullpath(path: &[&str]) -> Self {
         assert!(!path.is_empty());
@@ -396,6 +404,27 @@ impl CallPath {
             }
         }
         converted
+    }
+
+    pub fn to_display_path(
+        &self,
+        display_type: CallPathDisplayType,
+        namespace: &Namespace,
+    ) -> CallPath {
+        let mut display_path = self.clone();
+
+        match display_type {
+            CallPathDisplayType::Regular => {}
+            CallPathDisplayType::StripPackagePrefix => {
+                if let Some(first) = self.prefixes.first() {
+                    if namespace.root_ref().current_package_root_module().name() == first {
+                        display_path = display_path.lshift();
+                    }
+                }
+            }
+        };
+
+        display_path
     }
 
     /// Create a string form of the given [CallPath] and zero or more [TypeArgument]s.
@@ -553,11 +582,17 @@ impl CallPath {
             Some(module) => {
                 // Resolve the path suffix in the found module
                 match module.resolve_symbol(&Handler::default(), engines, &full_path.suffix) {
-                    Ok((_, decl_path)) => {
+                    Ok((decl, decl_path)) => {
+                        let name = decl.expect_typed().get_name(engines);
+                        let suffix = if name.as_str() != full_path.suffix.as_str() {
+                            name
+                        } else {
+                            full_path.suffix
+                        };
                         // Replace the resolvable path with the declaration's path
                         CallPath {
                             prefixes: decl_path,
-                            suffix: full_path.suffix.clone(),
+                            suffix,
                             callpath_type: full_path.callpath_type,
                         }
                     }

@@ -250,13 +250,13 @@ pub(crate) fn compile_constant_expression_to_constant(
 fn create_array_from_vec(
     lookup: &mut LookupEnv,
     elem_type: crate::TypeId,
-    element_typs: Vec<crate::TypeId>,
+    element_types: Vec<crate::TypeId>,
     element_vals: Vec<Constant>,
 ) -> Option<Constant> {
     let te = lookup.engines.te();
     assert!({
         let unify_check = UnifyCheck::coercion(lookup.engines);
-        element_typs
+        element_types
             .iter()
             .all(|tid| unify_check.check(*tid, elem_type))
     });
@@ -266,7 +266,7 @@ fn create_array_from_vec(
         lookup.engines.de(),
         lookup.context,
         elem_type,
-        element_typs.len().try_into().unwrap(),
+        element_types.len().try_into().unwrap(),
     )
     .map_or(None, |array_ty| {
         Some(ConstantContent::new_array(
@@ -384,13 +384,13 @@ fn const_eval_typed_expr(
             instantiation_span,
             ..
         } => {
-            let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
+            let (mut field_types, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
 
             for field in fields {
                 let ty::TyStructExpressionField { name: _, value, .. } = field;
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
-                    field_typs.push(value.return_type);
+                    field_types.push(value.return_type);
                     field_vals.push(cv);
                 } else {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -399,14 +399,14 @@ fn const_eval_typed_expr(
                 }
             }
 
-            assert!(field_typs.len() == fields.len());
+            assert!(field_types.len() == fields.len());
             assert!(field_vals.len() == fields.len());
 
             get_struct_for_types(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &field_typs,
+                &field_types,
             )
             .map_or(None, |struct_ty| {
                 let c = ConstantContent::new_struct(
@@ -422,12 +422,12 @@ fn const_eval_typed_expr(
             })
         }
         ty::TyExpressionVariant::Tuple { fields } => {
-            let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
+            let (mut field_types, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
 
             for value in fields {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
-                    field_typs.push(value.return_type);
+                    field_types.push(value.return_type);
                     field_vals.push(cv);
                 } else {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -436,14 +436,14 @@ fn const_eval_typed_expr(
                 }
             }
 
-            assert!(field_typs.len() == fields.len());
+            assert!(field_types.len() == fields.len());
             assert!(field_vals.len() == fields.len());
 
             create_tuple_aggregate(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &field_typs,
+                &field_types,
             )
             .map_or(None, |tuple_ty| {
                 let c = ConstantContent::new_struct(
@@ -462,12 +462,12 @@ fn const_eval_typed_expr(
             elem_type,
             contents,
         } => {
-            let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
+            let (mut element_types, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
 
             for value in contents {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
-                    element_typs.push(value.return_type);
+                    element_types.push(value.return_type);
                     element_vals.push(cv);
                 } else {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
@@ -476,10 +476,10 @@ fn const_eval_typed_expr(
                 }
             }
 
-            assert!(element_typs.len() == contents.len());
+            assert!(element_types.len() == contents.len());
             assert!(element_vals.len() == contents.len());
 
-            create_array_from_vec(lookup, *elem_type, element_typs, element_vals)
+            create_array_from_vec(lookup, *elem_type, element_types, element_vals)
         }
         ty::TyExpressionVariant::ArrayRepeat {
             elem_type,
@@ -493,12 +493,12 @@ fn const_eval_typed_expr(
                 .as_uint()
                 .unwrap() as usize;
             let element_vals = (0..length).map(|_| constant).collect::<Vec<_>>();
-            let element_typs = (0..length).map(|_| value.return_type).collect::<Vec<_>>();
+            let element_types = (0..length).map(|_| value.return_type).collect::<Vec<_>>();
 
-            assert!(element_typs.len() == length);
+            assert!(element_types.len() == length);
             assert!(element_vals.len() == length);
 
-            create_array_from_vec(lookup, *elem_type, element_typs, element_vals)
+            create_array_from_vec(lookup, *elem_type, element_types, element_vals)
         }
         ty::TyExpressionVariant::EnumInstantiation {
             enum_ref,
