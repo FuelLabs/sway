@@ -11,12 +11,13 @@ use crate::{
     function::Function,
     instruction::{FuelVmInstruction, InstOp, Predicate},
     irtype::Type,
-    local_var::LocalVar,
     metadata::{MetadataIndex, Metadatum},
     printer,
     value::{Value, ValueDatum},
+    variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
+    BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, TypeOption,
+    UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -57,6 +58,16 @@ impl Context<'_> {
         for function in module.function_iter(self) {
             self.verify_function(module, function)?;
         }
+
+        // Check that globals have initializers if they are not mutable.
+        for global in &self.modules[module.0].global_variables {
+            if !global.1.is_mutable(self) && global.1.get_initializer(self).is_none() {
+                let global_name = module.lookup_global_variable_name(self, global.1);
+                return Err(IrError::VerifyGlobalMissingInitializer(
+                    global_name.unwrap_or_else(|| "<unknown>".to_owned()),
+                ));
+            }
+        }
         Ok(())
     }
 
@@ -90,6 +101,18 @@ impl Context<'_> {
                 return Err(IrError::VerifyBlockArgMalformed);
             }
         }
+
+        // Check that locals have initializers if they aren't mutable.
+        // TODO: This check is disabled because we incorrect create
+        //       immutable locals without initializers at many places.
+        // for local in &self.functions[function.0].local_storage {
+        //     if !local.1.is_mutable(self) && local.1.get_initializer(self).is_none() {
+        //         return Err(IrError::VerifyLocalMissingInitializer(
+        //             local.0.to_string(),
+        //             function.get_name(self).to_string(),
+        //         ));
+        //     }
+        // }
 
         for block in function.block_iter(self) {
             self.verify_block(cur_module, function, block)?;
@@ -327,6 +350,7 @@ impl InstructionVerifier<'_, '_> {
                     indices,
                 } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
                 InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                InstOp::GetGlobal(global_var) => self.verify_get_global(global_var)?,
                 InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                 InstOp::Load(ptr) => self.verify_load(ptr)?,
@@ -824,6 +848,18 @@ impl InstructionVerifier<'_, '_> {
             .local_storage
             .values()
             .any(|var| var == local_var)
+        {
+            Err(IrError::VerifyGetNonExistentPointer)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_get_global(&self, global_var: &GlobalVar) -> Result<(), IrError> {
+        if !self.context.modules[self.cur_module.0]
+            .global_variables
+            .values()
+            .any(|var| var == global_var)
         {
             Err(IrError::VerifyGetNonExistentPointer)
         } else {

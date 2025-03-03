@@ -14,11 +14,11 @@ use sway_types::SourceEngine;
 use crate::{
     block::BlockContent,
     function::FunctionContent,
-    local_var::LocalVarContent,
     metadata::Metadatum,
     module::{Kind, ModuleContent, ModuleIterator},
     value::ValueContent,
-    Constant, ConstantContent, Type, TypeContent,
+    variable::LocalVarContent,
+    Constant, ConstantContent, GlobalVarContent, Type, TypeContent,
 };
 
 /// The main IR context handle.
@@ -33,6 +33,7 @@ pub struct Context<'eng> {
     pub(crate) blocks: SlotMap<DefaultKey, BlockContent>,
     pub(crate) values: SlotMap<DefaultKey, ValueContent>,
     pub(crate) local_vars: SlotMap<DefaultKey, LocalVarContent>,
+    pub(crate) global_vars: SlotMap<DefaultKey, GlobalVarContent>,
     pub(crate) types: SlotMap<DefaultKey, TypeContent>,
     pub(crate) type_map: FxHashMap<TypeContent, Type>,
     pub(crate) constants: SlotMap<DefaultKey, ConstantContent>,
@@ -57,6 +58,7 @@ impl<'eng> Context<'eng> {
             blocks: Default::default(),
             values: Default::default(),
             local_vars: Default::default(),
+            global_vars: Default::default(),
             types: Default::default(),
             type_map: Default::default(),
             constants: Default::default(),
