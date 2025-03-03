@@ -5,4 +5,4 @@ entry = "main.sw"
 name = "transmute"
 
 [dependencies]
-core = { path = "../../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

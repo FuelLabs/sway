@@ -1,8 +1,4 @@
 [[package]]
-name = "core"
-source = "path+from-root-45314A59F9F4906B"
-
-[[package]]
 name = "match_expressions_duplicate_variables"
 source = "member"
 dependencies = ["std"]
@@ -10,4 +6,3 @@ dependencies = ["std"]
 [[package]]
 name = "std"
 source = "path+from-root-45314A59F9F4906B"
-dependencies = ["core"]

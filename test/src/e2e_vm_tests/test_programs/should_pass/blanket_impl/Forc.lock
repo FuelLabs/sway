@@ -1,8 +1,8 @@
 [[package]]
 name = "blanket_impl"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-B8C6CB79AADBE071"

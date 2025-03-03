@@ -1,8 +1,8 @@
 [[package]]
-name = 'builtin_type_method_call'
-source = 'member'
-dependencies = ['core']
+name = "builtin_type_method_call"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-B0B251C3B3A5AB8E'
+name = "std"
+source = "path+from-root-B0B251C3B3A5AB8E"

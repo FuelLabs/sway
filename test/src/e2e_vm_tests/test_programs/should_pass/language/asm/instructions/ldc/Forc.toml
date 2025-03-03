@@ -5,6 +5,6 @@ license = "Apache-2.0"
 name = "ldc"
 
 [dependencies]
-core = { path = "../../../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../reduced_std_libs/sway-lib-std-core" }
 
 

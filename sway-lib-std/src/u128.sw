@@ -161,15 +161,6 @@ impl PartialEq for U128 {
 #[cfg(experimental_partial_eq = true)]
 impl Eq for U128 {}
 
-#[cfg(experimental_partial_eq = true)]
-impl PartialEq for U128 {
-    fn eq(self, other: Self) -> bool {
-        self.lower == other.lower && self.upper == other.upper
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl Eq for U128 {}
-
 impl Ord for U128 {
     fn gt(self, other: Self) -> bool {
         self.upper > other.upper || self.upper == other.upper && self.lower > other.lower

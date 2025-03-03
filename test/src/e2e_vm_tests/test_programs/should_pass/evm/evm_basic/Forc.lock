@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-B414963F40A14150"
-
-[[package]]
 name = "evm_basic"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-B414963F40A14150"

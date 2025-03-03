@@ -7,7 +7,7 @@ use ::constants::ZERO_B256;
 use ::convert::{From, TryFrom, TryInto};
 use ::option::Option::{self, *};
 use ::hash::*;
-use ::ops::Eq;
+use ::ops::*;
 
 /// Asymmetric public key, i.e. verifying key, in uncompressed form.
 ///
@@ -193,7 +193,7 @@ impl Eq for PublicKey {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for PublicKey {
+impl PartialEq for PublicKey {
     fn eq(self, other: Self) -> bool {
         if self.bytes.len() != other.bytes.len() {
             return false;
@@ -212,7 +212,7 @@ impl core::ops::PartialEq for PublicKey {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for PublicKey {}
+impl Eq for PublicKey {}
 
 impl Hash for PublicKey {
     fn hash(self, ref mut state: Hasher) {

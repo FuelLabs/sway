@@ -5,4 +5,4 @@ name = "marker_trait_error_implemented_for_str"
 entry = "main.sw"
 
 [dependencies]
-core = { path = "../../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

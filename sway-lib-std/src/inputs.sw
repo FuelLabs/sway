@@ -17,7 +17,7 @@ use ::tx::{
     Transaction,
     tx_type,
 };
-use ::ops::Eq;
+use ::ops::*;
 use ::revert::revert;
 use ::primitive_conversions::u16::*;
 use ::codec::*;

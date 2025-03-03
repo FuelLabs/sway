@@ -1,6 +1,6 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 
 fn test_ok_or_eq<T, E>(val: T, default: E) where T: Eq {
     match Some(val).ok_or(default) {

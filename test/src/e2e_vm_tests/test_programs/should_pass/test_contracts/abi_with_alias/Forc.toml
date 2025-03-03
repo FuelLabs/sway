@@ -6,4 +6,4 @@ license = "Apache-2.0"
 name = "abi_with_alias"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }

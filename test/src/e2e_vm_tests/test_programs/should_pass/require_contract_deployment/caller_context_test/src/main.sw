@@ -1,6 +1,6 @@
 script;
 
-use core::codec::*;
+use std::codec::*;
 use context_testing_abi::*;
 
 #[cfg(experimental_new_encoding = false)]

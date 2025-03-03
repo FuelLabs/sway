@@ -5,4 +5,4 @@ name = "marker_trait_enum_implemented_for_all_enums"
 entry = "main.sw"
 
 [dependencies]
-core = { path = "../../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

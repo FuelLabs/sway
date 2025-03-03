@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-F08197B3E2311E95'
+name = "predicate_invalid_opcodes"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'predicate_invalid_opcodes'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-F08197B3E2311E95"

@@ -10,7 +10,7 @@ use ::asset_id::AssetId;
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};
-use ::ops::Eq;
+use ::ops::*;
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity

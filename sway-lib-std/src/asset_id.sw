@@ -5,7 +5,7 @@ use ::alias::SubId;
 use ::contract_id::ContractId;
 use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
-use ::ops::Eq;
+use ::ops::*;
 use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};

@@ -8,7 +8,7 @@ use ::crypto::{message::Message, public_key::PublicKey, signature_error::Signatu
 use ::hash::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, *};
-use ::ops::Eq;
+use ::ops::*;
 
 /// An ed25519 signature.
 pub struct Ed25519 {
@@ -205,7 +205,7 @@ impl Eq for Ed25519 {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Ed25519 {
+impl PartialEq for Ed25519 {
     fn eq(self, other: Self) -> bool {
         let mut iter = 0;
         while iter < 64 {
@@ -219,7 +219,7 @@ impl core::ops::PartialEq for Ed25519 {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Ed25519 {}
+impl Eq for Ed25519 {}
 
 impl Hash for Ed25519 {
     fn hash(self, ref mut state: Hasher) {

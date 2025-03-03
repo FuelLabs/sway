@@ -7,7 +7,7 @@ use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 use ::codec::*;
-use ::ops::Eq;
+use ::ops::*;
 use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
 

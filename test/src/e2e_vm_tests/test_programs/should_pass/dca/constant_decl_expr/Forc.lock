@@ -1,8 +1,8 @@
 [[package]]
 name = "constant_decl_expr"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-EE79D1B7226F0583"
