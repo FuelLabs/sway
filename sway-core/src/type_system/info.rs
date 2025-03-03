@@ -7,7 +7,7 @@ use crate::{
     language::{
         parsed::{EnumDeclaration, StructDeclaration},
         ty::{self, TyEnumDecl, TyStructDecl},
-        CallPath, QualifiedCallPath,
+        CallPath, CallPathType, QualifiedCallPath,
     },
     type_system::priv_prelude::*,
     Ident,
@@ -23,6 +23,8 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span};
+
+use super::ast_elements::length::NumericLength;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AbiName {
@@ -107,7 +109,7 @@ pub enum TypeInfo {
     // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
     TypeParam(usize),
     StringSlice,
-    StringArray(Length),
+    StringArray(NumericLength),
     UnsignedInteger(IntegerBits),
     UntypedEnum(ParsedDeclId<EnumDeclaration>),
     UntypedStruct(ParsedDeclId<StructDeclaration>),
@@ -309,8 +311,9 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = ctx.engines().de().get_enum(l_decl_ref);
                 let r_decl = ctx.engines().de().get_enum(r_decl_ref);
                 assert!(
-                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
-                    "The call paths of the enum declarations must always be absolute."
+                    matches!(l_decl.call_path.callpath_type, CallPathType::Full)
+                        && matches!(r_decl.call_path.callpath_type, CallPathType::Full),
+                    "The call paths of the enum declarations must always be resolved."
                 );
                 l_decl.call_path == r_decl.call_path
                     && l_decl.variants.eq(&r_decl.variants, ctx)
@@ -320,8 +323,9 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = ctx.engines().de().get_struct(l_decl_ref);
                 let r_decl = ctx.engines().de().get_struct(r_decl_ref);
                 assert!(
-                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
-                    "The call paths of the struct declarations must always be absolute."
+                    matches!(l_decl.call_path.callpath_type, CallPathType::Full)
+                        && matches!(r_decl.call_path.callpath_type, CallPathType::Full),
+                    "The call paths of the struct declarations must always be resolved."
                 );
                 l_decl.call_path == r_decl.call_path
                     && l_decl.fields.eq(&r_decl.fields, ctx)
@@ -347,7 +351,7 @@ impl PartialEqWithEngines for TypeInfo {
                     || type_engine
                         .get(l0.type_id)
                         .eq(&type_engine.get(r0.type_id), ctx))
-                    && l1.val() == r1.val()
+                    && l1 == r1
             }
             (
                 Self::Alias {
@@ -481,7 +485,13 @@ impl OrdWithEngines for TypeInfo {
             (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
                 .get(l0.type_id)
                 .cmp(&type_engine.get(r0.type_id), ctx)
-                .then_with(|| l1.val().cmp(&r1.val())),
+                .then_with(|| {
+                    if let Some(ord) = l1.partial_cmp(r1) {
+                        ord
+                    } else {
+                        l1.discriminant_value().cmp(&r1.discriminant_value())
+                    }
+                }),
             (
                 Self::Alias {
                     name: l_name,
@@ -594,8 +604,12 @@ impl DisplayWithEngines for TypeInfo {
                 )
             }
             ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
-            Array(elem_ty, count) => {
-                format!("[{}; {}]", engines.help_out(elem_ty), count.val())
+            Array(elem_ty, length) => {
+                let l = match &length {
+                    Length::Literal { val, .. } => format!("{val}"),
+                    Length::AmbiguousVariableExpression { ident } => ident.as_str().to_string(),
+                };
+                format!("[{}; {l}]", engines.help_out(elem_ty))
             }
             RawUntypedPtr => "pointer".into(),
             RawUntypedSlice => "slice".into(),
@@ -733,8 +747,12 @@ impl DebugWithEngines for TypeInfo {
                     )
                 )
             }
-            Array(elem_ty, count) => {
-                format!("[{:?}; {}]", engines.help_out(elem_ty), count.val())
+            Array(elem_ty, length) => {
+                format!(
+                    "[{:?}; {:?}]",
+                    engines.help_out(elem_ty),
+                    engines.help_out(length),
+                )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
@@ -819,7 +837,7 @@ impl TypeInfo {
                 call_path: CallPath {
                     prefixes: vec![],
                     suffix: Ident::new_with_override("Self".into(), span),
-                    is_absolute: false,
+                    callpath_type: CallPathType::Ambiguous,
                 },
                 qualified_path_root: None,
             },
@@ -1001,17 +1019,18 @@ impl TypeInfo {
                     )
                 }
             }
-            Array(elem_ty, length) => {
+            Array(elem_ty, length) if length.as_literal_val().is_some() => {
+                // SAFETY: safe by the guard above
+                let len = length
+                    .as_literal_val()
+                    .expect("unexpected non literal length");
                 let name = type_engine.get(elem_ty.type_id).to_selector_name(
                     handler,
                     engines,
                     error_msg_span,
                 );
-                let name = match name {
-                    Ok(name) => name,
-                    Err(e) => return Err(e),
-                };
-                format!("a[{};{}]", name, length.val())
+                let name = name?;
+                format!("a[{};{}]", name, len)
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
@@ -1108,8 +1127,12 @@ impl TypeInfo {
                 }
                 all_zero_sized
             }
-            TypeInfo::Array(elem_ty, length) => {
-                length.val() == 0
+            TypeInfo::Array(elem_ty, length) if length.as_literal_val().is_some() => {
+                // SAFETY: safe by the guard above
+                let len = length
+                    .as_literal_val()
+                    .expect("unexpected non literal length");
+                len == 0
                     || type_engine
                         .get(elem_ty.type_id)
                         .is_zero_sized(type_engine, decl_engine)
@@ -1128,8 +1151,12 @@ impl TypeInfo {
                     .get(type_argument.type_id)
                     .can_safely_ignore(type_engine, decl_engine)
             }),
-            TypeInfo::Array(elem_ty, length) => {
-                length.val() == 0
+            TypeInfo::Array(elem_ty, length) if length.as_literal_val().is_some() => {
+                // SAFETY: safe by the guard above
+                let len = length
+                    .as_literal_val()
+                    .expect("unexpected non literal length");
+                len == 0
                     || type_engine
                         .get(elem_ty.type_id)
                         .can_safely_ignore(type_engine, decl_engine)
@@ -1551,7 +1578,12 @@ impl TypeInfo {
             TypeInfo::Array(elem, len) => {
                 let elem_type = engines.te().get(elem.type_id);
                 let size_hint = elem_type.abi_encode_size_hint(engines);
-                size_hint * len.val()
+                match &len {
+                    Length::Literal { val, .. } => size_hint * *val,
+                    Length::AmbiguousVariableExpression { .. } => {
+                        AbiEncodeSizeHint::PotentiallyInfinite
+                    }
+                }
             }
 
             TypeInfo::StringArray(len) => AbiEncodeSizeHint::Exact(len.val()),
@@ -1714,9 +1746,9 @@ impl TypeInfo {
             }
             Array(elem_ty, length) => {
                 format!(
-                    "[{}; {}]",
+                    "[{}; {:?}]",
                     elem_ty.type_id.get_type_str(engines),
-                    length.val()
+                    engines.help_out(length)
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),

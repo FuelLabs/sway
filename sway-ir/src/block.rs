@@ -174,7 +174,7 @@ impl Block {
     }
 
     /// Get an iterator over this block's args.
-    pub fn arg_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &Value> {
+    pub fn arg_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &'a Value> {
         context.blocks[self.0].args.iter()
     }
 
@@ -184,7 +184,7 @@ impl Block {
     }
 
     /// Get an iterator over this block's predecessor blocks.
-    pub fn pred_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &Block> {
+    pub fn pred_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &'a Block> {
         context.blocks[self.0].preds.iter()
     }
 
@@ -374,7 +374,7 @@ impl Block {
     /// Those instructions are: [InstOp::Ret], [FuelVmInstruction::Retd],
     /// [FuelVmInstruction::JmpMem], and [FuelVmInstruction::Revert]).
     pub fn is_terminated_by_return_or_revert(&self, context: &Context) -> bool {
-        self.get_terminator(context).map_or(false, |i| {
+        self.get_terminator(context).is_some_and(|i| {
             matches!(
                 i,
                 Instruction {

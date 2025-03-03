@@ -173,6 +173,15 @@ impl PidFileLocking {
     }
 }
 
+/// Checks if the specified file is marked as "dirty".
+/// This is used to prevent changing files that are currently open in an editor
+/// with unsaved changes.
+///
+/// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
+pub fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
+    PidFileLocking::lsp(path.as_ref()).is_locked()
+}
+
 #[cfg(test)]
 mod test {
     use super::{user_forc_directory, PidFileLocking};

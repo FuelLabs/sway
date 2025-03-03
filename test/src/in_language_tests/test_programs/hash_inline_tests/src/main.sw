@@ -1,6 +1,6 @@
 library;
 
-use std::{bytes::Bytes, hash::{Hash, Hasher, keccak256, sha256, sha256_str_array},};
+use std::{bytes::Bytes, hash::{Hash, Hasher, keccak256, sha256, sha256_str_array}};
 
 #[test()]
 fn hash_hasher_write_str() {

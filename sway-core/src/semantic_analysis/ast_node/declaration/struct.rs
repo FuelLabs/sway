@@ -31,7 +31,7 @@ impl ty::TyStructDecl {
 
     pub(crate) fn type_check(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         decl: StructDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let StructDeclaration {
@@ -45,7 +45,7 @@ impl ty::TyStructDecl {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        ctx.scoped(handler, Some(span.clone()), |mut ctx| {
+        ctx.scoped(handler, Some(span.clone()), |ctx| {
             // Type check the type parameters.
             let new_type_parameters = TypeParameter::type_check_type_params(
                 handler,

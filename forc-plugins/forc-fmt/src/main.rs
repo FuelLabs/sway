@@ -7,7 +7,7 @@ use forc_pkg::{
     WorkspaceManifestFile,
 };
 use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
-use forc_util::fs_locking::PidFileLocking;
+use forc_util::fs_locking::is_file_dirty;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -15,7 +15,6 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
 use taplo::formatter as taplo_fmt;
@@ -46,7 +45,9 @@ pub struct App {
     /// - Exits with `1` and prints a diff if formatting is required.
     #[clap(short, long)]
     pub check: bool,
-    /// Path to the project, if not specified, current working directory will be used.
+    /// Path to the project.
+    ///
+    /// If not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
     #[clap(short, long)]
@@ -77,13 +78,8 @@ fn run() -> Result<()> {
     if let Some(f) = app.file.as_ref() {
         let file_path = &PathBuf::from(f);
 
-        // If we're formatting a single file, find the nearest manifest if within a project.
-        // Otherwise, we simply provide 'None' to format_file().
-        let manifest_file = find_parent_manifest_dir(file_path)
-            .map(|path| path.join(constants::MANIFEST_FILE_NAME));
-
         if is_sway_file(file_path) {
-            format_file(&app, file_path.to_path_buf(), manifest_file, &mut formatter)?;
+            format_file(&app, file_path.to_path_buf(), &mut formatter)?;
             return Ok(());
         }
 
@@ -103,15 +99,6 @@ fn run() -> Result<()> {
         }
     }
     Ok(())
-}
-
-/// Checks if the specified file is marked as "dirty".
-/// This is used to prevent formatting files that are currently open in an editor
-/// with unsaved changes.
-///
-/// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
-fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
-    PidFileLocking::lsp(path.as_ref()).is_locked()
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.
@@ -142,12 +129,7 @@ fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
 /// - Ok(true) if executed successfully and formatted,
 /// - Ok(false) if executed successfully and not formatted,
 /// - Err if it fails to execute at all.
-fn format_file(
-    app: &App,
-    file: PathBuf,
-    manifest_file: Option<PathBuf>,
-    formatter: &mut Formatter,
-) -> Result<bool> {
+fn format_file(app: &App, file: PathBuf, formatter: &mut Formatter) -> Result<bool> {
     let file = file.canonicalize()?;
     if is_file_dirty(&file) {
         bail!(
@@ -160,14 +142,7 @@ fn format_file(
     if let Ok(file_content) = fs::read_to_string(&file) {
         let mut edited = false;
         let file_content: Arc<str> = Arc::from(file_content);
-        let build_config = manifest_file.map(|f| {
-            BuildConfig::root_from_file_name_and_manifest_path(
-                file.clone(),
-                f,
-                BuildTarget::default(),
-            )
-        });
-        match Formatter::format(formatter, file_content.clone(), build_config.as_ref()) {
+        match Formatter::format(formatter, file_content.clone()) {
             Ok(formatted_content) => {
                 if app.check {
                     if *file_content != formatted_content {
@@ -213,12 +188,7 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
         for entry in read_dir.filter_map(|res| res.ok()) {
             let path = entry.path();
             if is_sway_file(&path) {
-                format_file(
-                    app,
-                    path,
-                    Some(workspace.dir().to_path_buf()),
-                    &mut formatter,
-                )?;
+                format_file(app, path, &mut formatter)?;
             }
         }
     }
@@ -295,7 +265,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
             let mut contains_edits = false;
 
             for file in files {
-                contains_edits |= format_file(app, file, Some(manifest_file.clone()), formatter)?;
+                contains_edits |= format_file(app, file, formatter)?;
             }
             // format manifest using taplo formatter
             contains_edits |= format_manifest(app, manifest_file)?;

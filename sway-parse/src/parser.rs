@@ -460,7 +460,7 @@ pub struct ParseRecoveryStrategies<'original, 'a, 'e> {
     error: ErrorEmitted,
 }
 
-impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
+impl<'a> ParseRecoveryStrategies<'_, 'a, '_> {
     /// This strategy consumes everything at the current line and emits the fallback error
     /// if the forked parser does not contains any error.
     pub fn recover_at_next_line_with_fallback_error(

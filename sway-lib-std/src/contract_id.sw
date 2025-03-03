@@ -1,8 +1,10 @@
 //! The `ContractId` type used for interacting with contracts on the fuel network.
 library;
 
-use ::convert::From;
+use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::bytes::Bytes;
+use ::option::Option::{self, *};
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -30,11 +32,20 @@ impl ContractId {
     }
 }
 
+#[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for ContractId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::PartialEq for ContractId {
+    fn eq(self, other: Self) -> bool {
+        self.bits == other.bits
+    }
+}
+#[cfg(experimental_partial_eq = true)]
+impl core::ops::Eq for ContractId {}
 
 impl From<b256> for ContractId {
     /// Casts raw `b256` data to a `ContractId`.
@@ -77,6 +88,62 @@ impl From<ContractId> for b256 {
     /// ```
     fn from(id: ContractId) -> Self {
         id.bits()
+    }
+}
+
+impl TryFrom<Bytes> for ContractId {
+    /// Casts raw `Bytes` data to an `ContractId`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes`: [Bytes] - The raw `Bytes` data to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [ContractId] - The newly created `ContractId` from the raw `Bytes`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo(bytes: Bytes) {
+    ///    let result = ContractId::try_from(bytes);
+    ///    assert(result.is_some());
+    ///    let contract_id = result.unwrap();
+    /// }
+    /// ```
+    fn try_from(bytes: Bytes) -> Option<Self> {
+        if bytes.len() != 32 {
+            return None;
+        }
+
+        Some(Self {
+            bits: asm(ptr: bytes.ptr()) {
+                ptr: b256
+            },
+        })
+    }
+}
+
+impl Into<Bytes> for ContractId {
+    /// Casts an `ContractId` to raw `Bytes` data.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The underlying raw `Bytes` data of the `ContractId`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let contract_id = ContractId::zero();
+    ///     let bytes_data: Bytes = contract_id.into()
+    ///     assert(bytes_data.len() == 32);
+    /// }
+    /// ```
+    fn into(self) -> Bytes {
+        Bytes::from(self.bits())
     }
 }
 

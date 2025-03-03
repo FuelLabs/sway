@@ -3,7 +3,6 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{ty::*, *},
-    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -59,9 +58,14 @@ pub enum TyExpressionVariant {
     Tuple {
         fields: Vec<TyExpression>,
     },
-    Array {
+    ArrayExplicit {
         elem_type: TypeId,
         contents: Vec<TyExpression>,
+    },
+    ArrayRepeat {
+        elem_type: TypeId,
+        value: Box<TyExpression>,
+        length: Box<TyExpression>,
     },
     ArrayIndex {
         prefix: Box<TyExpression>,
@@ -250,11 +254,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 l_fields.eq(r_fields, ctx)
             }
             (
-                Self::Array {
+                Self::ArrayExplicit {
                     contents: l_contents,
                     ..
                 },
-                Self::Array {
+                Self::ArrayExplicit {
                     contents: r_contents,
                     ..
                 },
@@ -495,11 +499,19 @@ impl HashWithEngines for TyExpressionVariant {
             Self::Tuple { fields } => {
                 fields.hash(state, engines);
             }
-            Self::Array {
+            Self::ArrayExplicit {
                 contents,
                 elem_type: _,
             } => {
                 contents.hash(state, engines);
+            }
+            Self::ArrayRepeat {
+                value,
+                length,
+                elem_type: _,
+            } => {
+                value.hash(state, engines);
+                length.hash(state, engines);
             }
             Self::ArrayIndex { prefix, index } => {
                 prefix.hash(state, engines);
@@ -678,12 +690,21 @@ impl SubstTypes for TyExpressionVariant {
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
-            Array {
+            ArrayExplicit {
                 ref mut elem_type,
                 contents,
             } => has_changes! {
                 elem_type.subst(ctx);
                 contents.subst(ctx);
+            },
+            ArrayRepeat {
+                ref mut elem_type,
+                value,
+                length,
+            } => has_changes! {
+                elem_type.subst(ctx);
+                value.subst(ctx);
+                length.subst(ctx);
             },
             ArrayIndex { prefix, index } => has_changes! {
                 prefix.subst(ctx);
@@ -800,6 +821,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 FunctionApplication {
                     ref mut fn_ref,
                     ref mut arguments,
+                    call_path,
                     ..
                 } => {
                     let mut has_changes = false;
@@ -824,15 +846,14 @@ impl ReplaceDecls for TyExpressionVariant {
                             let implementing_type_method_ref = ctx.find_method_for_type(
                                 handler,
                                 implementing_for_typeid,
-                                &[],
-                                method.name(),
+                                &[ctx.namespace().current_package_name().clone()],
+                                &call_path.suffix,
                                 method.return_type.type_id,
                                 &arguments
                                     .iter()
                                     .map(|a| a.1.return_type)
                                     .collect::<VecDeque<_>>(),
                                 None,
-                                TryInsertingTraitImplOnFailure::Yes,
                             )?;
                             method = (*decl_engine.get(&implementing_type_method_ref)).clone();
                         }
@@ -877,7 +898,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
                     Ok(has_changes)
                 }
-                Array {
+                ArrayExplicit {
                     elem_type: _,
                     contents,
                 } => {
@@ -887,6 +908,15 @@ impl ReplaceDecls for TyExpressionVariant {
                             has_changes |= r;
                         }
                     }
+                    Ok(has_changes)
+                }
+                ArrayRepeat {
+                    elem_type: _,
+                    value,
+                    length,
+                } => {
+                    let mut has_changes = (*value).replace_decls(decl_mapping, handler, ctx)?;
+                    has_changes |= (*length).replace_decls(decl_mapping, handler, ctx)?;
                     Ok(has_changes)
                 }
                 ArrayIndex { prefix, index } => {
@@ -1055,10 +1085,14 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                     field.type_check_analyze(handler, ctx)?
                 }
             }
-            TyExpressionVariant::Array { contents, .. } => {
+            TyExpressionVariant::ArrayExplicit { contents, .. } => {
                 for elem in contents.iter() {
                     elem.type_check_analyze(handler, ctx)?
                 }
+            }
+            TyExpressionVariant::ArrayRepeat { value, length, .. } => {
+                value.type_check_analyze(handler, ctx)?;
+                length.type_check_analyze(handler, ctx)?;
             }
             TyExpressionVariant::ArrayIndex { prefix, index } => {
                 prefix.type_check_analyze(handler, ctx)?;
@@ -1167,10 +1201,14 @@ impl TypeCheckFinalization for TyExpressionVariant {
                         field.type_check_finalize(handler, ctx)?
                     }
                 }
-                TyExpressionVariant::Array { contents, .. } => {
+                TyExpressionVariant::ArrayExplicit { contents, .. } => {
                     for elem in contents.iter_mut() {
                         elem.type_check_finalize(handler, ctx)?
                     }
+                }
+                TyExpressionVariant::ArrayRepeat { value, length, .. } => {
+                    value.type_check_finalize(handler, ctx)?;
+                    length.type_check_finalize(handler, ctx)?;
                 }
                 TyExpressionVariant::ArrayIndex { prefix, index } => {
                     prefix.type_check_finalize(handler, ctx)?;
@@ -1285,12 +1323,20 @@ impl UpdateConstantExpression for TyExpressionVariant {
             Tuple { fields } => fields
                 .iter_mut()
                 .for_each(|x| x.update_constant_expression(engines, implementing_type)),
-            Array {
+            ArrayExplicit {
                 contents,
                 elem_type: _,
             } => contents
                 .iter_mut()
                 .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+            ArrayRepeat {
+                elem_type: _,
+                value,
+                length,
+            } => {
+                value.update_constant_expression(engines, implementing_type);
+                length.update_constant_expression(engines, implementing_type);
+            }
             ArrayIndex { prefix, index } => {
                 (*prefix).update_constant_expression(engines, implementing_type);
                 (*index).update_constant_expression(engines, implementing_type);
@@ -1427,7 +1473,9 @@ impl DebugWithEngines for TyExpressionVariant {
                     .join(", ");
                 format!("tuple({fields})")
             }
-            TyExpressionVariant::Array { .. } => "array".into(),
+            TyExpressionVariant::ArrayExplicit { .. } | TyExpressionVariant::ArrayRepeat { .. } => {
+                "array".into()
+            }
             TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
             TyExpressionVariant::StructExpression { struct_id, .. } => {
                 let decl = engines.de().get(struct_id);

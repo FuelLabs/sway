@@ -14,6 +14,7 @@ pub use ::revert::{require, revert};
 
 // Convert
 pub use ::convert::From;
+pub use ::clone::Clone;
 
 // Logging
 pub use ::logging::log;

@@ -232,3 +232,13 @@ deallocated
 deallocate
 destructors
 destructor
+semiautomatically
+FuelLabs
+github
+toml
+hardcoded
+subdirectories
+RawSlice
+StringArray
+StringSlice
+calldata

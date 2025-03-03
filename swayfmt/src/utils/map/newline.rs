@@ -1,8 +1,7 @@
 use anyhow::Result;
 use ropey::{str_utils::byte_to_char_idx, Rope};
-use std::{collections::BTreeMap, fmt::Display, path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, fmt::Display, sync::Arc};
 use sway_ast::Module;
-use sway_types::SourceEngine;
 
 use crate::{
     constants::NEW_LINE,
@@ -106,11 +105,9 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
 /// Handle newlines by first creating a NewlineMap which is used for fast searching extra newlines.
 /// Traverses items for finding a newline sequence in unformatted input and placing it in correct place in formatted output.
 pub fn handle_newlines(
-    source_engine: &SourceEngine,
     unformatted_input: Arc<str>,
     unformatted_module: &Module,
     formatted_input: Arc<str>,
-    path: Option<Arc<PathBuf>>,
     formatted_code: &mut FormattedCode,
     formatter: &Formatter,
 ) -> Result<(), FormatterError> {
@@ -123,7 +120,7 @@ pub fn handle_newlines(
     // formatting the code a second time will still produce the same result.
     let newline_map = newline_map_from_src(&unformatted_input)?;
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = parse_file(source_engine, formatted_input, path)?.value;
+    let formatted_module = parse_file(formatted_input)?.value;
     // Actually find & insert the newline sequences
     add_newlines(
         newline_map,

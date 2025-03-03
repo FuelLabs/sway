@@ -33,6 +33,7 @@ pub mod address;
 pub mod identity;
 pub mod ecr;
 pub mod vm;
+pub mod crypto;
 pub mod string;
 pub mod r#storage;
 pub mod block;

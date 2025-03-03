@@ -1,11 +1,9 @@
 use crate::{error::ParseFileError, Formatter, FormatterError};
-use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::{attribute::Annotated, token::CommentedTokenStream, Module};
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::SourceEngine;
 
-fn with_handler<T>(
+pub fn with_handler<T>(
     run: impl FnOnce(&Handler) -> Result<T, ErrorEmitted>,
 ) -> Result<T, ParseFileError> {
     let handler = <_>::default();
@@ -16,13 +14,8 @@ fn with_handler<T>(
         .ok_or(ParseFileError(errors))
 }
 
-pub fn parse_file(
-    source_engine: &SourceEngine,
-    src: Arc<str>,
-    path: Option<Arc<PathBuf>>,
-) -> Result<Annotated<Module>, ParseFileError> {
-    let source_id = path.map(|p| source_engine.get_source_id(p.as_ref()));
-    with_handler(|h| sway_parse::parse_file(h, src, source_id))
+pub fn parse_file(src: Arc<str>) -> Result<Annotated<Module>, ParseFileError> {
+    with_handler(|h| sway_parse::parse_file(h, src, None))
 }
 
 pub fn lex(input: &Arc<str>) -> Result<CommentedTokenStream, ParseFileError> {

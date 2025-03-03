@@ -50,6 +50,18 @@ impl fmt::Display for InterfaceName {
 // provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
+    #[error("\"const generics\" are not supported here.")]
+    ConstGenericNotSupportedHere { span: Span },
+    #[error("This expression is not supported as lengths.")]
+    LengthExpressionNotSupported { span: Span },
+    #[error(
+        "This needs \"{feature}\" to be enabled, but it is currently disabled. For more details go to {url}."
+    )]
+    FeatureIsDisabled {
+        feature: String,
+        url: String,
+        span: Span,
+    },
     #[error(
         "There was an error while evaluating the evaluation order for the module dependency graph."
     )]
@@ -616,6 +628,13 @@ pub enum CompileError {
         existing_impl_span: Span,
         second_impl_span: Span,
     },
+    #[error(
+        "\"{marker_trait_full_name}\" is a marker trait and cannot be explicitly implemented."
+    )]
+    MarkerTraitExplicitlyImplemented {
+        marker_trait_full_name: String,
+        span: Span,
+    },
     #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
     DuplicateDeclDefinedForType {
         decl_kind: String,
@@ -917,10 +936,6 @@ pub enum CompileError {
     ContinueOutsideLoop { span: Span },
     /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
     /// https://github.com/FuelLabs/sway/issues/3077
-    #[error("Contract ID is not a constant item.")]
-    ContractIdConstantNotAConstDecl { span: Span },
-    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
-    /// https://github.com/FuelLabs/sway/issues/3077
     #[error("Contract ID value is not a literal.")]
     ContractIdValueNotALiteral { span: Span },
 
@@ -994,6 +1009,15 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
+    #[error(
+        "Methods {method_name} and {other_method_name} name have clashing function selectors."
+    )]
+    FunctionSelectorClash {
+        method_name: Ident,
+        span: Span,
+        other_method_name: Ident,
+        other_span: Span,
+    },
     #[error("{invalid_type} is not a valid type in the self type of an impl block.")]
     TypeIsNotValidAsImplementingFor {
         invalid_type: InvalidImplementingForType,
@@ -1035,6 +1059,8 @@ pub enum CompileError {
         trait_names: Vec<String>,
         trait_types_and_names: Vec<(String, String)>,
     },
+    #[error("Multiple contracts methods with the same name.")]
+    MultipleContractsMethodsWithTheSameName { spans: Vec<Span> },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1047,6 +1073,9 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
+            ConstGenericNotSupportedHere { span } => span.clone(),
+            LengthExpressionNotSupported { span } => span.clone(),
+            FeatureIsDisabled { span, .. } => span.clone(),
             ModuleDepGraphEvaluationError { .. } => Span::dummy(),
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
@@ -1150,6 +1179,7 @@ impl Spanned for CompileError {
             ConflictingImplsForTraitAndType {
                 second_impl_span, ..
             } => second_impl_span.clone(),
+            MarkerTraitExplicitlyImplemented { span, .. } => span.clone(),
             DuplicateDeclDefinedForType { span, .. } => span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
@@ -1220,7 +1250,6 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            ContractIdConstantNotAConstDecl { span } => span.clone(),
             ContractIdValueNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
@@ -1238,6 +1267,7 @@ impl Spanned for CompileError {
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AssociatedTypeNotSupportedInAbi { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
+            FunctionSelectorClash { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
             TypeIsNotValidAsImplementingFor { span, .. } => span.clone(),
@@ -1255,6 +1285,7 @@ impl Spanned for CompileError {
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
             MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
+            MultipleContractsMethodsWithTheSameName { spans } => spans[0].clone(),
         }
     }
 }
@@ -2158,16 +2189,16 @@ impl ToDiagnostic for CompileError {
                     ]
                 }
             },
-	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
-		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
-		issue: Issue::error(
-		    source_engine,
-		    span.clone(),
-		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
-		),
-		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
-		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
-	    },
+            SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Multiple bindings exist for symbol in the scope".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("The following paths are all valid bindings for symbol \"{}\": {}.", name, sequence_to_str(&paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>(), Enclosing::DoubleQuote, 2)),
+                ),
+                hints: vec![],
+                help: vec![format!("Consider using a fully qualified name, e.g., `{}::{}`.", paths[0], name)],
+            },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
                 issue: Issue::error(
@@ -2306,6 +2337,25 @@ impl ToDiagnostic for CompileError {
                     "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
                     "This property is called \"trait coherence\".".to_string(),
                 ],
+            },
+            MarkerTraitExplicitlyImplemented { marker_trait_full_name, span} => Diagnostic {
+                reason: Some(Reason::new(code(1), "Marker traits cannot be explicitly implemented".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Trait \"{marker_trait_full_name}\" is a marker trait and cannot be explicitly implemented.")
+                ),
+                hints: vec![],
+                help: match marker_trait_name(marker_trait_full_name) {
+                    "Error" => vec![
+                        "\"Error\" marker trait is automatically implemented by the compiler for string slices".to_string(),
+                        "and enums annotated with the `#[error_type]` attribute.".to_string(),
+                    ],
+                    "Enum" => vec![
+                        "\"Enum\" marker trait is automatically implemented by the compiler for all enum types.".to_string(),
+                    ],
+                    _ => vec![],
+                }
             },
             AssignmentToNonMutableVariable { lhs_span, decl_name } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Immutable variables cannot be assigned to".to_string())),
@@ -2778,7 +2828,29 @@ impl ToDiagnostic for CompileError {
                     format!("#{} {} for {}", e, name, type_id.clone())
                 ).collect::<Vec<_>>().join("\n"))],
             },
-           _ => Diagnostic {
+            MultipleContractsMethodsWithTheSameName { spans } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Multiple contracts methods with the same name.".into())),
+                issue: Issue::error(
+                    source_engine,
+                    spans[0].clone(),
+                    "This is the first method".into()
+                ),
+                hints: spans.iter().skip(1).map(|span| {
+                    Hint::error(source_engine, span.clone(), "This is the duplicated method.".into())
+                }).collect(),
+                help: vec!["Contract methods names must be unique, even when implementing multiple ABIs.".into()],
+            },
+            FunctionSelectorClash { method_name, span, other_method_name, other_span } => Diagnostic {
+		reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} have clashing function selectors."))),
+		issue: Issue::error(
+		    source_engine,
+		    span.clone(),
+		    String::new()
+		),
+		hints: vec![Hint::error(source_engine, other_span.clone(), format!("The declaration of {other_method_name} is here"))],
+		help: vec![format!("The methods of a contract must have distinct function selectors, which are computed from the method hash. \nRenaming one of the methods should solve the problem")]
+	    },
+            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
                     //       switch to our own #[error] macro. All the values for the formatting
@@ -2920,4 +2992,32 @@ impl fmt::Display for StorageAccess {
             )),
         }
     }
+}
+
+/// Extracts only the suffix part of the `marker_trait_full_name`, without the arguments.
+/// E.g.:
+/// - `core::marker::Error` => `Error`
+/// - `core::marker::SomeMarkerTrait::<T>` => `SomeMarkerTrait`
+/// - `core::marker::SomeMarkerTrait<T>` => `SomeMarkerTrait`
+///
+/// Panics if the `marker_trait_full_name` does not start with "core::marker::".
+fn marker_trait_name(marker_trait_full_name: &str) -> &str {
+    const MARKER_TRAITS_MODULE: &str = "core::marker::";
+    assert!(
+        marker_trait_full_name.starts_with(MARKER_TRAITS_MODULE),
+        "`marker_trait_full_name` must start with \"core::marker::\", but it was \"{}\"",
+        marker_trait_full_name
+    );
+
+    let lower_boundary = MARKER_TRAITS_MODULE.len();
+    let name_part = &marker_trait_full_name[lower_boundary..];
+
+    let upper_boundary = marker_trait_full_name.len() - lower_boundary;
+    let only_name_len = std::cmp::min(
+        name_part.find(':').unwrap_or(upper_boundary),
+        name_part.find('<').unwrap_or(upper_boundary),
+    );
+    let upper_boundary = lower_boundary + only_name_len;
+
+    &marker_trait_full_name[lower_boundary..upper_boundary]
 }

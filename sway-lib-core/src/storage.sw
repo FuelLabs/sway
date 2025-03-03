@@ -30,7 +30,7 @@ impl<T> StorageKey<T> {
     ///
     /// # Returns
     ///
-    /// * [StorageKey] - The newly create `StorageKey`.
+    /// * [StorageKey] - The newly created `StorageKey`.
     ///
     /// # Examples
     ///

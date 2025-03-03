@@ -5,9 +5,10 @@ use crate::fuel_prelude::{
 };
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    constant::{Constant, ConstantValue},
+    constant::{ConstantContent, ConstantValue},
     context::Context,
     irtype::Type,
+    Constant,
 };
 use sway_types::u256::U256;
 
@@ -140,7 +141,7 @@ pub fn serialize_to_storage_slots(
     ty: &Type,
 ) -> Vec<StorageSlot> {
     let experimental = context.experimental;
-    match &constant.value {
+    match &constant.get_content(context).value {
         ConstantValue::Undef => vec![],
         // If not being a part of an aggregate, single byte values like `bool`, `u8`, and unit
         // are stored as a byte at the beginning of the storage slot.
@@ -231,7 +232,12 @@ pub fn serialize_to_storage_slots(
             // is a multiple of 4. This is useful because each storage slot is 4 words.
             // Regarding padding, the top level type in the call is either a string array, struct, or
             // a union. They will properly set the initial padding for the further recursive calls.
-            let mut packed = serialize_to_words(constant, context, ty, InByte8Padding::default());
+            let mut packed = serialize_to_words(
+                constant.get_content(context),
+                context,
+                ty,
+                InByte8Padding::default(),
+            );
             packed.extend(vec![
                 Bytes8::new([0; 8]);
                 ((packed.len() + 3) / 4) * 4 - packed.len()
@@ -276,7 +282,7 @@ pub fn serialize_to_storage_slots(
 /// Given a constant value `constant` and a type `ty`, serialize the constant into a vector of
 /// words and apply the requested padding if needed.
 fn serialize_to_words(
-    constant: &Constant,
+    constant: &ConstantContent,
     context: &Context,
     ty: &Type,
     padding: InByte8Padding,

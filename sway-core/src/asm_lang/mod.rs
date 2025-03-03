@@ -120,7 +120,10 @@ impl Op {
         size_to_allocate_in_bytes: VirtualImmediate24,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_bytes)),
+            opcode: Either::Left(VirtualOp::CFEI(
+                VirtualRegister::Constant(ConstantRegister::StackPointer),
+                size_to_allocate_in_bytes,
+            )),
             comment: String::new(),
             owning_span: None,
         }
@@ -481,23 +484,35 @@ impl Op {
             /* Memory Instructions */
             "aloc" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::ALOC(r1)
+                VirtualOp::ALOC(VirtualRegister::Constant(ConstantRegister::HeapPointer), r1)
             }
             "cfei" => {
                 let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFEI(imm)
+                VirtualOp::CFEI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    imm,
+                )
             }
             "cfsi" => {
                 let imm = single_imm_24(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFSI(imm)
+                VirtualOp::CFSI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    imm,
+                )
             }
             "cfe" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFE(r1)
+                VirtualOp::CFE(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    r1,
+                )
             }
             "cfs" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
-                VirtualOp::CFS(r1)
+                VirtualOp::CFS(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    r1,
+                )
             }
             "lb" => {
                 let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
@@ -581,6 +596,10 @@ impl Op {
                 let (r1, r2, r3, i0) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
                 VirtualOp::LDC(r1, r2, r3, i0)
             }
+            "bldd" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BLDD(r1, r2, r3, r4)
+            }
             "log" => {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::LOG(r1, r2, r3, r4)
@@ -659,8 +678,20 @@ impl Op {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::S256(r1, r2, r3)
             }
+            "ecop" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ECOP(r1, r2, r3, r4)
+            }
+            "epar" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::EPAR(r1, r2, r3, r4)
+            }
 
             /* Other Instructions */
+            "ecal" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ECAL(r1, r2, r3, r4)
+            }
             "flag" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
                 VirtualOp::FLAG(r1)
@@ -865,32 +896,6 @@ fn four_regs(
             handler.emit_err(CompileError::MissingImmediate { span: i.span() });
         }
     };
-
-    impl ConstantRegister {
-        pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
-            use ConstantRegister::*;
-            Some(match raw {
-                "zero" => Zero,
-                "one" => One,
-                "of" => Overflow,
-                "pc" => ProgramCounter,
-                "ssp" => StackStartPointer,
-                "sp" => StackPointer,
-                "fp" => FramePointer,
-                "hp" => HeapPointer,
-                "err" => Error,
-                "ggas" => GlobalGas,
-                "cgas" => ContextGas,
-                "bal" => Balance,
-                "is" => InstructionStart,
-                "flag" => Flags,
-                "retl" => ReturnLength,
-                "ret" => ReturnValue,
-                "ds" => DataSectionStart,
-                _ => return None,
-            })
-        }
-    }
 
     // Immediate Value.
     pub type ImmediateValue = u32;
@@ -1190,11 +1195,11 @@ impl fmt::Display for VirtualOp {
             RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */
-            ALOC(a) => write!(fmtr, "aloc {a}"),
-            CFEI(a) => write!(fmtr, "cfei {a}"),
-            CFSI(a) => write!(fmtr, "cfsi {a}"),
-            CFE(a) => write!(fmtr, "cfe {a}"),
-            CFS(a) => write!(fmtr, "cfs {a}"),
+            ALOC(_hp, a) => write!(fmtr, "aloc {a}"),
+            CFEI(_sp, a) => write!(fmtr, "cfei {a}"),
+            CFSI(_sp, a) => write!(fmtr, "cfsi {a}"),
+            CFE(_sp, a) => write!(fmtr, "cfe {a}"),
+            CFS(_sp, a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl {a} {b}"),
@@ -1239,8 +1244,11 @@ impl fmt::Display for VirtualOp {
             ED19(a, b, c, d) => write!(fmtr, "ed19 {a} {b} {c} {d}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
+            ECOP(a, b, c, d) => write!(fmtr, "ecop {a} {b} {c} {d}"),
+            EPAR(a, b, c, d) => write!(fmtr, "epar {a} {b} {c} {d}"),
 
             /* Other Instructions */
+            ECAL(a, b, c, d) => write!(fmtr, "ecal {a} {b} {c} {d}"),
             FLAG(a) => write!(fmtr, "flag {a}"),
             GM(a, b) => write!(fmtr, "gm {a} {b}"),
             GTF(a, b, c) => write!(fmtr, "gtf {a} {b} {c}"),

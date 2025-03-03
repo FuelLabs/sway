@@ -76,6 +76,32 @@ pub enum ConstantRegister {
     FuncArg5,
 }
 
+impl ConstantRegister {
+    pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
+        use ConstantRegister::*;
+        Some(match raw {
+            "zero" => Zero,
+            "one" => One,
+            "of" => Overflow,
+            "pc" => ProgramCounter,
+            "ssp" => StackStartPointer,
+            "sp" => StackPointer,
+            "fp" => FramePointer,
+            "hp" => HeapPointer,
+            "err" => Error,
+            "ggas" => GlobalGas,
+            "cgas" => ContextGas,
+            "bal" => Balance,
+            "is" => InstructionStart,
+            "flag" => Flags,
+            "retl" => ReturnLength,
+            "ret" => ReturnValue,
+            "ds" => DataSectionStart,
+            _ => return None,
+        })
+    }
+}
+
 use crate::asm_generation::fuel::compiler_constants;
 
 impl ConstantRegister {

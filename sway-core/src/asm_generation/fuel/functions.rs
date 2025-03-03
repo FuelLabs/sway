@@ -65,7 +65,7 @@ use super::{compiler_constants::NUM_ARG_REGISTERS, data_section::EntryName};
 /// is used to point to the stack location of the remaining arguments.
 /// Stack space for the extra arguments is allocated in the caller when
 /// locals of the caller are allocated.
-impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
+impl FuelAsmBuilder<'_, '_> {
     pub(super) fn compile_call(
         &mut self,
         instr_val: &Value,
@@ -474,13 +474,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         // XXX val.get_type() should be a pointer if it's not meant to be loaded.
                         if val
                             .get_type(self.context)
-                            .map_or(false, |t| self.is_copy_type(&t))
+                            .is_some_and(|t| self.is_copy_type(&t))
                         {
                             self.cur_bytecode.push(Op {
                                 opcode: either::Either::Left(VirtualOp::LW(
                                     single_arg_reg.clone(),
                                     single_arg_reg.clone(),
-                                    VirtualImmediate12 { value: 0 },
+                                    VirtualImmediate12::new_unchecked(
+                                        0,
+                                        "zero must fit in 12 bits",
+                                    ),
                                 )),
                                 comment: "load main function parameter".into(),
                                 owning_span: None,
@@ -535,7 +538,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     opcode: Either::Left(VirtualOp::LB(
                                         current_arg_reg.clone(),
                                         offs_reg,
-                                        VirtualImmediate12 { value: 0 },
+                                        VirtualImmediate12::new_unchecked(
+                                            0,
+                                            "zero must fit in 12 bits",
+                                        ),
                                     )),
                                     comment: format!("get argument {name}"),
                                     owning_span: None,
@@ -545,7 +551,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                     opcode: Either::Left(VirtualOp::LW(
                                         current_arg_reg.clone(),
                                         offs_reg,
-                                        VirtualImmediate12 { value: 0 },
+                                        VirtualImmediate12::new_unchecked(
+                                            0,
+                                            "zero must fit in 12 bits",
+                                        ),
                                     )),
                                     comment: format!("get argument {name}"),
                                     owning_span: None,
@@ -556,9 +565,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 opcode: Either::Left(VirtualOp::LB(
                                     current_arg_reg.clone(),
                                     args_base_reg.clone(),
-                                    VirtualImmediate12 {
-                                        value: arg_word_offset as u16 * 8,
-                                    },
+                                    VirtualImmediate12::new_unchecked(
+                                        arg_word_offset * 8,
+                                        "offset must fit in 12 bits",
+                                    ),
                                 )),
                                 comment: format!("get argument {name}"),
                                 owning_span: None,
@@ -568,9 +578,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 opcode: Either::Left(VirtualOp::LW(
                                     current_arg_reg.clone(),
                                     args_base_reg.clone(),
-                                    VirtualImmediate12 {
-                                        value: arg_word_offset as u16,
-                                    },
+                                    VirtualImmediate12::new_unchecked(
+                                        arg_word_offset,
+                                        "offset must fit in 12 bits",
+                                    ),
                                 )),
                                 comment: format!("get argument {name}"),
                                 owning_span: None,
@@ -602,7 +613,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::FramePointer),
                 // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
-                VirtualImmediate12 { value: 74 },
+                VirtualImmediate12::new_unchecked(74, "74 must fit in 12 bits"),
             )),
             comment: "get base register for method arguments".into(),
             owning_span: None,
@@ -615,9 +626,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::Zero),
-                VirtualImmediate12 {
-                    value: GTFArgs::ScriptData as u16,
-                },
+                VirtualImmediate12::new_unchecked(
+                    GTFArgs::ScriptData as u64,
+                    "GTFArgs::ScriptData must fit in 12 bits",
+                ),
             )),
             comment: "get base register for main function arguments".into(),
             owning_span: None,
@@ -636,7 +648,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GM(
                 input_index.clone(),
-                VirtualImmediate18 { value: 3_u32 },
+                VirtualImmediate18::new_unchecked(3, "3 must fit in 18 bits"),
             )),
             comment: "get predicate index".into(),
             owning_span: None,
@@ -653,9 +665,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 input_type.clone(),
                 input_index.clone(),
-                VirtualImmediate12 {
-                    value: GTFArgs::InputType as u16,
-                },
+                VirtualImmediate12::new_unchecked(
+                    GTFArgs::InputType as u64,
+                    "GTFArgs::InputType must fit in 12 bits",
+                ),
             )),
             comment: "get predicate input type".into(),
             owning_span: None,
@@ -674,9 +687,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 base_reg.clone(),
                 input_index.clone(),
-                VirtualImmediate12 {
-                    value: GTFArgs::InputCoinPredicateData as u16,
-                },
+                VirtualImmediate12::new_unchecked(
+                    GTFArgs::InputCoinPredicateData as u64,
+                    "GTFArgs::InputCoinPredicateData must fit in 12 bits",
+                ),
             )),
             comment: "get predicate input coin data pointer".into(),
             owning_span: None,
@@ -697,7 +711,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::MOVI(
                 two.clone(),
-                VirtualImmediate18 { value: 2u32 },
+                VirtualImmediate18::new_unchecked(2, "two must fit in 18 bits"),
             )),
             comment:
                 "[predicate input is message]: set register to 2 (Input::Message discriminator)"
@@ -720,7 +734,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: Either::Left(VirtualOp::XORI(
                 input_type_not_message.clone(),
                 input_type_is_message,
-                VirtualImmediate12 { value: 1 },
+                VirtualImmediate12::new_unchecked(1, "one must fit in 12 bits"),
             )),
             comment: "[predicate input is message]: check if input type is not message".into(),
             owning_span: None,
@@ -741,9 +755,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 base_reg.clone(),
                 input_index,
-                VirtualImmediate12 {
-                    value: GTFArgs::InputMessagePredicateData as u16,
-                },
+                VirtualImmediate12::new_unchecked(
+                    GTFArgs::InputMessagePredicateData as u64,
+                    "GTFArgs::InputMessagePredicateData must fit in 12 bits",
+                ),
             )),
             comment: "get predicate input message data pointer".into(),
             owning_span: None,
@@ -819,7 +834,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     ptr.is_mutable(self.context),
                     ptr.get_initializer(self.context),
                 ) {
-                    match constant.value {
+                    match constant.get_content(self.context).value {
                         ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
                             self.ptr_map.insert(
                                 *ptr,
@@ -833,7 +848,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             let data_id =
                                 self.data_section.insert_data_value(Entry::from_constant(
                                     self.context,
-                                    constant,
+                                    constant.get_content(self.context),
                                     EntryName::NonConfigurable,
                                     None,
                                 ));
@@ -848,13 +863,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     let var_size = ptr_ty.size(self.context);
 
                     if let Some(constant) = ptr.get_initializer(self.context) {
-                        match constant.value {
+                        match constant.get_content(self.context).value {
                             ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
                                 let imm = VirtualImmediate18::new_unchecked(
                                     c,
                                     "Cannot happen, we just checked",
                                 );
-                                dbg!();
                                 init_mut_vars.push(InitMutVars {
                                     stack_base_words,
                                     var_size: var_size.clone(),
@@ -865,7 +879,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 let data_id =
                                     self.data_section.insert_data_value(Entry::from_constant(
                                         self.context,
-                                        constant,
+                                        constant.get_content(self.context),
                                         EntryName::NonConfigurable,
                                         None,
                                     ));
@@ -903,9 +917,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             todo!("Enormous stack usage for locals.");
         }
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                value: locals_size_bytes as u32 + (max_num_extra_args * 8) as u32,
-            })),
+            opcode: Either::Left(VirtualOp::CFEI(
+                VirtualRegister::Constant(ConstantRegister::StackPointer),
+                VirtualImmediate24::new_unchecked(locals_size_bytes + (max_num_extra_args * 8),"Stack usage too high")
+            )),
             comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments"),
             owning_span: None,
         });
@@ -972,9 +987,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::ADDI(
                         dst_reg.clone(),
                         locals_base_reg.clone(),
-                        VirtualImmediate12 {
-                            value: var_stack_off_bytes as u16,
-                        },
+                        VirtualImmediate12::new_unchecked(
+                            var_stack_off_bytes,
+                            "Stack offset too high",
+                        ),
                     )),
                     comment: "get local variable address".to_owned(),
                     owning_span: None,
@@ -985,9 +1001,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::MOVI(
                         dst_reg.clone(),
-                        VirtualImmediate18 {
-                            value: var_stack_off_bytes as u32,
-                        },
+                        VirtualImmediate18::new_unchecked(
+                            var_stack_off_bytes,
+                            "Stack offset too high",
+                        ),
                     )),
                     comment: "move stack offset of local variable into register".to_owned(),
                     owning_span: None,
@@ -1010,7 +1027,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         opcode: Either::Left(VirtualOp::SB(
                             dst_reg,
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12 { value: 0 },
+                            VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
                         )),
                         comment: "store byte initializer to local variable".to_owned(),
                         owning_span: None,
@@ -1020,7 +1037,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         opcode: Either::Left(VirtualOp::SW(
                             dst_reg,
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12 { value: 0 },
+                            VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
                         )),
                         comment: "store word initializer to local variable".to_owned(),
                         owning_span: None,
@@ -1033,9 +1050,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     opcode: Either::Left(VirtualOp::MCPI(
                         dst_reg,
                         VirtualRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12 {
-                            value: var_size.in_bytes_aligned() as u16,
-                        },
+                        VirtualImmediate12::new_unchecked(
+                            var_size.in_bytes_aligned(),
+                            "Size too high",
+                        ),
                     )),
                     comment: "copy initializer from data section to local variable".to_owned(),
                     owning_span: None,
@@ -1054,9 +1072,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             todo!("Enormous stack usage for locals.");
         }
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
-                value: u32::try_from(locals_size_bytes + (max_num_extra_args * 8)).unwrap(),
-            })),
+            opcode: Either::Left(
+                VirtualOp::CFSI(VirtualRegister::Constant(ConstantRegister::StackPointer),
+                VirtualImmediate24::new_unchecked(locals_size_bytes + (max_num_extra_args * 8), "Stack usage too high")),),
             comment: format!("free {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for extra call arguments"),
             owning_span: None,
         });
