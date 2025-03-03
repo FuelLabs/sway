@@ -140,7 +140,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 ControlFlowGraphNode::FunctionParameter { .. } => {
                     // Consider variables declarations dead when count is not greater than 1
@@ -148,7 +148,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 _ => false,
             }
@@ -192,7 +192,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(true, |count| count > 1)
+                            .is_none_or(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::ProgramNode {
