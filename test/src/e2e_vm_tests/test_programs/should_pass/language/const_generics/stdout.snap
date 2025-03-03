@@ -1,11 +1,16 @@
 ---
 source: test/tests/tests.rs
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release --ir final
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library core (sway-lib-core)
+// IR: Final
+library {
+}
+
    Compiling library std (sway-lib-std)
 // IR: Final
 library {
