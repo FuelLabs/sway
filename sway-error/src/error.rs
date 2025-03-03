@@ -2354,30 +2354,30 @@ impl ToDiagnostic for CompileError {
                 ],
             },
             DuplicateDeclDefinedForType { decl_kind, decl_name, type_implementing_for, type_implementing_for_unaliased, existing_impl_span, second_impl_span } => {
-		let decl_kind_snake_case = sway_types::style::to_upper_camel_case(decl_kind);
-		Diagnostic {
+                let decl_kind_snake_case = sway_types::style::to_upper_camel_case(decl_kind);
+                Diagnostic {
                     reason: Some(Reason::new(code(1), "Type contains duplicate declarations".to_string())),
                     issue: Issue::error(
-			source_engine,
-			second_impl_span.clone(),
-			if type_implementing_for == type_implementing_for_unaliased {
+                        source_engine,
+                        second_impl_span.clone(),
+                        if type_implementing_for == type_implementing_for_unaliased {
                             format!("{decl_kind_snake_case} \"{decl_name}\" already declared in type \"{type_implementing_for}\".")
-			} else {
+                        } else {
                             format!("{decl_kind_snake_case} \"{decl_name}\" already declared in type \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").")
-			}
+                        }
                     ),
                     hints: vec![
-			Hint::info(
+                        Hint::info(
                             source_engine,
                             existing_impl_span.clone(),
                             format!("\"{decl_name}\" previously defined here.")
-			)
+                        )
                     ],
                     help: vec![
-			"A type may not contain two or more declarations of the same name".to_string(),
+                        "A type may not contain two or more declarations of the same name".to_string(),
                     ],
-		}
-	    },
+                }
+            },
             MarkerTraitExplicitlyImplemented { marker_trait_full_name, span} => Diagnostic {
                 reason: Some(Reason::new(code(1), "Marker traits cannot be explicitly implemented".to_string())),
                 issue: Issue::error(

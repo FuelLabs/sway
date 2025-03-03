@@ -20,7 +20,7 @@ type B = A;
 // so this should cause a compilation error.
 impl MyTrait for B {
     fn extract_a(self) -> u64 {
-	self.a + 1
+        self.a + 1
     }
 }
 
