@@ -143,6 +143,6 @@ impl b256 {
     /// ```
     pub fn from_be_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 32);
-        bytes.into()
+        bytes.try_into().unwrap()
     }
 }
