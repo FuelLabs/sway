@@ -706,6 +706,12 @@ impl TyDecl {
                 .call_path
                 .suffix
                 .clone(),
+            TyDecl::ConstGenericDecl(const_generic_decl) => engines
+                .de()
+                .get_const_generic(&const_generic_decl.decl_id)
+                .call_path
+                .suffix
+                .clone(),
             TyDecl::TraitTypeDecl(trait_type_decl) => {
                 engines.de().get_type(&trait_type_decl.decl_id).name.clone()
             }
