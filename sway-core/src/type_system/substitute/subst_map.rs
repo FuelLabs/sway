@@ -1,7 +1,5 @@
 use crate::{
-    decl_engine::{
-        DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert,
-    },
+    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
     engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },

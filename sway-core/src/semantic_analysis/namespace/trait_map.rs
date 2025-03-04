@@ -996,11 +996,8 @@ impl TraitMap {
                         .zip(e.key.name.suffix.args.iter())
                         .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
                 {
-                    let type_mapping = TypeSubstMap::from_superset_and_subset(
-                        engines,
-                        e.key.type_id,
-                        type_id,
-                    );
+                    let type_mapping =
+                        TypeSubstMap::from_superset_and_subset(engines, e.key.type_id, type_id);
 
                     let mut trait_items = Self::filter_dummy_methods(
                         e.value.trait_items,
