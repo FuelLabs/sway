@@ -730,9 +730,10 @@ where
     T: AbiEncode,
 {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let mut buffer = buffer;
-        let mut i = 0;
         let len = self.len();
+        let mut buffer = len.abi_encode(buffer);
+
+        let mut i = 0;
         while i < len {
             let elem = *__elem_at(self, i);
             buffer = elem.abi_encode(buffer);

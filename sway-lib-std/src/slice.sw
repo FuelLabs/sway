@@ -2,6 +2,18 @@ library;
 
 use ::raw_ptr::*;
 
+pub fn from_parts<T>(ptr: raw_ptr, count: u64) -> &[T] {
+    asm(ptr: (ptr, count)) {
+        ptr: &[T]
+    }
+}
+
+pub fn from_parts_mut<T>(ptr: raw_ptr, count: u64) -> &mut [T] {
+    asm(ptr: (ptr, count)) {
+        ptr: &mut [T]
+    }
+}
+
 impl<T> &[T] {
     pub fn ptr(self) -> raw_ptr {
         let (ptr, _) = asm(s: self) {
@@ -41,11 +53,14 @@ pub fn zero_alloc_slice<T>() -> &mut [T] {
 }
 
 pub fn alloc_slice<T>(len: u64) -> &mut [T] {
+    asm(a:1) { log a a a a; }
     let len_in_bytes = __mul(len, __size_of::<T>());
+    asm(a:1) { log a a a a; }
     let ptr = asm(len_in_bytes: len_in_bytes) {
         aloc len_in_bytes;
         hp: raw_ptr
     };
+    asm(a:1) { log a a a a; }
     asm(buf: (ptr, len)) {
         buf: &mut [T]
     }

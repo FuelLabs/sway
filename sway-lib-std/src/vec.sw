@@ -682,6 +682,15 @@ impl<T> From<raw_slice> for Vec<T> {
     }
 }
 
+#[cfg(experimental_references = true)]
+impl<T> From<raw_slice> for Vec<T> {
+    fn from(slice: raw_slice) -> Self {
+        let len = slice.len::<T>();
+        let buf = core::slice::from_parts_mut::<T>(slice.ptr(), len);
+        Self { buf, len }
+    }
+}
+
 #[cfg(experimental_references = false)]
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
@@ -695,42 +704,6 @@ impl<T> Clone for Vec<T> {
         let buf = alloc_slice::<T>(len);
         self.ptr().copy_to::<T>(buf.ptr(), len);
         Self { buf, len }
-    }
-}
-
-#[cfg(experimental_references = false)]
-impl<T> AbiEncode for Vec<T>
-where
-    T: AbiEncode,
-{
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-       self.as_raw_slice().abi_encode(buffer)
-    }
-}
-
-#[cfg(experimental_references = true)]
-impl<T> AbiEncode for Vec<T>
-where
-    T: AbiEncode,
-{
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-       self.as_slice().abi_encode(buffer)
-    }
-}
-
-impl<T> AbiDecode for Vec<T>
-where
-    T: AbiDecode,
-{
-    fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
-        let mut len = u64::abi_decode(buffer);
-        let mut v = Vec::with_capacity(len);
-        while len > 0 {
-            let item = T::abi_decode(buffer);
-            v.push(item);
-            len -= 1;
-        }
-        v
     }
 }
 
@@ -797,6 +770,34 @@ where
         l.finish();
     }
 
+
+impl<T> AbiEncode for Vec<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let mut buffer = self.len.abi_encode(buffer);
+        for elem in self.iter() {
+            buffer = elem.abi_encode(buffer);
+        }
+        buffer
+    }
+}
+
+impl<T> AbiDecode for Vec<T>
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
+        let mut len = u64::abi_decode(buffer);
+        let mut v = Vec::with_capacity(len);
+        while len > 0 {
+            v.push(T::abi_decode(buffer));
+            len -= 1;
+        }
+        v
+    }
+}
 
 fn assert_vec_items(v: Vec<u8>, items: &[u8], capacity: u64) {
     use ::assert::*;
@@ -939,7 +940,6 @@ fn ok_vec_tests() {
     //assert_eq(v.get(0).unwrap().get(0).unwrap(), 7);
     //assert_eq(v2.get(0).unwrap().len(), 3);
 }
-
 
 #[cfg(experimental_references = false)]
 #[test]
