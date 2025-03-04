@@ -1307,6 +1307,11 @@ impl<'a> TypeCheckContext<'a> {
             })
         });
 
+        let impl_type_parameters_ids = impl_type_parameters
+            .iter()
+            .map(|type_parameter| engines.te().new_type_param(type_parameter.clone()))
+            .collect::<Vec<_>>();
+
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
         // to the actual trait declaration. Since the path of the trait declaration is used as a key
         // in the trait map, we need to find the actual declaration path.
@@ -1325,7 +1330,7 @@ impl<'a> TypeCheckContext<'a> {
                 canonical_trait_path,
                 trait_type_args,
                 type_id,
-                impl_type_parameters,
+                impl_type_parameters_ids,
                 &items,
                 impl_span,
                 trait_decl_span,

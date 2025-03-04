@@ -24,7 +24,7 @@ use crate::{
     },
     type_system::{SubstTypes, TypeId},
     IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
-    TypeParameter, TypeSubstMap, UnifyCheck,
+    TypeSubstMap, UnifyCheck,
 };
 
 use super::Module;
@@ -102,17 +102,16 @@ type TraitName = Arc<CallPath<TraitSuffix>>;
 pub(crate) struct TraitKey {
     pub(crate) name: TraitName,
     pub(crate) type_id: TypeId,
-    pub(crate) impl_type_parameters: Vec<TypeParameter>,
+    pub(crate) impl_type_parameters: Vec<TypeId>,
     pub(crate) trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
         self.name.cmp(&other.name, ctx).then_with(|| {
-            self.type_id.cmp(&other.type_id).then_with(|| {
-                self.impl_type_parameters
-                    .cmp(&other.impl_type_parameters, ctx)
-            })
+            self.type_id
+                .cmp(&other.type_id)
+                .then_with(|| self.impl_type_parameters.cmp(&other.impl_type_parameters))
         })
     }
 }
@@ -174,7 +173,6 @@ pub(crate) enum TypeRootFilter {
     Unknown,
     Never,
     Placeholder,
-    TypeParam(usize),
     StringSlice,
     StringArray(usize),
     U8,
@@ -234,7 +232,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        impl_type_parameters: Vec<TypeParameter>,
+        impl_type_parameters: Vec<TypeId>,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -465,7 +463,7 @@ impl TraitMap {
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
-        impl_type_parameters: Vec<TypeParameter>,
+        impl_type_parameters: Vec<TypeId>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
@@ -1491,7 +1489,7 @@ impl TraitMap {
             Unknown => TypeRootFilter::Unknown,
             Never => TypeRootFilter::Never,
             UnknownGeneric { .. } | Placeholder(_) => TypeRootFilter::Placeholder,
-            TypeParam(n) => TypeRootFilter::TypeParam(*n),
+            TypeParam(_param) => unreachable!(),
             StringSlice => TypeRootFilter::StringSlice,
             StringArray(x) => TypeRootFilter::StringArray(x.val()),
             UnsignedInteger(x) => match x {
