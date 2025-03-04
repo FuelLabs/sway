@@ -2,8 +2,7 @@ use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Annotated<T> {
-    // TODO-IG!: Rename to attributes. Search replace in unit tests.
-    pub attribute_list: Vec<AttributeDecl>,
+    pub attributes: Vec<AttributeDecl>,
     pub value: T,
 }
 
@@ -83,7 +82,6 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
 //       See: https://github.com/FuelLabs/sway/issues/6924
 #[derive(Clone, Debug, Serialize)]
 pub struct AttributeDecl {
-    // TODO-IG!: Rename to AttributeDirection. Check Rust terminology.
     pub hash_kind: AttributeHashKind,
     pub attribute: SquareBrackets<Punctuated<Attribute, CommaToken>>,
 }
@@ -96,7 +94,11 @@ impl AttributeDecl {
     /// The `span` is the overall span: `/// This is an outer comment.`.
     /// The `content_span` is the span of the content, without the leading `///`: ` This is an outer comment.`.
     pub fn new_outer_doc_comment(span: Span, content_span: Span) -> Self {
-        Self::new_doc_comment(span.clone(), content_span, AttributeHashKind::Outer(HashToken::new(span)))
+        Self::new_doc_comment(
+            span.clone(),
+            content_span,
+            AttributeHashKind::Outer(HashToken::new(span)),
+        )
     }
 
     /// Creates the `doc-comment` [AttributeDecl] for a single line of an inner comment. E.g.:
@@ -106,7 +108,11 @@ impl AttributeDecl {
     /// The `span` is the overall span: `//! This is an inner comment.`.
     /// The `content_span` is the span of the content, without the leading `//!`: ` This is an inner comment.`.
     pub fn new_inner_doc_comment(span: Span, content_span: Span) -> Self {
-        Self::new_doc_comment(span.clone(), content_span, AttributeHashKind::Inner(HashBangToken::new(span)))
+        Self::new_doc_comment(
+            span.clone(),
+            content_span,
+            AttributeHashKind::Inner(HashBangToken::new(span)),
+        )
     }
 
     fn new_doc_comment(span: Span, content_span: Span, hash_kind: AttributeHashKind) -> Self {
@@ -133,8 +139,13 @@ impl AttributeDecl {
 
     /// `self` is a doc comment, either an inner (`//!`) or outer (`///`).
     pub fn is_doc_comment(&self) -> bool {
-        self.attribute.inner.value_separator_pairs.is_empty() &&
-        self.attribute.inner.final_value_opt.as_ref().is_some_and(|attr| attr.is_doc_comment())
+        self.attribute.inner.value_separator_pairs.is_empty()
+            && self
+                .attribute
+                .inner
+                .final_value_opt
+                .as_ref()
+                .is_some_and(|attr| attr.is_doc_comment())
     }
 
     pub fn is_inner(&self) -> bool {

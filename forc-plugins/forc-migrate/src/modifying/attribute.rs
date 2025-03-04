@@ -5,9 +5,7 @@ use sway_ast::{
     AttributeDecl, Literal, Parens, Punctuated,
 };
 use sway_features::Feature;
-use sway_types::{
-    Ident, Span, Spanned,
-};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::assert_insert_span;
 

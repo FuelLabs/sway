@@ -7,7 +7,7 @@ use crate::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
-    transform::{AllowDeprecatedState, AttributesMap},
+    transform::{AllowDeprecatedState, Attributes},
     type_system::*,
     types::*,
 };
@@ -403,7 +403,7 @@ impl TyExpression {
         allow_deprecated: &mut AllowDeprecatedState,
     ) {
         fn emit_warning_if_deprecated(
-            attributes: &AttributesMap,
+            attributes: &Attributes,
             span: &Span,
             handler: &Handler,
             deprecated_element: DeprecatedElement,
@@ -423,13 +423,12 @@ impl TyExpression {
                 .iter()
                 // Last "note" argument wins ;-)
                 .rfind(|arg| arg.is_deprecated_note())
-                .map(|note_arg| match note_arg.get_string_opt(handler) {
-                    Ok(note) => note.map(|note| note.clone()),
+                .and_then(|note_arg| match note_arg.get_string_opt(handler) {
+                    Ok(note) => note.cloned(),
                     // We treat invalid values here as not having the "note" provided.
                     // Attribute checking will emit errors.
-                    Err(_) => None, 
-                })
-                .flatten();
+                    Err(_) => None,
+                });
 
             handler.emit_warn(CompileWarning {
                 span: span.clone(),

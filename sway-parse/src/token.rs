@@ -169,12 +169,7 @@ pub fn lex_commented(
                         CommentKind::Trailing
                     };
 
-                    let ctt = lex_line_comment(
-                        &mut l,
-                        end,
-                        index,
-                        comment_kind,
-                    );
+                    let ctt = lex_line_comment(&mut l, end, index, comment_kind);
                     token_trees.push(ctt);
                     continue;
                 }

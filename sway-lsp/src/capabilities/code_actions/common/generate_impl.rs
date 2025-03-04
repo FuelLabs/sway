@@ -1,5 +1,5 @@
 use sway_core::{
-    transform::{AttributeKind, AttributesMap},
+    transform::{AttributeKind, Attributes},
     TypeParameter,
 };
 use sway_types::Spanned;
@@ -54,10 +54,9 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
         )
     }
 
-    // TODO-IG!: Adjust comment to not use the term attribute map.
-    /// Returns a [String] of a an attribute map, optionally excluding comments.
-    fn attribute_string(&self, attr_map: &AttributesMap, include_comments: bool) -> String {
-        let attr_string = attr_map
+    /// Returns a [String] of `attributes`, optionally excluding doc comments.
+    fn attribute_string(&self, attributes: &Attributes, include_comments: bool) -> String {
+        let attr_string = attributes
             .all()
             .filter_map(|attr| match attr.kind {
                 AttributeKind::DocComment { .. } => {
@@ -79,11 +78,11 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
         &self,
         fn_name: String,
         params_string: String,
-        attr_map: &AttributesMap,
+        attributes: &Attributes,
         return_type_string: String,
         body: Option<String>,
     ) -> String {
-        let attribute_string = self.attribute_string(attr_map, false);
+        let attribute_string = self.attribute_string(attributes, false);
         let body_string = match body {
             Some(body) => format!(" {body} "),
             None => String::new(),

@@ -2,15 +2,15 @@
 use crate::render::util::format::constant::*;
 use comrak::{markdown_to_html, ComrakOptions};
 use std::fmt::Write;
-use sway_core::transform::{AttributeKind, AttributesMap};
+use sway_core::transform::{AttributeKind, Attributes};
 use sway_lsp::utils::markdown::format_docs;
 
 pub(crate) trait DocStrings {
     fn to_html_string(&self) -> String;
     fn to_raw_string(&self) -> String;
 }
-/// Creates an HTML String from an [AttributesMap]
-impl DocStrings for AttributesMap {
+/// Creates an HTML String from [Attributes].
+impl DocStrings for Attributes {
     fn to_html_string(&self) -> String {
         let docs = self.to_raw_string();
 
@@ -28,10 +28,12 @@ impl DocStrings for AttributesMap {
     fn to_raw_string(&self) -> String {
         let mut docs = String::new();
         // TODO: Change this logic once https://github.com/FuelLabs/sway/issues/6938 gets implemented.
-        for arg in self.of_kind(AttributeKind::DocComment).flat_map(|attribute| &attribute.args) {
-            writeln!(docs, "{}", arg.name.as_str()).expect(
-                "problem appending `arg.name.as_str()` to `docs` with `writeln` macro.",
-            );
+        for arg in self
+            .of_kind(AttributeKind::DocComment)
+            .flat_map(|attribute| &attribute.args)
+        {
+            writeln!(docs, "{}", arg.name.as_str())
+                .expect("problem appending `arg.name.as_str()` to `docs` with `writeln` macro.");
         }
         docs
     }

@@ -23,7 +23,7 @@ impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         let mut start = None;
-        for attr in &self.attribute_list {
+        for attr in &self.attributes {
             if let Some(start) = start {
                 // Write any comments that may have been defined in between the
                 // attributes and the value
@@ -118,7 +118,7 @@ impl Format for AttributeDecl {
         match &self.hash_kind {
             AttributeHashKind::Inner(_hash_bang_token) => {
                 write!(formatted_code, "{}", HashBangToken::AS_STR)?;
-            },
+            }
             AttributeHashKind::Outer(_hash_token) => {
                 write!(formatted_code, "{}", HashToken::AS_STR)?;
             }

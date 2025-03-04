@@ -369,7 +369,13 @@ where
 ///
 /// The input value is taken from the `span` and the help hint is positioned at that `span`.
 /// Each suggestion are enclosed in `enclosing`.
-pub fn did_you_mean_help<T, I>(source_engine: &SourceEngine, span: Span, possible_values: I, max_num_of_suggestions: usize, enclosing: Enclosing) -> Hint
+pub fn did_you_mean_help<T, I>(
+    source_engine: &SourceEngine,
+    span: Span,
+    possible_values: I,
+    max_num_of_suggestions: usize,
+    enclosing: Enclosing,
+) -> Hint
 where
     T: AsRef<str>,
     I: IntoIterator<Item = T>,
@@ -381,7 +387,10 @@ where
         Hint::help(
             source_engine,
             span,
-            format!("Did you mean {}?", sequence_to_str_or(suggestions, enclosing, max_num_of_suggestions))
+            format!(
+                "Did you mean {}?",
+                sequence_to_str_or(suggestions, enclosing, max_num_of_suggestions)
+            ),
         )
     }
 }

@@ -18,12 +18,12 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_ast::ImplItemParent;
 use sway_error::{
     error::{CompileError, InvalidImplementingForType},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span};
-use sway_ast::ImplItemParent;
 
 use super::ast_elements::length::NumericLength;
 

@@ -22,16 +22,12 @@ impl ItemImplItem {
     pub fn friendly_name(&self, parent: ImplItemParent) -> &'static str {
         use ItemImplItem::*;
         match self {
-            Fn(item_fn) => {
-                match item_fn.fn_signature.arguments.inner {
-                    FnArgs::Static(_) => {
-                        match parent {
-                            ImplItemParent::Contract => "contract method",
-                            ImplItemParent::Other => "associated function",
-                        }
-                    },
-                    FnArgs::NonStatic { .. } => "method",
-                }
+            Fn(item_fn) => match item_fn.fn_signature.arguments.inner {
+                FnArgs::Static(_) => match parent {
+                    ImplItemParent::Contract => "contract method",
+                    ImplItemParent::Other => "associated function",
+                },
+                FnArgs::NonStatic { .. } => "method",
             },
             Const(..) => "associated constant",
             Type(..) => "associated type",

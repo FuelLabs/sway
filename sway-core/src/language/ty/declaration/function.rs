@@ -20,9 +20,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{
-    Ident, Named, Span, Spanned,
-};
+use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyFunctionDeclKind {
@@ -41,7 +39,7 @@ pub struct TyFunctionDecl {
     pub implementing_for_typeid: Option<TypeId>,
     pub span: Span,
     pub call_path: CallPath,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub type_parameters: Vec<TypeParameter>,
     pub return_type: TypeArgument,
     pub visibility: Visibility,

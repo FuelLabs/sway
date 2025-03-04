@@ -18,7 +18,6 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
-use sway_core::transform::AttributeArg;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
@@ -30,6 +29,7 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 use sway_core::namespace::Root;
+use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -2053,7 +2053,10 @@ impl PkgEntryKind {
 
 impl PkgTestEntry {
     fn from_decl(decl_ref: &DeclRefFunction, engines: &Engines) -> Result<Self> {
-        fn get_invalid_revert_code_error_msg(test_function_name: &Ident, should_revert_arg: &AttributeArg) -> String {
+        fn get_invalid_revert_code_error_msg(
+            test_function_name: &Ident,
+            should_revert_arg: &AttributeArg,
+        ) -> String {
             format!("Invalid revert code for test \"{}\".\nA revert code must be a string containing a \"u64\", e.g.: \"42\".\nThe invalid revert code was: {}.",
                 test_function_name,
                 should_revert_arg.value.as_ref().expect("`get_string_opt` returned either a value or an error, which means that the invalid value must exist").span().as_str(),
@@ -2071,25 +2074,34 @@ impl PkgTestEntry {
             .args
             .iter()
             // Last "should_revert" argument wins ;-)
-            .rfind(|arg| arg.is_test_should_revert()) {
-                Some(should_revert_arg) => match should_revert_arg
-                    .get_string_opt(&Handler::default()) {
-                        Ok(should_revert_arg_value) => TestPassCondition::ShouldRevert(should_revert_arg_value
+            .rfind(|arg| arg.is_test_should_revert())
+        {
+            Some(should_revert_arg) => {
+                match should_revert_arg.get_string_opt(&Handler::default()) {
+                    Ok(should_revert_arg_value) => TestPassCondition::ShouldRevert(
+                        should_revert_arg_value
                             .map(|val| val.parse::<u64>())
                             .transpose()
-                            .map_err(|_| anyhow!(get_invalid_revert_code_error_msg(&test_function_decl.name, should_revert_arg)))?
-                        ),
-                        Err(_) => bail!(get_invalid_revert_code_error_msg(&test_function_decl.name, should_revert_arg)),
-                    },
-                None => TestPassCondition::ShouldNotRevert,
-            };
+                            .map_err(|_| {
+                                anyhow!(get_invalid_revert_code_error_msg(
+                                    &test_function_decl.name,
+                                    should_revert_arg
+                                ))
+                            })?,
+                    ),
+                    Err(_) => bail!(get_invalid_revert_code_error_msg(
+                        &test_function_decl.name,
+                        should_revert_arg
+                    )),
+                }
+            }
+            None => TestPassCondition::ShouldNotRevert,
+        };
 
-        let file_path = Arc::new(
-            engines.se().get_path(
-                span.source_id()
-                    .ok_or_else(|| anyhow!("Missing span for test \"{}\".", test_function_decl.name))?,
-            ),
-        );
+        let file_path =
+            Arc::new(engines.se().get_path(span.source_id().ok_or_else(|| {
+                anyhow!("Missing span for test \"{}\".", test_function_decl.name)
+            })?));
         Ok(Self {
             pass_condition,
             span,

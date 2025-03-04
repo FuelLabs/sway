@@ -17,7 +17,7 @@ pub enum FunctionDeclarationKind {
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,

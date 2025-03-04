@@ -21,7 +21,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
     pub visibility: Visibility,
@@ -136,7 +136,7 @@ pub struct TyEnumVariant {
     pub type_argument: TypeArgument,
     pub(crate) tag: usize,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl HashWithEngines for TyEnumVariant {

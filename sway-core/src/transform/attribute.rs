@@ -48,10 +48,15 @@
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sway_error::{convert_parse_tree_error::ConvertParseTreeError, handler::{ErrorEmitted, Handler}};
-use sway_features::Feature;
 use std::{hash::Hash, sync::Arc};
-use sway_ast::{attribute::*, AttributeDecl, ImplItemParent, ItemImplItem, ItemKind, ItemTraitItem, Literal};
+use sway_ast::{
+    attribute::*, AttributeDecl, ImplItemParent, ItemImplItem, ItemKind, ItemTraitItem, Literal,
+};
+use sway_error::{
+    convert_parse_tree_error::ConvertParseTreeError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_features::Feature;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::language::{Inline, Purity};
@@ -68,22 +73,32 @@ impl AttributeArg {
     /// or an error if the value does not exist or is not of type [String].
     ///
     /// `attribute` is the the parent [Attribute] of `self`.
-    pub fn get_string(&self, handler: &Handler, attribute: &Attribute) -> Result<&String, ErrorEmitted> {
+    pub fn get_string(
+        &self,
+        handler: &Handler,
+        attribute: &Attribute,
+    ) -> Result<&String, ErrorEmitted> {
         match &self.value {
             Some(literal) => match literal {
                 Literal::String(lit_string) => Ok(&lit_string.parsed),
-                _ => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgValueType {
+                _ => Err(handler.emit_err(
+                    ConvertParseTreeError::InvalidAttributeArgValueType {
                         span: literal.span(),
                         arg: self.name.clone(),
                         expected_type: "str",
                         received_type: literal.friendly_type_name(),
-                    }.into())),
+                    }
+                    .into(),
+                )),
             },
-            None => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgExpectsValue {
-                attribute: attribute.name.clone(),
-                arg: (&self.name).into(),
-                value_span: None,
-            }.into())),
+            None => Err(handler.emit_err(
+                ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                    attribute: attribute.name.clone(),
+                    arg: (&self.name).into(),
+                    value_span: None,
+                }
+                .into(),
+            )),
         }
     }
 
@@ -93,12 +108,15 @@ impl AttributeArg {
         match &self.value {
             Some(literal) => match literal {
                 Literal::String(lit_string) => Ok(Some(&lit_string.parsed)),
-                _ => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgValueType {
+                _ => Err(handler.emit_err(
+                    ConvertParseTreeError::InvalidAttributeArgValueType {
                         span: literal.span(),
                         arg: self.name.clone(),
                         expected_type: "str",
                         received_type: literal.friendly_type_name(),
-                    }.into())),
+                    }
+                    .into(),
+                )),
             },
             None => Ok(None),
         }
@@ -110,20 +128,26 @@ impl AttributeArg {
     /// `attribute` is the the parent [Attribute] of `self`.
     pub fn get_bool(&self, handler: &Handler, attribute: &Attribute) -> Result<bool, ErrorEmitted> {
         match &self.value {
-        Some(literal) => match literal {
+            Some(literal) => match literal {
                 Literal::Bool(lit_bool) => Ok(lit_bool.kind.into()),
-                _ => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgValueType {
+                _ => Err(handler.emit_err(
+                    ConvertParseTreeError::InvalidAttributeArgValueType {
                         span: literal.span(),
                         arg: self.name.clone(),
                         expected_type: "bool",
                         received_type: literal.friendly_type_name(),
-                    }.into())),
+                    }
+                    .into(),
+                )),
             },
-            None => Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgExpectsValue {
-                attribute: attribute.name.clone(),
-                arg: (&self.name).into(),
-                value_span: None,
-            }.into())),
+            None => Err(handler.emit_err(
+                ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                    attribute: attribute.name.clone(),
+                    arg: (&self.name).into(),
+                    value_span: None,
+                }
+                .into(),
+            )),
         }
     }
 
@@ -210,19 +234,28 @@ impl ArgsMultiplicity {
         Self { min: 0, max: 0 }
     }
     pub fn arbitrary() -> Self {
-        Self { min: 0, max: usize::MAX }
+        Self {
+            min: 0,
+            max: usize::MAX,
+        }
     }
     pub fn exactly(num: usize) -> Self {
         Self { min: num, max: num }
     }
     pub fn at_least(num: usize) -> Self {
-        Self { min: num, max: usize::MAX }
+        Self {
+            min: num,
+            max: usize::MAX,
+        }
     }
     pub fn at_most(num: usize) -> Self {
         Self { min: 0, max: num }
     }
     pub fn between(min: usize, max: usize) -> Self {
-        assert!(min <= max, "min must be less than or equal to max; min was {min}, max was {max}");
+        assert!(
+            min <= max,
+            "min must be less than or equal to max; min was {min}, max was {max}"
+        );
         Self { min, max }
     }
     pub fn contains(&self, value: usize) -> bool {
@@ -258,17 +291,17 @@ impl ExpectedArgs {
     /// if the [Attribute] can accept any argument name.
     pub(crate) fn args_names(&self) -> Vec<&'static str> {
         match self {
-            ExpectedArgs::None
-            | ExpectedArgs::Any => vec![],
-            ExpectedArgs::MustBeIn(expected_args)
-            | ExpectedArgs::ShouldBeIn(expected_args) => expected_args.clone(),
+            ExpectedArgs::None | ExpectedArgs::Any => vec![],
+            ExpectedArgs::MustBeIn(expected_args) | ExpectedArgs::ShouldBeIn(expected_args) => {
+                expected_args.clone()
+            }
         }
     }
 }
 
 /// Defines if [AttributeArg]s within the same [Attribute]
 /// can or must have a value specified.
-/// 
+///
 /// E.g., `#[attribute(arg = <value>)`.
 ///
 /// We consider the expected types of individual values not to be
@@ -387,8 +420,8 @@ impl Attribute {
     }
 
     pub(crate) fn args_multiplicity(&self) -> ArgsMultiplicity {
-        use AttributeKind::*;
         use ArgsMultiplicity as Multiplicity;
+        use AttributeKind::*;
         match self.kind {
             Unknown => Multiplicity::arbitrary(),
             // Each `doc-comment` attribute contains exactly one argument
@@ -412,16 +445,22 @@ impl Attribute {
 
     pub(crate) fn check_args_multiplicity(&self, handler: &Handler) -> Result<(), ErrorEmitted> {
         if !self.args_multiplicity().contains(self.args.len()) {
-            Err(handler.emit_err(ConvertParseTreeError::InvalidAttributeArgsMultiplicity {
-                span: if self.args.is_empty() {
-                    self.name.span()
-                } else {
-                    Span::join(self.args.first().unwrap().span(), &self.args.last().unwrap().span)
-                },
-                attribute: self.name.clone(),
-                args_multiplicity: (&self.args_multiplicity()).into(),
-                num_of_args: self.args.len(),
-            }.into()))
+            Err(handler.emit_err(
+                ConvertParseTreeError::InvalidAttributeArgsMultiplicity {
+                    span: if self.args.is_empty() {
+                        self.name.span()
+                    } else {
+                        Span::join(
+                            self.args.first().unwrap().span(),
+                            &self.args.last().unwrap().span,
+                        )
+                    },
+                    attribute: self.name.clone(),
+                    args_multiplicity: (&self.args_multiplicity()).into(),
+                    num_of_args: self.args.len(),
+                }
+                .into(),
+            ))
         } else {
             Ok(())
         }
@@ -451,15 +490,15 @@ impl Attribute {
                 ];
                 args.extend(Feature::CFG.iter().sorted());
                 MustBeIn(args)
-            },
+            }
             Deprecated => MustBeIn(vec![DEPRECATED_NOTE_ARG_NAME]),
             Fallback => None,
         }
     }
 
     pub(crate) fn args_expect_values(&self) -> ArgsExpectValues {
-        use AttributeKind::*;
         use ArgsExpectValues::*;
+        use AttributeKind::*;
         match self.kind {
             Unknown => Maybe,
             // The actual documentation line is in the name of the attribute.
@@ -514,7 +553,10 @@ impl Attribute {
         match self.kind {
             Unknown => !matches!(item_kind, ItemKind::Submodule(_)),
             // We allow doc comments on all items including `storage` and `configurable`.
-            DocComment => self.direction == AttributeDirection::Outer && !matches!(item_kind, ItemKind::Submodule(_)),
+            DocComment => {
+                self.direction == AttributeDirection::Outer
+                    && !matches!(item_kind, ItemKind::Submodule(_))
+            }
             Storage => matches!(item_kind, ItemKind::Fn(_)),
             Inline => matches!(item_kind, ItemKind::Fn(_)),
             Test => matches!(item_kind, ItemKind::Fn(_)),
@@ -547,7 +589,10 @@ impl Attribute {
     //       E.g., the `#[test]` attribute can annotate module functions (`ItemKind::Fn`),
     //       but will not be allowed on nested functions.
 
-    pub(crate) fn can_annotate_struct_or_enum_field(&self, _struct_or_enum_field: StructOrEnumField) -> bool {
+    pub(crate) fn can_annotate_struct_or_enum_field(
+        &self,
+        _struct_or_enum_field: StructOrEnumField,
+    ) -> bool {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
@@ -563,7 +608,11 @@ impl Attribute {
         }
     }
 
-    pub(crate) fn can_annotate_abi_or_trait_item(&self, item: &ItemTraitItem, parent: TraitItemParent) -> bool {
+    pub(crate) fn can_annotate_abi_or_trait_item(
+        &self,
+        item: &ItemTraitItem,
+        parent: TraitItemParent,
+    ) -> bool {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
@@ -582,7 +631,11 @@ impl Attribute {
         }
     }
 
-    pub(crate) fn can_annotate_impl_item(&self, item: &ItemImplItem, parent: ImplItemParent) -> bool {
+    pub(crate) fn can_annotate_impl_item(
+        &self,
+        item: &ItemImplItem,
+        parent: ImplItemParent,
+    ) -> bool {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
@@ -598,7 +651,10 @@ impl Attribute {
         }
     }
 
-    pub(crate) fn can_annotate_abi_or_trait_item_fn(&self, abi_or_trait_item: TraitItemParent) -> bool {
+    pub(crate) fn can_annotate_abi_or_trait_item_fn(
+        &self,
+        abi_or_trait_item: TraitItemParent,
+    ) -> bool {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
@@ -703,10 +759,9 @@ impl Attribute {
     }
 }
 
-// TODO-IG!: Rename to Attributes.
 /// Stores the [Attribute]s that annotate an element.
 ///
-/// Note that once stored in the [AttributesMap], the [Attribute]s lose
+/// Note that once stored in the [Attributes], the [Attribute]s lose
 /// the information about their enclosing [AttributeDecl].
 ///
 /// The map can contain erroneous attributes. A typical example s containing
@@ -716,7 +771,7 @@ impl Attribute {
 /// When retrieving such attributes, we follow the last-wins approach
 /// and return the last attribute in the order of declaration.
 #[derive(Default, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AttributesMap {
+pub struct Attributes {
     // Note that we don't need a map here, to store attributes because:
     //  - Attributes will mostly be empty.
     //  - Per `AttributeKind` there will usually be just one element.
@@ -733,9 +788,8 @@ pub struct AttributesMap {
     deprecated_attr_index: Option<usize>,
 }
 
-impl AttributesMap {
-    /// Creates a new [AttributesMap].
-    pub fn new(attribute_decls: &[AttributeDecl]) -> AttributesMap {
+impl Attributes {
+    pub fn new(attribute_decls: &[AttributeDecl]) -> Attributes {
         let mut attributes: Vec<Attribute> = vec![];
         for attr_decl in attribute_decls {
             let attrs = attr_decl.attribute.get().into_iter();
@@ -770,9 +824,11 @@ impl AttributesMap {
             }
         }
 
-        AttributesMap {
-            deprecated_attr_index: attributes.iter().rposition(|attr| attr.kind == AttributeKind::Deprecated),
-            attributes: Arc::new(attributes)
+        Attributes {
+            deprecated_attr_index: attributes
+                .iter()
+                .rposition(|attr| attr.kind == AttributeKind::Deprecated),
+            attributes: Arc::new(attributes),
         }
     }
 
@@ -799,7 +855,7 @@ impl AttributesMap {
 
     pub fn all_by_kind<F>(&self, predicate: F) -> IndexMap<AttributeKind, Vec<&Attribute>>
     where
-        F: Fn(&&Attribute) -> bool
+        F: Fn(&&Attribute) -> bool,
     {
         let mut result = IndexMap::<_, Vec<&Attribute>>::new();
         for attr in self.attributes.iter().filter(predicate) {
@@ -817,11 +873,11 @@ impl AttributesMap {
     }
 
     pub fn unknown(&self) -> impl Iterator<Item = &Attribute> {
-        self.attributes.iter().filter(|attr| attr.kind == AttributeKind::Unknown)
+        self.attributes
+            .iter()
+            .filter(|attr| attr.kind == AttributeKind::Unknown)
     }
 
-    /// Returns true if the [AttributesMap] contains any `#[allow]` [Attribute]
-    /// containing `dead_code` [AttributeArg].
     pub fn has_allow_dead_code(&self) -> bool {
         self.has_allow(|arg| arg.is_allow_dead_code())
     }
@@ -831,14 +887,13 @@ impl AttributesMap {
     }
 
     fn has_allow(&self, arg_filter: impl Fn(&AttributeArg) -> bool) -> bool {
-        self
-            .of_kind(AttributeKind::Allow)
+        self.of_kind(AttributeKind::Allow)
             .flat_map(|attribute| &attribute.args)
             .any(arg_filter)
     }
 
     /// Returns the value of the `#[inline]` [Attribute], or `None` if the
-    /// [AttributesMap] does not contain any `#[inline]` attributes.
+    /// [Attributes] does not contain any `#[inline]` attributes.
     pub fn inline(&self) -> Option<Inline> {
         // `inline` attribute can be applied only once (`AttributeMultiplicity::Single`),
         // and can have exactly one argument, otherwise an error is emitted.
@@ -858,7 +913,7 @@ impl AttributesMap {
     }
 
     /// Returns the value of the `#[storage]` [Attribute], or [Purity::Pure] if the
-    /// [AttributesMap] does not contain any `#[storage]` attributes.
+    /// [Attributes] does not contain any `#[storage]` attributes.
     pub fn purity(&self) -> Purity {
         // `storage` attribute can be applied only once (`AttributeMultiplicity::Single`).
         // Last-wins approach.
@@ -876,8 +931,7 @@ impl AttributesMap {
             }
         };
 
-        for arg in storage_attr.args.iter()
-        {
+        for arg in storage_attr.args.iter() {
             match arg.name.as_str() {
                 STORAGE_READ_ARG_NAME => add_impurity(Purity::Reads, Purity::Writes),
                 STORAGE_WRITE_ARG_NAME => add_impurity(Purity::Writes, Purity::Reads),
@@ -889,20 +943,17 @@ impl AttributesMap {
     }
 
     /// Returns the `#[deprecated]` [Attribute], or `None` if the
-    /// [AttributesMap] does not contain any `#[deprecated]` attributes.
+    /// [Attributes] does not contain any `#[deprecated]` attributes.
     pub fn deprecated(&self) -> Option<&Attribute> {
-        self
-            .deprecated_attr_index
+        self.deprecated_attr_index
             .map(|index| &self.attributes[index])
     }
 
     /// Returns the `#[test]` [Attribute], or `None` if the
-    /// [AttributesMap] does not contain any `#[test]` attributes.
+    /// [Attributes] does not contain any `#[test]` attributes.
     pub fn test(&self) -> Option<&Attribute> {
         // Last-wins approach.
-        self
-            .of_kind(AttributeKind::Test)
-            .last()
+        self.of_kind(AttributeKind::Test).last()
     }
 }
 
@@ -915,7 +966,7 @@ pub struct AllowDeprecatedState {
     allowed: u32,
 }
 impl AllowDeprecatedState {
-    pub(crate) fn enter(&mut self, attributes: AttributesMap) -> AllowDeprecatedEnterToken {
+    pub(crate) fn enter(&mut self, attributes: Attributes) -> AllowDeprecatedEnterToken {
         if attributes.has_allow_deprecated() {
             self.allowed += 1;
 

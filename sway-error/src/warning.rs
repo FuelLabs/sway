@@ -108,9 +108,8 @@ pub enum Warning {
         is_catch_all_arm: bool,
     },
     UnknownAttribute {
-        // TODO-IG!: Rename to attribute.
-        attrib_name: IdentUnique,
-        known_attributes: &'static[&'static str],
+        attribute: IdentUnique,
+        known_attributes: &'static [&'static str],
     },
     UnknownAttributeArg {
         attribute: Ident,
@@ -285,10 +284,10 @@ impl fmt::Display for Warning {
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
             MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
-            UnknownAttribute { attrib_name, .. } => write!(f, "Unknown attribute \"{attrib_name}\"."),
+            UnknownAttribute { attribute, .. } => write!(f, "Unknown attribute \"{attribute}\"."),
             UnknownAttributeArg { attribute, arg, expected_args } => write!(
                 f,
-                "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX)
+                "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX)
             ),
             EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
                 write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
@@ -481,14 +480,14 @@ impl ToDiagnostic for CompileWarning {
                     format!("The common key is: {key}.")
                 ],
             },
-            UnknownAttribute { attrib_name, known_attributes } => Diagnostic {
+            UnknownAttribute { attribute, known_attributes } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Attribute is unknown".to_string())),
                 issue: Issue::warning(
                     source_engine,
-                    attrib_name.span(),
-                    format!("\"{attrib_name}\" attribute is unknown.")
+                    attribute.span(),
+                    format!("\"{attribute}\" attribute is unknown.")
                 ),
-                hints: vec![did_you_mean_help(source_engine, attrib_name.span(), known_attributes.iter(), 2, Enclosing::DoubleQuote)],
+                hints: vec![did_you_mean_help(source_engine, attribute.span(), known_attributes.iter(), 2, Enclosing::DoubleQuote)],
                 help: vec![
                     "Unknown attributes are allowed and can be used by third-party tools,".to_string(),
                     "but the compiler ignores them.".to_string(),
@@ -506,10 +505,10 @@ impl ToDiagnostic for CompileWarning {
                     if expected_args.len() == 1 {
                         hints.push(Hint::help(source_engine, arg.span(), format!("The only known argument is \"{}\".", expected_args[0])));
                     } else if expected_args.len() <= 3 {
-                        hints.push(Hint::help(source_engine, arg.span(), format!("Known arguments are {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX))));
+                        hints.push(Hint::help(source_engine, arg.span(), format!("Known arguments are {}.", sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX))));
                     } else {
                         hints.push(Hint::help(source_engine, arg.span(), "Known arguments are:".to_string()));
-                        hints.append(&mut Hint::multi_help(source_engine, &arg.span(), sequence_to_list(&expected_args, Indent::Single, usize::MAX)))
+                        hints.append(&mut Hint::multi_help(source_engine, &arg.span(), sequence_to_list(expected_args, Indent::Single, usize::MAX)))
                     }
                     hints
                 },

@@ -38,15 +38,15 @@ use itertools::Itertools;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use semantic_analysis::program::TypeCheckFailed;
-use sway_error::convert_parse_tree_error::ConvertParseTreeError;
-use sway_error::warning::{CompileWarning, Warning};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
+use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::warning::{CompileWarning, Warning};
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
@@ -56,7 +56,7 @@ use sway_ir::{
 };
 use sway_types::{SourceEngine, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
-use transform::{ArgsExpectValues, Attribute, AttributeKind, AttributesMap, ExpectedArgs};
+use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
 use types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
@@ -141,11 +141,11 @@ pub fn parse_tree_type(
     sway_parse::parse_module_kind(handler, input, None).map(|kind| convert_module_kind(&kind))
 }
 
-/// Converts `attribute_decls` to an [AttributesMap].
+/// Converts `attribute_decls` to [Attributes].
 ///
-/// This function always returns an [AttributesMap], even if the attributes are erroneous.
+/// This function always returns [Attributes], even if the attributes are erroneous.
 /// Errors and warnings are returned via [Handler]. The callers should ignore eventual errors
-/// in attributes and proceed with the compilation. [AttributesMap] is tolerant to erroneous
+/// in attributes and proceed with the compilation. [Attributes] are tolerant to erroneous
 /// attributes and follows the last-wins principle, which allows annotated elements to
 /// proceed with compilation. After their successful compilation, callers need to inspect
 /// the [Handler] and still emit errors if there were any.
@@ -153,7 +153,7 @@ pub(crate) fn attr_decls_to_attributes(
     attribute_decls: &[AttributeDecl],
     can_annotate: impl Fn(&Attribute) -> bool,
     target_friendly_name: &'static str,
-) -> (Handler, AttributesMap) {
+) -> (Handler, Attributes) {
     let handler = Handler::default();
     // Check if attribute is an unsupported inner attribute (`#!`).
     // Note that we are doing that before creating the flattened `attributes`,
@@ -163,7 +163,10 @@ pub(crate) fn attr_decls_to_attributes(
     // having complete list of attributes is needed.
     // In the below analysis, though, we will be ignoring inner attributes,
     // means not checking their content.
-    for attr_decl in attribute_decls.iter().filter(|attr| !attr.is_doc_comment() && attr.is_inner()) {
+    for attr_decl in attribute_decls
+        .iter()
+        .filter(|attr| !attr.is_doc_comment() && attr.is_inner())
+    {
         handler.emit_err(CompileError::Unimplemented {
             span: attr_decl.hash_kind.span(),
             feature: "Using inner attributes (`#!`)".to_string(),
@@ -171,21 +174,25 @@ pub(crate) fn attr_decls_to_attributes(
         });
     }
 
-    let attributes = AttributesMap::new(attribute_decls);
+    let attributes = Attributes::new(attribute_decls);
 
     // Check for unknown attributes.
     for attribute in attributes.unknown().filter(|attr| attr.is_outer()) {
         handler.emit_warn(CompileWarning {
             span: attribute.name.span(),
             warning_content: Warning::UnknownAttribute {
-                attrib_name: (&attribute.name).into(),
+                attribute: (&attribute.name).into(),
                 known_attributes: attributes.known_attribute_names(),
             },
         });
     }
 
     // Check for attributes annotating invalid targets.
-    for ((attribute_kind, _attribute_direction), mut attributes) in &attributes.all().filter(|attr| attr.is_doc_comment() || attr.is_outer()).chunk_by(|attr| (attr.kind, attr.direction)) {
+    for ((attribute_kind, _attribute_direction), mut attributes) in &attributes
+        .all()
+        .filter(|attr| attr.is_doc_comment() || attr.is_outer())
+        .chunk_by(|attr| (attr.kind, attr.direction))
+    {
         // TODO: We currently have a misplaced inner comments (`//!`) in the `core` library.
         //
         //       If we emit errors for those, we force every project in the wild
@@ -200,13 +207,15 @@ pub(crate) fn attr_decls_to_attributes(
         //       So we will simply ignore them until the next breaking change version
         //       of Sway, when this workaround will be removed.
         fn is_core_lib_documentation_bug(doc_comment: &Attribute) -> bool {
-            doc_comment.span.as_str() == "//! Defines the Sway core library prelude." 
+            doc_comment.span.as_str() == "//! Defines the Sway core library prelude."
         }
 
         // For doc comments, we want to show the error on a complete doc comment,
         // and not on every documentation line.
         if attribute_kind == AttributeKind::DocComment {
-            let first_doc_line = attributes.next().expect("`chunk_by` guarantees existence of at least one element in the chunk");
+            let first_doc_line = attributes
+                .next()
+                .expect("`chunk_by` guarantees existence of at least one element in the chunk");
             if !can_annotate(first_doc_line) {
                 // TODO: Remove this when moving to the next breaking change version of Sway.
                 if is_core_lib_documentation_bug(first_doc_line) {
@@ -218,23 +227,34 @@ pub(crate) fn attr_decls_to_attributes(
                     // There is only one doc line in the complete doc comment.
                     None => first_doc_line,
                 };
-                handler.emit_err(ConvertParseTreeError::InvalidAttributeTarget {
-                    span: Span::join(first_doc_line.span.clone(), &last_doc_line.span.start_span()),
-                    attribute: first_doc_line.name.clone(),
-                    target_friendly_name,
-                    can_only_annotate_help: first_doc_line.can_only_annotate_help(target_friendly_name),
-                }.into());
+                handler.emit_err(
+                    ConvertParseTreeError::InvalidAttributeTarget {
+                        span: Span::join(
+                            first_doc_line.span.clone(),
+                            &last_doc_line.span.start_span(),
+                        ),
+                        attribute: first_doc_line.name.clone(),
+                        target_friendly_name,
+                        can_only_annotate_help: first_doc_line
+                            .can_only_annotate_help(target_friendly_name),
+                    }
+                    .into(),
+                );
             }
         } else {
             // For other attributes, the error is shown for every individual attribute.
             for attribute in attributes {
                 if !can_annotate(attribute) {
-                    handler.emit_err(ConvertParseTreeError::InvalidAttributeTarget {
-                        span: attribute.name.span(),
-                        attribute: attribute.name.clone(),
-                        target_friendly_name,
-                        can_only_annotate_help: attribute.can_only_annotate_help(target_friendly_name)
-                    }.into());
+                    handler.emit_err(
+                        ConvertParseTreeError::InvalidAttributeTarget {
+                            span: attribute.name.span(),
+                            attribute: attribute.name.clone(),
+                            target_friendly_name,
+                            can_only_annotate_help: attribute
+                                .can_only_annotate_help(target_friendly_name),
+                        }
+                        .into(),
+                    );
                 }
             }
         }
@@ -242,23 +262,34 @@ pub(crate) fn attr_decls_to_attributes(
 
     // In all the subsequent test we are checking only non-doc-comment attributes
     // and only those that didn't produce invalid target or unsupported inner attributes errors.
-    let should_be_checked = |attr: &&Attribute| !attr.is_doc_comment() && attr.is_outer() && can_annotate(attr);
+    let should_be_checked =
+        |attr: &&Attribute| !attr.is_doc_comment() && attr.is_outer() && can_annotate(attr);
 
     // Check for attributes multiplicity.
-    for (_attribute_kind, attributes_of_kind) in attributes.all_by_kind(|attr| should_be_checked(attr) && !attr.kind.allows_multiple()) {
+    for (_attribute_kind, attributes_of_kind) in
+        attributes.all_by_kind(|attr| should_be_checked(attr) && !attr.kind.allows_multiple())
+    {
         if attributes_of_kind.len() > 1 {
-            let (last_attribute, previous_attributes) = attributes_of_kind.split_last().expect("`attributes_of_kind` has more then one element");
-            handler.emit_err(ConvertParseTreeError::InvalidAttributeMultiplicity {
-                last_occurrence: (&last_attribute.name).into(),
-                previous_occurrences: previous_attributes.iter().map(|attr| (&attr.name).into()).collect(),
-            }.into());
+            let (last_attribute, previous_attributes) = attributes_of_kind
+                .split_last()
+                .expect("`attributes_of_kind` has more then one element");
+            handler.emit_err(
+                ConvertParseTreeError::InvalidAttributeMultiplicity {
+                    last_occurrence: (&last_attribute.name).into(),
+                    previous_occurrences: previous_attributes
+                        .iter()
+                        .map(|attr| (&attr.name).into())
+                        .collect(),
+                }
+                .into(),
+            );
         }
     }
 
     // Check for arguments multiplicity.
     // For attributes that can be applied only once but are applied several times
     // we will still check arguments in every attribute occurrence.
-    for attribute in attributes.all().filter(|attr| should_be_checked(attr)) {
+    for attribute in attributes.all().filter(should_be_checked) {
         let _ = attribute.check_args_multiplicity(&handler);
     }
 
@@ -267,21 +298,27 @@ pub(crate) fn attr_decls_to_attributes(
     // we will check arguments of every attribute occurrence.
     // If an attribute does not expect any arguments, we will not check them,
     // but emit only the above error about invalid number of arguments.
-    for attribute in attributes.all().filter(|attr| should_be_checked(attr) && attr.can_have_arguments()) {
+    for attribute in attributes
+        .all()
+        .filter(|attr| should_be_checked(attr) && attr.can_have_arguments())
+    {
         match attribute.expected_args() {
             ExpectedArgs::None => unreachable!("`attribute` can have arguments"),
-            ExpectedArgs::Any => { },
+            ExpectedArgs::Any => {}
             ExpectedArgs::MustBeIn(expected_args) => {
                 for arg in attribute.args.iter() {
                     if !expected_args.contains(&arg.name.as_str()) {
-                        handler.emit_err(ConvertParseTreeError::InvalidAttributeArg {
-                            attribute: attribute.name.clone(),
-                            arg: (&arg.name).into(),
-                            expected_args: expected_args.clone(),
-                        }.into());
+                        handler.emit_err(
+                            ConvertParseTreeError::InvalidAttributeArg {
+                                attribute: attribute.name.clone(),
+                                arg: (&arg.name).into(),
+                                expected_args: expected_args.clone(),
+                            }
+                            .into(),
+                        );
                     }
                 }
-            },
+            }
             ExpectedArgs::ShouldBeIn(expected_args) => {
                 for arg in attribute.args.iter() {
                     if !expected_args.contains(&arg.name.as_str()) {
@@ -291,18 +328,21 @@ pub(crate) fn attr_decls_to_attributes(
                                 attribute: attribute.name.clone(),
                                 arg: (&arg.name).into(),
                                 expected_args: expected_args.clone(),
-                            }
+                            },
                         });
                     }
                 }
-            },
+            }
         }
     }
 
     // Check for expected argument values.
     // We use here the same logic for what to check, as in the above check
     // for expected arguments.
-    for attribute in attributes.all().filter(|attr| should_be_checked(attr) && attr.can_have_arguments()) {
+    for attribute in attributes
+        .all()
+        .filter(|attr| should_be_checked(attr) && attr.can_have_arguments())
+    {
         // In addition, if an argument **must** be in expected args but is not,
         // we will not be checking it, but only emit the error above.
         // But if it **should** be in expected args and is not,
@@ -315,13 +355,17 @@ pub(crate) fn attr_decls_to_attributes(
                     }
                 }
 
-                if (is_value_expected && arg.value.is_none()) ||
-                   (!is_value_expected && arg.value.is_some()) {
-                    handler.emit_err(ConvertParseTreeError::InvalidAttributeArgExpectsValue {
-                        attribute: attribute.name.clone(),
-                        arg: (&arg.name).into(),
-                        value_span: arg.value.as_ref().map(|literal| literal.span())
-                    }.into());
+                if (is_value_expected && arg.value.is_none())
+                    || (!is_value_expected && arg.value.is_some())
+                {
+                    handler.emit_err(
+                        ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                            attribute: attribute.name.clone(),
+                            arg: (&arg.name).into(),
+                            value_span: arg.value.as_ref().map(|literal| literal.span()),
+                        }
+                        .into(),
+                    );
                 }
             }
         }
@@ -329,7 +373,7 @@ pub(crate) fn attr_decls_to_attributes(
         match attribute.args_expect_values() {
             ArgsExpectValues::Yes => check_value_expected(&handler, attribute, true),
             ArgsExpectValues::No => check_value_expected(&handler, attribute, false),
-            ArgsExpectValues::Maybe => { },
+            ArgsExpectValues::Maybe => {}
         }
     }
 
@@ -348,8 +392,12 @@ fn parse_in_memory(
     let hash = hasher.finish();
     let module = sway_parse::parse_file(handler, src, None)?;
 
-    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&module.attribute_list, |attr| attr.can_annotate_module_kind(), module.value.kind.friendly_name());
-    let attributes_error_emitted = handler.append(attributes_map_handler);
+    let (attributes_handler, attributes) = attr_decls_to_attributes(
+        &module.attributes,
+        |attr| attr.can_annotate_module_kind(),
+        module.value.kind.friendly_name(),
+    );
+    let attributes_error_emitted = handler.append(attributes_handler);
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::new(BuildTarget::EVM, experimental),
@@ -378,7 +426,7 @@ fn parse_in_memory(
                 },
             );
             Ok((lexed_program, parsed::ParseProgram { kind, root }))
-        },
+        }
     }
 }
 
@@ -511,8 +559,12 @@ fn parse_module_tree(
         lsp_mode,
     );
 
-    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&module.attribute_list, |attr| attr.can_annotate_module_kind(), module.value.kind.friendly_name());
-    let attributes_error_emitted = handler.append(attributes_map_handler);
+    let (attributes_handler, attributes) = attr_decls_to_attributes(
+        &module.attributes,
+        |attr| attr.can_annotate_module_kind(),
+        module.value.kind.friendly_name(),
+    );
+    let attributes_error_emitted = handler.append(attributes_handler);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(

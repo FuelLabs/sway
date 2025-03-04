@@ -227,10 +227,7 @@ pub mod __mod_name {
             self.items
                 .__iter()
                 .filter_map(|annotated| match __ref([annotated.value]) {
-                    ItemKind::Impl(item_impl) => {
-                        Some((__ref([annotated.attribute_list]), item_impl))
-                    }
-                    // ItemKind::Impl(__ref_mut([item_impl])) => Some((__ref([annotated.attribute_list]), item_impl)),
+                    ItemKind::Impl(item_impl) => Some((__ref([annotated.attributes]), item_impl)),
                     _ => None,
                 })
                 .find(|(_attributes, item_impl)| item_impl.span() == ty_element.span)

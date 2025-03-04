@@ -1,4 +1,7 @@
-use crate::convert_parse_tree_error::{get_attribute_type, get_expected_attributes_args_multiplicity_msg, AttributeType, ConvertParseTreeError};
+use crate::convert_parse_tree_error::{
+    get_attribute_type, get_expected_attributes_args_multiplicity_msg, AttributeType,
+    ConvertParseTreeError,
+};
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::formatting::*;
 use crate::lex_error::LexError;
@@ -7,7 +10,6 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use std::fmt::Formatter;
-use std::usize;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
@@ -2733,19 +2735,19 @@ impl ToDiagnostic for CompileError {
             ConvertParseTree { error } => {
                 match error {
                     ConvertParseTreeError::InvalidAttributeTarget { span, attribute, target_friendly_name, can_only_annotate_help } => Diagnostic {
-                        reason: Some(Reason::new(code(1), format!("{}", match get_attribute_type(attribute) {
+                        reason: Some(Reason::new(code(1), match get_attribute_type(attribute) {
                             AttributeType::InnerDocComment => "Inner doc comment (`//!`) cannot document item",
                             AttributeType::OuterDocComment => "Outer doc comment (`///`) cannot document item",
                             AttributeType::Attribute => "Attribute cannot annotate item",
-                        }))),
+                        }.to_string())),
                         issue: Issue::error(
                             source_engine,
                             span.clone(),
-                            format!("{}", match get_attribute_type(attribute) {
+                            match get_attribute_type(attribute) {
                                 AttributeType::InnerDocComment => format!("Inner doc comment (`//!`) cannot document {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
                                 AttributeType::OuterDocComment => format!("Outer doc comment (`///`) cannot document {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
                                 AttributeType::Attribute => format!("\"{attribute}\" attribute cannot annotate {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
-                            })
+                            }.to_string()
                         ),
                         hints: vec![],
                         help: can_only_annotate_help.iter().map(|help| help.to_string()).collect(),
@@ -2787,10 +2789,10 @@ impl ToDiagnostic for CompileError {
                             if expected_args.len() == 1 {
                                 hints.push(Hint::help(source_engine, arg.span(), format!("The only valid argument is \"{}\".", expected_args[0])));
                             } else if expected_args.len() <= 3 {
-                                hints.push(Hint::help(source_engine, arg.span(), format!("Valid arguments are {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX))));
+                                hints.push(Hint::help(source_engine, arg.span(), format!("Valid arguments are {}.", sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX))));
                             } else {
                                 hints.push(Hint::help(source_engine, arg.span(), "Valid arguments are:".to_string()));
-                                hints.append(&mut Hint::multi_help(source_engine, &arg.span(), sequence_to_list(&expected_args, Indent::Single, usize::MAX)))
+                                hints.append(&mut Hint::multi_help(source_engine, &arg.span(), sequence_to_list(expected_args, Indent::Single, usize::MAX)))
                             }
                             hints
                         },
@@ -2849,10 +2851,10 @@ impl ToDiagnostic for CompileError {
                             if expected_values.len() == 1 {
                                 hints.push(Hint::help(source_engine, span.clone(), format!("The only valid argument value is \"{}\".", expected_values[0])));
                             } else if expected_values.len() <= 3 {
-                                hints.push(Hint::help(source_engine, span.clone(), format!("Valid argument values are {}.", sequence_to_str(&expected_values, Enclosing::DoubleQuote, usize::MAX))));
+                                hints.push(Hint::help(source_engine, span.clone(), format!("Valid argument values are {}.", sequence_to_str(expected_values, Enclosing::DoubleQuote, usize::MAX))));
                             } else {
                                 hints.push(Hint::help(source_engine, span.clone(), "Valid argument values are:".to_string()));
-                                hints.append(&mut Hint::multi_help(source_engine, span, sequence_to_list(&expected_values, Indent::Single, usize::MAX)))
+                                hints.append(&mut Hint::multi_help(source_engine, span, sequence_to_list(expected_values, Indent::Single, usize::MAX)))
                             }
                             hints
                         },

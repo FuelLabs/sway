@@ -12,7 +12,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub call_path: CallPath,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub ty: TypeArgument,
     pub visibility: Visibility,
     pub span: Span,

@@ -24,7 +24,7 @@ pub struct TyStructDecl {
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyDeclParsedType for TyStructDecl {
@@ -187,7 +187,7 @@ pub struct TyStructField {
     pub name: Ident,
     pub span: Span,
     pub type_argument: TypeArgument,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyStructField {

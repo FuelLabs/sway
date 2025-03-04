@@ -1,10 +1,6 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::{
-    attribute::Annotated,
-    token::{DocComment, DocStyle},
-    AttributeDecl, Module, ModuleKind,
-};
+use sway_ast::{attribute::Annotated, Module, ModuleKind};
 use sway_error::parser_error::ParseErrorKind;
 
 impl Parse for ModuleKind {
@@ -29,7 +25,7 @@ impl ParseToEnd for Annotated<Module> {
         let (kind, semicolon_token) = parser.parse()?;
         let (items, consumed) = parser.parse_to_end()?;
         let module = Annotated {
-            attribute_list: attributes,
+            attributes,
             value: Module {
                 kind,
                 semicolon_token,
@@ -56,7 +52,7 @@ mod tests {
             }
         "#,), @r#"
         Annotated(
-          attribute_list: [],
+          attributes: [],
           value: Module(
             kind: Script(
               script_token: ScriptToken(
@@ -78,7 +74,7 @@ mod tests {
             ),
             items: [
               Annotated(
-                attribute_list: [],
+                attributes: [],
                 value: Fn(ItemFn(
                   fn_signature: FnSignature(
                     visibility: None,

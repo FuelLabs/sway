@@ -1,9 +1,15 @@
 use crate::{
     ast_elements::{length::NumericLength, type_parameter::ConstGenericParameter},
-    attr_decls_to_attributes, compiler_generated::{
+    attr_decls_to_attributes,
+    compiler_generated::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
-    }, decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId}, language::{parsed::*, *}, transform::{attribute::*, to_parsed_lang::context::Context}, type_system::*, BuildTarget, Engines
+    },
+    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId},
+    language::{parsed::*, *},
+    transform::{attribute::*, to_parsed_lang::context::Context},
+    type_system::*,
+    BuildTarget, Engines,
 };
 use either::Either;
 use itertools::Itertools;
@@ -12,11 +18,11 @@ use sway_ast::{
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
     generics::GenericParam,
     ty::TyTupleDescriptor,
-    AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents,
-    CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
-    FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
-    Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
-    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
+    AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, CommaToken,
+    DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
+    FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction, Intrinsic,
+    Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage,
+    ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
     MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
     Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
@@ -24,15 +30,10 @@ use sway_ast::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
 use sway_features::ExperimentalFeatures;
-use sway_types::{
-    integer_bits::IntegerBits,
-    BaseIdent,
-};
+use sway_types::{integer_bits::IntegerBits, BaseIdent};
 use sway_types::{Ident, Span, Spanned};
 
-use std::{
-    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr,
-};
+use std::{collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr};
 
 pub fn convert_parse_tree(
     context: &mut Context,
@@ -68,14 +69,8 @@ pub fn module_to_sway_parse_tree(
         let mut item_can_be_submodule = true;
         for item in module.items {
             let previous_item_is_submodule = matches!(item.value, ItemKind::Submodule(_));
-            let ast_nodes = item_to_ast_nodes(
-                context,
-                handler,
-                engines,
-                item,
-                item_can_be_submodule,
-                None,
-            )?;
+            let ast_nodes =
+                item_to_ast_nodes(context, handler, engines, item, item_can_be_submodule, None)?;
             root_nodes.extend(ast_nodes);
             item_can_be_submodule = previous_item_is_submodule;
         }
@@ -96,14 +91,20 @@ pub fn item_to_ast_nodes(
     item_can_be_submodule: bool,
     override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item.attribute_list, |attr| attr.can_annotate_item_kind(&item.value), item.value.friendly_name_with_acronym());
+    let (attributes_handler, attributes) = attr_decls_to_attributes(
+        &item.attributes,
+        |attr| attr.can_annotate_item_kind(&item.value),
+        item.value.friendly_name_with_acronym(),
+    );
     // TODO: Remove the special handling for submodules (`mod`) once
     //       https://github.com/FuelLabs/sway/issues/6879 is fixed.
-    if !matches!(item.value, ItemKind::Submodule(_)) && !cfg_eval(context, handler, &attributes, context.experimental)? {
+    if !matches!(item.value, ItemKind::Submodule(_))
+        && !cfg_eval(context, handler, &attributes, context.experimental)?
+    {
         return Ok(vec![]);
     }
 
-    let attributes_error_emitted = handler.append(attributes_map_handler);
+    let attributes_error_emitted = handler.append(attributes_handler);
 
     let decl = |d| vec![AstNodeContent::Declaration(d)];
 
@@ -111,9 +112,12 @@ pub fn item_to_ast_nodes(
     let contents = match item.value {
         ItemKind::Submodule(submodule) => {
             if !item_can_be_submodule {
-                return Err(handler.emit_err((ConvertParseTreeError::ExpectedModuleAtBeginning {
-                    span: submodule.span(),
-                }).into()));
+                return Err(handler.emit_err(
+                    (ConvertParseTreeError::ExpectedModuleAtBeginning {
+                        span: submodule.span(),
+                    })
+                    .into(),
+                ));
             }
 
             let incl_stmt = submodule_to_include_statement(&submodule);
@@ -227,8 +231,7 @@ pub fn item_to_ast_nodes(
                 span: span.clone(),
                 content,
             })
-            .collect()
-        ),
+            .collect()),
     }
 }
 
@@ -357,7 +360,7 @@ fn item_struct_to_struct_declaration(
     handler: &Handler,
     engines: &Engines,
     item_struct: ItemStruct,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
     let span = item_struct.span();
     let fields = item_struct
@@ -365,14 +368,18 @@ fn item_struct_to_struct_declaration(
         .into_inner()
         .into_iter()
         .map(|type_field| {
-            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&type_field.attribute_list, |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::StructField), "struct field");
-            
+            let (attributes_handler, attributes) = attr_decls_to_attributes(
+                &type_field.attributes,
+                |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::StructField),
+                "struct field",
+            );
+
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
 
-            let attributes_error_emitted = handler.append(attributes_map_handler);
-            
+            let attributes_error_emitted = handler.append(attributes_handler);
+
             let struct_field = type_field_to_struct_field(
                 context,
                 handler,
@@ -434,7 +441,7 @@ fn item_enum_to_enum_declaration(
     handler: &Handler,
     engines: &Engines,
     item_enum: ItemEnum,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
     let span = item_enum.span();
     let variants = item_enum
@@ -443,13 +450,17 @@ fn item_enum_to_enum_declaration(
         .into_iter()
         .enumerate()
         .map(|(tag, type_field)| {
-            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&type_field.attribute_list, |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::EnumField), "enum variant");
+            let (attributes_handler, attributes) = attr_decls_to_attributes(
+                &type_field.attributes,
+                |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::EnumField),
+                "enum variant",
+            );
 
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
 
-            let attributes_error_emitted = handler.append(attributes_map_handler);
+            let attributes_error_emitted = handler.append(attributes_handler);
 
             let enum_variant = type_field_to_enum_variant(
                 context,
@@ -513,7 +524,7 @@ pub fn item_fn_to_function_declaration(
     handler: &Handler,
     engines: &Engines,
     item_fn: ItemFn,
-    attributes: AttributesMap,
+    attributes: Attributes,
     parent_generic_params_opt: Option<GenericParams>,
     parent_where_clause_opt: Option<WhereClause>,
     override_kind: Option<FunctionDeclarationKind>,
@@ -541,7 +552,7 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-let (type_parameters, _) = generic_params_opt_to_type_parameters_with_parent(
+    let (type_parameters, _) = generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
         engines,
@@ -603,7 +614,7 @@ fn item_trait_to_trait_declaration(
     handler: &Handler,
     engines: &Engines,
     item_trait: ItemTrait,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
     let (type_parameters, _) = generic_params_opt_to_type_parameters(
@@ -618,13 +629,19 @@ fn item_trait_to_trait_declaration(
         .into_inner()
         .into_iter()
         .map(|annotated| {
-            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&annotated.attribute_list, |attr| attr.can_annotate_abi_or_trait_item(&annotated.value, TraitItemParent::Trait), annotated.value.friendly_name());
+            let (attributes_handler, attributes) = attr_decls_to_attributes(
+                &annotated.attributes,
+                |attr| {
+                    attr.can_annotate_abi_or_trait_item(&annotated.value, TraitItemParent::Trait)
+                },
+                annotated.value.friendly_name(),
+            );
 
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
 
-            let attributes_error_emitted = handler.append(attributes_map_handler);
+            let attributes_error_emitted = handler.append(attributes_handler);
 
             let trait_item = match annotated.value {
                 ItemTraitItem::Fn(fn_sig, _) => {
@@ -632,13 +649,13 @@ fn item_trait_to_trait_declaration(
                         .map(TraitItem::TraitFn)
                 }
                 ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                        context, handler, engines, const_decl, attributes, false,
-                    )
-                    .map(TraitItem::Constant),
+                    context, handler, engines, const_decl, attributes, false,
+                )
+                .map(TraitItem::Constant),
                 ItemTraitItem::Type(trait_type, _) => trait_type_to_trait_type_declaration(
-                        context, handler, engines, trait_type, attributes,
-                    )
-                    .map(TraitItem::Type),
+                    context, handler, engines, trait_type, attributes,
+                )
+                .map(TraitItem::Type),
                 ItemTraitItem::Error(spans, error) => Ok(TraitItem::Error(spans, error)),
             }?;
 
@@ -656,13 +673,17 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|item_fn| {
-                let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item_fn.attribute_list, |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Trait), "provided trait function");
+                let (attributes_handler, attributes) = attr_decls_to_attributes(
+                    &item_fn.attributes,
+                    |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Trait),
+                    "provided trait function",
+                );
 
                 if !cfg_eval(context, handler, &attributes, context.experimental)? {
                     return Ok(None);
                 }
 
-                let attributes_error_emitted = handler.append(attributes_map_handler);
+                let attributes_error_emitted = handler.append(attributes_handler);
 
                 let function_declaration_id = item_fn_to_function_declaration(
                     context,
@@ -709,20 +730,24 @@ pub fn item_impl_to_declaration(
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
     let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
-    let impl_item_parent =  (&*engines.te().get(implementing_for.type_id)).into();
+    let impl_item_parent = (&*engines.te().get(implementing_for.type_id)).into();
 
     let items = item_impl
         .contents
         .into_inner()
         .into_iter()
         .map(|item| {
-            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item.attribute_list, |attr| attr.can_annotate_impl_item(&item.value, impl_item_parent), item.value.friendly_name(impl_item_parent));
+            let (attributes_handler, attributes) = attr_decls_to_attributes(
+                &item.attributes,
+                |attr| attr.can_annotate_impl_item(&item.value, impl_item_parent),
+                item.value.friendly_name(impl_item_parent),
+            );
 
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
 
-            let attributes_error_emitted = handler.append(attributes_map_handler);
+            let attributes_error_emitted = handler.append(attributes_handler);
 
             let impl_item = match item.value {
                 sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
@@ -860,7 +885,7 @@ fn item_abi_to_abi_declaration(
     handler: &Handler,
     engines: &Engines,
     item_abi: ItemAbi,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<AbiDeclaration>, ErrorEmitted> {
     let span = item_abi.span();
     let abi_decl = AbiDeclaration {
@@ -871,13 +896,22 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|annotated| {
-                    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&annotated.attribute_list, |attr| attr.can_annotate_abi_or_trait_item(&annotated.value, TraitItemParent::Abi), annotated.value.friendly_name());
+                    let (attributes_handler, attributes) = attr_decls_to_attributes(
+                        &annotated.attributes,
+                        |attr| {
+                            attr.can_annotate_abi_or_trait_item(
+                                &annotated.value,
+                                TraitItemParent::Abi,
+                            )
+                        },
+                        annotated.value.friendly_name(),
+                    );
 
                     if !cfg_eval(context, handler, &attributes, context.experimental)? {
                         return Ok(None);
                     }
 
-                    let attributes_error_emitted = handler.append(attributes_map_handler);
+                    let attributes_error_emitted = handler.append(attributes_handler);
 
                     let trait_item = match annotated.value {
                         ItemTraitItem::Fn(fn_signature, _) => {
@@ -926,13 +960,17 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| {
-                    let (attributes_map_handler, attributes) = attr_decls_to_attributes(&item_fn.attribute_list, |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Abi), "provided ABI function");
+                    let (attributes_handler, attributes) = attr_decls_to_attributes(
+                        &item_fn.attributes,
+                        |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Abi),
+                        "provided ABI function",
+                    );
 
                     if !cfg_eval(context, handler, &attributes, context.experimental)? {
                         return Ok(None);
                     }
 
-                    let attributes_error_emitted = handler.append(attributes_map_handler);
+                    let attributes_error_emitted = handler.append(attributes_handler);
 
                     let function_declaration_id = item_fn_to_function_declaration(
                         context,
@@ -974,7 +1012,7 @@ pub(crate) fn item_const_to_constant_declaration(
     handler: &Handler,
     engines: &Engines,
     item_const: ItemConst,
-    attributes: AttributesMap,
+    attributes: Attributes,
     require_expression: bool,
 ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
     let span = item_const.span();
@@ -1024,7 +1062,7 @@ pub(crate) fn trait_type_to_trait_type_declaration(
     handler: &Handler,
     engines: &Engines,
     trait_type: TraitType,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<TraitTypeDeclaration>, ErrorEmitted> {
     let span = trait_type.span();
     let trait_type_decl = TraitTypeDeclaration {
@@ -1046,7 +1084,7 @@ fn item_storage_to_storage_declaration(
     handler: &Handler,
     engines: &Engines,
     item_storage: ItemStorage,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<StorageDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_storage.span();
@@ -1055,14 +1093,18 @@ fn item_storage_to_storage_declaration(
         .into_inner()
         .into_iter()
         .map(|storage_entry| {
-            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&storage_entry.attribute_list, |attr| attr.can_annotate_storage_entry(), storage_entry.value.friendly_kind_name());
+            let (attributes_handler, attributes) = attr_decls_to_attributes(
+                &storage_entry.attributes,
+                |attr| attr.can_annotate_storage_entry(),
+                storage_entry.value.friendly_kind_name(),
+            );
 
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
 
-            let attributes_error_emitted = handler.append(attributes_map_handler);
-    
+            let attributes_error_emitted = handler.append(attributes_handler);
+
             let storage_entry = storage_entry_to_storage_entry(
                 context,
                 handler,
@@ -1123,7 +1165,7 @@ fn item_configurable_to_configurable_declarations(
     handler: &Handler,
     engines: &Engines,
     item_configurable: ItemConfigurable,
-    _attributes: &AttributesMap,
+    _attributes: &Attributes,
 ) -> Result<Vec<ParsedDeclId<ConfigurableDeclaration>>, ErrorEmitted> {
     let mut errors = Vec::new();
 
@@ -1145,14 +1187,18 @@ fn item_configurable_to_configurable_declarations(
         .into_inner()
         .into_iter()
         .map(|configurable_field| {
-            let (attributes_map_handler, attributes) = attr_decls_to_attributes(&configurable_field.attribute_list, |attr| attr.can_annotate_configurable_field(), "configurable field");
+            let (attributes_handler, attributes) = attr_decls_to_attributes(
+                &configurable_field.attributes,
+                |attr| attr.can_annotate_configurable_field(),
+                "configurable field",
+            );
 
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
 
-            let attributes_error_emitted = handler.append(attributes_map_handler);
-    
+            let attributes_error_emitted = handler.append(attributes_handler);
+
             let configurable_decl = configurable_field_to_configurable_declaration(
                 context,
                 handler,
@@ -1196,7 +1242,7 @@ fn item_type_alias_to_type_alias_declaration(
     handler: &Handler,
     engines: &Engines,
     item_type_alias: ItemTypeAlias,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<TypeAliasDeclaration>, ErrorEmitted> {
     let span = item_type_alias.span();
     let type_alias_decl = TypeAliasDeclaration {
@@ -1215,7 +1261,7 @@ fn type_field_to_struct_field(
     handler: &Handler,
     engines: &Engines,
     type_field: TypeField,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<StructField, ErrorEmitted> {
     let span = type_field.span();
     let struct_field = StructField {
@@ -1374,7 +1420,7 @@ fn type_field_to_enum_variant(
     handler: &Handler,
     engines: &Engines,
     type_field: TypeField,
-    attributes: AttributesMap,
+    attributes: Attributes,
     tag: usize,
 ) -> Result<EnumVariant, ErrorEmitted> {
     let span = type_field.span();
@@ -1657,7 +1703,7 @@ fn fn_signature_to_trait_fn(
     handler: &Handler,
     engines: &Engines,
     fn_signature: FnSignature,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<ParsedDeclId<TraitFn>, ErrorEmitted> {
     let return_type = match &fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
@@ -2590,7 +2636,7 @@ fn storage_entry_to_storage_entry(
     handler: &Handler,
     engines: &Engines,
     storage_entry: sway_ast::StorageEntry,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<StorageEntry, ErrorEmitted> {
     if let Some(storage_field) = storage_entry.field {
         Ok(StorageEntry::Field(storage_field_to_storage_field(
@@ -2607,13 +2653,17 @@ fn storage_entry_to_storage_entry(
             .into_inner()
             .into_iter()
             .flat_map(|storage_entry| {
-                let (attributes_map_handler, attributes) = attr_decls_to_attributes(&storage_entry.attribute_list, |attr| attr.can_annotate_storage_entry(), storage_entry.value.friendly_kind_name());
+                let (attributes_handler, attributes) = attr_decls_to_attributes(
+                    &storage_entry.attributes,
+                    |attr| attr.can_annotate_storage_entry(),
+                    storage_entry.value.friendly_kind_name(),
+                );
 
                 if !cfg_eval(context, handler, &attributes, context.experimental)? {
                     return Ok::<Option<StorageEntry>, ErrorEmitted>(None);
                 }
 
-                let attributes_error_emitted = handler.append(attributes_map_handler);
+                let attributes_error_emitted = handler.append(attributes_handler);
 
                 let storage_entry = storage_entry_to_storage_entry(
                     context,
@@ -2644,7 +2694,7 @@ fn storage_field_to_storage_field(
     handler: &Handler,
     engines: &Engines,
     storage_field: sway_ast::StorageField,
-    attributes: AttributesMap,
+    attributes: Attributes,
 ) -> Result<StorageField, ErrorEmitted> {
     let span = storage_field.span();
     let mut key_expr_opt = None;
@@ -2667,7 +2717,7 @@ fn configurable_field_to_configurable_declaration(
     handler: &Handler,
     engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
-    attributes: AttributesMap,
+    attributes: Attributes,
     item_configurable_keyword_span: Span,
 ) -> Result<ParsedDeclId<ConfigurableDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
@@ -2720,9 +2770,7 @@ fn statement_to_ast_nodes(
         Statement::Let(statement_let) => {
             statement_let_to_ast_nodes(context, handler, engines, statement_let)?
         }
-        Statement::Item(item) => {
-            item_to_ast_nodes(context, handler, engines, item, false, None)?
-        }
+        Statement::Item(item) => item_to_ast_nodes(context, handler, engines, item, false, None)?,
         Statement::Expr { expr, .. } => {
             vec![expr_to_ast_node(context, handler, engines, expr, true)?]
         }
@@ -4813,14 +4861,14 @@ fn error_if_self_param_is_not_allowed(
 pub fn cfg_eval(
     context: &Context,
     handler: &Handler,
-    attributes: &AttributesMap,
+    attributes: &Attributes,
     experimental: ExperimentalFeatures,
 ) -> Result<bool, ErrorEmitted> {
     for cfg_attr in attributes.of_kind(AttributeKind::Cfg) {
-
         cfg_attr.check_args_multiplicity(handler)?;
         assert_eq!(
-            (1usize, 1usize), (&cfg_attr.args_multiplicity()).into(),
+            (1usize, 1usize),
+            (&cfg_attr.args_multiplicity()).into(),
             "`#[cfg]` attribute must have argument multiplicity of exactly one"
         );
 
@@ -4832,25 +4880,42 @@ pub fn cfg_eval(
                     return Ok(false);
                 }
             } else {
-                return Err(handler.emit_err((ConvertParseTreeError::InvalidAttributeArgValue {
-                    span: arg.value.as_ref().expect("`cfg_target` is the value of `arg`").span(),
-                    arg: arg.name.clone(),
-                    expected_values: BuildTarget::CFG.iter().map(|cfg| *cfg).collect(),
-                }).into()));
+                return Err(handler.emit_err(
+                    (ConvertParseTreeError::InvalidAttributeArgValue {
+                        span: arg
+                            .value
+                            .as_ref()
+                            .expect("`cfg_target` is the value of `arg`")
+                            .span(),
+                        arg: arg.name.clone(),
+                        expected_values: BuildTarget::CFG.to_vec(),
+                    })
+                    .into(),
+                ));
             }
         } else if arg.is_cfg_program_type() {
             let cfg_program_type_val = arg.get_string(handler, cfg_attr)?;
-            if let Ok(cfg_program_type) = TreeType::from_str(cfg_program_type_val)
-            {
-                if cfg_program_type != context.program_type().expect("at this compilation stage the `program_type` is defined") {
+            if let Ok(cfg_program_type) = TreeType::from_str(cfg_program_type_val) {
+                if cfg_program_type
+                    != context
+                        .program_type()
+                        .expect("at this compilation stage the `program_type` is defined")
+                {
                     return Ok(false);
                 }
             } else {
-                return Err(handler.emit_err((ConvertParseTreeError::InvalidAttributeArgValue {
-                    span: arg.value.as_ref().expect("`cfg_target` is the value of `arg`").span(),
-                    arg: arg.name.clone(),
-                    expected_values: TreeType::CFG.iter().map(|cfg| *cfg).collect(),
-                }).into()));
+                return Err(handler.emit_err(
+                    (ConvertParseTreeError::InvalidAttributeArgValue {
+                        span: arg
+                            .value
+                            .as_ref()
+                            .expect("`cfg_target` is the value of `arg`")
+                            .span(),
+                        arg: arg.name.clone(),
+                        expected_values: TreeType::CFG.to_vec(),
+                    })
+                    .into(),
+                ));
             }
         } else if arg.is_cfg_experimental() {
             let cfg_experimental_val = arg.get_bool(handler, cfg_attr)?;

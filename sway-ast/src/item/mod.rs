@@ -18,7 +18,7 @@ pub type Item = Annotated<ItemKind>;
 
 impl Spanned for Item {
     fn span(&self) -> Span {
-        match self.attribute_list.first() {
+        match self.attributes.first() {
             Some(attr0) => Span::join(attr0.span(), &self.value.span()),
             None => self.value.span(),
         }
@@ -62,7 +62,7 @@ impl ItemKind {
             Trait(_) => "trait declaration",
             Impl(item_impl) => match item_impl.trait_opt {
                 Some(_) => "ABI or trait implementation",
-                None =>  "inherent implementation",
+                None => "inherent implementation",
             },
             Abi(_) => "abi declaration",
             Const(_) => "constant declaration",

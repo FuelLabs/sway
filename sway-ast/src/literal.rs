@@ -84,19 +84,22 @@ impl Literal {
                 if lit_int.is_generated_b256 {
                     "b256"
                 } else {
-                    lit_int.ty_opt.as_ref().map_or("numeric", |(ty, _)| match ty {
-                        LitIntType::U8 => "u8",
-                        LitIntType::U16 => "u16",
-                        LitIntType::U32 => "u32",
-                        LitIntType::U64 => "u64",
-                        LitIntType::U256 => "u256",
-                        LitIntType::I8 => "i8",
-                        LitIntType::I16 => "i16",
-                        LitIntType::I32 => "i32",
-                        LitIntType::I64 => "i64",
-                    })
+                    lit_int
+                        .ty_opt
+                        .as_ref()
+                        .map_or("numeric", |(ty, _)| match ty {
+                            LitIntType::U8 => "u8",
+                            LitIntType::U16 => "u16",
+                            LitIntType::U32 => "u32",
+                            LitIntType::U64 => "u64",
+                            LitIntType::U256 => "u256",
+                            LitIntType::I8 => "i8",
+                            LitIntType::I16 => "i16",
+                            LitIntType::I32 => "i32",
+                            LitIntType::I64 => "i64",
+                        })
                 }
-            },
+            }
             Bool(_) => "bool",
         }
     }

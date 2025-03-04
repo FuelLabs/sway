@@ -1,9 +1,9 @@
-use std::usize;
-
 use sway_types::{Ident, IdentUnique, Span, Spanned};
 use thiserror::Error;
 
-use crate::formatting::{a_or_an, num_to_str, num_to_str_or_none, plural_s, sequence_to_str, Enclosing};
+use crate::formatting::{
+    a_or_an, num_to_str, num_to_str_or_none, plural_s, sequence_to_str, Enclosing,
+};
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConvertParseTreeError {
@@ -112,24 +112,57 @@ pub enum ConvertParseTreeError {
         AttributeType::OuterDocComment => format!("Outer doc comment (`///`) cannot document {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
         AttributeType::Attribute => format!("\"{attribute}\" attribute cannot annotate {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
     })]
-    InvalidAttributeTarget { span: Span, attribute: Ident, target_friendly_name: &'static str, can_only_annotate_help: Vec<&'static str> },
+    InvalidAttributeTarget {
+        span: Span,
+        attribute: Ident,
+        target_friendly_name: &'static str,
+        can_only_annotate_help: Vec<&'static str>,
+    },
     #[error("\"{last_occurrence}\" attribute can be applied only once, but is applied {} times.", num_to_str(previous_occurrences.len() + 1))]
-    InvalidAttributeMultiplicity { last_occurrence: IdentUnique, previous_occurrences: Vec<IdentUnique> },
+    InvalidAttributeMultiplicity {
+        last_occurrence: IdentUnique,
+        previous_occurrences: Vec<IdentUnique>,
+    },
     #[error("\"{attribute}\" attribute must {}, but has {}.", get_expected_attributes_args_multiplicity_msg(args_multiplicity), num_to_str_or_none(*num_of_args))]
-    InvalidAttributeArgsMultiplicity { span: Span, attribute: Ident, args_multiplicity: (usize, usize), num_of_args: usize },
-    #[error("\"{arg}\" is an invalid argument for attribute \"{attribute}\". Valid arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX))]
-    InvalidAttributeArg { attribute: Ident, arg: IdentUnique, expected_args: Vec<&'static str> },
+    InvalidAttributeArgsMultiplicity {
+        span: Span,
+        attribute: Ident,
+        args_multiplicity: (usize, usize),
+        num_of_args: usize,
+    },
+    #[error(
+        "\"{arg}\" is an invalid argument for attribute \"{attribute}\". Valid arguments are: {}.",
+        sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX)
+    )]
+    InvalidAttributeArg {
+        attribute: Ident,
+        arg: IdentUnique,
+        expected_args: Vec<&'static str>,
+    },
     #[error("\"{arg}\" argument of the attribute \"{attribute}\" must {}have a value.",
         match value_span {
             Some(_) => "not ",
             None => "",
         }
     )]
-    InvalidAttributeArgExpectsValue { attribute: Ident, arg: IdentUnique, value_span: Option<Span> },
+    InvalidAttributeArgExpectsValue {
+        attribute: Ident,
+        arg: IdentUnique,
+        value_span: Option<Span>,
+    },
     #[error("\"{arg}\" argument must have a value of type \"{expected_type}\".")]
-    InvalidAttributeArgValueType { span: Span, arg: Ident, expected_type: &'static str, received_type: &'static str },
-    #[error("{} is an invalid value for argument \"{arg}\". Valid values are: {}.", span.as_str(), sequence_to_str(&expected_values, Enclosing::DoubleQuote, usize::MAX))]
-    InvalidAttributeArgValue { span: Span, arg: Ident, expected_values: Vec<&'static str> },
+    InvalidAttributeArgValueType {
+        span: Span,
+        arg: Ident,
+        expected_type: &'static str,
+        received_type: &'static str,
+    },
+    #[error("{} is an invalid value for argument \"{arg}\". Valid values are: {}.", span.as_str(), sequence_to_str(expected_values, Enclosing::DoubleQuote, usize::MAX))]
+    InvalidAttributeArgValue {
+        span: Span,
+        arg: Ident,
+        expected_values: Vec<&'static str>,
+    },
 }
 
 pub(crate) enum AttributeType {
@@ -157,7 +190,9 @@ pub(crate) fn get_attribute_type(attribute: &Ident) -> AttributeType {
     }
 }
 
-pub(crate) fn get_expected_attributes_args_multiplicity_msg(args_multiplicity: &(usize, usize)) -> String {
+pub(crate) fn get_expected_attributes_args_multiplicity_msg(
+    args_multiplicity: &(usize, usize),
+) -> String {
     match *args_multiplicity {
         (0, 0) => "not have any arguments".to_string(),
         (min, max) if min == max => format!("have exactly {} argument{}", num_to_str(min), plural_s(min)),
@@ -224,7 +259,10 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
             ConvertParseTreeError::UnknownTypeNameSelf { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeTarget { span, .. } => span.clone(),
-            ConvertParseTreeError::InvalidAttributeMultiplicity { last_occurrence: last_attribute, .. } => last_attribute.span(),
+            ConvertParseTreeError::InvalidAttributeMultiplicity {
+                last_occurrence: last_attribute,
+                ..
+            } => last_attribute.span(),
             ConvertParseTreeError::InvalidAttributeArgsMultiplicity { span, .. } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArg { arg, .. } => arg.span(),
             ConvertParseTreeError::InvalidAttributeArgExpectsValue { arg, .. } => arg.span(),

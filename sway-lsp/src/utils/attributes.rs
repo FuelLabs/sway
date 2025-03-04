@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 use crate::core::token::{ParsedAstToken, Token, TokenAstNode, TypedAstToken};
 use sway_core::{
-    fuel_prelude::fuel_vm::call, language::{parsed::Declaration, ty}, transform, Engines
+    language::{parsed::Declaration, ty},
+    transform, Engines,
 };
 
-/// Gets attributes map from typed token, falling back to parsed AST node if needed.
+/// Gets attributes from typed token, falling back to parsed AST node if needed.
 /// Callback can be used to retrieve doc comment attributes or storage attributes.
-pub fn attributes_map<F>(engines: &Engines, token: &Token, mut callback: F)
+pub fn attributes<F>(engines: &Engines, token: &Token, mut callback: F)
 where
-    F: FnMut(&transform::AttributesMap),
+    F: FnMut(&transform::Attributes),
 {
     match &token.ast_node {
         TokenAstNode::Typed(typed_token) => match typed_token {
@@ -104,9 +105,10 @@ pub fn doc_comment_attributes<F>(engines: &Engines, token: &Token, mut callback:
 where
     F: FnMut(&[&transform::Attribute]),
 {
-    // TODO-IG!: Rename attributes_map, attribute_map
-    attributes_map(engines, token, |attribute_map| {
-        let attrs = attribute_map.of_kind(transform::AttributeKind::DocComment).collect::<Vec<_>>();
+    attributes(engines, token, |attributes| {
+        let attrs = attributes
+            .of_kind(transform::AttributeKind::DocComment)
+            .collect::<Vec<_>>();
         if !attrs.is_empty() {
             callback(attrs.as_slice())
         }
@@ -117,9 +119,10 @@ pub fn storage_attributes<F>(engines: &Engines, token: &Token, callback: F)
 where
     F: Fn(&[&transform::Attribute]),
 {
-    // TODO-IG!: Rename attributes_map, attribute_map
-    attributes_map(engines, token, |attribute_map| {
-        let attrs = attribute_map.of_kind(transform::AttributeKind::Storage).collect::<Vec<_>>();
+    attributes(engines, token, |attributes| {
+        let attrs = attributes
+            .of_kind(transform::AttributeKind::Storage)
+            .collect::<Vec<_>>();
         if !attrs.is_empty() {
             callback(attrs.as_slice())
         }
