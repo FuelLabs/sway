@@ -14,6 +14,6 @@ extend-exclude = [
     "docs/book/theme/highlight.js",
     "docs/reference/theme/highlight.js",
     "forc-plugins/forc-doc/src/static.files/highlight.js",
-    "test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/stdout.snap",
-    "test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/stdout.snap",
+    "test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/**",
+    "test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/**",
 ]
