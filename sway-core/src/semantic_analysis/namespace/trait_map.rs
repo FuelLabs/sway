@@ -998,8 +998,6 @@ impl TraitMap {
                 {
                     let type_mapping = TypeSubstMap::from_superset_and_subset(
                         engines,
-                        engines.te(),
-                        engines.de(),
                         e.key.type_id,
                         type_id,
                     );

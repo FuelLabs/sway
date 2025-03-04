@@ -158,7 +158,7 @@ impl TyImplSelfOrTrait {
                             call_path: CallPath {
                                 prefixes: vec![],
                                 suffix: const_generic_decl.name.clone(),
-                                callpath_type: CallPathType::Full,
+                                callpath_type: CallPathType::Ambiguous,
                             },
                             span: const_generic_decl.span.clone(),
                             return_type: const_generic_decl.ty,

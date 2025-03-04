@@ -706,7 +706,7 @@ impl ty::TyExpression {
                         call_path: Some(CallPath {
                             prefixes: vec![],
                             suffix: name.clone(),
-                            callpath_type: CallPathType::Full,
+                            callpath_type: CallPathType::Ambiguous,
                         }),
                     },
                     span,

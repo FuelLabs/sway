@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        DeclEngine, DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert,
+        DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert,
     },
     engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
@@ -154,11 +154,12 @@ impl TypeSubstMap {
     /// they can be used for `subset`.
     pub(crate) fn from_superset_and_subset(
         engines: &Engines,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
         superset: TypeId,
         subset: TypeId,
     ) -> TypeSubstMap {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+
         match (&*type_engine.get(superset), &*type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
@@ -185,8 +186,6 @@ impl TypeSubstMap {
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    type_engine,
-                    decl_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -206,8 +205,6 @@ impl TypeSubstMap {
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    type_engine,
-                    decl_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -228,8 +225,6 @@ impl TypeSubstMap {
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    type_engine,
-                    decl_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -237,8 +232,6 @@ impl TypeSubstMap {
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    type_engine,
-                    decl_engine,
                     type_parameters
                         .iter()
                         .map(|x| x.type_id)
@@ -249,8 +242,6 @@ impl TypeSubstMap {
             (TypeInfo::Array(type_parameter, l), TypeInfo::Array(type_argument, r)) => {
                 let mut map = TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    type_engine,
-                    decl_engine,
                     vec![type_parameter.type_id],
                     vec![type_argument.type_id],
                 );
@@ -277,8 +268,6 @@ impl TypeSubstMap {
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    type_engine,
-                    decl_engine,
                     vec![type_parameter.type_id],
                     vec![type_argument.type_id],
                 )
@@ -309,8 +298,6 @@ impl TypeSubstMap {
     /// with each [SourceType]s and [DestinationType]s in the original [TypeSubstMap].
     fn from_superset_and_subset_helper(
         engines: &Engines,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
@@ -319,7 +306,7 @@ impl TypeSubstMap {
 
         for (s, d) in type_mapping.mapping.clone().iter() {
             type_mapping.mapping.extend(
-                TypeSubstMap::from_superset_and_subset(engines, type_engine, decl_engine, *s, *d)
+                TypeSubstMap::from_superset_and_subset(engines, *s, *d)
                     .mapping
                     .iter(),
             );
