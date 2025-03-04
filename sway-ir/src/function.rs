@@ -16,10 +16,10 @@ use crate::{
     context::Context,
     error::IrError,
     irtype::Type,
-    local_var::{LocalVar, LocalVarContent},
     metadata::MetadataIndex,
     module::Module,
     value::{Value, ValueDatum},
+    variable::{LocalVar, LocalVarContent},
     BlockArgument, BranchToWithArgs,
 };
 use crate::{Constant, InstOp};

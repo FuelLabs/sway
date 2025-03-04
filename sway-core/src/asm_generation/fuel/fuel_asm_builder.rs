@@ -484,6 +484,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
+                InstOp::GetGlobal(global_var) => self.compile_get_global(instr_val, global_var),
                 InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
                 InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
@@ -1246,6 +1247,44 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.reg_map.insert(*instr_val, instr_reg);
         }
 
+        Ok(())
+    }
+
+    fn compile_get_global(
+        &mut self,
+        instr_val: &Value,
+        global_var: &GlobalVar,
+    ) -> Result<(), CompileError> {
+        if global_var.is_mutable(self.context) {
+            todo!("Implement mutable global variables");
+        }
+
+        let span = self
+            .md_mgr
+            .val_to_span(self.context, *instr_val)
+            .unwrap_or_else(Span::dummy);
+        let Some(constant) = global_var.get_initializer(self.context) else {
+            return Err(CompileError::Internal(
+                "Global constants (immutable variables) must have an initializer.",
+                span,
+            ));
+        };
+        let entry = Entry::from_constant(
+            self.context,
+            constant.get_content(self.context),
+            EntryName::NonConfigurable,
+            None,
+        );
+        let data_id = self.data_section.insert_data_value(entry);
+
+        // Allocate a register for it, and an address_of instruction.
+        let reg = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
+            comment: "get constant's address in data section".into(),
+            owning_span: Some(span),
+        });
+        self.reg_map.insert(*instr_val, reg);
         Ok(())
     }
 

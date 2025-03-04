@@ -259,6 +259,11 @@ fn hash_fn(
                     .lookup_local_name(context, local)
                     .unwrap()
                     .hash(state),
+                crate::InstOp::GetGlobal(global) => function
+                    .get_module(context)
+                    .lookup_global_variable_name(context, global)
+                    .unwrap()
+                    .hash(state),
                 crate::InstOp::GetConfig(_, name) => name.hash(state),
                 crate::InstOp::GetElemPtr { elem_ptr_ty, .. } => elem_ptr_ty.hash(state),
                 crate::InstOp::IntToPtr(_, ty) => ty.hash(state),
