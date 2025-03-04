@@ -815,17 +815,13 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // Handle cases where elements are less than the size of word and pad to the size of a word
         let slice = if size_V_bytes < 8 {
-            let vec_slice = vec.as_raw_slice();
             let number_of_words = 8 * vec.len();
             let ptr = alloc_bytes(number_of_words);
             let mut i = 0;
-            while i < vec.len() {
+            for element in vec.iter() {
                 // Insert into raw slice as offsets of 1 word per element
                 // (size_of_word * element)
-                vec_slice
-                    .ptr()
-                    .add::<V>(i)
-                    .copy_bytes_to(ptr.add_uint_offset(8 * i), size_V_bytes);
+                ptr.add_uint_offset(8 * i).write(element);
                 i += 1;
             }
 

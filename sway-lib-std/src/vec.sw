@@ -53,7 +53,7 @@ impl<T> Vec<T> {
     /// ```
     pub fn new() -> Self {
         Self {
-            buf: alloc_slice::<T>(0),
+            buf: zero_alloc_slice::<T>(),
             len: 0,
         }
     }
@@ -208,8 +208,7 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let item: &T = __elem_at(self.buf, index);
-        Some(*item)
+        Some(*__elem_at(self.buf, index))
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -296,8 +295,7 @@ impl<T> Vec<T> {
         let mut index = index;
 
         // Read the value at `index`
-        let item: &T = __elem_at(self.buf, index);
-        let item: T = *item;
+        let item: T = *__elem_at(self.buf, index);
 
         // Shift everything down to fill in that spot.
         if self.len > 1 {
@@ -404,9 +402,7 @@ impl<T> Vec<T> {
             return None;
         }
         self.len -= 1;
-
-        let item: &mut T = __elem_at(self.buf, self.len);
-        Some(*item)
+        Some(*__elem_at(self.buf, self.len))
     }
 
     /// Swaps two elements.
@@ -660,18 +656,23 @@ impl<T> Vec<T> {
         if self.len == 0 {
             return None;
         }
+        Some(*__elem_at(self.buf, self.len - 1))
+    }
 
-        let item: &mut T = __elem_at(self.buf, self.len - 1);
-        Some(*item)
+    #[cfg(experimental_references = true)]
+    pub fn as_slice(self) -> &[T] {
+        __slice(self.buf, 0, self.len)
     }
 }
 
+#[cfg(experimental_references = false)]
 impl<T> AsRawSlice for Vec<T> {
     fn as_raw_slice(self) -> raw_slice {
         raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
     }
 }
 
+#[cfg(experimental_references = false)]
 impl<T> From<raw_slice> for Vec<T> {
     fn from(slice: raw_slice) -> Self {
         let len = slice.len::<T>();
@@ -681,11 +682,10 @@ impl<T> From<raw_slice> for Vec<T> {
     }
 }
 
+#[cfg(experimental_references = false)]
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
-        asm(ptr: (vec.ptr(), vec.len())) {
-            ptr: raw_slice
-        }
+        raw_slice::from_parts::<T>(vec.ptr(), vec.len)
     }
 }
 
@@ -698,22 +698,23 @@ impl<T> Clone for Vec<T> {
     }
 }
 
+#[cfg(experimental_references = false)]
 impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
 {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let len = self.len();
-        let mut buffer = len.abi_encode(buffer);
+       self.as_raw_slice().abi_encode(buffer)
+    }
+}
 
-        let mut i = 0;
-        while i < len {
-            let item = self.get(i).unwrap();
-            buffer = item.abi_encode(buffer);
-            i += 1;
-        }
-
-        buffer
+#[cfg(experimental_references = true)]
+impl<T> AbiEncode for Vec<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+       self.as_slice().abi_encode(buffer)
     }
 }
 
@@ -722,17 +723,13 @@ where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
-        let len = u64::abi_decode(buffer);
-
+        let mut len = u64::abi_decode(buffer);
         let mut v = Vec::with_capacity(len);
-
-        let mut i = 0;
-        while i < len {
+        while len > 0 {
             let item = T::abi_decode(buffer);
             v.push(item);
-            i += 1;
+            len -= 1;
         }
-
         v
     }
 }
@@ -800,174 +797,164 @@ where
         l.finish();
     }
 
-#[test]
-fn ok_vec_push() {
+
+fn assert_vec_items(v: Vec<u8>, items: &[u8], capacity: u64) {
     use ::assert::*;
 
+    let mut i = 0;
+    for e in v.iter() {
+        assert_eq(e, *__elem_at(items, i));
+        assert_eq(Some(e), v.get(i));
+        i += 1;
+    }
+
+    assert_eq(v.get(i), None);
+    assert_eq(v.capacity(), capacity);
+
+    if items.len() == 0 {
+        assert(v.is_empty());
+    } else {
+        assert(!v.is_empty());
+    }
+}
+
+#[test]
+fn ok_vec_tests() {
+    use ::assert::*;
     let mut v: Vec<u8> = Vec::new();
 
+    // initial state
+    assert(v.ptr().is_null());
+    assert_vec_items(v, __slice(&[], 0, 0), 0);
+
+    // push and grow
     v.push(1u8);
-    assert_eq(v.len(), 1);
-    assert_eq(v.capacity(), 1);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), None);
+    assert_vec_items(v, __slice(&[1u8], 0, 1), 1);
 
+    // push and grow
     v.push(2u8);
-    assert_eq(v.len(), 2);
-    assert_eq(v.capacity(), 2);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), None);
+    assert_vec_items(v, __slice(&[1u8, 2u8], 0, 2), 2);
 
+    // push and grow
     v.push(3u8);
-    assert_eq(v.len(), 3);
-    assert_eq(v.capacity(), 4);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), Some(3u8));
-    assert_eq(v.get(3), None);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8], 0, 3), 4);
 
-    // insert middle, no grow
-    v.insert(2, 4);
-    assert_eq(v.len(), 4);
-    assert_eq(v.capacity(), 4);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), Some(4u8));
-    assert_eq(v.get(3), Some(3u8));
-    assert_eq(v.get(4), None);
+    // push and don't grow
+    v.push(4u8);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8, 4u8], 0, 4), 4);
+    let _ = v.remove(3);
 
-    // insert middle, needs grow
-    v.insert(2, 5);
-    assert_eq(v.len(), 5);
-    assert_eq(v.capacity(), 8);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), Some(5u8));
-    assert_eq(v.get(3), Some(4u8));
-    assert_eq(v.get(4), Some(3u8));
-    assert_eq(v.get(5), None);
-
-    // insert first
-    // insert last
+    // insert at front and don't grow
     v.insert(0, 0);
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 3u8], 0, 4), 4);
+    let _ = v.remove(0);
+
+    // insert at back and don't grow
+    v.insert(3, 0);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8, 0u8], 0, 4), 4);
+    let _ = v.remove(3);
+
+    // insert at middle and don't grow
+    v.insert(2, 4);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 4u8, 3u8], 0, 4), 4);
+
+    // insert middle and grow
+    v.insert(2, 5);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8, 3u8], 0, 5), 8);
+
+    // insert front and grow
+    let mut v = v.clone();
+    v.insert(0, 0);
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 5u8, 4u8, 3u8], 0, 5), 10);
+
+    // insert back and grow
+    let mut v = v.clone();
     v.insert(6, 6);
-    assert_eq(v.len(), 7);
-    assert_eq(v.capacity(), 8);
-    assert_eq(v.get(0), Some(0u8));
-    assert_eq(v.get(1), Some(1u8));
-    assert_eq(v.get(2), Some(2u8));
-    assert_eq(v.get(3), Some(5u8));
-    assert_eq(v.get(4), Some(4u8));
-    assert_eq(v.get(5), Some(3u8));
-    assert_eq(v.get(6), Some(6u8));
-    assert_eq(v.get(7), None);
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 5u8, 4u8, 3u8, 6u8], 0, 7), 12);
 
     // pop
     let item = v.pop();
     assert_eq(item, Some(6));
-    assert_eq(v.len(), 6);
-    assert_eq(v.capacity(), 8);
-    assert_eq(v.get(0), Some(0u8));
-    assert_eq(v.get(1), Some(1u8));
-    assert_eq(v.get(2), Some(2u8));
-    assert_eq(v.get(3), Some(5u8));
-    assert_eq(v.get(4), Some(4u8));
-    assert_eq(v.get(5), Some(3u8));
-    assert_eq(v.get(6), None);
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 5u8, 4u8, 3u8], 0, 6), 12);
 
-    // remove first
+    // remove front
     let item = v.remove(0);
     assert_eq(item, 0);
-    assert_eq(v.len(), 5);
-    assert_eq(v.capacity(), 8);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), Some(5u8));
-    assert_eq(v.get(3), Some(4u8));
-    assert_eq(v.get(4), Some(3u8));
-    assert_eq(v.get(5), None);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8, 3u8], 0, 5), 12);
 
-    // remove last
+    // remove back
     let item = v.remove(4);
     assert_eq(item, 3);
-    assert_eq(v.len(), 4);
-    assert_eq(v.capacity(), 8);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), Some(5u8));
-    assert_eq(v.get(3), Some(4u8));
-    assert_eq(v.get(4), None);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8], 0, 4), 12);
 
     // last
     assert_eq(v.last(), Some(4));
 
     // resize
-    v.resize(10, 7);
-    assert_eq(v.len(), 10);
-    assert_eq(v.capacity(), 10);
-    assert_eq(v.get(0), Some(1u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), Some(5u8));
-    assert_eq(v.get(3), Some(4u8));
-    assert_eq(v.get(4), Some(7u8));
-    assert_eq(v.get(5), Some(7u8));
-    assert_eq(v.get(6), Some(7u8));
-    assert_eq(v.get(7), Some(7u8));
-    assert_eq(v.get(8), Some(7u8));
-    assert_eq(v.get(9), Some(7u8));
-    assert_eq(v.get(10), None);
+    v.resize(13, 7);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
 
     // set
     v.set(0, 7);
-    assert_eq(v.len(), 10);
-    assert_eq(v.capacity(), 10);
-    assert_eq(v.get(0), Some(7u8));
-    assert_eq(v.get(1), Some(2u8));
-    assert_eq(v.get(2), Some(5u8));
-    assert_eq(v.get(3), Some(4u8));
-    assert_eq(v.get(4), Some(7u8));
-    assert_eq(v.get(5), Some(7u8));
-    assert_eq(v.get(6), Some(7u8));
-    assert_eq(v.get(7), Some(7u8));
-    assert_eq(v.get(8), Some(7u8));
-    assert_eq(v.get(9), Some(7u8));
-    assert_eq(v.get(10), None);
+    assert_vec_items(v, __slice(&[7u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
 
     // swap
     v.swap(1, 3);
-    assert_eq(v.len(), 10);
-    assert_eq(v.capacity(), 10);
-    assert_eq(v.get(0), Some(7u8));
-    assert_eq(v.get(1), Some(4u8));
-    assert_eq(v.get(2), Some(5u8));
-    assert_eq(v.get(3), Some(2u8));
-    assert_eq(v.get(4), Some(7u8));
-    assert_eq(v.get(5), Some(7u8));
-    assert_eq(v.get(6), Some(7u8));
-    assert_eq(v.get(7), Some(7u8));
-    assert_eq(v.get(8), Some(7u8));
-    assert_eq(v.get(9), Some(7u8));
-    assert_eq(v.get(10), None);
+    assert_vec_items(v, __slice(&[7u8, 4u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
 
-    // iter
-    for i in v.iter() {
-        __log(i);
-    }
+    // remove middle
+    let item = v.remove(1);
+    assert_eq(item, 4);
+    assert_vec_items(v, __slice(&[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 12), 13);
 
     let encoded_bytes = encode(v);
-    let v2 = abi_decode::<Vec<u8>>(encoded_bytes);
-    assert_eq(v2.len(), 10);
-    assert_eq(v2.capacity(), 10);
-    assert_eq(v2.get(0), Some(7u8));
-    assert_eq(v2.get(1), Some(4u8));
-    assert_eq(v2.get(2), Some(5u8));
-    assert_eq(v2.get(3), Some(2u8));
-    assert_eq(v2.get(4), Some(7u8));
-    assert_eq(v2.get(5), Some(7u8));
-    assert_eq(v2.get(6), Some(7u8));
-    assert_eq(v2.get(7), Some(7u8));
-    assert_eq(v2.get(8), Some(7u8));
-    assert_eq(v2.get(9), Some(7u8));
-    assert_eq(v2.get(10), None);
+    let mut v = abi_decode::<Vec<u8>>(encoded_bytes);
+    assert_vec_items(v, __slice(&[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 12), 12);
+
+    // clear
+    v.clear();
+    assert_vec_items(v, __slice(&[], 0, 0), 12);
+
+    // with_capacity()
+    let v = Vec::with_capacity(3);
+    assert_vec_items(v, __slice(&[], 0, 0), 3);
+
+    // Vec<Vec<u8>> -> &[Vec<u8>] -> Vec<Vec<u8>>
+    // use ::convert::*;
+    // let mut v: Vec<Vec<u8>> = Vec::new();
+
+    // let mut item = Vec::new();
+    // item.push(1);
+    // item.push(2);
+    // item.push(3);
+    // v.push(item);
+
+    //let v_as_slice = v.as_raw_slice();
+    //let mut v2: Vec<Vec<u8>> =  v_as_slice.into();
+
+    //let mut item = v2.get(0).unwrap();
+    //item.push(4);
+    //item.set(0, 7);
+
+    //assert_eq(v.get(0).unwrap().get(0).unwrap(), 7);
+    //assert_eq(v2.get(0).unwrap().len(), 3);
+}
+
+
+#[cfg(experimental_references = false)]
+#[test]
+fn ok_vec_as_raw_slice() {
+    use ::convert::Into;
+
+    let mut v = Vec::new();
+    v.push(1);
+    v.push(2);
+    v.push(3);
+
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8], 0, 3), 4);
+
+    let v_as_slice: raw_slice = v.as_raw_slice();
+    let mut v2: Vec<u8> =  v_as_slice.into();
+
+    assert_vec_items(v2, __slice(&[1u8, 2u8, 3u8], 0, 3), 3);
 }

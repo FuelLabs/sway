@@ -34,6 +34,12 @@ impl<T> &[T] {
     }
 }
 
+pub fn zero_alloc_slice<T>() -> &mut [T] {
+    asm(buf: (0, 0)) {
+        buf: &mut [T]
+    }
+}
+
 pub fn alloc_slice<T>(len: u64) -> &mut [T] {
     let len_in_bytes = __mul(len, __size_of::<T>());
     let ptr = asm(len_in_bytes: len_in_bytes) {
