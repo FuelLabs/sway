@@ -25,20 +25,6 @@ impl core::ops::PartialEq for Array {
 impl core::ops::Eq for Array {}
 
 pub type Tuple = (SubId, SubId);
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Tuple {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Tuple {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Tuple {}
 
 pub type StringTy = str[9];
 #[cfg(experimental_partial_eq = false)]

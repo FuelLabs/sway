@@ -57,20 +57,6 @@ impl core::ops::PartialEq for MyStruct {
 impl core::ops::Eq for MyStruct {}
 
 pub type Tuple = (u32, u32);
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Tuple {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Tuple {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Tuple {}
 
 #[cfg(experimental_partial_eq = false)]
 impl core::ops::Eq for MyEnum {

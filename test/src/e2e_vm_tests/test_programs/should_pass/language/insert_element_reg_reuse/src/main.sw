@@ -13,6 +13,7 @@ impl core::ops::Eq for [u64; 2] {
         true
     }
 }
+
 #[cfg(experimental_partial_eq = true)]
 impl core::ops::PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
@@ -26,43 +27,9 @@ impl core::ops::PartialEq for [u64; 2] {
         true
     }
 }
+
 #[cfg(experimental_partial_eq = true)]
 impl core::ops::Eq for [u64; 2] {}
-
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Vec<[u64; 2]> {
-    fn eq(self, other: Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        let mut i = 0;
-        while i < self.len() {
-            if self.get(i).unwrap() != other.get(i).unwrap() {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Vec<[u64; 2]> {
-    fn eq(self, other: Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        let mut i = 0;
-        while i < self.len() {
-            if self.get(i).unwrap() != other.get(i).unwrap() {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Vec<[u64; 2]> {}
 
 fn tester1(arg: Vec<[u64; 2]>) {
     let mut expected = Vec::new();

@@ -228,21 +228,6 @@ impl TestInstance for Enum {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for (u8, u32) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl PartialEq for (u8, u32) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl Eq for (u8, u32) {}
-
 impl TestInstance for (u8, u32) {
     fn new() -> Self {
         (123, 12345)
@@ -278,15 +263,6 @@ impl TestInstance for raw_ptr {
     }
 }
 
-impl AbiEncode for raw_ptr {
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let v = asm(p: self) {
-            p: u64
-        };
-        v.abi_encode(buffer)
-    }
-}
-
 impl TestInstance for raw_slice {
     fn new() -> Self {
         let null_ptr = asm() {
@@ -304,21 +280,6 @@ impl TestInstance for raw_slice {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for raw_slice {
-    fn eq(self, other: Self) -> bool {
-        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl PartialEq for raw_slice {
-    fn eq(self, other: Self) -> bool {
-        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl Eq for raw_slice {}
-
 impl TestInstance for () {
     fn new() -> Self {
         ()
@@ -327,21 +288,6 @@ impl TestInstance for () {
         ()
     }
 }
-
-#[cfg(experimental_partial_eq = false)]
-impl Eq for () {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl PartialEq for () {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl Eq for () {}
 
 impl TestInstance for [u64; 0] {
     fn new() -> Self {
