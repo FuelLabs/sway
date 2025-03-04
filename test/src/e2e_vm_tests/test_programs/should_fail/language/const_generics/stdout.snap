@@ -5,7 +5,6 @@ source: test/tests/tests.rs
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
-   Compiling library core (sway-lib-core)
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
 error
@@ -27,7 +26,6 @@ error: Failed to compile const_generics
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
-   Compiling library core (sway-lib-core)
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
 error

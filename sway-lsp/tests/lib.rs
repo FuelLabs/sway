@@ -177,7 +177,7 @@ fn did_cache_test() {
         let metrics = lsp::metrics_request(&mut service, &uri).await;
         assert!(metrics.len() >= 2);
         for (path, metrics) in metrics {
-            if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
+            if path.contains("sway-lib-std") {
                 assert!(metrics.reused_programs >= 1);
             }
         }
@@ -202,7 +202,7 @@ fn did_change_stress_test() {
             }
             let metrics = lsp::metrics_request(&mut service, &uri).await;
             for (path, metrics) in metrics {
-                if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
+                if path.contains("sway-lib-std") {
                     assert!(metrics.reused_programs >= 1);
                 }
             }
@@ -305,7 +305,7 @@ fn show_ast() {
 }
 
 #[test]
-#[ignore = "`struct_field_access` test doesn't depend on `core` anymore which makes this test fail because the dependency graph is not the expected one."]
+#[ignore = "`struct_field_access` test doesn't depend on `std` anymore which makes this test fail because the dependency graph is not the expected one."]
 fn visualize() {
     run_async!({
         let server = ServerState::default();
@@ -850,7 +850,7 @@ fn go_to_definition_for_paths() {
             def_end_char: 0,
             def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw",
         };
-        // core
+        // std
         lsp::definition_check(&server, &go_to).await;
 
         let go_to = GotoDefinition {
@@ -872,7 +872,7 @@ fn go_to_definition_for_paths() {
             def_line: 0,
             def_start_char: 0,
             def_end_char: 0,
-            def_path: "sway-lib-core/src/primitives.sw",
+            def_path: "sway-lib-std/src/primitives.sw",
         };
         // primitives
         lsp::definition_check(&server, &go_to).await;
@@ -949,7 +949,7 @@ fn go_to_definition_for_paths() {
             def_line: 92,
             def_start_char: 11,
             def_end_char: 14,
-            def_path: "sway-lib-core/src/primitives.sw",
+            def_path: "sway-lib-std/src/primitives.sw",
         };
         // u64::min()
         lsp::definition_check(&server, &go_to).await;
@@ -961,7 +961,7 @@ fn go_to_definition_for_paths() {
             def_line: 392,
             def_start_char: 11,
             def_end_char: 14,
-            def_path: "sway-lib-core/src/primitives.sw",
+            def_path: "sway-lib-std/src/primitives.sw",
         };
         // b256::min()
         lsp::definition_check(&server, &go_to).await;

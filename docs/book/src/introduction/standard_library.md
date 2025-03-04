@@ -35,7 +35,7 @@ The current version of the prelude lives in [`std::prelude`](https://github.com/
 - [`std::contract_id::ContractId`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/contract_id.sw), a wrapper around the `b256` type representing the ID of a contract.
 - [`std::identity::Identity`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/identity.sw), an enum with two possible variants: `Address: Address` and `ContractId: ContractId`.
 - [`std::vec::Vec`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/vec.sw), a growable, heap-allocated vector.
-- [`std::storage::storage_key::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage/storage_key.sw), contains the API for accessing a `core::storage::StorageKey` which describes a location in storage.
+- [`std::storage::storage_key::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage/storage_key.sw), contains the API for accessing a `std::storage::StorageKey` which describes a location in storage.
 - [`std::storage::storage_map::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage/storage_map.sw), a key-value mapping in contract storage.
 - [`std::option::Option`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw), an enum which expresses the presence or absence of a value.
 - [`std::result::Result`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw), an enum for functions that may succeed or fail.
@@ -46,4 +46,11 @@ The current version of the prelude lives in [`std::prelude`](https://github.com/
 - [`std::revert::revert`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw), a function that reverts the VM.
 - [`std::logging::log`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw), a function that logs arbitrary stack types.
 - [`std::auth::msg_sender`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/auth.sw), a function that gets the `Identity` from which a call was made.
+- [`std::primitives::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/primitives.sw), methods on primitive types.
+- [`std::primitive_conversions::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/primitive_conversions.sw), methods for converting between primitive types.
+- [`std::raw_ptr::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/raw_ptr.sw), functions for working with raw pointers.
+- [`std::raw_slice::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/raw_slice.sw), functions for working with raw slices.
+- [`std::ops::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/ops.sw), mathematical operations such as addition, subtraction, multiplication, and division.
+- [`std::str::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/str.sw), methods for working with strings.
+- [`std::codec::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/codec.sw), automatic serialization and deserialization of types.
 <!-- prelude:example:end -->

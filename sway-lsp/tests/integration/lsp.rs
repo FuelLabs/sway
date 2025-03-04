@@ -201,7 +201,7 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
 
     let response = request::handle_visualize(server, params).unwrap().unwrap();
     let re = Regex::new(r#"digraph \{
-    0 \[ label = "core" shape = box URL = "vscode://file/[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    0 \[ label = "std" shape = box URL = "vscode://file/[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "struct_field_access" shape = box URL = "vscode://file/[[:ascii:]]+/struct_field_access/Forc.toml"\]
     1 -> 0 \[ \]
 \}
