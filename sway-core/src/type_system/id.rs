@@ -190,11 +190,15 @@ impl TypeId {
         found
     }
 
+    /// Returns all pairs of type parameters and its
+    /// concrete types.
+    /// This includes primitive types that have "implicit"
+    /// type parameters such as tuples, arrays and others...
     pub(crate) fn extract_type_parameters(
         self,
         engines: &Engines,
         depth: usize,
-        type_parameters: &mut Vec<(TypeParameter, TypeParameter)>,
+        type_parameters: &mut Vec<(TypeId, TypeId)>,
         orig_type_id: TypeId,
     ) {
         if depth >= EXTRACT_ANY_MAX_DEPTH {
@@ -230,7 +234,7 @@ impl TypeId {
                     .iter()
                     .zip(orig_enum_decl.type_parameters.iter())
                 {
-                    type_parameters.push((type_param.clone(), orig_type_param.clone()));
+                    type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
                         depth + 1,
@@ -251,7 +255,7 @@ impl TypeId {
                     .iter()
                     .zip(orig_struct_decl.type_parameters.iter())
                 {
-                    type_parameters.push((type_param.clone(), orig_type_param.clone()));
+                    type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
                         depth + 1,
@@ -272,7 +276,7 @@ impl TypeId {
                     .iter()
                     .zip(orig_enum_decl.type_parameters.iter())
                 {
-                    type_parameters.push((type_param.clone(), orig_type_param.clone()));
+                    type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
                         depth + 1,
@@ -293,7 +297,7 @@ impl TypeId {
                     .iter()
                     .zip(orig_struct_decl.type_parameters.iter())
                 {
-                    type_parameters.push((type_param.clone(), orig_type_param.clone()));
+                    type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
                         depth + 1,
@@ -302,9 +306,11 @@ impl TypeId {
                     );
                 }
             }
+            // Primitive types have "implicit" type parameters
             (TypeInfo::Tuple(elems), TypeInfo::Tuple(orig_elems)) => {
                 assert_eq!(elems.len(), orig_elems.len());
                 for (elem, orig_elem) in elems.iter().zip(orig_elems.iter()) {
+                    type_parameters.push((elem.type_id, orig_elem.type_id));
                     elem.type_id.extract_type_parameters(
                         engines,
                         depth + 1,
@@ -356,7 +362,9 @@ impl TypeId {
                     }
                 }
             }
+            // Primitive types have "implicit" type parameters
             (TypeInfo::Array(ty, _), TypeInfo::Array(orig_ty, _)) => {
+                type_parameters.push((ty.type_id, orig_ty.type_id));
                 ty.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
@@ -376,7 +384,9 @@ impl TypeId {
                 self.extract_type_parameters(engines, depth + 1, type_parameters, ty.type_id);
             }
             (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => {}
+            // Primitive types have "implicit" type parameters
             (TypeInfo::Ptr(ty), TypeInfo::Ptr(orig_ty)) => {
+                type_parameters.push((ty.type_id, orig_ty.type_id));
                 ty.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
@@ -384,7 +394,9 @@ impl TypeId {
                     orig_ty.type_id,
                 );
             }
+            // Primitive types have "implicit" type parameters
             (TypeInfo::Slice(ty), TypeInfo::Slice(orig_ty)) => {
+                type_parameters.push((ty.type_id, orig_ty.type_id));
                 ty.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
@@ -392,6 +404,7 @@ impl TypeId {
                     orig_ty.type_id,
                 );
             }
+            // Primitive types have "implicit" type parameters
             (
                 TypeInfo::Ref {
                     referenced_type, ..
@@ -401,6 +414,7 @@ impl TypeId {
                     ..
                 },
             ) => {
+                type_parameters.push((referenced_type.type_id, orig_referenced_type.type_id));
                 referenced_type.type_id.extract_type_parameters(
                     engines,
                     depth + 1,

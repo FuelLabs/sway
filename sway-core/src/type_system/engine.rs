@@ -1869,10 +1869,10 @@ impl TypeEngine {
         F: Fn(&SourceId) -> bool,
     {
         self.slab
-            .retain(|_, tsi| tsi.source_id.as_ref().map_or(true, &keep));
+            .retain(|_, tsi| tsi.source_id.as_ref().is_none_or(&keep));
         self.shareable_types
             .write()
-            .retain(|tsi, _| tsi.source_id.as_ref().map_or(true, &keep));
+            .retain(|tsi, _| tsi.source_id.as_ref().is_none_or(&keep));
     }
 
     /// Removes all data associated with `program_id` from the type engine.

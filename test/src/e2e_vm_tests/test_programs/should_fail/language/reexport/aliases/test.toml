@@ -94,6 +94,40 @@ category = "fail"
 #nextln: $()Trait "Items2Trait" cannot be found in the current scope.
 
 #check: $()error
+#check: $()fn project_items_3_struct(input: Items3_Struct) -> u64 {
+#nextln: $()Could not find symbol "Items3_Struct" in this scope.
+
+#check: $()error
+#check: $()fn project_items_3_struct(input: Items3_Struct) -> u64 {
+#nextln: $()Unknown type name "Items3_Struct".
+
+#check: $()error
+#check: $()fn project_items_3_enum(input: Items3_Enum) -> u64 {
+#nextln: $()Could not find symbol "Items3_Enum" in this scope.
+
+#check: $()error
+#check: $()fn project_items_3_enum(input: Items3_Enum) -> u64 {
+#nextln: $()Unknown type name "Items3_Enum".
+
+#check: $()error
+#check: $()fn project_items_3_variants(input: Items3_Variants) -> u64 {
+#check: $()Could not find symbol "Items3_U" in this scope.
+
+#check: $()error
+#check: $()Could not find symbol "Items3_V" in this scope.
+
+#check: $()error
+#check: $()fn call_items_3_function() -> u64 {
+#check: $()Could not find symbol "items_3_function" in this scope.
+
+#check: $()error
+#check: $()impl Items3Trait<TestStruct2> for TestStruct1 {
+#check: $()Could not find symbol "Items3Trait" in this scope.
+
+#check: $()Trait is already implemented for type
+#check: $()Trait "aliases::items_5::Items5Trait<TestStruct2>" is already implemented for type "TestStruct1".
+
+#check: $()error
 #check: $()let items_2_struct = Items2_Struct { b: 123 };
 #nextln: $()Could not find symbol "Items2_Struct" in this scope.
 
@@ -181,8 +215,5 @@ category = "fail"
 #check: $()let items_3_trait_teststruct_1_res = teststruct_1.items_3_trait_function(teststruct_2);
 #nextln: $()No method "items_3_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
 
-#check: $()error
-#check: $()let items_5_trait_teststruct_1_res = teststruct_1.items_5_trait_function(teststruct_2);
-#nextln: $()Multiple applicable items in scope.
-
 #check: $()Aborting due to 55 errors.
+

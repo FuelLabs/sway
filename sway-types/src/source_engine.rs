@@ -60,16 +60,8 @@ impl SourceEngine {
                 return source_map.get(path).copied().unwrap();
             }
         }
-        let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap_or(path.clone());
-        let program_id = {
-            let mut module_map = self.manifest_path_to_program_map.write();
-            *module_map.entry(manifest_path.clone()).or_insert_with(|| {
-                let mut next_id = self.next_program_id.write();
-                *next_id += 1;
-                ProgramId::new(*next_id)
-            })
-        };
 
+        let program_id = self.get_or_create_program_id_from_manifest_path(path);
         self.get_source_id_with_program_id(path, program_id)
     }
 
@@ -113,8 +105,22 @@ impl SourceEngine {
     }
 
     /// This function provides the [ProgramId] corresponding to a specified manifest file path.
-    pub fn get_program_id(&self, path: &PathBuf) -> Option<ProgramId> {
-        self.manifest_path_to_program_map.read().get(path).copied()
+    pub fn get_program_id_from_manifest_path(&self, path: &PathBuf) -> Option<ProgramId> {
+        let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap_or(path.clone());
+        self.manifest_path_to_program_map
+            .read()
+            .get(&manifest_path)
+            .copied()
+    }
+
+    pub fn get_or_create_program_id_from_manifest_path(&self, path: &PathBuf) -> ProgramId {
+        let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap_or(path.clone());
+        let mut module_map = self.manifest_path_to_program_map.write();
+        *module_map.entry(manifest_path.clone()).or_insert_with(|| {
+            let mut next_id = self.next_program_id.write();
+            *next_id += 1;
+            ProgramId::new(*next_id)
+        })
     }
 
     /// Returns the [PathBuf] associated with the provided [ProgramId], if it exists in the manifest_path_to_program_map.

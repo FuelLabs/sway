@@ -718,10 +718,7 @@ pub fn create_did_change_params(
     }
 }
 
-pub(crate) async fn inlay_hints_request<'a>(
-    server: &ServerState,
-    uri: &Url,
-) -> Option<Vec<InlayHint>> {
+pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Option<Vec<InlayHint>> {
     let params = InlayHintParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         range: Range {
