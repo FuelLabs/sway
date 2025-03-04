@@ -893,24 +893,64 @@ fn ok_vec_tests() {
 
     // resize
     v.resize(13, 7);
-    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
+    assert_vec_items(
+        v,
+        __slice(
+            &[1u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8],
+            0,
+            13,
+        ),
+        13,
+    );
 
     // set
     v.set(0, 7);
-    assert_vec_items(v, __slice(&[7u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
+    assert_vec_items(
+        v,
+        __slice(
+            &[7u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8],
+            0,
+            13,
+        ),
+        13,
+    );
 
     // swap
     v.swap(1, 3);
-    assert_vec_items(v, __slice(&[7u8, 4u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
+    assert_vec_items(
+        v,
+        __slice(
+            &[7u8, 4u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8],
+            0,
+            13,
+        ),
+        13,
+    );
 
     // remove middle
     let item = v.remove(1);
     assert_eq(item, 4);
-    assert_vec_items(v, __slice(&[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 12), 13);
+    assert_vec_items(
+        v,
+        __slice(
+            &[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8],
+            0,
+            12,
+        ),
+        13,
+    );
 
     let encoded_bytes = encode(v);
     let mut v = abi_decode::<Vec<u8>>(encoded_bytes);
-    assert_vec_items(v, __slice(&[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 12), 12);
+    assert_vec_items(
+        v,
+        __slice(
+            &[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8],
+            0,
+            12,
+        ),
+        12,
+    );
 
     // clear
     v.clear();
@@ -954,7 +994,7 @@ fn ok_vec_as_raw_slice() {
     assert_vec_items(v, __slice(&[1u8, 2u8, 3u8], 0, 3), 4);
 
     let v_as_slice: raw_slice = v.as_raw_slice();
-    let mut v2: Vec<u8> =  v_as_slice.into();
+    let mut v2: Vec<u8> = v_as_slice.into();
 
     assert_vec_items(v2, __slice(&[1u8, 2u8, 3u8], 0, 3), 3);
 }

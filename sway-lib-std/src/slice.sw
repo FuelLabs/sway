@@ -53,14 +53,20 @@ pub fn zero_alloc_slice<T>() -> &mut [T] {
 }
 
 pub fn alloc_slice<T>(len: u64) -> &mut [T] {
-    asm(a:1) { log a a a a; }
+    asm(a: 1) {
+        log a a a a;
+    }
     let len_in_bytes = __mul(len, __size_of::<T>());
-    asm(a:1) { log a a a a; }
+    asm(a: 1) {
+        log a a a a;
+    }
     let ptr = asm(len_in_bytes: len_in_bytes) {
         aloc len_in_bytes;
         hp: raw_ptr
     };
-    asm(a:1) { log a a a a; }
+    asm(a: 1) {
+        log a a a a;
+    }
     asm(buf: (ptr, len)) {
         buf: &mut [T]
     }

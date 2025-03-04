@@ -6,7 +6,7 @@ use ::hash::*;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
-use ::vec::{VecIter, Vec};
+use ::vec::{Vec, VecIter};
 use ::iterator::Iterator;
 use ::codec::*;
 

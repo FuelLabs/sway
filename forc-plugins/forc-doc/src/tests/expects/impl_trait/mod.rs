@@ -66,8 +66,11 @@ fn test_impl_traits_default() {
             "core/primitive.str[45].html",
             "core/ops/trait.BitwiseOr.html",
             "core/primitive.str[6].html",
+            "core/slice/fn.from_parts.html",
+            "core/slice/fn.from_parts_mut.html",
             "core/slice/fn.alloc_slice.html",
             "core/slice/fn.realloc_slice.html",
+            "core/slice/fn.zero_alloc_slice.html",
             "core/slice/index.html",
 >>>>>>> f9a35c323 (update tests)
         ],
