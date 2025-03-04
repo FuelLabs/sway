@@ -682,6 +682,15 @@ impl<T> From<raw_slice> for Vec<T> {
     }
 }
 
+#[cfg(experimental_references = true)]
+impl<T> From<raw_slice> for Vec<T> {
+    fn from(slice: raw_slice) -> Self {
+        let len = slice.len::<T>();
+        let buf = core::slice::from_parts_mut::<T>(slice.ptr(), len);
+        Self { buf, len }
+    }
+}
+
 #[cfg(experimental_references = false)]
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
@@ -695,42 +704,6 @@ impl<T> Clone for Vec<T> {
         let buf = alloc_slice::<T>(len);
         self.ptr().copy_to::<T>(buf.ptr(), len);
         Self { buf, len }
-    }
-}
-
-#[cfg(experimental_references = false)]
-impl<T> AbiEncode for Vec<T>
-where
-    T: AbiEncode,
-{
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-       self.as_raw_slice().abi_encode(buffer)
-    }
-}
-
-#[cfg(experimental_references = true)]
-impl<T> AbiEncode for Vec<T>
-where
-    T: AbiEncode,
-{
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-       self.as_slice().abi_encode(buffer)
-    }
-}
-
-impl<T> AbiDecode for Vec<T>
-where
-    T: AbiDecode,
-{
-    fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
-        let mut len = u64::abi_decode(buffer);
-        let mut v = Vec::with_capacity(len);
-        while len > 0 {
-            let item = T::abi_decode(buffer);
-            v.push(item);
-            len -= 1;
-        }
-        v
     }
 }
 
@@ -761,6 +734,34 @@ impl<T> Iterator for VecIter<T> {
 
         self.index += 1;
         self.values.get(self.index - 1)
+    }
+}
+
+impl<T> AbiEncode for Vec<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let mut buffer = self.len.abi_encode(buffer);
+        for elem in self.iter() {
+            buffer = elem.abi_encode(buffer);
+        }
+        buffer
+    }
+}
+
+impl<T> AbiDecode for Vec<T>
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
+        let mut len = u64::abi_decode(buffer);
+        let mut v = Vec::with_capacity(len);
+        while len > 0 {
+            v.push(T::abi_decode(buffer));
+            len -= 1;
+        }
+        v
     }
 }
 
@@ -832,7 +833,7 @@ fn ok_vec_tests() {
     let mut v = v.clone();
     v.insert(0, 0);
     assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 5u8, 4u8, 3u8], 0, 5), 10);
-    
+
     // insert back and grow
     let mut v = v.clone();
     v.insert(6, 6);
@@ -868,7 +869,7 @@ fn ok_vec_tests() {
     v.swap(1, 3);
     assert_vec_items(v, __slice(&[7u8, 4u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
 
-    // remove middle 
+    // remove middle
     let item = v.remove(1);
     assert_eq(item, 4);
     assert_vec_items(v, __slice(&[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 12), 13);
@@ -905,7 +906,6 @@ fn ok_vec_tests() {
     //assert_eq(v.get(0).unwrap().get(0).unwrap(), 7);
     //assert_eq(v2.get(0).unwrap().len(), 3);
 }
-
 
 #[cfg(experimental_references = false)]
 #[test]
