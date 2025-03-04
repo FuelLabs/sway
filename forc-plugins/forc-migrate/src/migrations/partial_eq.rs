@@ -49,7 +49,7 @@ use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind, 
 //       changed by the introduction of `PartialEq`. Changing `Eq` constraint to `PartialEq`
 //       to lower the constraint is done in the `core` and `std`, where appropriate.
 //       Suggesting to developers doing this replacement in their projects is mentioned
-///      in the tracking issue: https://github.com/FuelLabs/sway/issues/6883.
+//       in the tracking issue: https://github.com/FuelLabs/sway/issues/6883.
 
 pub(super) const IMPLEMENT_EXPERIMENTAL_PARTIAL_EQ_AND_EQ_TRAITS: MigrationStep = MigrationStep {
     title: "Implement experimental `PartialEq` and `Eq` traits",
