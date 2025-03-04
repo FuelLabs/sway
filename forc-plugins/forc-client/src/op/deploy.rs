@@ -374,7 +374,7 @@ pub async fn deploy_executables(
         println_action_green("Uploading", "blob containing executable bytecode.");
         loader.upload_blob(account.clone()).await?;
         println_action_green("Generating", "loader bytecode for the uploaded executable.");
-        let loader_bytecode = loader.code()?;
+        let loader_bytecode = loader.code();
         let pkg_name = &pkg.descriptor.name;
         let out_dir = pkg.descriptor.manifest_file.dir().join("out");
         let bin_path = out_dir.join(format!("{pkg_name}-loader.bin"));
