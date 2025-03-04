@@ -28,4 +28,4 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 walkdir.workspace = true
 
 [dev-dependencies]
-wiremock = "0.6.2"
+wiremock.workspace = true

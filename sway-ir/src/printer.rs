@@ -229,9 +229,11 @@ fn module_to_doc<'a>(
                         )),
                         None => Doc::Empty,
                     };
+                    let mut_string = if var_content.mutable { "mut " } else { "" };
                     Doc::line(
                         Doc::text(format!(
-                            "global {} : {}",
+                            "{}global {} : {}",
+                            mut_string,
                             name.join("::"),
                             var.get_inner_type(context).as_string(context),
                         ))
