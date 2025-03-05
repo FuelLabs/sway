@@ -170,6 +170,7 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
                         decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?.value;
                     info!("  {}, log rb: {}", var_value, rb);
                 }
+                info!("");
             }
         }
 
