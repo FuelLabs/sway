@@ -1577,14 +1577,27 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     owning_span: owning_span.clone(),
                     comment: "load slice size for logging data".into(),
                 });
-                self.cur_bytecode.push(Op {
-                    owning_span,
-                    opcode: Either::Left(VirtualOp::LOGD(
+
+                // Predicate programs resort to using ECAL; if not implemented; this will result in a no-op operation.
+                // All other program kinds use LOGD.
+                let log_op_code = match (self.context.program_kind, self.context.log_generation) {
+                    (Kind::Predicate, true) => VirtualOp::ECAL(
                         VirtualRegister::Constant(ConstantRegister::Zero),
                         log_id_reg,
                         ptr_reg,
                         size_reg,
-                    )),
+                    ),
+                    _ => VirtualOp::LOGD(
+                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        log_id_reg,
+                        ptr_reg,
+                        size_reg,
+                    ),
+                };
+
+                self.cur_bytecode.push(Op {
+                    owning_span,
+                    opcode: Either::Left(log_op_code),
                     comment: "log slice".into(),
                 });
             } else {
