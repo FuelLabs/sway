@@ -4,6 +4,9 @@ use ::primitives::*;
 use ::registers::flags;
 use ::flags::panic_on_overflow_enabled;
 
+const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
+const MAX_U16_U64: u64 = __transmute::<u16, u64>(u16::max());
+
 /// Trait for the addition of two values.
 pub trait Add {
     /// Add two values of the same type.
@@ -57,69 +60,62 @@ impl Add for u64 {
 // Emulate overflowing arithmetic for non-64-bit integer types
 impl Add for u32 {
     fn add(self, other: Self) -> Self {
-        // any non-64-bit value is compiled to a u64 value under-the-hood
-        // constants (like Self::max() below) are also automatically promoted to u64
-        let res = __add(self, other);
-        // integer overflow
-        if __gt(res, Self::max()) {
+        let res_u64 = __add(
+            __transmute::<Self, u64>(self),
+            __transmute::<Self, u64>(other),
+        );
+
+        if __gt(res_u64, MAX_U32_U64) {
             if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                __mod(res, __add(Self::max(), 1))
+                __transmute::<u64, Self>(__mod(res_u64, __add(MAX_U32_U64, 1)))
             }
         } else {
-            // no overflow
-            res
+            __transmute::<u64, Self>(res_u64)
         }
     }
 }
 
 impl Add for u16 {
     fn add(self, other: Self) -> Self {
-        let res = __add(self, other);
-        if __gt(res, Self::max()) {
+        let res_u64 = __add(
+            __transmute::<Self, u64>(self),
+            __transmute::<Self, u64>(other),
+        );
+
+        if __gt(res_u64, MAX_U16_U64) {
             if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                __mod(res, __add(Self::max(), 1))
+                __transmute::<u64, Self>(__mod(res_u64, __add(MAX_U16_U64, 1)))
             }
         } else {
-            res
+            __transmute::<u64, Self>(res_u64)
         }
     }
 }
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        let self_u64 = asm(input: self) {
-            input: u64
-        };
-        let other_u64 = asm(input: other) {
-            input: u64
-        };
-        let res_u64 = __add(self_u64, other_u64);
-        let max_u8_u64 = asm(input: Self::max()) {
-            input: u64
-        };
+        let res_u64 = __add(u8_as_u64(self), u8_as_u64(other));
+
+        let max_u8_u64 = u8_as_u64(Self::max());
+
         if __gt(res_u64, max_u8_u64) {
             if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
-                asm(input: res_u64) {
-                    input: u8
-                }
+                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
             }
         } else {
-            asm(input: res_u64) {
-                input: u8
-            }
+            u64_as_u8(res_u64)
         }
     }
 }
@@ -174,23 +170,65 @@ impl Subtract for u64 {
     }
 }
 
-// unlike addition, underflowing subtraction does not need special treatment
-// because VM handles underflow
 impl Subtract for u32 {
     fn subtract(self, other: Self) -> Self {
-        __sub(self, other)
+        let res_u64 = __sub(
+            __transmute::<Self, u64>(self),
+            __transmute::<Self, u64>(other),
+        );
+
+        if __gt(res_u64, MAX_U32_U64) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __transmute::<u64, Self>(__mod(res_u64, __add(MAX_U32_U64, 1)))
+            }
+        } else {
+            __transmute::<u64, Self>(res_u64)
+        }
     }
 }
 
 impl Subtract for u16 {
     fn subtract(self, other: Self) -> Self {
-        __sub(self, other)
+        let res_u64 = __sub(
+            __transmute::<Self, u64>(self),
+            __transmute::<Self, u64>(other),
+        );
+
+        if __gt(res_u64, MAX_U16_U64) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __transmute::<u64, Self>(__mod(res_u64, __add(MAX_U16_U64, 1)))
+            }
+        } else {
+            __transmute::<u64, Self>(res_u64)
+        }
     }
 }
 
 impl Subtract for u8 {
     fn subtract(self, other: Self) -> Self {
-        __sub(self, other)
+        let res_u64 = __sub(u8_as_u64(self), u8_as_u64(other));
+
+        let max_u8_u64 = u8_as_u64(Self::max());
+
+        if __gt(res_u64, max_u8_u64) {
+            if panic_on_overflow_is_enabled() {
+                __revert(0)
+            } else {
+                // overflow enabled
+                // res % (Self::max() + 1)
+                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
+            }
+        } else {
+            u64_as_u8(res_u64)
+        }
     }
 }
 
@@ -247,67 +285,62 @@ impl Multiply for u64 {
 // Emulate overflowing arithmetic for non-64-bit integer types
 impl Multiply for u32 {
     fn multiply(self, other: Self) -> Self {
-        // any non-64-bit value is compiled to a u64 value under-the-hood
-        // constants (like Self::max() below) are also automatically promoted to u64
-        let res = __mul(self, other);
-        if __gt(res, Self::max()) {
+        let res_u64 = __mul(
+            __transmute::<Self, u64>(self),
+            __transmute::<Self, u64>(other),
+        );
+
+        if __gt(res_u64, MAX_U32_U64) {
             if panic_on_overflow_enabled() {
-                // integer overflow
                 __revert(0)
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                __mod(res, __add(Self::max(), 1))
+                __transmute::<u64, Self>(__mod(res_u64, __add(MAX_U32_U64, 1)))
             }
         } else {
-            // no overflow
-            res
+            __transmute::<u64, Self>(res_u64)
         }
     }
 }
 
 impl Multiply for u16 {
     fn multiply(self, other: Self) -> Self {
-        let res = __mul(self, other);
-        if __gt(res, Self::max()) {
+        let res_u64 = __mul(
+            __transmute::<Self, u64>(self),
+            __transmute::<Self, u64>(other),
+        );
+
+        if __gt(res_u64, MAX_U16_U64) {
             if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
-                __mod(res, __add(Self::max(), 1))
+                // overflow enabled
+                // res % (Self::max() + 1)
+                __transmute::<u64, Self>(__mod(res_u64, __add(MAX_U16_U64, 1)))
             }
         } else {
-            res
+            __transmute::<u64, Self>(res_u64)
         }
     }
 }
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        let self_u64 = asm(input: self) {
-            input: u64
-        };
-        let other_u64 = asm(input: other) {
-            input: u64
-        };
-        let res_u64 = __mul(self_u64, other_u64);
-        let max_u8_u64 = asm(input: Self::max()) {
-            input: u64
-        };
+        let res_u64 = __mul(u8_as_u64(self), u8_as_u64(other));
+
+        let max_u8_u64 = u8_as_u64(Self::max());
+
         if __gt(res_u64, max_u8_u64) {
             if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                let res_u64 = __mod(res_u64, __add(max_u8_u64, 1));
-                asm(input: res_u64) {
-                    input: u8
-                }
+                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
             }
         } else {
-            asm(input: res_u64) {
-                input: u8
-            }
+            u64_as_u8(res_u64)
         }
     }
 }
@@ -1828,5 +1861,17 @@ impl b256 {
     /// ```
     pub fn is_zero(self) -> bool {
         self == 0x0000000000000000000000000000000000000000000000000000000000000000
+    }
+}
+
+fn u8_as_u64(val: u8) -> u64 {
+    asm(input: val) {
+        input: u64
+    }
+}
+
+fn u64_as_u8(val: u64) -> u8 {
+    asm(input: val) {
+        input: u8
     }
 }

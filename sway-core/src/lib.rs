@@ -448,7 +448,7 @@ pub(crate) fn is_ty_module_cache_up_to_date(
             let cache_up_to_date = build_config
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
-                .map_or(true, |version| {
+                .is_none_or(|version| {
                     version.map_or(true, |v| typed.version.is_some_and(|tv| v <= tv))
                 });
 
@@ -802,7 +802,7 @@ pub fn compile_to_ast(
     };
 
     // If tests are not enabled, exclude them from `parsed_program`.
-    if build_config.map_or(true, |config| !config.include_tests) {
+    if build_config.is_none_or(|config| !config.include_tests) {
         parsed_program.exclude_tests(engines);
     }
 
