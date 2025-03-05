@@ -169,7 +169,7 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5727",
     storage_domains = false,
     "https://github.com/FuelLabs/sway/issues/6701",
-    references = true,
+    references = false,
     "https://github.com/FuelLabs/sway/issues/5063",
     error_type = false,
     "https://github.com/FuelLabs/sway/issues/6765",

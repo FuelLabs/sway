@@ -6,7 +6,7 @@ use ::hash::*;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
-use ::vec::Vec;
+use ::vec::{Vec, VecIter};
 use ::iterator::Iterator;
 
 /// A persistent vector struct.
@@ -141,7 +141,7 @@ impl<V> StorageKey<StorageVec<V>> {
         let key = sha256(self.field_id());
         let offset = offset_calculator::<V>(index);
         // This StorageKey can be read by the standard storage api.
-        // Field Id must be unique such that nested storage vecs work as they have a 
+        // Field Id must be unique such that nested storage vecs work as they have a
         // __size_of() zero and will therefore always have an offset of zero.
         Some(StorageKey::<V>::new(key, offset, sha256((index, key))))
     }
@@ -814,23 +814,18 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // Handle cases where elements are less than the size of word and pad to the size of a word
         let slice = if size_V_bytes < 8 {
-            let vec_slice = vec.as_raw_slice();
             let number_of_words = 8 * vec.len();
             let ptr = alloc_bytes(number_of_words);
             let mut i = 0;
-            while i < vec.len() {
+            for element in vec.iter() {
                 // Insert into raw slice as offsets of 1 word per element
                 // (size_of_word * element)
-                vec_slice
-                    .ptr()
-                    .add::<V>(i)
-                    .copy_bytes_to(ptr.add_uint_offset(8 * i), size_V_bytes);
+                ptr.add_uint_offset(8 * i).write(element);
                 i += 1;
             }
-
             raw_slice::from_parts::<V>(ptr, number_of_words)
         } else {
-            vec.as_raw_slice()
+            raw_slice::from_parts::<V>(vec.ptr(), vec.len())
         };
 
         // Get the number of storage slots needed based on the size of bytes.
@@ -838,14 +833,14 @@ impl<V> StorageKey<StorageVec<V>> {
         let number_of_slots = (number_of_bytes + 31) >> 5;
         let mut ptr = slice.ptr();
 
-        // The capacity needs to be a multiple of 32 bytes so we can 
+        // The capacity needs to be a multiple of 32 bytes so we can
         // make the 'quad' storage instruction store without accessing unallocated heap memory.
         ptr = realloc_bytes(ptr, number_of_bytes, number_of_slots * 32);
 
         // Store `number_of_slots * 32` bytes starting at storage slot `key`.
         let _ = __state_store_quad(sha256(self.field_id()), ptr, number_of_slots);
 
-        // Store the length, NOT the bytes. 
+        // Store the length, NOT the bytes.
         // This differs from the existing `write_slice()` function to be compatible with `StorageVec`.
         write::<u64>(self.field_id(), 0, vec.len());
     }
