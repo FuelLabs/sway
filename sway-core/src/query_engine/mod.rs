@@ -220,7 +220,7 @@ impl QueryEngine {
             ident
                 .span()
                 .source_id()
-                .map_or(true, |id| id.program_id() != *program_id)
+                .is_none_or(|id| id.program_id() != *program_id)
         });
     }
 
