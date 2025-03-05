@@ -701,7 +701,9 @@ impl core::ops::Divide for U128 {
 
 impl core::ops::Mod for U128 {
     fn modulo(self, other: Self) -> Self {
-        assert(other != Self::zero());
+        if panic_on_unsafe_math_enabled() {
+            assert(other != Self::zero());
+        }
 
         // a mod b = a - b * (a / b)
         let quotient = self / other;
@@ -801,6 +803,10 @@ impl Root for U128 {
     /// Integer square root using [Newton's Method](https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method).
     fn sqrt(self) -> Self {
         let zero = Self::from((0, 0));
+        if panic_on_unsafe_math_enabled() {
+            assert(self != zero);
+        }
+
         let mut x0 = self >> 1;
         let mut s = self;
 
