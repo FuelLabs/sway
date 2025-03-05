@@ -30,6 +30,8 @@ pub struct BuildProfile {
     #[serde(default)]
     pub include_tests: bool,
     #[serde(default)]
+    pub log_generation: bool,
+    #[serde(default)]
     pub error_on_warnings: bool,
     #[serde(default)]
     pub reverse_results: bool,
@@ -57,6 +59,7 @@ impl BuildProfile {
             profile: false,
             metrics_outfile: None,
             include_tests: false,
+            log_generation: false,
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt0,
@@ -78,6 +81,7 @@ impl BuildProfile {
             profile: false,
             metrics_outfile: None,
             include_tests: false,
+            log_generation: false,
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt1,
@@ -147,6 +151,7 @@ mod tests {
             profile: false,
             metrics_outfile: Some("metrics_outfile".into()),
             include_tests: true,
+            log_generation: false,
             error_on_warnings: true,
             reverse_results: true,
             optimization_level: OptLevel::Opt0,

@@ -186,6 +186,7 @@ pub struct BuildConfig {
     pub(crate) print_bytecode_spans: bool,
     pub(crate) print_ir: PrintIr,
     pub(crate) include_tests: bool,
+    pub(crate) log_generation: bool,
     pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
     pub profile: bool,
@@ -234,6 +235,7 @@ impl BuildConfig {
             print_bytecode_spans: false,
             print_ir: PrintIr::default(),
             include_tests: false,
+            log_generation: false,
             time_phases: false,
             profile: false,
             metrics_outfile: None,
@@ -308,6 +310,18 @@ impl BuildConfig {
     pub fn with_include_tests(self, include_tests: bool) -> Self {
         Self {
             include_tests,
+            ..self
+        }
+    }
+
+    /// Whether or not to generate output logs  for forc test.
+    /// If this is set, the compilation process will update the behaviour of the __log intrinsic
+    /// to compile to ECAL rather than the LOGD instruction.
+    ///
+    /// Default: `false`
+    pub fn with_log_generation(self, log_generation: bool) -> Self {
+        Self {
+            log_generation,
             ..self
         }
     }
