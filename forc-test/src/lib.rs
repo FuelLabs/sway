@@ -1,9 +1,12 @@
+pub mod ecal;
 pub mod execute;
 pub mod setup;
 
-use crate::execute::TestExecutor;
-use crate::setup::{
-    ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
+use crate::{
+    execute::TestExecutor,
+    setup::{
+        ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
+    },
 };
 use forc_pkg::{self as pkg, BuildOpts};
 use fuel_abi_types::error_codes::ErrorSignal;

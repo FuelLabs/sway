@@ -1,19 +1,16 @@
-use crate::maxed_consensus_params;
-use crate::setup::TestSetup;
-use crate::TestResult;
-use crate::TEST_METADATA_SEED;
-use forc_pkg::PkgTestEntry;
+use crate::{
+    ecal::PredicateLoggingEcal, maxed_consensus_params, setup::TestSetup, TestResult,
+    TEST_METADATA_SEED,
+};
+use forc_pkg::{BuiltPackage, PkgTestEntry};
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::fuel_asm;
 use fuel_vm::prelude::Instruction;
 use fuel_vm::prelude::RegId;
 use fuel_vm::{
-    self as vm,
-    checked_transaction::builder::TransactionBuilderExt,
-    interpreter::{Interpreter, NotSupportedEcal},
-    prelude::SecretKey,
-    storage::MemoryStorage,
+    self as vm, checked_transaction::builder::TransactionBuilderExt, interpreter::Interpreter,
+    prelude::SecretKey, storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
 
@@ -26,7 +23,7 @@ use vm::state::ProgramState;
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug, Clone)]
 pub struct TestExecutor {
-    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, NotSupportedEcal>,
+    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, PredicateLoggingEcal>,
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
@@ -125,9 +122,18 @@ impl TestExecutor {
             )
             .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
+        let predicate_logging_ecal = PredicateLoggingEcal {
+            program_abi: built_pkg.program_abi.clone(),
+        };
+
         let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
         let memory_instance = MemoryInstance::new();
-        let interpreter = Interpreter::with_storage(memory_instance, storage, interpreter_params);
+        let interpreter = Interpreter::with_storage_and_ecal(
+            memory_instance,
+            storage,
+            interpreter_params,
+            predicate_logging_ecal,
+        );
 
         Ok(TestExecutor {
             interpreter,
