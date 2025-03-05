@@ -45,7 +45,7 @@ pub enum DebugResult {
 
 impl TestExecutor {
     pub fn build(
-        bytecode: &[u8],
+        built_pkg: &BuiltPackage,
         test_instruction_index: u32,
         test_setup: TestSetup,
         test_entry: &PkgTestEntry,
@@ -55,7 +55,7 @@ impl TestExecutor {
 
         // Find the instruction which we will jump into the
         // specified test
-        let jump_instruction_index = find_jump_instruction_index(bytecode);
+        let jump_instruction_index = find_jump_instruction_index(&built_pkg.bytecode.bytes);
 
         // Create a transaction to execute the test function.
         let script_input_data = vec![];
@@ -74,7 +74,8 @@ impl TestExecutor {
         let block_height = (u32::MAX >> 1).into();
         let gas_price = 0;
 
-        let mut tx_builder = tx::TransactionBuilder::script(bytecode.to_vec(), script_input_data);
+        let mut tx_builder =
+            tx::TransactionBuilder::script(built_pkg.bytecode.bytes.to_vec(), script_input_data);
 
         let params = maxed_consensus_params();
 

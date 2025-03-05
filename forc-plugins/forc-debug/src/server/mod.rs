@@ -243,7 +243,7 @@ impl DapServer {
                 }
 
                 TestExecutor::build(
-                    &pkg_to_debug.bytecode.bytes,
+                    &pkg_to_debug,
                     offset,
                     test_setup.clone(),
                     test_entry,
