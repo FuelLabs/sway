@@ -176,7 +176,7 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
 
         if test_print_opts.raw_logs {
             let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
-            info!("\nRaw logs:\n{}", formatted_logs);
+            info!("Raw logs:\n{}", formatted_logs);
         }
 
         // If the test is failing, save the test result for printing the details later on.
