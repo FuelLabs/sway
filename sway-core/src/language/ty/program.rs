@@ -211,9 +211,6 @@ impl TyProgram {
                                 field.type_argument.type_id,
                                 &field.type_argument,
                                 |t| match t {
-                                    TypeInfo::StringSlice => {
-                                        Some(TypeNotAllowedReason::StringSliceInConfigurables)
-                                    }
                                     TypeInfo::RawUntypedPtr => Some(
                                         TypeNotAllowedReason::TypeNotAllowedInContractStorage {
                                             ty: engines.help_out(t).to_string(),
@@ -398,7 +395,6 @@ impl TyProgram {
                 c.return_type,
                 &c.type_ascription,
                 |t| match t {
-                    TypeInfo::StringSlice => Some(TypeNotAllowedReason::StringSliceInConfigurables),
                     TypeInfo::Slice(_) => Some(TypeNotAllowedReason::SliceInConst),
                     _ => None,
                 },

@@ -1896,7 +1896,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18e4fdb82bd54a12e42fb58a800dcae6b9e13982238ce2296dc3570b92148e1f"
 dependencies = [
  "data-encoding",
- "syn 2.0.98",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -3181,8 +3181,7 @@ dependencies = [
 [[package]]
 name = "fuel-abi-types"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "026deca571c0d3304a4392a0d99c7477d58cade18b2861232c151eb0816dde0a"
+source = "git+https://github.com/FuelLabs/fuel-abi-types?branch=xunilrj%2Findirect-configurables#fd1be3841db866a533214e06800ecd423f2c390e"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -3558,9 +3557,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-code-gen"
-version = "0.70.1"
+version = "0.70.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5e10938518c8fc1ea04e5ee90e1c6c3f04eb9f3948c40fc885102add6c27d1f"
+checksum = "48829c752c69b95df3476b6d7352489531b6b11dfcd7d33171964881bb7b53ae"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -9791,3 +9790,23 @@ dependencies = [
  "quote",
  "syn 2.0.98",
 ]
+
+[[patch.unused]]
+name = "fuels"
+version = "0.70.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#40afe0e56ed82fa228086c08f28414416e801659"
+
+[[patch.unused]]
+name = "fuels-accounts"
+version = "0.70.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#40afe0e56ed82fa228086c08f28414416e801659"
+
+[[patch.unused]]
+name = "fuels-code-gen"
+version = "0.70.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#40afe0e56ed82fa228086c08f28414416e801659"
+
+[[patch.unused]]
+name = "fuels-core"
+version = "0.70.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#40afe0e56ed82fa228086c08f28414416e801659"
