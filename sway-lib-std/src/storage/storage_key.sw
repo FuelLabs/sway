@@ -2,6 +2,7 @@ library;
 
 use ::option::Option;
 use ::storage::storage_api::*;
+use ::codec::*;
 
 /// Describes a location in storage.
 ///

@@ -18,6 +18,7 @@ use ::option::Option::{self, *};
 use ::ops::*;
 use ::primitive_conversions::u16::*;
 use ::raw_ptr::*;
+use ::codec::*;
 
 // GTF Opcode const selectors
 //

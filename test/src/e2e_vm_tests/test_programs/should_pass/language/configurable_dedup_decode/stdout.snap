@@ -5,10 +5,6 @@ source: test/tests/tests.rs
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode
-// IR: Final
-library {
-}
-
    Compiling library std (sway-lib-std)
 // IR: Final
 library {
@@ -247,8 +243,8 @@ script {
 !12 = span !3 64967 64973
 !13 = span !3 64953 64974
 !14 = fn_call_path_span !3 64953 64966
-!15 = span !3 102115 102136
-!16 = fn_call_path_span !3 102115 102128
+!15 = span !3 102201 102222
+!16 = fn_call_path_span !3 102201 102214
 !17 = (!13 !14 !15 !16)
 !18 = span !3 64942 64975
 !19 = span !3 65033 65037

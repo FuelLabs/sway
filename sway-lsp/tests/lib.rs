@@ -690,7 +690,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 12,
             req_char: 42,
-            def_line: 8,
+            def_line: 10,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/vm/evm/evm_address.sw",

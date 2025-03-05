@@ -5,6 +5,7 @@ use ::revert::revert;
 use ::option::Option::{self, *};
 use ::alloc::alloc_bytes;
 use ::ops::*;
+use ::codec::*;
 
 // GTF Opcode const selectors
 //

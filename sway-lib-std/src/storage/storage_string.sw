@@ -5,6 +5,7 @@ use ::option::Option::{self, *};
 use ::storage::{storable_slice::*, storage_key::StorageKey};
 use ::storage::storage_api::read;
 use ::string::String;
+use ::codec::*;
 
 pub struct StorageString {}
 
