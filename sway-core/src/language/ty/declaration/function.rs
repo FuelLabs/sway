@@ -159,7 +159,7 @@ impl DeclRefFunction {
                     let matches = type_id_type_parameters
                         .iter()
                         .filter(|(_, orig_tp)| {
-                            engines.te().get(orig_tp.type_id).eq(
+                            engines.te().get(*orig_tp).eq(
                                 &*engines.te().get(impl_type_parameter.type_id),
                                 &PartialEqWithEnginesContext::new(engines),
                             )
@@ -167,8 +167,7 @@ impl DeclRefFunction {
                         .collect::<Vec<_>>();
                     if !matches.is_empty() {
                         // Adds type substitution for first match only as we can apply only one.
-                        type_id_type_subst_map
-                            .insert(impl_type_parameter.type_id, matches[0].0.type_id);
+                        type_id_type_subst_map.insert(impl_type_parameter.type_id, matches[0].0);
                     } else if engines
                         .te()
                         .get(impl_self_or_trait.implementing_for.initial_type_id)

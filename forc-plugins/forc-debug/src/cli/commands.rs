@@ -298,7 +298,7 @@ pub async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<()> {
     // Determine whether to enable or disable single stepping
     let enable = args
         .first()
-        .map_or(true, |v| !["off", "no", "disable"].contains(&v.as_str()));
+        .is_none_or(|v| !["off", "no", "disable"].contains(&v.as_str()));
 
     // Call the client
     state
@@ -460,7 +460,7 @@ fn pretty_print_run_result(rr: &RunResult, state: &mut State) {
             // If the ABI is available, decode the log data
             if let Some(abi) = state.contract_abis.get_or_fetch_abi(&id) {
                 if let Ok(decoded_log_data) =
-                    forc_test::decode_log_data(&rb.to_string(), &data, abi)
+                    forc_util::tx_utils::decode_log_data(&rb.to_string(), &data, abi)
                 {
                     println!(
                         "Decoded log value: {}, from contract: {}",

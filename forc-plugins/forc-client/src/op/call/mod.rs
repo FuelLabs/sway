@@ -12,7 +12,8 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Result};
 use either::Either;
-use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
+use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
+use fuel_tx::Receipt;
 use fuels::{
     accounts::{provider::Provider, wallet::WalletUnlocked},
     crypto::SecretKey,
@@ -37,8 +38,15 @@ use fuels_core::{
 };
 use std::{collections::HashMap, str::FromStr};
 
+#[derive(Debug)]
+pub struct CallResponse {
+    pub tx_hash: String,
+    pub result: String,
+    pub logs: Vec<String>,
+}
+
 /// A command for calling a contract function.
-pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
+pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
     let cmd::Call {
         contract_id,
         abi,
@@ -51,6 +59,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         gas,
         external_contracts,
         output,
+        show_receipts,
     } = cmd;
     let node_url = node.get_node_url(&None)?;
     let provider: Provider = Provider::connect(node_url).await?;
@@ -68,16 +77,17 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
             String::from_utf8(response.to_vec())?
         }
     };
-    let parsed_abi = UnifiedProgramABI::from_json_abi(&abi_str)?;
+    let parsed_abi: ProgramABI = serde_json::from_str(&abi_str)?;
+    let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi)?;
 
-    let type_lookup = parsed_abi
+    let type_lookup = unified_program_abi
         .types
         .into_iter()
         .map(|decl| (decl.type_id, decl))
         .collect::<HashMap<_, _>>();
 
     // get the function selector from the abi
-    let abi_func = parsed_abi
+    let abi_func = unified_program_abi
         .functions
         .iter()
         .find(|abi_func| abi_func.name == selector)
@@ -117,8 +127,6 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
     };
 
     let provider = wallet.provider().unwrap();
-    // TODO: add support for decoding logs and viewing them in output (verbose mode)
-    // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6887
     let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
 
     let tx_policies = gas
@@ -234,21 +242,58 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<String> {
         }
     };
 
-    forc_tracing::println_action_green("receipts:", &format!("{:#?}", receipts));
-    forc_tracing::println_action_green("tx hash:", &tx_hash.to_string());
-    forc_tracing::println_action_green("result:", &result);
+    // print receipts
+    if show_receipts {
+        let formatted_receipts = forc_util::tx_utils::format_log_receipts(&receipts, true)?;
+        forc_tracing::println_label_green("receipts:", &formatted_receipts);
+    }
+
+    // decode logs
+    let program_abi = sway_core::asm_generation::ProgramABI::Fuel(parsed_abi);
+    let logs = receipts
+        .iter()
+        .filter_map(|receipt| {
+            if let Receipt::LogData {
+                rb,
+                data: Some(data),
+                ..
+            } = receipt
+            {
+                return forc_util::tx_utils::decode_log_data(&rb.to_string(), data, &program_abi)
+                    .ok()
+                    .map(|decoded| decoded.value);
+            }
+            None
+        })
+        .collect::<Vec<_>>();
+
+    // print logs
+    if !logs.is_empty() {
+        forc_tracing::println_green_bold("logs:");
+        for log in &logs {
+            println!("  {:#}", log);
+        }
+    }
+
+    // print tx hash and result
+    forc_tracing::println_label_green("tx hash:", &tx_hash.to_string());
+    forc_tracing::println_label_green("result:", &result);
 
     // display transaction url if live mode
     if cmd::call::ExecutionMode::Live == mode {
         if let Some(explorer_url) = node.get_explorer_url() {
-            forc_tracing::println_action_green(
+            forc_tracing::println_label_green(
                 "\nView transaction:",
-                &format!("{}/tx/0x{}", explorer_url, tx_hash),
+                &format!("{}/tx/0x{}\n", explorer_url, tx_hash),
             );
         }
     }
 
-    Ok(result)
+    Ok(CallResponse {
+        tx_hash: tx_hash.to_string(),
+        result,
+        logs,
+    })
 }
 
 /// Get the wallet to use for the call - based on optionally provided signing key and wallet flag.
@@ -360,6 +405,7 @@ mod tests {
             gas: None,
             external_contracts: None,
             output: cmd::call::OutputFormat::Raw,
+            show_receipts: false,
         }
     }
 
@@ -369,31 +415,31 @@ mod tests {
 
         // test_empty_no_return
         let cmd = get_contract_call_cmd(id, &wallet, "test_empty_no_return", vec![]);
-        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(call(cmd).await.unwrap().result, "()");
 
         // test_empty
         let cmd = get_contract_call_cmd(id, &wallet, "test_empty", vec![]);
-        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(call(cmd).await.unwrap().result, "()");
 
         // test_unit
         let cmd = get_contract_call_cmd(id, &wallet, "test_unit", vec!["()"]);
-        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(call(cmd).await.unwrap().result, "()");
 
         // test_u8
         let cmd = get_contract_call_cmd(id, &wallet, "test_u8", vec!["255"]);
-        assert_eq!(call(cmd).await.unwrap(), "255");
+        assert_eq!(call(cmd).await.unwrap().result, "255");
 
         // test_u16
         let cmd = get_contract_call_cmd(id, &wallet, "test_u16", vec!["65535"]);
-        assert_eq!(call(cmd).await.unwrap(), "65535");
+        assert_eq!(call(cmd).await.unwrap().result, "65535");
 
         // test_u32
         let cmd = get_contract_call_cmd(id, &wallet, "test_u32", vec!["4294967295"]);
-        assert_eq!(call(cmd).await.unwrap(), "4294967295");
+        assert_eq!(call(cmd).await.unwrap().result, "4294967295");
 
         // test_u64
         let cmd = get_contract_call_cmd(id, &wallet, "test_u64", vec!["18446744073709551615"]);
-        assert_eq!(call(cmd).await.unwrap(), "18446744073709551615");
+        assert_eq!(call(cmd).await.unwrap().result, "18446744073709551615");
 
         // test_u128
         let cmd = get_contract_call_cmd(
@@ -403,7 +449,7 @@ mod tests {
             vec!["340282366920938463463374607431768211455"],
         );
         assert_eq!(
-            call(cmd).await.unwrap(),
+            call(cmd).await.unwrap().result,
             "340282366920938463463374607431768211455"
         );
 
@@ -415,7 +461,7 @@ mod tests {
             vec!["115792089237316195423570985008687907853269984665640564039457584007913129639935"],
         );
         assert_eq!(
-            call(cmd).await.unwrap(),
+            call(cmd).await.unwrap().result,
             "115792089237316195423570985008687907853269984665640564039457584007913129639935"
         );
 
@@ -427,7 +473,7 @@ mod tests {
             vec!["0000000000000000000000000000000000000000000000000000000000000042"],
         );
         assert_eq!(
-            call(cmd).await.unwrap(),
+            call(cmd).await.unwrap().result,
             "0x0000000000000000000000000000000000000000000000000000000000000042"
         );
 
@@ -440,25 +486,25 @@ mod tests {
         );
         cmd.external_contracts = Some(vec![]);
         assert_eq!(
-            call(cmd).await.unwrap(),
+            call(cmd).await.unwrap().result,
             "0x0000000000000000000000000000000000000000000000000000000000000042"
         );
 
         // test_bytes
         let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", vec!["0x42"]);
-        assert_eq!(call(cmd).await.unwrap(), "0x42");
+        assert_eq!(call(cmd).await.unwrap().result, "0x42");
 
         // test bytes without 0x prefix
         let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", vec!["42"]);
-        assert_eq!(call(cmd).await.unwrap(), "0x42");
+        assert_eq!(call(cmd).await.unwrap().result, "0x42");
 
         // test_str
         let cmd = get_contract_call_cmd(id, &wallet, "test_str", vec!["fuel"]);
-        assert_eq!(call(cmd).await.unwrap(), "fuel");
+        assert_eq!(call(cmd).await.unwrap().result, "fuel");
 
         // test str array
         let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", vec!["fuel rocks"]);
-        assert_eq!(call(cmd).await.unwrap(), "fuel rocks");
+        assert_eq!(call(cmd).await.unwrap().result, "fuel rocks");
 
         // test str array - fails if length mismatch
         let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", vec!["fuel"]);
@@ -469,11 +515,11 @@ mod tests {
 
         // test str slice
         let cmd = get_contract_call_cmd(id, &wallet, "test_str_slice", vec!["fuel rocks 42"]);
-        assert_eq!(call(cmd).await.unwrap(), "fuel rocks 42");
+        assert_eq!(call(cmd).await.unwrap().result, "fuel rocks 42");
 
         // test tuple
         let cmd = get_contract_call_cmd(id, &wallet, "test_tuple", vec!["(42, true)"]);
-        assert_eq!(call(cmd).await.unwrap(), "(42, true)");
+        assert_eq!(call(cmd).await.unwrap().result, "(42, true)");
 
         // test array
         let cmd = get_contract_call_cmd(
@@ -483,7 +529,7 @@ mod tests {
             vec!["[42, 42, 42, 42, 42, 42, 42, 42, 42, 42]"],
         );
         assert_eq!(
-            call(cmd).await.unwrap(),
+            call(cmd).await.unwrap().result,
             "[42, 42, 42, 42, 42, 42, 42, 42, 42, 42]"
         );
 
@@ -496,11 +542,11 @@ mod tests {
 
         // test_array - succeeds if length not matched!?
         let cmd = get_contract_call_cmd(id, &wallet, "test_array", vec!["[42, 42]"]);
-        assert!(call(cmd).await.unwrap().starts_with("[42, 42, 0,"));
+        assert!(call(cmd).await.unwrap().result.starts_with("[42, 42, 0,"));
 
         // test_vector
         let cmd = get_contract_call_cmd(id, &wallet, "test_vector", vec!["[42, 42]"]);
-        assert_eq!(call(cmd).await.unwrap(), "[42, 42]");
+        assert_eq!(call(cmd).await.unwrap().result, "[42, 42]");
 
         // test_vector - fails if different types
         let cmd = get_contract_call_cmd(id, &wallet, "test_vector", vec!["[42, true]"]);
@@ -511,7 +557,7 @@ mod tests {
 
         // test_struct - Identity { name: str[2], id: u64 }
         let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fu, 42}"]);
-        assert_eq!(call(cmd).await.unwrap(), "{fu, 42}");
+        assert_eq!(call(cmd).await.unwrap().result, "{fu, 42}");
 
         // test_struct - fails if incorrect inner attribute length
         let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fuel, 42}"]);
@@ -522,19 +568,19 @@ mod tests {
 
         // test_struct - succeeds if missing inner final attribute; default value is used
         let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fu}"]);
-        assert_eq!(call(cmd).await.unwrap(), "{fu, 0}");
+        assert_eq!(call(cmd).await.unwrap().result, "{fu, 0}");
 
         // test_struct - succeeds to use default values for all attributes if missing
         let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{}"]);
-        assert_eq!(call(cmd).await.unwrap(), "{\0\0, 0}");
+        assert_eq!(call(cmd).await.unwrap().result, "{\0\0, 0}");
 
         // test_enum
         let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(Active:true)"]);
-        assert_eq!(call(cmd).await.unwrap(), "(Active:true)");
+        assert_eq!(call(cmd).await.unwrap().result, "(Active:true)");
 
         // test_enum - succeeds if using index
         let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(1:56)"]);
-        assert_eq!(call(cmd).await.unwrap(), "(Pending:56)");
+        assert_eq!(call(cmd).await.unwrap().result, "(Pending:56)");
 
         // test_enum - fails if variant not found
         let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(A:true)"]);
@@ -559,15 +605,15 @@ mod tests {
 
         // test_option - encoded like an enum
         let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(0:())"]);
-        assert_eq!(call(cmd).await.unwrap(), "(None:())");
+        assert_eq!(call(cmd).await.unwrap().result, "(None:())");
 
         // test_option - encoded like an enum; none value ignored
         let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(0:42)"]);
-        assert_eq!(call(cmd).await.unwrap(), "(None:())");
+        assert_eq!(call(cmd).await.unwrap().result, "(None:())");
 
         // test_option - encoded like an enum; some value
         let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(1:42)"]);
-        assert_eq!(call(cmd).await.unwrap(), "(Some:42)");
+        assert_eq!(call(cmd).await.unwrap().result, "(Some:42)");
     }
 
     #[tokio::test]
@@ -577,11 +623,11 @@ mod tests {
         // test_complex_struct
         let cmd =
             get_contract_call_cmd(id, &wallet, "test_struct_with_generic", vec!["{42, fuel}"]);
-        assert_eq!(call(cmd).await.unwrap(), "{42, fuel}");
+        assert_eq!(call(cmd).await.unwrap().result, "{42, fuel}");
 
         // test_enum_with_generic
         let cmd = get_contract_call_cmd(id, &wallet, "test_enum_with_generic", vec!["(value:32)"]);
-        assert_eq!(call(cmd).await.unwrap(), "(value:32)");
+        assert_eq!(call(cmd).await.unwrap().result, "(value:32)");
 
         // test_enum_with_complex_generic
         let cmd = get_contract_call_cmd(
@@ -590,7 +636,7 @@ mod tests {
             "test_enum_with_complex_generic",
             vec!["(value:{42, fuel})"],
         );
-        assert_eq!(call(cmd).await.unwrap(), "(value:{42, fuel})");
+        assert_eq!(call(cmd).await.unwrap().result, "(value:{42, fuel})");
 
         let cmd = get_contract_call_cmd(
             id,
@@ -598,7 +644,10 @@ mod tests {
             "test_enum_with_complex_generic",
             vec!["(container:{{42, fuel}, fuel})"],
         );
-        assert_eq!(call(cmd).await.unwrap(), "(container:{{42, fuel}, fuel})");
+        assert_eq!(
+            call(cmd).await.unwrap().result,
+            "(container:{{42, fuel}, fuel})"
+        );
     }
 
     #[tokio::test]
@@ -636,10 +685,10 @@ mod tests {
             gas_forwarded: None,
         };
         // validate balance is unchanged (dry-run)
-        assert_eq!(call(cmd.clone()).await.unwrap(), "()");
+        assert_eq!(call(cmd.clone()).await.unwrap().result, "()");
         assert_eq!(get_contract_balance(id_2).await, 0);
         cmd.mode = cmd::call::ExecutionMode::Live;
-        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(call(cmd).await.unwrap().result, "()");
         assert_eq!(get_contract_balance(id_2).await, 1);
         assert_eq!(get_contract_balance(id).await, 1);
 
@@ -658,7 +707,7 @@ mod tests {
             gas_forwarded: None,
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
-        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(call(cmd).await.unwrap().result, "()");
         assert_eq!(
             get_recipient_balance(random_wallet.address().clone()).await,
             2
@@ -705,7 +754,7 @@ mod tests {
             gas_forwarded: None,
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
-        assert_eq!(call(cmd).await.unwrap(), "()");
+        assert_eq!(call(cmd).await.unwrap().result, "()");
         assert_eq!(
             get_recipient_balance(random_wallet.address().clone()).await,
             3

@@ -558,7 +558,7 @@ impl TypeParameter {
                                 return Err(handler.emit_err(CompileError::MultipleImplsSatisfyingTraitForType{
                                     span:access_span.clone(),
                                     type_annotation: engines.help_out(type_id).to_string(),
-                                    trait_names: trait_constraints.iter().map(|t| engines.help_out(t).to_string()).collect(),
+                                    trait_names: trait_constraints.iter().map(|t| t.to_display_name(engines, ctx.namespace())).collect(),
                                     trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
                                 }));
                             }
