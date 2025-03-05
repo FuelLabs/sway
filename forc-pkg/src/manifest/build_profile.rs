@@ -59,7 +59,7 @@ impl BuildProfile {
             profile: false,
             metrics_outfile: None,
             include_tests: false,
-            log_generation: false,
+            log_generation: true,
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt0,
