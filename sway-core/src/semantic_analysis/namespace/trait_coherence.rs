@@ -1,6 +1,5 @@
 use std::{cell::Cell, collections::HashMap};
 
-use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -50,10 +49,7 @@ fn check_orphan_rules_for_impls_in_scope(
     current_package: &Root,
     trait_map: &TraitMap,
 ) -> Result<(), ErrorEmitted> {
-    let mut keys = trait_map.trait_impls.keys().collect::<Vec<_>>();
-    keys.sort();
-
-    for key in keys {
+    for key in trait_map.trait_impls.keys() {
         for trait_entry in trait_map.trait_impls[key].iter() {
             // 0. If it's a contract then skip it as it's not relevant to coherence.
             if engines.te().get(trait_entry.key.type_id).is_contract() {
@@ -207,13 +203,11 @@ pub(crate) fn check_impls_for_overlap(
 ) -> Result<(), ErrorEmitted> {
     let mut overlap_err = None;
     let unify_check = UnifyCheck::constraint_subset(engines);
-    let mut keys = trait_map.trait_impls.keys().clone().collect::<Vec<_>>();
-    keys.sort();
     let mut traits_types = HashMap::<CallPath, Vec<TypeId>>::new();
     trait_map.get_traits_types(&mut traits_types)?;
     other.get_traits_types(&mut traits_types)?;
 
-    for key in keys {
+    for key in trait_map.trait_impls.keys() {
         for self_entry in trait_map.trait_impls[key].iter() {
             let self_tcs: Vec<(CallPath, TypeId)> = self_entry
                 .key
@@ -292,10 +286,8 @@ pub(crate) fn check_impls_for_overlap(
                         }
                     });
                     if other_tcs_satisfied && self_tcs_satisfied {
-                        let entry_items = self_entry.value.trait_items.keys().sorted();
-                        for trait_item_name1 in entry_items {
-                            let other_entry_items = other_entry.value.trait_items.keys().sorted();
-                            for trait_item_name2 in other_entry_items {
+                        for trait_item_name1 in self_entry.value.trait_items.keys() {
+                            for trait_item_name2 in other_entry.value.trait_items.keys() {
                                 if trait_item_name1 == trait_item_name2 {
                                     overlap_err = Some(
                                         handler.emit_err(
