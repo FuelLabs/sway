@@ -178,7 +178,7 @@ impl Subtract for u32 {
         );
 
         if __gt(res_u64, MAX_U32_U64) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -199,7 +199,7 @@ impl Subtract for u16 {
         );
 
         if __gt(res_u64, MAX_U16_U64) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
@@ -219,7 +219,7 @@ impl Subtract for u8 {
         let max_u8_u64 = u8_as_u64(Self::max());
 
         if __gt(res_u64, max_u8_u64) {
-            if panic_on_overflow_is_enabled() {
+            if panic_on_overflow_enabled() {
                 __revert(0)
             } else {
                 // overflow enabled
