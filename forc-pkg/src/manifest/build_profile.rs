@@ -115,6 +115,7 @@ mod tests {
         let expected = BuildProfile {
             name: "".into(),
             print_asm: PrintAsm::r#final(),
+            log_generation: false,
             ..BuildProfile::debug()
         };
         let profile = build_profiles.get("custom_asm").expect("custom profile");
@@ -129,6 +130,7 @@ mod tests {
                 modified_only: true,
                 passes: vec!["dce".to_string(), "sroa".to_string()],
             },
+            log_generation: false,
             ..BuildProfile::debug()
         };
         let profile = build_profiles
