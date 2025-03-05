@@ -426,7 +426,7 @@ pub(crate) fn test_json_abi(
 
 fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("ABI gen {} ...", file_name.bold());
-    let json_abi = match &built_package.program_abi {
+    let json_abi = match built_package.program_abi.as_ref() {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
         ProgramABI::MidenVM(_) => todo!(),

@@ -104,7 +104,7 @@ pub struct PinnedId(u64);
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
     pub descriptor: PackageDescriptor,
-    pub program_abi: ProgramABI,
+    pub program_abi: Arc<ProgramABI>,
     pub storage_slots: Vec<StorageSlot>,
     pub warnings: Vec<CompileWarning>,
     pub source_map: SourceMap,
@@ -443,7 +443,7 @@ impl BuiltPackage {
     }
 
     pub fn json_abi_string(&self, minify_json_abi: bool) -> Result<Option<String>> {
-        match &self.program_abi {
+        match self.program_abi.as_ref() {
             ProgramABI::Fuel(program_abi) => {
                 if !program_abi.functions.is_empty() {
                     let json_string = if minify_json_abi {
@@ -2571,7 +2571,7 @@ pub fn build(
 
         let built_pkg = BuiltPackage {
             descriptor,
-            program_abi: compiled.program_abi,
+            program_abi: Arc::new(compiled.program_abi),
             storage_slots: compiled.storage_slots,
             source_map: compiled.source_map,
             tree_type: compiled.tree_type,
