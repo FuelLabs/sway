@@ -70,3 +70,61 @@ impl EcalHandler for PredicateLoggingEcal {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use fuel_asm::op;
+    use fuel_tx::{ConsensusParameters, Finalizable, Receipt, TransactionBuilder};
+    use fuel_vm::prelude::{IntoChecked, MemoryClient};
+    use sway_core::asm_generation::ProgramABI;
+
+    #[test]
+    fn test_predicate_logging_ecal() {
+        let program_abi = Arc::new(ProgramABI::Fuel(Default::default()));
+        let vm = Interpreter::with_memory_storage_and_ecal(PredicateLoggingEcal { program_abi });
+
+        // Create test data and script
+        let test_input = "Hello, PredicateLoggingEcal!";
+        let script_data: Vec<u8> = test_input.bytes().collect();
+        let script = vec![
+            // set log id
+            op::movi(0x20, 0x123),
+            // ptr to script data
+            op::gtf_args(0x10, 0x00, fuel_asm::GTFArgs::ScriptData),
+            // length of script data
+            op::movi(0x21, script_data.len().try_into().unwrap()),
+            // call ECAL; add log data to receipts
+            op::ecal(RegId::ZERO, 0x20, 0x10, 0x21),
+            // return
+            op::ret(RegId::ONE),
+        ]
+        .into_iter()
+        .collect();
+
+        // Execute transaction
+        let mut client = MemoryClient::from_txtor(vm.into());
+        let tx = TransactionBuilder::script(script, script_data)
+            .script_gas_limit(1_000_000)
+            .add_fee_input()
+            .finalize()
+            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .expect("failed to generate a checked tx");
+        client.transact(tx);
+
+        // Verify ECAL pushes log data to receipts
+        let receipt = client
+            .receipts()
+            .expect("Expected receipts")
+            .first()
+            .unwrap();
+        let bytes = match receipt {
+            Receipt::LogData { data, .. } => data.as_ref().unwrap().clone(),
+            _ => panic!("Expected LogData receipt"),
+        };
+        let output = String::from_utf8(bytes).unwrap();
+
+        assert_eq!(output, test_input);
+    }
+}

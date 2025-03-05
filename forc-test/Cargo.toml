@@ -19,3 +19,6 @@ rayon.workspace = true
 sway-core.workspace = true
 sway-features.workspace = true
 sway-types.workspace = true
+
+[dev-dependencies]
+fuel-asm = { workspace = true }
