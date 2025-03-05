@@ -1580,7 +1580,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                 // Predicate programs resort to using ECAL; if not implemented; this will result in a no-op operation.
                 // All other program kinds use LOGD.
-                let log_op_code = match (self.context.program_kind, self.context.enable_predicate_logs) {
+                let log_op_code = match (
+                    self.context.program_kind,
+                    self.context.enable_predicate_logs,
+                ) {
                     (Kind::Predicate, true) => VirtualOp::ECAL(
                         VirtualRegister::Constant(ConstantRegister::Zero),
                         log_id_reg,
