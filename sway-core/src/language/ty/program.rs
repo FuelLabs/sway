@@ -3,7 +3,8 @@ use std::sync::Arc;
 use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
-    language::{parsed, ty::*, Purity},
+    language::{parsed, ty::*, Purity, Visibility},
+    namespace::{check_impls_for_overlap, check_orphan_rules_for_impls},
     semantic_analysis::namespace,
     transform::AllowDeprecatedState,
     type_system::*,
@@ -65,6 +66,7 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         root: &TyModule,
+        root_namespace: &mut namespace::Namespace,
         kind: parsed::TreeType,
         package_name: &str,
         experimental: ExperimentalFeatures,
@@ -81,6 +83,7 @@ impl TyProgram {
                 handler,
                 engines,
                 &submodule.module,
+                root_namespace,
                 parsed::TreeType::Library,
                 package_name,
                 experimental,
@@ -421,6 +424,46 @@ impl TyProgram {
             if let Some(error) = e {
                 handler.emit_err(error);
             }
+        }
+
+        // check orphan rules for all traits
+        check_orphan_rules_for_impls(handler, engines, root_namespace.root_ref())?;
+
+        // check trait overlap
+        let mut unified_trait_map = root_namespace
+            .root_ref()
+            .current_package_root_module()
+            .root_lexical_scope()
+            .items
+            .implemented_traits
+            .clone();
+
+        let other_trait_map = unified_trait_map.clone();
+        check_impls_for_overlap(&mut unified_trait_map, handler, other_trait_map, engines)?;
+
+        for (submod_name, submodule) in root.submodules.iter() {
+            root_namespace.push_submodule(
+                handler,
+                engines,
+                submod_name.clone(),
+                Visibility::Public,
+                submodule.mod_name_span.clone(),
+            )?;
+
+            check_impls_for_overlap(
+                &mut unified_trait_map,
+                handler,
+                root_namespace
+                    .current_module()
+                    .root_lexical_scope()
+                    .items
+                    .implemented_traits
+                    .clone(),
+                engines,
+            )?;
+
+            // TODO:
+            // root_namespace.pop_submodule();
         }
 
         Ok((typed_program_kind, declarations, configurables))
