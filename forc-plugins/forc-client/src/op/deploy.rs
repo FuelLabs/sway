@@ -438,7 +438,8 @@ pub async fn deploy_executables(
     Ok(deployed_executable)
 }
 
-pub fn extract_configurables_offset(binary: &[u8]) -> Result<usize> {
+// This helper is borrowed from `fuels::programs::assembly`
+fn extract_configurables_offset(binary: &[u8]) -> Result<usize> {
     if binary.len() < 24 {
         anyhow::bail!(
             "given binary is too short to contain a configurable offset, len: {}",
