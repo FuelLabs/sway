@@ -6,6 +6,10 @@ use ::option::Option::{self, *};
 use ::u128::U128;
 use ::b512::B512;
 
+// TODO: Delete this implementation in favor of the one in `std::bytes`.
+//       Due the fact that we still don't have trait coherence, these
+//       two impls coexist for now.
+#[cfg(experimental_try_from_bytes_for_b256 = false)]
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
         if b.len() != 32 {
