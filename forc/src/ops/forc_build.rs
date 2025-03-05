@@ -43,6 +43,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         tests: cmd.tests,
+        log_generation: false,
         member_filter: MemberFilter::default(),
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,

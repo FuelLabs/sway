@@ -46,6 +46,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file,
         build_target: BuildTarget::default(),
         tests: false,
+        log_generation: false,
         member_filter: pkg::MemberFilter::only_predicates(),
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
