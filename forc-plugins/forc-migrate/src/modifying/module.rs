@@ -7,7 +7,7 @@ use sway_types::{Span, Spanned};
 use super::Modifier;
 
 #[allow(dead_code)]
-impl<'a> Modifier<'a, Module> {
+impl Modifier<'_, Module> {
     /// Removes an [Annotated<ItemKind>] from `self`.
     /// The item to remove is identified by its [Span], `annotated_item_span`.
     pub(crate) fn remove_annotated_item(&mut self, annotated_item_span: &Span) -> &mut Self {
