@@ -15,7 +15,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.82.0
+  RUST_VERSION: 1.85.0
   NIGHTLY_RUST_VERSION: nightly-2024-10-21
 
 jobs:
@@ -485,6 +485,10 @@ jobs:
         run: cargo run --locked --release -p forc -- build --experimental partial_eq --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std - Experimental Feature 'partial_eq'
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Tests - Experimental Feature 'try_from_bytes_for_b256'
+        run: cargo run --locked --release -p forc -- build --experimental try_from_bytes_for_b256 --release --locked --path ./test/src/sdk-harness
+      - name: Cargo Test sway-lib-std - Experimental Feature 'try_from_bytes_for_b256'
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -555,6 +559,8 @@ jobs:
         run: forc build --experimental error_type --path sway-lib-core && forc test --experimental error_type --path sway-lib-core
       - name: Run Core Unit Tests - Experimental feature 'partial_eq'
         run: forc build --experimental partial_eq --path sway-lib-core && forc test --experimental partial_eq --path sway-lib-core
+      - name: Run Core Unit Tests - Experimental feature 'try_from_bytes_for_b256'
+        run: forc build --experimental try_from_bytes_for_b256 --path sway-lib-core && forc test --experimental try_from_bytes_for_b256 --path sway-lib-core
       - name: Run Std Unit Tests
         run: forc build --path sway-lib-std && forc test --path sway-lib-std
       - name: Run Std Unit Tests - Experimental feature 'storage_domains'
@@ -563,6 +569,8 @@ jobs:
         run: forc build --experimental error_type --path sway-lib-std && forc test --experimental error_type --path sway-lib-std
       - name: Run Std Unit Tests - Experimental feature 'partial_eq'
         run: forc build --experimental partial_eq --path sway-lib-std && forc test --experimental partial_eq --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'try_from_bytes_for_b256'
+        run: forc build --experimental try_from_bytes_for_b256 --path sway-lib-std && forc test --experimental try_from_bytes_for_b256 --path sway-lib-std
       - name: Run In Language Unit Tests
         run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
       - name: Run In Language Unit Tests - Experimental feature 'storage_domains'
@@ -571,6 +579,8 @@ jobs:
         run: forc build --experimental error_type --path test/src/in_language_tests && forc test --experimental error_type --path test/src/in_language_tests
       - name: Run In Language Unit Tests - Experimental feature 'partial_eq'
         run: forc build --experimental partial_eq --path test/src/in_language_tests && forc test --experimental partial_eq --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'try_from_bytes_for_b256'
+        run: forc build --experimental try_from_bytes_for_b256 --path test/src/in_language_tests && forc test --experimental try_from_bytes_for_b256 --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
